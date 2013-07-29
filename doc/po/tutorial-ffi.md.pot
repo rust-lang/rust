@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-08-10 07:44+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -24,7 +24,7 @@ msgid "# Introduction"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial.md:876 doc/tutorial-ffi.md:143
+#: doc/tutorial.md:868 doc/tutorial-ffi.md:143
 msgid "# Destructors"
 msgstr ""
 
@@ -446,11 +446,87 @@ msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-ffi.md:232
+msgid "# Accessing foreign globals"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:236
+msgid ""
+"Foreign APIs often export a global variable which could do something like "
+"track global state. In order to access these variables, you declare them in "
+"`extern` blocks with the `static` keyword:"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:239
+msgid "~~~{.xfail-test} use std::libc;"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:244
+#, no-wrap
+msgid ""
+"#[link_args = \"-lreadline\"]\n"
+"extern {\n"
+"    static rl_readline_version: libc::c_int;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:250
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    println(fmt!(\"You have readline version %d installed.\",\n"
+"                 rl_readline_version as int));\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:254
+msgid ""
+"Alternatively, you may need to alter global state provided by a foreign "
+"interface. To do this, statics can be declared with `mut` so rust can mutate "
+"them."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:258
+msgid "~~~{.xfail-test} use std::libc; use std::ptr;"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:263
+#, no-wrap
+msgid ""
+"#[link_args = \"-lreadline\"]\n"
+"extern {\n"
+"    static mut rl_prompt: *libc::c_char;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:272
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    do \"[my-awesome-shell] $\".as_c_str |buf| {\n"
+"        unsafe { rl_prompt = buf; }\n"
+"        // get a line, process it\n"
+"        unsafe { rl_prompt = ptr::null(); }\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-ffi.md:274
 msgid "# Foreign calling conventions"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:237
+#: doc/tutorial-ffi.md:279
 msgid ""
 "Most foreign code exposes a C ABI, and Rust uses the platform's C calling "
 "convention by default when calling foreign functions. Some foreign "
@@ -460,7 +536,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:246
+#: doc/tutorial-ffi.md:288
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -474,7 +550,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:250
+#: doc/tutorial-ffi.md:292
 msgid ""
 "The `abi` attribute applies to a foreign module (it cannot be applied to a "
 "single function within a module), and must be either `\"cdecl\"` or `"
@@ -482,12 +558,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:252
+#: doc/tutorial-ffi.md:294
 msgid "# Interoperability with foreign code"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:256
+#: doc/tutorial-ffi.md:298
 msgid ""
 "Rust guarantees that the layout of a `struct` is compatible with the "
 "platform's representation in C.  A `#[packed]` attribute is available, which "
@@ -496,7 +572,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:263
+#: doc/tutorial-ffi.md:305
 msgid ""
 "Rust's owned and managed boxes use non-nullable pointers as handles which "
 "point to the contained object. However, they should not be manually created "
@@ -508,7 +584,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:268
+#: doc/tutorial-ffi.md:310
 msgid ""
 "Vectors and strings share the same basic memory layout, and utilities are "
 "available in the `vec` and `str` modules for working with C APIs. Strings "
@@ -518,7 +594,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-ffi.md:270
+#: doc/tutorial-ffi.md:312
 msgid ""
 "The standard library includes type aliases and function definitions for the "
 "C standard library in the `libc` module, and Rust links against `libc` and "

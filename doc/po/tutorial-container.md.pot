@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-08-05 19:40+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -242,40 +242,41 @@ msgstr ""
 #: doc/tutorial-container.md:112
 msgid ""
 "Containers implement iteration over the contained elements by returning an "
-"iterator object. For example, vector slices have four iterators available:"
+"iterator object. For example, vector slices several iterators available:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-container.md:117
-msgid "`vector.iter()`, for immutable references to the elements"
+#: doc/tutorial-container.md:116
+msgid "`iter()` and `rev_iter()`, for immutable references to the elements"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-container.md:117
-msgid "`vector.mut_iter()`, for mutable references to the elements"
-msgstr ""
-
-#. type: Bullet: '* '
-#: doc/tutorial-container.md:117
+#: doc/tutorial-container.md:116
 msgid ""
-"`vector.rev_iter()`, for immutable references to the elements in reverse "
-"order"
+"`mut_iter()` and `mut_rev_iter()`, for mutable references to the elements"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-container.md:117
+#: doc/tutorial-container.md:116
 msgid ""
-"`vector.mut_rev_iter()`, for mutable references to the elements in reverse "
-"order"
+"`consume_iter()` and `consume_rev_iter`, to move the elements out by-value"
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-container.md:119
+msgid ""
+"A typical mutable container will implement at least `iter()`, `mut_iter()` "
+"and `consume_iter()` along with the reverse variants if it maintains an "
+"order."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:121
 msgid "### Freezing"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:123
+#: doc/tutorial-container.md:125
 msgid ""
 "Unlike most other languages with external iterators, Rust has no *iterator "
 "invalidation*. As long an iterator is still in scope, the compiler will "
@@ -283,7 +284,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:128
+#: doc/tutorial-container.md:130
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -293,7 +294,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:134
+#: doc/tutorial-container.md:136
 #, no-wrap
 msgid ""
 "    // the vector is frozen for this scope, the compiler will statically\n"
@@ -304,19 +305,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:137
+#: doc/tutorial-container.md:139
 msgid ""
 "These semantics are due to most container iterators being implemented with "
 "`&` and `&mut`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:139
+#: doc/tutorial-container.md:141
 msgid "## Iterator adaptors"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:143
+#: doc/tutorial-container.md:145
 msgid ""
 "The `IteratorUtil` trait implements common algorithms as methods extending "
 "every `Iterator` implementation. For example, the `fold` method will "
@@ -324,28 +325,28 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:149
+#: doc/tutorial-container.md:151
 msgid ""
 "~~~ let xs = [1, 9, 2, 3, 14, 12]; let result = xs.iter().fold(0, |"
 "accumulator, item| accumulator - *item); assert_eq!(result, -41); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:151
+#: doc/tutorial-container.md:153
 msgid ""
 "Some adaptors return an adaptor object implementing the `Iterator` trait "
 "itself:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:158
+#: doc/tutorial-container.md:160
 msgid ""
 "~~~ let xs = [1, 9, 2, 3, 14, 12]; let ys = [5, 2, 1, 8]; let sum = xs."
 "iter().chain_(ys.iter()).fold(0, |a, b| a + *b); assert_eq!(sum, 57); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:162
+#: doc/tutorial-container.md:164
 msgid ""
 "Note that some adaptors like the `chain_` method above use a trailing "
 "underscore to work around an issue with method resolve. The underscores will "
@@ -353,17 +354,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:164
+#: doc/tutorial-container.md:166
 msgid "## For loops"
 msgstr ""
 
 #. type: Plain text
 #: doc/tutorial-container.md:168
 msgid ""
-"The `for` loop syntax is currently in transition, and will switch from the "
-"old closure-based iteration protocol to iterator objects. For now, the "
-"`advance` adaptor is required as a compatibility shim to use iterators with "
-"for loops."
+"The `for` keyword can be used as sugar for iterating through any iterator:"
 msgstr ""
 
 #. type: Plain text
@@ -419,7 +417,7 @@ msgstr ""
 msgid ""
 "// print out the pairs of elements up to (&3, &\"baz\")\n"
 "for (x, y) in it {\n"
-"    println(fmt!(\"%d %s\", *x, *y));\n"
+"    printfln!(\"%d %s\", *x, *y);\n"
 msgstr ""
 
 #. type: Plain text
@@ -435,8 +433,8 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-container.md:204
 msgid ""
-"// yield and print the last pair from the iterator println(fmt!(\"last: %?"
-"\", it.next()));"
+"// yield and print the last pair from the iterator printfln!(\"last: %?\", "
+"it.next());"
 msgstr ""
 
 #. type: Plain text
@@ -577,9 +575,9 @@ msgstr ""
 #. type: Plain text
 #: doc/tutorial-container.md:300
 msgid ""
-"~~~ let xs = [1, 2, 3, 4, 5, 6]; let mut it = xs.iter(); println(fmt!(\"%?"
-"\", it.next())); // prints `Some(&1)` println(fmt!(\"%?\", it.next())); // "
-"prints `Some(&2)` println(fmt!(\"%?\", it.next_back())); // prints `Some(&6)`"
+"~~~ let xs = [1, 2, 3, 4, 5, 6]; let mut it = xs.iter(); printfln!(\"%?\", "
+"it.next()); // prints `Some(&1)` printfln!(\"%?\", it.next()); // prints "
+"`Some(&2)` printfln!(\"%?\", it.next_back()); // prints `Some(&6)`"
 msgstr ""
 
 #. type: Plain text
@@ -588,14 +586,88 @@ msgstr ""
 msgid ""
 "// prints `5`, `4` and `3`\n"
 "for &x in it.invert() {\n"
-"    println(fmt!(\"%?\", x))\n"
+"    printfln!(\"%?\", x)\n"
 "}\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-container.md:308
+#: doc/tutorial-container.md:309
 msgid ""
 "The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted "
 "version of the standard immutable and mutable vector iterators."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:312
+msgid ""
+"The `chain_`, `transform`, `filter`, `filter_map` and `peek` adaptors are "
+"`DoubleEndedIterator` implementations if the underlying iterators are."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:317
+msgid ""
+"~~~ let xs = [1, 2, 3, 4]; let ys = [5, 6, 7, 8]; let mut it = xs.iter()."
+"chain_(ys.iter()).transform(|&x| x * 2);"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:319
+msgid "printfln!(\"%?\", it.next()); // prints `Some(2)`"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:325
+#, no-wrap
+msgid ""
+"// prints `16`, `14`, `12`, `10`, `8`, `6`, `4`\n"
+"for x in it.invert() {\n"
+"    printfln!(\"%?\", x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:327
+msgid "## Random-access iterators"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:331
+msgid ""
+"The `RandomAccessIterator` trait represents an iterator offering random "
+"access to the whole range. The `indexable` method retrieves the number of "
+"elements accessible with the `idx` method."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:334
+msgid ""
+"The `chain_` adaptor is an implementation of `RandomAccessIterator` if the "
+"underlying iterators are."
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:343
+msgid ""
+"~~~ let xs = [1, 2, 3, 4, 5]; let ys = ~[7, 9, 11]; let mut it = xs.iter()."
+"chain_(ys.iter()); printfln!(\"%?\", it.idx(0)); // prints `Some(&1)` "
+"printfln!(\"%?\", it.idx(5)); // prints `Some(&7)` printfln!(\"%?\", it."
+"idx(7)); // prints `Some(&11)` printfln!(\"%?\", it.idx(8)); // prints `None`"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:348
+msgid ""
+"// yield two elements from the beginning, and one from the end it.next(); it."
+"next(); it.next_back();"
+msgstr ""
+
+#. type: Plain text
+#: doc/tutorial-container.md:352
+msgid ""
+"printfln!(\"%?\", it.idx(0)); // prints `Some(&3)` printfln!(\"%?\", it."
+"idx(4)); // prints `Some(&9)` printfln!(\"%?\", it.idx(6)); // prints `None` "
+"~~~"
 msgstr ""

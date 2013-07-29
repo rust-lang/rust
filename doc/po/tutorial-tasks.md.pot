@@ -7,13 +7,13 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-17 07:18+0900\n"
+"POT-Creation-Date: 2013-08-08 22:27+0900\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #. type: Plain text
@@ -24,7 +24,7 @@ msgid "# Introduction"
 msgstr ""
 
 #. type: Plain text
-#: doc/rust.md:1849 doc/tutorial-tasks.md:649
+#: doc/rust.md:1952 doc/tutorial-tasks.md:648
 msgid "# } ~~~~"
 msgstr ""
 
@@ -249,15 +249,15 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:124
-msgid "~~~ # use std::io::print; # use std::task::spawn; # use std::int;"
+#: doc/tutorial-tasks.md:123
+msgid "~~~ # use std::io::print; # use std::task::spawn;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:131
+#: doc/tutorial-tasks.md:130
 #, no-wrap
 msgid ""
-"for int::range(0, 20) |child_task_number| {\n"
+"for child_task_number in range(0, 20) {\n"
 "    do spawn {\n"
 "       print(fmt!(\"I am child number %d\\n\", child_task_number));\n"
 "    }\n"
@@ -266,12 +266,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:133
+#: doc/tutorial-tasks.md:132
 msgid "## Communication"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:138
+#: doc/tutorial-tasks.md:137
 msgid ""
 "Now that we have spawned a new task, it would be nice if we could "
 "communicate with it. Recall that Rust does not have shared mutable state, so "
@@ -280,7 +280,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:143
+#: doc/tutorial-tasks.md:142
 msgid ""
 "A pipe is simply a pair of endpoints: one for sending messages and another "
 "for receiving messages. Pipes are low-level communication building-blocks "
@@ -289,7 +289,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:149
+#: doc/tutorial-tasks.md:148
 msgid ""
 "The simplest way to create a pipe is to use the `pipes::stream` function to "
 "create a `(Port, Chan)` pair. In Rust parlance, a *channel* is a sending "
@@ -298,17 +298,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:153
+#: doc/tutorial-tasks.md:152
 msgid "~~~~ # use std::task::spawn; # use std::comm::{stream, Port, Chan};"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:155
+#: doc/tutorial-tasks.md:154
 msgid "let (port, chan): (Port<int>, Chan<int>) = stream();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:160
+#: doc/tutorial-tasks.md:159
 #, no-wrap
 msgid ""
 "do spawn || {\n"
@@ -318,7 +318,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:166
+#: doc/tutorial-tasks.md:165
 msgid ""
 "some_other_expensive_computation(); let result = port.recv(); # fn "
 "some_expensive_computation() -> int { 42 } # fn "
@@ -326,7 +326,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:171
+#: doc/tutorial-tasks.md:170
 msgid ""
 "Let's examine this example in detail. First, the `let` statement creates a "
 "stream for sending and receiving integers (the left-hand side of the `let`, "
@@ -335,14 +335,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:176
+#: doc/tutorial-tasks.md:175
 msgid ""
 "~~~~ # use std::comm::{stream, Chan, Port}; let (port, chan): (Port<int>, "
 "Chan<int>) = stream(); ~~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:180
+#: doc/tutorial-tasks.md:179
 msgid ""
 "The child task will use the channel to send data to the parent task, which "
 "will wait to receive the data on the port. The next statement spawns the "
@@ -350,7 +350,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:191
+#: doc/tutorial-tasks.md:190
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -366,7 +366,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:197
+#: doc/tutorial-tasks.md:196
 msgid ""
 "Notice that the creation of the task closure transfers `chan` to the child "
 "task implicitly: the closure captures `chan` in its environment. Both `Chan` "
@@ -376,14 +376,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:201
+#: doc/tutorial-tasks.md:200
 msgid ""
 "Finally, the parent continues with some other expensive computation, then "
 "waits for the child's result to arrive on the port:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:210
+#: doc/tutorial-tasks.md:209
 msgid ""
 "~~~~ # use std::comm::{stream}; # fn some_other_expensive_computation() {} # "
 "let (port, chan) = stream::<int>(); # chan.send(0); "
@@ -391,7 +391,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:216
+#: doc/tutorial-tasks.md:215
 msgid ""
 "The `Port` and `Chan` pair created by `stream` enables efficient "
 "communication between a single sender and a single receiver, but multiple "
@@ -401,7 +401,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:222
+#: doc/tutorial-tasks.md:221
 msgid ""
 "~~~ {.xfail-test} # use std::task::{spawn}; # use std::comm::{stream, Port, "
 "Chan}; # fn some_expensive_computation() -> int { 42 } let (port, chan) = "
@@ -409,7 +409,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:226
+#: doc/tutorial-tasks.md:225
 #, no-wrap
 msgid ""
 "do spawn {\n"
@@ -418,7 +418,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:233
+#: doc/tutorial-tasks.md:232
 #, no-wrap
 msgid ""
 "// ERROR! The previous spawn statement already owns the channel,\n"
@@ -430,29 +430,27 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:236
+#: doc/tutorial-tasks.md:235
 msgid ""
 "Instead we can use a `SharedChan`, a type that allows a single `Chan` to be "
 "shared by multiple senders."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:241
-msgid ""
-"~~~ # use std::task::spawn; # use std::comm::{stream, SharedChan}; # use "
-"std::uint;"
+#: doc/tutorial-tasks.md:239
+msgid "~~~ # use std::task::spawn; # use std::comm::{stream, SharedChan};"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:244
+#: doc/tutorial-tasks.md:242
 msgid "let (port, chan) = stream(); let chan = SharedChan::new(chan);"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:252
+#: doc/tutorial-tasks.md:250
 #, no-wrap
 msgid ""
-"for uint::range(0, 3) |init_val| {\n"
+"for init_val in range(0u, 3) {\n"
 "    // Create a new channel handle to distribute to the child task\n"
 "    let child_chan = chan.clone();\n"
 "    do spawn {\n"
@@ -462,14 +460,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:256
+#: doc/tutorial-tasks.md:254
 msgid ""
 "let result = port.recv() + port.recv() + port.recv(); # fn "
 "some_expensive_computation(_i: uint) -> int { 42 } ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:265
+#: doc/tutorial-tasks.md:263
 msgid ""
 "Here we transfer ownership of the channel into a new `SharedChan` value.  "
 "Like `Chan`, `SharedChan` is a non-copyable, owned type (sometimes also "
@@ -482,7 +480,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:270
+#: doc/tutorial-tasks.md:268
 msgid ""
 "Note that the above `SharedChan` example is somewhat contrived since you "
 "could also simply use three `stream` pairs, but it serves to illustrate the "
@@ -491,12 +489,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:275
+#: doc/tutorial-tasks.md:273
 msgid "~~~ # use std::task::spawn; # use std::comm::stream; # use std::vec;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:284
+#: doc/tutorial-tasks.md:282
 #, no-wrap
 msgid ""
 "// Create a vector of ports, one for each child task\n"
@@ -510,7 +508,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:289
+#: doc/tutorial-tasks.md:287
 msgid ""
 "// Wait on each port, accumulating the results let result = ports.iter()."
 "fold(0, |accum, port| accum + port.recv() ); # fn "
@@ -518,14 +516,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:293
+#: doc/tutorial-tasks.md:291
 msgid ""
 "## Backgrounding computations: Futures With `extra::future`, rust has a "
 "mechanism for requesting a computation and getting the result later."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:301
+#: doc/tutorial-tasks.md:299
 #, no-wrap
 msgid ""
 "The basic example below illustrates this.\n"
@@ -538,14 +536,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:306
+#: doc/tutorial-tasks.md:304
 msgid ""
 "let mut delayed_fib = extra::future::spawn (|| fib(50) ); make_a_sandwich(); "
 "println(fmt!(\"fib(50) = %?\", delayed_fib.get()))  ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:312
+#: doc/tutorial-tasks.md:310
 msgid ""
 "The call to `future::spawn` returns immediately a `future` object regardless "
 "of how long it takes to run `fib(50)`. You can then make yourself a sandwich "
@@ -557,17 +555,16 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:325
+#: doc/tutorial-tasks.md:322
 #, no-wrap
 msgid ""
 "Here is another example showing how futures allow you to background computations. The workload will\n"
 "be distributed on the available cores.\n"
 "~~~\n"
 "# use std::vec;\n"
-"# use std::uint;\n"
 "fn partial_sum(start: uint) -> f64 {\n"
 "    let mut local_sum = 0f64;\n"
-"    for uint::range(start*100000, (start+1)*100000) |num| {\n"
+"    for num in range(start*100000, (start+1)*100000) {\n"
 "        local_sum += (num as f64 + 1.0).pow(&-2.0);\n"
 "    }\n"
 "    local_sum\n"
@@ -575,7 +572,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:328
+#: doc/tutorial-tasks.md:325
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -583,25 +580,25 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:336
+#: doc/tutorial-tasks.md:333
 #, no-wrap
 msgid ""
 "    let mut final_res = 0f64;\n"
 "    for ft in futures.mut_iter()  {\n"
 "        final_res += ft.get();\n"
 "    }\n"
-"    println(fmt!(\"^2/6 is not far from : %?\", final_res));\n"
+"    println(fmt!(\"π^2/6 is not far from : %?\", final_res));\n"
 "}\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:338
+#: doc/tutorial-tasks.md:335
 msgid "## Sharing immutable data without copy: Arc"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:343
+#: doc/tutorial-tasks.md:340
 msgid ""
 "To share immutable data between tasks, a first approach would be to only use "
 "pipes as we have seen previously. A copy of the data to share would then be "
@@ -610,7 +607,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:347
+#: doc/tutorial-tasks.md:344
 msgid ""
 "To tackle this issue, one can use an Atomically Reference Counted wrapper "
 "(`Arc`) as implemented in the `extra` library of Rust. With an Arc, the data "
@@ -619,16 +616,16 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:355
+#: doc/tutorial-tasks.md:351
 msgid ""
 "Here is a small example showing how to use Arcs. We wish to run concurrently "
 "several computations on a single large vector of floats. Each task needs the "
-"full vector to perform its duty.  ~~~ # use std::vec; # use std::uint; # use "
-"std::rand; use extra::arc::Arc;"
+"full vector to perform its duty.  ~~~ # use std::vec; # use std::rand; use "
+"extra::arc::Arc;"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:359
+#: doc/tutorial-tasks.md:355
 #, no-wrap
 msgid ""
 "fn pnorm(nums: &~[float], p: uint) -> float {\n"
@@ -637,7 +634,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:363
+#: doc/tutorial-tasks.md:359
 #, no-wrap
 msgid ""
 "fn main() {\n"
@@ -646,22 +643,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:365
+#: doc/tutorial-tasks.md:361
 #, no-wrap
 msgid "    let numbers_arc = Arc::new(numbers);\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:369
+#: doc/tutorial-tasks.md:365
 #, no-wrap
 msgid ""
-"    for uint::range(1,10) |num| {\n"
+"    for num in range(1u, 10) {\n"
 "        let (port, chan)  = stream();\n"
 "        chan.send(numbers_arc.clone());\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:378
+#: doc/tutorial-tasks.md:374
 #, no-wrap
 msgid ""
 "        do spawn {\n"
@@ -675,45 +672,45 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:400
+#: doc/tutorial-tasks.md:396
 msgid ""
 "The function `pnorm` performs a simple computation on the vector (it "
 "computes the sum of its items at the power given as argument and takes the "
 "inverse power of this value). The Arc on the vector is created by the line "
 "~~~ # use extra::arc::Arc; # use std::vec; # use std::rand; # let numbers = "
-"vec::from_fn(1000000, |_| rand::random::<float>()); let "
-"numbers_arc=Arc::new(numbers); ~~~ and a clone of it is sent to each task ~~~ # "
-"use extra::arc::Arc; # use std::vec; # use std::rand; # let numbers=vec::"
-"from_fn(1000000, |_| rand::random::<float>()); # let numbers_arc = "
-"Arc::new(numbers); # let (port, chan)  = stream(); chan.send(numbers_arc."
+"vec::from_fn(1000000, |_| rand::random::<float>()); let numbers_arc=Arc::"
+"new(numbers); ~~~ and a clone of it is sent to each task ~~~ # use extra::"
+"arc::Arc; # use std::vec; # use std::rand; # let numbers=vec::"
+"from_fn(1000000, |_| rand::random::<float>()); # let numbers_arc = Arc::"
+"new(numbers); # let (port, chan)  = stream(); chan.send(numbers_arc."
 "clone()); ~~~ copying only the wrapper and not its contents."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:414
+#: doc/tutorial-tasks.md:410
 msgid ""
 "Each task recovers the underlying data by ~~~ # use extra::arc::Arc; # use "
 "std::vec; # use std::rand; # let numbers=vec::from_fn(1000000, |_| rand::"
-"random::<float>()); # let numbers_arc=Arc::new(numbers); # let (port, chan)  = "
-"stream(); # chan.send(numbers_arc.clone()); # let local_arc : Arc<~[float]> "
-"= port.recv(); let task_numbers = local_arc.get(); ~~~ and can use it as if "
-"it were local."
+"random::<float>()); # let numbers_arc=Arc::new(numbers); # let (port, chan)  "
+"= stream(); # chan.send(numbers_arc.clone()); # let local_arc : "
+"Arc<~[float]> = port.recv(); let task_numbers = local_arc.get(); ~~~ and can "
+"use it as if it were local."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:416
+#: doc/tutorial-tasks.md:412
 msgid ""
 "The `arc` module also implements Arcs around mutable data that are not "
 "covered here."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:418
+#: doc/tutorial-tasks.md:414
 msgid "# Handling task failure"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:427
+#: doc/tutorial-tasks.md:423
 msgid ""
 "Rust has a built-in mechanism for raising exceptions. The `fail!()` macro "
 "(which can also be written with an error string as an argument: `fail!"
@@ -726,29 +723,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:430
+#: doc/tutorial-tasks.md:426
 msgid ""
 "All tasks are, by default, _linked_ to each other. That means that the fates "
 "of all tasks are intertwined: if one fails, so do all the others."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:438
+#: doc/tutorial-tasks.md:434
 msgid ""
-"~~~ # use std::task::spawn; # use std::task; # fn do_some_work() { loop "
-"{ task::yield() } } # do task::try { // Create a child task that fails do "
-"spawn { fail!() }"
+"~~~{.xfail-test .linked-failure} # use std::task::spawn; # use std::task; # "
+"fn do_some_work() { loop { task::yield() } } # do task::try { // Create a "
+"child task that fails do spawn { fail!() }"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:443
+#: doc/tutorial-tasks.md:439
 msgid ""
 "// This will also fail because the task we spawned failed do_some_work(); "
 "# }; ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:453
+#: doc/tutorial-tasks.md:449
 msgid ""
 "While it isn't possible for a task to recover from failure, tasks may notify "
 "each other of failure. The simplest way of handling task failure is with the "
@@ -762,10 +759,10 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:467
+#: doc/tutorial-tasks.md:463
 #, no-wrap
 msgid ""
-"~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::task;\n"
 "# fn some_condition() -> bool { false }\n"
 "# fn calculate_result() -> int { 0 }\n"
@@ -781,7 +778,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:473
+#: doc/tutorial-tasks.md:469
 msgid ""
 "Unlike `spawn`, the function spawned using `try` may return a value, which "
 "`try` will dutifully propagate back to the caller in a [`Result`] enum. If "
@@ -790,12 +787,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:475
+#: doc/tutorial-tasks.md:471
 msgid "[`Result`]: std/result.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:480
+#: doc/tutorial-tasks.md:476
 msgid ""
 "> ***Note:*** A failed task does not currently produce a useful error > "
 "value (`try` always returns `Err(())`). In the > future, it may be possible "
@@ -803,14 +800,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:483
+#: doc/tutorial-tasks.md:479
 msgid ""
 "TODO: Need discussion of `future_result` in order to make failure modes "
 "useful."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:491
+#: doc/tutorial-tasks.md:487
 msgid ""
 "But not all failures are created equal. In some cases you might need to "
 "abort the entire program (perhaps you're writing an assert which, if it "
@@ -822,24 +819,25 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:493
+#: doc/tutorial-tasks.md:489
 msgid "## Failure modes"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:496
+#: doc/tutorial-tasks.md:492
 msgid ""
 "By default, task failure is _bidirectionally linked_, which means that if "
 "either task fails, it kills the other one."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:510
+#: doc/tutorial-tasks.md:507
 #, no-wrap
 msgid ""
-"~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::task;\n"
-"# fn sleep_forever() { loop { task::yield() } }\n"
+"# use std::comm::oneshot;\n"
+"# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }\n"
 "# do task::try {\n"
 "do spawn {\n"
 "    do spawn {\n"
@@ -853,7 +851,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:517
+#: doc/tutorial-tasks.md:514
 msgid ""
 "If you want parent tasks to be able to kill their children, but do not want "
 "a parent to fail automatically if one of its child task fails, you can call "
@@ -864,14 +862,15 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:538
+#: doc/tutorial-tasks.md:536
 #, no-wrap
 msgid ""
-"~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::comm::{stream, Chan, Port};\n"
+"# use std::comm::oneshot;\n"
 "# use std::task::{spawn, try};\n"
 "# use std::task;\n"
-"# fn sleep_forever() { loop { task::yield() } }\n"
+"# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }\n"
 "# do task::try {\n"
 "let (receiver, sender): (Port<int>, Chan<int>) = stream();\n"
 "do spawn {  // Bidirectionally linked\n"
@@ -890,7 +889,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:544
+#: doc/tutorial-tasks.md:542
 msgid ""
 "Supervised failure is useful in any situation where one task manages "
 "multiple fallible child tasks, and the parent task can recover if any child "
@@ -899,20 +898,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:547
+#: doc/tutorial-tasks.md:545
 msgid ""
 "Supervised task failure propagates across multiple generations even if an "
 "intermediate generation has already exited:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:563
+#: doc/tutorial-tasks.md:562
 #, no-wrap
 msgid ""
-"~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::task;\n"
-"# fn sleep_forever() { loop { task::yield() } }\n"
-"# fn wait_for_a_while() { for 1000.times { task::yield() } }\n"
+"# use std::comm::oneshot;\n"
+"# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }\n"
+"# fn wait_for_a_while() { for _ in range(0, 1000u) { task::yield() } }\n"
 "# do task::try::<int> {\n"
 "do task::spawn_supervised {\n"
 "    do task::spawn_supervised {\n"
@@ -927,20 +927,20 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:566
+#: doc/tutorial-tasks.md:565
 msgid ""
 "Finally, tasks can be configured to not propagate failure to each other at "
 "all, using `task::spawn_unlinked` for _isolated failure_."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:582
+#: doc/tutorial-tasks.md:581
 #, no-wrap
 msgid ""
-"~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::task;\n"
 "# fn random() -> uint { 100 }\n"
-"# fn sleep_for(i: uint) { for i.times { task::yield() } }\n"
+"# fn sleep_for(i: uint) { for _ in range(0, i) { task::yield() } }\n"
 "# do task::try::<()> {\n"
 "let (time1, time2) = (random(), random());\n"
 "do task::spawn_unlinked {\n"
@@ -955,12 +955,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:584
+#: doc/tutorial-tasks.md:583
 msgid "## Creating a task with a bi-directional communication path"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:589
+#: doc/tutorial-tasks.md:588
 msgid ""
 "A very common thing to do is to spawn a child task where the parent and "
 "child both need to exchange messages with each other. The function `extra::"
@@ -969,7 +969,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:594
+#: doc/tutorial-tasks.md:593
 msgid ""
 "To see how `DuplexStream()` works, we will create a child task that "
 "repeatedly receives a `uint` message, converts it to a string, and sends the "
@@ -978,10 +978,10 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:607
+#: doc/tutorial-tasks.md:606
 #, no-wrap
 msgid ""
-"~~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use extra::comm::DuplexStream;\n"
 "# use std::uint;\n"
 "fn stringifier(channel: &DuplexStream<~str, uint>) {\n"
@@ -996,7 +996,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:615
+#: doc/tutorial-tasks.md:614
 msgid ""
 "The implementation of `DuplexStream` supports both sending and receiving. "
 "The `stringifier` function takes a `DuplexStream` that can send strings (the "
@@ -1007,15 +1007,15 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:617
+#: doc/tutorial-tasks.md:616
 msgid "Here is the code for the parent task:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:631
+#: doc/tutorial-tasks.md:630
 #, no-wrap
 msgid ""
-"~~~~\n"
+"~~~{.xfail-test .linked-failure}\n"
 "# use std::task::spawn;\n"
 "# use std::uint;\n"
 "# use extra::comm::DuplexStream;\n"
@@ -1031,12 +1031,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:633
+#: doc/tutorial-tasks.md:632
 msgid "let (from_child, to_child) = DuplexStream();"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:637
+#: doc/tutorial-tasks.md:636
 #, no-wrap
 msgid ""
 "do spawn {\n"
@@ -1045,23 +1045,23 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:640
+#: doc/tutorial-tasks.md:639
 msgid "from_child.send(22); assert!(from_child.recv() == ~\"22\");"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:643
+#: doc/tutorial-tasks.md:642
 msgid "from_child.send(23); from_child.send(0);"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:646
+#: doc/tutorial-tasks.md:645
 msgid ""
 "assert!(from_child.recv() == ~\"23\"); assert!(from_child.recv() == ~\"0\");"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-tasks.md:653
+#: doc/tutorial-tasks.md:652
 msgid ""
 "The parent task first calls `DuplexStream` to create a pair of bidirectional "
 "endpoints. It then uses `task::spawn` to create the child task, which "
