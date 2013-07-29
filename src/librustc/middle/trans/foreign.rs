@@ -1157,6 +1157,6 @@ pub fn register_foreign_fn(ccx: @mut CrateContext,
 
     let tys = shim_types(ccx, node_id);
     do tys.fn_ty.decl_fn |fnty| {
-        register_fn_fuller(ccx, sp, sym.take(), node_id, lib::llvm::CCallConv, fnty)
+        register_fn_llvmty(ccx, sp, sym.take(), node_id, lib::llvm::CCallConv, fnty)
     }
 }
