@@ -180,9 +180,23 @@ impl<T> PortOne<T> {
 }
 
 impl<T> Select for PortOne<T> {
-    #[inline]
+    #[inline] #[cfg(not(test))]
     fn optimistic_check(&mut self) -> bool {
         unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
+    }
+
+    #[inline] #[cfg(test)]
+    fn optimistic_check(&mut self) -> bool {
+        // The optimistic check is never necessary for correctness. For testing
+        // purposes, making it randomly return false simulates a racing sender.
+        use rand::{Rand, rng};
+        let mut rng = rng();
+        let actually_check = Rand::rand(&mut rng);
+        if actually_check {
+            unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
+        } else {
+            false
+        }
     }
 
     fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
