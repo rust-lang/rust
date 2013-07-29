@@ -68,7 +68,10 @@ pub struct Scheduler {
     priv cleanup_job: Option<CleanupJob>,
     metrics: SchedMetrics,
     /// Should this scheduler run any task, or only pinned tasks?
-    run_anything: bool
+    run_anything: bool,
+    /// If the scheduler shouldn't run some tasks, a friend to send
+    /// them to.
+    friend_handle: Option<SchedHandle>
 }
 
 pub struct SchedHandle {
@@ -80,7 +83,8 @@ pub struct SchedHandle {
 pub enum SchedMessage {
     Wake,
     Shutdown,
-    PinnedTask(~Task)
+    PinnedTask(~Task),
+    TaskFromFriend(~Task)
 }
 
 enum CleanupJob {
@@ -97,7 +101,7 @@ impl Scheduler {
                sleeper_list: SleeperList)
         -> Scheduler {
 
-        Scheduler::new_special(event_loop, work_queue, sleeper_list, true)
+        Scheduler::new_special(event_loop, work_queue, sleeper_list, true, None)
 
     }
 
@@ -106,7 +110,8 @@ impl Scheduler {
     pub fn new_special(event_loop: ~EventLoopObject,
                        work_queue: WorkQueue<~Task>,
                        sleeper_list: SleeperList,
-                       run_anything: bool)
+                       run_anything: bool,
+                       friend: Option<SchedHandle>)
         -> Scheduler {
 
         Scheduler {
@@ -120,7 +125,8 @@ impl Scheduler {
             sched_task: None,
             cleanup_job: None,
             metrics: SchedMetrics::new(),
-            run_anything: run_anything
+            run_anything: run_anything,
+            friend_handle: friend
         }
     }
 
@@ -327,6 +333,10 @@ impl Scheduler {
                 this.resume_task_immediately(task);
                 return None;
             }
+            Some(TaskFromFriend(task)) => {
+                this.resume_task_immediately(task);
+                return None;
+            }
             Some(Wake) => {
                 this.sleepy = false;
                 return Some(this);
@@ -376,6 +386,19 @@ impl Scheduler {
         }
     }
 
+    /// Take a non-homed task we aren't allowed to run here and send
+    /// it to the designated friend scheduler to execute.
+    fn send_to_friend(&mut self, task: ~Task) {
+        match self.friend_handle {
+            Some(ref mut handle) => {
+                handle.send(TaskFromFriend(task));
+            }
+            None => {
+                rtabort!("tried to send task to a friend but scheduler has no friends");
+            }
+        }
+    }
+
     // Resume a task from the queue - but also take into account that
     // it might not belong here.
 
@@ -409,7 +432,8 @@ impl Scheduler {
                     }
                     AnySched => {
                         task.give_home(AnySched);
-                        this.enqueue_task(task);
+//                        this.enqueue_task(task);
+                        this.send_to_friend(task);
                         return Some(this);
                     }
                 }
@@ -816,12 +840,15 @@ mod test {
 
             let normal_handle = Cell::new(normal_sched.make_handle());
 
+            let friend_handle = normal_sched.make_handle();
+
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
                 ~UvEventLoop::new(),
                 work_queue.clone(),
                 sleepers.clone(),
-                false);
+                false,
+                Some(friend_handle));
 
             let special_handle = Cell::new(special_sched.make_handle());
 
