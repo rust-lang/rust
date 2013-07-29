@@ -2166,7 +2166,7 @@ pub struct VecIterator<'self, T> {
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
 random_access_iterator!{impl VecIterator -> &'self T}
-pub type RevIterator<'self, T> = InvertIterator<VecIterator<'self, T>>;
+pub type RevIterator<'self, T> = Invert<VecIterator<'self, T>>;
 
 impl<'self, T> Clone for VecIterator<'self, T> {
     fn clone(&self) -> VecIterator<'self, T> { *self }
@@ -2182,7 +2182,7 @@ pub struct VecMutIterator<'self, T> {
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
 random_access_iterator!{impl VecMutIterator -> &'self mut T}
-pub type MutRevIterator<'self, T> = InvertIterator<VecMutIterator<'self, T>>;
+pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
