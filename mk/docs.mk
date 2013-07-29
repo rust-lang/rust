@@ -239,6 +239,7 @@ docs-l10n:
 	po4a --copyright-holder="The Rust Project Developers" \
 	     --package-name="Rust" \
 	     --package-version="$(CFG_RELEASE)" \
+	     -M UTF-8 -L UTF-8 \
 	     doc/po4a.conf
 
 .PHONY: docs-l10n
