@@ -811,6 +811,30 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
     }
 }
 
+impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        if self.orig.indexable() > 0 {
+            uint::max_value
+        } else {
+            0
+        }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        let liter = self.iter.indexable();
+        let lorig = self.orig.indexable();
+        if lorig == 0 {
+            None
+        } else if index < liter {
+            self.iter.idx(index)
+        } else {
+            self.orig.idx((index - liter) % lorig)
+        }
+    }
+}
+
 /// An iterator which strings two iterators together
 #[deriving(Clone)]
 pub struct Chain<T, U> {
@@ -924,19 +948,43 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     }
 }
 
+impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
+RandomAccessIterator<(A, B)> for Zip<T, U> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        cmp::min(self.a.indexable(), self.b.indexable())
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<(A, B)> {
+        match (self.a.idx(index), self.b.idx(index)) {
+            (Some(x), Some(y)) => Some((x, y)),
+            _ => None
+        }
+    }
+}
+
 /// An iterator which maps the values of `iter` with `f`
 pub struct Map<'self, A, B, T> {
     priv iter: T,
     priv f: &'self fn(A) -> B
 }
 
-impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
+impl<'self, A, B, T> Map<'self, A, B, T> {
     #[inline]
-    fn next(&mut self) -> Option<B> {
-        match self.iter.next() {
+    fn do_map(&self, elt: Option<A>) -> Option<B> {
+        match elt {
             Some(a) => Some((self.f)(a)),
             _ => None
         }
+    }
+}
+
+impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        let next = self.iter.next();
+        self.do_map(next)
     }
 
     #[inline]
@@ -949,10 +997,21 @@ impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
 for Map<'self, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        match self.iter.next_back() {
-            Some(a) => Some((self.f)(a)),
-            _ => None
-        }
+        let next = self.iter.next_back();
+        self.do_map(next)
+    }
+}
+
+impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B>
+for Map<'self, A, B, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<B> {
+        self.do_map(self.iter.idx(index))
     }
 }
 
@@ -1066,6 +1125,21 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for Enumerate<T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
+    }
+}
+
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerate<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<(uint, A)> {
+        match self.iter.idx(index) {
+            Some(a) => Some((self.count + index, a)),
+            _ => None,
+        }
     }
 }
 
@@ -1189,6 +1263,27 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     }
 }
 
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        let N = self.iter.indexable();
+        if N < self.n {
+            0
+        } else {
+            N - self.n
+        }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        if index >= self.indexable() {
+            None
+        } else {
+            self.iter.idx(index + self.n)
+        }
+    }
+}
+
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 #[deriving(Clone)]
 pub struct Take<T> {
@@ -1222,6 +1317,23 @@ impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
         (lower, upper)
     }
 }
+
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        cmp::min(self.iter.indexable(), self.n)
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        if index >= self.n {
+            None
+        } else {
+            self.iter.idx(index)
+        }
+    }
+}
+
 
 /// An iterator to maintain state while iterating another iterator
 pub struct Scan<'self, A, B, T, St> {
@@ -1311,17 +1423,23 @@ pub struct Peek<'self, A, T> {
     priv f: &'self fn(&A)
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
+impl<'self, A, T> Peek<'self, A, T> {
     #[inline]
-    fn next(&mut self) -> Option<A> {
-        let next = self.iter.next();
-
-        match next {
+    fn do_peek(&self, elt: Option<A>) -> Option<A> {
+        match elt {
             Some(ref a) => (self.f)(a),
             None => ()
         }
 
-        next
+        elt
+    }
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let next = self.iter.next();
+        self.do_peek(next)
     }
 
     #[inline]
@@ -1334,13 +1452,19 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Peek<'self,
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         let next = self.iter.next_back();
+        self.do_peek(next)
+    }
+}
 
-        match next {
-            Some(ref a) => (self.f)(a),
-            None => ()
-        }
+impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Peek<'self, A, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
 
-        next
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        self.do_peek(self.iter.idx(index))
     }
 }
 
