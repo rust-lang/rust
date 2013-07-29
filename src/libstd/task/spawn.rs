@@ -84,7 +84,7 @@ use local_data;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
-use task::{Failure, SchedOpts, SingleThreaded};
+use task::{Failure, SchedOpts};
 use task::{Success, TaskOpts, TaskResult};
 use task::unkillable;
 use to_bytes::IterBytes;
@@ -804,17 +804,8 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             fail!("foreign_stack_size scheduler option unimplemented");
         }
 
-        let num_threads = match opts.mode {
-            DefaultScheduler
-            | CurrentScheduler => 0u, /* Won't be used */
-            SingleThreaded => 1u,
-        };
-
         unsafe {
-            let sched_id = match opts.mode {
-                CurrentScheduler => rt::rust_get_sched_id(),
-                _ => rt::rust_new_sched(num_threads)
-            };
+            let sched_id = rt::rust_new_sched(1);
             rt::rust_new_task_in_sched(sched_id)
         }
     }
