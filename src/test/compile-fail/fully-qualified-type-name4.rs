@@ -10,11 +10,11 @@
 
 // Test that we use fully-qualified type names in error messages.
 
-use std::task::Task;
+use std::option::Option;
 
-fn bar(x: uint) -> Task {
+fn bar(x: uint) -> Option<uint> {
     return x;
-    //~^ ERROR mismatched types: expected `std::task::Task`
+    //~^ ERROR mismatched types: expected `std::option::Option<uint>`
 }
 
 fn main() {
