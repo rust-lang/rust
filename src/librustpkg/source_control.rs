@@ -10,7 +10,8 @@
 
 // Utils for working with version control repositories. Just git right now.
 
-use std::{io, os, run, str};
+use std::{os, run, str};
+use std::run::{ProcessOutput, ProcessOptions, Process};
 use version::*;
 
 /// For a local git repo
@@ -18,22 +19,14 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
     assert!(os::path_is_dir(source));
     assert!(is_git_dir(source));
     if !os::path_exists(target) {
-        let version_args = match v {
-            &ExactRevision(ref s) => ~[~"--branch", s.to_owned()],
-            _ => ~[]
-        };
-        debug!("Running: git clone %s %s %s", version_args.to_str(), source.to_str(),
+        debug!("Running: git clone %s %s", source.to_str(),
                target.to_str());
-        let outp = run::process_output("git", ~[~"clone"] + version_args +
-                                       ~[source.to_str(), target.to_str()]);
-        if outp.status != 0 {
-            io::println(str::from_bytes_owned(outp.output.clone()));
-            io::println(str::from_bytes_owned(outp.error));
-            fail!("Couldn't `git clone` %s", source.to_str());
-        }
+        assert!(git_clone_general(source.to_str(), target, v));
     }
     else {
         // Pull changes
+        // Note that this ignores tags, which is probably wrong. There are no tests for
+        // it, though.
         debug!("Running: git --work-tree=%s --git-dir=%s pull --no-edit %s",
                target.to_str(), target.push(".git").to_str(), source.to_str());
         let outp = run::process_output("git", [fmt!("--work-tree=%s", target.to_str()),
@@ -41,6 +34,40 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
                                                ~"pull", ~"--no-edit", source.to_str()]);
         assert!(outp.status == 0);
     }
+}
+
+/// Source can be either a URL or a local file path.
+/// true if successful
+pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
+    let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
+    if outp.status != 0 {
+         debug!(str::from_bytes_owned(outp.output.clone()));
+         debug!(str::from_bytes_owned(outp.error));
+         false
+    }
+    else {
+        match v {
+            &ExactRevision(ref s) | &Tagged(ref s) => {
+                    let outp = process_output_in_cwd("git", [~"checkout", fmt!("%s", *s)],
+                                                         target);
+                    if outp.status != 0 {
+                        debug!(str::from_bytes_owned(outp.output.clone()));
+                        debug!(str::from_bytes_owned(outp.error));
+                        false
+                    }
+                    else {
+                        true
+                    }
+                }
+                _ => true
+            }
+        }
+}
+
+fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput {
+    let mut prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
+                                ,..ProcessOptions::new()});
+    prog.finish_with_output()
 }
 
 pub fn is_git_dir(p: &Path) -> bool {

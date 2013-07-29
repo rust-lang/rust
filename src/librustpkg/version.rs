@@ -22,6 +22,8 @@ use extra::tempfile::mkdtemp;
 pub enum Version {
     ExactRevision(~str), // Should look like a m.n.(...).x
     SemanticVersion(semver::Version),
+    Tagged(~str), // String that can't be parsed as a version.
+                  // Requirements get interpreted exactly
     NoVersion // user didn't specify a version -- prints as 0.1
 }
 
@@ -76,7 +78,7 @@ impl Ord for Version {
 impl ToStr for Version {
     fn to_str(&self) -> ~str {
         match *self {
-            ExactRevision(ref n) => fmt!("%s", n.to_str()),
+            ExactRevision(ref n) | Tagged(ref n) => fmt!("%s", n.to_str()),
             SemanticVersion(ref v) => fmt!("%s", v.to_str()),
             NoVersion => ~"0.1"
         }
