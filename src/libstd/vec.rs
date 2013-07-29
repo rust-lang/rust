@@ -2106,7 +2106,8 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
-                let exact = self.indexable();
+                let diff = (self.end as uint) - (self.ptr as uint);
+                let exact = diff / sys::nonzero_size_of::<T>();
                 (exact, Some(exact))
             }
         }
@@ -2139,8 +2140,8 @@ macro_rules! random_access_iterator {
         impl<'self, T> RandomAccessIterator<$elem> for $name<'self, T> {
             #[inline]
             fn indexable(&self) -> uint {
-                let diff = (self.end as uint) - (self.ptr as uint);
-                diff / sys::nonzero_size_of::<T>()
+                let (exact, _) = self.size_hint();
+                exact
             }
 
             fn idx(&self, index: uint) -> Option<$elem> {
@@ -2181,7 +2182,6 @@ pub struct VecMutIterator<'self, T> {
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
-random_access_iterator!{impl VecMutIterator -> &'self mut T}
 pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
