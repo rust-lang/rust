@@ -96,13 +96,6 @@ pub enum SchedMode {
     CurrentScheduler,
     /// Run task on a specific scheduler
     ExistingScheduler(Scheduler),
-    /**
-     * Tasks are scheduled on the main OS thread
-     *
-     * The main OS thread is the thread used to launch the runtime which,
-     * in most cases, is the process's initial thread as created by the OS.
-     */
-    PlatformThread,
     /// All tasks run in the same OS thread
     SingleThreaded,
 }
@@ -1092,17 +1085,6 @@ fn test_avoid_copying_the_body_unlinked() {
             f();
         }
     }
-}
-
-#[test]
-fn test_platform_thread() {
-    let (po, ch) = stream();
-    let mut builder = task();
-    builder.sched_mode(PlatformThread);
-    do builder.spawn {
-        ch.send(());
-    }
-    po.recv();
 }
 
 #[test]
