@@ -23,7 +23,7 @@ use char::Char;
 use clone::Clone;
 use container::{Container, Mutable};
 use iter::Times;
-use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
+use iterator::{Iterator, FromIterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
@@ -2319,6 +2319,18 @@ impl<'self> Iterator<u8> for BytesRevIterator<'self> {
     }
 }
 
+impl<T: Iterator<char>> FromIterator<char, T> for ~str {
+    #[inline]
+    fn from_iterator(iterator: &mut T) -> ~str {
+        let (lower, _) = iterator.size_hint();
+        let mut buf = with_capacity(lower);
+        for iterator.advance |ch| {
+            buf.push_char(ch)
+        }
+        buf
+    }
+}
+
 // This works because every lifetime is a sub-lifetime of 'static
 impl<'self> Zero for &'self str {
     fn zero() -> &'self str { "" }
@@ -2480,6 +2492,16 @@ mod tests {
         let mut data = ~"ประเทศไทย中";
         data.unshift_char('华');
         assert_eq!(~"华ประเทศไทย中", data);
+    }
+
+    #[test]
+    fn test_collect() {
+        let empty = "";
+        let s: ~str = empty.iter().collect();
+        assert_eq!(empty, s.as_slice());
+        let data = "ประเทศไทย中";
+        let s: ~str = data.iter().collect();
+        assert_eq!(data, s.as_slice());
     }
 
     #[test]
