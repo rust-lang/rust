@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An interface for numeric types
+//! Numeric traits and functions for generic mathematics.
+//!
+//! These are implemented for the primitive numeric types in `std::{u8, u16,
+//! u32, u64, uint, i8, i16, i32, i64, int, f32, f64, float}`.
 
 #[allow(missing_doc)];
 
@@ -19,9 +22,7 @@ use option::Option;
 
 pub mod strconv;
 
-///
 /// The base trait for numeric types
-///
 pub trait Num: Eq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
@@ -188,9 +189,7 @@ pub trait Hyperbolic: Exponential {
 #[inline(always)] pub fn acosh<T: Hyperbolic>(value: T) -> T { value.acosh() }
 #[inline(always)] pub fn atanh<T: Hyperbolic>(value: T) -> T { value.atanh() }
 
-///
 /// Defines constants and methods common to real numbers
-///
 pub trait Real: Signed
               + Fractional
               + Algebraic
@@ -221,9 +220,7 @@ pub trait Real: Signed
     fn to_radians(&self) -> Self;
 }
 
-///
 /// Methods that are harder to implement and not commonly used.
-///
 pub trait RealExt: Real {
     // FIXME (#5527): usages of `int` should be replaced with an associated
     // integer type once these are implemented
@@ -241,9 +238,7 @@ pub trait RealExt: Real {
     fn yn(&self, n: int) -> Self;
 }
 
-///
 /// Collects the bitwise operators under one trait.
-///
 pub trait Bitwise: Not<Self>
                  + BitAnd<Self,Self>
                  + BitOr<Self,Self>
@@ -263,11 +258,9 @@ pub trait Bounded {
     fn max_value() -> Self;
 }
 
-///
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
-///
 pub trait Primitive: Num
                    + NumCast
                    + Bounded
@@ -282,17 +275,13 @@ pub trait Primitive: Num
     fn bytes() -> uint;
 }
 
-///
 /// A collection of traits relevant to primitive signed and unsigned integers
-///
 pub trait Int: Integer
              + Primitive
              + Bitwise
              + BitCount {}
 
-///
 /// Used for representing the classification of floating point numbers
-///
 #[deriving(Eq)]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
@@ -307,9 +296,7 @@ pub enum FPCategory {
     FPNormal,
 }
 
-///
 /// Primitive floating point numbers
-///
 pub trait Float: Real
                + Signed
                + Primitive
@@ -343,7 +330,6 @@ pub trait Float: Real
     fn next_after(&self, other: Self) -> Self;
 }
 
-///
 #[inline(always)] pub fn exp_m1<T: Float>(value: T) -> T { value.exp_m1() }
 #[inline(always)] pub fn ln_1p<T: Float>(value: T) -> T { value.ln_1p() }
 #[inline(always)] pub fn mul_add<T: Float>(a: T, b: T, c: T) -> T { a.mul_add(b, c) }
@@ -362,9 +348,7 @@ pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
 
-///
 /// An interface for casting between machine scalars
-///
 pub trait NumCast {
     fn from<T:NumCast>(n: T) -> Self;
 
@@ -436,7 +420,6 @@ pub trait FromStrRadix {
     pub fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
-///
 /// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
 ///
 /// Returns `radix^pow` as `T`.
