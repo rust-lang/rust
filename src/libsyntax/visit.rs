@@ -512,6 +512,11 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_block)(b, (e.clone(), v));
         }
+        expr_for_loop(pat, iter, ref b) => {
+            (v.visit_pat)(pat, (e.clone(), v));
+            (v.visit_expr)(iter, (e.clone(), v));
+            (v.visit_block)(b, (e.clone(), v));
+        }
         expr_loop(ref b, _) => (v.visit_block)(b, (e.clone(), v)),
         expr_match(x, ref arms) => {
             (v.visit_expr)(x, (e.clone(), v));

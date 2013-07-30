@@ -29,7 +29,7 @@ use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_self, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
-use ast::{expr_vstore_mut_slice, expr_while, extern_fn, Field, fn_decl};
+use ast::{expr_vstore_mut_slice, expr_while, expr_for_loop, extern_fn, Field, fn_decl};
 use ast::{expr_vstore_uniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
 use ast::{ident, impure_fn, inherited, item, item_, item_static};
@@ -1622,6 +1622,8 @@ impl Parser {
             hi = self.span.hi;
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
+        } else if self.eat_keyword(keywords::ForEach) {
+            return self.parse_for_expr();
         } else if self.eat_keyword(keywords::For) {
             return self.parse_sugary_call_expr(lo, ~"for", ForSugar,
                                                expr_loop_body);
@@ -2322,6 +2324,21 @@ impl Parser {
             return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
         }
     }
+
+    // parse a 'foreach' .. 'in' expression ('foreach' token already eaten)
+    pub fn parse_for_expr(&self) -> @expr {
+        // Parse: `foreach <src_pat> in <src_expr> <src_loop_block>`
+
+        let lo = self.last_span.lo;
+        let pat = self.parse_pat();
+        self.expect_keyword(keywords::In);
+        let expr = self.parse_expr();
+        let loop_block = self.parse_block();
+        let hi = self.span.hi;
+
+        self.mk_expr(lo, hi, expr_for_loop(pat, expr, loop_block))
+    }
+
 
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like

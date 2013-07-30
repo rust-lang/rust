@@ -435,6 +435,8 @@ impl mem_categorization_ctxt {
           ast::expr_inline_asm(*) => {
             return self.cat_rvalue_node(expr, expr_ty);
           }
+
+          ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop")
         }
     }
 

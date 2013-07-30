@@ -3240,6 +3240,8 @@ pub fn expr_kind(tcx: ctxt,
             RvalueStmtExpr
         }
 
+        ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
         ast::expr_lit(_) | // Note: lit_str is carved out above
         ast::expr_unary(*) |
         ast::expr_addr_of(*) |
