@@ -409,6 +409,11 @@ impl Bitv {
         BitvIterator {bitv: self, next_idx: 0, end_idx: self.nbits}
     }
 
+    #[inline]
+    pub fn rev_liter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
+        self.iter().invert()
+    }
+
     /// Returns true if all bits are 0
     pub fn is_false(&self) -> bool {
       match self.rep {
