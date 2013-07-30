@@ -163,7 +163,7 @@ pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<P
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = workspace.push("build");
     // should use a target-specific subdirectory
-    result = mk_output_path(Main, Build, pkgid, &result);
+    result = mk_output_path(Main, Build, pkgid, result);
     debug!("built_executable_in_workspace: checking whether %s exists",
            result.to_str());
     if os::path_exists(&result) {
@@ -191,7 +191,7 @@ pub fn built_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path>
 fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
     let mut result = workspace.push("build");
     // should use a target-specific subdirectory
-    result = mk_output_path(what, Build, pkgid, &result);
+    result = mk_output_path(what, Build, pkgid, result);
     debug!("output_in_workspace: checking whether %s exists",
            result.to_str());
     if os::path_exists(&result) {
@@ -357,7 +357,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
             create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",
             subdir, pkgid.to_str(), workspace.to_str(), what, where)));
     }
-    mk_output_path(what, where, pkgid, &result)
+    mk_output_path(what, where, pkgid, result)
 }
 
 /// Return the directory for <pkgid>'s build artifacts in <workspace>.
@@ -380,17 +380,14 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
-                      pkg_id: &PkgId, workspace: &Path) -> Path {
+                      pkg_id: &PkgId, workspace: Path) -> Path {
     let short_name_with_version = fmt!("%s-%s", pkg_id.short_name,
                                        pkg_id.version.to_str());
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
-        Install => {
-            // bad copy, but I just couldn't make the borrow checker happy
-            (*workspace).clone()
-        }
+        Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
         Build => workspace.push_rel(&*pkg_id.local_path)
     };
