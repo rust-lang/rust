@@ -10,8 +10,8 @@
 
 use std::uint;
 
-use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, FixedBuffer,
-    FixedBuffer128, FixedBuffer64, StandardPadding};
+use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, shift_add_check_overflow,
+    shift_add_check_overflow_tuple, FixedBuffer, FixedBuffer128, FixedBuffer64, StandardPadding};
 use digest::Digest;
 
 
@@ -32,47 +32,6 @@ macro_rules! sha2_round(
         }
     )
 )
-
-
-// BitCounter is a specialized structure intended simply for counting the
-// number of bits that have been processed by the SHA-2 512 family of functions.
-// It does very little overflow checking since such checking is not necessary
-// for how it is used. A more generic structure would have to do this checking.
-// So, don't copy this structure and use it elsewhere!
-struct BitCounter {
-    high_bit_count: u64,
-    low_byte_count: u64
-}
-
-impl BitCounter {
-    fn new() -> BitCounter {
-        return BitCounter {
-            high_bit_count: 0,
-            low_byte_count: 0
-        };
-    }
-
-    fn add_bytes(&mut self, bytes: uint) {
-        self.low_byte_count += bytes as u64;
-        if(self.low_byte_count > 0x1fffffffffffffffu64) {
-            self.high_bit_count += (self.low_byte_count >> 61);
-            self.low_byte_count &= 0x1fffffffffffffffu64;
-        }
-    }
-
-    fn reset(&mut self) {
-        self.low_byte_count = 0;
-        self.high_bit_count = 0;
-    }
-
-    fn get_low_bit_count(&self) -> u64 {
-        self.low_byte_count << 3
-    }
-
-    fn get_high_bit_count(&self) -> u64 {
-        self.high_bit_count
-    }
-}
 
 
 // A structure that represents that state of a digest computation for the SHA-2 512 family of digest
@@ -223,7 +182,7 @@ static K64: [u64, ..80] = [
 // A structure that keeps track of the state of the Sha-512 operation and contains the logic
 // necessary to perform the final calculations.
 struct Engine512 {
-    bit_counter: BitCounter,
+    length_bits: (u64, u64),
     buffer: FixedBuffer128,
     state: Engine512State,
     finished: bool,
@@ -232,7 +191,7 @@ struct Engine512 {
 impl Engine512 {
     fn new(h: &[u64, ..8]) -> Engine512 {
         return Engine512 {
-            bit_counter: BitCounter::new(),
+            length_bits: (0, 0),
             buffer: FixedBuffer128::new(),
             state: Engine512State::new(h),
             finished: false
@@ -240,7 +199,7 @@ impl Engine512 {
     }
 
     fn reset(&mut self, h: &[u64, ..8]) {
-        self.bit_counter.reset();
+        self.length_bits = (0, 0);
         self.buffer.reset();
         self.state.reset(h);
         self.finished = false;
@@ -248,7 +207,8 @@ impl Engine512 {
 
     fn input(&mut self, input: &[u8]) {
         assert!(!self.finished)
-        self.bit_counter.add_bytes(input.len());
+        // Assumes that input.len() can be converted to u64 without overflow
+        self.length_bits = shift_add_check_overflow_tuple(self.length_bits, input.len() as u64, 3);
         self.buffer.input(input, |input: &[u8]| { self.state.process_block(input) });
     }
 
@@ -258,8 +218,12 @@ impl Engine512 {
         }
 
         self.buffer.standard_padding(16, |input: &[u8]| { self.state.process_block(input) });
-        write_u64_be(self.buffer.next(8), self.bit_counter.get_high_bit_count());
-        write_u64_be(self.buffer.next(8), self.bit_counter.get_low_bit_count());
+        match self.length_bits {
+            (hi, low) => {
+                write_u64_be(self.buffer.next(8), hi);
+                write_u64_be(self.buffer.next(8), low);
+            }
+        }
         self.state.process_block(self.buffer.full_buffer());
 
         self.finished = true;
@@ -608,7 +572,7 @@ static K32: [u32, ..64] = [
 // A structure that keeps track of the state of the Sha-256 operation and contains the logic
 // necessary to perform the final calculations.
 struct Engine256 {
-    length: u64,
+    length_bits: u64,
     buffer: FixedBuffer64,
     state: Engine256State,
     finished: bool,
@@ -617,7 +581,7 @@ struct Engine256 {
 impl Engine256 {
     fn new(h: &[u32, ..8]) -> Engine256 {
         return Engine256 {
-            length: 0,
+            length_bits: 0,
             buffer: FixedBuffer64::new(),
             state: Engine256State::new(h),
             finished: false
@@ -625,7 +589,7 @@ impl Engine256 {
     }
 
     fn reset(&mut self, h: &[u32, ..8]) {
-        self.length = 0;
+        self.length_bits = 0;
         self.buffer.reset();
         self.state.reset(h);
         self.finished = false;
@@ -633,7 +597,8 @@ impl Engine256 {
 
     fn input(&mut self, input: &[u8]) {
         assert!(!self.finished)
-        self.length += input.len() as u64;
+        // Assumes that input.len() can be converted to u64 without overflow
+        self.length_bits = shift_add_check_overflow(self.length_bits, input.len() as u64, 3);
         self.buffer.input(input, |input: &[u8]| { self.state.process_block(input) });
     }
 
@@ -643,8 +608,8 @@ impl Engine256 {
         }
 
         self.buffer.standard_padding(8, |input: &[u8]| { self.state.process_block(input) });
-        write_u32_be(self.buffer.next(4), (self.length >> 29) as u32 );
-        write_u32_be(self.buffer.next(4), (self.length << 3) as u32);
+        write_u32_be(self.buffer.next(4), (self.length_bits >> 32) as u32 );
+        write_u32_be(self.buffer.next(4), self.length_bits as u32);
         self.state.process_block(self.buffer.full_buffer());
 
         self.finished = true;

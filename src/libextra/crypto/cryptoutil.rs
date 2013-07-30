@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::num::One;
 use std::vec::bytes::{MutableByteVector, copy_memory};
 
 
@@ -63,6 +64,56 @@ pub fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
             *x = to_be32(*y);
             x = x.offset(1);
             y = y.offset(1);
+        }
+    }
+}
+
+
+/// Returns true if adding the two parameters will result in integer overflow
+pub fn will_add_overflow<T: Int + Unsigned>(x: T, y: T) -> bool {
+    // This doesn't handle negative values! Don't copy this code elsewhere without considering if
+    // negative values are important to you!
+    let max: T = Bounded::max_value();
+    return x > max - y;
+}
+
+/// Shifts the second parameter and then adds it to the first. fails!() if there would be unsigned
+/// integer overflow.
+pub fn shift_add_check_overflow<T: Int + Unsigned + Clone>(x: T, mut y: T, shift: T) -> T {
+    if y.leading_zeros() < shift {
+        fail!("Could not add values - integer overflow.");
+    }
+    y = y << shift;
+
+    if will_add_overflow(x.clone(), y.clone()) {
+        fail!("Could not add values - integer overflow.");
+    }
+
+    return x + y;
+}
+
+/// Shifts the second parameter and then adds it to the first, which is a tuple where the first
+/// element is the high order value. fails!() if there would be unsigned integer overflow.
+pub fn shift_add_check_overflow_tuple
+        <T: Int + Unsigned + Clone>
+        (x: (T, T), mut y: T, shift: T) -> (T, T) {
+    if y.leading_zeros() < shift {
+        fail!("Could not add values - integer overflow.");
+    }
+    y = y << shift;
+
+    match x {
+        (hi, low) => {
+            let one: T = One::one();
+            if will_add_overflow(low.clone(), y.clone()) {
+                if will_add_overflow(hi.clone(), one.clone()) {
+                    fail!("Could not add values - integer overflow.");
+                } else {
+                    return (hi + one, low + y);
+                }
+            } else {
+                return (hi, low + y);
+            }
         }
     }
 }
