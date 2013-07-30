@@ -316,12 +316,14 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
             // Just put an unpinned task onto one of the default schedulers.
             let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, main);
             main_task.death.on_exit = Some(on_exit);
+            main_task.name = Some(~"main");
             scheds[0].enqueue_task(main_task);
         }
         Some(ref mut main_sched) => {
             let home = Sched(main_sched.make_handle());
             let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool, home, main);
             main_task.death.on_exit = Some(on_exit);
+            main_task.name = Some(~"main");
             main_sched.enqueue_task(main_task);
         }
     };
