@@ -215,7 +215,7 @@ else
 ALL_CS := $(wildcard $(S)src/rt/*.cpp \
                      $(S)src/rt/*/*.cpp \
                      $(S)src/rt/*/*/*.cpp \
-                     $(S)srcrustllvm/*.cpp)
+                     $(S)src/rustllvm/*.cpp)
 ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
                        $(S)src/rt/bigint/bigint_int.cpp \
                        $(S)src/rt/miniz.cpp \
@@ -225,7 +225,7 @@ ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
                      $(S)src/rt/*/*/*.h \
-                     $(S)srcrustllvm/*.h)
+                     $(S)src/rustllvm/*.h)
 ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/vg/memcheck.h \
                        $(S)src/rt/uthash/uthash.h \
