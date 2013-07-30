@@ -369,7 +369,14 @@ fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
     };
 }
 
-fn opt_val(mm: &Matches, nm: &str) -> Optval { opt_vals(mm, nm)[0].clone() }
+fn opt_val(mm: &Matches, nm: &str) -> Option<Optval> {
+    let vals = opt_vals(mm, nm);
+    if (vals.is_empty()) {
+        None
+    } else {
+        Some(opt_vals(mm, nm)[0].clone())
+    }
+}
 
 /// Returns true if an option was matched
 pub fn opt_present(mm: &Matches, nm: &str) -> bool {
@@ -400,7 +407,10 @@ pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
  * argument
  */
 pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
-    return match opt_val(mm, nm) { Val(s) => s, _ => fail!() };
+    return match opt_val(mm, nm) {
+        Some(Val(s)) => s,
+        _ => fail!()
+    };
 }
 
 /**
@@ -412,7 +422,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
     for names.iter().advance |nm| {
         match opt_val(mm, *nm) {
-          Val(ref s) => return (*s).clone(),
+          Some(Val(ref s)) => return (*s).clone(),
           _ => ()
         }
     }
