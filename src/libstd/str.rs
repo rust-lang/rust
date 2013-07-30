@@ -564,6 +564,18 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
 Section: Misc
 */
 
+// Return the initial codepoint accumulator for the first byte.
+// The first byte is special, only want bottom 5 bits for width 2, 4 bits
+// for width 3, and 3 bits for width 4
+macro_rules! utf8_first_byte(
+    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as uint)
+)
+
+// return the value of $ch updated with continuation byte $byte
+macro_rules! utf8_acc_cont_byte(
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as uint)
+)
+
 /// Determines if a vector of bytes contains valid UTF-8
 pub fn is_utf8(v: &[u8]) -> bool {
     let mut i = 0u;
@@ -577,11 +589,26 @@ pub fn is_utf8(v: &[u8]) -> bool {
 
             let nexti = i + w;
             if nexti > total { return false; }
+            // 1. Make sure the correct number of continuation bytes are present
+            // 2. Check codepoint ranges (deny overlong encodings)
+            //    2-byte encoding is for codepoints  \u0080 to  \u07ff
+            //    3-byte encoding is for codepoints  \u0800 to  \uffff
+            //    4-byte encoding is for codepoints \u10000 to \u10ffff
 
+            //    2-byte encodings are correct if the width and continuation match up
             if v[i + 1] & 192u8 != TAG_CONT_U8 { return false; }
             if w > 2 {
+                let mut ch;
+                ch = utf8_first_byte!(v[i], w);
+                ch = utf8_acc_cont_byte!(ch, v[i + 1]);
                 if v[i + 2] & 192u8 != TAG_CONT_U8 { return false; }
-                if w > 3 && (v[i + 3] & 192u8 != TAG_CONT_U8) { return false; }
+                ch = utf8_acc_cont_byte!(ch, v[i + 2]);
+                if w == 3 && ch < MAX_TWO_B { return false; }
+                if w > 3 {
+                    if v[i + 3] & 192u8 != TAG_CONT_U8 { return false; }
+                    ch = utf8_acc_cont_byte!(ch, v[i + 3]);
+                    if ch < MAX_THREE_B || ch >= MAX_UNICODE { return false; }
+                }
             }
 
             i = nexti;
@@ -699,7 +726,7 @@ pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
 }
 
 // https://tools.ietf.org/html/rfc3629
-static UTF8_CHAR_WIDTH: [u8, ..256] = [
+priv static UTF8_CHAR_WIDTH: [u8, ..256] = [
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -712,7 +739,7 @@ static UTF8_CHAR_WIDTH: [u8, ..256] = [
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0x9F
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 0xBF
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // 0xDF
 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, // 0xEF
 4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
@@ -730,14 +757,15 @@ pub struct CharRange {
 }
 
 // UTF-8 tags and ranges
-static TAG_CONT_U8: u8 = 128u8;
-static TAG_CONT: uint = 128u;
-static MAX_ONE_B: uint = 128u;
-static TAG_TWO_B: uint = 192u;
-static MAX_TWO_B: uint = 2048u;
-static TAG_THREE_B: uint = 224u;
-static MAX_THREE_B: uint = 65536u;
-static TAG_FOUR_B: uint = 240u;
+priv static TAG_CONT_U8: u8 = 128u8;
+priv static TAG_CONT: uint = 128u;
+priv static MAX_ONE_B: uint = 128u;
+priv static TAG_TWO_B: uint = 192u;
+priv static MAX_TWO_B: uint = 2048u;
+priv static TAG_THREE_B: uint = 224u;
+priv static MAX_THREE_B: uint = 65536u;
+priv static TAG_FOUR_B: uint = 240u;
+priv static MAX_UNICODE: uint = 1114112u;
 
 /// Unsafe operations
 pub mod raw {
@@ -1665,12 +1693,10 @@ impl<'self> StrSlice<'self> for &'self str {
             let w = UTF8_CHAR_WIDTH[val] as uint;
             assert!((w != 0));
 
-            // First byte is special, only want bottom 5 bits for width 2, 4 bits
-            // for width 3, and 3 bits for width 4
-            val &= 0x7Fu >> w;
-            val = (val << 6) | (s[i + 1] & 63u8) as uint;
-            if w > 2 { val = (val << 6) | (s[i + 2] & 63u8) as uint; }
-            if w > 3 { val = (val << 6) | (s[i + 3] & 63u8) as uint; }
+            val = utf8_first_byte!(val, w);
+            val = utf8_acc_cont_byte!(val, s[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
             return CharRange {ch: val as char, next: i + w};
         }
@@ -2035,7 +2061,7 @@ impl OwnedStr for ~str {
     /// Appends a character to the back of a string
     #[inline]
     fn push_char(&mut self, c: char) {
-        assert!(c as uint <= 0x10ffff); // FIXME: #7609: should be enforced on all `char`
+        assert!((c as uint) < MAX_UNICODE); // FIXME: #7609: should be enforced on all `char`
         unsafe {
             let code = c as uint;
             let nb = if code < MAX_ONE_B { 1u }
@@ -2799,8 +2825,22 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
+
         assert_eq!(ss, from_bytes(bb));
+        assert_eq!(~"𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰",
+                   from_bytes(bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰")));
     }
+
+    #[test]
+    fn test_is_utf8_deny_overlong() {
+        assert!(!is_utf8([0xc0, 0x80]));
+        assert!(!is_utf8([0xc0, 0xae]));
+        assert!(!is_utf8([0xe0, 0x80, 0x80]));
+        assert!(!is_utf8([0xe0, 0x80, 0xaf]));
+        assert!(!is_utf8([0xe0, 0x81, 0x81]));
+        assert!(!is_utf8([0xf0, 0x82, 0x82, 0xac]));
+    }
+
 
     #[test]
     #[ignore(cfg(windows))]
