@@ -225,7 +225,7 @@ impl CFGBuilder {
                 // Note that `break` and `loop` statements
                 // may cause additional edges.
 
-                // NOTE: Is the condition considered part of the loop?
+                // Is the condition considered part of the loop?
                 let loopback = self.add_dummy_node([pred]);           // 1
                 let cond_exit = self.expr(cond, loopback);            // 2
                 let expr_exit = self.add_node(expr.id, [cond_exit]);  // 3
