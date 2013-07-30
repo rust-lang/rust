@@ -884,6 +884,11 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
             Ret(bcx, morestack_addr);
         }
+        "offset" => {
+            let ptr = get_param(decl, first_real_arg);
+            let offset = get_param(decl, first_real_arg + 1);
+            Ret(bcx, GEP(bcx, ptr, [offset]));
+        }
         "memcpy32" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i32", substs.tys[0], 32),
         "memcpy64" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i64", substs.tys[0], 64),
         "memmove32" => memcpy_intrinsic(bcx, "llvm.memmove.p0i8.p0i8.i32", substs.tys[0], 32),
