@@ -16,7 +16,7 @@
 use std::num;
 use std::uint;
 use std::vec;
-use std::iterator::{FromIterator, Invert, RandomAccessIterator};
+use std::iterator::{FromIterator, Invert, RandomAccessIterator, Extendable};
 
 use container::Deque;
 
@@ -325,11 +325,18 @@ impl<A: Eq> Eq for RingBuf<A> {
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
     fn from_iterator(iterator: &mut T) -> RingBuf<A> {
-        let mut deq = RingBuf::new();
-        for iterator.advance |elt| {
-            deq.push_back(elt);
-        }
+        let (lower, _) = iterator.size_hint();
+        let mut deq = RingBuf::with_capacity(lower);
+        deq.extend(iterator);
         deq
+    }
+}
+
+impl<A, T: Iterator<A>> Extendable<A, T> for RingBuf<A> {
+    fn extend(&mut self, iterator: &mut T) {
+        for iterator.advance |elt| {
+            self.push_back(elt);
+        }
     }
 }
 
