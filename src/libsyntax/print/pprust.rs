@@ -1231,6 +1231,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
       ast::expr_for_loop(pat, iter, ref blk) => {
         head(s, "foreach");
         print_pat(s, pat);
+        space(s.s);
         word_space(s, "in");
         print_expr(s, iter);
         space(s.s);
