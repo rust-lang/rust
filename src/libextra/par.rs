@@ -58,7 +58,7 @@ fn map_slices<A:Clone + Send,B:Clone + Send>(
                 let f = do future_spawn() || {
                     unsafe {
                         let len = end - base;
-                        let slice = (ptr::offset(p, base),
+                        let slice = (ptr::offset(p, base as int),
                                      len * sys::size_of::<A>());
                         info!("pre-slice: %?", (base, slice));
                         let slice : &[A] =

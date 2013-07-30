@@ -52,7 +52,7 @@ pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
         let p = raw::to_mut_ptr(v);
         let mut i: uint = 0u;
         while i < n_elts {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
             i += 1u;
         }
         raw::set_len(&mut v, n_elts);
@@ -76,7 +76,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let p = raw::to_mut_ptr(v);
         let mut i = 0u;
         while i < n_elts {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), t.clone());
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
             i += 1u;
         }
         raw::set_len(&mut v, n_elts);
@@ -735,7 +735,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         do self.as_imm_buf |p, _len| {
             unsafe {
                 cast::transmute(Slice {
-                    data: ptr::offset(p, start),
+                    data: ptr::offset(p, start as int),
                     len: (end - start) * sys::nonzero_size_of::<T>(),
                 })
             }
@@ -947,7 +947,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// bounds checking.
     #[inline]
     unsafe fn unsafe_ref(&self, index: uint) -> *T {
-        self.repr().data.offset(index)
+        self.repr().data.offset(index as int)
     }
 
     /**
@@ -1237,14 +1237,14 @@ impl<T> OwnedVector<T> for ~[T] {
             let fill = (**repr).data.fill;
             (**repr).data.fill += sys::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data.data));
-            let p = ptr::offset(p, fill) as *mut T;
+            let p = ptr::offset(p, fill as int) as *mut T;
             intrinsics::move_val_init(&mut(*p), t);
         } else {
             let repr: **mut Vec<u8> = cast::transmute(self);
             let fill = (**repr).fill;
             (**repr).fill += sys::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data));
-            let p = ptr::offset(p, fill) as *mut T;
+            let p = ptr::offset(p, fill as int) as *mut T;
             intrinsics::move_val_init(&mut(*p), t);
         }
     }
@@ -1270,7 +1270,7 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { // Note: infallible.
             let self_p = vec::raw::to_mut_ptr(*self);
             let rhs_p = vec::raw::to_ptr(rhs);
-            ptr::copy_memory(ptr::mut_offset(self_p, self_len), rhs_p, rhs_len);
+            ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
             raw::set_len(self, new_len);
             raw::set_len(&mut rhs, 0);
         }
@@ -1351,7 +1351,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
             // Swap out the element we want from the end
             let vp = raw::to_mut_ptr(*self);
-            let vp = ptr::mut_offset(vp, next_ln - 1);
+            let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
 
             Some(ptr::replace_ptr(vp, work_elt))
         }
@@ -1415,7 +1415,7 @@ impl<T> OwnedVector<T> for ~[T] {
             unsafe {
                 // This loop is optimized out for non-drop types.
                 for uint::range(newlen, oldlen) |i| {
-                    ptr::read_and_zero_ptr(ptr::mut_offset(p, i));
+                    ptr::read_and_zero_ptr(ptr::mut_offset(p, i as int));
                 }
             }
         }
@@ -1634,8 +1634,8 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             let mut w = 1;
 
             while r < ln {
-                let p_r = ptr::mut_offset(p, r);
-                let p_wm1 = ptr::mut_offset(p, w - 1);
+                let p_r = ptr::mut_offset(p, r as int);
+                let p_wm1 = ptr::mut_offset(p, (w - 1) as int);
                 if *p_r != *p_wm1 {
                     if r != w {
                         let p_w = ptr::mut_offset(p_wm1, 1);
@@ -1702,7 +1702,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
         do self.as_mut_buf |p, _len| {
             unsafe {
                 cast::transmute(Slice {
-                    data: ptr::mut_offset(p, start) as *T,
+                    data: ptr::mut_offset(p, start as int) as *T,
                     len: (end - start) * sys::nonzero_size_of::<T>()
                 })
             }
@@ -1793,7 +1793,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
     #[inline]
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
-        ptr::mut_offset(self.repr().data as *mut T, index)
+        ptr::mut_offset(self.repr().data as *mut T, index as int)
     }
 
     #[inline]
@@ -1923,7 +1923,7 @@ pub mod raw {
      */
     #[inline]
     pub unsafe fn get<T:Clone>(v: &[T], i: uint) -> T {
-        v.as_imm_buf(|p, _len| (*ptr::offset(p, i)).clone())
+        v.as_imm_buf(|p, _len| (*ptr::offset(p, i as int)).clone())
     }
 
     /**
@@ -1935,7 +1935,7 @@ pub mod raw {
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
         do v.as_mut_buf |p, _len| {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
                                       box.take_unwrap());
         }
     }
@@ -2145,7 +2145,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
     fn idx(&self, index: uint) -> Option<&'self T> {
         unsafe {
             if index < self.indexable() {
-                cast::transmute(self.ptr.offset(index))
+                cast::transmute(self.ptr.offset(index as int))
             } else {
                 None
             }

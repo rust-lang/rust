@@ -1114,7 +1114,7 @@ pub fn set_exit_status(code: int) {
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for uint::range(0, argc as uint) |i| {
-        args.push(str::raw::from_c_str(*argv.offset(i)));
+        args.push(str::raw::from_c_str(*argv.offset(i as int)));
     }
     args
 }
@@ -1165,9 +1165,9 @@ pub fn real_args() -> ~[~str] {
     for uint::range(0, nArgs as uint) |i| {
         unsafe {
             // Determine the length of this argument.
-            let ptr = *szArgList.offset(i);
+            let ptr = *szArgList.offset(i as int);
             let mut len = 0;
-            while *ptr.offset(len) != 0 { len += 1; }
+            while *ptr.offset(len as int) != 0 { len += 1; }
 
             // Push it onto the list.
             args.push(vec::raw::buf_as_slice(ptr, len,
