@@ -85,6 +85,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     if args[1] == ~"-h" || args[1] == ~"--help" {
         let message = fmt!("Usage: %s [OPTIONS] [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
+        println("");
         fail!()
     }
 
@@ -97,6 +98,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     if getopts::opt_present(matches, "h") || getopts::opt_present(matches, "help") {
         let message = fmt!("Usage: %s [OPTIONS]  [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
+        println("");
         fail!()
     }
 
