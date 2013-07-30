@@ -525,12 +525,11 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: @ast::expr) -> @mut Block
             return controlflow::trans_loop(bcx, body, opt_label);
         }
         ast::expr_assign(dst, src) => {
-            let src_datum = unpack_datum!(
-                bcx, trans_to_datum(bcx, src));
-            let dst_datum = unpack_datum!(
-                bcx, trans_lvalue(bcx, dst));
-            return src_datum.store_to_datum(
-                bcx, DROP_EXISTING, dst_datum);
+            let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
+            return do with_scope(bcx, None, "assign") |mut bcx| {
+                let src_datum = unpack_datum!(bcx, trans_to_datum(bcx, src));
+                src_datum.store_to_datum(bcx, DROP_EXISTING, dst_datum)
+            }
         }
         ast::expr_assign_op(callee_id, op, dst, src) => {
             return trans_assign_op(bcx, expr, callee_id, op, dst, src);
