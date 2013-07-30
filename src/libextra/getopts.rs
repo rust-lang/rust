@@ -1318,24 +1318,41 @@ mod tests {
 
     #[test]
     fn test_multi() {
-        let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let opts = ~[optopt("e"), optopt("encrypt"), optopt("f")];
-        let matches = &match getopts(args, opts) {
+
+        let args_single = ~[~"-e", ~"foo"];
+        let matches_single = &match getopts(args_single, opts) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(opts_present(matches, [~"e"]));
-        assert!(opts_present(matches, [~"encrypt"]));
-        assert!(opts_present(matches, [~"encrypt", ~"e"]));
-        assert!(opts_present(matches, [~"e", ~"encrypt"]));
-        assert!(!opts_present(matches, [~"f"]));
-        assert!(!opts_present(matches, [~"thing"]));
-        assert!(!opts_present(matches, []));
+        assert!(opts_present(matches_single, [~"e"]));
+        assert!(opts_present(matches_single, [~"encrypt", ~"e"]));
+        assert!(opts_present(matches_single, [~"e", ~"encrypt"]));
+        assert!(!opts_present(matches_single, [~"encrypt"]));
+        assert!(!opts_present(matches_single, [~"thing"]));
+        assert!(!opts_present(matches_single, []));
 
-        assert_eq!(opts_str(matches, [~"e"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"e", ~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"encrypt", ~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"e", ~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"encrypt", ~"e"]), ~"foo");
+
+        let args_both = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
+        let matches_both = &match getopts(args_both, opts) {
+          result::Ok(m) => m,
+          result::Err(_) => fail!()
+        };
+        assert!(opts_present(matches_both, [~"e"]));
+        assert!(opts_present(matches_both, [~"encrypt"]));
+        assert!(opts_present(matches_both, [~"encrypt", ~"e"]));
+        assert!(opts_present(matches_both, [~"e", ~"encrypt"]));
+        assert!(!opts_present(matches_both, [~"f"]));
+        assert!(!opts_present(matches_both, [~"thing"]));
+        assert!(!opts_present(matches_both, []));
+
+        assert_eq!(opts_str(matches_both, [~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"e", ~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"encrypt", ~"e"]), ~"foo");
     }
 
     #[test]
