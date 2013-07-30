@@ -12,10 +12,12 @@
 
 
 use std::cmp;
+use std::iterator::{DoubleEndedIterator, RandomAccessIterator, Invert};
 use std::num;
 use std::ops;
 use std::uint;
 use std::vec;
+
 
 #[deriving(Clone)]
 struct SmallBitv {
@@ -404,7 +406,12 @@ impl Bitv {
 
     #[inline]
     pub fn iter<'a>(&'a self) -> BitvIterator<'a> {
-        BitvIterator {bitv: self, next_idx: 0}
+        BitvIterator {bitv: self, next_idx: 0, end_idx: self.nbits}
+    }
+
+    #[inline]
+    pub fn rev_liter<'a>(&'a self) -> Invert<BitvIterator<'a>> {
+        self.iter().invert()
     }
 
     /// Returns true if all bits are 0
@@ -564,13 +571,14 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
 /// An iterator for Bitv
 pub struct BitvIterator<'self> {
     priv bitv: &'self Bitv,
-    priv next_idx: uint
+    priv next_idx: uint,
+    priv end_idx: uint,
 }
 
 impl<'self> Iterator<bool> for BitvIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<bool> {
-        if self.next_idx < self.bitv.nbits {
+        if self.next_idx != self.end_idx {
             let idx = self.next_idx;
             self.next_idx += 1;
             Some(self.bitv.get(idx))
@@ -580,8 +588,36 @@ impl<'self> Iterator<bool> for BitvIterator<'self> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let rem = self.bitv.nbits - self.next_idx;
+        let rem = self.end_idx - self.next_idx;
         (rem, Some(rem))
+    }
+}
+
+impl<'self> DoubleEndedIterator<bool> for BitvIterator<'self> {
+    #[inline]
+    fn next_back(&mut self) -> Option<bool> {
+        if self.next_idx != self.end_idx {
+            self.end_idx -= 1;
+            Some(self.bitv.get(self.end_idx))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'self> RandomAccessIterator<bool> for BitvIterator<'self> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.end_idx - self.next_idx
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<bool> {
+        if index >= self.indexable() {
+            None
+        } else {
+            Some(self.bitv.get(index))
+        }
     }
 }
 

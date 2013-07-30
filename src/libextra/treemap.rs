@@ -15,7 +15,7 @@
 
 use std::num;
 use std::util::{swap, replace};
-use std::iterator::FromIterator;
+use std::iterator::{FromIterator, Extendable};
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -753,26 +753,36 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 }
 
 impl<K: TotalOrd, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for TreeMap<K, V> {
-    pub fn from_iterator(iter: &mut T) -> TreeMap<K, V> {
+    fn from_iterator(iter: &mut T) -> TreeMap<K, V> {
         let mut map = TreeMap::new();
-
-        for iter.advance |(k, v)| {
-            map.insert(k, v);
-        }
-
+        map.extend(iter);
         map
+    }
+}
+
+impl<K: TotalOrd, V, T: Iterator<(K, V)>> Extendable<(K, V), T> for TreeMap<K, V> {
+    #[inline]
+    fn extend(&mut self, iter: &mut T) {
+        for iter.advance |(k, v)| {
+            self.insert(k, v);
+        }
     }
 }
 
 impl<T: TotalOrd, Iter: Iterator<T>> FromIterator<T, Iter> for TreeSet<T> {
     pub fn from_iterator(iter: &mut Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
-
-        for iter.advance |elem| {
-            set.insert(elem);
-        }
-
+        set.extend(iter);
         set
+    }
+}
+
+impl<T: TotalOrd, Iter: Iterator<T>> Extendable<T, Iter> for TreeSet<T> {
+    #[inline]
+    fn extend(&mut self, iter: &mut Iter) {
+        for iter.advance |elem| {
+            self.insert(elem);
+        }
     }
 }
 

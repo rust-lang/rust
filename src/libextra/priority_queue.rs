@@ -16,7 +16,7 @@ use std::clone::Clone;
 use std::unstable::intrinsics::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
-use std::iterator::FromIterator;
+use std::iterator::{FromIterator, Extendable};
 
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
@@ -191,17 +191,24 @@ impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
 }
 
 impl<T: Ord, Iter: Iterator<T>> FromIterator<T, Iter> for PriorityQueue<T> {
-    pub fn from_iterator(iter: &mut Iter) -> PriorityQueue<T> {
-        let (lower, _) = iter.size_hint();
-
+    fn from_iterator(iter: &mut Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
-        q.reserve_at_least(lower);
-
-        for iter.advance |elem| {
-            q.push(elem);
-        }
+        q.extend(iter);
 
         q
+    }
+}
+
+impl<T: Ord, Iter: Iterator<T>> Extendable<T, Iter> for PriorityQueue<T> {
+    fn extend(&mut self, iter: &mut Iter) {
+        let (lower, _) = iter.size_hint();
+
+        let len = self.capacity();
+        self.reserve_at_least(len + lower);
+
+        for iter.advance |elem| {
+            self.push(elem);
+        }
     }
 }
 

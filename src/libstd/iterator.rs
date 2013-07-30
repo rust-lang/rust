@@ -529,7 +529,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMap<'r, A, T, U> {
-        FlatMap{iter: self, f: f, subiter: None }
+        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
 
     // FIXME: #5898: should be called `peek`
@@ -811,6 +811,30 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
     }
 }
 
+impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        if self.orig.indexable() > 0 {
+            uint::max_value
+        } else {
+            0
+        }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        let liter = self.iter.indexable();
+        let lorig = self.orig.indexable();
+        if lorig == 0 {
+            None
+        } else if index < liter {
+            self.iter.idx(index)
+        } else {
+            self.orig.idx((index - liter) % lorig)
+        }
+    }
+}
+
 /// An iterator which strings two iterators together
 #[deriving(Clone)]
 pub struct Chain<T, U> {
@@ -924,19 +948,43 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     }
 }
 
+impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
+RandomAccessIterator<(A, B)> for Zip<T, U> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        cmp::min(self.a.indexable(), self.b.indexable())
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<(A, B)> {
+        match (self.a.idx(index), self.b.idx(index)) {
+            (Some(x), Some(y)) => Some((x, y)),
+            _ => None
+        }
+    }
+}
+
 /// An iterator which maps the values of `iter` with `f`
 pub struct Map<'self, A, B, T> {
     priv iter: T,
     priv f: &'self fn(A) -> B
 }
 
-impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
+impl<'self, A, B, T> Map<'self, A, B, T> {
     #[inline]
-    fn next(&mut self) -> Option<B> {
-        match self.iter.next() {
+    fn do_map(&self, elt: Option<A>) -> Option<B> {
+        match elt {
             Some(a) => Some((self.f)(a)),
             _ => None
         }
+    }
+}
+
+impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        let next = self.iter.next();
+        self.do_map(next)
     }
 
     #[inline]
@@ -949,10 +997,21 @@ impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
 for Map<'self, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        match self.iter.next_back() {
-            Some(a) => Some((self.f)(a)),
-            _ => None
-        }
+        let next = self.iter.next_back();
+        self.do_map(next)
+    }
+}
+
+impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B>
+for Map<'self, A, B, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<B> {
+        self.do_map(self.iter.idx(index))
     }
 }
 
@@ -1066,6 +1125,21 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for Enumerate<T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
+    }
+}
+
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerate<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<(uint, A)> {
+        match self.iter.idx(index) {
+            Some(a) => Some((self.count + index, a)),
+            _ => None,
+        }
     }
 }
 
@@ -1189,6 +1263,27 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     }
 }
 
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        let N = self.iter.indexable();
+        if N < self.n {
+            0
+        } else {
+            N - self.n
+        }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        if index >= self.indexable() {
+            None
+        } else {
+            self.iter.idx(index + self.n)
+        }
+    }
+}
+
 /// An iterator which only iterates over the first `n` iterations of `iter`.
 #[deriving(Clone)]
 pub struct Take<T> {
@@ -1223,6 +1318,23 @@ impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
     }
 }
 
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        cmp::min(self.iter.indexable(), self.n)
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        if index >= self.n {
+            None
+        } else {
+            self.iter.idx(index)
+        }
+    }
+}
+
+
 /// An iterator to maintain state while iterating another iterator
 pub struct Scan<'self, A, B, T, St> {
     priv iter: T,
@@ -1251,7 +1363,8 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
 pub struct FlatMap<'self, A, T, U> {
     priv iter: T,
     priv f: &'self fn(A) -> U,
-    priv subiter: Option<U>,
+    priv frontiter: Option<U>,
+    priv backiter: Option<U>,
 }
 
 impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
@@ -1259,14 +1372,45 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for self.subiter.mut_iter().advance |inner| {
+            for self.frontiter.mut_iter().advance |inner| {
                 for inner.advance |x| {
                     return Some(x)
                 }
             }
             match self.iter.next().map_consume(|x| (self.f)(x)) {
-                None => return None,
-                next => self.subiter = next,
+                None => return self.backiter.chain_mut_ref(|it| it.next()),
+                next => self.frontiter = next,
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (flo, fhi) = self.frontiter.map_default((0, Some(0)), |it| it.size_hint());
+        let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
+        match (self.iter.size_hint(), fhi, bhi) {
+            ((0, Some(0)), Some(a), Some(b)) => (flo + blo, Some(a + b)),
+            _ => (flo + blo, None)
+        }
+    }
+}
+
+impl<'self,
+     A, T: DoubleEndedIterator<A>,
+     B, U: DoubleEndedIterator<B>> DoubleEndedIterator<B>
+     for FlatMap<'self, A, T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<B> {
+        loop {
+            for self.backiter.mut_iter().advance |inner| {
+                match inner.next_back() {
+                    None => (),
+                    y => return y
+                }
+            }
+            match self.iter.next_back().map_consume(|x| (self.f)(x)) {
+                None => return self.frontiter.chain_mut_ref(|it| it.next_back()),
+                next => self.backiter = next,
             }
         }
     }
@@ -1279,17 +1423,23 @@ pub struct Peek<'self, A, T> {
     priv f: &'self fn(&A)
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
+impl<'self, A, T> Peek<'self, A, T> {
     #[inline]
-    fn next(&mut self) -> Option<A> {
-        let next = self.iter.next();
-
-        match next {
+    fn do_peek(&self, elt: Option<A>) -> Option<A> {
+        match elt {
             Some(ref a) => (self.f)(a),
             None => ()
         }
 
-        next
+        elt
+    }
+}
+
+impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let next = self.iter.next();
+        self.do_peek(next)
     }
 
     #[inline]
@@ -1302,13 +1452,19 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Peek<'self,
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         let next = self.iter.next_back();
+        self.do_peek(next)
+    }
+}
 
-        match next {
-            Some(ref a) => (self.f)(a),
-            None => ()
-        }
+impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Peek<'self, A, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
 
-        next
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        self.do_peek(self.iter.idx(index))
     }
 }
 
@@ -1376,6 +1532,7 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use cmp;
     use uint;
 
     #[test]
@@ -1768,6 +1925,43 @@ mod tests {
         assert_eq!(it.next_back(), None)
     }
 
+    #[cfg(test)]
+    fn check_randacc_iter<A: Eq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
+    {
+        let mut b = a.clone();
+        assert_eq!(len, b.indexable());
+        let mut n = 0;
+        for a.enumerate().advance |(i, elt)| {
+            assert_eq!(Some(elt), b.idx(i));
+            n += 1;
+        }
+        assert_eq!(n, len);
+        assert_eq!(None, b.idx(n));
+        // call recursively to check after picking off an element
+        if len > 0 {
+            b.next();
+            check_randacc_iter(b, len-1);
+        }
+    }
+
+
+    #[test]
+    fn test_double_ended_flat_map() {
+        let u = [0u,1];
+        let v = [5,6,7,8];
+        let mut it = u.iter().flat_map_(|x| v.slice(*x, v.len()).iter());
+        assert_eq!(it.next_back().unwrap(), &8);
+        assert_eq!(it.next().unwrap(),      &5);
+        assert_eq!(it.next_back().unwrap(), &7);
+        assert_eq!(it.next_back().unwrap(), &6);
+        assert_eq!(it.next_back().unwrap(), &8);
+        assert_eq!(it.next().unwrap(),      &6);
+        assert_eq!(it.next_back().unwrap(), &7);
+        assert_eq!(it.next_back(), None);
+        assert_eq!(it.next(),      None);
+        assert_eq!(it.next_back(), None);
+    }
+
     #[test]
     fn test_random_access_chain() {
         let xs = [1, 2, 3, 4, 5];
@@ -1785,5 +1979,71 @@ mod tests {
         assert_eq!(it.idx(0).unwrap(), &3);
         assert_eq!(it.idx(4).unwrap(), &9);
         assert!(it.idx(6).is_none());
+
+        check_randacc_iter(it, xs.len() + ys.len() - 3);
+    }
+
+    #[test]
+    fn test_random_access_enumerate() {
+        let xs = [1, 2, 3, 4, 5];
+        check_randacc_iter(xs.iter().enumerate(), xs.len());
+    }
+
+    #[test]
+    fn test_random_access_zip() {
+        let xs = [1, 2, 3, 4, 5];
+        let ys = [7, 9, 11];
+        check_randacc_iter(xs.iter().zip(ys.iter()), cmp::min(xs.len(), ys.len()));
+    }
+
+    #[test]
+    fn test_random_access_take() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().take_(3), 3);
+        check_randacc_iter(xs.iter().take_(20), xs.len());
+        check_randacc_iter(xs.iter().take_(0), 0);
+        check_randacc_iter(empty.iter().take_(2), 0);
+    }
+
+    #[test]
+    fn test_random_access_skip() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().skip(2), xs.len() - 2);
+        check_randacc_iter(empty.iter().skip(2), 0);
+    }
+
+    #[test]
+    fn test_random_access_peek() {
+        let xs = [1, 2, 3, 4, 5];
+
+        // test .transform and .peek_ that don't implement Clone
+        let it = xs.iter().peek_(|_| {});
+        assert_eq!(xs.len(), it.indexable());
+        for xs.iter().enumerate().advance |(i, elt)| {
+            assert_eq!(Some(elt), it.idx(i));
+        }
+
+    }
+
+    #[test]
+    fn test_random_access_transform() {
+        let xs = [1, 2, 3, 4, 5];
+
+        // test .transform and .peek_ that don't implement Clone
+        let it = xs.iter().transform(|x| *x);
+        assert_eq!(xs.len(), it.indexable());
+        for xs.iter().enumerate().advance |(i, elt)| {
+            assert_eq!(Some(*elt), it.idx(i));
+        }
+    }
+
+    #[test]
+    fn test_random_access_cycle() {
+        let xs = [1, 2, 3, 4, 5];
+        let empty: &[int] = [];
+        check_randacc_iter(xs.iter().cycle().take_(27), 27);
+        check_randacc_iter(empty.iter().cycle(), 0);
     }
 }

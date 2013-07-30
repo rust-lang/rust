@@ -2106,7 +2106,8 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
-                let exact = self.indexable();
+                let diff = (self.end as uint) - (self.ptr as uint);
+                let exact = diff / sys::nonzero_size_of::<T>();
                 (exact, Some(exact))
             }
         }
@@ -2134,23 +2135,19 @@ macro_rules! double_ended_iterator {
     }
 }
 
-macro_rules! random_access_iterator {
-    (impl $name:ident -> $elem:ty) => {
-        impl<'self, T> RandomAccessIterator<$elem> for $name<'self, T> {
-            #[inline]
-            fn indexable(&self) -> uint {
-                let diff = (self.end as uint) - (self.ptr as uint);
-                diff / sys::nonzero_size_of::<T>()
-            }
+impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        let (exact, _) = self.size_hint();
+        exact
+    }
 
-            fn idx(&self, index: uint) -> Option<$elem> {
-                unsafe {
-                    if index < self.indexable() {
-                        cast::transmute(self.ptr.offset(index))
-                    } else {
-                        None
-                    }
-                }
+    fn idx(&self, index: uint) -> Option<&'self T> {
+        unsafe {
+            if index < self.indexable() {
+                cast::transmute(self.ptr.offset(index))
+            } else {
+                None
             }
         }
     }
@@ -2165,7 +2162,6 @@ pub struct VecIterator<'self, T> {
 }
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
-random_access_iterator!{impl VecIterator -> &'self T}
 pub type RevIterator<'self, T> = Invert<VecIterator<'self, T>>;
 
 impl<'self, T> Clone for VecIterator<'self, T> {
@@ -2181,7 +2177,6 @@ pub struct VecMutIterator<'self, T> {
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
-random_access_iterator!{impl VecMutIterator -> &'self mut T}
 pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.

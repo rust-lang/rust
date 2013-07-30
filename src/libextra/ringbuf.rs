@@ -16,7 +16,7 @@
 use std::num;
 use std::uint;
 use std::vec;
-use std::iterator::{FromIterator, Invert};
+use std::iterator::{FromIterator, Invert, RandomAccessIterator, Extendable};
 
 use container::Deque;
 
@@ -176,8 +176,7 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> RingBufIterator<'a, T> {
-        RingBufIterator{index: 0, rindex: self.nelts - 1,
-                        nelts: self.nelts, elts: self.elts, lo: self.lo}
+        RingBufIterator{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts}
     }
 
     /// Back-to-front iterator.
@@ -187,8 +186,7 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator which returns mutable values.
     pub fn mut_iter<'a>(&'a mut self) -> RingBufMutIterator<'a, T> {
-        RingBufMutIterator{index: 0, rindex: self.nelts - 1,
-                           nelts: self.nelts, elts: self.elts, lo: self.lo}
+        RingBufMutIterator{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts}
     }
 
     /// Back-to-front iterator which returns mutable values.
@@ -202,18 +200,18 @@ macro_rules! iterator {
         impl<'self, T> Iterator<$elem> for $name<'self, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                if self.nelts == 0 {
+                if self.index == self.rindex {
                     return None;
                 }
                 let raw_index = raw_index(self.lo, self.elts.len(), self.index);
                 self.index += 1;
-                self.nelts -= 1;
-                Some(self.elts[raw_index]. $getter ())
+                Some(self.elts[raw_index] . $getter ())
             }
 
             #[inline]
             fn size_hint(&self) -> (uint, Option<uint>) {
-                (self.nelts, Some(self.nelts))
+                let len = self.rindex - self.index;
+                (len, Some(len))
             }
         }
     }
@@ -224,22 +222,21 @@ macro_rules! iterator_rev {
         impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
-                if self.nelts == 0 {
+                if self.index == self.rindex {
                     return None;
                 }
-                let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
                 self.rindex -= 1;
-                self.nelts -= 1;
-                Some(self.elts[raw_index]. $getter ())
+                let raw_index = raw_index(self.lo, self.elts.len(), self.rindex);
+                Some(self.elts[raw_index] . $getter ())
             }
         }
     }
 }
 
+
 /// RingBuf iterator
 pub struct RingBufIterator<'self, T> {
     priv lo: uint,
-    priv nelts: uint,
     priv index: uint,
     priv rindex: uint,
     priv elts: &'self [Option<T>],
@@ -247,10 +244,24 @@ pub struct RingBufIterator<'self, T> {
 iterator!{impl RingBufIterator -> &'self T, get_ref}
 iterator_rev!{impl RingBufIterator -> &'self T, get_ref}
 
+impl<'self, T> RandomAccessIterator<&'self T> for RingBufIterator<'self, T> {
+    #[inline]
+    fn indexable(&self) -> uint { self.rindex - self.index }
+
+    #[inline]
+    fn idx(&self, j: uint) -> Option<&'self T> {
+        if j >= self.indexable() {
+            None
+        } else {
+            let raw_index = raw_index(self.lo, self.elts.len(), self.index + j);
+            Some(self.elts[raw_index].get_ref())
+        }
+    }
+}
+
 /// RingBuf mutable iterator
 pub struct RingBufMutIterator<'self, T> {
     priv lo: uint,
-    priv nelts: uint,
     priv index: uint,
     priv rindex: uint,
     priv elts: &'self mut [Option<T>],
@@ -314,11 +325,18 @@ impl<A: Eq> Eq for RingBuf<A> {
 
 impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
     fn from_iterator(iterator: &mut T) -> RingBuf<A> {
-        let mut deq = RingBuf::new();
-        for iterator.advance |elt| {
-            deq.push_back(elt);
-        }
+        let (lower, _) = iterator.size_hint();
+        let mut deq = RingBuf::with_capacity(lower);
+        deq.extend(iterator);
         deq
+    }
+}
+
+impl<A, T: Iterator<A>> Extendable<A, T> for RingBuf<A> {
+    fn extend(&mut self, iterator: &mut T) {
+        for iterator.advance |elt| {
+            self.push_back(elt);
+        }
     }
 }
 
