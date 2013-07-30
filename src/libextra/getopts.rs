@@ -680,7 +680,7 @@ pub mod groups {
         return brief.to_owned() +
                "\n\nOptions:\n" +
                rows.collect::<~[~str]>().connect("\n") +
-               "\n\n";
+               "\n";
     }
 
     /** Splits a string into substrings with possibly internal whitespace,
@@ -1463,7 +1463,6 @@ Options:
     -k --kiwi           Desc
     -p [VAL]            Desc
     -l VAL              Desc
-
 ";
 
         let generated_usage = groups::usage("Usage: fruits", optgroups);
@@ -1492,7 +1491,6 @@ Options:
     -k --kiwi           This is a long description which won't be wrapped..+..
     -a --apple          This is a long description which _will_ be
                         wrapped..+..
-
 ";
 
         let usage = groups::usage("Usage: fruits", optgroups);
