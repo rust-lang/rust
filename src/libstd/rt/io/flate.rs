@@ -10,7 +10,7 @@
 
 //! Some various other I/O types
 
-// NOTE: These ultimately belong somewhere else
+// FIXME(#3660): should move to libextra
 
 use prelude::*;
 use super::*;
