@@ -8,7 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Vectors
+/*!
+
+The `vec` module contains useful code to help work with vector values. Vectors are Rust's list
+type. Vectors contain zero or more values of homogeneous types:
+
+~~~ {.rust}
+let int_vector = [1,2,3];
+let str_vector = ["one", "two", "three"];
+~~~
+
+This is a big module, but for a high-level overview:
+
+## Structs
+
+Several structs that are useful for vectors, such as `VecIterator`, which
+represents iteration over a vector.
+
+## Traits
+
+A number of traits that allow you to accomplish tasks with vectors, like the
+`MutableVector` and `ImmutableVector` traits.
+
+## Implementations of other traits
+
+Vectors are a very useful type, and so there's tons of implementations of
+traits found elsewhere. Some notable examples:
+
+* `Clone`
+* `Iterator`
+* `Zero`
+
+## Function definitions
+
+There are a number of different functions that take vectors, here are some
+broad categories:
+
+* Modifying a vector, like `append` and `grow`.
+* Searching in a vector, like `bsearch`.
+* Iterating over vectors, like `each_permutation`.
+* Functional transformations on vectors, like `map` and `partition`.
+* Stack/queue operations, like `push`/`pop` and `shift`/`unshift`.
+* Cons-y operations, like `head` and `tail`.
+* Zipper operations, like `zip` and `unzip`.
+
+And much, much more.
+
+*/
 
 #[warn(non_camel_case_types)];
 
