@@ -11,7 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
-use iterator::{IteratorUtil, FromIterator};
+use iterator::{IteratorUtil, FromIterator, Extendable};
 use uint;
 use util::{swap, replace};
 
@@ -155,14 +155,18 @@ impl<T> TrieMap<T> {
 }
 
 impl<T, Iter: Iterator<(uint, T)>> FromIterator<(uint, T), Iter> for TrieMap<T> {
-    pub fn from_iterator(iter: &mut Iter) -> TrieMap<T> {
+    fn from_iterator(iter: &mut Iter) -> TrieMap<T> {
         let mut map = TrieMap::new();
-
-        for iter.advance |(k, v)| {
-            map.insert(k, v);
-        }
-
+        map.extend(iter);
         map
+    }
+}
+
+impl<T, Iter: Iterator<(uint, T)>> Extendable<(uint, T), Iter> for TrieMap<T> {
+    fn extend(&mut self, iter: &mut Iter) {
+        for iter.advance |(k, v)| {
+            self.insert(k, v);
+        }
     }
 }
 
@@ -222,14 +226,18 @@ impl TrieSet {
 }
 
 impl<Iter: Iterator<uint>> FromIterator<uint, Iter> for TrieSet {
-    pub fn from_iterator(iter: &mut Iter) -> TrieSet {
+    fn from_iterator(iter: &mut Iter) -> TrieSet {
         let mut set = TrieSet::new();
-
-        for iter.advance |elem| {
-            set.insert(elem);
-        }
-
+        set.extend(iter);
         set
+    }
+}
+
+impl<Iter: Iterator<uint>> Extendable<uint, Iter> for TrieSet {
+    fn extend(&mut self, iter: &mut Iter) {
+        for iter.advance |elem| {
+            self.insert(elem);
+        }
     }
 }
 

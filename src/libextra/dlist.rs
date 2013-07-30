@@ -25,7 +25,7 @@
 use std::cast;
 use std::ptr;
 use std::util;
-use std::iterator::{FromIterator, Invert};
+use std::iterator::{FromIterator, Extendable, Invert};
 
 use container::Deque;
 
@@ -541,8 +541,14 @@ impl<A> DoubleEndedIterator<A> for ConsumeIterator<A> {
 impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
     fn from_iterator(iterator: &mut T) -> DList<A> {
         let mut ret = DList::new();
-        for iterator.advance |elt| { ret.push_back(elt); }
+        ret.extend(iterator);
         ret
+    }
+}
+
+impl<A, T: Iterator<A>> Extendable<A, T> for DList<A> {
+    fn extend(&mut self, iterator: &mut T) {
+        for iterator.advance |elt| { self.push_back(elt); }
     }
 }
 
