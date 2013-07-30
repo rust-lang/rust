@@ -44,7 +44,7 @@ impl StackSegment {
 
     /// Point one word beyond the high end of the allocated stack
     pub fn end(&self) -> *uint {
-        vec::raw::to_ptr(self.buf).offset(self.buf.len()) as *uint
+        vec::raw::to_ptr(self.buf).offset(self.buf.len() as int) as *uint
     }
 }
 

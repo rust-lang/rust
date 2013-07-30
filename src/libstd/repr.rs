@@ -212,7 +212,7 @@ impl ReprVisitor {
                 self.writer.write_str(", ");
             }
             self.visit_ptr_inner(p as *c_void, inner);
-            p = align(ptr::offset(p, sz) as uint, al) as *u8;
+            p = align(ptr::offset(p, sz as int) as uint, al) as *u8;
             left -= dec;
         }
         self.writer.write_char(']');

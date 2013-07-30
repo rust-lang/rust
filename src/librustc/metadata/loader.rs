@@ -215,7 +215,7 @@ fn get_metadata_section(os: os,
                 }
                 if !version_ok { return None; }
 
-                let cvbuf1 = ptr::offset(cvbuf, vlen);
+                let cvbuf1 = ptr::offset(cvbuf, vlen as int);
                 debug!("inflating %u bytes of compressed metadata",
                        csz - vlen);
                 do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {

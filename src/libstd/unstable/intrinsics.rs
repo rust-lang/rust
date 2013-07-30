@@ -321,6 +321,13 @@ extern "rust-intrinsic" {
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
+    /// Adjust a pointer by an offset.
+    ///
+    /// This is implemented as an intrinsic to avoid converting to and from an
+    /// integer, since the conversion would throw away aliasing information.
+    #[cfg(not(stage0))]
+    pub fn offset<T>(dst: *T, offset: int) -> *T;
+
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
