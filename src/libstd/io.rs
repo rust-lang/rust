@@ -1213,7 +1213,7 @@ impl Writer for fd_t {
             let mut count = 0u;
             do v.as_imm_buf |vbuf, len| {
                 while count < len {
-                    let vb = ptr::offset(vbuf, count) as *c_void;
+                    let vb = ptr::offset(vbuf, count as int) as *c_void;
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");

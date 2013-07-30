@@ -150,7 +150,7 @@ pub mod reader {
 
         unsafe {
             let (ptr, _): (*u8, uint) = transmute(data);
-            let ptr = offset(ptr, start);
+            let ptr = offset(ptr, start as int);
             let ptr: *i32 = transmute(ptr);
             let val = bswap32(*ptr);
             let val: u32 = transmute(val);

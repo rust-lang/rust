@@ -3606,6 +3606,20 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "morestack_addr" => {
               (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
             }
+            "offset" => {
+              (1,
+               ~[
+                  ty::mk_ptr(tcx, ty::mt {
+                      ty: param(ccx, 0),
+                      mutbl: ast::m_imm
+                  }),
+                  ty::mk_int()
+               ],
+               ty::mk_ptr(tcx, ty::mt {
+                   ty: param(ccx, 0),
+                   mutbl: ast::m_imm
+               }))
+            }
             "memcpy32" => {
               (1,
                ~[

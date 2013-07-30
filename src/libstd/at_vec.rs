@@ -233,7 +233,7 @@ pub mod raw {
         let repr: *mut Box<Vec<T>> = cast::transmute_copy(v);
         let amt = v.len();
         (*repr).data.fill += sys::size_of::<T>();
-        let p = ptr::offset(&(*repr).data.data as *T, amt) as *mut T;
+        let p = ptr::offset(&(*repr).data.data as *T, amt as int) as *mut T;
         move_val_init(&mut(*p), initval);
     }
 
