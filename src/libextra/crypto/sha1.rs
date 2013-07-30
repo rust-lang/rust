@@ -240,7 +240,7 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
-
+    use cryptoutil::test::test_digest_1million_random;
     use digest::Digest;
     use sha1::Sha1;
 
@@ -253,15 +253,6 @@ mod tests {
 
     #[test]
     fn test() {
-        fn a_million_letter_a() -> ~str {
-            let mut i = 0;
-            let mut rs = ~"";
-            while i < 100000 {
-                rs.push_str("aaaaaaaaaa");
-                i += 1;
-            }
-            return rs;
-        }
         // Test messages from FIPS 180-1
 
         let fips_180_1_tests = ~[
@@ -288,17 +279,6 @@ mod tests {
                     0xE5u8, 0x46u8, 0x70u8, 0xF1u8,
                 ],
                 output_str: ~"84983e441c3bd26ebaae4aa1f95129e5e54670f1"
-            },
-            Test {
-                input: a_million_letter_a(),
-                output: ~[
-                    0x34u8, 0xAAu8, 0x97u8, 0x3Cu8,
-                    0xD4u8, 0xC4u8, 0xDAu8, 0xA4u8,
-                    0xF6u8, 0x1Eu8, 0xEBu8, 0x2Bu8,
-                    0xDBu8, 0xADu8, 0x27u8, 0x31u8,
-                    0x65u8, 0x34u8, 0x01u8, 0x6Fu8,
-                ],
-                output_str: ~"34aa973cd4c4daa4f61eeb2bdbad27316534016f"
             },
         ];
         // Examples from wikipedia
@@ -365,6 +345,15 @@ mod tests {
 
             sh.reset();
         }
+    }
+
+    #[test]
+    fn test_1million_random_sha1() {
+        let mut sh = Sha1::new();
+        test_digest_1million_random(
+            &mut sh,
+            64,
+            "34aa973cd4c4daa4f61eeb2bdbad27316534016f");
     }
 }
 
