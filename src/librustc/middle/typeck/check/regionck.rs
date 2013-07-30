@@ -51,7 +51,7 @@ pub struct Rcx {
     errors_reported: uint,
 
     // id of innermost fn or loop
-    repeating_scope: ast::node_id,
+    repeating_scope: ast::NodeId,
 }
 
 pub type rvt = visit::vt<@mut Rcx>;
@@ -81,7 +81,7 @@ impl Rcx {
         self.fcx.ccx.tcx
     }
 
-    pub fn set_repeating_scope(&mut self, scope: ast::node_id) -> ast::node_id {
+    pub fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
         let old_scope = self.repeating_scope;
         self.repeating_scope = scope;
         old_scope
@@ -124,7 +124,7 @@ impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
+    pub fn resolve_node_type(@mut self, id: ast::NodeId) -> ty::t {
         self.resolve_type(self.fcx.node_ty(id))
     }
 
@@ -500,7 +500,7 @@ fn check_expr_fn_block(rcx: @mut Rcx,
 }
 
 fn constrain_callee(rcx: @mut Rcx,
-                    callee_id: ast::node_id,
+                    callee_id: ast::NodeId,
                     call_expr: @ast::expr,
                     callee_expr: @ast::expr)
 {
@@ -527,7 +527,7 @@ fn constrain_callee(rcx: @mut Rcx,
 fn constrain_call(rcx: @mut Rcx,
                   // might be expr_call, expr_method_call, or an overloaded
                   // operator
-                  callee_id: ast::node_id,
+                  callee_id: ast::NodeId,
                   call_expr: @ast::expr,
                   receiver: Option<@ast::expr>,
                   arg_exprs: &[@ast::expr],
@@ -680,7 +680,7 @@ fn constrain_free_variables(rcx: @mut Rcx,
 
 fn constrain_regions_in_type_of_node(
     rcx: @mut Rcx,
-    id: ast::node_id,
+    id: ast::NodeId,
     minimum_lifetime: ty::Region,
     origin: infer::SubregionOrigin) -> bool
 {
@@ -895,7 +895,7 @@ pub mod guarantor {
 
     pub fn for_by_ref(rcx: @mut Rcx,
                       expr: @ast::expr,
-                      callee_scope: ast::node_id) {
+                      callee_scope: ast::NodeId) {
         /*!
          * Computes the guarantor for cases where the `expr` is
          * being passed by implicit reference and must outlive
@@ -918,7 +918,7 @@ pub mod guarantor {
     fn link(
         rcx: @mut Rcx,
         span: span,
-        id: ast::node_id,
+        id: ast::NodeId,
         guarantor: Option<ty::Region>) {
         /*!
          *

@@ -777,7 +777,7 @@ pub fn check_fn(cx: &MatchCheckCtxt,
                 decl: &fn_decl,
                 body: &Block,
                 sp: span,
-                id: node_id,
+                id: NodeId,
                 (s, v): ((),
                          visit::vt<()>)) {
     visit::visit_fn(kind, decl, body, sp, id, (s, v));

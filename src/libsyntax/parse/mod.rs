@@ -11,7 +11,7 @@
 //! The main parser interface
 
 
-use ast::node_id;
+use ast::NodeId;
 use ast;
 use codemap::{span, CodeMap, FileMap, FileSubstr};
 use codemap;
@@ -42,7 +42,7 @@ pub mod obsolete;
 // info about a parsing session.
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
-    next_id: node_id,
+    next_id: NodeId,
     span_diagnostic: @span_handler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: ~[Path],
@@ -202,7 +202,7 @@ pub fn parse_from_source_str<T>(
 }
 
 // return the next unused node id.
-pub fn next_node_id(sess: @mut ParseSess) -> node_id {
+pub fn next_node_id(sess: @mut ParseSess) -> NodeId {
     let rv = sess.next_id;
     sess.next_id += 1;
     // ID 0 is reserved for the crate and doesn't actually exist in the AST
@@ -506,7 +506,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int", and on the
-        // assignment order of the node_ids.
+        // assignment order of the NodeIds.
         assert_eq!(string_to_item(@"fn a (b : int) { b; }"),
                   Some(
                       @ast::item{ident:str_to_ident("a"),
@@ -566,7 +566,7 @@ mod test {
                                             span: sp(17,18)}],
                                         expr: None,
                                         id: 8, // fixme
-                                        rules: ast::default_blk, // no idea
+                                        rules: ast::DefaultBlock, // no idea
                                         span: sp(15,21),
                                     }),
                             vis: ast::inherited,

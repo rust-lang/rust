@@ -62,7 +62,7 @@ pub trait AstBuilder {
 
     fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
     fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
-    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::ty_field;
+    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::TypeField;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
     fn typaram(&self, id: ast::ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam;
@@ -306,12 +306,12 @@ impl AstBuilder for @ExtCtxt {
                           ~[ ty ]), None)
     }
 
-    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::ty_field {
-        respan(span,
-               ast::ty_field_ {
-                   ident: name,
-                   mt: ast::mt { ty: ~ty, mutbl: ast::m_imm },
-               })
+    fn ty_field_imm(&self, span: span, name: ident, ty: ast::Ty) -> ast::TypeField {
+        ast::TypeField {
+            ident: name,
+            mt: ast::mt { ty: ~ty, mutbl: ast::m_imm },
+            span: span,
+        }
     }
 
     fn ty_infer(&self, span: span) -> ast::Ty {
@@ -404,7 +404,7 @@ impl AstBuilder for @ExtCtxt {
                stmts: stmts,
                expr: expr,
                id: self.next_id(),
-               rules: ast::default_blk,
+               rules: ast::DefaultBlock,
                span: span,
            }
     }

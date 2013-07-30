@@ -128,7 +128,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @mut HashMap<ast::node_id, method_map_entry>;
+pub type method_map = @mut HashMap<ast::NodeId, method_map_entry>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -172,7 +172,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @mut HashMap<ast::node_id, vtable_res>;
+pub type vtable_map = @mut HashMap<ast::NodeId, vtable_res>;
 
 
 // Information about the vtable resolutions for for a trait impl.
@@ -205,13 +205,13 @@ pub struct CrateCtxt {
 }
 
 // Functions that write types into the node type table
-pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
+pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
-                           node_id: ast::node_id,
+                           node_id: ast::NodeId,
                            substs: ~[ty::t]) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
@@ -221,7 +221,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
     }
 }
 pub fn write_tpt_to_tcx(tcx: ty::ctxt,
-                        node_id: ast::node_id,
+                        node_id: ast::NodeId,
                         tpt: &ty::ty_param_substs_and_ty) {
     write_ty_to_tcx(tcx, node_id, tpt.ty);
     if !tpt.substs.tps.is_empty() {
@@ -229,7 +229,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
+pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::NodeId) -> ast::def {
     match tcx.def_map.find(&id) {
       Some(&x) => x,
       _ => {
@@ -238,7 +238,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     }
 }
 
-pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: span, id: ast::node_id)
+pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: span, id: ast::NodeId)
                    -> ast::def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
@@ -308,7 +308,7 @@ impl get_and_find_region for isr_alist {
 }
 
 fn check_main_fn_ty(ccx: &CrateCtxt,
-                    main_id: ast::node_id,
+                    main_id: ast::NodeId,
                     main_span: span) {
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
@@ -352,7 +352,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
 }
 
 fn check_start_fn_ty(ccx: &CrateCtxt,
-                     start_id: ast::node_id,
+                     start_id: ast::NodeId,
                      start_span: span) {
     let tcx = ccx.tcx;
     let start_t = ty::node_id_to_type(tcx, start_id);

@@ -108,7 +108,7 @@ fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig)
     }
 }
 
-fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
+fn shim_types(ccx: @mut CrateContext, id: ast::NodeId) -> ShimTypes {
     let fn_sig = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
@@ -338,7 +338,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
     }
 
     fn build_foreign_fn(ccx: @mut CrateContext,
-                        id: ast::node_id,
+                        id: ast::NodeId,
                         foreign_item: @ast::foreign_item,
                         cc: lib::llvm::CallConv) {
         let llwrapfn = get_item_val(ccx, id);
@@ -537,7 +537,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        path: ast_map::path,
                        substs: @param_substs,
                        attributes: &[ast::Attribute],
-                       ref_id: Option<ast::node_id>) {
+                       ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
     fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
@@ -975,14 +975,14 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                         decl: &ast::fn_decl,
                         body: &ast::Block,
                         llwrapfn: ValueRef,
-                        id: ast::node_id) {
+                        id: ast::NodeId) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @mut CrateContext,
                      path: &ast_map::path,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
-                     id: ast::node_id)
+                     id: ast::NodeId)
                   -> ValueRef {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
@@ -1145,7 +1145,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
 pub fn register_foreign_fn(ccx: @mut CrateContext,
                            sp: span,
                            sym: ~str,
-                           node_id: ast::node_id)
+                           node_id: ast::NodeId)
                            -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 

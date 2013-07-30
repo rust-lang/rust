@@ -48,7 +48,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
                   name: ast::ident,
                   methods: &[@ast::method],
                   generics: &ast::Generics,
-                  id: ast::node_id) {
+                  id: ast::NodeId) {
     let _icx = push_ctxt("impl::trans_impl");
     let tcx = ccx.tcx;
 
@@ -142,7 +142,7 @@ pub fn trans_self_arg(bcx: @mut Block,
 }
 
 pub fn trans_method_callee(bcx: @mut Block,
-                           callee_id: ast::node_id,
+                           callee_id: ast::NodeId,
                            this: @ast::expr,
                            mentry: typeck::method_map_entry)
                            -> Callee {
@@ -201,7 +201,7 @@ pub fn trans_method_callee(bcx: @mut Block,
 pub fn trans_static_method_callee(bcx: @mut Block,
                                   method_id: ast::def_id,
                                   trait_id: ast::def_id,
-                                  callee_id: ast::node_id)
+                                  callee_id: ast::NodeId)
                                -> FnData {
     let _icx = push_ctxt("impl::trans_static_method_callee");
     let ccx = bcx.ccx();
@@ -229,7 +229,7 @@ pub fn trans_static_method_callee(bcx: @mut Block,
     let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
         generics.type_param_defs.len();
 
-    let mname = if method_id.crate == ast::local_crate {
+    let mname = if method_id.crate == ast::LOCAL_CRATE {
         match bcx.tcx().items.get_copy(&method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(trait_method).ident
@@ -296,7 +296,7 @@ pub fn method_with_name(ccx: &mut CrateContext,
 }
 
 pub fn trans_monomorphized_callee(bcx: @mut Block,
-                                  callee_id: ast::node_id,
+                                  callee_id: ast::NodeId,
                                   base: @ast::expr,
                                   mentry: typeck::method_map_entry,
                                   trait_id: ast::def_id,
@@ -355,7 +355,7 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
 
 pub fn combine_impl_and_methods_tps(bcx: @mut Block,
                                     mth_did: ast::def_id,
-                                    callee_id: ast::node_id,
+                                    callee_id: ast::NodeId,
                                     rcvr_substs: &[ty::t],
                                     rcvr_origins: typeck::vtable_res)
                                     -> (~[ty::t], typeck::vtable_res) {
@@ -404,7 +404,7 @@ pub fn combine_impl_and_methods_tps(bcx: @mut Block,
 
 
 pub fn trans_trait_callee(bcx: @mut Block,
-                          callee_id: ast::node_id,
+                          callee_id: ast::NodeId,
                           n_method: uint,
                           self_expr: @ast::expr,
                           store: ty::TraitStore,
@@ -662,7 +662,7 @@ pub fn make_impl_vtable(bcx: @mut Block,
 
 pub fn trans_trait_cast(bcx: @mut Block,
                         val: @ast::expr,
-                        id: ast::node_id,
+                        id: ast::NodeId,
                         dest: expr::Dest,
                         _store: ty::TraitStore)
                      -> @mut Block {

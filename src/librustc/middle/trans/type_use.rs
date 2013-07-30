@@ -72,7 +72,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
       None => ()
     }
 
-    let fn_id_loc = if fn_id.crate == local_crate {
+    let fn_id_loc = if fn_id.crate == LOCAL_CRATE {
         fn_id
     } else {
         inline::maybe_instantiate_inline(ccx, fn_id)
@@ -93,7 +93,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     let is_default = ty::provided_source(ccx.tcx, fn_id_loc).is_some();
     // We also mark all of the params as used if it is an extern thing
     // that we haven't been able to inline yet.
-    if is_default || fn_id_loc.crate != local_crate {
+    if is_default || fn_id_loc.crate != LOCAL_CRATE {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_all; }
         return store_type_uses(cx, fn_id);
     }
@@ -260,11 +260,11 @@ pub fn type_needs_inner(cx: &Context,
     }
 }
 
-pub fn node_type_needs(cx: &Context, use_: uint, id: node_id) {
+pub fn node_type_needs(cx: &Context, use_: uint, id: NodeId) {
     type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
-pub fn mark_for_method_call(cx: &Context, e_id: node_id, callee_id: node_id) {
+pub fn mark_for_method_call(cx: &Context, e_id: NodeId, callee_id: NodeId) {
     let mut opt_static_did = None;
     {
         let r = cx.ccx.maps.method_map.find(&e_id);

@@ -68,8 +68,8 @@ struct GatherLoanCtxt {
     id_range: id_range,
     move_data: @mut move_data::MoveData,
     all_loans: @mut ~[Loan],
-    item_ub: ast::node_id,
-    repeating_ids: ~[ast::node_id]
+    item_ub: ast::NodeId,
+    repeating_ids: ~[ast::NodeId]
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
@@ -111,7 +111,7 @@ fn gather_loans_in_fn(fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
                       sp: span,
-                      id: ast::node_id,
+                      id: ast::NodeId,
                       (this, v): (@mut GatherLoanCtxt,
                                   visit::vt<@mut GatherLoanCtxt>)) {
     match fk {
@@ -294,11 +294,11 @@ fn gather_loans_in_expr(ex: @ast::expr,
 impl GatherLoanCtxt {
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    pub fn push_repeating_id(&mut self, id: ast::node_id) {
+    pub fn push_repeating_id(&mut self, id: ast::NodeId) {
         self.repeating_ids.push(id);
     }
 
-    pub fn pop_repeating_id(&mut self, id: ast::node_id) {
+    pub fn pop_repeating_id(&mut self, id: ast::NodeId) {
         let popped = self.repeating_ids.pop();
         assert_eq!(id, popped);
     }
@@ -369,7 +369,7 @@ impl GatherLoanCtxt {
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
     pub fn guarantee_valid(&mut self,
-                           borrow_id: ast::node_id,
+                           borrow_id: ast::NodeId,
                            borrow_span: span,
                            cmt: mc::cmt,
                            req_mutbl: ast::mutability,
@@ -559,9 +559,9 @@ impl GatherLoanCtxt {
     }
 
     pub fn compute_gen_scope(&self,
-                             borrow_id: ast::node_id,
-                             loan_scope: ast::node_id)
-                             -> ast::node_id {
+                             borrow_id: ast::NodeId,
+                             loan_scope: ast::NodeId)
+                             -> ast::NodeId {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
@@ -575,8 +575,8 @@ impl GatherLoanCtxt {
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: ast::node_id, lp: @LoanPath)
-                              -> ast::node_id {
+    pub fn compute_kill_scope(&self, loan_scope: ast::NodeId, lp: @LoanPath)
+                              -> ast::NodeId {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -633,7 +633,7 @@ impl GatherLoanCtxt {
     fn gather_pat(&mut self,
                   discr_cmt: mc::cmt,
                   root_pat: @ast::pat,
-                  arm_match_ids: Option<(ast::node_id, ast::node_id)>) {
+                  arm_match_ids: Option<(ast::NodeId, ast::NodeId)>) {
         /*!
          * Walks patterns, examining the bindings to determine if they
          * cause borrows (`ref` bindings, vector patterns) or

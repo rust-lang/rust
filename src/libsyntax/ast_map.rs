@@ -78,7 +78,7 @@ pub enum ast_node {
     node_callee_scope(@expr)
 }
 
-pub type map = @mut HashMap<node_id, ast_node>;
+pub type map = @mut HashMap<NodeId, ast_node>;
 
 pub struct Ctx {
     map: map,
@@ -159,7 +159,7 @@ pub fn map_fn(
     decl: &fn_decl,
     body: &Block,
     sp: codemap::span,
-    id: node_id,
+    id: NodeId,
     (cx,v): (@mut Ctx,
              visit::vt<@mut Ctx>)
 ) {
@@ -313,7 +313,7 @@ pub fn map_stmt(stmt: @stmt, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     visit::visit_stmt(stmt, (cx, v));
 }
 
-pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
+pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
     match map.find(&id) {
       None => {
         fmt!("unknown node (id=%d)", id)
@@ -376,7 +376,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
     }
 }
 
-pub fn node_item_query<Result>(items: map, id: node_id,
+pub fn node_item_query<Result>(items: map, id: NodeId,
                                query: &fn(@item) -> Result,
                                error_msg: ~str) -> Result {
     match items.find(&id) {

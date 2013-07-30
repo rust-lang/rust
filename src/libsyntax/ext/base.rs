@@ -294,7 +294,7 @@ impl ExtCtxt {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
-    pub fn next_id(&self) -> ast::node_id {
+    pub fn next_id(&self) -> ast::NodeId {
         parse::next_node_id(self.parse_sess)
     }
     pub fn trace_macros(&self) -> bool {
