@@ -140,7 +140,9 @@ pub fn optflag(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: No, occur: Optional};
 }
 
-/// Create an option that is optional and does not take an argument
+/** Create an option that is optional, does not take an argument,
+  * and may occur multiple times.
+  */
 pub fn optflagmulti(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: No, occur: Multi};
 }
