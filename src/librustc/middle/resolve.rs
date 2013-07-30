@@ -5016,6 +5016,8 @@ impl Resolver {
                 }
             }
 
+            expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
             expr_break(Some(label)) | expr_again(Some(label)) => {
                 match self.search_ribs(self.label_ribs, label, expr.span,
                                        DontAllowCapturingSelf) {

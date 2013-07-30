@@ -2559,6 +2559,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(id);
         }
       }
+      ast::expr_for_loop(*) =>
+          fail!("non-desugared expr_for_loop"),
       ast::expr_loop(ref body, _) => {
         check_block_no_value(fcx, (body));
         if !may_break(tcx, expr.id, body) {

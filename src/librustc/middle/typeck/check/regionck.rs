@@ -1041,6 +1041,7 @@ pub mod guarantor {
                     rcx.fcx.tcx(), rcx.fcx.inh.method_map, expr));
                 None
             }
+            ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
         }
     }
 
