@@ -203,16 +203,16 @@ pub struct FunctionContext {
     has_immediate_return_value: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut HashMap<ast::node_id, ValueRef>,
+    llargs: @mut HashMap<ast::NodeId, ValueRef>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut HashMap<ast::node_id, ValueRef>,
+    lllocals: @mut HashMap<ast::NodeId, ValueRef>,
     // Same as above, but for closure upvars
-    llupvars: @mut HashMap<ast::node_id, ValueRef>,
+    llupvars: @mut HashMap<ast::NodeId, ValueRef>,
 
-    // The node_id of the function, or -1 if it doesn't correspond to
+    // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
-    id: ast::node_id,
+    id: ast::NodeId,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
@@ -361,13 +361,13 @@ pub fn add_clean_temp_mem(bcx: @mut Block, val: ValueRef, t: ty::t) {
 }
 
 pub fn add_clean_temp_mem_in_scope(bcx: @mut Block,
-                                   scope_id: ast::node_id,
+                                   scope_id: ast::NodeId,
                                    val: ValueRef,
                                    t: ty::t) {
     add_clean_temp_mem_in_scope_(bcx, Some(scope_id), val, t);
 }
 
-pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::node_id>,
+pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::NodeId>,
                                     val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
@@ -380,7 +380,7 @@ pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::node_
     }
 }
 pub fn add_clean_return_to_mut(bcx: @mut Block,
-                               scope_id: ast::node_id,
+                               scope_id: ast::NodeId,
                                root_key: root_map_key,
                                frozen_val_ref: ValueRef,
                                bits_val_ref: ValueRef,
@@ -504,8 +504,8 @@ impl get_node_info for Option<@ast::expr> {
 }
 
 pub struct NodeInfo {
-    id: ast::node_id,
-    callee_id: Option<ast::node_id>,
+    id: ast::NodeId,
+    callee_id: Option<ast::NodeId>,
     span: span
 }
 
@@ -563,7 +563,7 @@ impl Block {
         token::ident_to_str(&ident)
     }
 
-    pub fn node_id_to_str(&self, id: ast::node_id) -> ~str {
+    pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
@@ -579,7 +579,7 @@ impl Block {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn def(&self, nid: ast::node_id) -> ast::def {
+    pub fn def(&self, nid: ast::NodeId) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(&v) => v,
             None => {
@@ -633,7 +633,7 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::node_id>, f: &fn(si: &mut ScopeInfo)) {
+pub fn in_scope_cx(cx: @mut Block, scope_id: Option<ast::NodeId>, f: &fn(si: &mut ScopeInfo)) {
     let mut cur = cx;
     let mut cur_scope = cur.scope;
     loop {
@@ -971,7 +971,7 @@ pub fn monomorphize_type(bcx: @mut Block, t: ty::t) -> ty::t {
     }
 }
 
-pub fn node_id_type(bcx: @mut Block, id: ast::node_id) -> ty::t {
+pub fn node_id_type(bcx: @mut Block, id: ast::NodeId) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
@@ -987,7 +987,7 @@ pub fn expr_ty_adjusted(bcx: @mut Block, ex: &ast::expr) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: @mut Block, id: ast::node_id) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: @mut Block, id: ast::NodeId) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
 
@@ -1007,7 +1007,7 @@ pub fn node_id_type_params(bcx: @mut Block, id: ast::node_id) -> ~[ty::t] {
     }
 }
 
-pub fn node_vtables(bcx: @mut Block, id: ast::node_id)
+pub fn node_vtables(bcx: @mut Block, id: ast::NodeId)
                  -> Option<typeck::vtable_res> {
     let raw_vtables = bcx.ccx().maps.vtable_map.find(&id);
     raw_vtables.map(

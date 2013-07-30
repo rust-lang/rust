@@ -614,7 +614,7 @@ impl Datum {
     pub fn try_deref(&self,
                      bcx: @mut Block,
                      span: span,
-                     expr_id: ast::node_id,
+                     expr_id: ast::NodeId,
                      derefs: uint,
                      is_auto: bool)
                      -> (Option<Datum>, @mut Block) {
@@ -740,7 +740,7 @@ impl Datum {
     pub fn autoderef(&self,
                      bcx: @mut Block,
                      span: span,
-                     expr_id: ast::node_id,
+                     expr_id: ast::NodeId,
                      max: uint)
                      -> DatumBlock {
         let _icx = push_ctxt("autoderef");
@@ -773,7 +773,7 @@ impl Datum {
     pub fn get_vec_base_and_len(&self,
                                 mut bcx: @mut Block,
                                 span: span,
-                                expr_id: ast::node_id,
+                                expr_id: ast::NodeId,
                                 derefs: uint)
                                 -> (@mut Block, ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Performs rooting
@@ -797,7 +797,7 @@ impl Datum {
     pub fn root_and_write_guard(&self,
                                 bcx: @mut Block,
                                 span: span,
-                                expr_id: ast::node_id,
+                                expr_id: ast::NodeId,
                                 derefs: uint)
                                 -> @mut Block {
         write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs)

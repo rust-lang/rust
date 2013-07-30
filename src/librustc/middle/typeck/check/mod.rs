@@ -142,7 +142,7 @@ pub mod method;
 
 pub struct SelfInfo {
     self_ty: ty::t,
-    self_id: ast::node_id,
+    self_id: ast::NodeId,
     span: span
 }
 
@@ -158,12 +158,12 @@ pub struct SelfInfo {
 /// share the inherited fields.
 pub struct inherited {
     infcx: @mut infer::InferCtxt,
-    locals: @mut HashMap<ast::node_id, ty::t>,
+    locals: @mut HashMap<ast::NodeId, ty::t>,
 
     // Temporary tables:
-    node_types: @mut HashMap<ast::node_id, ty::t>,
-    node_type_substs: @mut HashMap<ast::node_id, ty::substs>,
-    adjustments: @mut HashMap<ast::node_id, @ty::AutoAdjustment>,
+    node_types: @mut HashMap<ast::NodeId, ty::t>,
+    node_type_substs: @mut HashMap<ast::NodeId, ty::substs>,
+    adjustments: @mut HashMap<ast::NodeId, @ty::AutoAdjustment>,
     method_map: method_map,
     vtable_map: vtable_map,
 }
@@ -183,13 +183,13 @@ pub enum FnKind {
 
 #[deriving(Clone)]
 pub struct PurityState {
-    def: ast::node_id,
+    def: ast::NodeId,
     purity: ast::purity,
     priv from_fn: bool
 }
 
 impl PurityState {
-    pub fn function(purity: ast::purity, def: ast::node_id) -> PurityState {
+    pub fn function(purity: ast::purity, def: ast::NodeId) -> PurityState {
         PurityState { def: def, purity: purity, from_fn: true }
     }
 
@@ -203,8 +203,8 @@ impl PurityState {
 
             purity => {
                 let (purity, def) = match blk.rules {
-                    ast::unsafe_blk => (ast::unsafe_fn, blk.id),
-                    ast::default_blk => (purity, self.def),
+                    ast::UnsafeBlock => (ast::unsafe_fn, blk.id),
+                    ast::DefaultBlock => (purity, self.def),
                 };
                 PurityState{ def: def,
                              purity: purity,
@@ -247,7 +247,7 @@ pub struct FnCtxt {
     // inference selects the ultimate value.  Finally, borrowck is
     // charged with guaranteeing that the value whose address was taken
     // can actually be made to live as long as it needs to live.
-    region_lb: ast::node_id,
+    region_lb: ast::NodeId,
 
     // Says whether we're inside a for loop, in a do block
     // or neither. Helps with error messages involving the
@@ -276,7 +276,7 @@ pub fn blank_inherited(ccx: @mut CrateCtxt) -> @inherited {
 // Used by check_const and check_enum_variants
 pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
                      rty: ty::t,
-                     region_bnd: ast::node_id)
+                     region_bnd: ast::NodeId)
                   -> @mut FnCtxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
@@ -314,7 +314,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
-                     id: ast::node_id,
+                     id: ast::NodeId,
                      self_info: Option<SelfInfo>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
     match ty::get(fty).sty {
@@ -338,7 +338,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 purity: ast::purity,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
-                id: ast::node_id,
+                id: ast::NodeId,
                 body: &ast::Block,
                 fn_kind: FnKind,
                 inherited_isr: isr_alist,
@@ -444,7 +444,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                      opt_self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
 
-        let assign: @fn(ast::node_id, Option<ty::t>) = |nid, ty_opt| {
+        let assign: @fn(ast::NodeId, Option<ty::t>) = |nid, ty_opt| {
             match ty_opt {
                 None => {
                     // infer the variable's type
@@ -526,7 +526,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         // Don't descend into fns and items
         fn visit_fn(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
                     _body: &ast::Block, _sp: span,
-                    _id: ast::node_id, (_t,_v): ((), visit::vt<()>)) {
+                    _id: ast::NodeId, (_t,_v): ((), visit::vt<()>)) {
         }
         fn visit_item(_i: @ast::item, (_e,_v): ((), visit::vt<()>)) { }
 
@@ -583,7 +583,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt, id: ast::node_id, span: span) {
+pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: span) {
     let tcx = ccx.tcx;
 
     // Check that the class is instantiable
@@ -732,7 +732,7 @@ impl FnCtxt {
         }
     }
 
-    pub fn local_ty(&self, span: span, nid: ast::node_id) -> ty::t {
+    pub fn local_ty(&self, span: span, nid: ast::NodeId) -> ty::t {
         match self.inh.locals.find(&nid) {
             Some(&t) => t,
             None => {
@@ -748,13 +748,13 @@ impl FnCtxt {
     }
 
     #[inline]
-    pub fn write_ty(&self, node_id: ast::node_id, ty: ty::t) {
+    pub fn write_ty(&self, node_id: ast::NodeId, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
 
-    pub fn write_substs(&self, node_id: ast::node_id, substs: ty::substs) {
+    pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
             debug!("write_substs(%d, %s) in fcx %s",
                    node_id,
@@ -765,7 +765,7 @@ impl FnCtxt {
     }
 
     pub fn write_ty_substs(&self,
-                           node_id: ast::node_id,
+                           node_id: ast::NodeId,
                            ty: ty::t,
                            substs: ty::substs) {
         let ty = ty::subst(self.tcx(), &substs, ty);
@@ -774,7 +774,7 @@ impl FnCtxt {
     }
 
     pub fn write_autoderef_adjustment(&self,
-                                      node_id: ast::node_id,
+                                      node_id: ast::NodeId,
                                       derefs: uint) {
         if derefs == 0 { return; }
         self.write_adjustment(
@@ -786,19 +786,19 @@ impl FnCtxt {
     }
 
     pub fn write_adjustment(&self,
-                            node_id: ast::node_id,
+                            node_id: ast::NodeId,
                             adj: @ty::AutoAdjustment) {
         debug!("write_adjustment(node_id=%?, adj=%?)", node_id, adj);
         self.inh.adjustments.insert(node_id, adj);
     }
 
-    pub fn write_nil(&self, node_id: ast::node_id) {
+    pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_nil());
     }
-    pub fn write_bot(&self, node_id: ast::node_id) {
+    pub fn write_bot(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_bot());
     }
-    pub fn write_error(@mut self, node_id: ast::node_id) {
+    pub fn write_error(@mut self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_err());
     }
 
@@ -820,7 +820,7 @@ impl FnCtxt {
         }
     }
 
-    pub fn node_ty(&self, id: ast::node_id) -> ty::t {
+    pub fn node_ty(&self, id: ast::NodeId) -> ty::t {
         match self.inh.node_types.find(&id) {
             Some(&t) => t,
             None => {
@@ -834,7 +834,7 @@ impl FnCtxt {
         }
     }
 
-    pub fn node_ty_substs(&self, id: ast::node_id) -> ty::substs {
+    pub fn node_ty_substs(&self, id: ast::NodeId) -> ty::substs {
         match self.inh.node_type_substs.find(&id) {
             Some(ts) => (*ts).clone(),
             None => {
@@ -849,7 +849,7 @@ impl FnCtxt {
     }
 
     pub fn opt_node_ty_substs(&self,
-                              id: ast::node_id,
+                              id: ast::NodeId,
                               f: &fn(&ty::substs) -> bool)
                               -> bool {
         match self.inh.node_type_substs.find(&id) {
@@ -913,7 +913,7 @@ impl FnCtxt {
         infer::mk_subr(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
-    pub fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R)
+    pub fn with_region_lb<R>(@mut self, lb: ast::NodeId, f: &fn() -> R)
                              -> R {
         let old_region_lb = self.region_lb;
         self.region_lb = lb;
@@ -1308,7 +1308,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_assignment(fcx: @mut FnCtxt,
                         lhs: @ast::expr,
                         rhs: @ast::expr,
-                        id: ast::node_id) {
+                        id: ast::NodeId) {
         check_expr(fcx, lhs);
         let lhs_type = fcx.expr_ty(lhs);
         check_expr_has_type(fcx, rhs, lhs_type);
@@ -1338,7 +1338,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: @mut FnCtxt,
-                  callee_id: ast::node_id,
+                  callee_id: ast::NodeId,
                   call_expr: @ast::expr,
                   f: @ast::expr,
                   args: &[@ast::expr],
@@ -1400,7 +1400,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // Checks a method call.
     fn check_method_call(fcx: @mut FnCtxt,
-                         callee_id: ast::node_id,
+                         callee_id: ast::NodeId,
                          expr: @ast::expr,
                          rcvr: @ast::expr,
                          method_name: ast::ident,
@@ -1463,7 +1463,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        cond_expr: @ast::expr,
                        then_blk: &ast::Block,
                        opt_else_expr: Option<@ast::expr>,
-                       id: ast::node_id,
+                       id: ast::NodeId,
                        sp: span,
                        expected: Option<ty::t>) {
         check_expr_has_type(fcx, cond_expr, ty::mk_bool());
@@ -1499,7 +1499,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn lookup_op_method(fcx: @mut FnCtxt,
-                        callee_id: ast::node_id,
+                        callee_id: ast::NodeId,
                         op_ex: @ast::expr,
                         self_ex: @ast::expr,
                         self_t: ty::t,
@@ -1537,7 +1537,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // could be either a expr_binop or an expr_assign_binop
     fn check_binop(fcx: @mut FnCtxt,
-                   callee_id: ast::node_id,
+                   callee_id: ast::NodeId,
                    expr: @ast::expr,
                    op: ast::binop,
                    lhs: @ast::expr,
@@ -1625,7 +1625,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_binop(fcx: @mut FnCtxt,
-                        callee_id: ast::node_id,
+                        callee_id: ast::NodeId,
                         ex: @ast::expr,
                         lhs_expr: @ast::expr,
                         lhs_resolved_t: ty::t,
@@ -1667,7 +1667,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
-                       callee_id: ast::node_id,
+                       callee_id: ast::NodeId,
                        op_str: &str,
                        mname: &str,
                        ex: @ast::expr,
@@ -1874,7 +1874,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_struct_or_variant_fields(fcx: @mut FnCtxt,
                                       span: span,
                                       class_id: ast::def_id,
-                                      node_id: ast::node_id,
+                                      node_id: ast::NodeId,
                                       substitutions: ty::substs,
                                       field_types: &[ty::field_ty],
                                       ast_fields: &[ast::Field],
@@ -1963,7 +1963,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_struct_constructor(fcx: @mut FnCtxt,
-                                id: ast::node_id,
+                                id: ast::NodeId,
                                 span: codemap::span,
                                 class_id: ast::def_id,
                                 fields: &[ast::Field],
@@ -1975,7 +1975,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let type_parameter_count;
         let region_parameterized;
         let raw_type;
-        if class_id.crate == ast::local_crate {
+        if class_id.crate == ast::LOCAL_CRATE {
             region_parameterized =
                 tcx.region_paramd_items.find(&class_id.node).
                     map_consume(|x| *x);
@@ -2052,7 +2052,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_struct_enum_variant(fcx: @mut FnCtxt,
-                                 id: ast::node_id,
+                                 id: ast::NodeId,
                                  span: codemap::span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
@@ -2064,7 +2064,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let type_parameter_count;
         let region_parameterized;
         let raw_type;
-        if enum_id.crate == ast::local_crate {
+        if enum_id.crate == ast::LOCAL_CRATE {
             region_parameterized =
                 tcx.region_paramd_items.find(&enum_id.node).map_consume(|x| *x);
             match tcx.items.find(&enum_id.node) {
@@ -2897,7 +2897,7 @@ pub fn require_integral(fcx: @mut FnCtxt, sp: span, t: ty::t) {
 }
 
 pub fn check_decl_initializer(fcx: @mut FnCtxt,
-                              nid: ast::node_id,
+                              nid: ast::NodeId,
                               init: @ast::expr)
                             {
     let local_ty = fcx.local_ty(init.span, nid);
@@ -3062,7 +3062,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
 pub fn check_const(ccx: @mut CrateCtxt,
                    sp: span,
                    e: @ast::expr,
-                   id: ast::node_id) {
+                   id: ast::NodeId) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, rty, e.id);
     let declty = fcx.ccx.tcx.tcache.get(&local_def(id)).ty;
@@ -3093,7 +3093,7 @@ pub fn check_const_with_ty(fcx: @mut FnCtxt,
 /// is representable, but not instantiable.
 pub fn check_instantiable(tcx: ty::ctxt,
                           sp: span,
-                          item_id: ast::node_id) {
+                          item_id: ast::NodeId) {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, fmt!("this type cannot be instantiated \
@@ -3103,7 +3103,7 @@ pub fn check_instantiable(tcx: ty::ctxt,
     }
 }
 
-pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
+pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::NodeId) {
     let t = ty::node_id_to_type(tcx, id);
     if ty::type_needs_subst(t) {
         tcx.sess.span_err(sp, "SIMD vector cannot be generic");
@@ -3135,10 +3135,10 @@ pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
 pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            sp: span,
                            vs: &[ast::variant],
-                           id: ast::node_id) {
+                           id: ast::NodeId) {
     fn do_check(ccx: @mut CrateCtxt,
                 vs: &[ast::variant],
-                id: ast::node_id)
+                id: ast::NodeId)
                 -> ~[@ty::VariantInfo] {
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
@@ -3226,7 +3226,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_def(fcx: @mut FnCtxt, sp: span, id: ast::node_id) -> ast::def {
+pub fn lookup_def(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) -> ast::def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
 
@@ -3302,7 +3302,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         span: span,
-                        node_id: ast::node_id) {
+                        node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
@@ -3427,7 +3427,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: &ast::Block) -> bool {
+pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {

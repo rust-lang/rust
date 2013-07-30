@@ -509,12 +509,12 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
     if !substs.is_empty() {
-        let did = if did.crate != ast::local_crate {
+        let did = if did.crate != ast::LOCAL_CRATE {
             inline::maybe_instantiate_inline(ccx, did)
         } else {
             did
         };
-        assert_eq!(did.crate, ast::local_crate);
+        assert_eq!(did.crate, ast::LOCAL_CRATE);
         let tsubsts = ty::substs {regions: ty::ErasedRegions,
                                   self_ty: None,
                                   tps: /*bad*/ substs.to_owned() };
@@ -526,7 +526,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                                                     None);
 
         val
-    } else if did.crate == ast::local_crate {
+    } else if did.crate == ast::LOCAL_CRATE {
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx;
@@ -1012,7 +1012,7 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     return pad_bcx.llbb;
 }
 
-pub fn find_bcx_for_scope(bcx: @mut Block, scope_id: ast::node_id) -> @mut Block {
+pub fn find_bcx_for_scope(bcx: @mut Block, scope_id: ast::NodeId) -> @mut Block {
     let mut bcx_sid = bcx;
     let mut cur_scope = bcx_sid.scope;
     loop {
@@ -1617,7 +1617,7 @@ pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> Val
 pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         path: path,
                         llfndecl: ValueRef,
-                        id: ast::node_id,
+                        id: ast::NodeId,
                         output_type: ty::t,
                         skip_retptr: bool,
                         param_substs: Option<@param_substs>,
@@ -1838,7 +1838,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      llfndecl: ValueRef,
                      self_arg: self_arg,
                      param_substs: Option<@param_substs>,
-                     id: ast::node_id,
+                     id: ast::NodeId,
                      attributes: &[ast::Attribute],
                      output_type: ty::t,
                      maybe_load_env: &fn(@mut FunctionContext),
@@ -1919,7 +1919,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 llfndecl: ValueRef,
                 self_arg: self_arg,
                 param_substs: Option<@param_substs>,
-                id: ast::node_id,
+                id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
 
     let the_path_str = path_str(ccx.sess, path);
@@ -1976,7 +1976,7 @@ fn insert_synthetic_type_entries(bcx: @mut Block,
 }
 
 pub fn trans_enum_variant(ccx: @mut CrateContext,
-                          _enum_id: ast::node_id,
+                          _enum_id: ast::NodeId,
                           variant: &ast::variant,
                           args: &[ast::variant_arg],
                           disr: uint,
@@ -1995,7 +1995,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
 
 pub fn trans_tuple_struct(ccx: @mut CrateContext,
                           fields: &[@ast::struct_field],
-                          ctor_id: ast::node_id,
+                          ctor_id: ast::NodeId,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_tuple_struct");
@@ -2010,23 +2010,23 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
 }
 
 trait IdAndTy {
-    fn id(&self) -> ast::node_id;
+    fn id(&self) -> ast::NodeId;
     fn ty<'a>(&'a self) -> &'a ast::Ty;
 }
 
 impl IdAndTy for ast::variant_arg {
-    fn id(&self) -> ast::node_id { self.id }
+    fn id(&self) -> ast::NodeId { self.id }
     fn ty<'a>(&'a self) -> &'a ast::Ty { &self.ty }
 }
 
 impl IdAndTy for @ast::struct_field {
-    fn id(&self) -> ast::node_id { self.node.id }
+    fn id(&self) -> ast::NodeId { self.node.id }
     fn ty<'a>(&'a self) -> &'a ast::Ty { &self.node.ty }
 }
 
 pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     ccx: @mut CrateContext,
-    ctor_id: ast::node_id,
+    ctor_id: ast::NodeId,
     args: &[A],
     disr: uint,
     param_substs: Option<@param_substs>,
@@ -2104,7 +2104,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 }
 
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
-                      id: ast::node_id, vi: @~[@ty::VariantInfo],
+                      id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for enum_definition.variants.iter().advance |variant| {
         let disr_val = vi[*i].disr_val;
@@ -2245,7 +2245,7 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
                    sym: ~str,
-                   node_id: ast::node_id)
+                   node_id: ast::NodeId)
                 -> ValueRef {
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     register_fn_full(ccx, sp, sym, node_id, t)
@@ -2254,7 +2254,7 @@ pub fn register_fn(ccx: @mut CrateContext,
 pub fn register_fn_full(ccx: @mut CrateContext,
                         sp: span,
                         sym: ~str,
-                        node_id: ast::node_id,
+                        node_id: ast::NodeId,
                         node_type: ty::t)
                      -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
@@ -2265,7 +2265,7 @@ pub fn register_fn_full(ccx: @mut CrateContext,
 pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
                           sym: ~str,
-                          node_id: ast::node_id,
+                          node_id: ast::NodeId,
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
@@ -2287,7 +2287,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
     llfn
 }
 
-pub fn is_entry_fn(sess: &Session, node_id: ast::node_id) -> bool {
+pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
     match *sess.entry_fn {
         Some((entry_id, _)) => node_id == entry_id,
         None => false
@@ -2367,7 +2367,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.tcx.sess.fatal(s); }
                 };
-                let start_fn = if start_def_id.crate == ast::local_crate {
+                let start_fn = if start_def_id.crate == ast::LOCAL_CRATE {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
@@ -2421,7 +2421,7 @@ pub fn fill_fn_pair(bcx: @mut Block, pair: ValueRef, llfn: ValueRef,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-pub fn item_path(ccx: &CrateContext, id: &ast::node_id) -> path {
+pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
     match ccx.tcx.items.get_copy(id) {
         ast_map::node_item(i, p) =>
             vec::append((*p).clone(), [path_name(i.ident)]),
@@ -2438,7 +2438,7 @@ fn exported_name(ccx: @mut CrateContext, path: path, ty: ty::t, attrs: &[ast::At
     }
 }
 
-pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
+pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`%?`)", id);
 
     let val = ccx.item_vals.find_copy(&id);
@@ -2601,7 +2601,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
 }
 
 pub fn register_method(ccx: @mut CrateContext,
-                       id: ast::node_id,
+                       id: ast::NodeId,
                        path: @ast_map::path,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
@@ -2623,7 +2623,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
     match it.node {
       ast::item_enum(ref enum_definition, _) => {
         let vi = ty::enum_variants(ccx.tcx,
-                                   ast::def_id { crate: ast::local_crate,
+                                   ast::def_id { crate: ast::LOCAL_CRATE,
                                                  node: it.id });
         let mut i = 0;
         let path = item_path(ccx, &it.id);
@@ -2870,7 +2870,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
 
     let llannihilatefn = match ccx.tcx.lang_items.annihilate_fn() {
         Some(annihilate_def_id) => {
-            if annihilate_def_id.crate == ast::local_crate {
+            if annihilate_def_id.crate == ast::LOCAL_CRATE {
                 get_item_val(ccx, annihilate_def_id.node)
             } else {
                 let annihilate_fn_type = csearch::get_type(ccx.tcx,

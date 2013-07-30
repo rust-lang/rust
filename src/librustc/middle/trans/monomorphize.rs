@@ -42,7 +42,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
-                      ref_id: Option<ast::node_id>)
+                      ref_id: Option<ast::NodeId>)
     -> (ValueRef, bool)
 {
     debug!("monomorphic_fn(\

@@ -36,7 +36,7 @@ use middle::trans::type_::Type;
 pub fn root_and_write_guard(datum: &Datum,
                             mut bcx: @mut Block,
                             span: span,
-                            expr_id: ast::node_id,
+                            expr_id: ast::NodeId,
                             derefs: uint) -> @mut Block {
     let key = root_map_key { id: expr_id, derefs: derefs };
     debug!("write_guard::root_and_write_guard(key=%?)", key);

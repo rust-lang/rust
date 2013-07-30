@@ -101,7 +101,7 @@ use std::uint;
 use std::vec;
 use extra::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
-use syntax::ast::{sty_uniq, sty_static, node_id};
+use syntax::ast::{sty_uniq, sty_static, NodeId};
 use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
@@ -124,7 +124,7 @@ pub fn lookup(
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: @ast::expr,                   // The expression `a.b(...)`.
         self_expr: @ast::expr,              // The expression `a`.
-        callee_id: node_id,                 /* Where to store `a.b`'s type,
+        callee_id: NodeId,                  /* Where to store `a.b`'s type,
                                              * also the scope of the call */
         m_name: ast::ident,                 // The ident `b`.
         self_ty: ty::t,                     // The type of `a`.
@@ -157,7 +157,7 @@ pub struct LookupContext<'self> {
     fcx: @mut FnCtxt,
     expr: @ast::expr,
     self_expr: @ast::expr,
-    callee_id: node_id,
+    callee_id: NodeId,
     m_name: ast::ident,
     supplied_tps: &'self [ty::t],
     impl_dups: @mut HashSet<def_id>,
@@ -1147,7 +1147,7 @@ impl<'self> LookupContext<'self> {
     }
 
     pub fn report_static_candidate(&self, idx: uint, did: def_id) {
-        let span = if did.crate == ast::local_crate {
+        let span = if did.crate == ast::LOCAL_CRATE {
             match self.tcx().items.find(&did.node) {
               Some(&ast_map::node_method(m, _, _)) => m.span,
               _ => fail!("report_static_candidate: bad item %?", did)

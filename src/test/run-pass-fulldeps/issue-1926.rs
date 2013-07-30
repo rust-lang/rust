@@ -32,18 +32,18 @@ fn new_parse_sess() -> parser::parse_sess {
 
 trait fake_ext_ctxt {
     fn session() -> fake_session;
-    fn cfg() -> ast::Crate_cfg;
+    fn cfg() -> ast::CrateConfig;
     fn parse_sess() -> parser::parse_sess;
 }
 
-type fake_options = {cfg: ast::Crate_cfg};
+type fake_options = {cfg: ast::CrateConfig};
 
 type fake_session = {opts: @fake_options,
                      parse_sess: parser::parse_sess};
 
 impl of fake_ext_ctxt for fake_session {
     fn session() -> fake_session {self}
-    fn cfg() -> ast::Crate_cfg { self.opts.cfg }
+    fn cfg() -> ast::CrateConfig { self.opts.cfg }
     fn parse_sess() -> parser::parse_sess { self.parse_sess }
 }
 

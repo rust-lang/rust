@@ -106,7 +106,7 @@ fn fold_crate(fold: &fold::Fold<PageChan>, doc: doc::CrateDoc)
 fn fold_mod(fold: &fold::Fold<PageChan>, doc: doc::ModDoc) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    if doc.id() != ast::crate_node_id {
+    if doc.id() != ast::CRATE_NODE_ID {
 
         let doc = strip_mod(doc.clone());
         let page = doc::ItemPage(doc::ModTag(doc));

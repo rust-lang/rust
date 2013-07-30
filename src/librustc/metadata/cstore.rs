@@ -43,8 +43,8 @@ pub struct CStore {
     intr: @ident_interner
 }
 
-// Map from node_id's of local extern mod statements to crate numbers
-type extern_mod_crate_map = HashMap<ast::node_id, ast::CrateNum>;
+// Map from NodeId's of local extern mod statements to crate numbers
+type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 pub fn mk_cstore(intr: @ident_interner) -> CStore {
     return CStore {
@@ -125,13 +125,13 @@ pub fn get_used_link_args<'a>(cstore: &'a CStore) -> &'a [@str] {
 }
 
 pub fn add_extern_mod_stmt_cnum(cstore: &mut CStore,
-                                emod_id: ast::node_id,
+                                emod_id: ast::NodeId,
                                 cnum: ast::CrateNum) {
     cstore.extern_mod_crate_map.insert(emod_id, cnum);
 }
 
 pub fn find_extern_mod_stmt_cnum(cstore: &CStore,
-                                 emod_id: ast::node_id)
+                                 emod_id: ast::NodeId)
                        -> Option<ast::CrateNum> {
     cstore.extern_mod_crate_map.find(&emod_id).map_consume(|x| *x)
 }

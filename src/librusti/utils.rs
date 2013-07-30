@@ -14,7 +14,7 @@ use syntax::print::pp;
 use syntax::print::pprust;
 use syntax::parse::token;
 
-pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::node_id)) {
+pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
     use syntax::visit;
 
     let vt = visit::mk_simple_visitor(

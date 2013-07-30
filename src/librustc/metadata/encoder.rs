@@ -58,12 +58,12 @@ pub struct EncodeParams<'self> {
     diag: @span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'self HashMap<ast::node_id, ~str>,
-    discrim_symbols: &'self HashMap<ast::node_id, @str>,
+    item_symbols: &'self HashMap<ast::NodeId, ~str>,
+    discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     link_meta: &'self LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
-    reachable: @mut HashSet<ast::node_id>,
+    reachable: @mut HashSet<ast::NodeId>,
 }
 
 struct Stats {
@@ -86,16 +86,16 @@ pub struct EncodeContext<'self> {
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'self HashMap<ast::node_id, ~str>,
-    discrim_symbols: &'self HashMap<ast::node_id, @str>,
+    item_symbols: &'self HashMap<ast::NodeId, ~str>,
+    discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     link_meta: &'self LinkMeta,
     cstore: &'self cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
     type_abbrevs: abbrev_map,
-    reachable: @mut HashSet<ast::node_id>,
+    reachable: @mut HashSet<ast::NodeId>,
 }
 
-pub fn reachable(ecx: &EncodeContext, id: node_id) -> bool {
+pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
     ecx.reachable.contains(&id)
 }
 
@@ -275,7 +275,7 @@ fn encode_method_fty(ecx: &EncodeContext,
 
 fn encode_symbol(ecx: &EncodeContext,
                  ebml_w: &mut writer::Encoder,
-                 id: node_id) {
+                 id: NodeId) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     match ecx.item_symbols.find(&id) {
         Some(x) => {
@@ -292,7 +292,7 @@ fn encode_symbol(ecx: &EncodeContext,
 
 fn encode_discriminant(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
-                       id: node_id) {
+                       id: NodeId) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     ebml_w.writer.write(ecx.discrim_symbols.get_copy(&id).as_bytes());
     ebml_w.end_tag();
@@ -316,7 +316,7 @@ fn encode_parent_item(ebml_w: &mut writer::Encoder, id: def_id) {
 
 fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
-                            id: node_id,
+                            id: NodeId,
                             variants: &[variant],
                             path: &[ast_map::path_elt],
                             index: @mut ~[entry<int>],
@@ -326,7 +326,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
-                               ast::def_id { crate: local_crate, node: id });
+                               ast::def_id { crate: LOCAL_CRATE, node: id });
     for variants.iter().advance |variant| {
         let def_id = local_def(variant.node.id);
         index.push(entry {val: variant.node.id, pos: ebml_w.writer.tell()});
@@ -481,7 +481,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For enums, iterates through the node IDs of the variants.
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: @item, callback: &fn(node_id) -> bool)
+fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
                           -> bool {
     let mut continue = true;
     match item.node {
@@ -512,7 +512,7 @@ fn each_auxiliary_node_id(item: @item, callback: &fn(node_id) -> bool)
 
 fn encode_reexports(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
-                    id: node_id,
+                    id: NodeId,
                     path: &[ast_map::path_elt]) {
     debug!("(encoding info for module) encoding reexports for %d", id);
     match ecx.reexports2.find(&id) {
@@ -542,7 +542,7 @@ fn encode_reexports(ecx: &EncodeContext,
 fn encode_info_for_mod(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        md: &_mod,
-                       id: node_id,
+                       id: NodeId,
                        path: &[ast_map::path_elt],
                        name: ident,
                        vis: visibility) {
@@ -710,7 +710,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ebml_w: &mut writer::Encoder,
                                path: &[ast_map::path_elt],
                                name: ast::ident,
-                               ctor_id: node_id,
+                               ctor_id: NodeId,
                                index: @mut ~[entry<int>]) {
     index.push(entry { val: ctor_id, pos: ebml_w.writer.tell() });
 
@@ -755,7 +755,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
                           m: &ty::Method,
                           impl_path: &[ast_map::path_elt],
                           is_default_impl: bool,
-                          parent_id: node_id,
+                          parent_id: NodeId,
                           ast_method_opt: Option<@method>) {
 
     debug!("encode_info_for_method: %? %s", m.def_id,
@@ -1081,7 +1081,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Now output the method info for each method.
         let r = ty::trait_method_def_ids(tcx, def_id);
         for r.iter().enumerate().advance |(i, &method_def_id)| {
-            assert_eq!(method_def_id.crate, ast::local_crate);
+            assert_eq!(method_def_id.crate, ast::LOCAL_CRATE);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1186,11 +1186,11 @@ fn encode_info_for_items(ecx: &EncodeContext,
                          -> ~[entry<int>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
-    index.push(entry { val: crate_node_id, pos: ebml_w.writer.tell() });
+    index.push(entry { val: CRATE_NODE_ID, pos: ebml_w.writer.tell() });
     encode_info_for_mod(ecx,
                         ebml_w,
                         &crate.module,
-                        crate_node_id,
+                        CRATE_NODE_ID,
                         [],
                         syntax::parse::token::special_idents::invalid,
                         public);
@@ -1458,7 +1458,7 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
         let def_id = match def_id {
             Some(id) => id, None => { loop }
         };
-        if def_id.crate != local_crate {
+        if def_id.crate != LOCAL_CRATE {
             loop;
         }
 

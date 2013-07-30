@@ -18,7 +18,7 @@ use metadata::filesearch;
 use metadata;
 use middle::lint;
 
-use syntax::ast::node_id;
+use syntax::ast::NodeId;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;
 use syntax::diagnostic;
@@ -189,13 +189,13 @@ pub struct Session_ {
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    entry_fn: @mut Option<(node_id, codemap::span)>,
+    entry_fn: @mut Option<(NodeId, codemap::span)>,
     entry_type: @mut Option<EntryFnType>,
     span_diagnostic: @diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
-    lints: @mut HashMap<ast::node_id, ~[(lint::lint, codemap::span, ~str)]>,
+    lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::span, ~str)]>,
 }
 
 pub type Session = @Session_;
@@ -248,7 +248,7 @@ impl Session_ {
     }
     pub fn add_lint(@self,
                     lint: lint::lint,
-                    id: ast::node_id,
+                    id: ast::NodeId,
                     sp: span,
                     msg: ~str) {
         match self.lints.find_mut(&id) {
@@ -257,7 +257,7 @@ impl Session_ {
         }
         self.lints.insert(id, ~[(lint, sp, msg)]);
     }
-    pub fn next_node_id(@self) -> ast::node_id {
+    pub fn next_node_id(@self) -> ast::NodeId {
         return syntax::parse::next_node_id(self.parse_sess);
     }
     pub fn diagnostic(@self) -> @diagnostic::span_handler {

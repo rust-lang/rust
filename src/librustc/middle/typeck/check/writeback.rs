@@ -59,7 +59,7 @@ fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: span, tys: &[ty::t])
     })
 }
 
-fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
+fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
     // Resolve any method map entry
     match fcx.inh.method_map.find(&id) {
         None => {}
@@ -79,7 +79,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     }
 }
 
-fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
+fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
     // Resolve any method map entry
     match fcx.inh.vtable_map.find(&id) {
         None => {}
@@ -113,7 +113,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     }
 }
 
-fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
+fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::NodeId)
                            -> Option<ty::t> {
     let fcx = wbcx.fcx;
     let tcx = fcx.ccx.tcx;
@@ -195,7 +195,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
 
 fn maybe_resolve_type_vars_for_node(wbcx: @mut WbCtxt,
                                     sp: span,
-                                    id: ast::node_id)
+                                    id: ast::NodeId)
                                  -> Option<ty::t> {
     if wbcx.fcx.inh.node_types.contains_key(&id) {
         resolve_type_vars_for_node(wbcx, sp, id)
