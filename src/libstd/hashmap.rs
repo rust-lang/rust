@@ -19,7 +19,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator, Chain};
+use iterator::{Iterator, IteratorUtil, FromIterator, Extendable, Chain};
 use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -618,15 +618,19 @@ impl<K> Iterator<K> for HashSetConsumeIterator<K> {
 }
 
 impl<K: Eq + Hash, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for HashMap<K, V> {
-    pub fn from_iterator(iter: &mut T) -> HashMap<K, V> {
+    fn from_iterator(iter: &mut T) -> HashMap<K, V> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity(lower);
-
-        for iter.advance |(k, v)| {
-            map.insert(k, v);
-        }
-
+        map.extend(iter);
         map
+    }
+}
+
+impl<K: Eq + Hash, V, T: Iterator<(K, V)>> Extendable<(K, V), T> for HashMap<K, V> {
+    fn extend(&mut self, iter: &mut T) {
+        for iter.advance |(k, v)| {
+            self.insert(k, v);
+        }
     }
 }
 
@@ -771,15 +775,19 @@ impl<T:Hash + Eq> HashSet<T> {
 }
 
 impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
-    pub fn from_iterator(iter: &mut T) -> HashSet<K> {
+    fn from_iterator(iter: &mut T) -> HashSet<K> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity(lower);
-
-        for iter.advance |k| {
-            set.insert(k);
-        }
-
+        set.extend(iter);
         set
+    }
+}
+
+impl<K: Eq + Hash, T: Iterator<K>> Extendable<K, T> for HashSet<K> {
+    fn extend(&mut self, iter: &mut T) {
+        for iter.advance |k| {
+            self.insert(k);
+        }
     }
 }
 
