@@ -40,7 +40,9 @@ pub struct Task {
     taskgroup: Option<Taskgroup>,
     death: Death,
     destroyed: bool,
-    coroutine: Option<~Coroutine>
+    coroutine: Option<~Coroutine>,
+    // FIXME(#6874/#7599) use StringRef to save on allocations
+    name: Option<~str>,
 }
 
 pub struct Coroutine {
@@ -90,7 +92,8 @@ impl Task {
             taskgroup: None,
             death: Death::new(),
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start))
+            coroutine: Some(~Coroutine::new(stack_pool, start)),
+            name: None,
         }
     }
 
@@ -109,7 +112,8 @@ impl Task {
             // FIXME(#7544) make watching optional
             death: self.death.new_child(),
             destroyed: false,
-            coroutine: Some(~Coroutine::new(stack_pool, start))
+            coroutine: Some(~Coroutine::new(stack_pool, start)),
+            name: None,
         }
     }
 
