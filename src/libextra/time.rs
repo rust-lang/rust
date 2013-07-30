@@ -260,7 +260,7 @@ impl Tm {
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for needle.bytes_iter().advance |ch| {
+        for needle.byte_iter().advance |ch| {
             if s[i] != ch {
                 return false;
             }
