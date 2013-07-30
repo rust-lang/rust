@@ -601,7 +601,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
     }
 }
 
-pub fn trans_const(ccx: @mut CrateContext, m: ast::mutability, id: ast::node_id) {
+pub fn trans_const(ccx: @mut CrateContext, m: ast::mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);

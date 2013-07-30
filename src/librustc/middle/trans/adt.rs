@@ -106,7 +106,7 @@ pub struct Struct {
  * these, for places in trans where the `ty::t` isn't directly
  * available.
  */
-pub fn represent_node(bcx: @mut Block, node: ast::node_id) -> @Repr {
+pub fn represent_node(bcx: @mut Block, node: ast::NodeId) -> @Repr {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 

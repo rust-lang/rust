@@ -165,7 +165,7 @@ pub fn bound_region_to_str(cx: ctxt,
     }
 }
 
-pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
+pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
     match cx.items.find(&node_id) {
       Some(&ast_map::node_block(ref blk)) => {
         fmt!("<block at %s>",
@@ -643,7 +643,7 @@ impl Repr for ast::def_id {
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
         // and otherwise fallback to just printing the crate/node pair
-        if self.crate == ast::local_crate {
+        if self.crate == ast::LOCAL_CRATE {
             match tcx.items.find(&self.node) {
                 Some(&ast_map::node_item(*)) |
                 Some(&ast_map::node_foreign_item(*)) |

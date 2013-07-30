@@ -24,9 +24,9 @@ use util::ppaux::{UserString};
 
 pub fn gather_decl(bccx: @BorrowckCtxt,
                    move_data: &mut MoveData,
-                   decl_id: ast::node_id,
+                   decl_id: ast::NodeId,
                    _decl_span: span,
-                   var_id: ast::node_id) {
+                   var_id: ast::NodeId) {
     let loan_path = @LpVar(var_id);
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
@@ -49,7 +49,7 @@ pub fn gather_move_from_pat(bccx: @BorrowckCtxt,
 
 fn gather_move_from_expr_or_pat(bccx: @BorrowckCtxt,
                                 move_data: &mut MoveData,
-                                move_id: ast::node_id,
+                                move_id: ast::NodeId,
                                 move_kind: MoveKind,
                                 cmt: mc::cmt) {
     if !check_is_legal_to_move_from(bccx, cmt, cmt) {
@@ -85,10 +85,10 @@ pub fn gather_captures(bccx: @BorrowckCtxt,
 
 pub fn gather_assignment(bccx: @BorrowckCtxt,
                          move_data: &mut MoveData,
-                         assignment_id: ast::node_id,
+                         assignment_id: ast::NodeId,
                          assignment_span: span,
                          assignee_loan_path: @LoanPath,
-                         assignee_id: ast::node_id) {
+                         assignee_id: ast::NodeId) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
                              assignment_id,

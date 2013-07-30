@@ -45,7 +45,7 @@ use std::hashmap::{HashMap, HashSet};
 use std::util;
 
 // Definition mapping
-pub type DefMap = @mut HashMap<node_id,def>;
+pub type DefMap = @mut HashMap<NodeId,def>;
 
 pub struct binding_info {
     span: span,
@@ -56,11 +56,11 @@ pub struct binding_info {
 pub type BindingMap = HashMap<ident,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<node_id,@mut ~[def_id]>;
+pub type TraitMap = HashMap<NodeId,@mut ~[def_id]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @mut HashMap<node_id, ~[Export2]>;
+pub type ExportMap2 = @mut HashMap<NodeId, ~[Export2]>;
 
 pub struct Export2 {
     name: @str,        // The name of the target.
@@ -128,7 +128,7 @@ pub enum Mutability {
 
 pub enum SelfBinding {
     NoSelfBinding,
-    HasSelfBinding(node_id, bool /* is implicit */)
+    HasSelfBinding(NodeId, bool /* is implicit */)
 }
 
 pub type ResolveVisitor = vt<()>;
@@ -163,7 +163,7 @@ impl<T> ResolveResult<T> {
 pub enum TypeParameters<'self> {
     NoTypeParameters,                   //< No type parameters.
     HasTypeParameters(&'self Generics,  //< Type parameters.
-                      node_id,          //< ID of the enclosing item
+                      NodeId,          //< ID of the enclosing item
 
                       // The index to start numbering the type parameters at.
                       // This is zero if this is the outermost set of type
@@ -191,14 +191,14 @@ pub enum RibKind {
 
     // We passed through a function scope at the given node ID. Translate
     // upvars as appropriate.
-    FunctionRibKind(node_id /* func id */, node_id /* body id */),
+    FunctionRibKind(NodeId /* func id */, NodeId /* body id */),
 
     // We passed through an impl or trait and are now in one of its
     // methods. Allow references to ty params that impl or trait
     // binds. Disallow any other upvars (including other ty params that are
     // upvars).
               // parent;   method itself
-    MethodRibKind(node_id, MethodSort),
+    MethodRibKind(NodeId, MethodSort),
 
     // We passed through a function *item* scope. Disallow upvars.
     OpaqueFunctionRibKind,
@@ -210,7 +210,7 @@ pub enum RibKind {
 // Methods can be required or provided. Required methods only occur in traits.
 pub enum MethodSort {
     Required,
-    Provided(node_id)
+    Provided(NodeId)
 }
 
 // The X-ray flag indicates that a context has the X-ray privilege, which
@@ -304,14 +304,14 @@ pub struct ImportDirective {
     module_path: ~[ident],
     subclass: @ImportDirectiveSubclass,
     span: span,
-    id: node_id,
+    id: NodeId,
 }
 
 pub fn ImportDirective(privacy: Privacy,
                        module_path: ~[ident],
                        subclass: @ImportDirectiveSubclass,
                        span: span,
-                       id: node_id)
+                       id: NodeId)
                     -> ImportDirective {
     ImportDirective {
         privacy: privacy,
@@ -352,17 +352,17 @@ pub struct ImportResolution {
     value_target: Option<Target>,
     /// The source node of the `use` directive leading to the value target
     /// being non-none
-    value_id: node_id,
+    value_id: NodeId,
 
     /// The type that this `use` directive names, if there is one.
     type_target: Option<Target>,
     /// The source node of the `use` directive leading to the type target
     /// being non-none
-    type_id: node_id,
+    type_id: NodeId,
 }
 
 pub fn ImportResolution(privacy: Privacy,
-                        id: node_id) -> ImportResolution {
+                        id: NodeId) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
         type_id: id,
@@ -382,7 +382,7 @@ impl ImportResolution {
         }
     }
 
-    fn id(&self, namespace: Namespace) -> node_id {
+    fn id(&self, namespace: Namespace) -> NodeId {
         match namespace {
             TypeNS  => self.type_id,
             ValueNS => self.value_id,
@@ -394,7 +394,7 @@ impl ImportResolution {
 pub enum ParentLink {
     NoParentLink,
     ModuleParentLink(@mut Module, ident),
-    BlockParentLink(@mut Module, node_id)
+    BlockParentLink(@mut Module, NodeId)
 }
 
 /// The type of module this is.
@@ -434,7 +434,7 @@ pub struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: @mut HashMap<node_id,@mut Module>,
+    anonymous_children: @mut HashMap<NodeId,@mut Module>,
 
     // The status of resolving each import in this module.
     import_resolutions: @mut HashMap<ident, @mut ImportResolution>,
@@ -868,7 +868,7 @@ pub struct Resolver {
     export_map2: ExportMap2,
     trait_map: TraitMap,
 
-    used_imports: HashSet<node_id>,
+    used_imports: HashSet<NodeId>,
 }
 
 impl Resolver {
@@ -1903,7 +1903,7 @@ impl Resolver {
                                   module_path: ~[ident],
                                   subclass: @ImportDirectiveSubclass,
                                   span: span,
-                                  id: node_id) {
+                                  id: NodeId) {
         let directive = @ImportDirective(privacy, module_path,
                                          subclass, span, id);
         module_.imports.push(directive);
@@ -2428,7 +2428,7 @@ impl Resolver {
                                privacy: Privacy,
                                module_: @mut Module,
                                containing_module: @mut Module,
-                               id: node_id)
+                               id: NodeId)
                                -> ResolveResult<()> {
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
@@ -3145,7 +3145,7 @@ impl Resolver {
         // exports for nonlocal crates.
 
         match module_.def_id {
-            Some(def_id) if def_id.crate == local_crate => {
+            Some(def_id) if def_id.crate == LOCAL_CRATE => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `%s`",
@@ -3791,7 +3791,7 @@ impl Resolver {
     }
 
     pub fn resolve_type_parameter_bound(@mut self,
-                                        id: node_id,
+                                        id: NodeId,
                                         type_parameter_bound: &TyParamBound,
                                         visitor: ResolveVisitor) {
         match *type_parameter_bound {
@@ -3803,7 +3803,7 @@ impl Resolver {
     }
 
     pub fn resolve_trait_reference(@mut self,
-                                   id: node_id,
+                                   id: NodeId,
                                    trait_reference: &trait_ref,
                                    visitor: ResolveVisitor,
                                    reference_type: TraitReferenceType) {
@@ -3828,7 +3828,7 @@ impl Resolver {
     }
 
     pub fn resolve_struct(@mut self,
-                          id: node_id,
+                          id: NodeId,
                           generics: &Generics,
                           fields: &[@struct_field],
                           visitor: ResolveVisitor) {
@@ -3896,7 +3896,7 @@ impl Resolver {
     }
 
     pub fn resolve_implementation(@mut self,
-                                  id: node_id,
+                                  id: NodeId,
                                   generics: &Generics,
                                   opt_trait_reference: &Option<trait_ref>,
                                   self_type: &Ty,
@@ -3976,7 +3976,7 @@ impl Resolver {
                           module_: &_mod,
                           span: span,
                           _name: ident,
-                          id: node_id,
+                          id: NodeId,
                           visitor: ResolveVisitor) {
         // Write the implementations in scope into the module metadata.
         debug!("(resolving module) resolving module ID %d", id);
@@ -4192,7 +4192,7 @@ impl Resolver {
                            mutability: Mutability,
                            // Maps idents to the node ID for the (outermost)
                            // pattern that binds them
-                           bindings_list: Option<@mut HashMap<ident,node_id>>,
+                           bindings_list: Option<@mut HashMap<ident,NodeId>>,
                            visitor: ResolveVisitor) {
         let pat_id = pattern.id;
         for walk_pat(pattern) |pattern| {
@@ -4470,7 +4470,7 @@ impl Resolver {
     /// If `check_ribs` is true, checks the local definitions first; i.e.
     /// doesn't skip straight to the containing module.
     pub fn resolve_path(@mut self,
-                        id: node_id,
+                        id: NodeId,
                         path: &Path,
                         namespace: Namespace,
                         check_ribs: bool,
@@ -5250,7 +5250,7 @@ impl Resolver {
     }
 
     pub fn add_fixed_trait_for_expr(@mut self,
-                                    expr_id: node_id,
+                                    expr_id: NodeId,
                                     trait_id: Option<def_id>) {
         match trait_id {
             Some(trait_id) => {
@@ -5260,7 +5260,7 @@ impl Resolver {
         }
     }
 
-    pub fn record_def(@mut self, node_id: node_id, def: def) {
+    pub fn record_def(@mut self, node_id: NodeId, def: def) {
         debug!("(recording def) recording %? for %?", def, node_id);
         self.def_map.insert(node_id, def);
     }

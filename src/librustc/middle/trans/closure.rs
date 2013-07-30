@@ -359,8 +359,8 @@ pub fn trans_expr_fn(bcx: @mut Block,
                      sigil: ast::Sigil,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
-                     outer_id: ast::node_id,
-                     user_id: ast::node_id,
+                     outer_id: ast::NodeId,
+                     user_id: ast::NodeId,
                      is_loop_body: Option<Option<ValueRef>>,
                      dest: expr::Dest) -> @mut Block {
     /*!

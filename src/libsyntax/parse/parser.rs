@@ -17,9 +17,9 @@ use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, Attribute, bind_by_ref, bind_infer};
 use ast::{bitand, bitor, bitxor, Block};
-use ast::{blk_check_mode, box};
+use ast::{BlockCheckMode, box};
 use ast::{Crate, CrateConfig, decl, decl_item};
-use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
+use ast::{decl_local, DefaultBlock, deref, div, enum_def, explicit_self};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_do_body};
@@ -39,7 +39,7 @@ use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, mul, mutability};
-use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
+use ast::{named_field, neg, NodeId, noreturn, not, pat, pat_box, pat_enum};
 use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct};
 use ast::{pat_tup, pat_uniq, pat_wild, private};
 use ast::{rem, required};
@@ -49,11 +49,11 @@ use ast::{struct_variant_kind, subtract};
 use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
-use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
-use ast::{ty_infer, ty_method};
+use ast::{TypeField, ty_fixed_length_vec, ty_closure, ty_bare_fn};
+use ast::{ty_infer, TypeMethod};
 use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, uniq};
-use ast::{unnamed_field, unsafe_blk, unsafe_fn, view_item};
+use ast::{unnamed_field, UnsafeBlock, unsafe_fn, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::visibility;
@@ -645,7 +645,7 @@ impl Parser {
     pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
-    pub fn get_id(&self) -> node_id { next_node_id(self.sess) }
+    pub fn get_id(&self) -> NodeId { next_node_id(self.sess) }
 
     pub fn id_to_str(&self, id: ident) -> @str {
         get_ident_interner().get(id.name)
@@ -837,7 +837,7 @@ impl Parser {
                 debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
-                required(ty_method {
+                required(TypeMethod {
                     ident: ident,
                     attrs: attrs,
                     purity: pur,
@@ -889,20 +889,18 @@ impl Parser {
 
     // parse [mut/const/imm] ID : TY
     // now used only by obsolete record syntax parser...
-    pub fn parse_ty_field(&self) -> ty_field {
+    pub fn parse_ty_field(&self) -> TypeField {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = ~self.parse_ty(false);
-        spanned(
-            lo,
-            ty.span.hi,
-            ast::ty_field_ {
-                ident: id,
-                mt: ast::mt { ty: ty, mutbl: mutbl },
-            }
-        )
+        let hi = ty.span.hi;
+        ast::TypeField {
+            ident: id,
+            mt: ast::mt { ty: ty, mutbl: mutbl },
+            span: mk_sp(lo, hi),
+        }
     }
 
     // parse optional return type [ -> TY ] in function decl
@@ -1614,7 +1612,7 @@ impl Parser {
             }
         } else if *self.token == token::LBRACE {
             self.bump();
-            let blk = self.parse_block_tail(lo, default_blk);
+            let blk = self.parse_block_tail(lo, DefaultBlock);
             return self.mk_expr(blk.span.lo, blk.span.hi,
                                  expr_block(blk));
         } else if token::is_bar(&*self.token) {
@@ -1643,7 +1641,7 @@ impl Parser {
         } else if self.eat_keyword(keywords::Match) {
             return self.parse_match_expr();
         } else if self.eat_keyword(keywords::Unsafe) {
-            return self.parse_block_expr(lo, unsafe_blk);
+            return self.parse_block_expr(lo, UnsafeBlock);
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
@@ -1779,7 +1777,7 @@ impl Parser {
     }
 
     // parse a block or unsafe block
-    pub fn parse_block_expr(&self, lo: BytePos, blk_mode: blk_check_mode)
+    pub fn parse_block_expr(&self, lo: BytePos, blk_mode: BlockCheckMode)
                             -> @expr {
         self.expect(&token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
@@ -2308,7 +2306,7 @@ impl Parser {
             stmts: ~[],
             expr: Some(body),
             id: self.get_id(),
-            rules: default_blk,
+            rules: DefaultBlock,
             span: body.span,
         };
 
@@ -2474,7 +2472,7 @@ impl Parser {
                 stmts: ~[],
                 expr: Some(expr),
                 id: self.get_id(),
-                rules: default_blk,
+                rules: DefaultBlock,
                 span: expr.span,
             };
 
@@ -3093,7 +3091,7 @@ impl Parser {
         }
         self.expect(&token::LBRACE);
 
-        return self.parse_block_tail_(lo, default_blk, ~[]);
+        return self.parse_block_tail_(lo, DefaultBlock, ~[]);
     }
 
     // parse a block. Inner attrs are allowed.
@@ -3109,19 +3107,19 @@ impl Parser {
         self.expect(&token::LBRACE);
         let (inner, next) = self.parse_inner_attrs_and_next();
 
-        (inner, self.parse_block_tail_(lo, default_blk, next))
+        (inner, self.parse_block_tail_(lo, DefaultBlock, next))
     }
 
     // Precondition: already parsed the '{' or '#{'
     // I guess that also means "already parsed the 'impure'" if
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
-    fn parse_block_tail(&self, lo: BytePos, s: blk_check_mode) -> Block {
+    fn parse_block_tail(&self, lo: BytePos, s: BlockCheckMode) -> Block {
         self.parse_block_tail_(lo, s, ~[])
     }
 
     // parse the rest of a block expression or function body
-    fn parse_block_tail_(&self, lo: BytePos, s: blk_check_mode,
+    fn parse_block_tail_(&self, lo: BytePos, s: BlockCheckMode,
                          first_item_attrs: ~[Attribute]) -> Block {
         let mut stmts = ~[];
         let mut expr = None;

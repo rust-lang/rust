@@ -157,14 +157,14 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
 
 pub fn trans_fn_ref_to_callee(bcx: @mut Block,
                               def_id: ast::def_id,
-                              ref_id: ast::node_id) -> Callee {
+                              ref_id: ast::NodeId) -> Callee {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref(bcx, def_id, ref_id))}
 }
 
 pub fn trans_fn_ref(bcx: @mut Block,
                     def_id: ast::def_id,
-                    ref_id: ast::node_id) -> FnData {
+                    ref_id: ast::NodeId) -> FnData {
     /*!
      *
      * Translates a reference (with id `ref_id`) to the fn/method
@@ -184,7 +184,7 @@ pub fn trans_fn_ref(bcx: @mut Block,
 pub fn trans_fn_ref_with_vtables_to_callee(
         bcx: @mut Block,
         def_id: ast::def_id,
-        ref_id: ast::node_id,
+        ref_id: ast::NodeId,
         type_params: &[ty::t],
         vtables: Option<typeck::vtable_res>)
      -> Callee {
@@ -238,7 +238,7 @@ fn resolve_default_method_vtables(bcx: @mut Block,
 pub fn trans_fn_ref_with_vtables(
         bcx: @mut Block,       //
         def_id: ast::def_id,   // def id of fn
-        ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
+        ref_id: ast::NodeId,  // node id of use of fn; may be zero if N/A
         type_params: &[ty::t], // values for fn's ty params
         vtables: Option<typeck::vtable_res>) // vtables for the call
      -> FnData {
@@ -334,7 +334,7 @@ pub fn trans_fn_ref_with_vtables(
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
     let def_id = {
-        if def_id.crate != ast::local_crate {
+        if def_id.crate != ast::LOCAL_CRATE {
             inline::maybe_instantiate_inline(ccx, def_id)
         } else {
             def_id
@@ -348,7 +348,7 @@ pub fn trans_fn_ref_with_vtables(
     let must_monomorphise;
     if type_params.len() > 0 || is_default {
         must_monomorphise = true;
-    } else if def_id.crate == ast::local_crate {
+    } else if def_id.crate == ast::LOCAL_CRATE {
         let map_node = session::expect(
             ccx.sess,
             ccx.tcx.items.find(&def_id.node),
@@ -369,7 +369,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert_eq!(def_id.crate, ast::local_crate);
+        assert_eq!(def_id.crate, ast::LOCAL_CRATE);
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
@@ -389,7 +389,7 @@ pub fn trans_fn_ref_with_vtables(
 
     // Find the actual function pointer.
     let val = {
-        if def_id.crate == ast::local_crate {
+        if def_id.crate == ast::LOCAL_CRATE {
             // Internal reference.
             get_item_val(ccx, def_id.node)
         } else {
@@ -408,7 +408,7 @@ pub fn trans_call(in_cx: @mut Block,
                   call_ex: @ast::expr,
                   f: @ast::expr,
                   args: CallArgs,
-                  id: ast::node_id,
+                  id: ast::NodeId,
                   dest: expr::Dest)
                   -> @mut Block {
     let _icx = push_ctxt("trans_call");
@@ -424,7 +424,7 @@ pub fn trans_call(in_cx: @mut Block,
 
 pub fn trans_method_call(in_cx: @mut Block,
                          call_ex: @ast::expr,
-                         callee_id: ast::node_id,
+                         callee_id: ast::NodeId,
                          rcvr: @ast::expr,
                          args: CallArgs,
                          dest: expr::Dest)
@@ -465,7 +465,7 @@ pub fn trans_lang_call(bcx: @mut Block,
                        args: &[ValueRef],
                        dest: Option<expr::Dest>)
     -> Result {
-    let fty = if did.crate == ast::local_crate {
+    let fty = if did.crate == ast::LOCAL_CRATE {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
         csearch::get_type(bcx.ccx().tcx, did).ty
@@ -494,7 +494,7 @@ pub fn trans_lang_call_with_type_params(bcx: @mut Block,
                                         dest: expr::Dest)
     -> @mut Block {
     let fty;
-    if did.crate == ast::local_crate {
+    if did.crate == ast::LOCAL_CRATE {
         fty = ty::node_id_to_type(bcx.tcx(), did.node);
     } else {
         fty = csearch::get_type(bcx.tcx(), did).ty;

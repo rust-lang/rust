@@ -21,8 +21,8 @@ use syntax::codemap::span;
 use util::ppaux::{note_and_explain_region};
 
 pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
-                          item_scope_id: ast::node_id,
-                          root_scope_id: ast::node_id,
+                          item_scope_id: ast::NodeId,
+                          root_scope_id: ast::NodeId,
                           span: span,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
@@ -46,11 +46,11 @@ struct GuaranteeLifetimeContext {
     bccx: @BorrowckCtxt,
 
     // the node id of the function body for the enclosing item
-    item_scope_id: ast::node_id,
+    item_scope_id: ast::NodeId,
 
     // the node id of the innermost loop / function body; this is the
     // longest scope for which we can root managed boxes
-    root_scope_id: ast::node_id,
+    root_scope_id: ast::NodeId,
 
     span: span,
     loan_region: ty::Region,
@@ -63,7 +63,7 @@ impl GuaranteeLifetimeContext {
         self.bccx.tcx
     }
 
-    fn check(&self, cmt: mc::cmt, discr_scope: Option<ast::node_id>) {
+    fn check(&self, cmt: mc::cmt, discr_scope: Option<ast::NodeId>) {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
 
         match cmt.cat {
@@ -189,7 +189,7 @@ impl GuaranteeLifetimeContext {
                   cmt_base: mc::cmt,
                   derefs: uint,
                   ptr_mutbl: ast::mutability,
-                  discr_scope: Option<ast::node_id>) {
+                  discr_scope: Option<ast::NodeId>) {
         debug!("check_root(cmt_deref=%s, cmt_base=%s, derefs=%?, ptr_mutbl=%?, \
                 discr_scope=%?)",
                cmt_deref.repr(self.tcx()),

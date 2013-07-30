@@ -17,7 +17,7 @@ use middle::typeck::method_map;
 use util::ppaux;
 
 use syntax::ast::{deref, expr_call, expr_inline_asm, expr_method_call};
-use syntax::ast::{expr_unary, node_id, unsafe_blk, unsafe_fn, expr_path};
+use syntax::ast::{expr_unary, unsafe_fn, expr_path};
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::visit::{fk_item_fn, fk_method};
@@ -27,7 +27,7 @@ use syntax::visit;
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,
-    UnsafeBlock(node_id),
+    UnsafeBlock(ast::NodeId),
 }
 
 struct Context {
@@ -99,7 +99,7 @@ pub fn check_crate(tcx: ty::ctxt,
 
         visit_block: |block, (_, visitor)| {
             let old_unsafe_context = context.unsafe_context;
-            if block.rules == unsafe_blk &&
+            if block.rules == ast::UnsafeBlock &&
                     context.unsafe_context == SafeContext {
                 context.unsafe_context = UnsafeBlock(block.id)
             }

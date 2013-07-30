@@ -201,7 +201,7 @@ pub struct CrateAnalysis {
     exp_map2: middle::resolve::ExportMap2,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @mut HashSet<ast::node_id>
+    reachable: @mut HashSet<ast::NodeId>
 }
 
 /// Run the resolution, typechecking, region checking and other

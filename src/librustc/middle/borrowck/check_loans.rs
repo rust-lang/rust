@@ -37,7 +37,7 @@ struct CheckLoanCtxt<'self> {
     dfcx_loans: &'self LoanDataFlow,
     move_data: @move_data::FlowedMoveData,
     all_loans: &'self [Loan],
-    reported: @mut HashSet<ast::node_id>,
+    reported: @mut HashSet<ast::NodeId>,
 }
 
 pub fn check_loans(bccx: @BorrowckCtxt,
@@ -73,7 +73,7 @@ impl<'self> CheckLoanCtxt<'self> {
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self,
-                            scope_id: ast::node_id,
+                            scope_id: ast::NodeId,
                             op: &fn(&Loan) -> bool)
                             -> bool {
         //! Iterates over each loan that has been issued
@@ -92,7 +92,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn each_in_scope_loan(&self,
-                              scope_id: ast::node_id,
+                              scope_id: ast::NodeId,
                               op: &fn(&Loan) -> bool)
                               -> bool {
         //! Like `each_issued_loan()`, but only considers loans that are
@@ -110,7 +110,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn each_in_scope_restriction(&self,
-                                     scope_id: ast::node_id,
+                                     scope_id: ast::NodeId,
                                      loan_path: @LoanPath,
                                      op: &fn(&Loan, &Restriction) -> bool)
                                      -> bool {
@@ -129,7 +129,7 @@ impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    pub fn loans_generated_by(&self, scope_id: ast::node_id) -> ~[uint] {
+    pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> ~[uint] {
         //! Returns a vector of the loans that are generated as
         //! we encounter `scope_id`.
 
@@ -140,7 +140,7 @@ impl<'self> CheckLoanCtxt<'self> {
         return result;
     }
 
-    pub fn check_for_conflicting_loans(&self, scope_id: ast::node_id) {
+    pub fn check_for_conflicting_loans(&self, scope_id: ast::NodeId) {
         //! Checks to see whether any of the loans that are issued
         //! by `scope_id` conflict with loans that have already been
         //! issued when we enter `scope_id` (for example, we do not
@@ -256,7 +256,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn check_if_path_is_moved(&self,
-                                  id: ast::node_id,
+                                  id: ast::NodeId,
                                   span: span,
                                   use_kind: MovedValueUseKind,
                                   lp: @LoanPath) {
@@ -561,7 +561,7 @@ impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn check_move_out_from_id(&self, id: ast::node_id, span: span) {
+    fn check_move_out_from_id(&self, id: ast::NodeId, span: span) {
         for self.move_data.each_path_moved_by(id) |_, move_path| {
             match self.analyze_move_out_from(id, move_path) {
                 MoveOk => {}
@@ -581,7 +581,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn analyze_move_out_from(&self,
-                                 expr_id: ast::node_id,
+                                 expr_id: ast::NodeId,
                                  move_path: @LoanPath) -> MoveError {
         debug!("analyze_move_out_from(expr_id=%?, move_path=%s)",
                expr_id, move_path.repr(self.tcx()));
@@ -600,7 +600,7 @@ impl<'self> CheckLoanCtxt<'self> {
     pub fn check_call(&self,
                       _expr: @ast::expr,
                       _callee: Option<@ast::expr>,
-                      _callee_id: ast::node_id,
+                      _callee_id: ast::NodeId,
                       _callee_span: span,
                       _args: &[@ast::expr]) {
         // NB: This call to check for conflicting loans is not truly
@@ -617,7 +617,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                          decl: &ast::fn_decl,
                          body: &ast::Block,
                          sp: span,
-                         id: ast::node_id,
+                         id: ast::NodeId,
                          (this, visitor): (CheckLoanCtxt<'a>,
                                            visit::vt<CheckLoanCtxt<'a>>)) {
     match *fk {
@@ -636,7 +636,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
     visit::visit_fn(fk, decl, body, sp, id, (this, visitor));
 
     fn check_captured_variables(this: CheckLoanCtxt,
-                                closure_id: ast::node_id,
+                                closure_id: ast::NodeId,
                                 span: span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
         for cap_vars.iter().advance |cap_var| {
@@ -654,7 +654,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
         return;
 
         fn check_by_move_capture(this: CheckLoanCtxt,
-                                 closure_id: ast::node_id,
+                                 closure_id: ast::NodeId,
                                  cap_var: &moves::CaptureVar,
                                  move_path: @LoanPath) {
             let move_err = this.analyze_move_out_from(closure_id, move_path);

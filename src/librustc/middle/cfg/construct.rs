@@ -20,13 +20,13 @@ use syntax::opt_vec;
 struct CFGBuilder {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    exit_map: HashMap<ast::node_id, CFGIndex>,
+    exit_map: HashMap<ast::NodeId, CFGIndex>,
     graph: CFGGraph,
     loop_scopes: ~[LoopScope],
 }
 
 struct LoopScope {
-    loop_id: ast::node_id,    // id of loop/while node
+    loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`
     break_index: CFGIndex,    // where to go on a `break
 }
@@ -454,7 +454,7 @@ impl CFGBuilder {
         self.add_node(0, preds)
     }
 
-    fn add_node(&mut self, id: ast::node_id, preds: &[CFGIndex]) -> CFGIndex {
+    fn add_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
         assert!(!self.exit_map.contains_key(&id));
         let node = self.graph.add_node(CFGNodeData {id: id});
         self.exit_map.insert(id, node);

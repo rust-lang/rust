@@ -323,7 +323,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
+pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: span,
                         expected: ty::t, path: &ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         class_id: ast::def_id, substitutions: &ty::substs) {
@@ -355,7 +355,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
 }
 
 pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
-                                          pat_id: ast::node_id,
+                                          pat_id: ast::NodeId,
                                           span: span,
                                           expected: ty::t,
                                           path: &ast::Path,
@@ -619,7 +619,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
 pub fn check_pointer_pat(pcx: &pat_ctxt,
                          pointer_kind: PointerKind,
                          inner: @ast::pat,
-                         pat_id: ast::node_id,
+                         pat_id: ast::NodeId,
                          span: span,
                          expected: ty::t) {
     let fcx = pcx.fcx;

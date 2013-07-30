@@ -16,10 +16,10 @@ use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::span;
 
-pub type PatIdMap = HashMap<ident, node_id>;
+pub type PatIdMap = HashMap<ident, NodeId>;
 
 // This is used because same-named variables in alternative patterns need to
-// use the node_id of their namesake in the first pattern.
+// use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
     let mut map = HashMap::new();
     do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
@@ -71,7 +71,7 @@ pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @pat) -> bool {
 }
 
 pub fn pat_bindings(dm: resolve::DefMap, pat: @pat,
-                    it: &fn(binding_mode, node_id, span, &Path)) {
+                    it: &fn(binding_mode, NodeId, span, &Path)) {
     for walk_pat(pat) |p| {
         match p.node {
           pat_ident(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
@@ -82,7 +82,7 @@ pub fn pat_bindings(dm: resolve::DefMap, pat: @pat,
     }
 }
 
-pub fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[node_id] {
+pub fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[NodeId] {
     let mut found = ~[];
     pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;

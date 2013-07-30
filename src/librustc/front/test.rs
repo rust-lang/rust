@@ -25,7 +25,7 @@ use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::attr::AttrMetaMethods;
 
-type node_id_gen = @fn() -> ast::node_id;
+type node_id_gen = @fn() -> ast::NodeId;
 
 struct Test {
     span: span,

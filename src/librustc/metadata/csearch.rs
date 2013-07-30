@@ -44,7 +44,7 @@ pub fn get_type_param_count(cstore: @mut cstore::CStore, def: ast::def_id)
 /// Iterates over all the language items in the given crate.
 pub fn each_lang_item(cstore: @mut cstore::CStore,
                       cnum: ast::CrateNum,
-                      f: &fn(ast::node_id, uint) -> bool) -> bool {
+                      f: &fn(ast::NodeId, uint) -> bool) -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     decoder::each_lang_item(crate_data, f)
 }

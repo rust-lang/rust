@@ -251,7 +251,7 @@ struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: @mut HashMap<node_id, ~[t]>,
+    node_type_substs: @mut HashMap<NodeId, ~[t]>,
 
     // Maps from a method to the method "descriptor"
     methods: @mut HashMap<def_id, @Method>,
@@ -264,7 +264,7 @@ struct ctxt_ {
 
     impl_trait_cache: @mut HashMap<ast::def_id, Option<@ty::TraitRef>>,
 
-    trait_refs: @mut HashMap<node_id, @TraitRef>,
+    trait_refs: @mut HashMap<NodeId, @TraitRef>,
     trait_defs: @mut HashMap<def_id, @TraitDef>,
 
     items: ast_map::map,
@@ -276,10 +276,10 @@ struct ctxt_ {
     short_names_cache: @mut HashMap<t, @str>,
     needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
     tc_cache: @mut HashMap<uint, TypeContents>,
-    ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
+    ast_ty_to_ty_cache: @mut HashMap<NodeId, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<def_id, @~[@VariantInfo]>,
-    ty_param_defs: @mut HashMap<ast::node_id, TypeParameterDef>,
-    adjustments: @mut HashMap<ast::node_id, @AutoAdjustment>,
+    ty_param_defs: @mut HashMap<ast::NodeId, TypeParameterDef>,
+    adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
@@ -311,12 +311,12 @@ struct ctxt_ {
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
-    used_unsafe: @mut HashSet<ast::node_id>,
+    used_unsafe: @mut HashSet<ast::NodeId>,
 
     // Set of nodes which mark locals as mutable which end up getting used at
     // some point. Local variable definitions not in this set can be warned
     // about.
-    used_mut_nodes: @mut HashSet<ast::node_id>,
+    used_mut_nodes: @mut HashSet<ast::NodeId>,
 
     // vtable resolution information for impl declarations
     impl_vtables: typeck::impl_vtable_map
@@ -430,7 +430,7 @@ pub enum Region {
     re_free(FreeRegion),
 
     /// A concrete region naming some expression within the current function.
-    re_scope(node_id),
+    re_scope(NodeId),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     re_static,
@@ -459,7 +459,7 @@ impl Region {
 
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
 pub struct FreeRegion {
-    scope_id: node_id,
+    scope_id: NodeId,
     bound_region: bound_region
 }
 
@@ -486,7 +486,7 @@ pub enum bound_region {
      * enclosing scope, which may define the same names.  For an example of
      * where this comes up, see src/test/compile-fail/regions-ret-borrowed.rs
      * and regions-ret-borrowed-1.rs. */
-    br_cap_avoid(ast::node_id, @bound_region),
+    br_cap_avoid(ast::NodeId, @bound_region),
 }
 
 /**
@@ -2135,7 +2135,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert_eq!(p.def_id.crate, ast::local_crate);
+                assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
                 type_param_def_to_contents(
                     cx, cx.ty_param_defs.get(&p.def_id.node))
@@ -2732,7 +2732,7 @@ impl cmp::TotalEq for bound_region {
     }
 }
 
-pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
+pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
     match cx.trait_refs.find(&id) {
        Some(&t) => t,
        None => cx.sess.bug(
@@ -2742,7 +2742,7 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
     }
 }
 
-pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
+pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
     //printfln!("%?/%?", id, cx.node_types.len());
     match cx.node_types.find(&(id as uint)) {
        Some(&t) => t,
@@ -2754,14 +2754,14 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 }
 
 // XXX(pcwalton): Makes a copy, bleh. Probably better to not do that.
-pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
+pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> ~[t] {
     match cx.node_type_substs.find(&id) {
       None => return ~[],
       Some(ts) => return (*ts).clone(),
     }
 }
 
-fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
+fn node_id_has_type_params(cx: ctxt, id: ast::NodeId) -> bool {
     cx.node_type_substs.contains_key(&id)
 }
 
@@ -3079,7 +3079,7 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::expr) -> bool {
 
 pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
-                                   id: ast::node_id)
+                                   id: ast::NodeId)
                                    -> Option<@~[TypeParameterDef]> {
     do method_map.find(&id).map |method| {
         match method.origin {
@@ -3260,7 +3260,7 @@ pub fn expr_kind(tcx: ctxt,
     }
 }
 
-pub fn stmt_node_id(s: &ast::stmt) -> ast::node_id {
+pub fn stmt_node_id(s: &ast::stmt) -> ast::NodeId {
     match s.node {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
@@ -3616,7 +3616,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
         None => { }
     }
 
-    if def_id.crate == ast::local_crate {
+    if def_id.crate == ast::LOCAL_CRATE {
         fail!("No def'n found for %? in tcx.%s", def_id, descr);
     }
     let v = load_external();
@@ -3659,7 +3659,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
         Some(&ret) => { return ret; }
         None => {}
     }
-    let ret = if id.crate == ast::local_crate {
+    let ret = if id.crate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
             Some(&ast_map::node_item(@ast::item {
@@ -3691,7 +3691,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
 /// None if the struct is not tuple-like. Fails if the given def ID does not
 /// refer to a struct at all.
 fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
-    if struct_did.crate != ast::local_crate {
+    if struct_did.crate != ast::LOCAL_CRATE {
         // XXX: Cross-crate functionality.
         cx.sess.unimpl("constructor ID of cross-crate tuple structs");
     }
@@ -3841,7 +3841,7 @@ pub fn has_dtor(cx: ctxt, struct_id: def_id) -> bool {
 }
 
 pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
-    if id.crate != ast::local_crate {
+    if id.crate != ast::LOCAL_CRATE {
         csearch::get_item_path(cx, id)
     } else {
         // FIXME (#5521): uncomment this code and don't have a catch-all at the
@@ -3910,7 +3910,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[@VariantInfo] {
       _ => { /* fallthrough */ }
     }
 
-    let result = if ast::local_crate != id.crate {
+    let result = if ast::LOCAL_CRATE != id.crate {
         @csearch::get_enum_variants(cx, id)
     } else {
         /*
@@ -4002,7 +4002,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::def_id) -> @ty::TraitDef {
             return trait_def;
         }
         None => {
-            assert!(did.crate != ast::local_crate);
+            assert!(did.crate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
             cx.trait_defs.insert(did, trait_def);
             return trait_def;
@@ -4048,7 +4048,7 @@ pub fn lookup_field_type(tcx: ctxt,
                          id: def_id,
                          substs: &substs)
                       -> ty::t {
-    let t = if id.crate == ast::local_crate {
+    let t = if id.crate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
     }
     else {
@@ -4067,7 +4067,7 @@ pub fn lookup_field_type(tcx: ctxt,
 // Look up the list of field names and IDs for a given struct
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
-  if did.crate == ast::local_crate {
+  if did.crate == ast::LOCAL_CRATE {
     match cx.items.find(&did.node) {
        Some(&ast_map::node_item(i,_)) => {
          match i.node {
@@ -4360,10 +4360,10 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::expr) -> 
 }
 
 // Determine what purity to check a nested function under
-pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
-                                  child: (ast::purity, ast::node_id),
+pub fn determine_inherited_purity(parent: (ast::purity, ast::NodeId),
+                                  child: (ast::purity, ast::NodeId),
                                   child_sigil: ast::Sigil)
-                                    -> (ast::purity, ast::node_id) {
+                                    -> (ast::purity, ast::NodeId) {
     // If the closure is a stack closure and hasn't had some non-standard
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own

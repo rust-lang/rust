@@ -60,11 +60,11 @@ fn top_moddoc_from_crate(
     crate: @ast::Crate,
     default_name: ~str
 ) -> doc::ModDoc {
-    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
+    moddoc_from_mod(mk_itemdoc(ast::CRATE_NODE_ID, default_name),
                     crate.module.clone())
 }
 
-fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
+fn mk_itemdoc(id: ast::NodeId, name: ~str) -> doc::ItemDoc {
     doc::ItemDoc {
         id: id,
         name: name,
