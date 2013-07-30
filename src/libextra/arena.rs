@@ -116,7 +116,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
     let fill = chunk.fill;
 
     while idx < fill {
-        let tydesc_data: *uint = transmute(ptr::offset(buf, idx));
+        let tydesc_data: *uint = transmute(ptr::offset(buf, idx as int));
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
         let (size, align) = ((*tydesc).size, (*tydesc).align);
 
@@ -127,7 +127,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         //debug!("freeing object: idx = %u, size = %u, align = %u, done = %b",
         //       start, size, align, is_done);
         if is_done {
-            ((*tydesc).drop_glue)(ptr::offset(buf, start) as *i8);
+            ((*tydesc).drop_glue)(ptr::offset(buf, start as int) as *i8);
         }
 
         // Find where the next tydesc lives
@@ -176,7 +176,7 @@ impl Arena {
             //debug!("idx = %u, size = %u, align = %u, fill = %u",
             //       start, n_bytes, align, head.fill);
 
-            ptr::offset(vec::raw::to_ptr(this.pod_head.data), start)
+            ptr::offset(vec::raw::to_ptr(this.pod_head.data), start as int)
         }
     }
 
@@ -233,7 +233,7 @@ impl Arena {
             //       start, n_bytes, align, head.fill);
 
             let buf = vec::raw::to_ptr(self.head.data);
-            return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
+            return (ptr::offset(buf, tydesc_start as int), ptr::offset(buf, start as int));
         }
     }
 

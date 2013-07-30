@@ -182,7 +182,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
                     do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         ptr::copy_memory(buf, ssbuf, sslen);
-                        buf = buf.offset(sslen);
+                        buf = buf.offset(sslen as int);
                     }
                 }
             }
@@ -218,10 +218,10 @@ impl<'self, S: Str> StrVector for &'self [S] {
                                 first = false;
                             } else {
                                 ptr::copy_memory(buf, sepbuf, seplen);
-                                buf = buf.offset(seplen);
+                                buf = buf.offset(seplen as int);
                             }
                             ptr::copy_memory(buf, ssbuf, sslen);
-                            buf = buf.offset(sslen);
+                            buf = buf.offset(sslen as int);
                         }
                     }
                 }
@@ -755,7 +755,7 @@ pub mod raw {
         let mut i = 0u;
         while *curr != 0u8 {
             i += 1u;
-            curr = ptr::offset(buf, i);
+            curr = ptr::offset(buf, i as int);
         }
         return from_buf_len(buf, i);
     }
@@ -816,7 +816,7 @@ pub mod raw {
         let mut len = 0u;
         while *curr != 0u8 {
             len += 1u;
-            curr = ptr::offset(s, len);
+            curr = ptr::offset(s, len as int);
         }
         let v = Slice { data: s, len: len + 1 };
         assert!(is_utf8(cast::transmute(v)));
@@ -838,7 +838,7 @@ pub mod raw {
              assert!((end <= n));
 
              cast::transmute(Slice {
-                 data: ptr::offset(sbuf, begin),
+                 data: ptr::offset(sbuf, begin as int),
                  len: end - begin + 1,
              })
         }
@@ -849,7 +849,7 @@ pub mod raw {
         let new_len = s.len() + 1;
         s.reserve_at_least(new_len);
         do s.as_mut_buf |buf, len| {
-            *ptr::mut_offset(buf, len) = b;
+            *ptr::mut_offset(buf, len as int) = b;
         }
         set_len(&mut *s, new_len);
     }
@@ -885,7 +885,7 @@ pub mod raw {
         let v: **mut String = cast::transmute(v);
         let repr = *v;
         (*repr).fill = new_len + 1u;
-        let null = ptr::mut_offset(&mut ((*repr).data), new_len);
+        let null = ptr::mut_offset(&mut ((*repr).data), new_len as int);
         *null = 0u8;
     }
 
@@ -1802,7 +1802,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
                     for nn.times {
                         ptr::copy_memory(rbuf, buf, len);
-                        rbuf = rbuf.offset(len);
+                        rbuf = rbuf.offset(len as int);
                     }
                 }
                 raw::set_len(&mut ret, nn * len);
@@ -1932,7 +1932,7 @@ impl<'self> StrSlice<'self> for &'self str {
         do self.as_imm_buf |buf, len| {
             // NB: len includes the trailing null.
             assert!(len > 0);
-            if unsafe { *(ptr::offset(buf, len - 1)) != 0 } {
+            if unsafe { *(ptr::offset(buf, (len - 1) as int)) != 0 } {
                 self.to_owned().as_c_str(|s| f(s))
             } else {
                 f(buf as *libc::c_char)
@@ -2005,7 +2005,7 @@ impl OwnedStr for ~str {
             self.reserve(llen + rlen);
             do self.as_imm_buf |lbuf, _llen| {
                 do rhs.as_imm_buf |rbuf, _rlen| {
-                    let dst = ptr::offset(lbuf, llen);
+                    let dst = ptr::offset(lbuf, llen as int);
                     let dst = cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
                 }
@@ -2023,7 +2023,7 @@ impl OwnedStr for ~str {
             self.reserve_at_least(llen + rlen);
             do self.as_imm_buf |lbuf, _llen| {
                 do rhs.as_imm_buf |rbuf, _rlen| {
-                    let dst = ptr::offset(lbuf, llen);
+                    let dst = ptr::offset(lbuf, llen as int);
                     let dst = cast::transmute_mut_unsafe(dst);
                     ptr::copy_memory(dst, rbuf, rlen);
                 }
@@ -2045,7 +2045,7 @@ impl OwnedStr for ~str {
             let len = self.len();
             let new_len = len + nb;
             self.reserve_at_least(new_len);
-            let off = len;
+            let off = len as int;
             do self.as_mut_buf |buf, _len| {
                 match nb {
                     1u => {
@@ -2053,18 +2053,18 @@ impl OwnedStr for ~str {
                     }
                     2u => {
                         *ptr::mut_offset(buf, off) = (code >> 6u & 31u | TAG_TWO_B) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 1) = (code & 63u | TAG_CONT) as u8;
                     }
                     3u => {
                         *ptr::mut_offset(buf, off) = (code >> 12u & 15u | TAG_THREE_B) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 1) = (code >> 6u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 2) = (code & 63u | TAG_CONT) as u8;
                     }
                     4u => {
                         *ptr::mut_offset(buf, off) = (code >> 18u & 7u | TAG_FOUR_B) as u8;
-                        *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 3u) = (code & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 1) = (code >> 12u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 2) = (code >> 6u & 63u | TAG_CONT) as u8;
+                        *ptr::mut_offset(buf, off + 3) = (code & 63u | TAG_CONT) as u8;
                     }
                     _ => {}
                 }

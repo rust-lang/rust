@@ -114,7 +114,7 @@ mod imp {
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
         let mut args = ~[];
         for uint::range(0, argc as uint) |i| {
-            args.push(str::raw::from_c_str(*(argv as **libc::c_char).offset(i)));
+            args.push(str::raw::from_c_str(*(argv as **libc::c_char).offset(i as int)));
         }
         return args;
     }

@@ -122,7 +122,7 @@ pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
 pub fn get<T:Clone>(t: CVec<T>, ofs: uint) -> T {
     assert!(ofs < len(t));
     return unsafe {
-        (*ptr::mut_offset(t.base, ofs)).clone()
+        (*ptr::mut_offset(t.base, ofs as int)).clone()
     };
 }
 
@@ -133,7 +133,7 @@ pub fn get<T:Clone>(t: CVec<T>, ofs: uint) -> T {
  */
 pub fn set<T>(t: CVec<T>, ofs: uint, v: T) {
     assert!(ofs < len(t));
-    unsafe { *ptr::mut_offset(t.base, ofs) = v };
+    unsafe { *ptr::mut_offset(t.base, ofs as int) = v };
 }
 
 /*

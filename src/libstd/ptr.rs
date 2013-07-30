@@ -13,6 +13,7 @@
 use cast;
 use clone::Clone;
 use option::{Option, Some, None};
+#[cfg(stage0)]
 use sys;
 use unstable::intrinsics;
 use util::swap;
@@ -25,20 +26,44 @@ use uint;
 
 /// Calculate the offset from a pointer
 #[inline]
-pub fn offset<T>(ptr: *T, count: uint) -> *T {
-    (ptr as uint + count * sys::size_of::<T>()) as *T
+#[cfg(stage0)]
+pub fn offset<T>(ptr: *T, count: int) -> *T {
+    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a const pointer
 #[inline]
-pub fn const_offset<T>(ptr: *const T, count: uint) -> *const T {
-    (ptr as uint + count * sys::size_of::<T>()) as *T
+#[cfg(stage0)]
+pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
+    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a mut pointer
 #[inline]
-pub fn mut_offset<T>(ptr: *mut T, count: uint) -> *mut T {
-    (ptr as uint + count * sys::size_of::<T>()) as *mut T
+#[cfg(stage0)]
+pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *mut T
+}
+
+/// Calculate the offset from a pointer
+#[inline]
+#[cfg(not(stage0))]
+pub fn offset<T>(ptr: *T, count: int) -> *T {
+    unsafe { intrinsics::offset(ptr, count) }
+}
+
+/// Calculate the offset from a const pointer
+#[inline]
+#[cfg(not(stage0))]
+pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
+    unsafe { intrinsics::offset(ptr as *T, count) }
+}
+
+/// Calculate the offset from a mut pointer
+#[inline]
+#[cfg(not(stage0))]
+pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+    unsafe { intrinsics::offset(ptr as *T, count) as *mut T }
 }
 
 /// Return the offset of the first null pointer in `buf`.
@@ -58,7 +83,7 @@ impl<T> Clone for *T {
 pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
     let mut i = 0;
     loop {
-        if f(&(*offset(buf, i))) { return i; }
+        if f(&(*offset(buf, i as int))) { return i; }
         else { i += 1; }
     }
 }
@@ -242,7 +267,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
     }
     //let start_ptr = *arr;
     uint::iterate(0, len, |e| {
-        let n = offset(arr, e);
+        let n = offset(arr, e as int);
         cb(*n);
         true
     });
@@ -273,7 +298,7 @@ pub trait RawPtr<T> {
     fn is_null(&self) -> bool;
     fn is_not_null(&self) -> bool;
     unsafe fn to_option(&self) -> Option<&T>;
-    fn offset(&self, count: uint) -> Self;
+    fn offset(&self, count: int) -> Self;
 }
 
 /// Extension methods for immutable pointers
@@ -305,7 +330,7 @@ impl<T> RawPtr<T> for *T {
 
     /// Calculates the offset from a pointer.
     #[inline]
-    fn offset(&self, count: uint) -> *T { offset(*self, count) }
+    fn offset(&self, count: int) -> *T { offset(*self, count) }
 }
 
 /// Extension methods for mutable pointers
@@ -337,7 +362,7 @@ impl<T> RawPtr<T> for *mut T {
 
     /// Calculates the offset from a mutable pointer.
     #[inline]
-    fn offset(&self, count: uint) -> *mut T { mut_offset(*self, count) }
+    fn offset(&self, count: int) -> *mut T { mut_offset(*self, count) }
 }
 
 // Equality for pointers
@@ -378,7 +403,7 @@ impl<T, I: Int> Add<I, *T> for *T {
     /// Is calculated according to the size of the type pointed to.
     #[inline]
     pub fn add(&self, rhs: &I) -> *T {
-        self.offset(rhs.to_int() as uint)
+        self.offset(rhs.to_int() as int)
     }
 }
 
@@ -388,7 +413,7 @@ impl<T, I: Int> Sub<I, *T> for *T {
     /// Is calculated according to the size of the type pointed to.
     #[inline]
     pub fn sub(&self, rhs: &I) -> *T {
-        self.offset(-rhs.to_int() as uint)
+        self.offset(-rhs.to_int() as int)
     }
 }
 
@@ -398,7 +423,7 @@ impl<T, I: Int> Add<I, *mut T> for *mut T {
     /// Is calculated according to the size of the type pointed to.
     #[inline]
     pub fn add(&self, rhs: &I) -> *mut T {
-        self.offset(rhs.to_int() as uint)
+        self.offset(rhs.to_int() as int)
     }
 }
 
@@ -408,7 +433,7 @@ impl<T, I: Int> Sub<I, *mut T> for *mut T {
     /// Is calculated according to the size of the type pointed to.
     #[inline]
     pub fn sub(&self, rhs: &I) -> *mut T {
-        self.offset(-rhs.to_int() as uint)
+        self.offset(-rhs.to_int() as int)
     }
 }
 
@@ -445,14 +470,14 @@ pub mod ptr_tests {
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
 
-            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
-                        offset(vec::raw::to_ptr(v0), 1u), 1u);
+            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1),
+                        offset(vec::raw::to_ptr(v0), 1), 1);
             assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
             copy_memory(vec::raw::to_mut_ptr(v1),
-                        offset(vec::raw::to_ptr(v0), 2u), 1u);
+                        offset(vec::raw::to_ptr(v0), 2), 1);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 0u16));
-            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
+            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2),
                         vec::raw::to_ptr(v0), 1u);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 32000u16));
@@ -495,7 +520,7 @@ pub mod ptr_tests {
         assert!(p.is_null());
         assert!(!p.is_not_null());
 
-        let q = offset(p, 1u);
+        let q = offset(p, 1);
         assert!(!q.is_null());
         assert!(q.is_not_null());
 
@@ -503,7 +528,7 @@ pub mod ptr_tests {
         assert!(mp.is_null());
         assert!(!mp.is_not_null());
 
-        let mq = mp.offset(1u);
+        let mq = mp.offset(1);
         assert!(!mq.is_null());
         assert!(mq.is_not_null());
     }

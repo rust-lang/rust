@@ -74,7 +74,7 @@ pub mod rustrt {
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
-    return ptr::offset(ptr, count) as *U;
+    return ptr::offset(ptr, count as int) as *U;
 }
 
 unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
@@ -140,11 +140,11 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     // Stack roots
     let mut sri = 0;
     while sri < num_stack_roots {
-        if *ptr::offset(addrspaces, sri) >= 1 {
+        if *ptr::offset(addrspaces, sri as int) >= 1 {
             let root =
-                ptr::offset(fp_bytes, *ptr::offset(stack_roots, sri) as Word)
+                ptr::offset(fp_bytes, *ptr::offset(stack_roots, sri as int) as int)
                 as **Word;
-            let tydescpp = ptr::offset(tydescs, sri);
+            let tydescpp = ptr::offset(tydescs, sri as int);
             let tydesc = if ptr::is_not_null(tydescpp) &&
                 ptr::is_not_null(*tydescpp) {
                 **tydescpp
@@ -159,7 +159,7 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     // Register roots
     let mut rri = 0;
     while rri < num_reg_roots {
-        if *ptr::offset(addrspaces, num_stack_roots + rri) == 1 {
+        if *ptr::offset(addrspaces, (num_stack_roots + rri) as int) == 1 {
             // FIXME(#2997): Need to find callee saved registers on the stack.
         }
         rri += 1;
@@ -246,7 +246,7 @@ unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> boo
         // for this second return address is 3 greater than the
         // return address for morestack.
         let ret_offset = if boundary { 4 } else { 1 };
-        last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
+        last_ret = *ptr::offset(frame.fp, ret_offset as int) as *Word;
 
         if ptr::is_null(pc) {
             loop;
