@@ -17,7 +17,7 @@ pub mod icu {
     pub type UChar32 = char;
 
     pub static TRUE : u8 = 1u8;
-    pub static FALSE : u8 = 1u8;
+    pub static FALSE : u8 = 0u8;
 
     pub static UCHAR_ALPHABETIC : UProperty = 0;
     pub static UCHAR_BINARY_START : UProperty = 0; // = UCHAR_ALPHABETIC
