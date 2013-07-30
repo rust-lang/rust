@@ -23,7 +23,8 @@ use char::Char;
 use clone::Clone;
 use container::{Container, Mutable};
 use iter::Times;
-use iterator::{Iterator, FromIterator, IteratorUtil, Filter, AdditiveIterator, Map};
+use iterator::{Iterator, FromIterator, Extendable, IteratorUtil};
+use iterator::{Filter, AdditiveIterator, Map};
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
@@ -2323,10 +2324,20 @@ impl<T: Iterator<char>> FromIterator<char, T> for ~str {
     fn from_iterator(iterator: &mut T) -> ~str {
         let (lower, _) = iterator.size_hint();
         let mut buf = with_capacity(lower);
-        for iterator.advance |ch| {
-            buf.push_char(ch)
-        }
+        buf.extend(iterator);
         buf
+    }
+}
+
+impl<T: Iterator<char>> Extendable<char, T> for ~str {
+    #[inline]
+    fn extend(&mut self, iterator: &mut T) {
+        let (lower, _) = iterator.size_hint();
+        let reserve = lower + self.len();
+        self.reserve_at_least(reserve);
+        for iterator.advance |ch| {
+            self.push_char(ch)
+        }
     }
 }
 
@@ -2501,6 +2512,16 @@ mod tests {
         let data = "ประเทศไทย中";
         let s: ~str = data.iter().collect();
         assert_eq!(data, s.as_slice());
+    }
+
+    #[test]
+    fn test_extend() {
+        let data = ~"ประเทศไทย中";
+        let mut cpy = data.clone();
+        let other = "abc";
+        let mut it = other.iter();
+        cpy.extend(&mut it);
+        assert_eq!(cpy, data + other);
     }
 
     #[test]
