@@ -191,6 +191,7 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
 fn usage(binary: &str, helpstr: &str) -> ! {
     let message = fmt!("Usage: %s [OPTIONS] [FILTER]", binary);
     println(groups::usage(message, optgroups()));
+    println("");
     if helpstr == "help" {
         println("\
 The FILTER is matched against the name of all tests to run, and if any tests
