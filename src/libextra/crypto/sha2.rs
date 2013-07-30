@@ -756,6 +756,7 @@ static H224: [u32, ..8] = [
 
 #[cfg(test)]
 mod tests {
+    use cryptoutil::test::test_digest_1million_random;
     use digest::Digest;
     use sha2::{Sha512, Sha384, Sha512Trunc256, Sha512Trunc224, Sha256, Sha224};
 
@@ -946,6 +947,25 @@ mod tests {
         let mut sh = ~Sha224::new();
 
         test_hash(sh, tests);
+    }
+
+    #[test]
+    fn test_1million_random_sha512() {
+        let mut sh = Sha512::new();
+        test_digest_1million_random(
+            &mut sh,
+            128,
+            "e718483d0ce769644e2e42c7bc15b4638e1f98b13b2044285632a803afa973eb" +
+            "de0ff244877ea60a4cb0432ce577c31beb009c5c2c49aa2e4eadb217ad8cc09b");
+        }
+
+    #[test]
+    fn test_1million_random_sha256() {
+        let mut sh = Sha256::new();
+        test_digest_1million_random(
+            &mut sh,
+            64,
+            "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
     }
 }
 

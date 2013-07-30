@@ -241,3 +241,36 @@ impl <T: FixedBuffer> StandardPadding for T {
         self.zero_until(size - rem);
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use std::rand::IsaacRng;
+    use std::rand::RngUtil;
+    use std::vec;
+
+    use digest::Digest;
+
+    /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
+    /// correct.
+    pub fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: uint, expected: &str) {
+        let total_size = 1000000;
+        let buffer = vec::from_elem(blocksize * 2, 'a' as u8);
+        let mut rng = IsaacRng::new_unseeded();
+        let mut count = 0;
+
+        digest.reset();
+
+        while count < total_size {
+            let next: uint = rng.gen_uint_range(0, 2 * blocksize + 1);
+            let remaining = total_size - count;
+            let size = if next > remaining { remaining } else { next };
+            digest.input(buffer.slice_to(size));
+            count += size;
+        }
+
+        let result_str = digest.result_str();
+
+        assert!(expected == result_str);
+    }
+}
