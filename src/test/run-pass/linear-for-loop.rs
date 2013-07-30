@@ -16,7 +16,7 @@ pub fn main() {
     assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
-    for s.bytes_iter().advance |c| {
+    for s.byte_iter().advance |c| {
         if i == 0 { assert!((c == 'h' as u8)); }
         if i == 1 { assert!((c == 'e' as u8)); }
         if i == 2 { assert!((c == 'l' as u8)); }
