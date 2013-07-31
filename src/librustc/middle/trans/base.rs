@@ -2266,7 +2266,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
                           sym: ~str,
                           node_id: ast::NodeId,
-                          node_type: ty::t,
+                          _node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
                           -> ValueRef {

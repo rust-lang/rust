@@ -583,6 +583,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
+            ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
             ast::expr_loop(ref blk, _) => {
                 //
                 //     (expr) <--+

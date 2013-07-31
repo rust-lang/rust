@@ -559,6 +559,11 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_while(cond, ref body) => {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
         }
+        expr_for_loop(pat, iter, ref body) => {
+            expr_for_loop(fld.fold_pat(pat),
+                          fld.fold_expr(iter),
+                          fld.fold_block(body))
+        }
         expr_loop(ref body, opt_ident) => {
             expr_loop(
                 fld.fold_block(body),
