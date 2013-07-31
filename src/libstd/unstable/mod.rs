@@ -12,7 +12,6 @@
 
 use comm::{GenericChan, GenericPort};
 use comm;
-use libc;
 use prelude::*;
 use task;
 
@@ -37,18 +36,16 @@ The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
 pub fn run_in_bare_thread(f: ~fn()) {
+    use cell::Cell;
+    use rt::thread::Thread;
+
+    let f_cell = Cell::new(f);
     let (port, chan) = comm::stream();
     // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
-    // necessary since rust_raw_thread_join_delete is blocking
+    // necessary since rust_raw_thread_join is blocking
     do task::spawn_sched(task::SingleThreaded) {
-        unsafe {
-            let closure: &fn() = || {
-                f()
-            };
-            let thread = rust_raw_thread_start(&closure);
-            rust_raw_thread_join_delete(thread);
-            chan.send(());
-        }
+        Thread::start(f_cell.take()).join();
+        chan.send(());
     }
     port.recv();
 }
@@ -68,14 +65,6 @@ fn test_run_in_bare_thread_exchange() {
     do run_in_bare_thread {
         assert!(i == ~100);
     }
-}
-
-#[allow(non_camel_case_types)] // runtime type
-pub type raw_thread = libc::c_void;
-
-extern {
-    fn rust_raw_thread_start(f: &(&fn())) -> *raw_thread;
-    fn rust_raw_thread_join_delete(thread: *raw_thread);
 }
 
 

@@ -84,9 +84,8 @@ use local_data;
 use task::local_data_priv::{local_get, local_set, OldHandle};
 use task::rt::rust_task;
 use task::rt;
-use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
-use task::{Success, TaskOpts, TaskResult, ThreadPerTask};
-use task::{ExistingScheduler, SchedulerHandle};
+use task::{Failure};
+use task::{Success, TaskOpts, TaskResult};
 use task::unkillable;
 use to_bytes::IterBytes;
 use uint;
@@ -747,7 +746,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             // Create child task.
             let new_task = match opts.sched.mode {
                 DefaultScheduler => rt::new_task(),
-                _ => new_task_in_sched(opts.sched)
+                _ => new_task_in_sched()
             };
             assert!(!new_task.is_null());
             // Getting killed after here would leak the task.
@@ -805,35 +804,9 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         return result;
     }
 
-    fn new_task_in_sched(opts: SchedOpts) -> *rust_task {
-        if opts.foreign_stack_size != None {
-            fail!("foreign_stack_size scheduler option unimplemented");
-        }
-
-        let num_threads = match opts.mode {
-            DefaultScheduler
-            | CurrentScheduler
-            | ExistingScheduler(*)
-            | PlatformThread => 0u, /* Won't be used */
-            SingleThreaded => 1u,
-            ThreadPerTask => {
-                fail!("ThreadPerTask scheduling mode unimplemented")
-            }
-            ManualThreads(threads) => {
-                if threads == 0u {
-                    fail!("can not create a scheduler with no threads");
-                }
-                threads
-            }
-        };
-
+    fn new_task_in_sched() -> *rust_task {
         unsafe {
-            let sched_id = match opts.mode {
-                CurrentScheduler => rt::rust_get_sched_id(),
-                ExistingScheduler(SchedulerHandle(id)) => id,
-                PlatformThread => rt::rust_osmain_sched_id(),
-                _ => rt::rust_new_sched(num_threads)
-            };
+            let sched_id = rt::rust_new_sched(1);
             rt::rust_new_task_in_sched(sched_id)
         }
     }

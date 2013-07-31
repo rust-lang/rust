@@ -16,7 +16,8 @@ type raw_thread = libc::c_void;
 
 pub struct Thread {
     main: ~fn(),
-    raw_thread: *raw_thread
+    raw_thread: *raw_thread,
+    joined: bool
 }
 
 impl Thread {
@@ -27,18 +28,28 @@ impl Thread {
         let raw = substart(&main);
         Thread {
             main: main,
-            raw_thread: raw
+            raw_thread: raw,
+            joined: false
         }
+    }
+
+    pub fn join(self) {
+        assert!(!self.joined);
+        let mut this = self;
+        unsafe { rust_raw_thread_join(this.raw_thread); }
+        this.joined = true;
     }
 }
 
 impl Drop for Thread {
     fn drop(&self) {
-        unsafe { rust_raw_thread_join_delete(self.raw_thread) }
+        assert!(self.joined);
+        unsafe { rust_raw_thread_delete(self.raw_thread) }
     }
 }
 
 extern {
     pub unsafe fn rust_raw_thread_start(f: &(~fn())) -> *raw_thread;
-    pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
+    pub unsafe fn rust_raw_thread_join(thread: *raw_thread);
+    pub unsafe fn rust_raw_thread_delete(thread: *raw_thread);
 }

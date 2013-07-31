@@ -27,7 +27,7 @@ impl Drop for notify {
     fn drop(&self) {
         unsafe {
             error!("notify: task=%? v=%x unwinding=%b b=%b",
-                   task::get_task(),
+                   0,
                    ptr::to_unsafe_ptr(&(*(self.v))) as uint,
                    task::failing(),
                    *(self.v));
@@ -48,7 +48,7 @@ fn joinable(f: ~fn()) -> Port<bool> {
     fn wrapper(c: Chan<bool>, f: &fn()) {
         let b = @mut false;
         error!("wrapper: task=%? allocated v=%x",
-               task::get_task(),
+               0,
                ptr::to_unsafe_ptr(&(*b)) as uint);
         let _r = notify(c, b);
         f();
@@ -71,13 +71,13 @@ fn supervised() {
     // Yield to make sure the supervisor joins before we
     // fail. This is currently not needed because the supervisor
     // runs first, but I can imagine that changing.
-    error!("supervised task=%?", task::get_task);
+    error!("supervised task=%?", 0);
     task::yield();
     fail!();
 }
 
 fn supervisor() {
-    error!("supervisor task=%?", task::get_task());
+    error!("supervisor task=%?", 0);
     let t = joinable(supervised);
     join(t);
 }

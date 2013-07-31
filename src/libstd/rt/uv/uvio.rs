@@ -222,11 +222,12 @@ mod test_remote {
                 };
                 remote_cell.put_back(remote);
             }
-            let _thread = do Thread::start {
+            let thread = do Thread::start {
                 remote_cell.take().fire();
             };
 
             assert!(tube.recv() == 1);
+            thread.join();
         }
     }
 }

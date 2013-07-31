@@ -219,7 +219,7 @@ impl Drop for Task {
 impl Coroutine {
 
     pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        static MIN_STACK_SIZE: uint = 100000; // XXX: Too much stack
+        static MIN_STACK_SIZE: uint = 2000000; // XXX: Too much stack
 
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
