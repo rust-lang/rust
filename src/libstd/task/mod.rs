@@ -971,16 +971,29 @@ fn test_try_fail() {
     }
 }
 
+#[cfg(test)]
+fn get_sched_id() -> int {
+    if context() == OldTaskContext {
+        unsafe {
+            rt::rust_get_sched_id() as int
+        }
+    } else {
+        do Local::borrow::<::rt::sched::Scheduler, int> |sched| {
+            sched.sched_id() as int
+        }
+    }
+}
+
 #[test]
 fn test_spawn_sched() {
     let (po, ch) = stream::<()>();
     let ch = SharedChan::new(ch);
 
     fn f(i: int, ch: SharedChan<()>) {
-        let parent_sched_id = unsafe { rt::rust_get_sched_id() };
+        let parent_sched_id = get_sched_id();
 
         do spawn_sched(SingleThreaded) {
-            let child_sched_id = unsafe { rt::rust_get_sched_id() };
+            let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
 
             if (i == 0) {
@@ -1000,15 +1013,15 @@ fn test_spawn_sched_childs_on_default_sched() {
     let (po, ch) = stream();
 
     // Assuming tests run on the default scheduler
-    let default_id = unsafe { rt::rust_get_sched_id() };
+    let default_id = get_sched_id();
 
     let ch = Cell::new(ch);
     do spawn_sched(SingleThreaded) {
-        let parent_sched_id = unsafe { rt::rust_get_sched_id() };
+        let parent_sched_id = get_sched_id();
         let ch = Cell::new(ch.take());
         do spawn {
             let ch = ch.take();
-            let child_sched_id = unsafe { rt::rust_get_sched_id() };
+            let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);
             ch.send(());
