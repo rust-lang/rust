@@ -45,7 +45,7 @@ impl PkgId {
     // The PkgId constructor takes a Path argument so as
     // to be able to infer the version if the path refers
     // to a local git repository
-    pub fn new(s: &str, work_dir: &Path) -> PkgId {
+    pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
         let mut given_version = None;
@@ -76,7 +76,7 @@ impl PkgId {
 
         let version = match given_version {
             Some(v) => v,
-            None => match try_getting_local_version(&work_dir.push_rel(&*local_path)) {
+            None => match try_getting_local_version(&*local_path) {
                 Some(v) => v,
                 None => match try_getting_version(&remote_path) {
                     Some(v) => v,
@@ -103,6 +103,11 @@ impl PkgId {
     pub fn short_name_with_version(&self) -> ~str {
         fmt!("%s%s", self.short_name, self.version.to_str())
     }
+
+    /// True if the ID has multiple components
+    pub fn is_complex(&self) -> bool {
+        self.short_name != self.local_path.to_str()
+     }
 }
 
 impl ToStr for PkgId {

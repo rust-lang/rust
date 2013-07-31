@@ -1856,9 +1856,13 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
     match item.node {
-        ast::view_item_extern_mod(id, ref mta, _) => {
+        ast::view_item_extern_mod(id, ref optional_path, ref mta, _) => {
             head(s, "extern mod");
             print_ident(s, id);
+            for p in optional_path.iter() {
+                word(s.s, "=");
+                print_string(s, *p);
+            }
             if !mta.is_empty() {
                 popen(s);
                 commasep(s, consistent, *mta, |p, &i| print_meta_item(p, i));

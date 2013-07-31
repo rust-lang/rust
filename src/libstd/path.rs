@@ -19,13 +19,14 @@ Cross-platform file path handling
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{Iterator, IteratorUtil, range};
 use libc;
+use num;
 use option::{None, Option, Some};
 use str::{OwnedStr, Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
-use vec::{OwnedVector, ImmutableVector};
+use vec::{OwnedVector, ImmutableVector, OwnedCopyableVector};
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;
@@ -124,6 +125,43 @@ pub trait GenericPath {
 
     /// True if `self` is an ancestor of `other`. See `test_is_ancestor_of` for examples
     fn is_ancestor_of(&self, (&Self)) -> bool;
+
+    /// Find the relative path from one file to another
+    fn get_relative_to(&self, abs2: (&Self)) -> Self {
+        assert!(self.is_absolute());
+        assert!(abs2.is_absolute());
+        let abs1 = self.normalize();
+        let abs2 = abs2.normalize();
+
+        let split1: &[~str] = abs1.components();
+        let split2: &[~str] = abs2.components();
+        let len1 = split1.len();
+        let len2 = split2.len();
+        assert!(len1 > 0);
+        assert!(len2 > 0);
+
+        let max_common_path = num::min(len1, len2) - 1;
+        let mut start_idx = 0;
+        while start_idx < max_common_path
+            && split1[start_idx] == split2[start_idx] {
+            start_idx += 1;
+        }
+
+        let mut path: ~[~str] = ~[];
+        for _ in range(start_idx, len1 - 1) { path.push(~".."); };
+
+        path.push_all(split2.slice(start_idx, len2 - 1));
+
+        let mut result: Self = GenericPath::from_str(".");
+        if !path.is_empty() {
+            // Without this type hint, the typechecker doesn't seem to like it
+            let p: Self = GenericPath::from_str("");
+            result = p.push_many(path);
+        };
+        result
+    }
+
+    fn components(self) -> ~[~str];
 }
 
 #[cfg(target_os = "linux")]
@@ -703,6 +741,7 @@ impl GenericPath for PosixPath {
              self.is_ancestor_of(&other.pop()))
     }
 
+   fn components(self) -> ~[~str] { self.components }
 }
 
 
@@ -985,6 +1024,8 @@ impl GenericPath for WindowsPath {
             (!other.components.is_empty() && !(self.components.is_empty() && !self.is_absolute) &&
              self.is_ancestor_of(&other.pop()))
     }
+
+   fn components(self) -> ~[~str] { self.components }
 }
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
@@ -1338,6 +1379,126 @@ mod tests {
         assert!(!&WindowsPath("C:\\").is_ancestor_of(&WindowsPath("")));
         assert!(!&WindowsPath("C:\\a\\b\\c").is_ancestor_of(&WindowsPath("")));
         assert!(!&WindowsPath("").is_ancestor_of(&WindowsPath("C:\\a\\b\\c")));
+
+    }
+
+    #[test]
+    fn test_relative_to1() {
+        let p1 = PosixPath("/usr/bin/rustc");
+        let p2 = PosixPath("/usr/lib/mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("../lib"));
+
+        let p1 = WindowsPath("C:\\usr\\bin\\rustc");
+        let p2 = WindowsPath("C:\\usr\\lib\\mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("..\\lib"));
+
+    }
+
+    #[test]
+    fn test_relative_to2() {
+        let p1 = PosixPath("/usr/bin/rustc");
+        let p2 = PosixPath("/usr/bin/../lib/mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("../lib"));
+
+        let p1 = WindowsPath("C:\\usr\\bin\\rustc");
+        let p2 = WindowsPath("C:\\usr\\bin\\..\\lib\\mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("..\\lib"));
+    }
+
+    #[test]
+    fn test_relative_to3() {
+        let p1 = PosixPath("/usr/bin/whatever/rustc");
+        let p2 = PosixPath("/usr/lib/whatever/mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("../../lib/whatever"));
+
+        let p1 = WindowsPath("C:\\usr\\bin\\whatever\\rustc");
+        let p2 = WindowsPath("C:\\usr\\lib\\whatever\\mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("..\\..\\lib\\whatever"));
+
+    }
+
+    #[test]
+    fn test_relative_to4() {
+        let p1 = PosixPath("/usr/bin/whatever/../rustc");
+        let p2 = PosixPath("/usr/lib/whatever/mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("../lib/whatever"));
+
+        let p1 = WindowsPath("C:\\usr\\bin\\whatever\\..\\rustc");
+        let p2 = WindowsPath("C:\\usr\\lib\\whatever\\mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("..\\lib\\whatever"));
+
+    }
+
+    #[test]
+    fn test_relative_to5() {
+        let p1 = PosixPath("/usr/bin/whatever/../rustc");
+        let p2 = PosixPath("/usr/lib/whatever/../mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("../lib"));
+
+        let p1 = WindowsPath("C:\\usr\\bin/whatever\\..\\rustc");
+        let p2 = WindowsPath("C:\\usr\\lib\\whatever\\..\\mylib");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("..\\lib"));
+    }
+
+    #[test]
+    fn test_relative_to6() {
+        let p1 = PosixPath("/1");
+        let p2 = PosixPath("/2/3");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath("2"));
+
+        let p1 = WindowsPath("C:\\1");
+        let p2 = WindowsPath("C:\\2\\3");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath("2"));
+
+    }
+
+    #[test]
+    fn test_relative_to7() {
+        let p1 = PosixPath("/1/2");
+        let p2 = PosixPath("/3");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, PosixPath(".."));
+
+        let p1 = WindowsPath("C:\\1\\2");
+        let p2 = WindowsPath("C:\\3");
+        let res = p1.get_relative_to(&p2);
+        assert_eq!(res, WindowsPath(".."));
+
+    }
+
+    #[test]
+    fn test_relative_to8() {
+        let p1 = PosixPath("/home/brian/Dev/rust/build/").push_rel(
+            &PosixPath("stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so"));
+        let p2 = PosixPath("/home/brian/Dev/rust/build/stage2/bin/..").push_rel(
+            &PosixPath("lib/rustc/i686-unknown-linux-gnu/lib/libstd.so"));
+        let res = p1.get_relative_to(&p2);
+        debug!("test_relative_to8: %s vs. %s",
+               res.to_str(),
+               PosixPath(".").to_str());
+        assert_eq!(res, PosixPath("."));
+
+        let p1 = WindowsPath("C:\\home\\brian\\Dev\\rust\\build\\").push_rel(
+            &WindowsPath("stage2\\lib\\rustc\\i686-unknown-linux-gnu\\lib\\librustc.so"));
+        let p2 = WindowsPath("\\home\\brian\\Dev\\rust\\build\\stage2\\bin\\..").push_rel(
+            &WindowsPath("lib\\rustc\\i686-unknown-linux-gnu\\lib\\libstd.so"));
+        let res = p1.get_relative_to(&p2);
+        debug!("test_relative_to8: %s vs. %s",
+               res.to_str(),
+               WindowsPath(".").to_str());
+        assert_eq!(res, WindowsPath("."));
 
     }
 

@@ -18,7 +18,6 @@ use metadata::filesearch::FileSearch;
 use metadata::filesearch;
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
-use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
@@ -46,7 +45,7 @@ pub struct Context {
     diag: @span_handler,
     filesearch: @FileSearch,
     span: span,
-    ident: ast::ident,
+    ident: @str,
     metas: ~[@ast::MetaItem],
     hash: @str,
     os: os,
@@ -60,7 +59,7 @@ pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
       None => {
         cx.diag.span_fatal(cx.span,
                            fmt!("can't find crate for `%s`",
-                                token::ident_to_str(&cx.ident)));
+                                cx.ident));
       }
     }
 }
@@ -89,37 +88,38 @@ fn find_library_crate_aux(
     filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix = prefix + crate_name + "-";
-
+    // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
+    let prefix = fmt!("%s%s-", prefix, crate_name);
     let mut matches = ~[];
     filesearch::search(filesearch, |path| -> Option<()> {
-        debug!("inspecting file %s", path.to_str());
-        match path.filename() {
-            Some(ref f) if f.starts_with(prefix) && f.ends_with(suffix) => {
-                debug!("%s is a candidate", path.to_str());
-                match get_metadata_section(cx.os, path) {
-                    Some(cvec) =>
-                        if !crate_matches(cvec, cx.metas, cx.hash) {
-                            debug!("skipping %s, metadata doesn't match",
-                                   path.to_str());
-                            None
-                        } else {
-                            debug!("found %s with matching metadata", path.to_str());
-                            matches.push((path.to_str(), cvec));
-                            None
-                        },
-                    _ => {
-                        debug!("could not load metadata for %s", path.to_str());
-                        None
-                    }
-                }
-            }
-            _ => {
-                debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
-                       prefix, suffix);
-                None
-            }
-        }});
+      let path_str = path.filename();
+      match path_str {
+          None => None,
+          Some(path_str) =>
+              if path_str.starts_with(prefix) && path_str.ends_with(suffix) {
+                  debug!("%s is a candidate", path.to_str());
+                  match get_metadata_section(cx.os, path) {
+                      Some(cvec) =>
+                          if !crate_matches(cvec, cx.metas, cx.hash) {
+                              debug!("skipping %s, metadata doesn't match",
+                                  path.to_str());
+                              None
+                          } else {
+                              debug!("found %s with matching metadata", path.to_str());
+                              matches.push((path.to_str(), cvec));
+                              None
+                          },
+                      _ => {
+                          debug!("could not load metadata for %s", path.to_str());
+                          None
+                      }
+                  }
+               }
+               else {
+                   None
+               }
+      }
+    });
 
     match matches.len() {
         0 => None,
@@ -137,8 +137,8 @@ fn find_library_crate_aux(
                 }
                 cx.diag.handler().abort_if_errors();
                 None
-            }
         }
+    }
 }
 
 pub fn crate_name_from_metas(metas: &[@ast::MetaItem]) -> @str {
@@ -149,6 +149,16 @@ pub fn crate_name_from_metas(metas: &[@ast::MetaItem]) -> @str {
         }
     }
     fail!("expected to find the crate name")
+}
+
+pub fn package_id_from_metas(metas: &[@ast::MetaItem]) -> Option<@str> {
+    for m in metas.iter() {
+        match m.name_str_pair() {
+            Some((name, s)) if "package_id" == name => { return Some(s); }
+            _ => {}
+        }
+    }
+    None
 }
 
 pub fn note_linkage_attrs(intr: @ident_interner,
@@ -175,6 +185,8 @@ fn crate_matches(crate_data: @~[u8],
 pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
                         local_metas: &[@ast::MetaItem]) -> bool {
 
+// extern_metas: metas we read from the crate
+// local_metas: metas we're looking for
     debug!("matching %u metadata requirements against %u items",
            local_metas.len(), extern_metas.len());
 

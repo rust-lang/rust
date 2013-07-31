@@ -23,7 +23,6 @@ use util::compile_crate;
 // This contains a list of files found in the source workspace.
 pub struct PkgSrc {
     root: Path, // root of where the package source code lives
-    dst_dir: Path, // directory where we will put the compiled output
     id: PkgId,
     libs: ~[Crate],
     mains: ~[Crate],
@@ -37,11 +36,9 @@ condition! {
 
 impl PkgSrc {
 
-    pub fn new(src_dir: &Path, dst_dir: &Path,
-                  id: &PkgId) -> PkgSrc {
+    pub fn new(src_dir: &Path, id: &PkgId) -> PkgSrc {
         PkgSrc {
             root: (*src_dir).clone(),
-            dst_dir: (*dst_dir).clone(),
             id: (*id).clone(),
             libs: ~[],
             mains: ~[],
@@ -202,7 +199,6 @@ impl PkgSrc {
 
     fn build_crates(&self,
                     ctx: &Ctx,
-                    dst_dir: &Path,
                     src_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
@@ -210,12 +206,13 @@ impl PkgSrc {
         for crate in crates.iter() {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
-            note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
+            note(fmt!("build_crates: using as workspace %s", self.root.to_str()));
 
             let result = compile_crate(ctx,
                                        &self.id,
                                        path,
-                                       dst_dir,
+                                       // compile_crate wants the workspace
+                                       &self.root,
                                        crate.flags,
                                        crate.cfgs + cfgs,
                                        false,
@@ -229,15 +226,15 @@ impl PkgSrc {
         }
     }
 
-    pub fn build(&self, ctx: &Ctx, dst_dir: Path, cfgs: ~[~str]) {
+    pub fn build(&self, ctx: &Ctx, cfgs: ~[~str]) {
         let dir = self.check_dir();
         debug!("Building libs in %s", dir.to_str());
-        self.build_crates(ctx, &dst_dir, &dir, self.libs, cfgs, Lib);
+        self.build_crates(ctx, &dir, self.libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(ctx, &dst_dir, &dir, self.mains, cfgs, Main);
+        self.build_crates(ctx, &dir, self.mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(ctx, &dst_dir, &dir, self.tests, cfgs, Test);
+        self.build_crates(ctx, &dir, self.tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(ctx, &dst_dir, &dir, self.benchs, cfgs, Bench);
+        self.build_crates(ctx, &dir, self.benchs, cfgs, Bench);
     }
 }

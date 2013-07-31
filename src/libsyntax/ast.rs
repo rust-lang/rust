@@ -951,7 +951,11 @@ pub struct view_item {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum view_item_ {
-    view_item_extern_mod(ident, ~[@MetaItem], NodeId),
+    // ident: name used to refer to this crate in the code
+    // optional @str: if present, this is a location (containing
+    // arbitrary characters) from which to fetch the crate sources
+    // For example, extern mod whatever = "github.com/mozilla/rust"
+    view_item_extern_mod(ident, Option<@str>, ~[@MetaItem], NodeId),
     view_item_use(~[@view_path]),
 }
 
