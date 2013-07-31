@@ -14,60 +14,13 @@ pub use package_path::{RemotePath, LocalPath, normalize};
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general};
+pub use rustc::metadata::filesearch::rust_path;
+
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
 use std::os;
-use std::iterator::IteratorUtil;
 use messages::*;
 use package_id::*;
-
-fn push_if_exists(vec: &mut ~[Path], p: &Path) {
-    let maybe_dir = p.push(".rust");
-    if os::path_exists(&maybe_dir) {
-        vec.push(maybe_dir);
-    }
-}
-
-#[cfg(windows)]
-static PATH_ENTRY_SEPARATOR: &'static str = ";";
-#[cfg(not(windows))]
-static PATH_ENTRY_SEPARATOR: &'static str = ":";
-
-/// Returns RUST_PATH as a string, without default paths added
-pub fn get_rust_path() -> Option<~str> {
-    os::getenv("RUST_PATH")
-}
-
-/// Returns the value of RUST_PATH, as a list
-/// of Paths. Includes default entries for, if they exist:
-/// $HOME/.rust
-/// DIR/.rust for any DIR that's the current working directory
-/// or an ancestor of it
-pub fn rust_path() -> ~[Path] {
-    let mut env_rust_path: ~[Path] = match get_rust_path() {
-        Some(env_path) => {
-            let env_path_components: ~[&str] =
-                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
-            env_path_components.map(|&s| Path(s))
-        }
-        None => ~[]
-    };
-    debug!("RUST_PATH entries from environment: %?", env_rust_path);
-    let cwd = os::getcwd();
-    // now add in default entries
-    env_rust_path.push(cwd.clone());
-    do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
-    let h = os::homedir();
-    // Avoid adding duplicates
-    // could still add dups if someone puts one of these in the RUST_PATH
-    // manually, though...
-    for hdir in h.iter() {
-        if !(cwd.is_ancestor_of(hdir) || hdir.is_ancestor_of(&cwd)) {
-            push_if_exists(&mut env_rust_path, hdir);
-        }
-    }
-    env_rust_path
-}
 
 pub fn default_workspace() -> Path {
     let p = rust_path();
@@ -99,39 +52,39 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
-    let dirs = os::list_dir(&src_dir);
-    for p in dirs.iter() {
-        let p = Path((*p).clone());
+    let mut found = false;
+    do os::walk_dir(&src_dir) |p| {
         debug!("=> p = %s", p.to_str());
-        if !os::path_is_dir(&src_dir.push_rel(&p)) {
-            loop;
-        }
-        debug!("p = %s, remote_path = %s", p.to_str(), pkgid.remote_path.to_str());
+        if os::path_is_dir(p) {
+            debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
+            src_dir.push_rel(&pkgid.path).to_str());
 
-        if p == *pkgid.remote_path {
-            return true;
-        }
-        else {
-            let pf = p.filename();
-            for pf in pf.iter() {
-                let f_ = (*pf).clone();
-                let g = f_.to_str();
-                match split_version_general(g, '-') {
-                    Some((ref might_match, ref vers)) => {
-                        debug!("might_match = %s, vers = %s", *might_match,
+            if *p == src_dir.push_rel(&pkgid.path) {
+                found = true;
+            }
+            else {
+                let pf = p.filename();
+                for pf in pf.iter() {
+                    let f_ = (*pf).clone();
+                    let g = f_.to_str();
+                    match split_version_general(g, '-') {
+                        Some((ref might_match, ref vers)) => {
+                            debug!("might_match = %s, vers = %s", *might_match,
                                vers.to_str());
-                        if *might_match == pkgid.short_name
-                            && (*vers == pkgid.version || pkgid.version == NoVersion)
-                        {
-                            return true;
+                            if *might_match == pkgid.short_name
+                                 && (*vers == pkgid.version || pkgid.version == NoVersion)
+                            {
+                                  found = true;
+                            }
                         }
-                    }
-                    None => ()
+                        None => ()
+                     }
                 }
             }
         }
-    }
-    false
+        true
+    };
+    found
 }
 
 /// Returns a list of possible directories

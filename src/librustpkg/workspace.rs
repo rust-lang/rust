@@ -12,8 +12,10 @@
 
 use std::os;
 use std::path::Path;
-use path_util::{rust_path, workspace_contains_package_id};
+use path_util::workspace_contains_package_id;
 use package_id::PkgId;
+
+use rustc::metadata::filesearch::rust_path;
 
 pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
@@ -58,5 +60,5 @@ pub fn cwd_to_workspace() -> (Path, PkgId) {
     let ws = cwd.pop().pop();
     let cwd_ = cwd.clone();
     let pkgid = cwd_.components.last().to_str();
-    (ws, PkgId::new(pkgid, &cwd))
+    (ws, PkgId::new(pkgid))
 }

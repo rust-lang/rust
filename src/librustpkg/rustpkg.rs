@@ -33,12 +33,13 @@ use std::hashmap::HashMap;
 
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
+use rustc::metadata::filesearch::rust_path;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
 use messages::*;
 use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
-use path_util::{U_RWX, rust_path, in_rust_path};
+use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use source_control::is_git_dir;
@@ -138,35 +139,28 @@ impl<'self> PkgScript<'self> {
         let crate = util::ready_crate(sess, self.crate);
         debug!("Building output filenames with script name %s",
                driver::source_name(&self.input));
-        match filesearch::get_rustpkg_sysroot() {
-            Ok(r) => {
-                let root = r.pop().pop().pop().pop(); // :-\
-                debug!("Root is %s, calling compile_rest", root.to_str());
-                let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
-                util::compile_crate_from_input(&self.input,
-                                               &self.build_dir,
-                                               sess,
-                                               crate);
-                debug!("Running program: %s %s %s %s", exe.to_str(),
-                       sysroot.to_str(), root.to_str(), "install");
-                // FIXME #7401 should support commands besides `install`
-                let status = run::process_status(exe.to_str(), [sysroot.to_str(), ~"install"]);
-                if status != 0 {
-                    return (~[], status);
-                }
-                else {
-                    debug!("Running program (configs): %s %s %s",
-                           exe.to_str(), root.to_str(), "configs");
-                    let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
-                    // Run the configs() function to get the configs
-                    let cfgs = str::from_bytes_slice(output.output).word_iter()
-                        .transform(|w| w.to_owned()).collect();
-                    (cfgs, output.status)
-                }
-            }
-            Err(e) => {
-                fail!("Running package script, couldn't find rustpkg sysroot (%s)", e)
-            }
+        let root = filesearch::get_or_default_sysroot().pop().pop(); // :-\
+        debug!("Root is %s, calling compile_rest", root.to_str());
+        let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
+        util::compile_crate_from_input(&self.input,
+                                       &self.build_dir,
+                                       sess,
+                                       crate);
+        debug!("Running program: %s %s %s %s", exe.to_str(),
+               sysroot.to_str(), root.to_str(), "install");
+        // FIXME #7401 should support commands besides `install`
+        let status = run::process_status(exe.to_str(), [sysroot.to_str(), ~"install"]);
+        if status != 0 {
+            return (~[], status);
+        }
+        else {
+            debug!("Running program (configs): %s %s %s",
+                   exe.to_str(), root.to_str(), "configs");
+            let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
+            // Run the configs() function to get the configs
+            let cfgs = str::from_bytes_slice(output.output).word_iter()
+                .transform(|w| w.to_owned()).collect();
+            (cfgs, output.status)
         }
     }
 
@@ -205,7 +199,7 @@ impl CtxMethods for Ctx {
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
-                    let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
+                    let pkgid = PkgId::new(args[0].clone());
                     do each_pkg_parent_workspace(&pkgid) |workspace| {
                         debug!("found pkg %s in workspace %s, trying to build",
                                pkgid.to_str(), workspace.to_str());
@@ -228,7 +222,7 @@ impl CtxMethods for Ctx {
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
-                    let pkgid = PkgId::new(args[0].clone(), &os::getcwd());
+                    let pkgid = PkgId::new(args[0].clone());
                     let cwd = os::getcwd();
                     self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
                 }
@@ -254,13 +248,12 @@ impl CtxMethods for Ctx {
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
-                    let pkgid = PkgId::new(args[0], &os::getcwd());
+                    let pkgid = PkgId::new(args[0]);
                     let workspaces = pkg_parent_workspaces(&pkgid);
                     if workspaces.is_empty() {
                         let rp = rust_path();
                         assert!(!rp.is_empty());
-                        let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
-                                              &pkgid);
+                        let src = PkgSrc::new(&rp[0], &pkgid);
                         src.fetch_git();
                         self.install(&rp[0], &pkgid);
                     }
@@ -294,7 +287,7 @@ impl CtxMethods for Ctx {
                     return usage::uninstall();
                 }
 
-                let pkgid = PkgId::new(args[0], &os::getcwd()); // ??
+                let pkgid = PkgId::new(args[0]);
                 if !installed_packages::package_is_installed(&pkgid) {
                     warn(fmt!("Package %s doesn't seem to be installed! Doing nothing.", args[0]));
                     return;
@@ -332,8 +325,6 @@ impl CtxMethods for Ctx {
                in_rust_path(workspace), is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
                pkgid.to_str());
         let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
-        let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
-        debug!("Destination dir = %s", build_dir.to_str());
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
@@ -351,7 +342,7 @@ impl CtxMethods for Ctx {
         }
 
         // Create the package source
-        let mut src = PkgSrc::new(workspace, &build_dir, pkgid);
+        let mut src = PkgSrc::new(workspace, pkgid);
         debug!("Package src = %?", src);
 
         // Is there custom build logic? If so, use it
@@ -385,7 +376,7 @@ impl CtxMethods for Ctx {
             // Find crates inside the workspace
             src.find_crates();
             // Build it!
-            src.build(self, build_dir, cfgs);
+            src.build(self, cfgs);
         }
     }
 
@@ -444,6 +435,7 @@ impl CtxMethods for Ctx {
         for lib in maybe_library.iter() {
             let target_lib = target_lib.clone().expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
+            let target_lib = target_lib.pop().push(lib.filename().expect("weird target lib"));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
             if !(os::mkdir_recursive(&target_lib.dir_path(), U_RWX) &&
                  os::copy_file(lib, &target_lib)) {
@@ -518,9 +510,7 @@ pub fn main() {
         };
     }
 
-    let sroot = match filesearch::get_rustpkg_sysroot() {
-        Ok(r) => Some(@r.pop().pop()), Err(_) => None
-    };
+    let sroot = Some(@filesearch::get_or_default_sysroot());
     debug!("Using sysroot: %?", sroot);
     Ctx {
         sysroot_opt: sroot, // Currently, only tests override this
