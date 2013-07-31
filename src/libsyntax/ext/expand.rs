@@ -683,7 +683,7 @@ pub fn std_macros() -> @str {
         ($cond:expr) => {
             if !$cond {
                 ::std::sys::FailWithCause::fail_with(
-                    ~\"assertion failed: \" + stringify!($cond), file!(), line!())
+                    \"assertion failed: \" + stringify!($cond), file!(), line!())
             }
         };
         ($cond:expr, $msg:expr) => {
