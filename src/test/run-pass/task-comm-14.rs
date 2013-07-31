@@ -14,14 +14,14 @@ use std::comm;
 use std::task;
 
 pub fn main() {
-    let po = comm::PortSet::new();
+    let (po, ch) = comm::stream();
+    let ch = comm::SharedChan::new(ch);
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
         info!(i);
-        let (p, ch) = comm::stream();
-        po.add(p);
+        let ch = ch.clone();
         task::spawn({let i = i; || child(i, &ch)});
         i = i - 1;
     }
@@ -39,7 +39,7 @@ pub fn main() {
     info!("main thread exiting");
 }
 
-fn child(x: int, ch: &comm::Chan<int>) {
+fn child(x: int, ch: &comm::SharedChan<int>) {
     info!(x);
     ch.send(x);
 }
