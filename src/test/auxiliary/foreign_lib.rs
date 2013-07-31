@@ -14,6 +14,6 @@ pub mod rustrt {
     use std::libc;
 
     extern {
-        pub fn rust_get_argc() -> libc::c_int;
+        fn rust_get_test_int() -> libc::intptr_t;
     }
 }
