@@ -983,6 +983,7 @@ mod test_treemap {
             assert_eq!(*v, n * 2);
             n += 1;
         }
+        assert_eq!(n, 5);
     }
 
     #[test]
