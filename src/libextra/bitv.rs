@@ -646,9 +646,10 @@ impl BitvSet {
     /// Creates a new bit vector set from the given bit vector
     pub fn from_bitv(bitv: Bitv) -> BitvSet {
         let mut size = 0;
-        for bitv.ones |_| {
+        do bitv.ones |_| {
             size += 1;
-        }
+            true
+        };
         let Bitv{rep, _} = bitv;
         match rep {
             Big(b) => BitvSet{ size: size, bitv: b },
@@ -1354,18 +1355,18 @@ mod tests {
     fn test_small_clear() {
         let mut b = Bitv::new(14, true);
         b.clear();
-        for b.ones |i| {
-            fail!("found 1 at %?", i);
-        }
+        do b.ones |i| {
+            fail!("found 1 at %?", i)
+        };
     }
 
     #[test]
     fn test_big_clear() {
         let mut b = Bitv::new(140, true);
         b.clear();
-        for b.ones |i| {
-            fail!("found 1 at %?", i);
-        }
+        do b.ones |i| {
+            fail!("found 1 at %?", i)
+        };
     }
 
     #[test]
@@ -1400,10 +1401,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
-        for a.intersection(&b) |x| {
+        do a.intersection(&b) |x| {
             assert_eq!(*x, expected[i]);
-            i += 1
-        }
+            i += 1;
+            true
+        };
         assert_eq!(i, expected.len());
     }
 
@@ -1423,10 +1425,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 500];
-        for a.difference(&b) |x| {
+        do a.difference(&b) |x| {
             assert_eq!(*x, expected[i]);
-            i += 1
-        }
+            i += 1;
+            true
+        };
         assert_eq!(i, expected.len());
     }
 
@@ -1448,10 +1451,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
-        for a.symmetric_difference(&b) |x| {
+        do a.symmetric_difference(&b) |x| {
             assert_eq!(*x, expected[i]);
-            i += 1
-        }
+            i += 1;
+            true
+        };
         assert_eq!(i, expected.len());
     }
 
@@ -1476,10 +1480,11 @@ mod tests {
 
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
-        for a.union(&b) |x| {
+        do a.union(&b) |x| {
             assert_eq!(*x, expected[i]);
-            i += 1
-        }
+            i += 1;
+            true
+        };
         assert_eq!(i, expected.len());
     }
 

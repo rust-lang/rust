@@ -72,11 +72,12 @@ impl Drop for Arena {
     fn drop(&self) {
         unsafe {
             destroy_chunk(&self.head);
-            for self.chunks.each |chunk| {
+            do self.chunks.each |chunk| {
                 if !chunk.is_pod {
                     destroy_chunk(chunk);
                 }
-            }
+                true
+            };
         }
     }
 }
