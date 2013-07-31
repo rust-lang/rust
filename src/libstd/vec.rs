@@ -2767,19 +2767,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        for each_permutation([]) |v| { results.push(v.to_owned()); }
+        do each_permutation([]) |v| { results.push(v.to_owned()); true };
         assert_eq!(results, ~[~[]]);
 
         results = ~[];
-        for each_permutation([7]) |v| { results.push(v.to_owned()); }
+        do each_permutation([7]) |v| { results.push(v.to_owned()); true };
         assert_eq!(results, ~[~[7]]);
 
         results = ~[];
-        for each_permutation([1,1]) |v| { results.push(v.to_owned()); }
+        do each_permutation([1,1]) |v| { results.push(v.to_owned()); true };
         assert_eq!(results, ~[~[1,1],~[1,1]]);
 
         results = ~[];
-        for each_permutation([5,2,0]) |v| { results.push(v.to_owned()); }
+        do each_permutation([5,2,0]) |v| { results.push(v.to_owned()); true };
         assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }
@@ -3107,12 +3107,13 @@ mod tests {
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        for each_permutation(v) |_elt| {
+        do each_permutation(v) |_elt| {
             if i == 2 {
                 fail!()
             }
             i += 0;
-        }
+            true
+        };
     }
 
     #[test]
@@ -3425,9 +3426,10 @@ mod tests {
     fn test_permutations0() {
         let values = [];
         let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
+        do each_permutation(values) |p| {
             v.push(p.to_owned());
-        }
+            true
+        };
         assert_eq!(v, ~[~[]]);
     }
 
@@ -3435,9 +3437,10 @@ mod tests {
     fn test_permutations1() {
         let values = [1];
         let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
+        do each_permutation(values) |p| {
             v.push(p.to_owned());
-        }
+            true
+        };
         assert_eq!(v, ~[~[1]]);
     }
 
@@ -3445,9 +3448,10 @@ mod tests {
     fn test_permutations2() {
         let values = [1,2];
         let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
+        do each_permutation(values) |p| {
             v.push(p.to_owned());
-        }
+            true
+        };
         assert_eq!(v, ~[~[1,2],~[2,1]]);
     }
 
@@ -3455,9 +3459,10 @@ mod tests {
     fn test_permutations3() {
         let values = [1,2,3];
         let mut v : ~[~[int]] = ~[];
-        for each_permutation(values) |p| {
+        do each_permutation(values) |p| {
             v.push(p.to_owned());
-        }
+            true
+        };
         assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
     }
 

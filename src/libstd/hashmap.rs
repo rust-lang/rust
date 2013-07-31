@@ -130,15 +130,17 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                 hash: uint,
                                 k: &K)
                              -> SearchResult {
-        for self.bucket_sequence(hash) |i| {
+        let mut ret = TableFull;
+        do self.bucket_sequence(hash) |i| {
             match self.buckets[i] {
-                Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
-                    return FoundEntry(i);
+                Some(ref bkt) if bkt.hash == hash && *k == bkt.key => {
+                    ret = FoundEntry(i); false
                 },
-                None => return FoundHole(i)
+                None => { ret = FoundHole(i); false }
+                _ => true,
             }
-        }
-        TableFull
+        };
+        ret
     }
 
     #[inline]
@@ -146,17 +148,17 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                                   hash: uint,
                                                   k: &Q)
                                                -> SearchResult {
-        for self.bucket_sequence(hash) |i| {
+        let mut ret = TableFull;
+        do self.bucket_sequence(hash) |i| {
             match self.buckets[i] {
-                Some(ref bkt) => {
-                    if bkt.hash == hash && k.equiv(&bkt.key) {
-                        return FoundEntry(i);
-                    }
+                Some(ref bkt) if bkt.hash == hash && k.equiv(&bkt.key) => {
+                    ret = FoundEntry(i); false
                 },
-                None => return FoundHole(i)
+                None => { ret = FoundHole(i); false }
+                _ => true,
             }
-        }
-        TableFull
+        };
+        ret
     }
 
     /// Expand the capacity of the array to the next power of two
@@ -271,11 +273,6 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         self.size = size;
 
         value
-    }
-
-    fn search(&self, hash: uint,
-              op: &fn(x: &Option<Bucket<K, V>>) -> bool) {
-        let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
     }
 }
 
