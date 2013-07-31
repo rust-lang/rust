@@ -576,16 +576,12 @@ mod tests {
         let (p, c) = comm::stream();
 
         do task::spawn() || {
-            let p = comm::PortSet::new();
-            c.send(p.chan());
-
             let arc_v : Arc<~[int]> = p.recv();
 
             let v = (*arc_v.get()).clone();
             assert_eq!(v[3], 4);
         };
 
-        let c = p.recv();
         c.send(arc_v.clone());
 
         assert_eq!(arc_v.get()[2], 3);

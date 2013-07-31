@@ -17,7 +17,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
+fn test00_start(c: &comm::SharedChan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
@@ -25,22 +25,23 @@ fn test00_start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = comm::PortSet::new();
+    let (p, ch) = comm::stream();
+    let ch = comm::SharedChan::new(ch);
     let number_of_messages: int = 10;
 
-    let c = p.chan();
+    let c = ch.clone();
     do task::spawn || {
         test00_start(&c, number_of_messages * 0, number_of_messages);
     }
-    let c = p.chan();
+    let c = ch.clone();
     do task::spawn || {
         test00_start(&c, number_of_messages * 1, number_of_messages);
     }
-    let c = p.chan();
+    let c = ch.clone();
     do task::spawn || {
         test00_start(&c, number_of_messages * 2, number_of_messages);
     }
-    let c = p.chan();
+    let c = ch.clone();
     do task::spawn || {
         test00_start(&c, number_of_messages * 3, number_of_messages);
     }
