@@ -106,8 +106,14 @@ impl Drop for KillFlag {
 // blocked task handle. So unblocking a task must restore that spare.
 unsafe fn revive_task_ptr(task_ptr: uint, spare_flag: Option<KillFlagHandle>) -> ~Task {
     let mut task: ~Task = cast::transmute(task_ptr);
-    rtassert!(task.death.spare_kill_flag.is_none());
-    task.death.spare_kill_flag = spare_flag;
+    if task.death.spare_kill_flag.is_none() {
+        task.death.spare_kill_flag = spare_flag;
+    } else {
+        // A task's spare kill flag is not used for blocking in one case:
+        // when an unkillable task blocks on select. In this case, a separate
+        // one was created, which we now discard.
+        rtassert!(task.death.unkillable > 0);
+    }
     task
 }
 
@@ -119,7 +125,7 @@ impl BlockedTask {
             Killable(flag_arc) => {
                 let flag = unsafe { &mut **flag_arc.get() };
                 match flag.swap(KILL_RUNNING, SeqCst) {
-                    KILL_RUNNING => rtabort!("tried to wake an already-running task"),
+                    KILL_RUNNING => None, // woken from select(), perhaps
                     KILL_KILLED  => None, // a killer stole it already
                     task_ptr     =>
                         Some(unsafe { revive_task_ptr(task_ptr, Some(flag_arc)) })
@@ -161,6 +167,27 @@ impl BlockedTask {
             }
         }
     }
+
+    /// Converts one blocked task handle to a list of many handles to the same.
+    pub fn make_selectable(self, num_handles: uint) -> ~[BlockedTask] {
+        let handles = match self {
+            Unkillable(task) => {
+                let flag = unsafe { KillFlag(AtomicUint::new(cast::transmute(task))) };
+                UnsafeAtomicRcBox::newN(flag, num_handles)
+            }
+            Killable(flag_arc) => flag_arc.cloneN(num_handles),
+        };
+        // Even if the task was unkillable before, we use 'Killable' because
+        // multiple pipes will have handles. It does not really mean killable.
+        handles.consume_iter().transform(|x| Killable(x)).collect()
+    }
+
+    // This assertion has two flavours because the wake involves an atomic op.
+    // In the faster version, destructors will fail dramatically instead.
+    #[inline] #[cfg(not(test))]
+    pub fn assert_already_awake(self) { }
+    #[inline] #[cfg(test)]
+    pub fn assert_already_awake(self) { assert!(self.wake().is_none()); }
 
     /// Convert to an unsafe uint value. Useful for storing in a pipe's state flag.
     #[inline]
@@ -301,7 +328,7 @@ impl KillHandle {
         }
 
         // Try to see if all our children are gone already.
-        match unsafe { self.try_unwrap() } {
+        match self.try_unwrap() {
             // Couldn't unwrap; children still alive. Reparent entire handle as
             // our own tombstone, to be unwrapped later.
             Left(this) => {
@@ -313,7 +340,7 @@ impl KillHandle {
                         // Prefer to check tombstones that were there first,
                         // being "more fair" at the expense of tail-recursion.
                         others.take().map_consume_default(true, |f| f()) && {
-                            let mut inner = unsafe { this.take().unwrap() };
+                            let mut inner = this.take().unwrap();
                             (!inner.any_child_failed) &&
                                 inner.child_tombstones.take_map_default(true, |f| f())
                         }
@@ -402,7 +429,7 @@ impl Death {
         do self.on_exit.take_map |on_exit| {
             if success {
                 // We succeeded, but our children might not. Need to wait for them.
-                let mut inner = unsafe { self.kill_handle.take_unwrap().unwrap() };
+                let mut inner = self.kill_handle.take_unwrap().unwrap();
                 if inner.any_child_failed {
                     success = false;
                 } else {
@@ -528,7 +555,7 @@ mod test {
 
             // Without another handle to child, the try unwrap should succeed.
             child.reparent_children_to(&mut parent);
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -543,7 +570,7 @@ mod test {
             child.notify_immediate_failure();
             // Without another handle to child, the try unwrap should succeed.
             child.reparent_children_to(&mut parent);
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             // Immediate failure should have been propagated.
             assert!(parent_inner.any_child_failed);
@@ -565,7 +592,7 @@ mod test {
             // Otherwise, due to 'link', it would try to tombstone.
             child2.reparent_children_to(&mut parent);
             // Should successfully unwrap even though 'link' is still alive.
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.is_none());
             // Immediate failure should have been propagated by first child.
             assert!(parent_inner.any_child_failed);
@@ -584,7 +611,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.take_unwrap()());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -603,7 +630,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
             assert!(parent_inner.child_tombstones.take_unwrap()() == false);
             assert!(parent_inner.any_child_failed == false);
@@ -623,7 +650,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             assert!(parent_inner.child_tombstones.take_unwrap()());
             assert!(parent_inner.any_child_failed == false);
         }
@@ -644,7 +671,7 @@ mod test {
             // Let parent collect tombstones.
             util::ignore(link);
             // Must have created a tombstone
-            let mut parent_inner = unsafe { parent.unwrap() };
+            let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
             assert!(parent_inner.child_tombstones.take_unwrap()() == false);
             assert!(parent_inner.any_child_failed == false);

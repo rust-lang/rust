@@ -512,7 +512,9 @@ impl RuntimeGlue {
     unsafe fn kill_all_tasks(task: &TaskHandle) {
         match *task {
             OldTask(ptr) => rt::rust_task_kill_all(ptr),
-            NewTask(ref _handle) => rtabort!("unimplemented"), // FIXME(#7544)
+            // FIXME(#7544): Remove the kill_all feature entirely once the
+            // oldsched goes away.
+            NewTask(ref _handle) => rtabort!("can't kill_all in newsched"),
         }
     }
 
@@ -573,7 +575,10 @@ impl RuntimeGlue {
                             members: members,
                             descendants: TaskSet::new(),
                         }));
-                        let group = Taskgroup(tasks, AncestorList(None), true, None);
+                        // FIXME(#7544): Remove the is_main flag entirely once
+                        // the newsched goes away. The main taskgroup has no special
+                        // behaviour.
+                        let group = Taskgroup(tasks, AncestorList(None), false, None);
                         (*me).taskgroup = Some(group);
                         (*me).taskgroup.get_ref()
                     }
@@ -689,7 +694,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         // Should be run after the local-borrowed task is returned.
         if enlist_success {
             if indestructible {
-                unsafe { do unkillable { f() } }
+                do unkillable { f() }
             } else {
                 f()
             }
