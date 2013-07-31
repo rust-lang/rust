@@ -259,6 +259,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     let mut handles = ~[];
 
     do nscheds.times {
+        rtdebug!("inserting a regular scheduler");
+
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
@@ -344,6 +346,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // Run each remaining scheduler in a thread.
     while !scheds.is_empty() {
+        rtdebug!("creating regular schedulers");
         let sched = scheds.pop();
         let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
@@ -360,14 +363,20 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     if use_main_sched {
 
+        rtdebug!("about to create the main scheduler task");
+
         let mut main_sched = main_sched.get();
 
         let home = Sched(main_sched.make_handle());
-        let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool,
+        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool,
                                                   home, main.take());
         main_task.death.on_exit = Some(on_exit.take());
+        rtdebug!("boostrapping main_task");
+
         main_sched.bootstrap(main_task);
     }
+
+    rtdebug!("waiting for threads");
 
     // Wait for schedulers
     foreach thread in threads.consume_iter() {
@@ -404,7 +413,6 @@ pub fn context() -> RuntimeContext {
     if unsafe { rust_try_get_task().is_not_null() } {
         return OldTaskContext;
     } else if Local::exists::<Task>() {
-        rtdebug!("either task or scheduler context in newrt");
         // In this case we know it is a new runtime context, but we
         // need to check which one. Going to try borrowing task to
         // check. Task should always be in TLS, so hopefully this
