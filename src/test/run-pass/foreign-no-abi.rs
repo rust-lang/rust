@@ -14,12 +14,12 @@ mod rustrt {
     use std::libc;
 
     extern {
-        pub fn get_task_id() -> libc::intptr_t;
+        fn rust_get_test_int() -> libc::intptr_t;
     }
 }
 
 pub fn main() {
     unsafe {
-        rustrt::get_task_id();
+        rustrt::rust_get_test_int();
     }
 }
