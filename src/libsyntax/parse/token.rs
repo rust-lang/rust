@@ -440,42 +440,41 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "as",                 // 32
         "break",              // 33
         "const",              // 34
-        "copy",               // 35
-        "do",                 // 36
-        "else",               // 37
-        "enum",               // 38
-        "extern",             // 39
-        "false",              // 40
-        "fn",                 // 41
-        "for",                // 42
-        "if",                 // 43
-        "impl",               // 44
-        "let",                // 45
-        "__log",              // 46
-        "loop",               // 47
-        "match",              // 48
-        "mod",                // 49
-        "mut",                // 50
-        "once",               // 51
-        "priv",               // 52
-        "pub",                // 53
-        "pure",               // 54
-        "ref",                // 55
-        "return",             // 56
+        "do",                 // 35
+        "else",               // 36
+        "enum",               // 37
+        "extern",             // 38
+        "false",              // 39
+        "fn",                 // 40
+        "for",                // 41
+        "if",                 // 42
+        "impl",               // 43
+        "let",                // 44
+        "__log",              // 45
+        "loop",               // 46
+        "match",              // 47
+        "mod",                // 48
+        "mut",                // 49
+        "once",               // 50
+        "priv",               // 51
+        "pub",                // 52
+        "pure",               // 53
+        "ref",                // 54
+        "return",             // 55
         "static",             // 27 -- also a special ident
         "self",               //  8 -- also a special ident
-        "struct",             // 57
-        "super",              // 58
-        "true",               // 59
-        "trait",              // 60
-        "type",               // 61
-        "unsafe",             // 62
-        "use",                // 63
-        "while",              // 64
+        "struct",             // 56
+        "super",              // 57
+        "true",               // 58
+        "trait",              // 59
+        "type",               // 60
+        "unsafe",             // 61
+        "use",                // 62
+        "while",              // 63
 
-        "be",                 // 65
-        "in",                 // 66
-        "foreach",            // 67
+        "be",                 // 64
+        "in",                 // 65
+        "foreach",            // 66
     ];
 
     @ident_interner {
@@ -609,40 +608,40 @@ pub mod keywords {
                 As => ident { name: 32, ctxt: 0 },
                 Break => ident { name: 33, ctxt: 0 },
                 Const => ident { name: 34, ctxt: 0 },
-                Do => ident { name: 36, ctxt: 0 },
-                Else => ident { name: 37, ctxt: 0 },
-                Enum => ident { name: 38, ctxt: 0 },
-                Extern => ident { name: 39, ctxt: 0 },
-                False => ident { name: 40, ctxt: 0 },
-                Fn => ident { name: 41, ctxt: 0 },
-                For => ident { name: 42, ctxt: 0 },
-                ForEach => ident { name: 67, ctxt: 0 },
-                If => ident { name: 43, ctxt: 0 },
-                Impl => ident { name: 44, ctxt: 0 },
-                In => ident { name: 66, ctxt: 0 },
-                Let => ident { name: 45, ctxt: 0 },
-                __Log => ident { name: 46, ctxt: 0 },
-                Loop => ident { name: 47, ctxt: 0 },
-                Match => ident { name: 48, ctxt: 0 },
-                Mod => ident { name: 49, ctxt: 0 },
-                Mut => ident { name: 50, ctxt: 0 },
-                Once => ident { name: 51, ctxt: 0 },
-                Priv => ident { name: 52, ctxt: 0 },
-                Pub => ident { name: 53, ctxt: 0 },
-                Pure => ident { name: 54, ctxt: 0 },
-                Ref => ident { name: 55, ctxt: 0 },
-                Return => ident { name: 56, ctxt: 0 },
+                Do => ident { name: 35, ctxt: 0 },
+                Else => ident { name: 36, ctxt: 0 },
+                Enum => ident { name: 37, ctxt: 0 },
+                Extern => ident { name: 38, ctxt: 0 },
+                False => ident { name: 39, ctxt: 0 },
+                Fn => ident { name: 40, ctxt: 0 },
+                For => ident { name: 41, ctxt: 0 },
+                ForEach => ident { name: 66, ctxt: 0 },
+                If => ident { name: 42, ctxt: 0 },
+                Impl => ident { name: 43, ctxt: 0 },
+                In => ident { name: 65, ctxt: 0 },
+                Let => ident { name: 44, ctxt: 0 },
+                __Log => ident { name: 45, ctxt: 0 },
+                Loop => ident { name: 46, ctxt: 0 },
+                Match => ident { name: 47, ctxt: 0 },
+                Mod => ident { name: 48, ctxt: 0 },
+                Mut => ident { name: 49, ctxt: 0 },
+                Once => ident { name: 50, ctxt: 0 },
+                Priv => ident { name: 51, ctxt: 0 },
+                Pub => ident { name: 52, ctxt: 0 },
+                Pure => ident { name: 53, ctxt: 0 },
+                Ref => ident { name: 54, ctxt: 0 },
+                Return => ident { name: 55, ctxt: 0 },
                 Static => ident { name: 27, ctxt: 0 },
                 Self => ident { name: 8, ctxt: 0 },
-                Struct => ident { name: 57, ctxt: 0 },
-                Super => ident { name: 58, ctxt: 0 },
-                True => ident { name: 59, ctxt: 0 },
-                Trait => ident { name: 60, ctxt: 0 },
-                Type => ident { name: 61, ctxt: 0 },
-                Unsafe => ident { name: 62, ctxt: 0 },
-                Use => ident { name: 63, ctxt: 0 },
-                While => ident { name: 64, ctxt: 0 },
-                Be => ident { name: 65, ctxt: 0 },
+                Struct => ident { name: 56, ctxt: 0 },
+                Super => ident { name: 57, ctxt: 0 },
+                True => ident { name: 58, ctxt: 0 },
+                Trait => ident { name: 59, ctxt: 0 },
+                Type => ident { name: 60, ctxt: 0 },
+                Unsafe => ident { name: 61, ctxt: 0 },
+                Use => ident { name: 62, ctxt: 0 },
+                While => ident { name: 63, ctxt: 0 },
+                Be => ident { name: 64, ctxt: 0 },
             }
         }
     }
@@ -658,7 +657,7 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 65 => true,
+            8 | 27 | 32 .. 64 => true,
             _ => false,
         },
         _ => false
@@ -668,7 +667,7 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 64 => true,
+            8 | 27 | 32 .. 63 => true,
             _ => false,
         },
         _ => false,
@@ -678,13 +677,12 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            65 => true,
+            64 => true,
             _ => false,
         },
         _ => false,
     }
 }
-
 
 #[cfg(test)]
 mod test {
