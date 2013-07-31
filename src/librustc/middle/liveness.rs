@@ -503,6 +503,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, (this, vt));
       }
+      expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
       expr_binary(_, op, _, _) if ast_util::lazy_binop(op) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, (this, vt));
@@ -1057,6 +1058,8 @@ impl Liveness {
             self.propagate_through_loop(expr, Some(cond), blk, succ)
           }
 
+          expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
           expr_loop(ref blk, _) => {
@@ -1487,6 +1490,7 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_paren(*) | expr_fn_block(*) | expr_path(*) | expr_self(*) => {
         visit::visit_expr(expr, (this, vt));
       }
+      expr_for_loop(*) => fail!("non-desugared expr_for_loop")
     }
 }
 
