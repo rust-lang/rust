@@ -176,3 +176,8 @@ rust_dbg_next_port(uintptr_t base_port) {
   next_offset += 1;
   return this_port;
 }
+
+extern "C" CDECL intptr_t
+rust_get_test_int() {
+  return 1;
+}

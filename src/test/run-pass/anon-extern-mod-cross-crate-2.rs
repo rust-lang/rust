@@ -16,6 +16,6 @@ use anonexternmod::*;
 
 pub fn main() {
     unsafe {
-        rust_get_argc();
+        rust_get_test_int();
     }
 }
