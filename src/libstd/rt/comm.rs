@@ -375,9 +375,7 @@ impl<T> Drop for PortOne<T> {
                     // receiver was killed awake. The task can't still be
                     // blocked (we are it), but we need to free the handle.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
-                    // FIXME(#7554)(bblum): Make this cfg(test) dependent.
-                    // in a later commit.
-                    assert!(recvr.wake().is_none());
+                    recvr.assert_already_awake();
                 }
             }
         }
