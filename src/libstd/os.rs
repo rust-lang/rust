@@ -790,7 +790,7 @@ pub fn list_dir_path(p: &Path) -> ~[Path] {
 /// all its contents. Use carefully!
 pub fn remove_dir_recursive(p: &Path) -> bool {
     let mut error_happened = false;
-    for walk_dir(p) |inner| {
+    do walk_dir(p) |inner| {
         if !error_happened {
             if path_is_dir(inner) {
                 if !remove_dir_recursive(inner) {
@@ -803,6 +803,7 @@ pub fn remove_dir_recursive(p: &Path) -> bool {
                 }
             }
         }
+        true
     };
     // Directory should now be empty
     !error_happened && remove_dir(p)

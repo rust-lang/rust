@@ -94,27 +94,29 @@ pub unsafe fn annihilate() {
     //
     // In this pass, nothing gets freed, so it does not matter whether
     // we read the next field before or after the callback.
-    for each_live_alloc(true) |box, uniq| {
+    do each_live_alloc(true) |box, uniq| {
         stats.n_total_boxes += 1;
         if uniq {
             stats.n_unique_boxes += 1;
         } else {
             (*box).ref_count = managed::RC_IMMORTAL;
         }
-    }
+        true
+    };
 
     // Pass 2: Drop all boxes.
     //
     // In this pass, unique-managed boxes may get freed, but not
     // managed boxes, so we must read the `next` field *after* the
     // callback, as the original value may have been freed.
-    for each_live_alloc(false) |box, uniq| {
+    do each_live_alloc(false) |box, uniq| {
         if !uniq {
             let tydesc = (*box).type_desc;
             let data = &(*box).data as *();
             ((*tydesc).drop_glue)(data as *i8);
         }
-    }
+        true
+    };
 
     // Pass 3: Free all boxes.
     //
@@ -122,14 +124,15 @@ pub unsafe fn annihilate() {
     // unique-managed boxes, though I think that none of those are
     // left), so we must read the `next` field before, since it will
     // not be valid after.
-    for each_live_alloc(true) |box, uniq| {
+    do each_live_alloc(true) |box, uniq| {
         if !uniq {
             stats.n_bytes_freed +=
                 (*((*box).type_desc)).size
                 + sys::size_of::<raw::Box<()>>();
             local_free(box as *i8);
         }
-    }
+        true
+    };
 
     if debug_mem() {
         // We do logging here w/o allocation.
