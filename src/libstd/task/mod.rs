@@ -655,44 +655,6 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
     }
 }
 
-/**
- * A stronger version of unkillable that also inhibits scheduling operations.
- * For use with exclusive Arcs, which use pthread mutexes directly.
- */
-pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    use rt::task::Task;
-
-    match context() {
-        OldTaskContext => {
-            let t = rt::rust_get_task();
-            do (|| {
-                rt::rust_task_inhibit_kill(t);
-                rt::rust_task_inhibit_yield(t);
-                f()
-            }).finally {
-                rt::rust_task_allow_yield(t);
-                rt::rust_task_allow_kill(t);
-            }
-        }
-        TaskContext => {
-            let t = Local::unsafe_borrow::<Task>();
-            do (|| {
-                // It's important to inhibit kill after inhibiting yield, because
-                // inhibit-kill might fail if we were already killed, and the
-                // inhibit-yield must happen to match the finally's allow-yield.
-                (*t).death.inhibit_yield();
-                (*t).death.inhibit_kill((*t).unwinder.unwinding);
-                f()
-            }).finally {
-                (*t).death.allow_kill((*t).unwinder.unwinding);
-                (*t).death.allow_yield();
-            }
-        }
-        // FIXME(#3095): As in unkillable().
-        _ => f()
-    }
-}
-
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_cant_dup_task_builder() {
     let mut builder = task();
@@ -1175,21 +1137,6 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
-}
-
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_atomically() {
-    unsafe { do atomically { yield(); } }
-}
-
-#[test]
-fn test_atomically2() {
-    unsafe { do atomically { } } yield(); // shouldn't fail
-}
-
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_atomically_nested() {
-    unsafe { do atomically { do atomically { } yield(); } }
 }
 
 #[test]
