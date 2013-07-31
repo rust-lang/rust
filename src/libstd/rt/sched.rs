@@ -901,10 +901,8 @@ mod test {
                 sched.run();
             };
 
-            // wait for the end
-            let _thread1 = normal_thread;
-            let _thread2 = special_thread;
-
+            normal_thread.join();
+            special_thread.join();
         }
     }
 
@@ -1074,16 +1072,19 @@ mod test {
             sched2.enqueue_task(task2);
 
             let sched1_cell = Cell::new(sched1);
-            let _thread1 = do Thread::start {
+            let thread1 = do Thread::start {
                 let sched1 = sched1_cell.take();
                 sched1.run();
             };
 
             let sched2_cell = Cell::new(sched2);
-            let _thread2 = do Thread::start {
+            let thread2 = do Thread::start {
                 let sched2 = sched2_cell.take();
                 sched2.run();
             };
+
+            thread1.join();
+            thread2.join();
         }
     }
 
