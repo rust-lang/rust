@@ -371,6 +371,7 @@ opt docs     1 "build documentation"
 opt optimize 1 "build optimized rust code"
 opt optimize-cxx 1 "build optimized C++ code"
 opt optimize-llvm 1 "build optimized LLVM"
+opt llvm-assertions 1 "build LLVM with assertions"
 opt debug 0 "build with extra debug fun"
 opt ratchet-bench 0 "ratchet benchmarks"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
@@ -793,10 +794,17 @@ do
             LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
             # Just use LLVM straight from its build directory to
             # avoid 'make install' time
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts
+            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
         else
             LLVM_DBG_OPTS="--enable-optimized"
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release+Asserts
+            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
+        fi
+        if [ ! -z "$CFG_DISABLE_LLVM_ASSERTIONS" ]
+        then
+            LLVM_ASSERTION_OPTS="--disable-assertions"
+        else
+            LLVM_ASSERTION_OPTS="--enable-assertions"
+            LLVM_INST_DIR=${LLVM_INST_DIR}+Asserts
         fi
     else
         msg "not reconfiguring LLVM, external LLVM root"
@@ -836,7 +844,7 @@ do
         LLVM_TARGET="--target=$t"
 
         # Disable unused LLVM features
-        LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs --enable-bindings=none"
+        LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
 
         case "$CFG_C_COMPILER" in
             ("ccache clang")
