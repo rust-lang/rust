@@ -346,7 +346,9 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     }
 
     // Wait for schedulers
-    { let _threads = threads; }
+    for threads.consume_iter().advance() |thread| {
+        thread.join();
+    }
 
     // Return the exit code
     unsafe {

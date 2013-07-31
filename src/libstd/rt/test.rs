@@ -125,7 +125,9 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         // Wait for schedulers
-        let _threads = threads;
+        for threads.consume_iter().advance() |thread| {
+            thread.join();
+        }
     }
 
 }

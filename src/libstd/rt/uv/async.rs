@@ -94,12 +94,13 @@ mod test {
             let mut loop_ = Loop::new();
             let watcher = AsyncWatcher::new(&mut loop_, |w, _| w.close(||()) );
             let watcher_cell = Cell::new(watcher);
-            let _thread = do Thread::start {
+            let thread = do Thread::start {
                 let mut watcher = watcher_cell.take();
                 watcher.send();
             };
             loop_.run();
             loop_.close();
+            thread.join();
         }
     }
 }

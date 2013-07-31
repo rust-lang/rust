@@ -44,7 +44,6 @@ use result::Result;
 use result;
 use rt::{context, OldTaskContext, TaskContext};
 use rt::local::Local;
-use task::rt::{task_id, sched_id};
 use unstable::finally::Finally;
 use util;
 
@@ -57,18 +56,6 @@ use util;
 mod local_data_priv;
 pub mod rt;
 pub mod spawn;
-
-/// A handle to a scheduler
-#[deriving(Eq)]
-pub enum Scheduler {
-    SchedulerHandle(sched_id)
-}
-
-/// A handle to a task
-#[deriving(Eq)]
-pub enum Task {
-    TaskHandle(task_id)
-}
 
 /**
  * Indicates the manner in which a task exited.
@@ -92,23 +79,8 @@ pub enum TaskResult {
 pub enum SchedMode {
     /// Run task on the default scheduler
     DefaultScheduler,
-    /// Run task on the current scheduler
-    CurrentScheduler,
-    /// Run task on a specific scheduler
-    ExistingScheduler(Scheduler),
-    /**
-     * Tasks are scheduled on the main OS thread
-     *
-     * The main OS thread is the thread used to launch the runtime which,
-     * in most cases, is the process's initial thread as created by the OS.
-     */
-    PlatformThread,
     /// All tasks run in the same OS thread
     SingleThreaded,
-    /// Tasks are distributed among available CPUs
-    ThreadPerTask,
-    /// Tasks are distributed among a fixed number of OS threads
-    ManualThreads(uint),
 }
 
 /**
@@ -118,17 +90,9 @@ pub enum SchedMode {
  *
  * * sched_mode - The operating mode of the scheduler
  *
- * * foreign_stack_size - The size of the foreign stack, in bytes
- *
- *     Rust code runs on Rust-specific stacks. When Rust code calls foreign
- *     code (via functions in foreign modules) it switches to a typical, large
- *     stack appropriate for running code written in languages like C. By
- *     default these foreign stacks have unspecified size, but with this
- *     option their size can be precisely specified.
  */
 pub struct SchedOpts {
     mode: SchedMode,
-    foreign_stack_size: Option<uint>,
 }
 
 /**
@@ -446,7 +410,6 @@ pub fn default_task_opts() -> TaskOpts {
         notify_chan: None,
         sched: SchedOpts {
             mode: DefaultScheduler,
-            foreign_stack_size: None
         }
     }
 }
@@ -589,18 +552,6 @@ pub fn failing() -> bool {
             }
         }
     }
-}
-
-pub fn get_task() -> Task {
-    //! Get a handle to the running task
-
-    unsafe {
-        TaskHandle(rt::get_task_id())
-    }
-}
-
-pub fn get_scheduler() -> Scheduler {
-    SchedulerHandle(unsafe { rt::rust_get_sched_id() })
 }
 
 /**
@@ -935,13 +886,6 @@ fn test_try_fail() {
 }
 
 #[test]
-#[should_fail]
-#[ignore(cfg(windows))]
-fn test_spawn_sched_no_threads() {
-    do spawn_sched(ManualThreads(0u)) { }
-}
-
-#[test]
 fn test_spawn_sched() {
     let (po, ch) = stream::<()>();
     let ch = SharedChan::new(ch);
@@ -1108,17 +1052,6 @@ fn test_avoid_copying_the_body_unlinked() {
 }
 
 #[test]
-fn test_platform_thread() {
-    let (po, ch) = stream();
-    let mut builder = task();
-    builder.sched_mode(PlatformThread);
-    do builder.spawn {
-        ch.send(());
-    }
-    po.recv();
-}
-
-#[test]
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable() {
@@ -1219,34 +1152,6 @@ fn test_child_doesnt_ref_parent() {
         }
     }
     task::spawn(child_no(0));
-}
-
-#[test]
-fn test_spawn_thread_on_demand() {
-    let (port, chan) = comm::stream();
-
-    do spawn_sched(ManualThreads(2)) || {
-        unsafe {
-            let max_threads = rt::rust_sched_threads();
-            assert_eq!(max_threads as int, 2);
-            let running_threads = rt::rust_sched_current_nonlazy_threads();
-            assert_eq!(running_threads as int, 1);
-
-            let (port2, chan2) = comm::stream();
-
-            do spawn_sched(CurrentScheduler) || {
-                chan2.send(());
-            }
-
-            let running_threads2 = rt::rust_sched_current_nonlazy_threads();
-            assert_eq!(running_threads2 as int, 2);
-
-            port2.recv();
-            chan.send(());
-        }
-    }
-
-    port.recv();
 }
 
 #[test]
