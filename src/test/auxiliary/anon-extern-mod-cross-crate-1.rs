@@ -18,5 +18,5 @@
 use std::libc;
 
 extern {
-    pub fn rust_get_argc() -> libc::c_int;
+    pub fn rust_get_test_int() -> libc::intptr_t;
 }

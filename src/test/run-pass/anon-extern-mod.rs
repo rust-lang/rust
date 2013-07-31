@@ -13,11 +13,11 @@ use std::libc;
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern {
-    fn rust_get_argc() -> libc::c_int;
+    fn rust_get_test_int() -> libc::intptr_t;
 }
 
 pub fn main() {
     unsafe {
-        let _ = rust_get_argc();
+        let _ = rust_get_test_int();
     }
 }
