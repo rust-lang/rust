@@ -72,6 +72,7 @@ use either::{Either, Left, Right};
 use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
+use task::spawn::Taskgroup;
 use to_bytes::IterBytes;
 use unstable::atomics::{AtomicUint, Relaxed};
 use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
@@ -474,7 +475,7 @@ impl Death {
     }
 
     /// Collect failure exit codes from children and propagate them to a parent.
-    pub fn collect_failure(&mut self, mut success: bool) {
+    pub fn collect_failure(&mut self, mut success: bool, group: Option<Taskgroup>) {
         // This may run after the task has already failed, so even though the
         // task appears to need to be killed, the scheduler should not fail us
         // when we block to unwrap.
@@ -483,6 +484,10 @@ impl Death {
         // unkillable flag in the kill_handle, since we'll have removed it.)
         rtassert!(self.unkillable == 0);
         self.unkillable = 1;
+
+        // FIXME(#7544): See corresponding fixme at the callsite in task.rs.
+        // NB(#8192): Doesn't work with "let _ = ..."
+        { use util; util::ignore(group); }
 
         // Step 1. Decide if we need to collect child failures synchronously.
         do self.on_exit.take_map |on_exit| {
