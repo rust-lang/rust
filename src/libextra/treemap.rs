@@ -396,9 +396,40 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         }
         true
     }
+}
+
+impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    #[inline]
+    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    #[inline]
+    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+}
+
+impl<T: TotalOrd> TreeSet<T> {
+    /// Create an empty TreeSet
+    #[inline]
+    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    #[inline]
+    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.iter()}
+    }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
+        self.map.each_key_reverse(f)
+    }
 
     /// Visit the values (in-order) representing the difference
-    fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -427,7 +458,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the symmetric difference
-    fn symmetric_difference(&self, other: &TreeSet<T>,
+    pub fn symmetric_difference(&self, other: &TreeSet<T>,
                             f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -461,7 +492,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the intersection
-    fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -487,7 +518,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the union
-    fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -516,37 +547,6 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
             }
         }
         b.iter().advance(|&x| f(x)) && y.advance(f)
-    }
-}
-
-impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    #[inline]
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    #[inline]
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
-}
-
-impl<T: TotalOrd> TreeSet<T> {
-    /// Create an empty TreeSet
-    #[inline]
-    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
-    #[inline]
-    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.iter()}
-    }
-
-    /// Visit all values in reverse order
-    #[inline]
-    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
-        self.map.each_key_reverse(f)
     }
 }
 

@@ -717,6 +717,41 @@ impl BitvSet {
     pub fn iter<'a>(&'a self) -> BitvSetIterator<'a> {
         BitvSetIterator {set: self, next_idx: 0}
     }
+
+    pub fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+        for self.common_iter(other).advance |(i, w1, w2)| {
+            if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
+                return false;
+            }
+        }
+        /* everything we have that they don't also shows up */
+        self.outlier_iter(other).advance(|(mine, i, w)|
+            !mine || iterate_bits(i, w, |b| f(&b))
+        )
+    }
+
+    pub fn symmetric_difference(&self, other: &BitvSet,
+                            f: &fn(&uint) -> bool) -> bool {
+        for self.common_iter(other).advance |(i, w1, w2)| {
+            if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
+                return false;
+            }
+        }
+        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+    }
+
+    pub fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+        self.common_iter(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
+    }
+
+    pub fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+        for self.common_iter(other).advance |(i, w1, w2)| {
+            if !iterate_bits(i, w1 | w2, |b| f(&b)) {
+                return false;
+            }
+        }
+        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
+    }
 }
 
 impl cmp::Eq for BitvSet {
@@ -784,41 +819,6 @@ impl Set<uint> for BitvSet {
 
     fn is_superset(&self, other: &BitvSet) -> bool {
         other.is_subset(self)
-    }
-
-    fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
-            if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
-                return false;
-            }
-        }
-        /* everything we have that they don't also shows up */
-        self.outlier_iter(other).advance(|(mine, i, w)|
-            !mine || iterate_bits(i, w, |b| f(&b))
-        )
-    }
-
-    fn symmetric_difference(&self, other: &BitvSet,
-                            f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
-            if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
-                return false;
-            }
-        }
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
-    }
-
-    fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        self.common_iter(other).advance(|(i, w1, w2)| iterate_bits(i, w1 & w2, |b| f(&b)))
-    }
-
-    fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
-            if !iterate_bits(i, w1 | w2, |b| f(&b)) {
-                return false;
-            }
-        }
-        self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 }
 
