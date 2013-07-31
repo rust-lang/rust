@@ -587,7 +587,7 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        assert!(! f.iter().all(windows::is_sep));
+        assert!(!f.iter().all(posix::is_sep));
         self.dir_path().push(f)
     }
 
@@ -648,7 +648,7 @@ impl GenericPath for PosixPath {
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = self.components.clone();
         for cs.iter().advance |e| {
-            for e.as_slice().split_iter(windows::is_sep).advance |s| {
+            for e.as_slice().split_iter(posix::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -662,7 +662,7 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = self.components.clone();
-        for s.split_iter(windows::is_sep).advance |s| {
+        for s.split_iter(posix::is_sep).advance |s| {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
@@ -1001,7 +1001,17 @@ pub fn normalize(components: &[~str]) -> ~[~str] {
     cs
 }
 
-// Various windows helpers, and tests for the impl.
+// Various posix helpers.
+pub mod posix {
+
+    #[inline]
+    pub fn is_sep(u: char) -> bool {
+        u == '/'
+    }
+
+}
+
+// Various windows helpers.
 pub mod windows {
     use libc;
     use option::{None, Option, Some};
@@ -1137,6 +1147,14 @@ mod tests {
             .with_filestem("librustc")),
           "/usr/bin/rust/lib/librustc.so");
 
+    }
+
+    #[test]
+    fn test_posix_push_with_backslash() {
+        let a = PosixPath("/aaa/bbb");
+        let b = a.push("x\\y"); // \ is not a file separator for posix paths
+        assert_eq!(a.components.len(), 2);
+        assert_eq!(b.components.len(), 3);
     }
 
     #[test]
