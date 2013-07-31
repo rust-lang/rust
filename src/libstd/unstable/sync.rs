@@ -16,7 +16,7 @@ use ptr;
 use option::*;
 use either::{Either, Left, Right};
 use task;
-use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,SeqCst};
+use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,Relaxed,SeqCst};
 use unstable::finally::Finally;
 use ops::Drop;
 use clone::Clone;
@@ -95,8 +95,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
     pub fn get(&self) -> *mut T {
         unsafe {
             let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-            // FIXME(#6598) Change Acquire to Relaxed.
-            assert!(data.count.load(Acquire) > 0);
+            assert!(data.count.load(Relaxed) > 0);
             let r: *mut T = data.data.get_mut_ref();
             cast::forget(data);
             return r;
@@ -107,7 +106,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
     pub fn get_immut(&self) -> *T {
         unsafe {
             let data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-            assert!(data.count.load(Acquire) > 0); // no barrier is really needed
+            assert!(data.count.load(Relaxed) > 0);
             let r: *T = data.data.get_ref();
             cast::forget(data);
             return r;
@@ -130,8 +129,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                 // Try to put our server end in the unwrapper slot.
                 // This needs no barrier -- it's protected by the release barrier on
                 // the xadd, and the acquire+release barrier in the destructor's xadd.
-                // FIXME(#6598) Change Acquire to Relaxed.
-                if data.unwrapper.fill(~(c1,p2), Acquire).is_none() {
+                if data.unwrapper.fill(~(c1,p2), Relaxed).is_none() {
                     // Got in. Tell this handle's destructor not to run (we are now it).
                     this.data = ptr::mut_null();
                     // Drop our own reference.

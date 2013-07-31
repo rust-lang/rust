@@ -17,7 +17,7 @@ use option::{Option, Some, None};
 use prelude::*;
 use rt::task::Task;
 use to_bytes::IterBytes;
-use unstable::atomics::{AtomicUint, Acquire, SeqCst};
+use unstable::atomics::{AtomicUint, Relaxed};
 use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
 use util;
 
@@ -95,7 +95,7 @@ impl Drop for KillFlag {
     // Letting a KillFlag with a task inside get dropped would leak the task.
     // We could free it here, but the task should get awoken by hand somehow.
     fn drop(&self) {
-        match self.load(Acquire) {
+        match self.load(Relaxed) {
             KILL_RUNNING | KILL_KILLED => { },
             _ => rtabort!("can't drop kill flag with a blocked task inside!"),
         }
@@ -124,7 +124,7 @@ impl BlockedTask {
             Unkillable(task) => Some(task),
             Killable(flag_arc) => {
                 let flag = unsafe { &mut **flag_arc.get() };
-                match flag.swap(KILL_RUNNING, SeqCst) {
+                match flag.swap(KILL_RUNNING, Relaxed) {
                     KILL_RUNNING => None, // woken from select(), perhaps
                     KILL_KILLED  => None, // a killer stole it already
                     task_ptr     =>
@@ -159,7 +159,7 @@ impl BlockedTask {
                 let flag     = &mut **flag_arc.get();
                 let task_ptr = cast::transmute(task);
                 // Expect flag to contain RUNNING. If KILLED, it should stay KILLED.
-                match flag.compare_and_swap(KILL_RUNNING, task_ptr, SeqCst) {
+                match flag.compare_and_swap(KILL_RUNNING, task_ptr, Relaxed) {
                     KILL_RUNNING => Right(Killable(flag_arc)),
                     KILL_KILLED  => Left(revive_task_ptr(task_ptr, Some(flag_arc))),
                     x            => rtabort!("can't block task! kill flag = %?", x),
@@ -257,7 +257,7 @@ impl KillHandle {
         let inner = unsafe { &mut *self.get() };
         // Expect flag to contain RUNNING. If KILLED, it should stay KILLED.
         // FIXME(#7544)(bblum): is it really necessary to prohibit double kill?
-        match inner.unkillable.compare_and_swap(KILL_RUNNING, KILL_UNKILLABLE, SeqCst) {
+        match inner.unkillable.compare_and_swap(KILL_RUNNING, KILL_UNKILLABLE, Relaxed) {
             KILL_RUNNING    => { }, // normal case
             KILL_KILLED     => if !already_failing { fail!(KILLED_MSG) },
             _               => rtabort!("inhibit_kill: task already unkillable"),
@@ -270,7 +270,7 @@ impl KillHandle {
         let inner = unsafe { &mut *self.get() };
         // Expect flag to contain UNKILLABLE. If KILLED, it should stay KILLED.
         // FIXME(#7544)(bblum): is it really necessary to prohibit double kill?
-        match inner.unkillable.compare_and_swap(KILL_UNKILLABLE, KILL_RUNNING, SeqCst) {
+        match inner.unkillable.compare_and_swap(KILL_UNKILLABLE, KILL_RUNNING, Relaxed) {
             KILL_UNKILLABLE => { }, // normal case
             KILL_KILLED     => if !already_failing { fail!(KILLED_MSG) },
             _               => rtabort!("allow_kill: task already killable"),
@@ -281,10 +281,10 @@ impl KillHandle {
     // if it was blocked and needs punted awake. To be called by other tasks.
     pub fn kill(&mut self) -> Option<~Task> {
         let inner = unsafe { &mut *self.get() };
-        if inner.unkillable.swap(KILL_KILLED, SeqCst) == KILL_RUNNING {
+        if inner.unkillable.swap(KILL_KILLED, Relaxed) == KILL_RUNNING {
             // Got in. Allowed to try to punt the task awake.
             let flag = unsafe { &mut *inner.killed.get() };
-            match flag.swap(KILL_KILLED, SeqCst) {
+            match flag.swap(KILL_KILLED, Relaxed) {
                 // Task either not blocked or already taken care of.
                 KILL_RUNNING | KILL_KILLED => None,
                 // Got ownership of the blocked task.
@@ -306,8 +306,11 @@ impl KillHandle {
         // is unkillable with a kill signal pending.
         let inner = unsafe { &*self.get() };
         let flag  = unsafe { &*inner.killed.get() };
-        // FIXME(#6598): can use relaxed ordering (i think)
-        flag.load(Acquire) == KILL_KILLED
+        // A barrier-related concern here is that a task that gets killed
+        // awake needs to see the killer's write of KILLED to this flag. This
+        // is analogous to receiving a pipe payload; the appropriate barrier
+        // should happen when enqueueing the task.
+        flag.load(Relaxed) == KILL_KILLED
     }
 
     pub fn notify_immediate_failure(&mut self) {
