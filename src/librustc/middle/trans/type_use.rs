@@ -401,7 +401,9 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
       expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
       expr_break(_) | expr_again(_) | expr_unary(*) | expr_lit(_) |
       expr_mac(_) | expr_addr_of(*) | expr_ret(_) | expr_loop(*) |
-      expr_loop_body(_) | expr_do_body(_) => ()
+      expr_loop_body(_) | expr_do_body(_) => (),
+
+      expr_for_loop(*) => fail!("non-desugared expr_for_loop")
     }
 }
 

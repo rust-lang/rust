@@ -1228,6 +1228,15 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
+      ast::expr_for_loop(pat, iter, ref blk) => {
+        head(s, "foreach");
+        print_pat(s, pat);
+        space(s.s);
+        word_space(s, "in");
+        print_expr(s, iter);
+        space(s.s);
+        print_block(s, blk);
+      }
       ast::expr_loop(ref blk, opt_ident) => {
         for opt_ident.iter().advance |ident| {
             word(s.s, "'");

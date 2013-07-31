@@ -465,6 +465,7 @@ pub enum expr_ {
     expr_cast(@expr, Ty),
     expr_if(@expr, Block, Option<@expr>),
     expr_while(@expr, Block),
+    expr_for_loop(@pat, @expr, Block),
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */

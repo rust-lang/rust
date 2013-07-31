@@ -239,6 +239,8 @@ impl CFGBuilder {
                 expr_exit
             }
 
+            ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
             ast::expr_loop(ref body, _) => {
                 //
                 //     [pred]

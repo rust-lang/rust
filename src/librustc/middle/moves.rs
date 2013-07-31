@@ -487,6 +487,8 @@ impl VisitContext {
                 self.consume_block(blk, visitor);
             }
 
+            expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+
             expr_unary(_, _, lhs) => {
                 if !self.use_overloaded_operator(
                     expr, lhs, [], visitor)
