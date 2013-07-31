@@ -1001,11 +1001,12 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        for m.each_reverse |k, v| {
+        do m.each_reverse |k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
-        }
+            true
+        };
     }
 
     #[test]
@@ -1277,10 +1278,11 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 4;
-        for m.each_reverse |x| {
+        do m.each_reverse |x| {
             assert_eq!(*x, n);
-            n -= 1
-        }
+            n -= 1;
+            true
+        };
     }
 
     fn check(a: &[int], b: &[int], expected: &[int],
@@ -1292,10 +1294,11 @@ mod test_set {
         foreach y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        for f(&set_a, &set_b) |x| {
+        do f(&set_a, &set_b) |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
-        }
+            true
+        };
         assert_eq!(i, expected.len());
     }
 
