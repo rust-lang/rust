@@ -205,18 +205,6 @@ impl AtomicInt {
     pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
-
-    /// Returns the old value
-    #[inline]
-    pub fn fetch_min(&mut self, val: int, order: Ordering) -> int {
-        unsafe { atomic_min(&mut self.v, val, order) }
-    }
-
-    /// Returns the old value
-    #[inline]
-    pub fn fetch_max(&mut self, val: int, order: Ordering) -> int {
-        unsafe { atomic_max(&mut self.v, val, order) }
-    }
 }
 
 impl AtomicUint {
@@ -254,18 +242,6 @@ impl AtomicUint {
     #[inline]
     pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(&mut self.v, val, order) }
-    }
-
-    /// Returns the old value
-    #[inline]
-    pub fn fetch_min(&mut self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_umin(&mut self.v, val, order) }
-    }
-
-    /// Returns the old value
-    #[inline]
-    pub fn fetch_max(&mut self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_umax(&mut self.v, val, order) }
     }
 }
 
@@ -514,64 +490,6 @@ pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
     })
 }
 
-
-#[inline]
-pub unsafe fn atomic_max<T>(dst: &mut T, val: T, order: Ordering) -> T {
-    let dst = cast::transmute(dst);
-    let val = cast::transmute(val);
-
-    cast::transmute(match order {
-        Acquire => intrinsics::atomic_max_acq(dst, val),
-        Release => intrinsics::atomic_max_rel(dst, val),
-        AcqRel  => intrinsics::atomic_max_acqrel(dst, val),
-        Relaxed => intrinsics::atomic_max_relaxed(dst, val),
-        _       => intrinsics::atomic_max(dst, val)
-    })
-}
-
-
-#[inline]
-pub unsafe fn atomic_min<T>(dst: &mut T, val: T, order: Ordering) -> T {
-    let dst = cast::transmute(dst);
-    let val = cast::transmute(val);
-
-    cast::transmute(match order {
-        Acquire => intrinsics::atomic_min_acq(dst, val),
-        Release => intrinsics::atomic_min_rel(dst, val),
-        AcqRel  => intrinsics::atomic_min_acqrel(dst, val),
-        Relaxed => intrinsics::atomic_min_relaxed(dst, val),
-        _       => intrinsics::atomic_min(dst, val)
-    })
-}
-
-#[inline]
-pub unsafe fn atomic_umax<T>(dst: &mut T, val: T, order: Ordering) -> T {
-    let dst = cast::transmute(dst);
-    let val = cast::transmute(val);
-
-    cast::transmute(match order {
-        Acquire => intrinsics::atomic_umax_acq(dst, val),
-        Release => intrinsics::atomic_umax_rel(dst, val),
-        AcqRel  => intrinsics::atomic_umax_acqrel(dst, val),
-        Relaxed => intrinsics::atomic_umax_relaxed(dst, val),
-        _       => intrinsics::atomic_umax(dst, val)
-    })
-}
-
-
-#[inline]
-pub unsafe fn atomic_umin<T>(dst: &mut T, val: T, order: Ordering) -> T {
-    let dst = cast::transmute(dst);
-    let val = cast::transmute(val);
-
-    cast::transmute(match order {
-        Acquire => intrinsics::atomic_umin_acq(dst, val),
-        Release => intrinsics::atomic_umin_rel(dst, val),
-        AcqRel  => intrinsics::atomic_umin_acqrel(dst, val),
-        Relaxed => intrinsics::atomic_umin_relaxed(dst, val),
-        _       => intrinsics::atomic_umin(dst, val)
-    })
-}
 
 /**
  * An atomic fence.
