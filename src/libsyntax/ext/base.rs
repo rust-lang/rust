@@ -81,8 +81,8 @@ pub enum SyntaxExtension {
     // An IdentTT is a macro that has an
     // identifier in between the name of the
     // macro and the argument. Currently,
-    // the only examples of this are
-    // macro_rules! and proto!
+    // the only examples of this is
+    // macro_rules!
 
     // perhaps macro_rules! will lose its odd special identifier argument,
     // and this can go away also
@@ -197,8 +197,6 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"module_path"),
                             builtin_normal_tt(
                                 ext::source_util::expand_mod));
-    syntax_expanders.insert(intern(&"proto"),
-                            builtin_item_tt(ext::pipes::expand_proto));
     syntax_expanders.insert(intern(&"asm"),
                             builtin_normal_tt(ext::asm::expand_asm));
     syntax_expanders.insert(
