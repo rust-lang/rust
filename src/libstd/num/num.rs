@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An interface for numeric types
+//! Numeric traits and functions for generic mathematics.
+//!
+//! These are implemented for the primitive numeric types in `std::{u8, u16,
+//! u32, u64, uint, i8, i16, i32, i64, int, f32, f64, float}`.
 
 #[allow(missing_doc)];
 
@@ -19,9 +22,7 @@ use option::Option;
 
 pub mod strconv;
 
-///
 /// The base trait for numeric types
-///
 pub trait Num: Eq + Zero + One
              + Neg<Self>
              + Add<Self,Self>
@@ -45,17 +46,22 @@ pub trait Orderable: Ord {
     fn clamp(&self, mn: &Self, mx: &Self) -> Self;
 }
 
-#[inline(always)] pub fn min<T: Orderable>(a: T, b: T) -> T { a.min(&b) }
-#[inline(always)] pub fn max<T: Orderable>(a: T, b: T) -> T { a.max(&b) }
+#[inline(always)] pub fn min<T: Orderable>(x: T, y: T) -> T { x.min(&y) }
+#[inline(always)] pub fn max<T: Orderable>(x: T, y: T) -> T { x.max(&y) }
+#[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
 
 pub trait Zero {
     fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
     fn is_zero(&self) -> bool;
 }
 
+#[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
+
 pub trait One {
     fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
+
+#[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 pub trait Signed: Num
                 + Neg<Self> {
@@ -68,6 +74,7 @@ pub trait Signed: Num
 }
 
 #[inline(always)] pub fn abs<T: Signed>(value: T) -> T { value.abs() }
+#[inline(always)] pub fn abs_sub<T: Signed>(x: T, y: T) -> T { x.abs_sub(&y) }
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
 pub trait Unsigned: Num {}
@@ -89,6 +96,9 @@ pub trait Integer: Num
     fn is_even(&self) -> bool;
     fn is_odd(&self) -> bool;
 }
+
+#[inline(always)] pub fn gcd<T: Integer>(x: T, y: T) -> T { x.gcd(&y) }
+#[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
 pub trait Round {
     fn floor(&self) -> Self;
@@ -113,15 +123,21 @@ pub trait Algebraic {
     fn hypot(&self, other: &Self) -> Self;
 }
 
+#[inline(always)] pub fn pow<T: Algebraic>(value: T, n: T) -> T { value.pow(&n) }
 #[inline(always)] pub fn sqrt<T: Algebraic>(value: T) -> T { value.sqrt() }
+#[inline(always)] pub fn rsqrt<T: Algebraic>(value: T) -> T { value.rsqrt() }
+#[inline(always)] pub fn cbrt<T: Algebraic>(value: T) -> T { value.cbrt() }
+#[inline(always)] pub fn hypot<T: Algebraic>(x: T, y: T) -> T { x.hypot(&y) }
 
 pub trait Trigonometric {
     fn sin(&self) -> Self;
     fn cos(&self) -> Self;
     fn tan(&self) -> Self;
+
     fn asin(&self) -> Self;
     fn acos(&self) -> Self;
     fn atan(&self) -> Self;
+
     fn atan2(&self, other: &Self) -> Self;
     fn sin_cos(&self) -> (Self, Self);
 }
@@ -135,10 +151,12 @@ pub trait Trigonometric {
 #[inline(always)] pub fn atan<T: Trigonometric>(value: T) -> T { value.atan() }
 
 #[inline(always)] pub fn atan2<T: Trigonometric>(x: T, y: T) -> T { x.atan2(&y) }
+#[inline(always)] pub fn sin_cos<T: Trigonometric>(value: T) -> (T, T) { value.sin_cos() }
 
 pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
+
     fn ln(&self) -> Self;
     fn log(&self, base: &Self) -> Self;
     fn log2(&self) -> Self;
@@ -157,6 +175,7 @@ pub trait Hyperbolic: Exponential {
     fn sinh(&self) -> Self;
     fn cosh(&self) -> Self;
     fn tanh(&self) -> Self;
+
     fn asinh(&self) -> Self;
     fn acosh(&self) -> Self;
     fn atanh(&self) -> Self;
@@ -170,9 +189,7 @@ pub trait Hyperbolic: Exponential {
 #[inline(always)] pub fn acosh<T: Hyperbolic>(value: T) -> T { value.acosh() }
 #[inline(always)] pub fn atanh<T: Hyperbolic>(value: T) -> T { value.atanh() }
 
-///
 /// Defines constants and methods common to real numbers
-///
 pub trait Real: Signed
               + Fractional
               + Algebraic
@@ -203,9 +220,7 @@ pub trait Real: Signed
     fn to_radians(&self) -> Self;
 }
 
-///
 /// Methods that are harder to implement and not commonly used.
-///
 pub trait RealExt: Real {
     // FIXME (#5527): usages of `int` should be replaced with an associated
     // integer type once these are implemented
@@ -223,9 +238,7 @@ pub trait RealExt: Real {
     fn yn(&self, n: int) -> Self;
 }
 
-///
 /// Collects the bitwise operators under one trait.
-///
 pub trait Bitwise: Not<Self>
                  + BitAnd<Self,Self>
                  + BitOr<Self,Self>
@@ -245,11 +258,9 @@ pub trait Bounded {
     fn max_value() -> Self;
 }
 
-///
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
-///
 pub trait Primitive: Num
                    + NumCast
                    + Bounded
@@ -264,17 +275,13 @@ pub trait Primitive: Num
     fn bytes() -> uint;
 }
 
-///
 /// A collection of traits relevant to primitive signed and unsigned integers
-///
 pub trait Int: Integer
              + Primitive
              + Bitwise
              + BitCount {}
 
-///
 /// Used for representing the classification of floating point numbers
-///
 #[deriving(Eq)]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
@@ -289,9 +296,7 @@ pub enum FPCategory {
     FPNormal,
 }
 
-///
 /// Primitive floating point numbers
-///
 pub trait Float: Real
                + Signed
                + Primitive
@@ -325,7 +330,10 @@ pub trait Float: Real
     fn next_after(&self, other: Self) -> Self;
 }
 
-///
+#[inline(always)] pub fn exp_m1<T: Float>(value: T) -> T { value.exp_m1() }
+#[inline(always)] pub fn ln_1p<T: Float>(value: T) -> T { value.ln_1p() }
+#[inline(always)] pub fn mul_add<T: Float>(a: T, b: T, c: T) -> T { a.mul_add(b, c) }
+
 /// Cast from one machine scalar to another
 ///
 /// # Example
@@ -340,9 +348,7 @@ pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
 
-///
 /// An interface for casting between machine scalars
-///
 pub trait NumCast {
     fn from<T:NumCast>(n: T) -> Self;
 
@@ -414,7 +420,6 @@ pub trait FromStrRadix {
     pub fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
-///
 /// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
 ///
 /// Returns `radix^pow` as `T`.
