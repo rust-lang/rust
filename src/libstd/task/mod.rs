@@ -618,32 +618,34 @@ pub fn get_scheduler() -> Scheduler {
  * }
  * ~~~
  */
-pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
+pub fn unkillable<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
 
-    match context() {
-        OldTaskContext => {
-            let t = rt::rust_get_task();
-            do (|| {
-                rt::rust_task_inhibit_kill(t);
-                f()
-            }).finally {
-                rt::rust_task_allow_kill(t);
+    unsafe {
+        match context() {
+            OldTaskContext => {
+                let t = rt::rust_get_task();
+                do (|| {
+                    rt::rust_task_inhibit_kill(t);
+                    f()
+                }).finally {
+                    rt::rust_task_allow_kill(t);
+                }
             }
-        }
-        TaskContext => {
-            // The inhibits/allows might fail and need to borrow the task.
-            let t = Local::unsafe_borrow::<Task>();
-            do (|| {
-                (*t).death.inhibit_kill((*t).unwinder.unwinding);
-                f()
-            }).finally {
-                (*t).death.allow_kill((*t).unwinder.unwinding);
+            TaskContext => {
+                // The inhibits/allows might fail and need to borrow the task.
+                let t = Local::unsafe_borrow::<Task>();
+                do (|| {
+                    (*t).death.inhibit_kill((*t).unwinder.unwinding);
+                    f()
+                }).finally {
+                    (*t).death.allow_kill((*t).unwinder.unwinding);
+                }
             }
+            // FIXME(#3095): This should be an rtabort as soon as the scheduler
+            // no longer uses a workqueue implemented with an Exclusive.
+            _ => f()
         }
-        // FIXME(#3095): This should be an rtabort as soon as the scheduler
-        // no longer uses a workqueue implemented with an Exclusive.
-        _ => f()
     }
 }
 

@@ -130,11 +130,9 @@ impl<Q:Send> Sem<Q> {
 impl Sem<()> {
     pub fn access<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
-        unsafe {
-            do task::unkillable {
-                self.acquire();
-                release = Some(SemRelease(self));
-            }
+        do task::unkillable {
+            self.acquire();
+            release = Some(SemRelease(self));
         }
         blk()
     }
@@ -153,11 +151,9 @@ impl Sem<~[WaitQueue]> {
 
     pub fn access_waitqueue<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
-        unsafe {
-            do task::unkillable {
-                self.acquire();
-                release = Some(SemAndSignalRelease(self));
-            }
+        do task::unkillable {
+            self.acquire();
+            release = Some(SemAndSignalRelease(self));
         }
         blk()
     }
@@ -294,17 +290,15 @@ impl<'self> Condvar<'self> {
         #[unsafe_destructor]
         impl<'self> Drop for CondvarReacquire<'self> {
             fn drop(&self) {
-                unsafe {
-                    // Needs to succeed, instead of itself dying.
-                    do task::unkillable {
-                        match self.order {
-                            Just(lock) => do lock.access {
-                                self.sem.acquire();
-                            },
-                            Nothing => {
-                                self.sem.acquire();
-                            },
-                        }
+                // Needs to succeed, instead of itself dying.
+                do task::unkillable {
+                    match self.order {
+                        Just(lock) => do lock.access {
+                            self.sem.acquire();
+                        },
+                        Nothing => {
+                            self.sem.acquire();
+                        },
                     }
                 }
             }
@@ -644,14 +638,12 @@ impl RWLock {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
         let mut _release = None;
-        unsafe {
-            do task::unkillable {
-                (&self.order_lock).acquire();
-                (&self.access_lock).acquire();
-                (&self.order_lock).release();
-            }
-            _release = Some(RWLockReleaseDowngrade(self));
+        do task::unkillable {
+            (&self.order_lock).acquire();
+            (&self.access_lock).acquire();
+            (&self.order_lock).release();
         }
+        _release = Some(RWLockReleaseDowngrade(self));
         blk(RWLockWriteMode { lock: self })
     }
 
