@@ -932,12 +932,12 @@ static lock_and_signal change_dir_lock;
 
 extern "C" CDECL void
 rust_take_change_dir_lock() {
-    global_args_lock.lock();
+    change_dir_lock.lock();
 }
 
 extern "C" CDECL void
 rust_drop_change_dir_lock() {
-    global_args_lock.unlock();
+    change_dir_lock.unlock();
 }
 
 //
