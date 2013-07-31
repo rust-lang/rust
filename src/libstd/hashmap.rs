@@ -672,28 +672,6 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     fn is_superset(&self, other: &HashSet<T>) -> bool {
         other.is_subset(self)
     }
-
-    /// Visit the values representing the difference
-    fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.difference_iter(other).advance(f)
-    }
-
-    /// Visit the values representing the symmetric difference
-    fn symmetric_difference(&self,
-                            other: &HashSet<T>,
-                            f: &fn(&T) -> bool) -> bool {
-        self.symmetric_difference_iter(other).advance(f)
-    }
-
-    /// Visit the values representing the intersection
-    fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.intersection_iter(other).advance(f)
-    }
-
-    /// Visit the values representing the union
-    fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
-        self.union_iter(other).advance(f)
-    }
 }
 
 impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {
