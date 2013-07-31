@@ -140,7 +140,9 @@ pub fn optflag(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: No, occur: Optional};
 }
 
-/// Create an option that is optional and does not take an argument
+/** Create an option that is optional, does not take an argument,
+  * and may occur multiple times.
+  */
 pub fn optflagmulti(name: &str) -> Opt {
     return Opt {name: mkname(name), hasarg: No, occur: Multi};
 }
@@ -369,7 +371,14 @@ fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
     };
 }
 
-fn opt_val(mm: &Matches, nm: &str) -> Optval { opt_vals(mm, nm)[0].clone() }
+fn opt_val(mm: &Matches, nm: &str) -> Option<Optval> {
+    let vals = opt_vals(mm, nm);
+    if (vals.is_empty()) {
+        None
+    } else {
+        Some(opt_vals(mm, nm)[0].clone())
+    }
+}
 
 /// Returns true if an option was matched
 pub fn opt_present(mm: &Matches, nm: &str) -> bool {
@@ -400,7 +409,10 @@ pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
  * argument
  */
 pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
-    return match opt_val(mm, nm) { Val(s) => s, _ => fail!() };
+    return match opt_val(mm, nm) {
+        Some(Val(s)) => s,
+        _ => fail!()
+    };
 }
 
 /**
@@ -412,7 +424,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
     for names.iter().advance |nm| {
         match opt_val(mm, *nm) {
-          Val(ref s) => return (*s).clone(),
+          Some(Val(ref s)) => return (*s).clone(),
           _ => ()
         }
     }
@@ -1318,24 +1330,41 @@ mod tests {
 
     #[test]
     fn test_multi() {
-        let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let opts = ~[optopt("e"), optopt("encrypt"), optopt("f")];
-        let matches = &match getopts(args, opts) {
+
+        let args_single = ~[~"-e", ~"foo"];
+        let matches_single = &match getopts(args_single, opts) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(opts_present(matches, [~"e"]));
-        assert!(opts_present(matches, [~"encrypt"]));
-        assert!(opts_present(matches, [~"encrypt", ~"e"]));
-        assert!(opts_present(matches, [~"e", ~"encrypt"]));
-        assert!(!opts_present(matches, [~"f"]));
-        assert!(!opts_present(matches, [~"thing"]));
-        assert!(!opts_present(matches, []));
+        assert!(opts_present(matches_single, [~"e"]));
+        assert!(opts_present(matches_single, [~"encrypt", ~"e"]));
+        assert!(opts_present(matches_single, [~"e", ~"encrypt"]));
+        assert!(!opts_present(matches_single, [~"encrypt"]));
+        assert!(!opts_present(matches_single, [~"thing"]));
+        assert!(!opts_present(matches_single, []));
 
-        assert_eq!(opts_str(matches, [~"e"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"e", ~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches, [~"encrypt", ~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"e", ~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_single, [~"encrypt", ~"e"]), ~"foo");
+
+        let args_both = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
+        let matches_both = &match getopts(args_both, opts) {
+          result::Ok(m) => m,
+          result::Err(_) => fail!()
+        };
+        assert!(opts_present(matches_both, [~"e"]));
+        assert!(opts_present(matches_both, [~"encrypt"]));
+        assert!(opts_present(matches_both, [~"encrypt", ~"e"]));
+        assert!(opts_present(matches_both, [~"e", ~"encrypt"]));
+        assert!(!opts_present(matches_both, [~"f"]));
+        assert!(!opts_present(matches_both, [~"thing"]));
+        assert!(!opts_present(matches_both, []));
+
+        assert_eq!(opts_str(matches_both, [~"e"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"e", ~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches_both, [~"encrypt", ~"e"]), ~"foo");
     }
 
     #[test]
