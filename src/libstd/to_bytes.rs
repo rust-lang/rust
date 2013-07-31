@@ -353,9 +353,10 @@ pub trait ToBytes {
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
         do io::with_bytes_writer |wr| {
-            for self.iter_bytes(lsb0) |bytes| {
-                wr.write(bytes)
-            }
+            do self.iter_bytes(lsb0) |bytes| {
+                wr.write(bytes);
+                true
+            };
         }
     }
 }
