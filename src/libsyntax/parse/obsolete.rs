@@ -30,7 +30,6 @@ use std::to_bytes;
 /// The specific types of unsupported syntax
 #[deriving(Eq)]
 pub enum ObsoleteSyntax {
-    ObsoleteLowerCaseKindBounds,
     ObsoleteLet,
     ObsoleteFieldTerminator,
     ObsoleteStructCtor,
@@ -96,12 +95,6 @@ impl ParserObsoleteMethods for Parser {
     /// Reports an obsolete syntax non-fatal error.
     pub fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
-            ObsoleteLowerCaseKindBounds => (
-                "lower-case kind bounds",
-                "the `send`, `copy`, `const`, and `owned` \
-                 kinds are represented as traits now, and \
-                 should be camel cased"
-            ),
             ObsoleteLet => (
                 "`let` in field declaration",
                 "declare fields as `field: Type`"

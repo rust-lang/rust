@@ -71,7 +71,7 @@ use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
-use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
+use parse::obsolete::ObsoleteSyntax;
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
@@ -3309,30 +3309,8 @@ impl Parser {
                     self.bump();
                 }
                 token::MOD_SEP | token::IDENT(*) => {
-                    let obsolete_bound = match *self.token {
-                        token::MOD_SEP => false,
-                        token::IDENT(sid, _) => {
-                            match self.id_to_str(sid).as_slice() {
-                                "send" |
-                                "copy" |
-                                "const" |
-                                "owned" => {
-                                    self.obsolete(
-                                        *self.span,
-                                        ObsoleteLowerCaseKindBounds);
-                                    self.bump();
-                                    true
-                                }
-                                _ => false
-                            }
-                        }
-                        _ => fail!()
-                    };
-
-                    if !obsolete_bound {
-                        let tref = self.parse_trait_ref();
-                        result.push(TraitTyParamBound(tref));
-                    }
+                    let tref = self.parse_trait_ref();
+                    result.push(TraitTyParamBound(tref));
                 }
                 _ => break,
             }
