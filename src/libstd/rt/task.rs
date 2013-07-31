@@ -209,7 +209,7 @@ impl Task {
     }
 
     pub fn run(&mut self, f: &fn()) {
-
+        rtdebug!("run called on task: %u", borrow::to_uint(self));
         self.unwinder.try(f);
         { let _ = self.taskgroup.take(); }
         self.death.collect_failure(!self.unwinder.unwinding);
@@ -301,7 +301,7 @@ impl Task {
 
 impl Drop for Task {
     fn drop(&self) {
-        rtdebug!("called drop for a task");
+        rtdebug!("called drop for a task: %u", borrow::to_uint(self));
         assert!(self.destroyed)
     }
 }

@@ -130,7 +130,9 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         while !scheds.is_empty() {
             let mut sched = scheds.pop();
-            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {};
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+                rtdebug!("bootstrapping non-primary scheduler");
+            };
             let bootstrap_task_cell = Cell::new(bootstrap_task);
             let sched_cell = Cell::new(sched);
             let thread = do Thread::start {

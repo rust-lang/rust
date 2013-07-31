@@ -142,11 +142,11 @@ impl Scheduler {
         local_ptr::init_tls_key();
 
         // Create a task for the scheduler with an empty context.
-        let sched_task = Task::new_sched_task();
+        let sched_task = ~Task::new_sched_task();
 
         // Now that we have an empty task struct for the scheduler
         // task, put it in TLS.
-        Local::put::(~sched_task);
+        Local::put::(sched_task);
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -165,8 +165,6 @@ impl Scheduler {
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-
-        rtdebug!("post sched.run(), cleaning up scheduler task");
         let mut stask = Local::take::<Task>();
         stask.destroyed = true;
     }
@@ -224,6 +222,8 @@ impl Scheduler {
         // 2) A shutdown is also easy, shutdown.
         // 3) A pinned task - we resume immediately and do not return
         //    here.
+        // 4) A message from another scheduler with a non-homed task
+        //    to run here.
 
         let result = sched.interpret_message_queue();
         let sched = match result {
@@ -235,6 +235,8 @@ impl Scheduler {
                 return;
             }
         };
+
+        // Second activity is to try resuming a task from the queue.
 
         let result = sched.resume_task_from_queue();
         let mut sched = match result {
@@ -333,8 +335,7 @@ impl Scheduler {
                 return None;
             }
             Some(TaskFromFriend(task)) => {
-                this.schedule_task_sched_context(task);
-                return None;
+                return this.sched_schedule_task(task);
             }
             Some(Wake) => {
                 this.sleepy = false;
@@ -442,8 +443,6 @@ impl Scheduler {
         }
     }
 
-    // * Task-context operations
-
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
     pub fn terminate_current_task(~self) {
@@ -457,10 +456,17 @@ impl Scheduler {
         }
     }
 
-    // If a scheduling action is performed, return None. If not,
-    // return Some(sched).
+    // Scheduling a task requires a few checks to make sure the task
+    // ends up in the appropriate location. The run_anything flag on
+    // the scheduler and the home on the task need to be checked. This
+    // helper performs that check. It takes a function that specifies
+    // how to queue the the provided task if that is the correct
+    // action. This is a "core" function that requires handling the
+    // returned Option correctly.
 
-    pub fn schedule_task(~self, task: ~Task) -> Option<~Scheduler> {
+    pub fn schedule_task(~self, task: ~Task,
+                         schedule_fn: ~fn(sched: ~Scheduler, task: ~Task))
+        -> Option<~Scheduler> {
 
         // is the task home?
         let is_home = task.is_home_no_tls(&self);
@@ -474,50 +480,43 @@ impl Scheduler {
             // here we know we are home, execute now OR we know we
             // aren't homed, and that this sched doesn't care
             rtdebug!("task: %u is on ok sched, executing", to_uint(task));
-            do this.switch_running_tasks_and_then(task) |sched, last_task| {
+            schedule_fn(this, task);
+            return None;
+        } else if !homed && !this.run_anything {
+            // the task isn't homed, but it can't be run here
+            this.enqueue_task(task);
+            return Some(this);
+        } else {
+            // task isn't home, so don't run it here, send it home
+            Scheduler::send_task_home(task);
+            return Some(this);
+        }
+    }
+
+    // There are two contexts in which schedule_task can be called:
+    // inside the scheduler, and inside a task. These contexts handle
+    // executing the task slightly differently. In the scheduler
+    // context case we want to receive the scheduler as an input, and
+    // manually deal with the option. In the task context case we want
+    // to use TLS to find the scheduler, and deal with the option
+    // inside the helper.
+
+    pub fn sched_schedule_task(~self, task: ~Task) -> Option<~Scheduler> {
+        do self.schedule_task(task) |sched, next_task| {
+            sched.resume_task_immediately(next_task);
+        }
+    }
+
+    // Task context case - use TLS.
+    pub fn run_task(task: ~Task) {
+        let sched = Local::take::<Scheduler>();
+        let opt = do sched.schedule_task(task) |sched, next_task| {
+            do sched.switch_running_tasks_and_then(next_task) |sched, last_task| {
                 sched.enqueue_blocked_task(last_task);
             }
-            return None;
-        } else if !homed && !this.run_anything {
-            // the task isn't homed, but it can't be run here
-            this.enqueue_task(task);
-            return Some(this);
-        } else {
-            // task isn't home, so don't run it here, send it home
-            Scheduler::send_task_home(task);
-            return Some(this);
-        }
+        };
+        opt.map_consume(Local::put);
     }
-
-    // BAD BAD BAD BAD BAD
-    // Do something instead of just copy-pasting this.
-    pub fn schedule_task_sched_context(~self, task: ~Task) -> Option<~Scheduler> {
-
-        // is the task home?
-        let is_home = task.is_home_no_tls(&self);
-
-        // does the task have a home?
-        let homed = task.homed();
-
-        let mut this = self;
-
-        if is_home || (!homed && this.run_anything) {
-            // here we know we are home, execute now OR we know we
-            // aren't homed, and that this sched doesn't care
-            rtdebug!("task: %u is on ok sched, executing", to_uint(task));
-            this.resume_task_immediately(task);
-            return None;
-        } else if !homed && !this.run_anything {
-            // the task isn't homed, but it can't be run here
-            this.enqueue_task(task);
-            return Some(this);
-        } else {
-            // task isn't home, so don't run it here, send it home
-            Scheduler::send_task_home(task);
-            return Some(this);
-        }
-    }
-
 
     // The primary function for changing contexts. In the current
     // design the scheduler is just a slightly modified GreenTask, so
@@ -586,7 +585,7 @@ impl Scheduler {
             Context::swap(current_task_context, next_task_context);
         }
 
-        // When the context swaps back to the scheduler we immediately
+        // When the context swaps back to this task we immediately
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         unsafe {
@@ -599,15 +598,8 @@ impl Scheduler {
         }
     }
 
-    // There are a variety of "obvious" functions to be passed to
-    // change_task_context, so we can make a few "named cases".
-
-    // Enqueue the old task on the current scheduler.
-    pub fn enqueue_old(sched: &mut Scheduler, task: ~Task) {
-        sched.enqueue_task(task);
-    }
-
-    // Sometimes we just want the old API though.
+    // Old API for task manipulation implemented over the new core
+    // function.
 
     pub fn resume_task_immediately(~self, task: ~Task) {
         do self.change_task_context(task) |sched, stask| {
@@ -668,13 +660,6 @@ impl Scheduler {
         };
     }
 
-    // A helper that looks up the scheduler and runs a task. If it can
-    // be run now it is run now.
-    pub fn run_task(new_task: ~Task) {
-        let sched = Local::take::<Scheduler>();
-        sched.schedule_task(new_task).map_consume(Local::put);
-    }
-
     // Returns a mutable reference to both contexts involved in this
     // swap. This is unsafe - we are getting mutable internal
     // references to keep even when we don't own the tasks. It looks
@@ -691,8 +676,6 @@ impl Scheduler {
              transmute_mut_region(next_task_context))
         }
     }
-
-    // * Other stuff
 
     pub fn enqueue_cleanup_job(&mut self, job: CleanupJob) {
         self.cleanup_job = Some(job);
@@ -1004,22 +987,22 @@ mod test {
             let port = Cell::new(port);
             let chan = Cell::new(chan);
 
-            let _thread_one = do Thread::start {
+            let thread_one = do Thread::start {
                 let chan = Cell::new(chan.take());
                 do run_in_newsched_task_core {
                     chan.take().send(());
                 }
             };
 
-            let _thread_two = do Thread::start {
+            let thread_two = do Thread::start {
                 let port = Cell::new(port.take());
                 do run_in_newsched_task_core {
                     port.take().recv();
                 }
             };
 
-            thread1.join();
-            thread2.join();
+            thread_two.join();
+            thread_one.join();
         }
     }
 

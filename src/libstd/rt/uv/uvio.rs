@@ -253,7 +253,7 @@ impl IoFactory for UvIoFactory {
         let scheduler = Local::take::<Scheduler>();
 
         // Block this task and take ownership, switch to scheduler context
-        do scheduler.deschedule_running_task_and_then |_sched, task| {
+        do scheduler.deschedule_running_task_and_then |_, task| {
 
             rtdebug!("connect: entered scheduler context");
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
