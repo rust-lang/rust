@@ -136,7 +136,10 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
     if field == abi::tydesc_field_take_glue {
         match ty::get(t).sty {
-          ty::ty_unboxed_vec(*) => { return ty::mk_u32(); }
+          ty::ty_unboxed_vec(*) |
+              ty::ty_uniq(*) |
+              ty::ty_estr(ty::vstore_uniq) |
+              ty::ty_evec(_, ty::vstore_uniq) => { return ty::mk_u32(); }
           _ => ()
         }
     }
