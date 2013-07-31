@@ -8,7 +8,63 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Task death: asynchronous killing, linked failure, exit code propagation.
+/*!
+
+Task death: asynchronous killing, linked failure, exit code propagation.
+
+This file implements two orthogonal building-blocks for communicating failure
+between tasks. One is 'linked failure' or 'task killing', that is, a failing
+task causing other tasks to fail promptly (even those that are blocked on
+pipes or I/O). The other is 'exit code propagation', which affects the result
+observed by the parent of a task::try task that itself spawns child tasks
+(such as any #[test] function). In both cases the data structures live in
+KillHandle.
+
+I. Task killing.
+
+The model for killing involves two atomic flags, the "kill flag" and the
+"unkillable flag". Operations on the kill flag include:
+
+- In the taskgroup code (task/spawn.rs), tasks store a clone of their
+  KillHandle in their shared taskgroup. Another task in the group that fails
+  will use that handle to call kill().
+- When a task blocks, it turns its ~Task into a BlockedTask by storing a
+  the transmuted ~Task pointer inside the KillHandle's kill flag. A task
+  trying to block and a task trying to kill it can simultaneously access the
+  kill flag, after which the task will get scheduled and fail (no matter who
+  wins the race). Likewise, a task trying to wake a blocked task normally and
+  a task trying to kill it can simultaneously access the flag; only one will
+  get the task to reschedule it.
+
+Operations on the unkillable flag include:
+
+- When a task becomes unkillable, it swaps on the flag to forbid any killer
+  from waking it up while it's blocked inside the unkillable section. If a
+  kill was already pending, the task fails instead of becoming unkillable.
+- When a task is done being unkillable, it restores the flag to the normal
+  running state. If a kill was received-but-blocked during the unkillable
+  section, the task fails at this later point.
+- When a task tries to kill another task, before swapping on the kill flag, it
+  first swaps on the unkillable flag, to see if it's "allowed" to wake up the
+  task. If it isn't, the killed task will receive the signal when it becomes
+  killable again. (Of course, a task trying to wake the task normally (e.g.
+  sending on a channel) does not access the unkillable flag at all.)
+
+Why do we not need acquire/release barriers on any of the kill flag swaps?
+This is because barriers establish orderings between accesses on different
+memory locations, but each kill-related operation is only a swap on a single
+location, so atomicity is all that matters. The exception is kill(), which
+does a swap on both flags in sequence. kill() needs no barriers because it
+does not matter if its two accesses are seen reordered on another CPU: if a
+killer does perform both writes, it means it saw a KILL_RUNNING in the
+unkillable flag, which means an unkillable task will see KILL_KILLED and fail
+immediately (rendering the subsequent write to the kill flag unnecessary).
+
+II. Exit code propagation.
+
+FIXME(#7544): Decide on the ultimate model for this and document it.
+
+*/
 
 use cast;
 use cell::Cell;
