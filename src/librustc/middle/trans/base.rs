@@ -2258,15 +2258,13 @@ pub fn register_fn_full(ccx: @mut CrateContext,
                         node_type: ty::t)
                      -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, sym, node_id, node_type,
-                       lib::llvm::CCallConv, llfty)
+    register_fn_fuller(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
 }
 
 pub fn register_fn_fuller(ccx: @mut CrateContext,
                           sp: span,
                           sym: ~str,
                           node_id: ast::NodeId,
-                          _node_type: ty::t,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type)
                           -> ValueRef {

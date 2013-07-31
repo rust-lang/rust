@@ -1154,17 +1154,10 @@ pub fn register_foreign_fn(ccx: @mut CrateContext,
                            -> ValueRef {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
-    let t = ty::node_id_to_type(ccx.tcx, node_id);
     let sym = Cell::new(sym);
 
     let tys = shim_types(ccx, node_id);
     do tys.fn_ty.decl_fn |fnty| {
-        register_fn_fuller(ccx,
-                           sp,
-                           sym.take(),
-                           node_id,
-                           t,
-                           lib::llvm::CCallConv,
-                           fnty)
+        register_fn_fuller(ccx, sp, sym.take(), node_id, lib::llvm::CCallConv, fnty)
     }
 }
