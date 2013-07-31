@@ -388,8 +388,8 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.iter().advance |&(_, in)| {
-          node_type_needs(cx, use_repr, in.id);
+        for ia.inputs.iter().advance |&(_, input)| {
+          node_type_needs(cx, use_repr, input.id);
         }
         for ia.outputs.iter().advance |&(_, out)| {
           node_type_needs(cx, use_repr, out.id);

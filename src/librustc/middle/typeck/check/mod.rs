@@ -2478,8 +2478,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, ty_param_bounds_and_ty.ty);
       }
       ast::expr_inline_asm(ref ia) => {
-          for ia.inputs.iter().advance |&(_, in)| {
-              check_expr(fcx, in);
+          for ia.inputs.iter().advance |&(_, input)| {
+              check_expr(fcx, input);
           }
           for ia.outputs.iter().advance |&(_, out)| {
               check_expr(fcx, out);

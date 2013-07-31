@@ -156,7 +156,7 @@ mod test {
             do io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).in {
+            }).inside {
                 let addr = Ipv4(0, 0, 0, 0, 1);
                 let listener = TcpListener::bind(addr);
                 assert!(listener.is_none());
@@ -172,7 +172,7 @@ mod test {
             do io_error::cond.trap(|e| {
                 assert!(e.kind == ConnectionRefused);
                 called = true;
-            }).in {
+            }).inside {
                 let addr = Ipv4(0, 0, 0, 0, 1);
                 let stream = TcpStream::connect(addr);
                 assert!(stream.is_none());
@@ -320,7 +320,7 @@ mod test {
                         // NB: ECONNRESET on linux, EPIPE on mac
                         assert!(e.kind == ConnectionReset || e.kind == BrokenPipe);
                         stop = true;
-                    }).in {
+                    }).inside {
                         stream.write(buf);
                     }
                     if stop { break }
@@ -349,7 +349,7 @@ mod test {
                         // NB: ECONNRESET on linux, EPIPE on mac
                         assert!(e.kind == ConnectionReset || e.kind == BrokenPipe);
                         stop = true;
-                    }).in {
+                    }).inside {
                         stream.write(buf);
                     }
                     if stop { break }

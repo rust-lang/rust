@@ -125,7 +125,7 @@ pub fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
+pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
     match *t {
       EQ => ~"=",
       LT => ~"<",
@@ -195,8 +195,8 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       LIT_STR(ref s) => { fmt!("\"%s\"", ident_to_str(s).escape_default()) }
 
       /* Name components */
-      IDENT(s, _) => in.get(s.name).to_owned(),
-      LIFETIME(s) => fmt!("'%s", in.get(s.name)),
+      IDENT(s, _) => input.get(s.name).to_owned(),
+      LIFETIME(s) => fmt!("'%s", input.get(s.name)),
       UNDERSCORE => ~"_",
 
       /* Other */
@@ -204,7 +204,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
-            &nt_expr(e) => ::print::pprust::expr_to_str(e, in),
+            &nt_expr(e) => ::print::pprust::expr_to_str(e, input),
             _ => {
                 ~"an interpolated " +
                     match (*nt) {
@@ -471,10 +471,10 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "unsafe",             // 61
         "use",                // 62
         "while",              // 63
+        "in",                 // 64
+        "foreach",            // 65
 
-        "be",                 // 64
-        "in",                 // 65
-        "foreach",            // 66
+        "be",                 // 66
     ];
 
     @ident_interner {
@@ -615,10 +615,10 @@ pub mod keywords {
                 False => ident { name: 39, ctxt: 0 },
                 Fn => ident { name: 40, ctxt: 0 },
                 For => ident { name: 41, ctxt: 0 },
-                ForEach => ident { name: 66, ctxt: 0 },
+                ForEach => ident { name: 65, ctxt: 0 },
                 If => ident { name: 42, ctxt: 0 },
                 Impl => ident { name: 43, ctxt: 0 },
-                In => ident { name: 65, ctxt: 0 },
+                In => ident { name: 64, ctxt: 0 },
                 Let => ident { name: 44, ctxt: 0 },
                 __Log => ident { name: 45, ctxt: 0 },
                 Loop => ident { name: 46, ctxt: 0 },
@@ -641,7 +641,7 @@ pub mod keywords {
                 Unsafe => ident { name: 61, ctxt: 0 },
                 Use => ident { name: 62, ctxt: 0 },
                 While => ident { name: 63, ctxt: 0 },
-                Be => ident { name: 64, ctxt: 0 },
+                Be => ident { name: 66, ctxt: 0 },
             }
         }
     }
@@ -657,7 +657,7 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 64 => true,
+            8 | 27 | 32 .. 66 => true,
             _ => false,
         },
         _ => false
@@ -667,7 +667,7 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 63 => true,
+            8 | 27 | 32 .. 65 => true,
             _ => false,
         },
         _ => false,
@@ -677,7 +677,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            64 => true,
+            66 => true,
             _ => false,
         },
         _ => false,

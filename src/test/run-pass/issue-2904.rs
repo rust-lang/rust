@@ -62,10 +62,10 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr:'static + io::Reader>(in: rdr) -> ~[~[square]] {
-    let in = @in as @io::Reader;
+fn read_board_grid<rdr:'static + io::Reader>(input: rdr) -> ~[~[square]] {
+    let input = @input as @io::Reader;
     let mut grid = ~[];
-    for in.each_line |line| {
+    for input.each_line |line| {
         let mut row = ~[];
         for line.iter().advance |c| {
             row.push(square_from_char(c))

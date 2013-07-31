@@ -563,8 +563,8 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
         expr_mac(ref mac) => visit_mac(mac, (e.clone(), v)),
         expr_paren(x) => (v.visit_expr)(x, (e.clone(), v)),
         expr_inline_asm(ref a) => {
-            for a.inputs.iter().advance |&(_, in)| {
-                (v.visit_expr)(in, (e.clone(), v));
+            for a.inputs.iter().advance |&(_, input)| {
+                (v.visit_expr)(input, (e.clone(), v));
             }
             for a.outputs.iter().advance |&(_, out)| {
                 (v.visit_expr)(out, (e.clone(), v));
