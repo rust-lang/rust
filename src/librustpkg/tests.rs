@@ -485,11 +485,11 @@ fn test_install_invalid() {
     let mut error1_occurred = false;
     do cond1.trap(|_| {
         error1_occurred = true;
-    }).in {
+    }).inside {
         do cond.trap(|_| {
             error_occurred = true;
             temp_workspace.clone()
-        }).in {
+        }).inside {
             ctxt.install(&temp_workspace, &pkgid);
         }
     }
@@ -573,7 +573,7 @@ fn test_package_ids_must_be_relative_path_like() {
         assert!("" == p.to_str());
         assert!("0-length pkgid" == e);
         whatever.clone()
-    }).in {
+    }).inside {
         let x = PkgId::new("", &os::getcwd());
         assert_eq!(~"foo-0.1", x.to_str());
     }
@@ -582,7 +582,7 @@ fn test_package_ids_must_be_relative_path_like() {
         assert_eq!(p.to_str(), os::make_absolute(&Path("foo/bar/quux")).to_str());
         assert!("absolute pkgid" == e);
         whatever.clone()
-    }).in {
+    }).inside {
         let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str(),
                            &os::getcwd());
         assert_eq!(~"foo-0.1", z.to_str());

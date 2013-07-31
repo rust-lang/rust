@@ -750,16 +750,16 @@ pub fn std_macros() -> @str {
 
     macro_rules! condition (
 
-        { pub $c:ident: $in:ty -> $out:ty; } => {
+        { pub $c:ident: $input:ty -> $out:ty; } => {
 
             pub mod $c {
                 #[allow(non_uppercase_statics)];
                 static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$in, $out>> =
+                    @::std::condition::Handler<$input, $out>> =
                     &::std::local_data::Key;
 
                 pub static cond :
-                    ::std::condition::Condition<$in,$out> =
+                    ::std::condition::Condition<$input,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
@@ -767,17 +767,17 @@ pub fn std_macros() -> @str {
             }
         };
 
-        { $c:ident: $in:ty -> $out:ty; } => {
+        { $c:ident: $input:ty -> $out:ty; } => {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
                 #[allow(non_uppercase_statics)];
                 static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$in, $out>> =
+                    @::std::condition::Handler<$input, $out>> =
                     &::std::local_data::Key;
 
                 pub static cond :
-                    ::std::condition::Condition<$in,$out> =
+                    ::std::condition::Condition<$input,$out> =
                     ::std::condition::Condition {
                         name: stringify!($c),
                         key: key

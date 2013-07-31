@@ -407,7 +407,7 @@ fn get_authority(rawurl: &str) ->
 
     let len = rawurl.len();
     let mut st = Start;
-    let mut in = Digit; // most restricted, start here.
+    let mut input = Digit; // most restricted, start here.
 
     let mut userinfo = None;
     let mut host = ~"";
@@ -425,13 +425,13 @@ fn get_authority(rawurl: &str) ->
         match c {
           '0' .. '9' => (),
           'A' .. 'F' | 'a' .. 'f' => {
-            if in == Digit {
-                in = Hex;
+            if input == Digit {
+                input = Hex;
             }
           }
           'G' .. 'Z' | 'g' .. 'z' | '-' | '.' | '_' | '~' | '%' |
           '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' => {
-            in = Unreserved;
+            input = Unreserved;
           }
           ':' | '@' | '?' | '#' | '/' => {
             // separators, don't change anything
@@ -452,7 +452,7 @@ fn get_authority(rawurl: &str) ->
               }
               PassHostPort => {
                 // multiple colons means ipv6 address.
-                if in == Unreserved {
+                if input == Unreserved {
                     return Err(
                         ~"Illegal characters in IPv6 address.");
                 }
@@ -461,13 +461,13 @@ fn get_authority(rawurl: &str) ->
               InHost => {
                 pos = i;
                 // can't be sure whether this is an ipv6 address or a port
-                if in == Unreserved {
+                if input == Unreserved {
                     return Err(~"Illegal characters in authority.");
                 }
                 st = Ip6Port;
               }
               Ip6Port => {
-                if in == Unreserved {
+                if input == Unreserved {
                     return Err(~"Illegal characters in authority.");
                 }
                 st = Ip6Host;
@@ -483,11 +483,11 @@ fn get_authority(rawurl: &str) ->
                 return Err(~"Invalid ':' in authority.");
               }
             }
-            in = Digit; // reset input class
+            input = Digit; // reset input class
           }
 
           '@' => {
-            in = Digit; // reset input class
+            input = Digit; // reset input class
             colon_count = 0; // reset count
             match st {
               Start => {
@@ -535,7 +535,7 @@ fn get_authority(rawurl: &str) ->
         }
       }
       PassHostPort | Ip6Port => {
-        if in != Digit {
+        if input != Digit {
             return Err(~"Non-digit characters in port.");
         }
         host = rawurl.slice(begin, pos).to_owned();
@@ -545,7 +545,7 @@ fn get_authority(rawurl: &str) ->
         host = rawurl.slice(begin, end).to_owned();
       }
       InPort => {
-        if in != Digit {
+        if input != Digit {
             return Err(~"Non-digit characters in port.");
         }
         port = Some(rawurl.slice(pos+1, end).to_owned());

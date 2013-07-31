@@ -68,14 +68,14 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
     cleanups.clear();
 
     // Now the input operands
-    let inputs = do ia.inputs.map |&(c, in)| {
+    let inputs = do ia.inputs.map |&(c, input)| {
         constraints.push(c);
 
         unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
-                                   expr_ty(bcx, in),
+                                   expr_ty(bcx, input),
                                    ty::ByCopy,
-                                   in,
+                                   input,
                                    &mut cleanups,
                                    None,
                                    callee::DontAutorefArg)
