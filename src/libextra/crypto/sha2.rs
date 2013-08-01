@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::uint;
-
 use digest::Digest;
 
 // BitCounter is a specialized structure intended simply for counting the
@@ -169,7 +166,7 @@ impl Engine512 {
             ((x << 45) | (x >> 19)) ^ ((x << 3) | (x >> 61)) ^ (x >> 6)
         }
 
-        for uint::range(16, 80) |t| {
+        foreach t in range(16u, 80) {
             self.W[t] = sigma1(self.W[t - 2]) + self.W[t - 7] + sigma0(self.W[t - 15]) +
                 self.W[t - 16];
         }
@@ -184,7 +181,7 @@ impl Engine512 {
         let mut h = self.H7;
 
         let mut t = 0;
-        for uint::range(0, 10) |_| {
+        foreach _ in range(0u, 10) {
             h += sum1(e) + ch(e, f, g) + K64[t] + self.W[t];
             d += h;
             h += sum0(a) + maj(a, b, c);
@@ -254,7 +251,7 @@ impl Engine512 {
 
         // add length
         if (self.W_idx > 14) {
-            for uint::range(self.W_idx, 16) |_| {
+            foreach _ in range(self.W_idx, 16) {
                 self.process_word(0);
             }
         }
@@ -452,7 +449,7 @@ impl Engine256 {
             ((x >> 17) | (x << 15)) ^ ((x >> 19) | (x << 13)) ^ (x >> 10)
         }
 
-        for uint::range(16, 64) |t| {
+        foreach t in range(16u, 64) {
             self.W[t] = sigma1(self.W[t - 2]) + self.W[t - 7] + sigma0(self.W[t - 15]) +
                 self.W[t - 16];
         }
@@ -467,7 +464,7 @@ impl Engine256 {
         let mut h = self.H7;
 
         let mut t = 0;
-        for uint::range(0, 8) |_| {
+        foreach _ in range(0u, 8) {
             h += sum1(e) + ch(e, f, g) + K32[t] + self.W[t];
             d += h;
             h += sum0(a) + maj(a, b, c);
@@ -536,7 +533,7 @@ impl Engine256 {
 
         // add length
         if (self.W_idx > 14) {
-            for uint::range(self.W_idx, 16) |_| {
+            foreach _ in range(self.W_idx, 16) {
                 self.process_word(0);
             }
         }

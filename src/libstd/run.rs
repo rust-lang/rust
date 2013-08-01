@@ -574,9 +574,6 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 // FIXME: this is only pub so it can be tested (see issue #4536)
 #[cfg(windows)]
 pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
-
-    use uint;
-
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
     foreach arg in args.iter() {
@@ -590,7 +587,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         if quote {
             cmd.push_char('"');
         }
-        for uint::range(0, arg.len()) |i| {
+        foreach i in range(0u, arg.len()) {
             append_char_at(cmd, arg, i);
         }
         if quote {

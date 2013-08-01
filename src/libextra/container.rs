@@ -41,9 +41,8 @@ pub trait Deque<T> : Mutable {
 
 #[cfg(test)]
 mod bench {
-
     use std::container::MutableMap;
-    use std::{vec,rand,uint};
+    use std::{vec, rand};
     use std::rand::RngUtil;
     use test::BenchHarness;
 
@@ -54,7 +53,7 @@ mod bench {
         let mut rng = rand::XorShiftRng::new();
 
         map.clear();
-        for uint::range(0,n) |_i| {
+        foreach _ in range(0, n) {
             map.insert(rng.gen::<uint>() % n, 1);
         }
 
@@ -71,7 +70,7 @@ mod bench {
                                                  bh: &mut BenchHarness) {
         // setup
         map.clear();
-        for uint::range(0, n) |i| {
+        foreach i in range(0u, n) {
             map.insert(i*2, 1);
         }
 
@@ -109,7 +108,7 @@ mod bench {
                                                map: &mut M,
                                                bh: &mut BenchHarness) {
         // setup
-        for uint::range(0, n) |i| {
+        foreach i in range(0u, n) {
             map.insert(i, 1);
         }
 

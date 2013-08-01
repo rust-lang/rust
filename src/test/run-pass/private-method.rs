@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint;
-
 struct cat {
     priv meows : uint,
 
@@ -24,7 +22,7 @@ impl cat {
 }
 
 impl cat {
-    fn nap(&mut self) { for uint::range(1u, 10u) |_i| { }}
+    fn nap(&mut self) { foreach _ in range(1u, 10u) { } }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

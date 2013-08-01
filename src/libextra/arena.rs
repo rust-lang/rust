@@ -277,7 +277,7 @@ impl Arena {
 #[test]
 fn test_arena_destructors() {
     let arena = Arena();
-    for uint::range(0, 10) |i| {
+    foreach i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
         do arena.alloc { @i };
@@ -293,7 +293,7 @@ fn test_arena_destructors() {
 fn test_arena_destructors_fail() {
     let arena = Arena();
     // Put some stuff in the arena.
-    for uint::range(0, 10) |i| {
+    foreach i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
         do arena.alloc { @i };

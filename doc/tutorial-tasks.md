@@ -120,9 +120,8 @@ should interleave the output in vaguely random order.
 ~~~
 # use std::io::print;
 # use std::task::spawn;
-# use std::int;
 
-for int::range(0, 20) |child_task_number| {
+foreach child_task_number in range(0, 20) {
     do spawn {
        print(fmt!("I am child number %d\n", child_task_number));
     }
@@ -237,12 +236,11 @@ Instead we can use a `SharedChan`, a type that allows a single
 ~~~
 # use std::task::spawn;
 # use std::comm::{stream, SharedChan};
-# use std::uint;
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
 
-for uint::range(0, 3) |init_val| {
+foreach init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
     do spawn {
@@ -314,10 +312,9 @@ Here is another example showing how futures allow you to background computations
 be distributed on the available cores.
 ~~~
 # use std::vec;
-# use std::uint;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
-    for uint::range(start*100000, (start+1)*100000) |num| {
+    foreach num in range(start*100000, (start+1)*100000) {
         local_sum += (num as f64 + 1.0).pow(&-2.0);
     }
     local_sum
@@ -349,7 +346,6 @@ Here is a small example showing how to use Arcs. We wish to run concurrently sev
 a single large vector of floats. Each task needs the full vector to perform its duty.
 ~~~
 # use std::vec;
-# use std::uint;
 # use std::rand;
 use extra::arc::Arc;
 
@@ -363,7 +359,7 @@ fn main() {
 
     let numbers_arc = Arc::new(numbers);
 
-    for uint::range(1,10) |num| {
+    foreach num in range(1u, 10) {
         let (port, chan)  = stream();
         chan.send(numbers_arc.clone());
 

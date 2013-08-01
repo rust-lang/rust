@@ -19,7 +19,6 @@
 
 
 use std::hashmap::HashSet;
-use std::uint;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
@@ -158,9 +157,9 @@ impl<'self> CheckLoanCtxt<'self> {
             }
         }
 
-        for uint::range(0, new_loan_indices.len()) |i| {
+        foreach i in range(0u, new_loan_indices.len()) {
             let old_loan = &self.all_loans[new_loan_indices[i]];
-            for uint::range(i+1, new_loan_indices.len()) |j| {
+            foreach j in range(i+1, new_loan_indices.len()) {
                 let new_loan = &self.all_loans[new_loan_indices[j]];
                 self.report_error_if_loans_conflict(old_loan, new_loan);
             }

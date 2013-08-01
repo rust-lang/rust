@@ -33,7 +33,6 @@ use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
 use std::cell::Cell;
-use std::uint;
 use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
@@ -499,7 +498,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
             let _icx = push_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
             let n = tys.llsig.llarg_tys.len();
-            for uint::range(0, n) |i| {
+            foreach i in range(0u, n) {
                 let arg_i = bcx.fcx.arg_pos(i);
                 let mut llargval = get_param(llwrapfn, arg_i);
 
@@ -544,7 +543,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        for uint::range(0, num_args) |i| {
+        foreach i in range(0u, num_args) {
             args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
         }
         let llfn = bcx.ccx().intrinsics.get_copy(&name);

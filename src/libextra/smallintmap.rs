@@ -30,7 +30,7 @@ impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
         let mut sz = 0;
-        for uint::range(0, self.v.len()) |i| {
+        foreach i in range(0u, self.v.len()) {
             match self.v[i] {
                 Some(_) => sz += 1,
                 None => {}
@@ -123,13 +123,13 @@ impl<V> SmallIntMap<V> {
 
     /// Visit all key-value pairs in order
     pub fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
+        foreach i in range(0u, self.v.len()) {
             match self.v[i] {
               Some(ref elt) => if !it(&i, elt) { return false; },
               None => ()
             }
         }
-        return true;
+        true
     }
 
     /// Visit all keys in order
@@ -144,13 +144,13 @@ impl<V> SmallIntMap<V> {
 
     /// Iterate over the map and mutate the contained values
     pub fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
-        for uint::range(0, self.v.len()) |i| {
+        foreach i in range(0, self.v.len()) {
             match self.v[i] {
               Some(ref mut elt) => if !it(&i, elt) { return false; },
               None => ()
             }
         }
-        return true;
+        true
     }
 
     /// Visit all key-value pairs in reverse order

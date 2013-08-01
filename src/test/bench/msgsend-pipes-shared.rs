@@ -64,12 +64,12 @@ fn run(args: &[~str]) {
     let num_bytes = 100;
     let start = extra::time::precise_time_s();
     let mut worker_results = ~[];
-    for uint::range(0, workers) |_i| {
+    foreach _ in range(0u, workers) {
         let to_child = to_child.clone();
         let mut builder = task::task();
         builder.future_result(|r| worker_results.push(r));
         do builder.spawn {
-            for uint::range(0, size / workers) |_i| {
+            foreach _ in range(0u, size / workers) {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }

@@ -10,8 +10,6 @@
 
 extern mod extra;
 
-use std::uint;
-
 struct Triple { x: int, y: int, z: int }
 
 fn test(x: bool, foo: @Triple) -> int {
@@ -23,7 +21,7 @@ fn test(x: bool, foo: @Triple) -> int {
 
 pub fn main() {
     let x = @Triple{x: 1, y: 2, z: 3};
-    for uint::range(0u, 10000u) |i| {
+    foreach i in range(0u, 10000u) {
         assert_eq!(test(true, x), 2);
     }
     assert_eq!(test(false, x), 5);

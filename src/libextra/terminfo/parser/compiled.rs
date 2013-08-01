@@ -13,7 +13,7 @@
 /// ncurses-compatible compiled terminfo format parsing (term(5))
 
 
-use std::{vec, int, str};
+use std::{vec, str};
 use std::io::Reader;
 use std::hashmap::HashMap;
 use super::super::TermInfo;
@@ -222,7 +222,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
-        for int::range(0, bools_bytes) |i| {
+        foreach i in range(0, bools_bytes) {
             let b = file.read_byte();
             if b < 0 {
                 error!("EOF reading bools after %? entries", i);
@@ -243,7 +243,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
-        for int::range(0, numbers_count) |i| {
+        foreach i in range(0, numbers_count) {
             let n = file.read_le_u16();
             if n != 0xFFFF {
                 debug!("%s#%?", nnames[i], n);
@@ -258,7 +258,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     if string_offsets_count != 0 {
         let mut string_offsets = vec::with_capacity(10);
-        for int::range(0, string_offsets_count) |_i| {
+        foreach _ in range(0, string_offsets_count) {
             string_offsets.push(file.read_le_u16());
         }
 

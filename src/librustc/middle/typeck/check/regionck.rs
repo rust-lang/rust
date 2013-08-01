@@ -39,7 +39,6 @@ use middle::typeck::infer;
 use util::ppaux::{ty_to_str, region_to_str};
 use middle::pat_util;
 
-use std::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -600,7 +599,7 @@ fn constrain_derefs(rcx: @mut Rcx,
      */
     let tcx = rcx.fcx.tcx();
     let r_deref_expr = ty::re_scope(deref_expr.id);
-    for uint::range(0, derefs) |i| {
+    foreach i in range(0u, derefs) {
         debug!("constrain_derefs(deref_expr=?, derefd_ty=%s, derefs=%?/%?",
                rcx.fcx.infcx().ty_to_str(derefd_ty),
                i, derefs);
@@ -809,8 +808,6 @@ pub mod guarantor {
     use syntax::ast;
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
-
-    use std::uint;
 
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!
@@ -1132,7 +1129,7 @@ pub mod guarantor {
             return ct;
         }
 
-        for uint::range(0, autoderefs) |_| {
+        foreach _ in range(0u, autoderefs) {
             ct.cat.guarantor = guarantor_of_deref(&ct.cat);
 
             match ty::deref(tcx, ct.ty, true) {
