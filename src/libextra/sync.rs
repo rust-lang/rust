@@ -106,7 +106,7 @@ impl<Q:Send> Sem<Q> {
                 }
             }
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-            /* for 1000.times { task::yield(); } */
+            /* do 1000.times { task::yield(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = comm::recv_one(waiter_nobe.unwrap());
@@ -143,7 +143,7 @@ impl Sem<~[WaitQueue]> {
     fn new_and_signal(count: int, num_condvars: uint)
         -> Sem<~[WaitQueue]> {
         let mut queues = ~[];
-        for num_condvars.times {
+        do num_condvars.times {
             queues.push(WaitQueue::new());
         }
         Sem::new(count, queues)
@@ -826,11 +826,11 @@ mod tests {
         let s2 = ~s.clone();
         do task::spawn || {
             do s2.access {
-                for 5.times { task::yield(); }
+                do 5.times { task::yield(); }
             }
         }
         do s.access {
-            for 5.times { task::yield(); }
+            do 5.times { task::yield(); }
         }
     }
     #[test]
@@ -843,7 +843,7 @@ mod tests {
             s2.acquire();
             c.send(());
         }
-        for 5.times { task::yield(); }
+        do 5.times { task::yield(); }
         s.release();
         let _ = p.recv();
 
@@ -852,7 +852,7 @@ mod tests {
         let s = ~Semaphore::new(0);
         let s2 = ~s.clone();
         do task::spawn || {
-            for 5.times { task::yield(); }
+            do 5.times { task::yield(); }
             s2.release();
             let _ = p.recv();
         }
@@ -895,7 +895,7 @@ mod tests {
                     c.send(());
                 }
                 let _ = p.recv(); // wait for child to come alive
-                for 5.times { task::yield(); } // let the child contend
+                do 5.times { task::yield(); } // let the child contend
             }
             let _ = p.recv(); // wait for child to be done
         }
@@ -929,7 +929,7 @@ mod tests {
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
-            for n.times {
+            do n.times {
                 do m.lock {
                     let oldval = *sharedstate;
                     task::yield();
@@ -975,7 +975,7 @@ mod tests {
         let m = ~Mutex::new();
         let mut ports = ~[];
 
-        for num_waiters.times {
+        do num_waiters.times {
             let mi = ~m.clone();
             let (port, chan) = comm::stream();
             ports.push(port);
@@ -1065,7 +1065,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try || {
             let mut sibling_convos = ~[];
-            for 2.times {
+            do 2.times {
                 let (p,c) = comm::stream();
                 let c = Cell::new(c);
                 sibling_convos.push(p);
@@ -1212,7 +1212,7 @@ mod tests {
 
         fn access_shared(sharedstate: &mut int, x: &RWLock, mode: RWLockMode,
                          n: uint) {
-            for n.times {
+            do n.times {
                 do lock_rwlock_in_mode(x, mode) {
                     let oldval = *sharedstate;
                     task::yield();
@@ -1343,7 +1343,7 @@ mod tests {
         let x = ~RWLock::new();
         let mut ports = ~[];
 
-        for num_waiters.times {
+        do num_waiters.times {
             let xi = (*x).clone();
             let (port, chan) = comm::stream();
             ports.push(port);

@@ -69,7 +69,7 @@ pub fn main() {
     roundtrip::<C>();
     roundtrip::<D>();
 
-    for 20.times {
+    do 20.times {
         roundtrip::<E>();
         roundtrip::<F>();
         roundtrip::<G<int>>();

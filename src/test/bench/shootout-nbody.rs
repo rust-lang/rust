@@ -80,7 +80,7 @@ struct Planet {
 
 fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
     let mut d = [ 0.0, ..3 ];
-    for (steps as uint).times {
+    do (steps as uint).times {
         for range(0, N_BODIES) |i| {
             for range(i + 1, N_BODIES) |j| {
                 d[0] = bodies[i].x[0] - bodies[j].x[0];

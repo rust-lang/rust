@@ -16,6 +16,7 @@
 use std::num;
 use std::util::{swap, replace};
 use std::iterator::{FromIterator, Extendable};
+use std::uint;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -47,7 +48,7 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
         } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for self.len().times {
+            for uint::range(0, self.len()) |_| {
                 if x.next().unwrap() != y.next().unwrap() {
                     return false
                 }
@@ -65,7 +66,7 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for num::min(a_len, b_len).times {
+    for uint::range(0, num::min(a_len, b_len)) |_| {
         let (key_a, value_a) = x.next().unwrap();
         let (key_b, value_b) = y.next().unwrap();
         if *key_a < *key_b { return true; }
@@ -396,9 +397,40 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         }
         true
     }
+}
+
+impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    #[inline]
+    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    #[inline]
+    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+}
+
+impl<T: TotalOrd> TreeSet<T> {
+    /// Create an empty TreeSet
+    #[inline]
+    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    #[inline]
+    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.iter()}
+    }
+
+    /// Visit all values in reverse order
+    #[inline]
+    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
+        self.map.each_key_reverse(f)
+    }
 
     /// Visit the values (in-order) representing the difference
-    fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -427,7 +459,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the symmetric difference
-    fn symmetric_difference(&self, other: &TreeSet<T>,
+    pub fn symmetric_difference(&self, other: &TreeSet<T>,
                             f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -461,7 +493,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the intersection
-    fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -487,7 +519,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the union
-    fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+    pub fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
 
@@ -516,37 +548,6 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
             }
         }
         b.iter().advance(|&x| f(x)) && y.advance(f)
-    }
-}
-
-impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    #[inline]
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    #[inline]
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
-}
-
-impl<T: TotalOrd> TreeSet<T> {
-    /// Create an empty TreeSet
-    #[inline]
-    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
-    #[inline]
-    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.iter()}
-    }
-
-    /// Visit all values in reverse order
-    #[inline]
-    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
-        self.map.each_key_reverse(f)
     }
 }
 
@@ -931,8 +932,8 @@ mod test_treemap {
 
         let mut rng = rand::IsaacRng::new_seeded(&[42]);
 
-        for 3.times {
-            for 90.times {
+        do 3.times {
+            do 90.times {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -943,7 +944,7 @@ mod test_treemap {
                 }
             }
 
-            for 30.times {
+            do 30.times {
                 let r = rng.gen_uint_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));
@@ -1001,11 +1002,12 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        for m.each_reverse |k, v| {
+        do m.each_reverse |k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
-        }
+            true
+        };
     }
 
     #[test]
@@ -1277,10 +1279,11 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 4;
-        for m.each_reverse |x| {
+        do m.each_reverse |x| {
             assert_eq!(*x, n);
-            n -= 1
-        }
+            n -= 1;
+            true
+        };
     }
 
     fn check(a: &[int], b: &[int], expected: &[int],
@@ -1292,10 +1295,11 @@ mod test_set {
         foreach y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
-        for f(&set_a, &set_b) |x| {
+        do f(&set_a, &set_b) |x| {
             assert_eq!(*x, expected[i]);
             i += 1;
-        }
+            true
+        };
         assert_eq!(i, expected.len());
     }
 

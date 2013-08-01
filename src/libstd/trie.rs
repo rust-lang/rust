@@ -459,11 +459,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.each |k, v| {
+        do m.each |k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
-        }
+            true
+        };
     }
 
     #[test]
@@ -475,14 +476,16 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 10000;
-        for m.each |k, v| {
-            if n == uint::max_value - 5000 { break }
-            assert!(n < uint::max_value - 5000);
+        do m.each |k, v| {
+            if n == uint::max_value - 5000 { false } else {
+                assert!(n < uint::max_value - 5000);
 
-            assert_eq!(*k, n);
-            assert_eq!(*v, n / 2);
-            n += 1;
-        }
+                assert_eq!(*k, n);
+                assert_eq!(*v, n / 2);
+                n += 1;
+                true
+            }
+        };
     }
 
     #[test]
@@ -496,11 +499,12 @@ mod test_map {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        for m.each_reverse |k, v| {
+        do m.each_reverse |k, v| {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
-        }
+            true
+        };
     }
 
     #[test]
@@ -512,14 +516,16 @@ mod test_map {
         }
 
         let mut n = uint::max_value - 1;
-        for m.each_reverse |k, v| {
-            if n == uint::max_value - 5000 { break }
-            assert!(n > uint::max_value - 5000);
+        do m.each_reverse |k, v| {
+            if n == uint::max_value - 5000 { false } else {
+                assert!(n > uint::max_value - 5000);
 
-            assert_eq!(*k, n);
-            assert_eq!(*v, n / 2);
-            n -= 1;
-        }
+                assert_eq!(*k, n);
+                assert_eq!(*v, n / 2);
+                n -= 1;
+                true
+            }
+        };
     }
 
     #[test]
@@ -572,10 +578,11 @@ mod test_set {
 
         let mut i = 0;
 
-        for trie.each |x| {
+        do trie.each |x| {
             assert_eq!(expected[i], *x);
             i += 1;
-        }
+            true
+        };
     }
 
     #[test]

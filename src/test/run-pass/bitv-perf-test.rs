@@ -13,11 +13,10 @@
 extern mod extra;
 use extra::bitv::*;
 
-fn bitv_test() -> bool {
+fn bitv_test() {
     let mut v1 = ~Bitv::new(31, false);
     let v2 = ~Bitv::new(31, true);
     v1.union(v2);
-    true
 }
 
 pub fn main() {

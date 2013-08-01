@@ -74,6 +74,7 @@ pub enum lint {
     unused_imports,
     unnecessary_qualification,
     while_true,
+    deprecated_for_loop,
     path_statement,
     unrecognized_lint,
     non_camel_case_types,
@@ -163,6 +164,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: while_true,
         desc: "suggest using loop { } instead of while(true) { }",
         default: warn
+     }),
+
+    ("deprecated_for_loop",
+     LintSpec {
+         lint: deprecated_for_loop,
+         desc: "recommend using `foreach` or `do` instead of `for`",
+         default: allow
      }),
 
     ("path_statement",
@@ -451,7 +459,7 @@ impl Context {
         if doc_hidden && self.doc_hidden {
             self.doc_hidden = false;
         }
-        for pushed.times {
+        do pushed.times {
             let (lint, lvl, src) = self.lint_stack.pop();
             self.set_level(lint, lvl, src);
         }
@@ -554,6 +562,24 @@ fn lint_while_true() -> visit::vt<@mut Context> {
                     }
                 }
                 _ => ()
+            }
+            visit::visit_expr(e, (cx, vt));
+        },
+        .. *visit::default_visitor()
+    })
+}
+
+fn lint_deprecated_for_loop() -> visit::vt<@mut Context> {
+    visit::mk_vt(@visit::Visitor {
+        visit_expr: |e, (cx, vt): (@mut Context, visit::vt<@mut Context>)| {
+            match e.node {
+                ast::expr_call(_, _, ast::ForSugar) |
+                ast::expr_method_call(_, _, _, _, _, ast::ForSugar) => {
+                    cx.span_lint(deprecated_for_loop, e.span,
+                                "`for` is deprecated; use `foreach <pat> in \
+                                 <iterator>` or `do`")
+                }
+                _ => {}
             }
             visit::visit_expr(e, (cx, vt));
         },
@@ -1096,6 +1122,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
 
     // Register each of the lint passes with the context
     cx.add_lint(lint_while_true());
+    cx.add_lint(lint_deprecated_for_loop());
     cx.add_lint(lint_path_statement());
     cx.add_lint(lint_heap());
     cx.add_lint(lint_type_limits());

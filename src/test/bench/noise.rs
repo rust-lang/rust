@@ -105,7 +105,7 @@ fn main() {
     let symbols = [" ", "░", "▒", "▓", "█", "█"];
     let mut pixels = [0f32, ..256*256];
     let n2d = ~Noise2DContext::new();
-    for 100.times {
+    do 100.times {
         for int::range(0, 256) |y| {
             for int::range(0, 256) |x| {
                 let v = n2d.get(

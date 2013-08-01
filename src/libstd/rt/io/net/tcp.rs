@@ -371,7 +371,7 @@ mod test {
 
             do spawntask_immediately {
                 let mut listener = TcpListener::bind(addr);
-                for max.times {
+                do max.times {
                     let mut stream = listener.accept();
                     let mut buf = [0];
                     stream.read(buf);
@@ -380,7 +380,7 @@ mod test {
             }
 
             do spawntask_immediately {
-                for max.times {
+                do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }
@@ -396,7 +396,7 @@ mod test {
 
             do spawntask_immediately {
                 let mut listener = TcpListener::bind(addr);
-                for max.times {
+                do max.times {
                     let mut stream = listener.accept();
                     let mut buf = [0];
                     stream.read(buf);
@@ -405,7 +405,7 @@ mod test {
             }
 
             do spawntask_immediately {
-                for max.times {
+                do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }

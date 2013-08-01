@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+#[forbid(deprecated_for_loop)];
+
+fn f(_: &fn() -> bool) -> bool {
+    true
+}
+
 fn main() {
-    for 2.times {  //~ ERROR A for-loop body must return (), but
-        true
-    }
+    for f {} //~ ERROR `for` is deprecated
 }
