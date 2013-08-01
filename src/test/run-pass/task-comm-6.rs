@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::Chan;
+use std::comm::SharedChan;
 use std::comm;
 
 pub fn main() { test00(); }
@@ -16,11 +16,12 @@ pub fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = comm::PortSet::new();
-    let c0 = p.chan();
-    let c1 = p.chan();
-    let c2 = p.chan();
-    let c3 = p.chan();
+    let (p, ch) = comm::stream();
+    let ch = SharedChan::new(ch);
+    let c0 = ch.clone();
+    let c1 = ch.clone();
+    let c2 = ch.clone();
+    let c3 = ch.clone();
     let number_of_messages: int = 1000;
     let mut i: int = 0;
     while i < number_of_messages {

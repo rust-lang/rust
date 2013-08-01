@@ -33,22 +33,24 @@ use std::u64;
 use std::uint;
 
 fn fib(n: int) -> int {
-    fn pfib(c: &Chan<int>, n: int) {
+    fn pfib(c: &SharedChan<int>, n: int) {
         if n == 0 {
             c.send(0);
         } else if n <= 2 {
             c.send(1);
         } else {
-            let p = PortSet::new();
-            let ch = p.chan();
+            let (pp, cc) = stream();
+            let cc = SharedChan::new(cc);
+            let ch = cc.clone();
             task::spawn(|| pfib(&ch, n - 1) );
-            let ch = p.chan();
+            let ch = cc.clone();
             task::spawn(|| pfib(&ch, n - 2) );
-            c.send(p.recv() + p.recv());
+            c.send(pp.recv() + pp.recv());
         }
     }
 
     let (p, ch) = stream();
+    let ch = SharedChan::new(ch);
     let _t = task::spawn(|| pfib(&ch, n) );
     p.recv()
 }
