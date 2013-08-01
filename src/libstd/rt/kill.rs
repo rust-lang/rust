@@ -84,7 +84,7 @@ pub struct Death {
     on_exit:         Option<~fn(bool)>,
     // nesting level counter for task::unkillable calls (0 == killable).
     unkillable:      int,
-    // nesting level counter for task::atomically calls (0 == can yield).
+    // nesting level counter for unstable::atomically calls (0 == can yield).
     wont_sleep:      int,
     // A "spare" handle to the kill flag inside the kill handle. Used during
     // blocking/waking as an optimization to avoid two xadds on the refcount.

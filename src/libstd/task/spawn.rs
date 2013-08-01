@@ -725,6 +725,8 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         task.death.on_exit = Some(on_exit);
     }
 
+    task.name = opts.name.take();
+
     rtdebug!("spawn about to take scheduler");
 
     let sched = Local::take::<Scheduler>();

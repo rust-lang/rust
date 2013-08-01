@@ -85,7 +85,7 @@ fn test_run_in_bare_thread_exchange() {
 pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
     use os;
     use os::change_dir;
-    use task;
+    use unstable::sync::atomically;
     use unstable::finally::Finally;
 
     unsafe {
@@ -93,7 +93,7 @@ pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
         // in the `action` callback can cause deadlock. Doing it in
         // `task::atomically` to try to avoid that, but ... I don't know
         // this is all bogus.
-        return do task::atomically {
+        return do atomically {
             rust_take_change_dir_lock();
 
             do (||{

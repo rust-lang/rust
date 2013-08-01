@@ -105,7 +105,7 @@ mod dl {
     use path;
     use ptr;
     use str;
-    use task;
+    use unstable::sync::atomically;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -120,7 +120,7 @@ mod dl {
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
         unsafe {
-            do task::atomically {
+            do atomically {
                 let _old_error = dlerror();
 
                 let result = f();
@@ -164,7 +164,7 @@ mod dl {
     use libc;
     use path;
     use ptr;
-    use task;
+    use unstable::sync::atomically;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -181,7 +181,7 @@ mod dl {
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
         unsafe {
-            do task::atomically {
+            do atomically {
                 SetLastError(0);
 
                 let result = f();

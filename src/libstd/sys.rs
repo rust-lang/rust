@@ -137,12 +137,13 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use cell::Cell;
     use either::Left;
+    use option::{Some, None};
     use rt::{context, OldTaskContext, TaskContext};
     use rt::task::Task;
     use rt::local::Local;
     use rt::logging::Logger;
+    use str::Str;
 
     let context = context();
     match context {
@@ -159,20 +160,26 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 let msg = str::raw::from_c_str(msg);
                 let file = str::raw::from_c_str(file);
 
-                let outmsg = fmt!("task failed at '%s', %s:%i",
-                                  msg, file, line as int);
-
                 // XXX: Logging doesn't work correctly in non-task context because it
                 // invokes the local heap
                 if context == TaskContext {
                     // XXX: Logging doesn't work here - the check to call the log
                     // function never passes - so calling the log function directly.
-                    let outmsg = Cell::new(outmsg);
                     do Local::borrow::<Task, ()> |task| {
-                        task.logger.log(Left(outmsg.take()));
+                        let msg = match task.name {
+                            Some(ref name) =>
+                                fmt!("task '%s' failed at '%s', %s:%i",
+                                     name.as_slice(), msg, file, line as int),
+                            None =>
+                                fmt!("task <unnamed> failed at '%s', %s:%i",
+                                     msg, file, line as int)
+                        };
+
+                        task.logger.log(Left(msg));
                     }
                 } else {
-                    rterrln!("%s", outmsg);
+                    rterrln!("failed in non-task context at '%s', %s:%i",
+                             msg, file, line as int);
                 }
 
                 gc::cleanup_stack_for_failure();

@@ -120,6 +120,8 @@ pub struct SchedOpts {
  *
  * * notify_chan - Enable lifecycle notifications on the given channel
  *
+ * * name - A name for the task-to-be, for identification in failure messages.
+ *
  * * sched - Specify the configuration of a new scheduler to create the task
  *           in
  *
@@ -139,6 +141,7 @@ pub struct TaskOpts {
     watched: bool,
     indestructible: bool,
     notify_chan: Option<Chan<TaskResult>>,
+    name: Option<~str>,
     sched: SchedOpts
 }
 
@@ -185,6 +188,7 @@ impl TaskBuilder {
         self.consumed = true;
         let gen_body = self.gen_body.take();
         let notify_chan = self.opts.notify_chan.take();
+        let name = self.opts.name.take();
         TaskBuilder {
             opts: TaskOpts {
                 linked: self.opts.linked,
@@ -192,6 +196,7 @@ impl TaskBuilder {
                 watched: self.opts.watched,
                 indestructible: self.opts.indestructible,
                 notify_chan: notify_chan,
+                name: name,
                 sched: self.opts.sched
             },
             gen_body: gen_body,
@@ -199,9 +204,7 @@ impl TaskBuilder {
             consumed: false
         }
     }
-}
 
-impl TaskBuilder {
     /// Decouple the child task's failure from the parent's. If either fails,
     /// the other will not be killed.
     pub fn unlinked(&mut self) {
@@ -281,6 +284,12 @@ impl TaskBuilder {
         self.opts.notify_chan = Some(notify_pipe_ch);
     }
 
+    /// Name the task-to-be. Currently the name is used for identification
+    /// only in failure messages.
+    pub fn name(&mut self, name: ~str) {
+        self.opts.name = Some(name);
+    }
+
     /// Configure a custom scheduler mode for the task.
     pub fn sched_mode(&mut self, mode: SchedMode) {
         self.opts.sched.mode = mode;
@@ -333,6 +342,7 @@ impl TaskBuilder {
     pub fn spawn(&mut self, f: ~fn()) {
         let gen_body = self.gen_body.take();
         let notify_chan = self.opts.notify_chan.take();
+        let name = self.opts.name.take();
         let x = self.consume();
         let opts = TaskOpts {
             linked: x.opts.linked,
@@ -340,6 +350,7 @@ impl TaskBuilder {
             watched: x.opts.watched,
             indestructible: x.opts.indestructible,
             notify_chan: notify_chan,
+            name: name,
             sched: x.opts.sched
         };
         let f = match gen_body {
@@ -408,6 +419,7 @@ pub fn default_task_opts() -> TaskOpts {
         watched: true,
         indestructible: false,
         notify_chan: None,
+        name: None,
         sched: SchedOpts {
             mode: DefaultScheduler,
         }
@@ -506,6 +518,21 @@ pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
 
 
 /* Lifecycle functions */
+
+/// Read the name of the current task.
+pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
+    use rt::task::Task;
+
+    match context() {
+        TaskContext => do Local::borrow::<Task, U> |task| {
+            match task.name {
+                Some(ref name) => blk(Some(name.as_slice())),
+                None => blk(None)
+            }
+        },
+        _ => fail!("no task name exists in %?", context()),
+    }
+}
 
 pub fn yield() {
     //! Yield control to the task scheduler
@@ -621,44 +648,6 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
                 f()
             }).finally {
                 (*t).death.inhibit_kill((*t).unwinder.unwinding);
-            }
-        }
-        // FIXME(#3095): As in unkillable().
-        _ => f()
-    }
-}
-
-/**
- * A stronger version of unkillable that also inhibits scheduling operations.
- * For use with exclusive Arcs, which use pthread mutexes directly.
- */
-pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    use rt::task::Task;
-
-    match context() {
-        OldTaskContext => {
-            let t = rt::rust_get_task();
-            do (|| {
-                rt::rust_task_inhibit_kill(t);
-                rt::rust_task_inhibit_yield(t);
-                f()
-            }).finally {
-                rt::rust_task_allow_yield(t);
-                rt::rust_task_allow_kill(t);
-            }
-        }
-        TaskContext => {
-            let t = Local::unsafe_borrow::<Task>();
-            do (|| {
-                // It's important to inhibit kill after inhibiting yield, because
-                // inhibit-kill might fail if we were already killed, and the
-                // inhibit-yield must happen to match the finally's allow-yield.
-                (*t).death.inhibit_yield();
-                (*t).death.inhibit_kill((*t).unwinder.unwinding);
-                f()
-            }).finally {
-                (*t).death.allow_kill((*t).unwinder.unwinding);
-                (*t).death.allow_yield();
             }
         }
         // FIXME(#3095): As in unkillable().
@@ -803,6 +792,34 @@ fn test_spawn_linked_sup_propagate_sibling() {
     }
     for 16.times { task::yield(); }
     fail!();
+}
+
+#[test]
+fn test_unnamed_task() {
+    use rt::test::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        do spawn {
+            do with_task_name |name| {
+                assert!(name.is_none());
+            }
+        }
+    }
+}
+
+#[test]
+fn test_named_task() {
+    use rt::test::run_in_newsched_task;
+
+    do run_in_newsched_task {
+        let mut t = task();
+        t.name(~"ada lovelace");
+        do t.spawn {
+            do with_task_name |name| {
+                assert!(name.get() == "ada lovelace");
+            }
+        }
+    }
 }
 
 #[test]
@@ -1120,21 +1137,6 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
-}
-
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_atomically() {
-    unsafe { do atomically { yield(); } }
-}
-
-#[test]
-fn test_atomically2() {
-    unsafe { do atomically { } } yield(); // shouldn't fail
-}
-
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_atomically_nested() {
-    unsafe { do atomically { do atomically { } yield(); } }
 }
 
 #[test]
