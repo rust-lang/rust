@@ -70,6 +70,7 @@ pub mod ext {
     }
 
 
+    pub mod cfg;
     pub mod fmt;
     pub mod env;
     pub mod bytes;
