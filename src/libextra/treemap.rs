@@ -1257,7 +1257,6 @@ mod test_set {
 
         let mut n = 0;
         for x in m.iter() {
-            printfln!(x);
             assert_eq!(*x, n);
             n += 1
         }
