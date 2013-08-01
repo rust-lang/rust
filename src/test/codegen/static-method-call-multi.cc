@@ -9,19 +9,19 @@
 // except according to those terms.
 
 #include <stdlib.h>
-#include <assert.h>
 
-struct slice {
-  int const *p;
-  size_t len;
+struct Struct {
+  size_t field;
+  size_t method(size_t x) {
+	return this->field + x;
+  }
 };
 
 extern "C"
-size_t test(slice s) {
-  size_t y = 0;
-  for (int i = 0; i < s.len; ++i) {
-	assert(i < s.len);
-	y += s.p[i];
-  }
-  return y;
+size_t test(Struct &a,
+			Struct &b,
+			Struct &c,
+			Struct &d,
+			Struct &e) {
+  return a.method(b.method(c.method(d.method(e.method(1)))));
 }
