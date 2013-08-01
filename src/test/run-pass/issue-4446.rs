@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{pipes, io, task, comm};
-
 fn main() {
-    let (port, chan) = comm::stream();
+    let (port, chan) = stream();
 
-    do task::spawn {
-        io::println(port.recv());
+    do spawn {
+        println(port.recv());
     }
 
     chan.send("hello, world");

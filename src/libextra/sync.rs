@@ -19,6 +19,7 @@
 use std::borrow;
 use std::comm;
 use std::comm::SendDeferred;
+use std::comm::{GenericPort, Peekable};
 use std::task;
 use std::unstable::sync::{Exclusive, UnsafeAtomicRcBox};
 use std::unstable::atomics;
@@ -111,7 +112,7 @@ impl<Q:Send> Sem<Q> {
             /* do 1000.times { task::yield(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
-                let _ = comm::recv_one(waiter_nobe.unwrap());
+                let _ = waiter_nobe.unwrap().recv();
             }
         }
     }
@@ -235,7 +236,7 @@ impl<'self> Condvar<'self> {
                 do (|| {
                     unsafe {
                         do task::rekillable {
-                            let _ = comm::recv_one(WaitEnd.take_unwrap());
+                            let _ = WaitEnd.take_unwrap().recv();
                         }
                     }
                 }).finally {

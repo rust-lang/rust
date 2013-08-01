@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "get_task_id")];
+#[link(name = "rust_get_test_int")];
 
 mod rustrt {
     use std::libc;
 
     extern {
-        pub fn get_task_id() -> libc::intptr_t;
+        pub fn rust_get_test_int() -> libc::intptr_t;
     }
 }
 

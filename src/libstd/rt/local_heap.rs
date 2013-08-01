@@ -13,9 +13,6 @@
 use libc;
 use libc::{c_void, uintptr_t, size_t};
 use ops::Drop;
-use option::{Some, None};
-use rt;
-use rt::OldTaskContext;
 use rt::local::Local;
 use rt::task::Task;
 use unstable::raw;
@@ -87,32 +84,14 @@ impl Drop for LocalHeap {
 
 // A little compatibility function
 pub unsafe fn local_free(ptr: *libc::c_char) {
-    // XXX: Unsafe borrow for speed. Lame.
-    match Local::try_unsafe_borrow::<Task>() {
-        Some(task) => {
-            (*task).heap.free(ptr as *libc::c_void);
-        }
-        None => {
-            rust_upcall_free_noswitch(ptr);
-
-            extern {
-                #[fast_ffi]
-                fn rust_upcall_free_noswitch(ptr: *libc::c_char);
-            }
-        }
+    do Local::borrow::<Task,()> |task| {
+        task.heap.free(ptr as *libc::c_void);
     }
 }
 
 pub fn live_allocs() -> *raw::Box<()> {
-    let region = match rt::context() {
-        OldTaskContext => {
-            unsafe { rust_current_boxed_region() }
-        }
-        _ => {
-            do Local::borrow::<Task, *BoxedRegion> |task| {
-                task.heap.boxed_region
-            }
-        }
+    let region = do Local::borrow::<Task, *BoxedRegion> |task| {
+        task.heap.boxed_region
     };
 
     return unsafe { (*region).live_allocs };
@@ -140,8 +119,6 @@ extern {
                                  size: size_t) -> *OpaqueBox;
     #[fast_ffi]
     fn rust_boxed_region_free(region: *BoxedRegion, box: *OpaqueBox);
-    #[fast_ffi]
-    fn rust_current_boxed_region() -> *BoxedRegion;
 }
 
 #[cfg(test)]

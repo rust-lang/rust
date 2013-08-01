@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use option::Option;
+use comm::{GenericPort, GenericChan};
 use super::{Reader, Writer};
 
 struct PortReader<P>;

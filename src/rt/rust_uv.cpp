@@ -16,8 +16,6 @@
 #include "uv.h"
 
 #include "rust_globals.h"
-#include "rust_task.h"
-#include "rust_log.h"
 
 // extern fn pointers
 typedef void (*extern_async_op_cb)(uv_loop_t* loop, void* data,
@@ -35,43 +33,6 @@ struct handle_data {
     extern_close_cb close_cb;
 };
 
-// helpers
-static void*
-current_kernel_malloc(size_t size, const char* tag) {
-  void* ptr = rust_get_current_task()->kernel->malloc(size, tag);
-  return ptr;
-}
-
-static void
-current_kernel_free(void* ptr) {
-  rust_get_current_task()->kernel->free(ptr);
-}
-
-static handle_data*
-new_handle_data_from(uint8_t* buf, extern_simple_cb cb) {
-    handle_data* data = (handle_data*)current_kernel_malloc(
-            sizeof(handle_data),
-            "handle_data");
-    memcpy(data->id_buf, buf, RUST_UV_HANDLE_LEN);
-    data->cb = cb;
-    return data;
-}
-
-// libuv callback impls
-static void
-foreign_extern_async_op_cb(uv_async_t* handle, int status) {
-    extern_async_op_cb cb = (extern_async_op_cb)handle->data;
-    void* loop_data = handle->loop->data;
-    cb(handle->loop, loop_data, handle);
-}
-
-static void
-foreign_async_cb(uv_async_t* handle, int status) {
-    handle_data* handle_d = (handle_data*)handle->data;
-    void* loop_data = handle->loop->data;
-    handle_d->cb(handle_d->id_buf, loop_data);
-}
-
 static void
 foreign_timer_cb(uv_timer_t* handle, int status) {
     handle_data* handle_d = (handle_data*)handle->data;
@@ -83,18 +44,6 @@ static void
 foreign_close_cb(uv_handle_t* handle) {
     handle_data* data = (handle_data*)handle->data;
     data->close_cb(data->id_buf, handle, handle->loop->data);
-}
-
-static void
-foreign_close_op_cb(uv_handle_t* op_handle) {
-    current_kernel_free(op_handle);
-    // uv_run() should return after this..
-}
-
-// foreign fns bound in rust
-extern "C" void
-rust_uv_free(void* ptr) {
-    current_kernel_free(ptr);
 }
 extern "C" void*
 rust_uv_loop_new() {
@@ -127,24 +76,6 @@ rust_uv_loop_set_data(uv_loop_t* loop, void* data) {
     loop->data = data;
 }
 
-extern "C" void*
-rust_uv_bind_op_cb(uv_loop_t* loop, extern_async_op_cb cb) {
-    uv_async_t* async = (uv_async_t*)current_kernel_malloc(
-            sizeof(uv_async_t),
-            "uv_async_t");
-    uv_async_init(loop, async, foreign_extern_async_op_cb);
-    async->data = (void*)cb;
-    // decrement the ref count, so that our async bind
-    // doesn't count towards keeping the loop alive
-    //uv_unref(loop);
-    return async;
-}
-
-extern "C" void
-rust_uv_stop_op_cb(uv_handle_t* op_handle) {
-    uv_close(op_handle, foreign_close_op_cb);
-}
-
 extern "C" void
 rust_uv_run(uv_loop_t* loop) {
     uv_run(loop, UV_RUN_DEFAULT);
@@ -168,18 +99,6 @@ rust_uv_hilvl_close(uv_handle_t* handle, extern_close_cb cb) {
 }
 
 extern "C" void
-rust_uv_hilvl_close_async(uv_async_t* handle) {
-    current_kernel_free(handle->data);
-    current_kernel_free(handle);
-}
-
-extern "C" void
-rust_uv_hilvl_close_timer(uv_async_t* handle) {
-    current_kernel_free(handle->data);
-    current_kernel_free(handle);
-}
-
-extern "C" void
 rust_uv_async_send(uv_async_t* handle) {
     uv_async_send(handle);
 }
@@ -189,32 +108,6 @@ rust_uv_async_init(uv_loop_t* loop_handle,
         uv_async_t* async_handle,
         uv_async_cb cb) {
     return uv_async_init(loop_handle, async_handle, cb);
-}
-
-extern "C" void*
-rust_uv_hilvl_async_init(uv_loop_t* loop, extern_simple_cb cb,
-        uint8_t* buf) {
-    uv_async_t* async = (uv_async_t*)current_kernel_malloc(
-            sizeof(uv_async_t),
-            "uv_async_t");
-    uv_async_init(loop, async, foreign_async_cb);
-    handle_data* data = new_handle_data_from(buf, cb);
-    async->data = data;
-
-    return async;
-}
-
-extern "C" void*
-rust_uv_hilvl_timer_init(uv_loop_t* loop, extern_simple_cb cb,
-        uint8_t* buf) {
-    uv_timer_t* new_timer = (uv_timer_t*)current_kernel_malloc(
-            sizeof(uv_timer_t),
-            "uv_timer_t");
-    uv_timer_init(loop, new_timer);
-    handle_data* data = new_handle_data_from(buf, cb);
-    new_timer->data = data;
-
-    return new_timer;
 }
 
 extern "C" void
@@ -469,15 +362,6 @@ rust_uv_get_stream_handle_from_write_req(uv_write_t* write_req) {
     return write_req->handle;
 }
 
-extern "C" uv_buf_t
-current_kernel_malloc_alloc_cb(uv_handle_t* handle,
-        size_t suggested_size) {
-    char* base_ptr = (char*)current_kernel_malloc(sizeof(char)
-            * suggested_size,
-            "uv_buf_t_base_val");
-    return uv_buf_init(base_ptr, suggested_size);
-}
-
 extern "C" void
 rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
     *out_buf = uv_buf_init(base, len);
@@ -563,16 +447,6 @@ rust_uv_read_stop(uv_stream_t* stream) {
     return uv_read_stop(stream);
 }
 
-extern "C" char*
-rust_uv_malloc_buf_base_of(size_t suggested_size) {
-    return (char*) current_kernel_malloc(sizeof(char)*suggested_size,
-            "uv_buf_t base");
-}
-extern "C" void
-rust_uv_free_base_of_buf(uv_buf_t buf) {
-    current_kernel_free(buf.base);
-}
-
 extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
@@ -637,16 +511,6 @@ rust_uv_ip4_port(struct sockaddr_in* src) {
 extern "C" unsigned int
 rust_uv_ip6_port(struct sockaddr_in6* src) {
     return ntohs(src->sin6_port);
-}
-
-extern "C" void*
-rust_uv_current_kernel_malloc(size_t size) {
-    return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");
-}
-
-extern "C" void
-rust_uv_current_kernel_free(void* mem) {
-    current_kernel_free(mem);
 }
 
 extern  "C" int

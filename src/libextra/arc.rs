@@ -596,14 +596,14 @@ mod tests {
             let (c,p) = (Cell::new(c), Cell::new(p));
             do task::spawn || {
                 // wait until parent gets in
-                comm::recv_one(p.take());
+                p.take().recv();
                 do arc2.access_cond |state, cond| {
                     *state = true;
                     cond.signal();
                 }
             }
             do arc.access_cond |state, cond| {
-                comm::send_one(c.take(), ());
+                c.take().send(());
                 assert!(!*state);
                 while !*state {
                     cond.wait();

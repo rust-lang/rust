@@ -15,12 +15,12 @@ mod rustrt {
 
     #[abi = "cdecl"]
     extern {
-        pub fn get_task_id() -> libc::intptr_t;
+        pub fn rust_get_test_int() -> libc::intptr_t;
     }
 }
 
 pub fn main() {
     unsafe {
-        let _foo = rustrt::get_task_id;
+        let _foo = rustrt::rust_get_test_int;
     }
 }
