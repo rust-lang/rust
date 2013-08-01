@@ -374,14 +374,14 @@ pub fn write_content(bcx: @mut Block,
         ast::expr_vec(ref elements, _) => {
             match dest {
                 Ignore => {
-                    for elements.iter().advance |element| {
+                    foreach element in elements.iter() {
                         bcx = expr::trans_into(bcx, *element, Ignore);
                     }
                 }
 
                 SaveIn(lldest) => {
                     let mut temp_cleanups = ~[];
-                    for elements.iter().enumerate().advance |(i, element)| {
+                    foreach (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index %? with lleltptr=%?",
                                i, bcx.val_to_str(lleltptr));
@@ -390,7 +390,7 @@ pub fn write_content(bcx: @mut Block,
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
                         temp_cleanups.push(lleltptr);
                     }
-                    for temp_cleanups.iter().advance |cleanup| {
+                    foreach cleanup in temp_cleanups.iter() {
                         revoke_clean(bcx, *cleanup);
                     }
                 }

@@ -268,7 +268,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         elided = true;
     }
     // Print the offending lines
-    for display_lines.iter().advance |line| {
+    foreach line in display_lines.iter() {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
         let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);
@@ -332,7 +332,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 }
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
-    for sp.expn_info.iter().advance |ei| {
+    foreach ei in sp.expn_info.iter() {
         let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
         print_diagnostic(ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));

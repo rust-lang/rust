@@ -15,7 +15,7 @@
 use clone::Clone;
 use cmp::Eq;
 use either;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 use option::{None, Option, Some};
 use vec;
 use vec::{OwnedVector, ImmutableVector};
@@ -263,7 +263,7 @@ impl<T, E: Clone> Result<T, E> {
 pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
                       -> Result<~[V],U> {
     let mut vs: ~[V] = vec::with_capacity(ts.len());
-    for ts.iter().advance |t| {
+    foreach t in ts.iter() {
         match op(t) {
           Ok(v) => vs.push(v),
           Err(u) => return Err(u)

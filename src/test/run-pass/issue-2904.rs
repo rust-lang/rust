@@ -67,13 +67,13 @@ fn read_board_grid<rdr:'static + io::Reader>(input: rdr) -> ~[~[square]] {
     let mut grid = ~[];
     for input.each_line |line| {
         let mut row = ~[];
-        for line.iter().advance |c| {
+        foreach c in line.iter() {
             row.push(square_from_char(c))
         }
         grid.push(row)
     }
     let width = grid[0].len();
-    for grid.iter().advance |row| { assert!(row.len() == width) }
+    foreach row in grid.iter() { assert!(row.len() == width) }
     grid
 }
 

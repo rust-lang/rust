@@ -789,7 +789,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for children.iter().advance |r| {
+        foreach r in children.iter() {
             r.recv();
         }
 

@@ -398,7 +398,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 
     // if there is an id, print that instead of the structural type:
-    /*for ty::type_def_id(typ).iter().advance |def_id| {
+    /*foreach def_id in ty::type_def_id(typ).iter() {
         // note that this typedef cannot have type parameters
         return ast_map::path_to_str(ty::item_path(cx, *def_id),
                                     cx.sess.intr());
@@ -484,13 +484,13 @@ pub fn parameterized(cx: ctxt,
     match *regions {
         ty::ErasedRegions => { }
         ty::NonerasedRegions(ref regions) => {
-            for regions.iter().advance |&r| {
+            foreach &r in regions.iter() {
                 strs.push(region_to_str(cx, "", false, r))
             }
         }
     }
 
-    for tps.iter().advance |t| {
+    foreach t in tps.iter() {
         strs.push(ty_to_str(cx, *t))
     }
 
@@ -597,7 +597,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundSized => ~"Sized",
             });
         }
-        for self.trait_bounds.iter().advance |t| {
+        foreach t in self.trait_bounds.iter() {
             res.push(t.repr(tcx));
         }
         res.connect("+")
@@ -846,7 +846,7 @@ impl UserString for ty::TraitRef {
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = self.substs.tps.clone();
-            for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
+            foreach &t in self.substs.self_ty.iter() { all_tps.push(t); }
             parameterized(tcx, base, &self.substs.regions, all_tps)
         } else {
             parameterized(tcx, base, &self.substs.regions, self.substs.tps)

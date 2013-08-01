@@ -1398,7 +1398,7 @@ assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
 // (`for` is explained in the next section)
-for crayons.iter().advance |crayon| {
+foreach crayon in crayons.iter() {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
@@ -1749,7 +1749,7 @@ of `vector`:
 ~~~~
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vector.iter().advance |element| {
+    foreach element in vector.iter() {
         accumulator.push(function(element));
     }
     return accumulator;
@@ -2027,7 +2027,7 @@ generic types.
 ~~~~
 # trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
-    for printable_things.iter().advance |thing| {
+    foreach thing in printable_things.iter() {
         thing.print();
     }
 }
@@ -2073,7 +2073,7 @@ However, consider this function:
 trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
-    for shapes.iter().advance |shape| { shape.draw(); }
+    foreach shape in shapes.iter() { shape.draw(); }
 }
 # let c: Circle = new_circle();
 # draw_all(~[c]);
@@ -2088,7 +2088,7 @@ an _object_.
 ~~~~
 # trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
-    for shapes.iter().advance |shape| { shape.draw(); }
+    foreach shape in shapes.iter() { shape.draw(); }
 }
 ~~~~
 

@@ -907,7 +907,7 @@ impl mem_categorization_ctxt {
                         }
                     };
 
-                    for subpats.iter().enumerate().advance |(i, &subpat)| {
+                    foreach (i, &subpat) in subpats.iter().enumerate() {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
 
                         let subcmt =
@@ -920,7 +920,7 @@ impl mem_categorization_ctxt {
                 }
                 Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
-                    for subpats.iter().enumerate().advance |(i, &subpat)| {
+                    foreach (i, &subpat) in subpats.iter().enumerate() {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
                         let cmt_field =
                             self.cat_imm_interior(
@@ -930,7 +930,7 @@ impl mem_categorization_ctxt {
                     }
                 }
                 Some(&ast::def_static(*)) => {
-                    for subpats.iter().advance |&subpat| {
+                    foreach &subpat in subpats.iter() {
                         self.cat_pattern(cmt, subpat, |x,y| op(x,y));
                     }
                 }
@@ -952,7 +952,7 @@ impl mem_categorization_ctxt {
 
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
-            for field_pats.iter().advance |fp| {
+            foreach fp in field_pats.iter() {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
                 let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
                 self.cat_pattern(cmt_field, fp.pat, |x,y| op(x,y));
@@ -961,7 +961,7 @@ impl mem_categorization_ctxt {
 
           ast::pat_tup(ref subpats) => {
             // (p1, ..., pN)
-            for subpats.iter().enumerate().advance |(i, &subpat)| {
+            foreach (i, &subpat) in subpats.iter().enumerate() {
                 let subpat_ty = self.pat_ty(subpat); // see (*)
                 let subcmt =
                     self.cat_imm_interior(
@@ -980,15 +980,15 @@ impl mem_categorization_ctxt {
 
           ast::pat_vec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
-              for before.iter().advance |&before_pat| {
+              foreach &before_pat in before.iter() {
                   self.cat_pattern(elt_cmt, before_pat, |x,y| op(x,y));
               }
-              for slice.iter().advance |&slice_pat| {
+              foreach &slice_pat in slice.iter() {
                   let slice_ty = self.pat_ty(slice_pat);
                   let slice_cmt = self.cat_rvalue_node(pat, slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));
               }
-              for after.iter().advance |&after_pat| {
+              foreach &after_pat in after.iter() {
                   self.cat_pattern(elt_cmt, after_pat, |x,y| op(x,y));
               }
           }
@@ -1077,7 +1077,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
     match ty::get(base_ty).sty {
       ty::ty_struct(did, _) => {
         let r = ty::lookup_struct_fields(tcx, did);
-        for r.iter().advance |fld| {
+        foreach fld in r.iter() {
             if fld.ident == f_name {
                 return Some(ast::m_imm);
             }
@@ -1087,7 +1087,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
         match tcx.def_map.get_copy(&node_id) {
           ast::def_variant(_, variant_id) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
-            for r.iter().advance |fld| {
+            foreach fld in r.iter() {
                 if fld.ident == f_name {
                     return Some(ast::m_imm);
                 }

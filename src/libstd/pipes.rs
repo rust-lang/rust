@@ -87,7 +87,7 @@ bounded and unbounded protocols allows for less code duplication.
 use container::Container;
 use cast::{forget, transmute, transmute_copy, transmute_mut};
 use either::{Either, Left, Right};
-use iterator::IteratorUtil;
+use iterator::{Iterator, IteratorUtil};
 use kinds::Send;
 use libc;
 use ops::Drop;
@@ -600,7 +600,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    for pkts.mut_iter().enumerate().advance |(i, p)| {
+    foreach (i, p) in pkts.mut_iter().enumerate() {
         unsafe {
             let p = &mut *p.header();
             let old = p.mark_blocked(this);
@@ -622,7 +622,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
         let event = wait_event(this) as *PacketHeader;
 
         let mut pos = None;
-        for pkts.mut_iter().enumerate().advance |(i, p)| {
+        foreach (i, p) in pkts.mut_iter().enumerate() {
             if p.header() == event {
                 pos = Some(i);
                 break;
@@ -640,7 +640,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     debug!("%?", &mut pkts[ready_packet]);
 
-    for pkts.mut_iter().advance |p| {
+    foreach p in pkts.mut_iter() {
         unsafe {
             (*p.header()).unblock()
         }
@@ -851,7 +851,7 @@ pub fn select<T:Send,Tb:Send>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
                                     Option<T>,
                                     ~[RecvPacketBuffered<T, Tb>]) {
     let mut endpoint_headers = ~[];
-    for endpoints.mut_iter().advance |endpoint| {
+    foreach endpoint in endpoints.mut_iter() {
         endpoint_headers.push(endpoint.header());
     }
 

@@ -27,7 +27,7 @@ internal iterator by calling the `advance` method. For example:
 let xs = [0u, 1, 2, 3, 4, 5];
 let ys = [30, 40, 50, 60];
 let mut it = xs.iter().chain(ys.iter());
-for it.advance |&x: &uint| {
+foreach &x: &uint in it {
     println(x.to_str());
 }
 ~~~

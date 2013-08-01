@@ -123,7 +123,7 @@ fn enc_substs(w: @io::Writer, cx: @ctxt, substs: &ty::substs) {
     enc_region_substs(w, cx, &substs.regions);
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
-    for substs.tps.iter().advance |t| { enc_ty(w, cx, *t); }
+    foreach t in substs.tps.iter() { enc_ty(w, cx, *t); }
     w.write_char(']');
 }
 
@@ -134,7 +134,7 @@ fn enc_region_substs(w: @io::Writer, cx: @ctxt, substs: &ty::RegionSubsts) {
         }
         ty::NonerasedRegions(ref regions) => {
             w.write_char('n');
-            for regions.iter().advance |&r| {
+            foreach &r in regions.iter() {
                 enc_region(w, cx, r);
             }
             w.write_char('.');
@@ -288,7 +288,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       }
       ty::ty_tup(ref ts) => {
         w.write_str(&"T[");
-        for ts.iter().advance |t| { enc_ty(w, cx, *t); }
+        foreach t in ts.iter() { enc_ty(w, cx, *t); }
         w.write_char(']');
       }
       ty::ty_box(mt) => { w.write_char('@'); enc_mt(w, cx, mt); }
@@ -404,7 +404,7 @@ fn enc_closure_ty(w: @io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
 
 fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     w.write_char('[');
-    for fsig.inputs.iter().advance |ty| {
+    foreach ty in fsig.inputs.iter() {
         enc_ty(w, cx, *ty);
     }
     w.write_char(']');
@@ -421,7 +421,7 @@ fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
         }
     }
 
-    for bs.trait_bounds.iter().advance |&tp| {
+    foreach &tp in bs.trait_bounds.iter() {
         w.write_char('I');
         enc_trait_ref(w, cx, tp);
     }

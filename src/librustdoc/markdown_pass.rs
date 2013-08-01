@@ -189,7 +189,7 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             };
             let self_ty = doc.self_ty.get_ref();
             let mut trait_part = ~"";
-            for doc.trait_types.iter().enumerate().advance |(i, trait_type)| {
+            foreach (i, trait_type) in doc.trait_types.iter().enumerate() {
                 if i == 0 {
                     trait_part.push_str(" of ");
                 } else {
@@ -279,7 +279,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
-    for sections.iter().advance |section| {
+    foreach section in sections.iter() {
         write_section(ctxt, (*section).clone());
     }
 }
@@ -299,7 +299,7 @@ fn write_mod_contents(
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.items.iter().advance |itemTag| {
+    foreach itemTag in doc.items.iter() {
         write_item(ctxt, (*itemTag).clone());
     }
 }
@@ -349,7 +349,7 @@ fn write_index(ctxt: &Ctxt, index: &doc::Index) {
     ctxt.w.put_line(~"<div class='index'>");
     ctxt.w.put_line(~"");
 
-    for index.entries.iter().advance |entry| {
+    foreach entry in index.entries.iter() {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link.clone();
         if entry.brief.is_some() {
@@ -370,7 +370,7 @@ fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
         write_index(ctxt, doc.index.get_ref());
     }
 
-    for doc.fns.iter().advance |FnDoc| {
+    foreach FnDoc in doc.fns.iter() {
         write_item_header(ctxt, doc::FnTag((*FnDoc).clone()));
         write_fn(ctxt, (*FnDoc).clone());
     }
@@ -435,7 +435,7 @@ fn write_variants(
 
     write_header_(ctxt, H4, ~"Variants");
 
-    for docs.iter().advance |variant| {
+    foreach variant in docs.iter() {
         write_variant(ctxt, (*variant).clone());
     }
 
@@ -474,7 +474,7 @@ fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
 }
 
 fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
-    for docs.iter().advance |doc| {
+    foreach doc in docs.iter() {
         write_method(ctxt, (*doc).clone());
     }
 }

@@ -425,7 +425,7 @@ mod tests {
                 }
             };
 
-            for futures.iter().advance |f| { f.recv() }
+            foreach f in futures.iter() { f.recv() }
 
             do total.with |total| {
                 assert!(**total == num_tasks * count)

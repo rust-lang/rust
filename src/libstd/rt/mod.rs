@@ -64,7 +64,7 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iter::Times;
-use iterator::IteratorUtil;
+use iterator::{Iterator, IteratorUtil};
 use option::{Some, None};
 use ptr::RawPtr;
 use rt::sched::{Scheduler, Shutdown};
@@ -291,7 +291,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     let on_exit: ~fn(bool) = |exit_success| {
 
         let mut handles = handles.take();
-        for handles.mut_iter().advance |handle| {
+        foreach handle in handles.mut_iter() {
             handle.send(Shutdown);
         }
 
@@ -346,7 +346,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     }
 
     // Wait for schedulers
-    for threads.consume_iter().advance() |thread| {
+    foreach thread in threads.consume_iter() {
         thread.join();
     }
 

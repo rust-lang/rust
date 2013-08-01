@@ -66,7 +66,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
         Some(mme) => {
             {
                 let r = resolve_type_vars_in_type(fcx, sp, mme.self_ty);
-                for r.iter().advance |t| {
+                foreach t in r.iter() {
                     let method_map = fcx.ccx.method_map;
                     let new_entry = method_map_entry { self_ty: *t, ..*mme };
                     debug!("writeback::resolve_method_map_entry(id=%?, \
@@ -180,7 +180,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::NodeId)
         write_ty_to_tcx(tcx, id, t);
         for fcx.opt_node_ty_substs(id) |substs| {
           let mut new_tps = ~[];
-          for substs.tps.iter().advance |subst| {
+          foreach subst in substs.tps.iter() {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
                 Some(t) => new_tps.push(t),
                 None => { wbcx.success = false; return None; }
@@ -230,7 +230,7 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
     {
         let r = e.get_callee_id();
-        for r.iter().advance |callee_id| {
+        foreach callee_id in r.iter() {
             resolve_method_map_entry(wbcx.fcx, e.span, *callee_id);
         }
     }
@@ -238,14 +238,14 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
     {
         let r = e.get_callee_id();
-        for r.iter().advance |callee_id| {
+        foreach callee_id in r.iter() {
             resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
         }
     }
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
-            for decl.inputs.iter().advance |input| {
+            foreach input in decl.inputs.iter() {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }
@@ -341,12 +341,12 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_block)(blk, (wbcx, visit));
-    for self_info.iter().advance |self_info| {
+    foreach self_info in self_info.iter() {
         resolve_type_vars_for_node(wbcx,
                                    self_info.span,
                                    self_info.self_id);
     }
-    for decl.inputs.iter().advance |arg| {
+    foreach arg in decl.inputs.iter() {
         (visit.visit_pat)(arg.pat, (wbcx, visit));
         // Privacy needs the type for the whole pattern, not just each binding
         if !pat_util::pat_is_binding(fcx.tcx().def_map, arg.pat) {

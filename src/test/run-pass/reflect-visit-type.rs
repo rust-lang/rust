@@ -170,7 +170,7 @@ pub fn main() {
     visit_ty::<i16>(vv);
     visit_ty::<~[int]>(vv);
 
-    for v.types.iter().advance |s| {
+    foreach s in v.types.iter() {
         printfln!("type: %s", (*s).clone());
     }
     assert_eq!((*v.types).clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);

@@ -57,7 +57,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for s.iter().advance |c| {
+    foreach c in s.iter() {
         match c {
           '"' => escaped.push_str("\\\""),
           '\\' => escaped.push_str("\\\\"),
@@ -923,7 +923,7 @@ impl serialize::Decoder for Decoder {
     fn read_char(&mut self) -> char {
         let mut v = ~[];
         let s = self.read_str();
-        for s.iter().advance |c| { v.push(c) }
+        foreach c in s.iter() { v.push(c) }
         if v.len() != 1 { fail!("string must have one character") }
         v[0]
     }
@@ -949,7 +949,7 @@ impl serialize::Decoder for Decoder {
         let name = match self.stack.pop() {
             String(s) => s,
             List(list) => {
-                for list.consume_rev_iter().advance |v| {
+                foreach v in list.consume_rev_iter() {
                     self.stack.push(v);
                 }
                 match self.stack.pop() {
@@ -1067,7 +1067,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             List(list) => {
                 let len = list.len();
-                for list.consume_rev_iter().advance |v| {
+                foreach v in list.consume_rev_iter() {
                     self.stack.push(v);
                 }
                 len
@@ -1087,7 +1087,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             Object(obj) => {
                 let len = obj.len();
-                for obj.consume_iter().advance |(key, value)| {
+                foreach (key, value) in obj.consume_iter() {
                     self.stack.push(value);
                     self.stack.push(String(key));
                 }
@@ -1157,12 +1157,12 @@ impl Ord for Json {
                         let mut d1_flat = ~[];
 
                         // FIXME #4430: this is horribly inefficient...
-                        for d0.iter().advance |(k, v)| {
+                        foreach (k, v) in d0.iter() {
                              d0_flat.push((@(*k).clone(), @(*v).clone()));
                         }
                         d0_flat.qsort();
 
-                        for d1.iter().advance |(k, v)| {
+                        foreach (k, v) in d1.iter() {
                             d1_flat.push((@(*k).clone(), @(*v).clone()));
                         }
                         d1_flat.qsort();
@@ -1297,7 +1297,7 @@ impl<A:ToJson> ToJson for ~[A] {
 impl<A:ToJson> ToJson for TreeMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = TreeMap::new();
-        for self.iter().advance |(key, value)| {
+        foreach (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
         Object(~d)
@@ -1307,7 +1307,7 @@ impl<A:ToJson> ToJson for TreeMap<~str, A> {
 impl<A:ToJson> ToJson for HashMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = TreeMap::new();
-        for self.iter().advance |(key, value)| {
+        foreach (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
         Object(~d)
@@ -1339,7 +1339,6 @@ mod tests {
     use super::*;
 
     use std::io;
-    use std::result;
 
     use serialize::Decodable;
     use treemap::TreeMap;
@@ -1365,7 +1364,7 @@ mod tests {
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~TreeMap::new();
 
-        for items.iter().advance |item| {
+        foreach item in items.iter() {
             match *item {
                 (ref key, ref value) => { d.insert((*key).clone(), (*value).clone()); },
             }

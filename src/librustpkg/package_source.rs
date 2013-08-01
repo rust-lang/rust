@@ -135,7 +135,7 @@ impl PkgSrc {
             return true;
         }
         else {
-            for self_id.iter().advance |pth| {
+            foreach pth in self_id.iter() {
                 if pth.starts_with("rust_") // because p is already normalized
                     && match p.filestem() {
                            Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
@@ -149,7 +149,7 @@ impl PkgSrc {
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
         assert!(p.components.len() > prefix);
         let mut sub = Path("");
-        for p.components.slice(prefix, p.components.len()).iter().advance |c| {
+        foreach c in p.components.slice(prefix, p.components.len()).iter() {
             sub = sub.push(*c);
         }
         debug!("found crate %s", sub.to_str());
@@ -206,7 +206,7 @@ impl PkgSrc {
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
-        for crates.iter().advance |crate| {
+        foreach crate in crates.iter() {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
             note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));

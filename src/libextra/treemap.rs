@@ -674,7 +674,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                                  child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
-        for child.mut_iter().advance |x| {
+        foreach x in child.mut_iter() {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
@@ -729,18 +729,18 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 save.level -= 1;
 
                 if right_level > save.level {
-                    for save.right.mut_iter().advance |x| { x.level = save.level }
+                    foreach x in save.right.mut_iter() { x.level = save.level }
                 }
 
                 skew(save);
 
-                for save.right.mut_iter().advance |right| {
+                foreach right in save.right.mut_iter() {
                     skew(right);
-                    for right.right.mut_iter().advance |x| { skew(x) }
+                    foreach x in right.right.mut_iter() { skew(x) }
                 }
 
                 split(save);
-                for save.right.mut_iter().advance |x| { split(x) }
+                foreach x in save.right.mut_iter() { split(x) }
             }
 
             return ret;
@@ -763,7 +763,7 @@ impl<K: TotalOrd, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for TreeMap<K,
 impl<K: TotalOrd, V, T: Iterator<(K, V)>> Extendable<(K, V), T> for TreeMap<K, V> {
     #[inline]
     fn extend(&mut self, iter: &mut T) {
-        for iter.advance |(k, v)| {
+        foreach (k, v) in *iter {
             self.insert(k, v);
         }
     }
@@ -780,7 +780,7 @@ impl<T: TotalOrd, Iter: Iterator<T>> FromIterator<T, Iter> for TreeSet<T> {
 impl<T: TotalOrd, Iter: Iterator<T>> Extendable<T, Iter> for TreeSet<T> {
     #[inline]
     fn extend(&mut self, iter: &mut Iter) {
-        for iter.advance |elem| {
+        foreach elem in *iter {
             self.insert(elem);
         }
     }
@@ -863,13 +863,13 @@ mod test_treemap {
     fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
         assert_eq!(ctrl.is_empty(), map.is_empty());
-        for ctrl.iter().advance |x| {
+        foreach x in ctrl.iter() {
             let &(ref k, ref v) = x;
             assert!(map.find(k).unwrap() == v)
         }
-        for map.iter().advance |(map_k, map_v)| {
+        foreach (map_k, map_v) in map.iter() {
             let mut found = false;
-            for ctrl.iter().advance |x| {
+            foreach x in ctrl.iter() {
                 let &(ref ctrl_k, ref ctrl_v) = x;
                 if *map_k == *ctrl_k {
                     assert!(*map_v == *ctrl_v);
@@ -983,7 +983,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 0;
-        for m.iter().advance |(k, v)| {
+        foreach (k, v) in m.iter() {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n += 1;
@@ -1090,7 +1090,7 @@ mod test_treemap {
                         (&x5, &y5)];
         let mut i = 0;
 
-        for b.advance |x| {
+        foreach x in b {
             assert_eq!(expected[i], x);
             i += 1;
 
@@ -1099,7 +1099,7 @@ mod test_treemap {
             }
         }
 
-        for b.advance |x| {
+        foreach x in b {
             assert_eq!(expected[i], x);
             i += 1;
         }
@@ -1111,7 +1111,7 @@ mod test_treemap {
 
         let map: TreeMap<int, int> = xs.iter().transform(|&x| x).collect();
 
-        for xs.iter().advance |&(k, v)| {
+        foreach &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
     }
@@ -1259,7 +1259,7 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 0;
-        for m.iter().advance |x| {
+        foreach x in m.iter() {
             printfln!(x);
             assert_eq!(*x, n);
             n += 1
@@ -1288,8 +1288,8 @@ mod test_set {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 
-        for a.iter().advance |x| { assert!(set_a.insert(*x)) }
-        for b.iter().advance |y| { assert!(set_b.insert(*y)) }
+        foreach x in a.iter() { assert!(set_a.insert(*x)) }
+        foreach y in b.iter() { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
         for f(&set_a, &set_b) |x| {
@@ -1410,7 +1410,7 @@ mod test_set {
 
         let set: TreeSet<int> = xs.iter().transform(|&x| x).collect();
 
-        for xs.iter().advance |x: &int| {
+        foreach x in xs.iter() {
             assert!(set.contains(x));
         }
     }

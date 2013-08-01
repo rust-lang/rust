@@ -41,7 +41,7 @@ pub fn main() {
 
     fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
-        for a.byte_iter().advance |ab| {
+        foreach ab in a.byte_iter() {
             info!(i);
             info!(ab);
             let bb: u8 = b[i];

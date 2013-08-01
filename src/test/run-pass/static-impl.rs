@@ -48,10 +48,10 @@ trait vec_utils<T> {
 
 impl<T> vec_utils<T> for ~[T] {
     fn length_(&self) -> uint { self.len() }
-    fn iter_(&self, f: &fn(&T)) { for self.iter().advance |x| { f(x); } }
+    fn iter_(&self, f: &fn(&T)) { foreach x in self.iter() { f(x); } }
     fn map_<U>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.iter().advance |elt| {
+        foreach elt in self.iter() {
             r.push(f(elt));
         }
         r

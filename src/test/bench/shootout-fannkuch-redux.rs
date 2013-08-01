@@ -29,7 +29,7 @@ fn fannkuch_redux(n: i32) -> i32 {
                 r -= 1;
             }
 
-            for perm.mut_iter().zip(perm1.iter()).advance |(perm_i, perm1_i)| {
+            foreach (perm_i, perm1_i) in perm.mut_iter().zip(perm1.iter()) {
                 *perm_i = *perm1_i;
             }
 

@@ -1037,7 +1037,7 @@ impl Resolver {
                              self.session.str_of(name)));
                     {
                         let r = child.span_for_namespace(ns);
-                        for r.iter().advance |sp| {
+                        foreach sp in r.iter() {
                             self.session.span_note(*sp,
                                  fmt!("first definition of %s `%s` here",
                                       namespace_error_to_str(duplicate_type),
@@ -1057,7 +1057,7 @@ impl Resolver {
         }
 
         // Check each statement.
-        for block.stmts.iter().advance |statement| {
+        foreach statement in block.stmts.iter() {
             match statement.node {
                 stmt_decl(declaration, _) => {
                     match declaration.node {
@@ -1179,7 +1179,7 @@ impl Resolver {
                 name_bindings.define_type
                     (privacy, def_ty(local_def(item.id)), sp);
 
-                for (*enum_definition).variants.iter().advance |variant| {
+                foreach variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
                         variant,
                         local_def(item.id),
@@ -1264,7 +1264,7 @@ impl Resolver {
                         };
 
                         // For each method...
-                        for methods.iter().advance |method| {
+                        foreach method in methods.iter() {
                             // Add the method to the module.
                             let ident = method.ident;
                             let (method_name_bindings, _) =
@@ -1316,7 +1316,7 @@ impl Resolver {
 
                 // Add the names of all the methods to the trait info.
                 let mut method_names = HashMap::new();
-                for methods.iter().advance |method| {
+                foreach method in methods.iter() {
                     let ty_m = trait_method_to_ty_method(method);
 
                     let ident = ty_m.ident;
@@ -1353,7 +1353,7 @@ impl Resolver {
                 }
 
                 let def_id = local_def(item.id);
-                for method_names.iter().advance |(name, _)| {
+                foreach (name, _) in method_names.iter() {
                     if !self.method_map.contains_key(name) {
                         self.method_map.insert(*name, HashSet::new());
                     }
@@ -1422,7 +1422,7 @@ impl Resolver {
         let privacy = visibility_to_privacy(view_item.vis);
         match view_item.node {
             view_item_use(ref view_paths) => {
-                for view_paths.iter().advance |view_path| {
+                foreach view_path in view_paths.iter() {
                     // Extract and intern the module part of the path. For
                     // globs and lists, the path is found directly in the AST;
                     // for simple paths we have to munge the path a little.
@@ -1433,7 +1433,7 @@ impl Resolver {
                             let path_len = full_path.idents.len();
                             assert!(path_len != 0);
 
-                            for full_path.idents.iter().enumerate().advance |(i, ident)| {
+                            foreach (i, ident) in full_path.idents.iter().enumerate() {
                                 if i != path_len - 1 {
                                     module_path.push(*ident);
                                 }
@@ -1442,7 +1442,7 @@ impl Resolver {
 
                         view_path_glob(ref module_ident_path, _) |
                         view_path_list(ref module_ident_path, _, _) => {
-                            for module_ident_path.idents.iter().advance |ident| {
+                            foreach ident in module_ident_path.idents.iter() {
                                 module_path.push(*ident);
                             }
                         }
@@ -1463,7 +1463,7 @@ impl Resolver {
                                                         id);
                         }
                         view_path_list(_, ref source_idents, _) => {
-                            for source_idents.iter().advance |source_ident| {
+                            foreach source_ident in source_idents.iter() {
                                 let name = source_ident.node.name;
                                 let subclass = @SingleImport(name, name);
                                 self.build_import_directive(
@@ -1657,7 +1657,7 @@ impl Resolver {
               let method_def_ids =
                 get_trait_method_def_ids(self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
-              for method_def_ids.iter().advance |&method_def_id| {
+              foreach &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
                       get_method_name_and_explicit_self(self.session.cstore,
                                                         method_def_id);
@@ -1672,7 +1672,7 @@ impl Resolver {
                       interned_method_names.insert(method_name);
                   }
               }
-              for interned_method_names.iter().advance |name| {
+              foreach name in interned_method_names.iter() {
                   if !self.method_map.contains_key(name) {
                       self.method_map.insert(*name, HashSet::new());
                   }
@@ -1741,7 +1741,7 @@ impl Resolver {
             // need to.
 
             let mut current_module = root;
-            for pieces.iter().advance |ident_str| {
+            foreach ident_str in pieces.iter() {
                 let ident = self.session.ident_of(*ident_str);
                 // Create or reuse a graph node for the child.
                 let (child_name_bindings, new_parent) =
@@ -1861,7 +1861,7 @@ impl Resolver {
                                     // Add each static method to the module.
                                     let new_parent = ModuleReducedGraphParent(
                                         type_module);
-                                    for static_methods.iter().advance |static_method_info| {
+                                    foreach static_method_info in static_methods.iter() {
                                         let ident = static_method_info.ident;
                                         debug!("(building reduced graph for \
                                                  external crate) creating \
@@ -2047,7 +2047,7 @@ impl Resolver {
     pub fn idents_to_str(@mut self, idents: &[ident]) -> ~str {
         let mut first = true;
         let mut result = ~"";
-        for idents.iter().advance |ident| {
+        foreach ident in idents.iter() {
             if first {
                 first = false
             } else {
@@ -2531,7 +2531,7 @@ impl Resolver {
         };
 
         // Add all children from the containing module.
-        for containing_module.children.iter().advance |(&ident, name_bindings)| {
+        foreach (&ident, name_bindings) in containing_module.children.iter() {
             merge_import_resolution(ident, *name_bindings);
         }
 
@@ -3237,7 +3237,7 @@ impl Resolver {
                 loop;
             }
             let xs = [TypeNS, ValueNS];
-            for xs.iter().advance |ns| {
+            foreach ns in xs.iter() {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
@@ -3485,8 +3485,8 @@ impl Resolver {
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
             item_enum(ref enum_def, ref generics) => {
-                for (*enum_def).variants.iter().advance |variant| {
-                    for variant.node.disr_expr.iter().advance |dis_expr| {
+                foreach variant in (*enum_def).variants.iter() {
+                    foreach dis_expr in variant.node.disr_expr.iter() {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|| {
@@ -3543,11 +3543,11 @@ impl Resolver {
                                                  visitor);
 
                     // Resolve derived traits.
-                    for traits.iter().advance |trt| {
+                    foreach trt in traits.iter() {
                         self.resolve_trait_reference(item.id, trt, visitor, TraitDerivation);
                     }
 
-                    for (*methods).iter().advance |method| {
+                    foreach method in (*methods).iter() {
                         // Create a new rib for the method-specific type
                         // parameters.
                         //
@@ -3567,7 +3567,7 @@ impl Resolver {
                                     &ty_m.generics.ty_params,
                                     visitor);
 
-                                for ty_m.decl.inputs.iter().advance |argument| {
+                                foreach argument in ty_m.decl.inputs.iter() {
                                     self.resolve_type(&argument.ty, visitor);
                                 }
 
@@ -3604,7 +3604,7 @@ impl Resolver {
 
             item_foreign_mod(ref foreign_module) => {
                 do self.with_scope(Some(item.ident)) {
-                    for foreign_module.items.iter().advance |foreign_item| {
+                    foreach foreign_item in foreign_module.items.iter() {
                         match foreign_item.node {
                             foreign_item_fn(_, _, ref generics) => {
                                 self.with_type_parameter_rib(
@@ -3660,7 +3660,7 @@ impl Resolver {
                 let function_type_rib = @Rib(rib_kind);
                 self.type_ribs.push(function_type_rib);
 
-                for generics.ty_params.iter().enumerate().advance |(index, type_parameter)| {
+                foreach (index, type_parameter) in generics.ty_params.iter().enumerate() {
                     let name = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
@@ -3751,7 +3751,7 @@ impl Resolver {
                     // Nothing to do.
                 }
                 Some(declaration) => {
-                    for declaration.inputs.iter().advance |argument| {
+                    foreach argument in declaration.inputs.iter() {
                         let binding_mode = ArgumentIrrefutableMode;
                         let mutability =
                             if argument.is_mutbl {Mutable} else {Immutable};
@@ -3783,8 +3783,8 @@ impl Resolver {
     pub fn resolve_type_parameters(@mut self,
                                    type_parameters: &OptVec<TyParam>,
                                    visitor: ResolveVisitor) {
-        for type_parameters.iter().advance |type_parameter| {
-            for type_parameter.bounds.iter().advance |bound| {
+        foreach type_parameter in type_parameters.iter() {
+            foreach bound in type_parameter.bounds.iter() {
                 self.resolve_type_parameter_bound(type_parameter.id, bound, visitor);
             }
         }
@@ -3833,7 +3833,7 @@ impl Resolver {
                           fields: &[@struct_field],
                           visitor: ResolveVisitor) {
         let mut ident_map = HashMap::new::<ast::ident, @struct_field>();
-        for fields.iter().advance |&field| {
+        foreach &field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
                     match ident_map.find(&ident) {
@@ -3862,7 +3862,7 @@ impl Resolver {
             self.resolve_type_parameters(&generics.ty_params, visitor);
 
             // Resolve fields.
-            for fields.iter().advance |field| {
+            foreach field in fields.iter() {
                 self.resolve_type(&field.node.ty, visitor);
             }
         }
@@ -3922,7 +3922,7 @@ impl Resolver {
                     let mut new_trait_refs = ~[];
                     {
                         let r = self.def_map.find(&trait_reference.ref_id);
-                        for r.iter().advance |&def| {
+                        foreach &def in r.iter() {
                             new_trait_refs.push(def_id_of_def(*def));
                         }
                     }
@@ -3938,7 +3938,7 @@ impl Resolver {
             // Resolve the self type.
             self.resolve_type(self_type, visitor);
 
-            for methods.iter().advance |method| {
+            foreach method in methods.iter() {
                 // We also need a new scope for the method-specific
                 // type parameters.
                 self.resolve_method(MethodRibKind(
@@ -4018,10 +4018,10 @@ impl Resolver {
     pub fn check_consistent_bindings(@mut self, arm: &arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
-        for arm.pats.iter().enumerate().advance |(i, p)| {
+        foreach (i, p) in arm.pats.iter().enumerate() {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.iter().advance |(&key, &binding_0)| {
+            foreach (&key, &binding_0) in map_0.iter() {
                 match map_i.find(&key) {
                   None => {
                     self.session.span_err(
@@ -4042,7 +4042,7 @@ impl Resolver {
                 }
             }
 
-            for map_i.iter().advance |(&key, &binding)| {
+            foreach (&key, &binding) in map_i.iter() {
                 if !map_0.contains_key(&key) {
                     self.session.span_err(
                         binding.span,
@@ -4058,7 +4058,7 @@ impl Resolver {
         self.value_ribs.push(@Rib(NormalRibKind));
 
         let bindings_list = @mut HashMap::new();
-        for arm.pats.iter().advance |pattern| {
+        foreach pattern in arm.pats.iter() {
             self.resolve_pattern(*pattern, RefutableMode, Immutable,
                                  Some(bindings_list), visitor);
         }
@@ -4164,7 +4164,7 @@ impl Resolver {
                 }
 
                 do bounds.map |bound_vec| {
-                    for bound_vec.iter().advance |bound| {
+                    foreach bound in bound_vec.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound, visitor);
                     }
                 };
@@ -4172,7 +4172,7 @@ impl Resolver {
 
             ty_closure(c) => {
                 do c.bounds.map |bounds| {
-                    for bounds.iter().advance |bound| {
+                    foreach bound in bounds.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound, visitor);
                     }
                 };
@@ -4319,7 +4319,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for path.types.iter().advance |ty| {
+                    foreach ty in path.types.iter() {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4352,7 +4352,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for path.types.iter().advance |ty| {
+                    foreach ty in path.types.iter() {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4381,7 +4381,7 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for path.types.iter().advance |ty| {
+                    foreach ty in path.types.iter() {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4477,7 +4477,7 @@ impl Resolver {
                         visitor: ResolveVisitor)
                         -> Option<def> {
         // First, resolve the types.
-        for path.types.iter().advance |ty| {
+        foreach ty in path.types.iter() {
             self.resolve_type(ty, visitor);
         }
 
@@ -4607,7 +4607,7 @@ impl Resolver {
 
     pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[ident] {
         let mut module_path_idents = ~[];
-        for path.idents.iter().enumerate().advance |(index, ident)| {
+        foreach (index, ident) in path.idents.iter().enumerate() {
             if index == path.idents.len() - 1 {
                 break;
             }
@@ -4845,7 +4845,7 @@ impl Resolver {
         }
 
         let mut smallest = 0;
-        for maybes.iter().enumerate().advance |(i, &other)| {
+        foreach (i, &other) in maybes.iter().enumerate() {
             values[i] = name.lev_distance(other);
 
             if values[i] <= values[smallest] {
@@ -4874,11 +4874,11 @@ impl Resolver {
           i -= 1;
           match this.type_ribs[i].kind {
             MethodRibKind(node_id, _) =>
-              for this.crate.module.items.iter().advance |item| {
+              foreach item in this.crate.module.items.iter() {
                 if item.id == node_id {
                   match item.node {
                     item_struct(class_def, _) => {
-                      for class_def.fields.iter().advance |field| {
+                      foreach field in class_def.fields.iter() {
                         match field.node.kind {
                           unnamed_field => {},
                           named_field(ident, _) => {
@@ -5152,7 +5152,7 @@ impl Resolver {
                 // Look for the current trait.
                 match self.current_trait_refs {
                     Some(ref trait_def_ids) => {
-                        for trait_def_ids.iter().advance |trait_def_id| {
+                        foreach trait_def_id in trait_def_ids.iter() {
                             if candidate_traits.contains(trait_def_id) {
                                 self.add_trait_info(&mut found_traits,
                                                     *trait_def_id,
@@ -5308,7 +5308,7 @@ impl Resolver {
         match vi.node {
             view_item_extern_mod(*) => {} // ignore
             view_item_use(ref path) => {
-                for path.iter().advance |p| {
+                foreach p in path.iter() {
                     match p.node {
                         view_path_simple(_, _, id) | view_path_glob(_, id) => {
                             if !self.used_imports.contains(&id) {
@@ -5319,7 +5319,7 @@ impl Resolver {
                         }
 
                         view_path_list(_, ref list, _) => {
-                            for list.iter().advance |i| {
+                            foreach i in list.iter() {
                                 if !self.used_imports.contains(&i.node.id) {
                                     self.session.add_lint(unused_imports,
                                                           i.node.id, i.span,
@@ -5375,7 +5375,7 @@ impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.iter().advance |(name, import_resolution)| {
+        foreach (name, import_resolution) in module_.import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }

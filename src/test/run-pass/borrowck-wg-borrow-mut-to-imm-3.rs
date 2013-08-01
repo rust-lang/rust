@@ -4,7 +4,7 @@ struct Wizard {
 
 impl Wizard {
     pub fn cast(&mut self) {
-        for self.spells.iter().advance |&spell| {
+        foreach &spell in self.spells.iter() {
             println(spell);
         }
     }

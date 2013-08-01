@@ -70,7 +70,7 @@ pub fn gather_captures(bccx: @BorrowckCtxt,
                        move_data: &mut MoveData,
                        closure_expr: @ast::expr) {
     let captured_vars = bccx.capture_map.get(&closure_expr.id);
-    for captured_vars.iter().advance |captured_var| {
+    foreach captured_var in captured_vars.iter() {
         match captured_var.mode {
             moves::CapMove => {
                 let fvar_id = ast_util::def_id_of_def(captured_var.def).node;

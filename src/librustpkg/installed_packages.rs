@@ -15,16 +15,16 @@ use std::os;
 
 pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     let workspaces = rust_path();
-    for workspaces.iter().advance |p| {
+    foreach p in workspaces.iter() {
         let binfiles = os::list_dir(&p.push("bin"));
-        for binfiles.iter().advance() |exec| {
+        foreach exec in binfiles.iter() {
             let exec_path = Path(*exec).filestem();
             do exec_path.iter().advance |s| {
                 f(&PkgId::new(*s, p))
             };
         }
         let libfiles = os::list_dir(&p.push("lib"));
-        for libfiles.iter().advance() |lib| {
+        foreach lib in libfiles.iter() {
             debug!("Full name: %s", *lib);
             let lib_path = Path(*lib).filestem();
             do lib_path.iter().advance |s| {
