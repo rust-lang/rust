@@ -96,7 +96,6 @@ use rt::local::Local;
 use rt::task::Task;
 use rt::kill::KillHandle;
 use rt::sched::Scheduler;
-use iterator::IteratorUtil;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -356,7 +355,7 @@ impl Drop for Taskgroup {
             // If we are failing, the whole taskgroup needs to die.
             do RuntimeGlue::with_task_handle_and_failing |me, failing| {
                 if failing {
-                    for this.notifier.mut_iter().advance |x| {
+                    foreach x in this.notifier.mut_iter() {
                         x.failed = true;
                     }
                     // Take everybody down with us.
@@ -385,7 +384,7 @@ pub fn Taskgroup(tasks: TaskGroupArc,
        ancestors: AncestorList,
        is_main: bool,
        mut notifier: Option<AutoNotify>) -> Taskgroup {
-    for notifier.mut_iter().advance |x| {
+    foreach x in notifier.mut_iter() {
         x.failed = false;
     }
 
@@ -463,13 +462,13 @@ fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
         if newstate.is_some() {
             let TaskGroupData { members: members, descendants: descendants } =
                 newstate.unwrap();
-            for members.consume().advance |sibling| {
+            foreach sibling in members.consume() {
                 // Skip self - killing ourself won't do much good.
                 if &sibling != me {
                     RuntimeGlue::kill_task(sibling);
                 }
             }
-            for descendants.consume().advance |child| {
+            foreach child in descendants.consume() {
                 assert!(&child != me);
                 RuntimeGlue::kill_task(child);
             }

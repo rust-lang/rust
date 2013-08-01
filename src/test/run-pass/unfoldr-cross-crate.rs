@@ -26,7 +26,7 @@ fn main() {
 
     let mut it = Unfoldr::new(0, count);
     let mut i = 0;
-    for it.advance |counted| {
+    foreach counted in it {
         assert_eq!(counted, i);
         i += 1;
     }

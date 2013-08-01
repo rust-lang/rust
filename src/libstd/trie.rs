@@ -164,7 +164,7 @@ impl<T, Iter: Iterator<(uint, T)>> FromIterator<(uint, T), Iter> for TrieMap<T> 
 
 impl<T, Iter: Iterator<(uint, T)>> Extendable<(uint, T), Iter> for TrieMap<T> {
     fn extend(&mut self, iter: &mut Iter) {
-        for iter.advance |(k, v)| {
+        foreach (k, v) in *iter {
             self.insert(k, v);
         }
     }
@@ -235,7 +235,7 @@ impl<Iter: Iterator<uint>> FromIterator<uint, Iter> for TrieSet {
 
 impl<Iter: Iterator<uint>> Extendable<uint, Iter> for TrieSet {
     fn extend(&mut self, iter: &mut Iter) {
-        for iter.advance |elem| {
+        foreach elem in *iter {
             self.insert(elem);
         }
     }
@@ -283,7 +283,7 @@ impl<T> TrieNode<T> {
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        for self.children.mut_iter().advance |child| {
+        foreach child in self.children.mut_iter() {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
                     return false
@@ -379,7 +379,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 
     let mut sum = 0;
 
-    for trie.children.iter().advance |x| {
+    foreach x in trie.children.iter() {
         match *x {
           Nothing => (),
           Internal(ref y) => {
@@ -544,7 +544,7 @@ mod test_map {
 
         let map: TrieMap<int> = xs.iter().transform(|&x| x).collect();
 
-        for xs.iter().advance |&(k, v)| {
+        foreach &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
     }
@@ -553,6 +553,7 @@ mod test_map {
 #[cfg(test)]
 mod test_set {
     use super::*;
+    use prelude::*;
     use uint;
 
     #[test]
@@ -583,7 +584,7 @@ mod test_set {
 
         let set: TrieSet = xs.iter().transform(|&x| x).collect();
 
-        for xs.iter().advance |x| {
+        foreach x in xs.iter() {
             assert!(set.contains(x));
         }
     }

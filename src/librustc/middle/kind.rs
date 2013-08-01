@@ -237,7 +237,7 @@ fn check_fn(
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
         let r = freevars::get_freevars(cx.tcx, fn_id);
-        for r.iter().advance |fv| {
+        foreach fv in r.iter() {
             chk(cx, *fv);
         }
     }
@@ -255,7 +255,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     };
     {
         let r = cx.tcx.node_type_substs.find(&type_parameter_id);
-        for r.iter().advance |ts| {
+        foreach ts in r.iter() {
             let type_param_defs = match e.node {
               expr_path(_) => {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
@@ -279,7 +279,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
                       ts.repr(cx.tcx),
                       type_param_defs.repr(cx.tcx));
             }
-            for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+            foreach (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
                 check_typaram_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
             }
         }
@@ -317,11 +317,11 @@ fn check_ty(aty: &Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
-          for r.iter().advance |ts| {
+          foreach ts in r.iter() {
               let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
               let type_param_defs =
                   ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-              for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+              foreach (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
                   check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
               }
           }

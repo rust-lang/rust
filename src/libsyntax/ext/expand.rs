@@ -535,7 +535,7 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                         _ => ()
                     }
                     // visit optional subpattern of pat_ident:
-                    for inner.iter().advance |subpat: &@ast::pat| {
+                    foreach subpat in inner.iter() {
                         (v.visit_pat)(*subpat, (ident_accum, v))
                     }
                 }

@@ -837,7 +837,7 @@ mod test {
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
     fn check_tokenization (env: Env, expected: ~[token::Token]) {
-        for expected.iter().advance |expected_tok| {
+        foreach expected_tok in expected.iter() {
             let TokenAndSpan {tok:actual_tok, sp: _} =
                 env.string_reader.next_token();
             assert_eq!(&actual_tok,expected_tok);

@@ -21,13 +21,13 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
     let exprs = get_exprs_from_tts(cx, sp, tts);
     let mut bytes = ~[];
 
-    for exprs.iter().advance |expr| {
+    foreach expr in exprs.iter() {
         match expr.node {
             // expression is a literal
             ast::expr_lit(lit) => match lit.node {
                 // string literal, push each byte to vector expression
                 ast::lit_str(s) => {
-                    for s.byte_iter().advance |byte| {
+                    foreach byte in s.byte_iter() {
                         bytes.push(cx.expr_u8(sp, byte));
                     }
                 }

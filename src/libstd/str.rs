@@ -149,7 +149,7 @@ pub fn from_char(ch: char) -> ~str {
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     buf.reserve(chs.len());
-    for chs.iter().advance |ch| {
+    foreach ch in chs.iter() {
         buf.push_char(*ch)
     }
     buf
@@ -178,7 +178,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
         unsafe {
             do s.as_mut_buf |buf, _| {
                 let mut buf = buf;
-                for self.iter().advance |ss| {
+                foreach ss in self.iter() {
                     do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         ptr::copy_memory(buf, ssbuf, sslen);
@@ -211,7 +211,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
                 do sep.as_imm_buf |sepbuf, seplen| {
                     let seplen = seplen - 1;
                     let mut buf = cast::transmute_mut_unsafe(buf);
-                    for self.iter().advance |ss| {
+                    foreach ss in self.iter() {
                         do ss.as_slice().as_imm_buf |ssbuf, sslen| {
                             let sslen = sslen - 1;
                             if first {
@@ -486,7 +486,7 @@ impl<'self> Iterator<&'self str> for StrSplitIterator<'self> {
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = ~"";
     let mut last_end = 0;
-    for s.matches_index_iter(from).advance |(start, end)| {
+    foreach (start, end) in s.matches_index_iter(from) {
         result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
         result.push_str(to);
         last_end = end;
@@ -556,7 +556,7 @@ Section: Searching
 // Utility used by various searching functions
 fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
-    for needle.byte_iter().advance |c| { if haystack[i] != c { return false; } i += 1u; }
+    foreach c in needle.byte_iter() { if haystack[i] != c { return false; } i += 1u; }
     return true;
 }
 
@@ -769,6 +769,7 @@ priv static MAX_UNICODE: uint = 1114112u;
 
 /// Unsafe operations
 pub mod raw {
+    use option::Some;
     use cast;
     use libc;
     use ptr;
@@ -886,7 +887,7 @@ pub mod raw {
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         let new_len = s.len() + bytes.len();
         s.reserve_at_least(new_len);
-        for bytes.iter().advance |byte| { push_byte(&mut *s, *byte); }
+        foreach byte in bytes.iter() { push_byte(&mut *s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -938,6 +939,7 @@ pub mod traits {
     use ops::Add;
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
     use super::{Str, eq_slice};
+    use option::{Some, None};
 
     impl<'self> Add<&'self str,~str> for &'self str {
         #[inline]
@@ -951,7 +953,7 @@ pub mod traits {
     impl<'self> TotalOrd for &'self str {
         #[inline]
         fn cmp(&self, other: & &'self str) -> Ordering {
-            for self.byte_iter().zip(other.byte_iter()).advance |(s_b, o_b)| {
+            foreach (s_b, o_b) in self.byte_iter().zip(other.byte_iter()) {
                 match s_b.cmp(&o_b) {
                     Greater => return Greater,
                     Less => return Less,
@@ -1453,7 +1455,7 @@ impl<'self> StrSlice<'self> for &'self str {
     fn escape_default(&self) -> ~str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
-        for self.iter().advance |c| {
+        foreach c in self.iter() {
             do c.escape_default |c| {
                 out.push_char(c);
             }
@@ -1465,7 +1467,7 @@ impl<'self> StrSlice<'self> for &'self str {
     fn escape_unicode(&self) -> ~str {
         let mut out: ~str = ~"";
         out.reserve_at_least(self.len());
-        for self.iter().advance |c| {
+        foreach c in self.iter() {
             do c.escape_unicode |c| {
                 out.push_char(c);
             }
@@ -1567,7 +1569,7 @@ impl<'self> StrSlice<'self> for &'self str {
     pub fn replace(&self, from: &str, to: &str) -> ~str {
         let mut result = ~"";
         let mut last_end = 0;
-        for self.matches_index_iter(from).advance |(start, end)| {
+        foreach (start, end) in self.matches_index_iter(from) {
             result.push_str(unsafe{raw::slice_bytes(*self, last_end, start)});
             result.push_str(to);
             last_end = end;
@@ -1605,7 +1607,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Converts to a vector of `u16` encoded as UTF-16.
     fn to_utf16(&self) -> ~[u16] {
         let mut u = ~[];
-        for self.iter().advance |ch| {
+        foreach ch in self.iter() {
             // Arithmetic with u32 literals is easier on the eyes than chars.
             let mut ch = ch as u32;
 
@@ -1758,12 +1760,12 @@ impl<'self> StrSlice<'self> for &'self str {
     /// or `None` if there is no match
     fn find<C: CharEq>(&self, search: C) -> Option<uint> {
         if search.only_ascii() {
-            for self.byte_iter().enumerate().advance |(i, b)| {
+            foreach (i, b) in self.byte_iter().enumerate() {
                 if search.matches(b as char) { return Some(i) }
             }
         } else {
             let mut index = 0;
-            for self.iter().advance |c| {
+            foreach c in self.iter() {
                 if search.matches(c) { return Some(index); }
                 index += c.len_utf8_bytes();
             }
@@ -1781,12 +1783,12 @@ impl<'self> StrSlice<'self> for &'self str {
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
         let mut index = self.len();
         if search.only_ascii() {
-            for self.byte_rev_iter().advance |b| {
+            foreach b in self.byte_rev_iter() {
                 index -= 1;
                 if search.matches(b as char) { return Some(index); }
             }
         } else {
-            for self.rev_iter().advance |c| {
+            foreach c in self.rev_iter() {
                 index -= c.len_utf8_bytes();
                 if search.matches(c) { return Some(index); }
             }
@@ -1855,7 +1857,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Apply a function to each character.
     fn map_chars(&self, ff: &fn(char) -> char) -> ~str {
         let mut result = with_capacity(self.len());
-        for self.iter().advance |cc| {
+        foreach cc in self.iter() {
             result.push_char(ff(cc));
         }
         result
@@ -1871,12 +1873,12 @@ impl<'self> StrSlice<'self> for &'self str {
 
         let mut dcol = vec::from_fn(tlen + 1, |x| x);
 
-        for self.iter().enumerate().advance |(i, sc)| {
+        foreach (i, sc) in self.iter().enumerate() {
 
             let mut current = i;
             dcol[0] = current + 1;
 
-            for t.iter().enumerate().advance |(j, tc)| {
+            foreach (j, tc) in t.iter().enumerate() {
 
                 let next = dcol[j + 1];
 
@@ -1903,7 +1905,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~ {.rust}
     /// let string = "a\nb\nc";
     /// let mut lines = ~[];
-    /// for string.line_iter().advance |line| { lines.push(line) }
+    /// foreach line in string.line_iter() { lines.push(line) }
     ///
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
@@ -2238,7 +2240,7 @@ impl<T: Iterator<char>> Extendable<char, T> for ~str {
         let (lower, _) = iterator.size_hint();
         let reserve = lower + self.len();
         self.reserve_at_least(reserve);
-        for iterator.advance |ch| {
+        foreach ch in *iterator {
             self.push_char(ch)
         }
     }
@@ -2269,7 +2271,6 @@ mod tests {
     use libc;
     use ptr;
     use str::*;
-    use uint;
     use vec;
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
@@ -3055,7 +3056,7 @@ mod tests {
 
         let string = "a\nb\nc";
         let mut lines = ~[];
-        for string.line_iter().advance |line| { lines.push(line) }
+        foreach line in string.line_iter() { lines.push(line) }
         assert_eq!(string.subslice_offset(lines[0]), 0);
         assert_eq!(string.subslice_offset(lines[1]), 2);
         assert_eq!(string.subslice_offset(lines[2]), 4);
@@ -3159,7 +3160,7 @@ mod tests {
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                 0x000a_u16 ]) ];
 
-        for pairs.iter().advance |p| {
+        foreach p in pairs.iter() {
             let (s, u) = (*p).clone();
             assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
@@ -3173,7 +3174,7 @@ mod tests {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
-        for v.iter().advance |ch| {
+        foreach ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
             pos += from_char(*ch).len();
         }
@@ -3184,7 +3185,7 @@ mod tests {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
-        for v.rev_iter().advance |ch| {
+        foreach ch in v.rev_iter() {
             assert!(s.char_at_reverse(pos) == *ch);
             pos -= from_char(*ch).len();
         }
@@ -3276,7 +3277,7 @@ mod tests {
         let mut pos = 0;
         let mut it = s.iter();
 
-        for it.advance |c| {
+        foreach c in it {
             assert_eq!(c, v[pos]);
             pos += 1;
         }
@@ -3292,7 +3293,7 @@ mod tests {
         let mut pos = 0;
         let mut it = s.rev_iter();
 
-        for it.advance |c| {
+        foreach c in it {
             assert_eq!(c, v[pos]);
             pos += 1;
         }
@@ -3309,7 +3310,7 @@ mod tests {
         ];
         let mut pos = 0;
 
-        for s.byte_iter().advance |b| {
+        foreach b in s.byte_iter() {
             assert_eq!(b, v[pos]);
             pos += 1;
         }
@@ -3325,7 +3326,7 @@ mod tests {
         ];
         let mut pos = v.len();
 
-        for s.byte_rev_iter().advance |b| {
+        foreach b in s.byte_rev_iter() {
             pos -= 1;
             assert_eq!(b, v[pos]);
         }
@@ -3341,7 +3342,7 @@ mod tests {
         let mut pos = 0;
         let mut it = s.char_offset_iter();
 
-        for it.advance |c| {
+        foreach c in it {
             assert_eq!(c, (p[pos], v[pos]));
             pos += 1;
         }
@@ -3359,7 +3360,7 @@ mod tests {
         let mut pos = 0;
         let mut it = s.char_offset_rev_iter();
 
-        for it.advance |c| {
+        foreach c in it {
             assert_eq!(c, (p[pos], v[pos]));
             pos += 1;
         }

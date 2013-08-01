@@ -107,7 +107,7 @@ impl state_ {
     /// Iterate over the states that can be reached in one message
     /// from this state.
     pub fn reachable(&self, f: &fn(state) -> bool) -> bool {
-        for self.messages.iter().advance |m| {
+        foreach m in self.messages.iter() {
             match *m {
               message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
                 let state = self.proto.get_state((*id));
@@ -166,7 +166,7 @@ impl protocol_ {
     }
 
     pub fn has_ty_params(&self) -> bool {
-        for self.states.iter().advance |s| {
+        foreach s in self.states.iter() {
             if s.generics.ty_params.len() > 0 {
                 return true;
             }

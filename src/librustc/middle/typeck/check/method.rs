@@ -314,12 +314,12 @@ impl<'self> LookupContext<'self> {
         // candidates.
         let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
-        for opt_applicable_traits.iter().advance |applicable_traits| {
-            for applicable_traits.iter().advance |trait_did| {
+        foreach applicable_traits in opt_applicable_traits.iter() {
+            foreach trait_did in applicable_traits.iter() {
                 // Look for explicit implementations.
                 let opt_impl_infos = self.tcx().trait_impls.find(trait_did);
-                for opt_impl_infos.iter().advance |impl_infos| {
-                    for impl_infos.iter().advance |impl_info| {
+                foreach impl_infos in opt_impl_infos.iter() {
+                    foreach impl_info in impl_infos.iter() {
                         self.push_candidates_from_impl(
                             self.extension_candidates, *impl_info);
 
@@ -464,8 +464,8 @@ impl<'self> LookupContext<'self> {
 
     pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
         let opt_impl_infos = self.tcx().inherent_impls.find(&did);
-        for opt_impl_infos.iter().advance |impl_infos| {
-            for impl_infos.iter().advance |impl_info| {
+        foreach impl_infos in opt_impl_infos.iter() {
+            foreach impl_info in impl_infos.iter() {
                 self.push_candidates_from_impl(
                     self.inherent_candidates, *impl_info);
             }
@@ -711,7 +711,7 @@ impl<'self> LookupContext<'self> {
         let region =
             self.infcx().next_region_var(
                 infer::Autoref(self.expr.span));
-        for mutbls.iter().advance |mutbl| {
+        foreach mutbl in mutbls.iter() {
             let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
                 None => {}

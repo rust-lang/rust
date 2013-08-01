@@ -687,7 +687,6 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::io;
     #[test] fn t1() {
         let a = fresh_name("ghi");
         printfln!("interned name: %u,\ntextual name: %s\n",

@@ -56,7 +56,7 @@ pub fn run(lib_path: &str,
         err_fd: None
     });
 
-    for input.iter().advance |input| {
+    foreach input in input.iter() {
         proc.input().write_str(*input);
     }
     let output = proc.finish_with_output();

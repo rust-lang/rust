@@ -91,7 +91,7 @@ mod bench {
         let mut rng = rand::XorShiftRng::new();
         let mut keys = vec::from_fn(n, |_| rng.gen::<uint>() % n);
 
-        for keys.iter().advance() |k| {
+        foreach k in keys.iter() {
             map.insert(*k, 1);
         }
 

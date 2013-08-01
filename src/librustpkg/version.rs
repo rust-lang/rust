@@ -108,7 +108,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 
     let mut output = None;
     let output_text = str::from_bytes(outp.output);
-    for output_text.line_iter().advance |l| {
+    foreach l in output_text.line_iter() {
         if !l.is_whitespace() {
             output = Some(l);
         }
@@ -142,7 +142,7 @@ pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
                                             ~"tag", ~"-l"]);
             let output_text = str::from_bytes(outp.output);
             debug!("Full output: ( %s ) [%?]", output_text, outp.status);
-            for output_text.line_iter().advance |l| {
+            foreach l in output_text.line_iter() {
                 debug!("A line of output: %s", l);
                 if !l.is_whitespace() {
                     output = Some(l);
@@ -172,7 +172,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
     debug!("Attempting to parse: %s", s);
     let mut parse_state = Start;
-    for s.iter().advance |c| {
+    foreach c in s.iter() {
         if char::is_digit(c) {
             parse_state = SawDigit;
         }
@@ -204,7 +204,7 @@ pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
 
 pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Version)> {
     // reject strings with multiple '#'s
-    for s.split_iter(sep).advance |st| {
+    foreach st in s.split_iter(sep) {
         debug!("whole = %s part = %s", s, st);
     }
     if s.split_iter(sep).len_() > 2 {

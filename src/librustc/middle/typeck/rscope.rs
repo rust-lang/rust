@@ -58,7 +58,7 @@ impl RegionParamNames {
     }
 
     fn has_ident(&self, ident: ast::ident) -> bool {
-        for self.iter().advance |region_param_name| {
+        foreach region_param_name in self.iter() {
             if *region_param_name == ident {
                 return true;
             }
@@ -76,7 +76,7 @@ impl RegionParamNames {
                             opt_vec::Vec(new_lifetimes.map(|lt| lt.ident)));
                     }
                     opt_vec::Vec(ref mut existing_lifetimes) => {
-                        for new_lifetimes.iter().advance |new_lifetime| {
+                        foreach new_lifetime in new_lifetimes.iter() {
                             existing_lifetimes.push(new_lifetime.ident);
                         }
                     }

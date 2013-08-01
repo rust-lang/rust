@@ -295,7 +295,7 @@ pub trait IteratorUtil<A> {
     /// let mut it = xs.iter().flat_map_(|&x| Counter::new(0u, 1).take_(x));
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
-    /// for it.advance |x: uint| {
+    /// foreach x: uint in it {
     ///     assert_eq!(x, ys[i]);
     ///     i += 1;
     /// }
@@ -330,7 +330,7 @@ pub trait IteratorUtil<A> {
     /// ~~~ {.rust}
     /// use std::iterator::Counter;
     ///
-    /// for Counter::new(0, 10).advance |i| {
+    /// foreach i in Counter::new(0, 10) {
     ///     printfln!("%d", i);
     /// }
     /// ~~~
@@ -577,7 +577,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn last_(&mut self) -> Option<A> {
         let mut last = None;
-        for self.advance |x| { last = Some(x); }
+        foreach x in *self { last = Some(x); }
         last
     }
 
@@ -600,20 +600,20 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     #[inline]
     fn all(&mut self, f: &fn(A) -> bool) -> bool {
-        for self.advance |x| { if !f(x) { return false; } }
+        foreach x in *self { if !f(x) { return false; } }
         true
     }
 
     #[inline]
     fn any(&mut self, f: &fn(A) -> bool) -> bool {
-        for self.advance |x| { if f(x) { return true; } }
+        foreach x in *self { if f(x) { return true; } }
         false
     }
 
     /// Return the first element satisfying the specified predicate
     #[inline]
     fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
-        for self.advance |x| {
+        foreach x in *self {
             if predicate(&x) { return Some(x) }
         }
         None
@@ -623,7 +623,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
         let mut i = 0;
-        for self.advance |x| {
+        foreach x in *self {
             if predicate(x) {
                 return Some(i);
             }
@@ -635,7 +635,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
         let mut i = 0;
-        for self.advance |x| {
+        foreach x in *self {
             if predicate(x) { i += 1 }
         }
         i
@@ -1024,7 +1024,7 @@ pub struct Filter<'self, A, T> {
 impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        for self.iter.advance |x| {
+        foreach x in self.iter {
             if (self.predicate)(&x) {
                 return Some(x);
             } else {
@@ -1068,7 +1068,7 @@ pub struct FilterMap<'self, A, B, T> {
 impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'self, A, B, T> {
     #[inline]
     fn next(&mut self) -> Option<B> {
-        for self.iter.advance |x| {
+        foreach x in self.iter {
             match (self.f)(x) {
                 Some(y) => return Some(y),
                 None => ()
@@ -1372,8 +1372,8 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for self.frontiter.mut_iter().advance |inner| {
-                for inner.advance |x| {
+            foreach inner in self.frontiter.mut_iter() {
+                foreach x in *inner {
                     return Some(x)
                 }
             }
@@ -1402,7 +1402,7 @@ impl<'self,
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
-            for self.backiter.mut_iter().advance |inner| {
+            foreach inner in self.backiter.mut_iter() {
                 match inner.next_back() {
                     None => (),
                     y => return y
@@ -1549,7 +1549,7 @@ mod tests {
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
         let mut it = xs.iter().chain_(ys.iter());
         let mut i = 0;
-        for it.advance |&x| {
+        foreach &x in it {
             assert_eq!(x, expected[i]);
             i += 1;
         }
@@ -1558,7 +1558,7 @@ mod tests {
         let ys = Counter::new(30u, 10).take_(4);
         let mut it = xs.iter().transform(|&x| x).chain_(ys);
         let mut i = 0;
-        for it.advance |x| {
+        foreach x in it {
             assert_eq!(x, expected[i]);
             i += 1;
         }
@@ -1576,7 +1576,7 @@ mod tests {
     fn test_iterator_enumerate() {
         let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
-        for it.advance |(i, &x)| {
+        foreach (i, &x) in it {
             assert_eq!(i, x);
         }
     }
@@ -1587,7 +1587,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 5, 13];
         let mut it = xs.iter().take_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x| {
+        foreach &x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1600,7 +1600,7 @@ mod tests {
         let ys = [15, 16, 17, 19];
         let mut it = xs.iter().skip_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x| {
+        foreach &x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1613,7 +1613,7 @@ mod tests {
         let ys = [13, 15, 16, 17, 19, 20, 30];
         let mut it = xs.iter().skip(5);
         let mut i = 0;
-        for it.advance |&x| {
+        foreach &x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1626,7 +1626,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 5];
         let mut it = xs.iter().take_(5);
         let mut i = 0;
-        for it.advance |&x| {
+        foreach &x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1645,7 +1645,7 @@ mod tests {
 
         let mut it = xs.iter().scan(0, add);
         let mut i = 0;
-        for it.advance |x| {
+        foreach x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1658,7 +1658,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
         let mut it = xs.iter().flat_map_(|&x| Counter::new(x, 1).take_(3));
         let mut i = 0;
-        for it.advance |x: uint| {
+        foreach x in it {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1693,7 +1693,7 @@ mod tests {
 
         let mut it = Unfoldr::new(0, count);
         let mut i = 0;
-        for it.advance |counted| {
+        foreach counted in it {
             assert_eq!(counted, i);
             i += 1;
         }
@@ -1705,7 +1705,7 @@ mod tests {
         let cycle_len = 3;
         let it = Counter::new(0u,1).take_(cycle_len).cycle();
         assert_eq!(it.size_hint(), (uint::max_value, None));
-        for it.take_(100).enumerate().advance |(i, x)| {
+        foreach (i, x) in it.take_(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
 
@@ -1931,7 +1931,7 @@ mod tests {
         let mut b = a.clone();
         assert_eq!(len, b.indexable());
         let mut n = 0;
-        for a.enumerate().advance |(i, elt)| {
+        foreach (i, elt) in a.enumerate() {
             assert_eq!(Some(elt), b.idx(i));
             n += 1;
         }
@@ -2021,7 +2021,7 @@ mod tests {
         // test .transform and .peek_ that don't implement Clone
         let it = xs.iter().peek_(|_| {});
         assert_eq!(xs.len(), it.indexable());
-        for xs.iter().enumerate().advance |(i, elt)| {
+        foreach (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(elt), it.idx(i));
         }
 
@@ -2034,7 +2034,7 @@ mod tests {
         // test .transform and .peek_ that don't implement Clone
         let it = xs.iter().transform(|x| *x);
         assert_eq!(xs.len(), it.indexable());
-        for xs.iter().enumerate().advance |(i, elt)| {
+        foreach (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(*elt), it.idx(i));
         }
     }

@@ -48,7 +48,6 @@ use clone::Clone;
 use cmp;
 use container::Container;
 use int;
-use iterator::IteratorUtil;
 use local_data;
 use num;
 use prelude::*;
@@ -495,7 +494,7 @@ impl<R: Rng> RngUtil for R {
     fn gen_char_from(&mut self, chars: &str) -> char {
         assert!(!chars.is_empty());
         let mut cs = ~[];
-        for chars.iter().advance |c| { cs.push(c) }
+        foreach c in chars.iter() { cs.push(c) }
         self.choose(cs)
     }
 
@@ -559,7 +558,7 @@ impl<R: Rng> RngUtil for R {
     fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
                                        -> Option<T> {
         let mut total = 0u;
-        for v.iter().advance |item| {
+        foreach item in v.iter() {
             total += item.weight;
         }
         if total == 0u {
@@ -567,7 +566,7 @@ impl<R: Rng> RngUtil for R {
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
-        for v.iter().advance |item| {
+        foreach item in v.iter() {
             so_far += item.weight;
             if so_far > chosen {
                 return Some(item.item.clone());
@@ -582,7 +581,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
-        for v.iter().advance |item| {
+        foreach item in v.iter() {
             for uint::range(0u, item.weight) |_i| {
                 r.push(item.item.clone());
             }
@@ -763,7 +762,7 @@ impl IsaacRng {
         );
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
-        for r.iter().advance |&(mr_offset, m2_offset)| {
+        foreach &(mr_offset, m2_offset) in r.iter() {
             for uint::range_step(0, MIDPOINT, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);

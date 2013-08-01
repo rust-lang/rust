@@ -287,7 +287,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         Some(abi) => abi,
     };
 
-    for foreign_mod.items.iter().advance |&foreign_item| {
+    foreach &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;
@@ -513,7 +513,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                 store_inbounds(bcx, llargval, llargbundle, [0u, i]);
             }
 
-            for bcx.fcx.llretptr.iter().advance |&retptr| {
+            foreach &retptr in bcx.fcx.llretptr.iter() {
                 store_inbounds(bcx, retptr, llargbundle, [0u, n]);
             }
         }
@@ -523,7 +523,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                      llargbundle: ValueRef) {
             let _icx = push_ctxt("foreign::wrap::build_ret");
             let arg_count = shim_types.fn_sig.inputs.len();
-            for bcx.fcx.llretptr.iter().advance |&retptr| {
+            foreach &retptr in bcx.fcx.llretptr.iter() {
                 let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
                 Store(bcx, Load(bcx, llretptr), retptr);
             }

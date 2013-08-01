@@ -219,7 +219,7 @@ impl Combine for Glb {
             let mut a_r = None;
             let mut b_r = None;
             let mut only_new_vars = true;
-            for tainted.iter().advance |r| {
+            foreach r in tainted.iter() {
                 if is_var_in_set(a_vars, *r) {
                     if a_r.is_some() {
                         return fresh_bound_variable(this);

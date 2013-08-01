@@ -59,7 +59,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
         changed = false;
         debug!("colive iteration %?", i);
         let mut new_colive = ~[];
-        for colive.iter().enumerate().advance |(i, this_colive)| {
+        foreach (i, this_colive) in colive.iter().enumerate() {
             let mut result = this_colive.clone();
             let this = proto.get_state_by_id(i);
             for this_colive.ones |j| {
@@ -78,7 +78,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
 
     // Determine if we're bounded
     let mut self_live = ~[];
-    for colive.iter().enumerate().advance |(i, bv)| {
+    foreach (i, bv) in colive.iter().enumerate() {
         if bv.get(i) {
             self_live.push(proto.get_state_by_id(i))
         }

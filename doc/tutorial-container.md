@@ -164,20 +164,19 @@ dropped when they become unnecessary.
 
 ## For loops
 
-The `for` loop syntax is currently in transition, and will switch from the old
-closure-based iteration protocol to iterator objects. For now, the `advance`
-adaptor is required as a compatibility shim to use iterators with for loops.
+The `foreach` keyword is transitional, and is going to replace the current
+obsolete `for` loop.
 
 ~~~
 let xs = [2, 3, 5, 7, 11, 13, 17];
 
 // print out all the elements in the vector
-for xs.iter().advance |x| {
+foreach x in xs.iter() {
     println(x.to_str())
 }
 
 // print out all but the first 3 elements in the vector
-for xs.iter().skip(3).advance |x| {
+foreach x in xs.iter().skip(3) {
     println(x.to_str())
 }
 ~~~
@@ -193,7 +192,7 @@ let ys = ["foo", "bar", "baz", "foobar"];
 let mut it = xs.iter().zip(ys.iter());
 
 // print out the pairs of elements up to (&3, &"baz")
-for it.advance |(x, y)| {
+foreach (x, y) in it {
     printfln!("%d %s", *x, *y);
 
     if *x == 3 {
@@ -230,7 +229,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     pub fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
-        for iterator.advance |x| {
+        foreach x in iterator {
             xs.push(x);
         }
         xs
@@ -301,7 +300,7 @@ printfln!("%?", it.next()); // prints `Some(&2)`
 printfln!("%?", it.next_back()); // prints `Some(&6)`
 
 // prints `5`, `4` and `3`
-for it.invert().advance |&x| {
+foreach &x in it.invert() {
     printfln!("%?", x)
 }
 ~~~
@@ -320,7 +319,7 @@ let mut it = xs.iter().chain_(ys.iter()).transform(|&x| x * 2);
 printfln!("%?", it.next()); // prints `Some(2)`
 
 // prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
-for it.invert().advance |x| {
+foreach x in it.invert() {
     printfln!("%?", x);
 }
 ~~~

@@ -12,8 +12,8 @@
 
 use clone::Clone;
 use container::Container;
-use iterator::IteratorUtil;
-use option::Option;
+use iterator::Iterator;
+use option::{Option, Some, None};
 use sys;
 use uint;
 use unstable::raw::Repr;
@@ -92,7 +92,7 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 #[inline]
 pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.iter().advance |x| {
+        foreach x in lhs.iter() {
             push((*x).clone());
         }
         for uint::range(0, rhs.len()) |i| {
@@ -105,7 +105,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        for v.iter().advance |elem| {
+        foreach elem in v.iter() {
             push(f(elem));
         }
     }
@@ -148,7 +148,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        for v.consume_iter().advance |x| {
+        foreach x in v.consume_iter() {
             raw::push(&mut av, x);
         }
         av

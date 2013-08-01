@@ -53,7 +53,7 @@ pub struct Sha1 {
 
 fn add_input(st: &mut Sha1, msg: &[u8]) {
     assert!((!st.computed));
-    for msg.iter().advance |element| {
+    foreach element in msg.iter() {
         st.msg_block[st.msg_block_idx] = *element;
         st.msg_block_idx += 1;
         st.len_low += 8;
@@ -150,7 +150,7 @@ fn circular_shift(bits: u32, word: u32) -> u32 {
 fn mk_result(st: &mut Sha1, rs: &mut [u8]) {
     if !st.computed { pad_msg(st); st.computed = true; }
     let mut i = 0;
-    for st.h.mut_iter().advance |ptr_hpart| {
+    foreach ptr_hpart in st.h.mut_iter() {
         let hpart = *ptr_hpart;
         rs[i]   = (hpart >> 24u32 & 0xFFu32) as u8;
         rs[i+1] = (hpart >> 16u32 & 0xFFu32) as u8;
@@ -334,7 +334,7 @@ mod tests {
         let mut out = [0u8, ..20];
 
         let mut sh = ~Sha1::new();
-        for tests.iter().advance |t| {
+        foreach t in tests.iter() {
             (*sh).input_str(t.input);
             sh.result(out);
             assert!(t.output.as_slice() == out);
@@ -348,7 +348,7 @@ mod tests {
 
 
         // Test that it works when accepting the message in pieces
-        for tests.iter().advance |t| {
+        foreach t in tests.iter() {
             let len = t.input.len();
             let mut left = len;
             while left > 0u {

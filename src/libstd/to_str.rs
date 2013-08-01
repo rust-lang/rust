@@ -14,11 +14,12 @@ The `ToStr` trait for converting to strings
 
 */
 
+use option::{Some, None};
 use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
 use hash::Hash;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 use cmp::Eq;
 use vec::ImmutableVector;
 
@@ -55,7 +56,7 @@ impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
     fn to_str(&self) -> ~str {
         let mut acc = ~"{";
         let mut first = true;
-        for self.iter().advance |(key, value)| {
+        foreach (key, value) in self.iter() {
             if first {
                 first = false;
             }
@@ -76,7 +77,7 @@ impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     fn to_str(&self) -> ~str {
         let mut acc = ~"{";
         let mut first = true;
-        for self.iter().advance |element| {
+        foreach element in self.iter() {
             if first {
                 first = false;
             }
@@ -125,7 +126,7 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        for self.iter().advance |elt| {
+        foreach elt in self.iter() {
             if first {
                 first = false;
             }
@@ -144,7 +145,7 @@ impl<A:ToStr> ToStr for ~[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        for self.iter().advance |elt| {
+        foreach elt in self.iter() {
             if first {
                 first = false;
             }
@@ -163,7 +164,7 @@ impl<A:ToStr> ToStr for @[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        for self.iter().advance |elt| {
+        foreach elt in self.iter() {
             if first {
                 first = false;
             }

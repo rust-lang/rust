@@ -272,7 +272,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
             return Err(~"error: hit EOF before end of string table");
         }
 
-        for string_offsets.iter().enumerate().advance |(i, v)| {
+        foreach (i, v) in string_offsets.iter().enumerate() {
             let offset = *v;
             if offset == 0xFFFF { // non-entry
                 loop;

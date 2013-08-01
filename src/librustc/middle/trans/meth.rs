@@ -57,7 +57,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
 
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
-    for methods.iter().advance |method| {
+    foreach method in methods.iter() {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path.clone(),
@@ -599,7 +599,7 @@ pub fn make_vtable(ccx: &mut CrateContext,
         let _icx = push_ctxt("impl::make_vtable");
 
         let mut components = ~[ tydesc.tydesc ];
-        for ptrs.iter().advance |&ptr| {
+        foreach &ptr in ptrs.iter() {
             components.push(ptr)
         }
 

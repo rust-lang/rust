@@ -18,8 +18,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use std::iterator::IteratorUtil;
-
 pub fn mk_pass() -> Pass {
     Pass {
         name: ~"sectionalize",
@@ -108,7 +106,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     let mut current_section: Option<doc::Section> = None;
     let mut sections = ~[];
 
-    for desc.get_ref().any_line_iter().advance |line| {
+    foreach line in desc.get_ref().any_line_iter() {
         match parse_header(line) {
           Some(header) => {
             if current_section.is_some() {

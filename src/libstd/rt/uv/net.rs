@@ -606,6 +606,7 @@ mod test {
     use rt::test::*;
     use rt::uv::{Loop, AllocCallback};
     use rt::uv::{vec_from_uv_buf, vec_to_uv_buf, slice_to_uv_buf};
+    use prelude::*;
 
     #[test]
     fn connect_close_ip4() {
@@ -700,7 +701,7 @@ mod test {
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
-                        for buf.slice(0, nread as uint).iter().advance() |byte| {
+                        foreach byte in buf.slice(0, nread as uint).iter() {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;
@@ -776,7 +777,7 @@ mod test {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
                         let r = buf.slice(0, nread as uint);
-                        for r.iter().advance |byte| {
+                        foreach byte in r.iter() {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;
@@ -847,7 +848,7 @@ mod test {
                 rtdebug!("got %d bytes", nread);
 
                 let buf = buf.unwrap();
-                for buf.slice(0, nread as uint).iter().advance() |&byte| {
+                foreach &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);
                     count += 1;
@@ -907,7 +908,7 @@ mod test {
                 rtdebug!("got %d bytes", nread);
 
                 let buf = buf.unwrap();
-                for buf.slice(0, nread as uint).iter().advance() |&byte| {
+                foreach &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);
                     count += 1;

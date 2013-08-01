@@ -10,7 +10,7 @@
 
 pub fn main() {
     let v : &[(int,int)] = &[ (1, 2), (3, 4), (5, 6) ];
-    for v.iter().advance |&(x, y)| {
+    foreach &(x, y) in v.iter() {
         println(y.to_str());
         println(x.to_str());
     }

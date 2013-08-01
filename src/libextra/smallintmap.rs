@@ -447,7 +447,7 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        for m.mut_iter().advance |(k, v)| {
+        foreach (k, v) in m.mut_iter() {
             *v += k as int;
         }
 
@@ -489,7 +489,7 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        for m.mut_rev_iter().advance |(k, v)| {
+        foreach (k, v) in m.mut_rev_iter() {
             *v += k as int;
         }
 
@@ -507,7 +507,7 @@ mod test_map {
         let mut m = SmallIntMap::new();
         m.insert(1, ~2);
         let mut called = false;
-        for m.consume().advance |(k, v)| {
+        foreach (k, v) in m.consume() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);

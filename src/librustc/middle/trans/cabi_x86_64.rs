@@ -180,7 +180,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                        cls: &mut [RegClass], i: uint,
                        off: uint) {
         let mut field_off = off;
-        for tys.iter().advance |ty| {
+        foreach ty in tys.iter() {
             field_off = align(field_off, *ty);
             classify(*ty, cls, i, field_off);
             field_off += ty_size(*ty);
@@ -295,7 +295,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
 fn llreg_ty(cls: &[RegClass]) -> Type {
     fn llvec_len(cls: &[RegClass]) -> uint {
         let mut len = 1u;
-        for cls.iter().advance |c| {
+        foreach c in cls.iter() {
             if *c != SSEUp {
                 break;
             }
@@ -356,7 +356,7 @@ fn x86_64_tys(atys: &[Type],
 
     let mut arg_tys = ~[];
     let mut attrs = ~[];
-    for atys.iter().advance |t| {
+    foreach t in atys.iter() {
         let (ty, attr) = x86_64_ty(*t, |cls| cls.is_pass_byval(), ByValAttribute);
         arg_tys.push(ty);
         attrs.push(attr);

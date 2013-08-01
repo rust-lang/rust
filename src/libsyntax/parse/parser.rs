@@ -3150,7 +3150,7 @@ impl Parser {
         } = self.parse_items_and_view_items(first_item_attrs,
                                             false, false);
 
-        for items.iter().advance |item| {
+        foreach item in items.iter() {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
             stmts.push(@spanned(item.span.lo, item.span.hi,
                                 stmt_decl(decl, self.get_id())));
@@ -3755,7 +3755,7 @@ impl Parser {
             fields = ~[];
             while *self.token != token::RBRACE {
                 let r = self.parse_struct_decl_field();
-                for r.iter().advance |struct_field| {
+                foreach struct_field in r.iter() {
                     fields.push(*struct_field)
                 }
             }
@@ -4038,7 +4038,7 @@ impl Parser {
             Some(i) => {
                 let stack = &self.sess.included_mod_stack;
                 let mut err = ~"circular modules: ";
-                for stack.slice(i, stack.len()).iter().advance |p| {
+                foreach p in stack.slice(i, stack.len()).iter() {
                     err.push_str(p.to_str());
                     err.push_str(" -> ");
                 }
@@ -4246,7 +4246,7 @@ impl Parser {
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
             let r = self.parse_struct_decl_field();
-            for r.iter().advance |struct_field| {
+            foreach struct_field in r.iter() {
                 fields.push(*struct_field);
             }
         }
@@ -4286,7 +4286,7 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                for arg_tys.consume_iter().advance |ty| {
+                foreach ty in arg_tys.consume_iter() {
                     args.push(ast::variant_arg {
                         ty: ty,
                         id: self.get_id(),
@@ -4395,7 +4395,7 @@ impl Parser {
                 self.bump();
                 let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
-                for the_string.word_iter().advance |word| {
+                foreach word in the_string.word_iter() {
                     match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {

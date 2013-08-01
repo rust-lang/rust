@@ -37,7 +37,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
         fail!("can't select on an empty list");
     }
 
-    for ports.mut_iter().enumerate().advance |(index, port)| {
+    foreach (index, port) in ports.mut_iter().enumerate() {
         if port.optimistic_check() {
             return index;
         }
@@ -66,7 +66,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.
     // Iterate in reverse so the 'earliest' index that's ready gets returned.
-    for ports.mut_slice(0, ready_index).mut_rev_iter().enumerate().advance |(index, port)| {
+    foreach (index, port) in ports.mut_slice(0, ready_index).mut_rev_iter().enumerate() {
         if port.unblock_from() {
             ready_index = index;
         }
@@ -127,7 +127,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| oneshot::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        for chans.consume_iter().enumerate().advance |(i, chan)| {
+        foreach (i, chan) in chans.consume_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {
@@ -144,7 +144,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| stream::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        for chans.consume_iter().enumerate().advance |(i, chan)| {
+        foreach (i, chan) in chans.consume_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {
@@ -191,7 +191,7 @@ mod test {
             let mut ports = ports;
             let mut port = Some(port);
             let order = [5u,0,4,3,2,6,9,8,7,1];
-            for order.iter().advance |&index| {
+            foreach &index in order.iter() {
                 // put the port in the vector at any index
                 util::swap(port.get_mut_ref(), &mut ports[index]);
                 assert!(select(ports) == index);

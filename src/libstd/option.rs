@@ -50,8 +50,6 @@ use iterator::Iterator;
 use str::StrSlice;
 use clone::DeepClone;
 
-#[cfg(test)] use iterator::IteratorUtil;
-
 /// The option type
 #[deriving(Clone, DeepClone, Eq)]
 pub enum Option<T> {
@@ -499,7 +497,7 @@ mod tests {
         let x = Some(());
         let mut y = Some(5);
         let mut y2 = 0;
-        for x.iter().advance |_x| {
+        foreach _x in x.iter() {
             y2 = y.take_unwrap();
         }
         assert_eq!(y2, 5);

@@ -209,9 +209,9 @@ impl AbiSet {
         let mut abis = ~[];
         for self.each |abi| { abis.push(abi); }
 
-        for abis.iter().enumerate().advance |(i, abi)| {
+        foreach (i, abi) in abis.iter().enumerate() {
             let data = abi.data();
-            for abis.slice(0, i).iter().advance |other_abi| {
+            foreach other_abi in abis.slice(0, i).iter() {
                 let other_data = other_abi.data();
                 debug!("abis=(%?,%?) datas=(%?,%?)",
                        abi, data.abi_arch,
@@ -372,7 +372,7 @@ fn abi_to_str_rust() {
 
 #[test]
 fn indices_are_correct() {
-    for AbiDatas.iter().enumerate().advance |(i, abi_data)| {
+    foreach (i, abi_data) in AbiDatas.iter().enumerate() {
         assert!(i == abi_data.abi.index());
     }
 
@@ -387,7 +387,7 @@ fn indices_are_correct() {
 #[cfg(test)]
 fn check_arch(abis: &[Abi], arch: Architecture, expect: Option<Abi>) {
     let mut set = AbiSet::empty();
-    for abis.iter().advance |&abi| {
+    foreach &abi in abis.iter() {
         set.add(abi);
     }
     let r = set.for_arch(arch);
