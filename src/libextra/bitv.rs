@@ -398,7 +398,7 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_true(self.nbits),
         _ => {
-          for self.iter().advance |i| { if !i { return false; } }
+          foreach i in self.iter() { if !i { return false; } }
           true
         }
       }
@@ -419,7 +419,7 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
-          for self.iter().advance |i| { if i { return false; } }
+          foreach i in self.iter() { if i { return false; } }
           true
         }
       }
@@ -483,7 +483,7 @@ impl Bitv {
      */
      pub fn to_str(&self) -> ~str {
         let mut rs = ~"";
-        for self.iter().advance |i| {
+        foreach i in self.iter() {
             if i {
                 rs.push_char('1');
             } else {
@@ -684,7 +684,7 @@ impl BitvSet {
         if self.capacity() < other.capacity() {
             self.bitv.storage.grow(other.capacity() / uint::bits, &0);
         }
-        for other.bitv.storage.iter().enumerate().advance |(i, &w)| {
+        foreach (i, &w) in other.bitv.storage.iter().enumerate() {
             let old = self.bitv.storage[i];
             let new = f(old, w);
             self.bitv.storage[i] = new;
@@ -883,12 +883,12 @@ impl BitvSet {
         let min = num::min(len1, len2);
 
         /* only one of these loops will execute and that's the point */
-        for self.bitv.storage.slice(min, len1).iter().enumerate().advance |(i, &w)| {
+        foreach (i, &w) in self.bitv.storage.slice(min, len1).iter().enumerate() {
             if !f(true, (i + min) * uint::bits, w) {
                 return false;
             }
         }
-        for other.bitv.storage.slice(min, len2).iter().enumerate().advance |(i, &w)| {
+        foreach (i, &w) in other.bitv.storage.slice(min, len2).iter().enumerate() {
             if !f(false, (i + min) * uint::bits, w) {
                 return false;
             }
@@ -1308,7 +1308,7 @@ mod tests {
         let bools = [true, false, true, true];
         let bitv = from_bools(bools);
 
-        for bitv.iter().zip(bools.iter()).advance |(act, &ex)| {
+        foreach (act, &ex) in bitv.iter().zip(bools.iter()) {
             assert_eq!(ex, act);
         }
     }
@@ -1610,7 +1610,7 @@ mod tests {
         let bitv = Bitv::new(uint::bits, false);
         do b.iter {
             let mut sum = 0;
-            for bitv.iter().advance |pres| {
+            foreach pres in bitv.iter() {
                 sum += pres as uint;
             }
         }
@@ -1621,7 +1621,7 @@ mod tests {
         let bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
             let mut sum = 0;
-            for bitv.iter().advance |pres| {
+            foreach pres in bitv.iter() {
                 sum += pres as uint;
             }
         }
@@ -1633,7 +1633,7 @@ mod tests {
                                               |idx| {idx % 3 == 0}));
         do b.iter {
             let mut sum = 0;
-            for bitv.iter().advance |idx| {
+            foreach idx in bitv.iter() {
                 sum += idx;
             }
         }

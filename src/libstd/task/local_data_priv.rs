@@ -167,7 +167,7 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
     let map = get_local_map(handle);
     let key_value = key_to_key_value(key);
 
-    for map.mut_iter().advance |entry| {
+    foreach entry in map.mut_iter() {
         match *entry {
             Some((k, _, loan)) if k == key_value => {
                 if loan != NoLoan {

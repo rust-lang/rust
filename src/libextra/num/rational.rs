@@ -500,7 +500,7 @@ mod test {
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1"];
-        for xs.iter().advance |&s| {
+        foreach &s in xs.iter() {
             test(s);
         }
     }
@@ -540,7 +540,7 @@ mod test {
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"];
-        for xs.iter().advance |&s| {
+        foreach &s in xs.iter() {
             test(s);
         }
     }

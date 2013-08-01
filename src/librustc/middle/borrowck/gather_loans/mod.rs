@@ -187,7 +187,7 @@ fn gather_loans_in_expr(ex: @ast::expr,
 
     {
         let r = ex.get_callee_id();
-        for r.iter().advance |callee_id| {
+        foreach callee_id in r.iter() {
             this.id_range.add(*callee_id);
         }
     }
@@ -195,7 +195,7 @@ fn gather_loans_in_expr(ex: @ast::expr,
     // If this expression is borrowed, have to ensure it remains valid:
     {
         let r = tcx.adjustments.find(&ex.id);
-        for r.iter().advance |&adjustments| {
+        foreach &adjustments in r.iter() {
             this.guarantee_adjustments(ex, *adjustments);
         }
     }
@@ -238,8 +238,8 @@ fn gather_loans_in_expr(ex: @ast::expr,
 
       ast::expr_match(ex_v, ref arms) => {
         let cmt = this.bccx.cat_expr(ex_v);
-        for arms.iter().advance |arm| {
-            for arm.pats.iter().advance |pat| {
+        foreach arm in arms.iter() {
+            foreach pat in arm.pats.iter() {
                 this.gather_pat(cmt, *pat, Some((arm.body.id, ex.id)));
             }
         }
@@ -617,7 +617,7 @@ impl GatherLoanCtxt {
          */
 
         let mc_ctxt = self.bccx.mc_ctxt();
-        for decl.inputs.iter().advance |arg| {
+        foreach arg in decl.inputs.iter() {
             let arg_ty = ty::node_id_to_type(self.tcx(), arg.pat.id);
 
             let arg_cmt = mc_ctxt.cat_rvalue(

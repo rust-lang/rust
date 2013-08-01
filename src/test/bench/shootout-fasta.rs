@@ -46,7 +46,7 @@ struct AminoAcids {
 fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut cp: u32 = 0u32;
     let mut ans: ~[AminoAcids] = ~[];
-    for aa.iter().advance |a| {
+    foreach a in aa.iter() {
         cp += a.prob;
         ans.push(AminoAcids {ch: a.ch, prob: cp});
     }

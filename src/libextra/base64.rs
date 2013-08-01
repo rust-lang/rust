@@ -206,7 +206,7 @@ impl<'self> FromBase64 for &'self [u8] {
         let mut modulus = 0;
 
         let mut it = self.iter();
-        for it.advance |&byte| {
+        foreach &byte in it {
             let ch = byte as char;
             let val = byte as u32;
 

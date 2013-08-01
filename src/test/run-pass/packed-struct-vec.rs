@@ -27,7 +27,7 @@ fn main() {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 
-    for foos.iter().advance |&foo| {
+    foreach &foo in foos.iter() {
         assert_eq!(foo, Foo { bar: 1, baz: 2 });
     }
 }

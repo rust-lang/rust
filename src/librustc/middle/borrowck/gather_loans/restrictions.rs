@@ -139,7 +139,7 @@ impl RestrictionsContext {
                 // static errors. For example, if there is code like
                 //
                 //    let v = @mut ~[1, 2, 3];
-                //    for v.iter().advance |e| {
+                //    foreach e in v.iter() {
                 //        v.push(e + 1);
                 //    }
                 //
@@ -151,7 +151,7 @@ impl RestrictionsContext {
                 //
                 //    let v = @mut ~[1, 2, 3];
                 //    let w = v;
-                //    for v.iter().advance |e| {
+                //    foreach e in v.iter() {
                 //        w.push(e + 1);
                 //    }
                 //
@@ -164,7 +164,7 @@ impl RestrictionsContext {
                 //    }
                 //    ...
                 //    let v: &V = ...;
-                //    for v.get_list().iter().advance |e| {
+                //    foreach e in v.get_list().iter() {
                 //        v.get_list().push(e + 1);
                 //    }
                 match opt_loan_path(cmt_base) {

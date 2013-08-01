@@ -42,7 +42,7 @@ impl FnType {
         let fnty = Type::func(atys, &rty);
         let llfn = decl(fnty);
 
-        for self.attrs.iter().enumerate().advance |(i, a)| {
+        foreach (i, a) in self.attrs.iter().enumerate() {
             match *a {
                 option::Some(attr) => {
                     unsafe {
@@ -92,7 +92,7 @@ impl FnType {
 
     pub fn build_shim_ret(&self, bcx: @mut Block, arg_tys: &[Type], ret_def: bool,
                           llargbundle: ValueRef, llretval: ValueRef) {
-        for self.attrs.iter().enumerate().advance |(i, a)| {
+        foreach (i, a) in self.attrs.iter().enumerate() {
             match *a {
                 option::Some(attr) => {
                     unsafe {

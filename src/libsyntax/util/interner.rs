@@ -31,7 +31,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 
     pub fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
-        for init.iter().advance |v| {
+        foreach v in init.iter() {
             rv.intern((*v).clone());
         }
         rv
@@ -93,7 +93,7 @@ impl StrInterner {
 
     pub fn prefill(init: &[&str]) -> StrInterner {
         let rv = StrInterner::new();
-        for init.iter().advance |&v| { rv.intern(v); }
+        foreach &v in init.iter() { rv.intern(v); }
         rv
     }
 

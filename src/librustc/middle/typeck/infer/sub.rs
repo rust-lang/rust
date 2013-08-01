@@ -194,7 +194,7 @@ impl Combine for Sub {
         for list::each(skol_isr) |pair| {
             let (skol_br, skol) = *pair;
             let tainted = self.infcx.region_vars.tainted(snapshot, skol);
-            for tainted.iter().advance |tainted_region| {
+            foreach tainted_region in tainted.iter() {
                 // Each skolemized should only be relatable to itself
                 // or new variables:
                 match *tainted_region {

@@ -104,12 +104,12 @@ fn fold_item(ctx: @mut ReadyCtx,
     let mut cmds = ~[];
     let mut had_pkg_do = false;
 
-    for item.attrs.iter().advance |attr| {
+    foreach attr in item.attrs.iter() {
         if "pkg_do" == attr.name() {
             had_pkg_do = true;
             match attr.node.value.node {
                 ast::MetaList(_, ref mis) => {
-                    for mis.iter().advance |mi| {
+                    foreach mi in mis.iter() {
                         match mi.node {
                             ast::MetaWord(cmd) => cmds.push(cmd.to_owned()),
                             _ => {}
@@ -210,7 +210,7 @@ pub fn compile_input(ctxt: &Ctx,
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
-    for addl_lib_search_paths.iter().advance |p| {
+    foreach p in addl_lib_search_paths.iter() {
         assert!(os::path_is_dir(p));
     }
 
@@ -274,7 +274,7 @@ pub fn compile_crate_from_input(input: &driver::input,
 
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
     debug!("additional libraries:");
-    for sess.opts.addl_lib_search_paths.iter().advance |lib| {
+    foreach lib in sess.opts.addl_lib_search_paths.iter() {
         debug!("an additional library: %s", lib.to_str());
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, crate);
@@ -303,7 +303,7 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
-    for flags.iter().advance |fl| {
+    foreach fl in flags.iter() {
         debug!("+++ %s", *fl);
     }
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)

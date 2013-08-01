@@ -152,7 +152,7 @@ Available lint options:
     lint_dict.qsort();
 
     let mut max_key = 0;
-    for lint_dict.iter().advance |&(_, name)| {
+    foreach &(_, name) in lint_dict.iter() {
         max_key = num::max(name.len(), max_key);
     }
     fn padded(max: uint, s: &str) -> ~str {
@@ -163,7 +163,7 @@ Available lint options:
               padded(max_key, "name"), "default", "meaning");
     printfln!("    %s  %7.7s  %s\n",
               padded(max_key, "----"), "-------", "-------");
-    for lint_dict.consume_iter().advance |(spec, name)| {
+    foreach (spec, name) in lint_dict.consume_iter() {
         let name = name.replace("_", "-");
         printfln!("    %s  %7.7s  %s",
                   padded(max_key, name),
@@ -176,7 +176,7 @@ Available lint options:
 pub fn describe_debug_flags() {
     printfln!("\nAvailable debug options:\n");
     let r = session::debugging_opts_map();
-    for r.iter().advance |tuple| {
+    foreach tuple in r.iter() {
         match *tuple {
             (ref name, ref desc, _) => {
                 printfln!("    -Z %-20s -- %s", *name, *desc);
@@ -350,7 +350,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ];
-                for xs.iter().advance |note| {
+                foreach note in xs.iter() {
                     diagnostic::emit(None, *note, diagnostic::note)
                 }
             }

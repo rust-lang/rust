@@ -16,8 +16,8 @@ fn test1() {
 
 fn test2() {
     let mut ints = [0, ..32];
-    for ints.mut_iter().advance |i| { *i += 22; }
-    for ints.iter().advance |i| { assert!(*i == 22); }
+    foreach i in ints.mut_iter() { *i += 22; }
+    foreach i in ints.iter() { assert!(*i == 22); }
 }
 
 pub fn main() {

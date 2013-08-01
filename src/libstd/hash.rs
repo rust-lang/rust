@@ -22,7 +22,8 @@
 #[allow(missing_doc)];
 
 use container::Container;
-use iterator::IteratorUtil;
+use iterator::Iterator;
+use option::{Some, None};
 use rt::io::Writer;
 use str::OwnedStr;
 use to_bytes::IterBytes;
@@ -369,7 +370,7 @@ impl Streaming for SipState {
     fn result_str(&mut self) -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
-        for r.iter().advance |b| {
+        foreach b in r.iter() {
             s.push_str(uint::to_str_radix(*b as uint, 16u));
         }
         s
@@ -471,7 +472,7 @@ mod tests {
 
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
-            for r.iter().advance |b| {
+            foreach b in r.iter() {
                 s.push_str(uint::to_str_radix(*b as uint, 16u));
             }
             s

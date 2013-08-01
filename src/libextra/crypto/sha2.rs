@@ -939,7 +939,7 @@ mod tests {
 
     fn test_hash<D: Digest>(sh: &mut D, tests: &[Test]) {
         // Test that it works when accepting the message all at once
-        for tests.iter().advance() |t| {
+        foreach t in tests.iter() {
             sh.input_str(t.input);
 
             let out_str = sh.result_str();
@@ -949,7 +949,7 @@ mod tests {
         }
 
         // Test that it works when accepting the message in pieces
-        for tests.iter().advance() |t| {
+        foreach t in tests.iter() {
             let len = t.input.len();
             let mut left = len;
             while left > 0u {

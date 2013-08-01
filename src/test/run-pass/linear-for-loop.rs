@@ -11,12 +11,12 @@
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
-    for x.iter().advance |i| { info!(*i); y += *i; }
+    foreach i in x.iter() { info!(*i); y += *i; }
     info!(y);
     assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
-    for s.byte_iter().advance |c| {
+    foreach c in s.byte_iter() {
         if i == 0 { assert!((c == 'h' as u8)); }
         if i == 1 { assert!((c == 'e' as u8)); }
         if i == 2 { assert!((c == 'l' as u8)); }
