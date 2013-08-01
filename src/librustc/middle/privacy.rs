@@ -340,7 +340,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
 
             visit::visit_mod(the_module, span, node_id, (method_map, visitor));
 
-            for n_added.times {
+            do n_added.times {
                 ignore(privileged_items.pop());
             }
         },
@@ -370,7 +370,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
 
             visit::visit_block(block, (method_map, visitor));
 
-            for n_added.times {
+            do n_added.times {
                 ignore(privileged_items.pop());
             }
         },

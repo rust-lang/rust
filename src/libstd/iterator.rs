@@ -18,7 +18,6 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use iter::Times;
 use num::{Zero, One};
 use option::{Option, Some, None};
 use ops::{Add, Mul};
@@ -1229,8 +1228,9 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
         if self.n == 0 {
             next
         } else {
-            let n = self.n;
-            for n.times {
+            let mut n = self.n;
+            while n > 0 {
+                n -= 1;
                 match next {
                     Some(_) => {
                         next = self.iter.next();

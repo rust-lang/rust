@@ -372,8 +372,9 @@ impl Drop for Taskgroup {
                 // with our own taskgroup, so long as both happen before we die.
                 // We remove ourself from every ancestor we can, so no cleanup; no
                 // break.
-                for each_ancestor(&mut this.ancestors, |_| {}) |ancestor_group| {
+                do each_ancestor(&mut this.ancestors, |_| {}) |ancestor_group| {
                     leave_taskgroup(ancestor_group, &me, false);
+                    true
                 };
             }
         }

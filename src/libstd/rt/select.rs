@@ -53,8 +53,8 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     do sched.deschedule_running_task_and_then |sched, task| {
         let task_handles = task.make_selectable(ports.len());
 
-        for ports.mut_iter().zip(task_handles.consume_iter()).enumerate().advance
-                |(index, (port, task_handle))| {
+        foreach (index, (port, task_handle)) in
+                ports.mut_iter().zip(task_handles.consume_iter()).enumerate() {
             // If one of the ports has data by now, it will wake the handle.
             if port.block_on(sched, task_handle) {
                 ready_index = index;
@@ -187,7 +187,7 @@ mod test {
         do run_in_newsched_task {
             let (ports, _) = unzip(from_fn(10, |_| stream()));
             let (port, chan) = stream();
-            for 10.times { chan.send(31337); }
+            do 10.times { chan.send(31337); }
             let mut ports = ports;
             let mut port = Some(port);
             let order = [5u,0,4,3,2,6,9,8,7,1];
@@ -268,7 +268,7 @@ mod test {
 
             do run_in_newsched_task {
                 // A bit of stress, since ordinarily this is just smoke and mirrors.
-                for 4.times {
+                do 4.times {
                     let send_on_chans = send_on_chans.clone();
                     do task::spawn {
                         let mut ports = ~[];

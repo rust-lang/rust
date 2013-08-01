@@ -32,7 +32,7 @@ fn main() {
 }
 
 fn run(repeat: int, depth: int) {
-    for (repeat as uint).times {
+    do (repeat as uint).times {
         info!("starting %.4f", precise_time_s());
         do task::try {
             recurse_or_fail(depth, None)

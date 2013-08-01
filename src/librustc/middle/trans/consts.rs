@@ -188,7 +188,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
         Some(@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
             let mut maybe_ptr = None;
-            for adj.autoderefs.times {
+            do adj.autoderefs.times {
                 let (dv, dt) = const_deref(cx, llconst, ty, false);
                 maybe_ptr = Some(llconst);
                 llconst = dv;

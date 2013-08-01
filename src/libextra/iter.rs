@@ -72,12 +72,9 @@ pub trait FromIter<T> {
 #[inline]
 pub fn any<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
-    for iter |x| {
-        if predicate(x) {
-            return true;
-        }
+    do iter |x| {
+        predicate(x)
     }
-    return false;
 }
 
 /**
@@ -111,12 +108,14 @@ pub fn all<T>(predicate: &fn(T) -> bool,
 #[inline]
 pub fn find<T>(predicate: &fn(&T) -> bool,
                iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
-    for iter |x| {
+    let mut ret = None;
+    do iter |x| {
         if predicate(&x) {
-            return Some(x);
-        }
-    }
-    None
+            ret = Some(x);
+            false
+        } else { true }
+    };
+    ret
 }
 
 /**
@@ -132,7 +131,7 @@ pub fn find<T>(predicate: &fn(&T) -> bool,
 #[inline]
 pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
-    for iter |x| {
+    do iter |x| {
         match result {
             Some(ref mut y) => {
                 if x > *y {
@@ -141,7 +140,8 @@ pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
             }
             None => result = Some(x)
         }
-    }
+        true
+    };
     result
 }
 
@@ -158,7 +158,7 @@ pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
 #[inline]
 pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
-    for iter |x| {
+    do iter |x| {
         match result {
             Some(ref mut y) => {
                 if x < *y {
@@ -167,7 +167,8 @@ pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
             }
             None => result = Some(x)
         }
-    }
+        true
+    };
     result
 }
 
@@ -183,9 +184,10 @@ pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
 #[inline]
 pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T, U)) -> T {
     let mut result = start;
-    for iter |x| {
+    do iter |x| {
         f(&mut result, x);
-    }
+        true
+    };
     result
 }
 
@@ -206,9 +208,10 @@ pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T,
 #[inline]
 pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&mut T, &U)) -> T {
     let mut result = start;
-    for iter |x| {
+    do iter |x| {
         f(&mut result, x);
-    }
+        true
+    };
     result
 }
 
@@ -246,7 +249,7 @@ impl<T> FromIter<T> for ~[T]{
     #[inline]
     pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
         let mut v = ~[];
-        for iter |x| { v.push(x) }
+        do iter |x| { v.push(x); true };
         v
     }
 }
