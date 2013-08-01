@@ -108,14 +108,14 @@ pub fn print_crate(cm: @CodeMap,
                    span_diagnostic: @diagnostic::span_handler,
                    crate: &ast::Crate,
                    filename: @str,
-                   in: @io::Reader,
+                   input: @io::Reader,
                    out: @io::Writer,
                    ann: pp_ann,
                    is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
         filename,
-        in
+        input
     );
     let s = @ps {
         s: pp::mk_printer(out, default_columns),

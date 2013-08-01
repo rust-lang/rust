@@ -706,8 +706,8 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     }
 
     fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
-        for decl.inputs.iter().advance |in| {
-            check_ty(cx, &in.ty);
+        for decl.inputs.iter().advance |input| {
+            check_ty(cx, &input.ty);
         }
         check_ty(cx, &decl.output)
     }

@@ -95,18 +95,18 @@ mod tests {
             words.push(r.gen_bytes(range));
         }
         for 20.times {
-            let mut in = ~[];
+            let mut input = ~[];
             for 2000.times {
-                in.push_all(r.choose(words));
+                input.push_all(r.choose(words));
             }
             debug!("de/inflate of %u bytes of random word-sequences",
-                   in.len());
-            let cmp = deflate_bytes(in);
+                   input.len());
+            let cmp = deflate_bytes(input);
             let out = inflate_bytes(cmp);
             debug!("%u bytes deflated to %u (%.1f%% size)",
-                   in.len(), cmp.len(),
-                   100.0 * ((cmp.len() as float) / (in.len() as float)));
-            assert_eq!(in, out);
+                   input.len(), cmp.len(),
+                   100.0 * ((cmp.len() as float) / (input.len() as float)));
+            assert_eq!(input, out);
         }
     }
 }

@@ -65,7 +65,7 @@ pub trait DigestUtil {
      *
      * * in The string to feed into the digest
      */
-    fn input_str(&mut self, in: &str);
+    fn input_str(&mut self, input: &str);
 
     /**
      * Convenience functon that retrieves the result of a digest as a
@@ -75,8 +75,8 @@ pub trait DigestUtil {
 }
 
 impl<D: Digest> DigestUtil for D {
-    fn input_str(&mut self, in: &str) {
-        self.input(in.as_bytes());
+    fn input_str(&mut self, input: &str) {
+        self.input(input.as_bytes());
     }
 
     fn result_str(&mut self) -> ~str {

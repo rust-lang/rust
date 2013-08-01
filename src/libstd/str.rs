@@ -2863,7 +2863,7 @@ mod tests {
             assert_eq!(err, ~"from_bytes: input is not UTF-8; first bad byte is 255");
             error_happened = true;
             ~""
-        }).in {
+        }).inside {
             from_bytes(bb)
         };
         assert!(error_happened);

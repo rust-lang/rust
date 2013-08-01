@@ -389,17 +389,17 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
 }
 
 pub struct Pipe {
-    in: c_int,
+    input: c_int,
     out: c_int
 }
 
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
-        let mut fds = Pipe {in: 0 as c_int,
+        let mut fds = Pipe {input: 0 as c_int,
                             out: 0 as c_int };
-        assert_eq!(libc::pipe(&mut fds.in), (0 as c_int));
-        return Pipe {in: fds.in, out: fds.out};
+        assert_eq!(libc::pipe(&mut fds.input), (0 as c_int));
+        return Pipe {input: fds.input, out: fds.out};
     }
 }
 
@@ -413,14 +413,14 @@ pub fn pipe() -> Pipe {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in core::run.
-        let mut fds = Pipe {in: 0 as c_int,
+        let mut fds = Pipe {input: 0 as c_int,
                     out: 0 as c_int };
-        let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
+        let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert_eq!(res, 0 as c_int);
-        assert!((fds.in != -1 as c_int && fds.in != 0 as c_int));
-        assert!((fds.out != -1 as c_int && fds.in != 0 as c_int));
-        return Pipe {in: fds.in, out: fds.out};
+        assert!((fds.input != -1 as c_int && fds.input != 0 as c_int));
+        assert!((fds.out != -1 as c_int && fds.input != 0 as c_int));
+        return Pipe {input: fds.input, out: fds.out};
     }
 }
 
@@ -1931,11 +1931,11 @@ mod tests {
           let tempdir = getcwd(); // would like to use $TMPDIR,
                                   // doesn't seem to work on Linux
           assert!((tempdir.to_str().len() > 0u));
-          let in = tempdir.push("in.txt");
+          let input = tempdir.push("in.txt");
           let out = tempdir.push("out.txt");
 
           /* Write the temp input file */
-            let ostream = do in.to_str().as_c_str |fromp| {
+            let ostream = do input.to_str().as_c_str |fromp| {
                 do "w+b".as_c_str |modebuf| {
                     libc::fopen(fromp, modebuf)
                 }
@@ -1950,16 +1950,16 @@ mod tests {
                          len as size_t)
           }
           assert_eq!(libc::fclose(ostream), (0u as c_int));
-          let in_mode = in.get_mode();
-          let rs = os::copy_file(&in, &out);
-          if (!os::path_exists(&in)) {
-            fail!("%s doesn't exist", in.to_str());
+          let in_mode = input.get_mode();
+          let rs = os::copy_file(&input, &out);
+          if (!os::path_exists(&input)) {
+            fail!("%s doesn't exist", input.to_str());
           }
           assert!((rs));
-          let rslt = run::process_status("diff", [in.to_str(), out.to_str()]);
+          let rslt = run::process_status("diff", [input.to_str(), out.to_str()]);
           assert_eq!(rslt, 0);
           assert_eq!(out.get_mode(), in_mode);
-          assert!((remove_file(&in)));
+          assert!((remove_file(&input)));
           assert!((remove_file(&out)));
         }
     }

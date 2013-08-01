@@ -117,7 +117,7 @@ mod test {
             do io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
                 called = true;
-            }).in {
+            }).inside {
                 let addr = Ipv4(0, 0, 0, 0, 1);
                 let socket = UdpSocket::bind(addr);
                 assert!(socket.is_none());

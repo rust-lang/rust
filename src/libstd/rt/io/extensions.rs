@@ -330,7 +330,7 @@ impl<T: Reader> ReaderUtil for T {
             } else {
                 read_error::cond.raise(e)
             }
-        }).in {
+        }).inside {
             while keep_reading {
                 self.push_bytes(&mut buf, DEFAULT_BUF_SIZE)
             }
@@ -640,7 +640,7 @@ mod test {
             None
         };
         do read_error::cond.trap(|_| {
-        }).in {
+        }).inside {
             let byte = reader.read_byte();
             assert!(byte == None);
         }
@@ -679,7 +679,7 @@ mod test {
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         do read_error::cond.trap(|_| {
-        }).in {
+        }).inside {
             assert!(reader.read_bytes(4) == ~[10, 11]);
         }
     }
@@ -720,7 +720,7 @@ mod test {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
         do read_error::cond.trap(|_| {
-        }).in {
+        }).inside {
             reader.push_bytes(&mut buf, 4);
             assert!(buf == ~[8, 9, 10, 11]);
         }
@@ -743,7 +743,7 @@ mod test {
             }
         };
         let mut buf = ~[8, 9];
-        do read_error::cond.trap(|_| { } ).in {
+        do read_error::cond.trap(|_| { } ).inside {
             reader.push_bytes(&mut buf, 4);
         }
         assert!(buf == ~[8, 9, 10]);

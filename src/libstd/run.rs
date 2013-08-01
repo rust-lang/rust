@@ -152,7 +152,7 @@ impl Process {
         let (in_pipe, in_fd) = match options.in_fd {
             None => {
                 let pipe = os::pipe();
-                (Some(pipe), pipe.in)
+                (Some(pipe), pipe.input)
             },
             Some(fd) => (None, fd)
         };
@@ -175,7 +175,7 @@ impl Process {
                                    in_fd, out_fd, err_fd);
 
         unsafe {
-            for in_pipe.iter().advance  |pipe| { libc::close(pipe.in); }
+            for in_pipe.iter().advance  |pipe| { libc::close(pipe.input); }
             for out_pipe.iter().advance |pipe| { libc::close(pipe.out); }
             for err_pipe.iter().advance |pipe| { libc::close(pipe.out); }
         }
@@ -184,8 +184,8 @@ impl Process {
             pid: res.pid,
             handle: res.handle,
             input: in_pipe.map(|pipe| pipe.out),
-            output: out_pipe.map(|pipe| os::fdopen(pipe.in)),
-            error: err_pipe.map(|pipe| os::fdopen(pipe.in)),
+            output: out_pipe.map(|pipe| os::fdopen(pipe.input)),
+            error: err_pipe.map(|pipe| os::fdopen(pipe.input)),
             exit_code: None,
         }
     }
@@ -1025,7 +1025,7 @@ mod tests {
         let mut proc = run::Process::new("cat", [], run::ProcessOptions {
             dir: None,
             env: None,
-            in_fd: Some(pipe_in.in),
+            in_fd: Some(pipe_in.input),
             out_fd: Some(pipe_out.out),
             err_fd: Some(pipe_err.out)
         });
@@ -1034,14 +1034,14 @@ mod tests {
         assert!(proc.output_redirected());
         assert!(proc.error_redirected());
 
-        os::close(pipe_in.in);
+        os::close(pipe_in.input);
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
         let expected = ~"test";
         writeclose(pipe_in.out, expected);
-        let actual = readclose(pipe_out.in);
-        readclose(pipe_err.in);
+        let actual = readclose(pipe_out.input);
+        readclose(pipe_err.input);
         proc.finish();
 
         assert_eq!(expected, actual);

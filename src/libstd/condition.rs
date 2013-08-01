@@ -73,7 +73,7 @@ struct Trap<'self, T, U> {
 }
 
 impl<'self, T, U> Trap<'self, T, U> {
-    pub fn in<V>(&self, inner: &'self fn() -> V) -> V {
+    pub fn inside<V>(&self, inner: &'self fn() -> V) -> V {
         let _g = Guard { cond: self.cond };
         debug!("Trap: pushing handler to TLS");
         local_data::set(self.cond.key, self.handler);
@@ -119,7 +119,7 @@ mod test {
             debug!("nested_trap_test_inner: in handler");
             inner_trapped = true;
             0
-        }).in {
+        }).inside {
             debug!("nested_trap_test_inner: in protected block");
             trouble(1);
         }
@@ -134,7 +134,7 @@ mod test {
         do sadness::cond.trap(|_j| {
             debug!("nested_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).in {
+        }).inside {
             debug!("nested_guard_test_outer: in protected block");
             nested_trap_test_inner();
             trouble(1);
@@ -152,7 +152,7 @@ mod test {
             let i = 10;
             debug!("nested_reraise_trap_test_inner: handler re-raising");
             sadness::cond.raise(i)
-        }).in {
+        }).inside {
             debug!("nested_reraise_trap_test_inner: in protected block");
             trouble(1);
         }
@@ -167,7 +167,7 @@ mod test {
         do sadness::cond.trap(|_j| {
             debug!("nested_reraise_trap_test_outer: in handler");
             outer_trapped = true; 0
-        }).in {
+        }).inside {
             debug!("nested_reraise_trap_test_outer: in protected block");
             nested_reraise_trap_test_inner();
         }
@@ -182,7 +182,7 @@ mod test {
         do sadness::cond.trap(|j| {
             debug!("test_default: in handler");
             sadness::cond.raise_default(j, || { trapped=true; 5 })
-        }).in {
+        }).inside {
             debug!("test_default: in protected block");
             trouble(1);
         }
@@ -205,7 +205,7 @@ mod test {
                 do sadness::cond.trap(|_| {
                     trapped = true;
                     0
-                }).in {
+                }).inside {
                     sadness::cond.raise(0);
                 }
                 assert!(trapped);
