@@ -380,7 +380,7 @@ mod test {
             }
 
             do spawntask {
-                for max.times {
+                do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }
@@ -405,7 +405,7 @@ mod test {
             }
 
             do spawntask {
-                for max.times {
+                do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }

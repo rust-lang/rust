@@ -129,6 +129,7 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             coroutine: Some(Coroutine::empty()),
+            name: None,
             sched: None,
             task_type: SchedTask
         }
