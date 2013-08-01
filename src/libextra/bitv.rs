@@ -1638,9 +1638,9 @@ mod tests {
     fn bench_btv_small_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(uint::bits, false);
         do b.iter {
-            let mut sum = 0;
+            let mut _sum = 0;
             foreach pres in bitv.iter() {
-                sum += pres as uint;
+                _sum += pres as uint;
             }
         }
     }
@@ -1649,9 +1649,9 @@ mod tests {
     fn bench_bitv_big_iter(b: &mut BenchHarness) {
         let bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
-            let mut sum = 0;
+            let mut _sum = 0;
             foreach pres in bitv.iter() {
-                sum += pres as uint;
+                _sum += pres as uint;
             }
         }
     }
@@ -1661,9 +1661,9 @@ mod tests {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
         do b.iter {
-            let mut sum = 0;
+            let mut _sum = 0;
             foreach idx in bitv.iter() {
-                sum += idx;
+                _sum += idx;
             }
         }
     }
