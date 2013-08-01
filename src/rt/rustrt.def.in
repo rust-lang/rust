@@ -1,9 +1,3 @@
-debug_box
-debug_fn
-debug_opaque
-debug_ptrcast
-debug_tag
-debug_tydesc
 debug_get_stk_seg
 debug_abi_1
 debug_abi_2
@@ -178,7 +172,6 @@ rust_dbg_lock_wait
 rust_dbg_lock_signal
 rust_dbg_call
 rust_dbg_do_nothing
-rust_dbg_breakpoint
 rust_osmain_sched_id
 rust_task_inhibit_kill
 rust_task_allow_kill

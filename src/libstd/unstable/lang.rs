@@ -41,8 +41,6 @@ pub mod rustrt {
 
         #[rust_stack]
         pub fn rust_try_get_task() -> *rust_task;
-
-        pub fn rust_dbg_breakpoint();
     }
 }
 

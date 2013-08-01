@@ -17,19 +17,6 @@
 #include <string>
 #include <cstdlib>
 
-#ifndef _WIN32
-
-#include <signal.h>
-#define BREAKPOINT_AWESOME                      \
-    do {                                        \
-        signal(SIGTRAP, SIG_IGN);               \
-        raise(SIGTRAP);                         \
-    } while (0)
-
-#else
-#define BREAKPOINT_AWESOME
-#endif
-
 struct rust_task;
 
 namespace debug {
