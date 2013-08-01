@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-fn iter_vec<T>(v: ~[T], f: &fn(&T)) { for v.iter().advance |x| { f(x); } }
+fn iter_vec<T>(v: ~[T], f: &fn(&T)) { foreach x in v.iter() { f(x); } }
 
 pub fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7];

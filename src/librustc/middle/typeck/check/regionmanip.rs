@@ -32,11 +32,11 @@ pub fn replace_bound_regions_in_fn_sig(
 {
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    for opt_self_ty.iter().advance |&self_ty| {
+    foreach &self_ty in opt_self_ty.iter() {
         all_tys.push(self_ty);
     }
 
-    for opt_self_ty.iter().advance |&t| { all_tys.push(t) }
+    foreach &t in opt_self_ty.iter() { all_tys.push(t) }
 
     debug!("replace_bound_regions_in_fn_sig(self_ty=%?, fn_sig=%s, \
             all_tys=%?)",
@@ -199,7 +199,7 @@ pub fn relate_nested_regions(
      */
 
     let mut the_stack = ~[];
-    for opt_region.iter().advance |&r| { the_stack.push(r); }
+    foreach &r in opt_region.iter() { the_stack.push(r); }
     walk_ty(tcx, &mut the_stack, ty, relate_op);
 
     fn walk_ty(tcx: ty::ctxt,
@@ -230,7 +230,7 @@ pub fn relate_nested_regions(
               r_sub: ty::Region,
               relate_op: &fn(ty::Region, ty::Region))
     {
-        for the_stack.iter().advance |&r| {
+        foreach &r in the_stack.iter() {
             if !r.is_bound() && !r_sub.is_bound() {
                 relate_op(r, r_sub);
             }
@@ -258,14 +258,14 @@ pub fn relate_free_regions(
     debug!("relate_free_regions >>");
 
     let mut all_tys = ~[];
-    for fn_sig.inputs.iter().advance |arg| {
+    foreach arg in fn_sig.inputs.iter() {
         all_tys.push(*arg);
     }
-    for self_ty.iter().advance |&t| {
+    foreach &t in self_ty.iter() {
         all_tys.push(t);
     }
 
-    for all_tys.iter().advance |&t| {
+    foreach &t in all_tys.iter() {
         debug!("relate_free_regions(t=%s)", ppaux::ty_to_str(tcx, t));
         relate_nested_regions(tcx, None, t, |a, b| {
             match (&a, &b) {

@@ -190,7 +190,7 @@ impl ABIInfo for MIPS_ABIInfo {
         let mut attrs = ~[];
         let mut offset = if sret { 4 } else { 0 };
 
-        for atys.iter().advance |aty| {
+        foreach aty in atys.iter() {
             let (ty, attr) = classify_arg_ty(*aty, &mut offset);
             arg_tys.push(ty);
             attrs.push(attr);

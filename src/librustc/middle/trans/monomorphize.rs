@@ -75,8 +75,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         self_vtables: self_vtables
     };
 
-    for real_substs.tps.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
-    for psubsts.tys.iter().advance |s| { assert!(!ty::type_has_params(*s)); }
+    foreach s in real_substs.tps.iter() { assert!(!ty::type_has_params(*s)); }
+    foreach s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, psubsts.tys.len());
 
 

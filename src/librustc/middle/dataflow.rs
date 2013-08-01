@@ -266,7 +266,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                 f: &fn(uint) -> bool) -> bool {
         //! Helper for iterating over the bits in a bit set.
 
-        for words.iter().enumerate().advance |(word_index, &word)| {
+        foreach (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::bits;
                 for uint::range(0, uint::bits) |offset| {
@@ -391,7 +391,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
         self.merge_with_entry_set(blk.id, in_out);
 
-        for blk.stmts.iter().advance |&stmt| {
+        foreach &stmt in blk.stmts.iter() {
             self.walk_stmt(stmt, in_out, loop_scopes);
         }
 
@@ -512,7 +512,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                         loop_kind: ForLoop,
                         break_bits: reslice(in_out).to_owned()
                     });
-                    for decl.inputs.iter().advance |input| {
+                    foreach input in decl.inputs.iter() {
                         self.walk_pat(input.pat, func_bits, loop_scopes);
                     }
                     self.walk_block(body, func_bits, loop_scopes);
@@ -631,7 +631,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 // together the bits from each arm:
                 self.reset(in_out);
 
-                for arms.iter().advance |arm| {
+                foreach arm in arms.iter() {
                     // in_out reflects the discr and all guards to date
                     self.walk_opt_expr(arm.guard, guards, loop_scopes);
 
@@ -706,7 +706,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_struct(_, ref fields, with_expr) => {
-                for fields.iter().advance |field| {
+                foreach field in fields.iter() {
                     self.walk_expr(field.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
@@ -767,10 +767,10 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_inline_asm(ref inline_asm) => {
-                for inline_asm.inputs.iter().advance |&(_, expr)| {
+                foreach &(_, expr) in inline_asm.inputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
-                for inline_asm.outputs.iter().advance |&(_, expr)| {
+                foreach &(_, expr) in inline_asm.outputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
             }
@@ -838,7 +838,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   exprs: &[@ast::expr],
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        for exprs.iter().advance |&expr| {
+        foreach &expr in exprs.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -847,7 +847,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                      opt_expr: Option<@ast::expr>,
                      in_out: &mut [uint],
                      loop_scopes: &mut ~[LoopScope]) {
-        for opt_expr.iter().advance |&expr| {
+        foreach &expr in opt_expr.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -900,7 +900,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // alternatives, so we must treat this like an N-way select
         // statement.
         let initial_state = reslice(in_out).to_owned();
-        for pats.iter().advance |&pat| {
+        foreach &pat in pats.iter() {
             let mut temp = initial_state.clone();
             self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
@@ -948,7 +948,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
-        for bits.mut_iter().advance |b| { *b = e; }
+        foreach b in bits.mut_iter() { *b = e; }
     }
 
     fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
@@ -996,7 +996,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     // Note: this is a little endian printout of bytes.
 
-    for words.iter().advance |&word| {
+    foreach &word in words.iter() {
         let mut v = word;
         for uint::range(0, uint::bytes) |_| {
             result.push_char(sep);

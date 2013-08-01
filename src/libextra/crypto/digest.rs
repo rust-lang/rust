@@ -45,7 +45,7 @@ pub trait Digest {
 
 fn to_hex(rr: &[u8]) -> ~str {
     let mut s = ~"";
-    for rr.iter().advance() |b| {
+    foreach b in rr.iter() {
         let hex = uint::to_str_radix(*b as uint, 16u);
         if hex.len() == 1 {
             s.push_char('0');

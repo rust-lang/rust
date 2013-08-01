@@ -14,7 +14,7 @@ use option::{Some, None};
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 use vec::{OwnedVector, MutableVector};
 use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::sched::Scheduler;
@@ -100,7 +100,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let on_exit: ~fn(bool) = |exit_status| {
             let mut handles = handles.take();
             // Tell schedulers to exit
-            for handles.mut_iter().advance |handle| {
+            foreach handle in handles.mut_iter() {
                 handle.send(Shutdown);
             }
 
@@ -125,7 +125,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         // Wait for schedulers
-        for threads.consume_iter().advance() |thread| {
+        foreach thread in threads.consume_iter() {
             thread.join();
         }
     }
@@ -380,7 +380,7 @@ fn base_port() -> uint {
 
     let mut final_base = base;
 
-    for bases.iter().advance |&(dir, base)| {
+    foreach &(dir, base) in bases.iter() {
         if path.contains(dir) {
             final_base = base;
             break;

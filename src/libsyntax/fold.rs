@@ -380,7 +380,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 pub fn noop_fold_block(b: &Block, fld: @ast_fold) -> Block {
     let view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut stmts = ~[];
-    for b.stmts.iter().advance |stmt| {
+    foreach stmt in b.stmts.iter() {
         match fld.fold_stmt(*stmt) {
             None => {}
             Some(stmt) => stmts.push(stmt)

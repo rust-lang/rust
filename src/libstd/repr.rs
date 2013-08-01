@@ -20,8 +20,9 @@ use cast::transmute;
 use char;
 use container::Container;
 use io::{Writer, WriterUtil};
-use iterator::IteratorUtil;
+use iterator::Iterator;
 use libc::c_void;
+use option::{Some, None};
 use ptr;
 use reflect;
 use reflect::{MovePtr, align};
@@ -175,7 +176,7 @@ impl ReprVisitor {
 
     pub fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        for slice.iter().advance |ch| {
+        foreach ch in slice.iter() {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');

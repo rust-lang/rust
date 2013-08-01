@@ -194,7 +194,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-            for sig.inputs.iter().advance |arg| {
+            foreach arg in sig.inputs.iter() {
                 type_needs(&cx, use_repr, *arg);
             }
         }
@@ -241,8 +241,8 @@ pub fn type_needs_inner(cx: &Context,
                 if list::find(enums_seen, |id| *id == did).is_none() {
                     let seen = @Cons(did, enums_seen);
                     let r = ty::enum_variants(cx.ccx.tcx, did);
-                    for r.iter().advance |v| {
-                        for v.args.iter().advance |aty| {
+                    foreach v in r.iter() {
+                        foreach aty in v.args.iter() {
                             let t = ty::subst(cx.ccx.tcx, &(*substs), *aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
@@ -268,7 +268,7 @@ pub fn mark_for_method_call(cx: &Context, e_id: NodeId, callee_id: NodeId) {
     let mut opt_static_did = None;
     {
         let r = cx.ccx.maps.method_map.find(&e_id);
-        for r.iter().advance |mth| {
+        foreach mth in r.iter() {
             match mth.origin {
               typeck::method_static(did) => {
                   opt_static_did = Some(did);
@@ -288,12 +288,12 @@ pub fn mark_for_method_call(cx: &Context, e_id: NodeId, callee_id: NodeId) {
     // above because the recursive call to `type_needs` can trigger
     // inlining and hence can cause `method_map` and
     // `node_type_substs` to be modified.
-    for opt_static_did.iter().advance |&did| {
+    foreach &did in opt_static_did.iter() {
         {
             let r = cx.ccx.tcx.node_type_substs.find_copy(&callee_id);
-            for r.iter().advance |ts| {
+            foreach ts in r.iter() {
                 let type_uses = type_uses_for(cx.ccx, did, ts.len());
-                for type_uses.iter().zip(ts.iter()).advance |(uses, subst)| {
+                foreach (uses, subst) in type_uses.iter().zip(ts.iter()) {
                     type_needs(cx, *uses, *subst)
                 }
             }
@@ -329,10 +329,10 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
       }
       expr_path(_) | expr_self => {
         let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
-        for opt_ts.iter().advance |ts| {
+        foreach ts in opt_ts.iter() {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for uses_for_ts.iter().zip(ts.iter()).advance |(uses, subst)| {
+            foreach (uses, subst) in uses_for_ts.iter().zip(ts.iter()) {
                 type_needs(cx, *uses, *subst)
             }
         }
@@ -341,7 +341,7 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
           match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
               ast::OwnedSigil => {}
               ast::BorrowedSigil | ast::ManagedSigil => {
-                  for freevars::get_freevars(cx.ccx.tcx, e.id).iter().advance |fv| {
+                  foreach fv in freevars::get_freevars(cx.ccx.tcx, e.id).iter() {
                       let node_id = ast_util::def_id_of_def(fv.def).node;
                       node_type_needs(cx, use_repr, node_id);
                   }
@@ -372,7 +372,7 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
       }
       expr_call(f, _, _) => {
           let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id));
-          for r.iter().advance |a| {
+          foreach a in r.iter() {
               type_needs(cx, use_repr, *a);
           }
       }
@@ -381,17 +381,17 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
         let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id));
-        for r.iter().advance |a| {
+        foreach a in r.iter() {
             type_needs(cx, use_repr, *a);
         }
         mark_for_method_call(cx, e.id, callee_id);
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.iter().advance |&(_, input)| {
+        foreach &(_, input) in ia.inputs.iter() {
           node_type_needs(cx, use_repr, input.id);
         }
-        for ia.outputs.iter().advance |&(_, out)| {
+        foreach &(_, out) in ia.outputs.iter() {
           node_type_needs(cx, use_repr, out.id);
         }
       }
@@ -423,7 +423,7 @@ pub fn handle_body(cx: &Context, body: &Block) {
         },
         visit_block: |b, (cx, v)| {
             visit::visit_block(b, (cx, v));
-            for b.expr.iter().advance |e| {
+            foreach e in b.expr.iter() {
                 node_type_needs(cx, use_repr, e.id);
             }
         },

@@ -58,7 +58,7 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
 fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
     let mut result = ~[];
     let mut p = 0f32;
-    for a.iter().advance |a_i| {
+    foreach a_i in a.iter() {
         let mut a_i = *a_i;
         p += a_i.p;
         a_i.p = p * LOOKUP_SCALE;
@@ -134,7 +134,7 @@ impl RandomFasta {
     fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
         let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
         let mut j = 0;
-        for lookup.mut_iter().enumerate().advance |(i, slot)| {
+        foreach (i, slot) in lookup.mut_iter().enumerate() {
             while a[j].p < (i as f32) {
                 j += 1;
             }
@@ -150,7 +150,7 @@ impl RandomFasta {
 
     fn nextc(&mut self) -> u8 {
         let r = self.rng(1.0);
-        for self.lookup.iter().advance |a| {
+        foreach a in self.lookup.iter() {
             if a.p >= r {
                 return a.c;
             }

@@ -220,7 +220,7 @@ pub fn env() -> ~[(~str,~str)] {
 
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
-            for input.iter().advance |p| {
+            foreach p in input.iter() {
                 let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
@@ -1419,7 +1419,7 @@ impl MemoryMap {
         let mut offset: off_t = 0;
         let len = round_up(min_len, page_size()) as size_t;
 
-        for options.iter().advance |&o| {
+        foreach &o in options.iter() {
             match o {
                 MapReadable => { prot |= libc::PROT_READ; },
                 MapWritable => { prot |= libc::PROT_WRITE; },
@@ -1492,7 +1492,7 @@ impl MemoryMap {
         let mut offset: uint = 0;
         let len = round_up(min_len, page_size()) as SIZE_T;
 
-        for options.iter().advance |&o| {
+        foreach &o in options.iter() {
             match o {
                 MapReadable => { readable = true; },
                 MapWritable => { writable = true; },
@@ -1788,7 +1788,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(e.len() > 0u);
-        for e.iter().advance |p| {
+        foreach p in e.iter() {
             let (n, v) = (*p).clone();
             debug!(n.clone());
             let v2 = getenv(n);
@@ -1832,7 +1832,7 @@ mod tests {
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
-        for oldhome.iter().advance |s| { setenv("HOME", *s) }
+        foreach s in oldhome.iter() { setenv("HOME", *s) }
     }
 
     #[test]
@@ -1880,7 +1880,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert!(dirs.len() > 0u);
 
-        for dirs.iter().advance |dir| {
+        foreach dir in dirs.iter() {
             debug!((*dir).clone());
         }
     }

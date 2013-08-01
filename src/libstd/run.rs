@@ -16,7 +16,6 @@ use cast;
 use clone::Clone;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use io;
-use iterator::IteratorUtil;
 use libc::{pid_t, c_void, c_int};
 use libc;
 use option::{Some, None};
@@ -175,9 +174,9 @@ impl Process {
                                    in_fd, out_fd, err_fd);
 
         unsafe {
-            for in_pipe.iter().advance  |pipe| { libc::close(pipe.input); }
-            for out_pipe.iter().advance |pipe| { libc::close(pipe.out); }
-            for err_pipe.iter().advance |pipe| { libc::close(pipe.out); }
+            foreach pipe in in_pipe.iter() { libc::close(pipe.input); }
+            foreach pipe in out_pipe.iter() { libc::close(pipe.out); }
+            foreach pipe in err_pipe.iter() { libc::close(pipe.out); }
         }
 
         Process {
@@ -322,7 +321,7 @@ impl Process {
      * If the child has already been finished then the exit code is returned.
      */
     pub fn finish(&mut self) -> int {
-        for self.exit_code.iter().advance |&code| {
+        foreach &code in self.exit_code.iter() {
             return code;
         }
         self.close_input();
@@ -521,7 +520,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        for create_err.iter().advance |msg| {
+        foreach msg in create_err.iter() {
             fail!("failure in CreateProcess: %s", *msg);
         }
 
@@ -580,7 +579,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
-    for args.iter().advance |arg| {
+    foreach arg in args.iter() {
         cmd.push_char(' ');
         append_arg(&mut cmd, *arg);
     }
@@ -697,7 +696,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
                 cb: &fn(**libc::c_char) -> T) -> T {
     let mut argptrs = ~[prog.as_c_str(|b| b)];
     let mut tmps = ~[];
-    for args.iter().advance |arg| {
+    foreach arg in args.iter() {
         let t = @(*arg).clone();
         tmps.push(t);
         argptrs.push(t.as_c_str(|b| b));
@@ -715,7 +714,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for es.iter().advance |pair| {
+        foreach pair in es.iter() {
             // Use of match here is just to workaround limitations
             // in the stage0 irrefutable pattern impl.
             match pair {
@@ -744,7 +743,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     match env {
       Some(es) => {
         let mut blk = ~[];
-        for es.iter().advance |pair| {
+        foreach pair in es.iter() {
             let kv = fmt!("%s=%s", pair.first(), pair.second());
             blk.push_all(kv.to_bytes_with_null());
         }
@@ -1300,7 +1299,7 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        for r.iter().advance |&(ref k, ref v)| {
+        foreach &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() || output.contains(fmt!("%s=%s", *k, *v)));
         }
@@ -1314,7 +1313,7 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        for r.iter().advance |&(k, v)| {
+        foreach &(k, v) in r.iter() {
             // don't check android RANDOM variables
             if k != ~"RANDOM" {
                 assert!(output.contains(fmt!("%s=%s", k, v)) ||

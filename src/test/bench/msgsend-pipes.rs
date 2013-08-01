@@ -76,7 +76,7 @@ fn run(args: &[~str]) {
         server(&from_parent, &to_parent);
     }
 
-    for worker_results.iter().advance |r| {
+    foreach r in worker_results.iter() {
         r.recv();
     }
 

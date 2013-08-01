@@ -426,7 +426,7 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
 
         // Drop the fields
         let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-        for field_tys.iter().enumerate().advance |(i, fld)| {
+        foreach (i, fld) in field_tys.iter().enumerate() {
             let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
@@ -461,7 +461,7 @@ pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: 
 
     // Drop the fields
     let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-    for field_tys.iter().enumerate().advance |(i, fld)| {
+    foreach (i, fld) in field_tys.iter().enumerate() {
         let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
     }
