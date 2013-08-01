@@ -102,7 +102,7 @@ fn test_task_pool() {
         g
     };
     let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
-    for 8.times {
+    do 8.times {
         pool.execute(|i| printfln!("Hello from thread %u!", *i));
     }
 }

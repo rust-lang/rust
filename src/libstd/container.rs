@@ -87,17 +87,7 @@ pub trait Set<T>: Container {
     /// Return true if the set is a superset of another
     fn is_superset(&self, other: &Self) -> bool;
 
-    /// Visit the values representing the difference
-    fn difference(&self, other: &Self, f: &fn(&T) -> bool) -> bool;
-
-    /// Visit the values representing the symmetric difference
-    fn symmetric_difference(&self, other: &Self, f: &fn(&T) -> bool) -> bool;
-
-    /// Visit the values representing the intersection
-    fn intersection(&self, other: &Self, f: &fn(&T) -> bool) -> bool;
-
-    /// Visit the values representing the union
-    fn union(&self, other: &Self, f: &fn(&T) -> bool) -> bool;
+    // FIXME #8154: Add difference, sym. difference, intersection and union iterators
 }
 
 /// This trait represents actions which can be performed on sets to mutate

@@ -1828,7 +1828,7 @@ impl<'self> StrSlice<'self> for &'self str {
                 do ret.as_mut_buf |rbuf, _len| {
                     let mut rbuf = rbuf;
 
-                    for nn.times {
+                    do nn.times {
                         ptr::copy_memory(rbuf, buf, len);
                         rbuf = rbuf.offset(len as int);
                     }

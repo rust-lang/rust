@@ -770,9 +770,10 @@ impl<T:Reader> ReaderUtil for T {
 
     fn read_lines(&self) -> ~[~str] {
         do vec::build |push| {
-            for self.each_line |line| {
+            do self.each_line |line| {
                 push(line.to_owned());
-            }
+                true
+            };
         }
     }
 
@@ -1880,16 +1881,16 @@ mod tests {
 
         {
             let file = io::file_reader(&path).unwrap();
-            for file.each_byte() |_| {
-                fail!("must be empty");
-            }
+            do file.each_byte() |_| {
+                fail!("must be empty")
+            };
         }
 
         {
             let file = io::file_reader(&path).unwrap();
-            for file.each_char() |_| {
-                fail!("must be empty");
-            }
+            do file.each_char() |_| {
+                fail!("must be empty")
+            };
         }
     }
 

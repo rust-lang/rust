@@ -121,11 +121,11 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     return None;
 }
 
-type Visitor<'self> = &'self fn(root: **Word, tydesc: *TyDesc) -> bool;
+type Visitor<'self> = &'self fn(root: **Word, tydesc: *TyDesc);
 
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
-unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
+unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     let fp_bytes = fp as *u8;
     let sp_meta = sp.sp_meta as *u32;
 
@@ -151,7 +151,7 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
             } else {
                 ptr::null()
             };
-            if !visitor(root, tydesc) { return false; }
+            visitor(root, tydesc);
         }
         sri += 1;
     }
@@ -164,10 +164,9 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
         }
         rri += 1;
     }
-    return true;
 }
 
-unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
+unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     _walk_safe_point(fp, sp, visitor)
 }
 
@@ -223,7 +222,7 @@ static need_cleanup:    Memory = exchange_heap | stack;
 
 // Walks stack, searching for roots of the requested type, and passes
 // each root to the visitor.
-unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> bool {
+unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     let mut segment = rustrt::rust_get_stack_segment();
     let mut last_ret: *Word = ptr::null();
     // To avoid collecting memory used by the GC itself, skip stack
@@ -231,7 +230,7 @@ unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> boo
     // frame is marked by a sentinel, which is a box pointer stored on
     // the stack.
     let mut reached_sentinel = ptr::is_null(sentinel);
-    for walk_stack |frame| {
+    do walk_stack |frame| {
         let pc = last_ret;
         let Segment {segment: next_segment, boundary: boundary} =
             find_segment_for_frame(frame.fp, segment);
@@ -248,53 +247,46 @@ unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> boo
         let ret_offset = if boundary { 4 } else { 1 };
         last_ret = *ptr::offset(frame.fp, ret_offset as int) as *Word;
 
-        if ptr::is_null(pc) {
-            loop;
-        }
+        if !ptr::is_null(pc) {
 
-        let mut delay_reached_sentinel = reached_sentinel;
-        let sp = is_safe_point(pc);
-        match sp {
-          Some(sp_info) => {
-            for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
-                // Skip roots until we see the sentinel.
-                if !reached_sentinel {
-                    if root == sentinel {
-                        delay_reached_sentinel = true;
-                    }
-                    loop;
-                }
+            let mut delay_reached_sentinel = reached_sentinel;
+            let sp = is_safe_point(pc);
+            match sp {
+                Some(sp_info) => {
+                    do walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                        // Skip roots until we see the sentinel.
+                        if !reached_sentinel && root == sentinel {
+                            delay_reached_sentinel = true;
+                        }
 
-                // Skip null pointers, which can occur when a
-                // unique pointer has already been freed.
-                if ptr::is_null(*root) {
-                    loop;
-                }
-
-                if ptr::is_null(tydesc) {
-                    // Root is a generic box.
-                    let refcount = **root;
-                    if mem | task_local_heap != 0 && refcount != -1 {
-                        if !visitor(root, tydesc) { return false; }
-                    } else if mem | exchange_heap != 0 && refcount == -1 {
-                        if !visitor(root, tydesc) { return false; }
-                    }
-                } else {
-                    // Root is a non-immediate.
-                    if mem | stack != 0 {
-                        if !visitor(root, tydesc) { return false; }
+                        // Skip null pointers, which can occur when a
+                        // unique pointer has already been freed.
+                        if reached_sentinel && !ptr::is_null(*root) {
+                            if ptr::is_null(tydesc) {
+                                // Root is a generic box.
+                                let refcount = **root;
+                                if mem | task_local_heap != 0 && refcount != -1 {
+                                    visitor(root, tydesc);
+                                } else if mem | exchange_heap != 0 && refcount == -1 {
+                                    visitor(root, tydesc);
+                                }
+                            } else {
+                                // Root is a non-immediate.
+                                if mem | stack != 0 {
+                                    visitor(root, tydesc);
+                                }
+                            }
+                        }
                     }
                 }
+                None => ()
             }
-          }
-          None => ()
+            reached_sentinel = delay_reached_sentinel;
         }
-        reached_sentinel = delay_reached_sentinel;
     }
-    return true;
 }
 
-unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> bool {
+unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     _walk_gc_roots(mem, sentinel, visitor)
 }
 pub fn gc() {
@@ -304,7 +296,7 @@ pub fn gc() {
             return;
         }
 
-        for walk_gc_roots(task_local_heap, ptr::null()) |_root, _tydesc| {
+        do walk_gc_roots(task_local_heap, ptr::null()) |_root, _tydesc| {
             // FIXME(#2997): Walk roots and mark them.
             io::stdout().write([46]); // .
         }
@@ -349,18 +341,17 @@ pub fn cleanup_stack_for_failure() {
         };
 
         let mut roots = HashSet::new();
-        for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
+        do walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
-            if roots.contains(&*root) {
-                loop;
-            }
-            roots.insert(*root);
+            if !roots.contains(&*root) {
+                roots.insert(*root);
 
-            if ptr::is_null(tydesc) {
-                // FIXME #4420: Destroy this box
-                // FIXME #4330: Destroy this box
-            } else {
-                ((*tydesc).drop_glue)(*root as *i8);
+                if ptr::is_null(tydesc) {
+                    // FIXME #4420: Destroy this box
+                    // FIXME #4330: Destroy this box
+                } else {
+                    ((*tydesc).drop_glue)(*root as *i8);
+                }
             }
         }
     }

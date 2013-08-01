@@ -14,13 +14,13 @@
 use iter::Times;
 let ten = 10 as uint;
 let mut accum = 0;
-for ten.times { accum += 1; }
+do ten.times { accum += 1; }
 ~~~
 
 */
 
 #[allow(missing_doc)]
 pub trait Times {
-    fn times(&self, it: &fn() -> bool) -> bool;
+    fn times(&self, it: &fn());
 }
 

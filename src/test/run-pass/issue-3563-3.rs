@@ -68,7 +68,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
     let mut lines = do vec::build_sized(height) |push| {
-            for height.times {
+            do height.times {
                 push(vec::from_elem(width, '.'));
             }
         };
