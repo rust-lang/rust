@@ -769,7 +769,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
-        for stress_factor().times {
+        do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let port_cell = Cell::new(port);
@@ -784,7 +784,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
-        for stress_factor().times {
+        do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
@@ -804,7 +804,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
-        for stress_factor().times {
+        do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
                 let chan_cell = Cell::new(chan);
@@ -830,7 +830,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
-        for stress_factor().times {
+        do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<~int>();
                 let chan_cell = Cell::new(chan);
@@ -849,7 +849,7 @@ mod test {
 
     #[test]
     fn stream_send_recv_stress() {
-        for stress_factor().times {
+        do stress_factor().times {
             do run_in_mt_newsched_task {
                 let (port, chan) = stream::<~int>();
 
@@ -886,8 +886,8 @@ mod test {
         // Regression test that we don't run out of stack in scheduler context
         do run_in_newsched_task {
             let (port, chan) = stream();
-            for 10000.times { chan.send(()) }
-            for 10000.times { port.recv() }
+            do 10000.times { chan.send(()) }
+            do 10000.times { port.recv() }
         }
     }
 
@@ -897,14 +897,14 @@ mod test {
             let (port, chan) = stream();
             let chan = SharedChan::new(chan);
             let total = stress_factor() + 100;
-            for total.times {
+            do total.times {
                 let chan_clone = chan.clone();
                 do spawntask_random {
                     chan_clone.send(());
                 }
             }
 
-            for total.times {
+            do total.times {
                 port.recv();
             }
         }
@@ -919,7 +919,7 @@ mod test {
             let end_chan = SharedChan::new(end_chan);
             let port = SharedPort::new(port);
             let total = stress_factor() + 100;
-            for total.times {
+            do total.times {
                 let end_chan_clone = end_chan.clone();
                 let port_clone = port.clone();
                 do spawntask_random {
@@ -928,11 +928,11 @@ mod test {
                 }
             }
 
-            for total.times {
+            do total.times {
                 chan.send(());
             }
 
-            for total.times {
+            do total.times {
                 end_port.recv();
             }
         }
@@ -959,7 +959,7 @@ mod test {
             let send_total = 10;
             let recv_total = 20;
             do spawntask_random {
-                for send_total.times {
+                do send_total.times {
                     let chan_clone = chan.clone();
                     do spawntask_random {
                         chan_clone.send(());
@@ -968,7 +968,7 @@ mod test {
             }
             let end_chan_clone = end_chan.clone();
             do spawntask_random {
-                for recv_total.times {
+                do recv_total.times {
                     let port_clone = port.clone();
                     let end_chan_clone = end_chan_clone.clone();
                     do spawntask_random {
@@ -979,7 +979,7 @@ mod test {
             }
 
             let mut recvd = 0;
-            for recv_total.times {
+            do recv_total.times {
                 recvd += if end_port.recv() { 1 } else { 0 };
             }
 
@@ -998,15 +998,15 @@ mod test {
             let pipe = megapipe();
             let total = stress_factor() + 10;
             let mut rng = rand::rng();
-            for total.times {
+            do total.times {
                 let msgs = rng.gen_uint_range(0, 10);
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
                 do spawntask_random {
-                    for msgs.times {
+                    do msgs.times {
                         pipe_clone.send(());
                     }
-                    for msgs.times {
+                    do msgs.times {
                         pipe_clone.recv();
                     }
                 }
@@ -1014,7 +1014,7 @@ mod test {
                 end_chan_clone.send(());
             }
 
-            for total.times {
+            do total.times {
                 end_port.recv();
             }
         }

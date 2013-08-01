@@ -16,6 +16,7 @@
 use std::num;
 use std::util::{swap, replace};
 use std::iterator::{FromIterator, Extendable};
+use std::uint;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -47,7 +48,7 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
         } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for self.len().times {
+            for uint::range(0, self.len()) |_| {
                 if x.next().unwrap() != y.next().unwrap() {
                     return false
                 }
@@ -65,7 +66,7 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for num::min(a_len, b_len).times {
+    for uint::range(0, num::min(a_len, b_len)) |_| {
         let (key_a, value_a) = x.next().unwrap();
         let (key_b, value_b) = y.next().unwrap();
         if *key_a < *key_b { return true; }
@@ -931,8 +932,8 @@ mod test_treemap {
 
         let mut rng = rand::IsaacRng::new_seeded(&[42]);
 
-        for 3.times {
-            for 90.times {
+        do 3.times {
+            do 90.times {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -943,7 +944,7 @@ mod test_treemap {
                 }
             }
 
-            for 30.times {
+            do 30.times {
                 let r = rng.gen_uint_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));

@@ -674,7 +674,7 @@ impl BitvSet {
     fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
-            for uint::bits.times {
+            for uint::range(0, uint::bits) |_| {
                 if w == 0 {
                     break;
                 }

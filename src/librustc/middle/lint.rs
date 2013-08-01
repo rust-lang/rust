@@ -451,7 +451,7 @@ impl Context {
         if doc_hidden && self.doc_hidden {
             self.doc_hidden = false;
         }
-        for pushed.times {
+        do pushed.times {
             let (lint, lvl, src) = self.lint_stack.pop();
             self.set_level(lint, lvl, src);
         }

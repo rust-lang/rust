@@ -90,13 +90,13 @@ mod tests {
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
-        for 20.times {
+        do 20.times {
             let range = r.gen_uint_range(1, 10);
             words.push(r.gen_bytes(range));
         }
-        for 20.times {
+        do 20.times {
             let mut input = ~[];
-            for 2000.times {
+            do 2000.times {
                 input.push_all(r.choose(words));
             }
             debug!("de/inflate of %u bytes of random word-sequences",

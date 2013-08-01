@@ -39,7 +39,7 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    for 100u.times {
+    do 100u.times {
         do task::spawn {
             assert_eq!(count(5u), 16u);
         };

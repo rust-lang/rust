@@ -548,7 +548,7 @@ an intermediate generation has already exited:
 ~~~
 # use std::task;
 # fn sleep_forever() { loop { task::yield() } }
-# fn wait_for_a_while() { for 1000.times { task::yield() } }
+# fn wait_for_a_while() { do 1000.times { task::yield() } }
 # do task::try::<int> {
 do task::spawn_supervised {
     do task::spawn_supervised {
@@ -567,7 +567,7 @@ other at all, using `task::spawn_unlinked` for _isolated failure_.
 ~~~
 # use std::task;
 # fn random() -> uint { 100 }
-# fn sleep_for(i: uint) { for i.times { task::yield() } }
+# fn sleep_for(i: uint) { do i.times { task::yield() } }
 # do task::try::<()> {
 let (time1, time2) = (random(), random());
 do task::spawn_unlinked {

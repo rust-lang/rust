@@ -636,7 +636,7 @@ pub mod rt {
                 buf.push_char(c);
             }
             buf.push_str(s);
-            for diff.times {
+            do diff.times {
                 buf.push_char(padchar);
             }
             return;

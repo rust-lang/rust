@@ -933,7 +933,7 @@ mod tests {
 
     #[test]
     fn test_fuzz() {
-        for 25.times {
+        do 25.times {
             fuzz_test(3);
             fuzz_test(16);
             fuzz_test(189);

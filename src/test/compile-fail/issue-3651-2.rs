@@ -9,5 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    do 5.times {}; //~ ERROR Do-block body must return bool, but returns () here. Perhaps
+    fn take_block(f: &fn() -> bool) -> bool { f() }
+    do take_block {}; //~ ERROR Do-block body must return bool, but returns () here. Perhaps
 }
