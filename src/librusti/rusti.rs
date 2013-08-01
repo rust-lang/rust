@@ -447,7 +447,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 
 /// Executes a line of input, which may either be rust code or a
 /// :command. Returns a new Repl if it has changed.
-pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
+pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~str,
                 use_rl: bool) -> bool
 {
     if line.starts_with(":") {
@@ -464,11 +464,11 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
                     split.slice(1, len).to_owned()
                 } else { ~[] };
 
-                match run_cmd(repl, in, out, cmd, args, use_rl) {
+                match run_cmd(repl, input, out, cmd, args, use_rl) {
                     action_none => { }
                     action_run_line(multiline_cmd) => {
                         if !multiline_cmd.is_empty() {
-                            return run_line(repl, in, out, multiline_cmd, use_rl);
+                            return run_line(repl, input, out, multiline_cmd, use_rl);
                         }
                     }
                 }
@@ -500,7 +500,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
 
 pub fn main() {
     let args = os::args();
-    let in = io::stdin();
+    let input = io::stdin();
     let out = io::stdout();
     let mut repl = Repl {
         prompt: ~"rusti> ",
@@ -542,7 +542,7 @@ pub fn main() {
                     }
                     loop;
                 }
-                run_line(&mut repl, in, out, line, istty);
+                run_line(&mut repl, input, out, line, istty);
             }
         }
     }

@@ -72,10 +72,10 @@ input, skips the current file and then numbers the remaining lines
 (where the numbers are from the start of each file, rather than the
 total line count).
 
-    let in = FileInput::from_vec(pathify([~"a.txt", ~"b.txt", ~"c.txt"],
+    let input = FileInput::from_vec(pathify([~"a.txt", ~"b.txt", ~"c.txt"],
                                              true));
 
-    for in.each_line |line| {
+    for input.each_line |line| {
         if line.is_empty() {
             break
         }
@@ -85,9 +85,9 @@ total line count).
     io::println("Continue?");
 
     if io::stdin().read_line() == ~"yes" {
-        in.next_file(); // skip!
+        input.next_file(); // skip!
 
-        for in.each_line_state |line, state| {
+        for input.each_line_state |line, state| {
            io::println(fmt!("%u: %s", state.line_num_file,
                                       line))
         }
@@ -589,29 +589,29 @@ mod test {
             make_file(filename.get_ref(), contents);
         }
 
-        let in = FileInput::from_vec(filenames);
+        let input = FileInput::from_vec(filenames);
 
         // read once from 0
-        assert_eq!(in.read_line(), ~"0 1");
-        in.next_file(); // skip the rest of 1
+        assert_eq!(input.read_line(), ~"0 1");
+        input.next_file(); // skip the rest of 1
 
         // read all lines from 1 (but don't read any from 2),
         for uint::range(1, 4) |i| {
-            assert_eq!(in.read_line(), fmt!("1 %u", i));
+            assert_eq!(input.read_line(), fmt!("1 %u", i));
         }
         // 1 is finished, but 2 hasn't been started yet, so this will
         // just "skip" to the beginning of 2 (Python's fileinput does
         // the same)
-        in.next_file();
+        input.next_file();
 
-        assert_eq!(in.read_line(), ~"2 1");
+        assert_eq!(input.read_line(), ~"2 1");
     }
 
     #[test]
     #[should_fail]
     fn test_input_vec_missing_file() {
         for input_vec(pathify([~"this/file/doesnt/exist"], true)) |line| {
-            io::println(line);
+            println(line);
         }
     }
 }

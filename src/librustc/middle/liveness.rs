@@ -1461,8 +1461,8 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       }
 
       expr_inline_asm(ref ia) => {
-        for ia.inputs.iter().advance |&(_, in)| {
-          (vt.visit_expr)(in, (this, vt));
+        for ia.inputs.iter().advance |&(_, input)| {
+          (vt.visit_expr)(input, (this, vt));
         }
 
         // Output operands must be lvalues
