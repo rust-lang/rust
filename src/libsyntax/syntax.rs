@@ -78,7 +78,5 @@ pub mod ext {
     pub mod auto_encode;
     pub mod source_util;
 
-    pub mod pipes;
-
     pub mod trace_macros;
 }
