@@ -1081,7 +1081,7 @@ mod big_tests {
             tim_sort(arr); // /sort
             isSorted(arr);
 
-            for 3.times {
+            do 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
                 arr.swap(i1, i2);
@@ -1100,7 +1100,7 @@ mod big_tests {
             tim_sort(arr); // +sort
             isSorted(arr);
 
-            for (n/100).times {
+            do (n/100).times {
                 let idx = rng.gen_uint_range(0, n);
                 arr[idx] = rng.gen();
             }
@@ -1153,7 +1153,7 @@ mod big_tests {
             tim_sort(arr); // /sort
             isSorted(arr);
 
-            for 3.times {
+            do 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
                 arr.swap(i1, i2);
@@ -1172,7 +1172,7 @@ mod big_tests {
             tim_sort(arr); // +sort
             isSorted(arr);
 
-            for (n/100).times {
+            do (n/100).times {
                 let idx = rng.gen_uint_range(0, n);
                 arr[idx] = @rng.gen();
             }

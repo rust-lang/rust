@@ -1899,7 +1899,7 @@ struct TimeBomb {
 
 impl Drop for TimeBomb {
     fn drop(&self) {
-        for self.explosivity.times {
+        do self.explosivity.times {
             println("blam!");
         }
     }

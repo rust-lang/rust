@@ -77,7 +77,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times {
+    do n.times {
         ss.push_str(" ");
     }
     return ss;

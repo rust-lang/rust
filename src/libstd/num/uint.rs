@@ -97,22 +97,21 @@ pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
 impl iter::Times for uint {
     #[inline]
     ///
-    /// A convenience form for basic iteration. Given a uint `x`,
-    /// `for x.times { ... }` executes the given block x times.
+    /// A convenience form for basic repetition. Given a uint `x`,
+    /// `do x.times { ... }` executes the given block x times.
     ///
     /// Equivalent to `for uint::range(0, x) |_| { ... }`.
     ///
     /// Not defined on all integer types to permit unambiguous
     /// use with integer literals of inferred integer-type as
-    /// the self-value (eg. `for 100.times { ... }`).
+    /// the self-value (eg. `do 100.times { ... }`).
     ///
-    fn times(&self, it: &fn() -> bool) -> bool {
+    fn times(&self, it: &fn()) {
         let mut i = *self;
         while i > 0 {
-            if !it() { return false; }
+            it();
             i -= 1;
         }
-        return true;
     }
 }
 
@@ -190,6 +189,6 @@ pub fn test_times() {
     use iter::Times;
     let ten = 10 as uint;
     let mut accum = 0;
-    for ten.times { accum += 1; }
+    do ten.times { accum += 1; }
     assert!((accum == 10));
 }

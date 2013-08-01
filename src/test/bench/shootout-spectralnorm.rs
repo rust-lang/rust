@@ -56,7 +56,7 @@ fn main() {
     let mut u = vec::from_elem(n, 1f64);
     let mut v = u.clone();
     let mut tmp = u.clone();
-    for 8.times {
+    do 8.times {
         mult_AtAv(u, v, tmp);
         mult_AtAv(v, u, tmp);
     }
