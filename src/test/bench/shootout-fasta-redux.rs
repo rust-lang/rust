@@ -164,7 +164,7 @@ impl RandomFasta {
             let chars_left = n % LINE_LEN;
             let mut buf = [0, ..LINE_LEN + 1];
 
-            for lines.times {
+            do lines.times {
                 for range(0, LINE_LEN) |i| {
                     buf[i] = self.nextc();
                 }

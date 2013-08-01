@@ -70,10 +70,11 @@ pub fn find<T:Clone>(ls: @List<T>, f: &fn(&T) -> bool) -> Option<T> {
 
 /// Returns true if a list contains an element with the given value
 pub fn has<T:Eq>(ls: @List<T>, elt: T) -> bool {
-    for each(ls) |e| {
-        if *e == elt { return true; }
-    }
-    return false;
+    let mut found = false;
+    do each(ls) |e| {
+        if *e == elt { found = true; false } else { true }
+    };
+    return found;
 }
 
 /// Returns true if the list is empty

@@ -25,7 +25,7 @@ pub fn Frame(fp: *Word) -> Frame {
     }
 }
 
-pub fn walk_stack(visit: &fn(Frame) -> bool) -> bool {
+pub fn walk_stack(visit: &fn(Frame)) {
 
     debug!("beginning stack walk");
 
@@ -51,12 +51,11 @@ pub fn walk_stack(visit: &fn(Frame) -> bool) -> bool {
             }
         }
     }
-    return true;
 }
 
 #[test]
 fn test_simple() {
-    for walk_stack |_frame| {
+    do walk_stack |_frame| {
     }
 }
 
@@ -65,7 +64,7 @@ fn test_simple_deep() {
     fn run(i: int) {
         if i == 0 { return }
 
-        for walk_stack |_frame| {
+        do walk_stack |_frame| {
             // Would be nice to test something here...
         }
         run(i - 1);

@@ -662,7 +662,7 @@ pub mod groups {
             // here we just need to indent the start of the description
             let rowlen = row.len();
             if rowlen < 24 {
-                for (24 - rowlen).times {
+                do (24 - rowlen).times {
                     row.push_char(' ')
                 }
             } else {
@@ -678,9 +678,10 @@ pub mod groups {
 
             // FIXME: #5516
             let mut desc_rows = ~[];
-            for each_split_within(desc_normalized_whitespace, 54) |substr| {
+            do each_split_within(desc_normalized_whitespace, 54) |substr| {
                 desc_rows.push(substr.to_owned());
-            }
+                true
+            };
 
             // FIXME: #5516
             // wrapped description
@@ -780,7 +781,7 @@ pub mod groups {
     priv fn test_split_within() {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
-            for each_split_within(s, i) |s| { v.push(s.to_owned()) }
+            do each_split_within(s, i) |s| { v.push(s.to_owned()); true };
             assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("", 0, []);

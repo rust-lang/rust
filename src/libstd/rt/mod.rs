@@ -255,7 +255,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // sent the Shutdown message to terminate the schedulers.
     let mut handles = ~[];
 
-    for nscheds.times {
+    do nscheds.times {
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());

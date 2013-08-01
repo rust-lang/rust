@@ -1097,7 +1097,7 @@ mod test {
 
         do run_in_mt_newsched_task {
             let mut ports = ~[];
-            for 10.times {
+            do 10.times {
                 let (port, chan) = oneshot();
                 let chan_cell = Cell::new(chan);
                 do spawntask_later {

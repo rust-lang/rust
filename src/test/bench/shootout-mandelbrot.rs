@@ -30,7 +30,7 @@ fn main() {
                 let Cr = 2.0 * (x as f64) / (w as f64) - 1.5;
                 let Ci = 2.0 * (y as f64) / (h as f64) - 1.0;
 
-                for ITER.times {
+                for range(0, ITER as i32) |_| {
                     if Tr + Ti > LIMIT * LIMIT {
                         break;
                     }
