@@ -74,6 +74,7 @@ pub mod ext {
     pub mod env;
     pub mod bytes;
     pub mod concat_idents;
+    pub mod upcase_ident;
     pub mod log_syntax;
     pub mod auto_encode;
     pub mod source_util;
