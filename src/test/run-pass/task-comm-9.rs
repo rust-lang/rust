@@ -25,9 +25,8 @@ fn test00_start(c: &comm::Chan<int>, number_of_messages: int) {
 fn test00() {
     let r: int = 0;
     let mut sum: int = 0;
-    let p = comm::PortSet::new();
+    let (p, ch) = comm::stream();
     let number_of_messages: int = 10;
-    let ch = p.chan();
 
     let mut result = None;
     let mut builder = task::task();
