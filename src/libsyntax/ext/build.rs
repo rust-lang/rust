@@ -76,12 +76,12 @@ pub trait AstBuilder {
     fn stmt_let(&self, sp: span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt;
 
     // blocks
-    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::Block;
-    fn blk_expr(&self, expr: @ast::expr) -> ast::Block;
-    fn blk_all(&self, span: span,
-               view_items: ~[ast::view_item],
-               stmts: ~[@ast::stmt],
-               expr: Option<@ast::expr>) -> ast::Block;
+    fn block(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::Block;
+    fn block_expr(&self, expr: @ast::expr) -> ast::Block;
+    fn block_all(&self, span: span,
+                 view_items: ~[ast::view_item],
+                 stmts: ~[@ast::stmt],
+                 expr: Option<@ast::expr>) -> ast::Block;
 
     // expressions
     fn expr(&self, span: span, node: ast::expr_) -> @ast::expr;
@@ -105,7 +105,7 @@ pub trait AstBuilder {
     fn expr_method_call(&self, span: span,
                         expr: @ast::expr, ident: ast::ident,
                         args: ~[@ast::expr]) -> @ast::expr;
-    fn expr_blk(&self, b: ast::Block) -> @ast::expr;
+    fn expr_block(&self, b: ast::Block) -> @ast::expr;
 
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field;
     fn expr_struct(&self, span: span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr;
@@ -387,18 +387,18 @@ impl AstBuilder for @ExtCtxt {
         @respan(sp, ast::stmt_decl(@decl, self.next_id()))
     }
 
-    fn blk(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@expr>) -> ast::Block {
-        self.blk_all(span, ~[], stmts, expr)
+    fn block(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@expr>) -> ast::Block {
+        self.block_all(span, ~[], stmts, expr)
     }
 
-    fn blk_expr(&self, expr: @ast::expr) -> ast::Block {
-        self.blk_all(expr.span, ~[], ~[], Some(expr))
+    fn block_expr(&self, expr: @ast::expr) -> ast::Block {
+        self.block_all(expr.span, ~[], ~[], Some(expr))
     }
-    fn blk_all(&self,
-               span: span,
-               view_items: ~[ast::view_item],
-               stmts: ~[@ast::stmt],
-               expr: Option<@ast::expr>) -> ast::Block {
+    fn block_all(&self,
+                 span: span,
+                 view_items: ~[ast::view_item],
+                 stmts: ~[@ast::stmt],
+                 expr: Option<@ast::expr>) -> ast::Block {
            ast::Block {
                view_items: view_items,
                stmts: stmts,
@@ -474,7 +474,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr(span,
                   ast::expr_method_call(self.next_id(), expr, ident, ~[], args, ast::NoSugar))
     }
-    fn expr_blk(&self, b: ast::Block) -> @ast::expr {
+    fn expr_block(&self, b: ast::Block) -> @ast::expr {
         self.expr(b.span, ast::expr_block(b))
     }
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::Field {
@@ -577,7 +577,7 @@ impl AstBuilder for @ExtCtxt {
         ast::arm {
             pats: pats,
             guard: None,
-            body: self.blk_expr(expr)
+            body: self.block_expr(expr)
         }
     }
 
@@ -591,8 +591,8 @@ impl AstBuilder for @ExtCtxt {
 
     fn expr_if(&self, span: span,
                cond: @ast::expr, then: @ast::expr, els: Option<@ast::expr>) -> @ast::expr {
-        let els = els.map(|x| self.expr_blk(self.blk_expr(*x)));
-        self.expr(span, ast::expr_if(cond, self.blk_expr(then), els))
+        let els = els.map(|x| self.expr_block(self.block_expr(*x)));
+        self.expr(span, ast::expr_if(cond, self.block_expr(then), els))
     }
 
     fn lambda_fn_decl(&self, span: span, fn_decl: ast::fn_decl, blk: ast::Block) -> @ast::expr {
@@ -618,23 +618,23 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn lambda_expr(&self, span: span, ids: ~[ast::ident], expr: @ast::expr) -> @ast::expr {
-        self.lambda(span, ids, self.blk_expr(expr))
+        self.lambda(span, ids, self.block_expr(expr))
     }
     fn lambda_expr_0(&self, span: span, expr: @ast::expr) -> @ast::expr {
-        self.lambda0(span, self.blk_expr(expr))
+        self.lambda0(span, self.block_expr(expr))
     }
     fn lambda_expr_1(&self, span: span, expr: @ast::expr, ident: ast::ident) -> @ast::expr {
-        self.lambda1(span, self.blk_expr(expr), ident)
+        self.lambda1(span, self.block_expr(expr), ident)
     }
 
     fn lambda_stmts(&self, span: span, ids: ~[ast::ident], stmts: ~[@ast::stmt]) -> @ast::expr {
-        self.lambda(span, ids, self.blk(span, stmts, None))
+        self.lambda(span, ids, self.block(span, stmts, None))
     }
     fn lambda_stmts_0(&self, span: span, stmts: ~[@ast::stmt]) -> @ast::expr {
-        self.lambda0(span, self.blk(span, stmts, None))
+        self.lambda0(span, self.block(span, stmts, None))
     }
     fn lambda_stmts_1(&self, span: span, stmts: ~[@ast::stmt], ident: ast::ident) -> @ast::expr {
-        self.lambda1(span, self.blk(span, stmts, None), ident)
+        self.lambda1(span, self.block(span, stmts, None), ident)
     }
 
     fn arg(&self, span: span, ident: ast::ident, ty: ast::Ty) -> ast::arg {

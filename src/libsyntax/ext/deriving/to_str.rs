@@ -79,7 +79,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: span,
             }
             push(cx.expr_str(span, end));
 
-            cx.expr_blk(cx.blk(span, stmts, Some(cx.expr_ident(span, buf))))
+            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span, buf))))
         }
     };
 
