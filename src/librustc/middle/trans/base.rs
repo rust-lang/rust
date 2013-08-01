@@ -456,7 +456,7 @@ pub fn set_always_inline(f: ValueRef) {
 }
 
 pub fn set_fixed_stack_segment(f: ValueRef) {
-    lib::llvm::SetFunctionAttribute(f, lib::llvm::FixedStackSegment)
+    lib::llvm::SetFixedStackSegmentAttribute(f);
 }
 
 pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
