@@ -633,16 +633,12 @@ pub mod bytepipes {
 #[cfg(test)]
 mod test {
 
-    use flatpipes::{Flattener, Unflattener};
-    use flatpipes::bytepipes::*;
+    use flatpipes::BytePort;
     use flatpipes::pod;
     use flatpipes::serial;
     use io_util::BufReader;
-    use flatpipes::{BytePort, FlatChan, FlatPort};
 
-    use std::comm;
     use std::io::BytesWriter;
-    use std::result;
     use std::task;
 
     #[test]
@@ -727,7 +723,11 @@ mod test {
 
     // FIXME #2064: Networking doesn't work on x86
     // XXX Broken until networking support is added back
-    /*#[test]
+    /*
+    use flatpipes::{Flattener, Unflattener, FlatChan, FlatPort};
+    use flatpipes::bytepipes::*;
+
+    #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_pod_tcp_stream() {
         fn reader_port(buf: TcpSocketBuf
@@ -767,6 +767,8 @@ mod test {
         port: uint) {
 
         use std::cell::Cell;
+        use std::comm;
+        use std::result;
         use net::ip;
         use net::tcp;
         use uv;
