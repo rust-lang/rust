@@ -916,7 +916,7 @@ impl RegionVarBindings {
         &self,
         errors: &mut OptVec<RegionResolutionError>)
     {
-        for self.constraints.iter().advance |(constraint, _)| {
+        foreach (constraint, _) in self.constraints.iter() {
             let (sub, sup) = match *constraint {
                 ConstrainVarSubVar(*) |
                 ConstrainRegSubVar(*) |
@@ -1032,7 +1032,7 @@ impl RegionVarBindings {
         }
         let dummy_idx = graph.add_node(());
 
-        for self.constraints.iter().advance |(constraint, _)| {
+        foreach (constraint, _) in self.constraints.iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.to_uint()),
@@ -1080,8 +1080,8 @@ impl RegionVarBindings {
             return;
         }
 
-        for lower_bounds.iter().advance |lower_bound| {
-            for upper_bounds.iter().advance |upper_bound| {
+        foreach lower_bound in lower_bounds.iter() {
+            foreach upper_bound in upper_bounds.iter() {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(
@@ -1122,8 +1122,8 @@ impl RegionVarBindings {
             return;
         }
 
-        for upper_bounds.iter().advance |upper_bound_1| {
-            for upper_bounds.iter().advance |upper_bound_2| {
+        foreach upper_bound_1 in upper_bounds.iter() {
+            foreach upper_bound_2 in upper_bounds.iter() {
                 match self.glb_concrete_regions(upper_bound_1.region,
                                                 upper_bound_2.region) {
                   Ok(_) => {}
@@ -1242,7 +1242,7 @@ impl RegionVarBindings {
             changed = false;
             iteration += 1;
             debug!("---- %s Iteration #%u", tag, iteration);
-            for self.constraints.iter().advance |(constraint, _)| {
+            foreach (constraint, _) in self.constraints.iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint %s",

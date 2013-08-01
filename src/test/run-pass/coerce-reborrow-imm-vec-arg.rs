@@ -1,6 +1,6 @@
 fn sum(x: &[int]) -> int {
     let mut sum = 0;
-    for x.iter().advance |y| { sum += *y; }
+    foreach y in x.iter() { sum += *y; }
     return sum;
 }
 

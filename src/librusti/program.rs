@@ -98,7 +98,7 @@ impl Program {
 
         code.push_str("fn main() {\n");
         // It's easy to initialize things if we don't run things...
-        for self.local_vars.iter().advance |(name, var)| {
+        foreach (name, var) in self.local_vars.iter() {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = fail!();\n", mt, *name, var.ty));
             var.alter(*name, &mut code);
@@ -114,7 +114,7 @@ impl Program {
             None => {}
         }
 
-        for new_locals.iter().advance |p| {
+        foreach p in new_locals.iter() {
             code.push_str(fmt!("assert_encodable(&%s);\n", *p.first_ref()));
         }
         code.push_str("};}");
@@ -146,7 +146,7 @@ impl Program {
 
         // Using this __tls_map handle, deserialize each variable binding that
         // we know about
-        for self.local_vars.iter().advance |(name, var)| {
+        foreach (name, var) in self.local_vars.iter() {
             let mt = var.mt();
             code.push_str(fmt!("let%s %s: %s = {
                 let data = __tls_map.get_copy(&~\"%s\");
@@ -167,13 +167,13 @@ impl Program {
         }
 
         let newvars = util::replace(&mut self.newvars, HashMap::new());
-        for newvars.consume().advance |(name, var)| {
+        foreach (name, var) in newvars.consume() {
             self.local_vars.insert(name, var);
         }
 
         // After the input code is run, we can re-serialize everything back out
         // into tls map (to be read later on by this task)
-        for self.local_vars.iter().advance |(name, var)| {
+        foreach (name, var) in self.local_vars.iter() {
             code.push_str(fmt!("{
                 let local: %s = %s;
                 let bytes = do ::std::io::with_bytes_writer |io| {
@@ -221,7 +221,7 @@ impl Program {
     /// program starts
     pub fn set_cache(&self) {
         let map = @mut HashMap::new();
-        for self.local_vars.iter().advance |(name, value)| {
+        foreach (name, value) in self.local_vars.iter() {
             map.insert((*name).clone(), @(value.data).clone());
         }
         local_data::set(tls_key, map);
@@ -233,7 +233,7 @@ impl Program {
     pub fn consume_cache(&mut self) {
         let map = local_data::pop(tls_key).expect("tls is empty");
         let cons_map = util::replace(map, HashMap::new());
-        for cons_map.consume().advance |(name, value)| {
+        foreach (name, value) in cons_map.consume() {
             match self.local_vars.find_mut(&name) {
                 Some(v) => { v.data = (*value).clone(); }
                 None => { fail!("unknown variable %s", name) }
@@ -345,14 +345,14 @@ impl Program {
 
         // I'm not an @ pointer, so this has to be done outside.
         let cons_newvars = util::replace(newvars, HashMap::new());
-        for cons_newvars.consume().advance |(k, v)| {
+        foreach (k, v) in cons_newvars.consume() {
             self.newvars.insert(k, v);
         }
 
         // helper functions to perform ast iteration
         fn each_user_local(blk: &ast::Block, f: &fn(@ast::Local)) {
             do find_user_block(blk) |blk| {
-                for blk.stmts.iter().advance |stmt| {
+                foreach stmt in blk.stmts.iter() {
                     match stmt.node {
                         ast::stmt_decl(d, _) => {
                             match d.node {
@@ -367,7 +367,7 @@ impl Program {
         }
 
         fn find_user_block(blk: &ast::Block, f: &fn(&ast::Block)) {
-            for blk.stmts.iter().advance |stmt| {
+            foreach stmt in blk.stmts.iter() {
                 match stmt.node {
                     ast::stmt_semi(e, _) => {
                         match e.node {

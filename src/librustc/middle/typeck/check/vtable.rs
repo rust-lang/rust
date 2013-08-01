@@ -324,7 +324,7 @@ fn search_for_vtable(vcx: &VtableContext,
     let impls = tcx.trait_impls.find(&trait_ref.def_id)
         .map_default(@mut ~[], |x| **x);
     // impls is the list of all impls in scope for trait_ref.
-    for impls.iter().advance |im| {
+    foreach im in impls.iter() {
         // im is one specific impl of trait_ref.
 
         // First, ensure we haven't processed this impl yet.

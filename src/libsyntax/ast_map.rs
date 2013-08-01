@@ -163,7 +163,7 @@ pub fn map_fn(
     (cx,v): (@mut Ctx,
              visit::vt<@mut Ctx>)
 ) {
-    for decl.inputs.iter().advance |a| {
+    foreach a in decl.inputs.iter() {
         cx.map.insert(a.id, node_arg);
     }
     visit::visit_fn(fk, decl, body, sp, id, (cx, v));
@@ -201,12 +201,12 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     match i.node {
         item_impl(_, _, _, ref ms) => {
             let impl_did = ast_util::local_def(i.id);
-            for ms.iter().advance |m| {
+            foreach m in ms.iter() {
                 map_method(impl_did, extend(cx, i.ident), *m, false, cx);
             }
         }
         item_enum(ref enum_definition, _) => {
-            for (*enum_definition).variants.iter().advance |v| {
+            foreach v in (*enum_definition).variants.iter() {
                 cx.map.insert(v.node.id, node_variant(
                     /* FIXME (#2543) */ (*v).clone(),
                     i,
@@ -214,7 +214,7 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
             }
         }
         item_foreign_mod(ref nm) => {
-            for nm.items.iter().advance |nitem| {
+            foreach nitem in nm.items.iter() {
                 // Compute the visibility for this native item.
                 let visibility = match nitem.vis {
                     public => public,
@@ -248,10 +248,10 @@ pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
             );
         }
         item_trait(_, ref traits, ref methods) => {
-            for traits.iter().advance |p| {
+            foreach p in traits.iter() {
                 cx.map.insert(p.ref_id, node_item(i, item_path));
             }
-            for methods.iter().advance |tm| {
+            foreach tm in methods.iter() {
                 let id = ast_util::trait_method_to_ty_method(tm).id;
                 let d_id = ast_util::local_def(i.id);
                 cx.map.insert(
@@ -301,7 +301,7 @@ pub fn map_expr(ex: @expr, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     // Expressions which are or might be calls:
     {
         let r = ex.get_callee_id();
-        for r.iter().advance |callee_id| {
+        foreach callee_id in r.iter() {
             cx.map.insert(*callee_id, node_callee_scope(ex));
         }
     }

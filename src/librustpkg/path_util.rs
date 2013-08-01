@@ -61,7 +61,7 @@ pub fn rust_path() -> ~[Path] {
     // Avoid adding duplicates
     // could still add dups if someone puts one of these in the RUST_PATH
     // manually, though...
-    for h.iter().advance |hdir| {
+    foreach hdir in h.iter() {
         if !(cwd.is_ancestor_of(hdir) || hdir.is_ancestor_of(&cwd)) {
             push_if_exists(&mut env_rust_path, hdir);
         }
@@ -100,7 +100,7 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
     let dirs = os::list_dir(&src_dir);
-    for dirs.iter().advance |p| {
+    foreach p in dirs.iter() {
         let p = Path((*p).clone());
         debug!("=> p = %s", p.to_str());
         if !os::path_is_dir(&src_dir.push_rel(&p)) {
@@ -113,7 +113,7 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
         }
         else {
             let pf = p.filename();
-            for pf.iter().advance |pf| {
+            foreach pf in pf.iter() {
                 let f_ = (*pf).clone();
                 let g = f_.to_str();
                 match split_version_general(g, '-') {
@@ -150,7 +150,7 @@ pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
 /// Returns a src for pkgid that does exist -- None if none of them do
 pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let rs = pkgid_src_in_workspace(pkgid, workspace);
-    for rs.iter().advance |p| {
+    foreach p in rs.iter() {
         if os::path_exists(p) {
             return Some((*p).clone());
         }
@@ -246,7 +246,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
     let mut result_filename = None;
-    for dir_contents.iter().advance |p| {
+    foreach p in dir_contents.iter() {
         let mut which = 0;
         let mut hash = None;
         let p_path = Path((*p).clone());
@@ -261,7 +261,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
         let f_name = match p_path.filename() {
             Some(s) => s, None => loop
         };
-        for f_name.split_iter('-').advance |piece| {
+        foreach piece in f_name.split_iter('-') {
             debug!("a piece = %s", piece);
             if which == 0 && piece != lib_prefix {
                 break;

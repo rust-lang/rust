@@ -39,7 +39,7 @@ impl<T> Container for RingBuf<T> {
 impl<T> Mutable for RingBuf<T> {
     /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {
-        for self.elts.mut_iter().advance |x| { *x = None }
+        foreach x in self.elts.mut_iter() { *x = None }
         self.nelts = 0;
         self.lo = 0;
     }
@@ -334,7 +334,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
 
 impl<A, T: Iterator<A>> Extendable<A, T> for RingBuf<A> {
     fn extend(&mut self, iterator: &mut T) {
-        for iterator.advance |elt| {
+        foreach elt in *iterator {
             self.push_back(elt);
         }
     }
@@ -653,7 +653,7 @@ mod tests {
             d.push_front(i);
         }
 
-        for d.mut_iter().enumerate().advance |(i, elt)| {
+        foreach (i, elt) in d.mut_iter().enumerate() {
             assert_eq!(*elt, 2 - i);
             *elt = i;
         }
@@ -676,7 +676,7 @@ mod tests {
             d.push_front(i);
         }
 
-        for d.mut_rev_iter().enumerate().advance |(i, elt)| {
+        foreach (i, elt) in d.mut_rev_iter().enumerate() {
             assert_eq!(*elt, i);
             *elt = i;
         }
@@ -700,7 +700,7 @@ mod tests {
 
         let mut seq = iterator::Counter::new(0u, 2).take_(256);
         let deq: RingBuf<uint> = seq.collect();
-        for deq.iter().enumerate().advance |(i, &x)| {
+        foreach (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);
         }
         assert_eq!(deq.len(), 256);

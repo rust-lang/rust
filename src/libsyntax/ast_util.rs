@@ -278,7 +278,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[TypeMethod], ~[@method]) {
     let mut reqd = ~[];
     let mut provd = ~[];
-    for trait_methods.iter().advance |trt_method| {
+    foreach trt_method in trait_methods.iter() {
         match *trt_method {
           required(ref tm) => reqd.push((*tm).clone()),
           provided(m) => provd.push(m)
@@ -391,10 +391,10 @@ impl id_range {
 
 pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
     let visit_generics: @fn(&Generics, T) = |generics, t| {
-        for generics.ty_params.iter().advance |p| {
+        foreach p in generics.ty_params.iter() {
             vfn(p.id, t.clone());
         }
-        for generics.lifetimes.iter().advance |p| {
+        foreach p in generics.lifetimes.iter() {
             vfn(p.id, t.clone());
         }
     };
@@ -408,13 +408,13 @@ pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
             match vi.node {
               view_item_extern_mod(_, _, id) => vfn(id, t.clone()),
               view_item_use(ref vps) => {
-                  for vps.iter().advance |vp| {
+                  foreach vp in vps.iter() {
                       match vp.node {
                           view_path_simple(_, _, id) => vfn(id, t.clone()),
                           view_path_glob(_, id) => vfn(id, t.clone()),
                           view_path_list(_, ref paths, id) => {
                               vfn(id, t.clone());
-                              for paths.iter().advance |p| {
+                              foreach p in paths.iter() {
                                   vfn(p.node.id, t.clone());
                               }
                           }
@@ -434,7 +434,7 @@ pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
             vfn(i.id, t.clone());
             match i.node {
               item_enum(ref enum_definition, _) =>
-                for (*enum_definition).variants.iter().advance |v| {
+                foreach v in (*enum_definition).variants.iter() {
                     vfn(v.node.id, t.clone());
                 },
               _ => ()
@@ -462,7 +462,7 @@ pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
         visit_expr: |e, (t, vt)| {
             {
                 let r = e.get_callee_id();
-                for r.iter().advance |callee_id| {
+                foreach callee_id in r.iter() {
                     vfn(*callee_id, t.clone());
                 }
             }
@@ -500,7 +500,7 @@ pub fn id_visitor<T: Clone>(vfn: @fn(NodeId, T)) -> visit::vt<T> {
                 }
             }
 
-            for d.inputs.iter().advance |arg| {
+            foreach arg in d.inputs.iter() {
                 vfn(arg.id, t.clone())
             }
             visit::visit_fn(fk, d, a, b, id, (t.clone(), vt));

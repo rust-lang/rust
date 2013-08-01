@@ -733,7 +733,7 @@ fn copy_vec<T:Clone>(dest: &mut [T],
                     from: &[T]) {
     assert!(s1+from.len() <= dest.len());
 
-    for from.iter().enumerate().advance |(i, v)| {
+    foreach (i, v) in from.iter().enumerate() {
         dest[s1+i] = (*v).clone();
     }
 }
@@ -843,7 +843,7 @@ mod test_qsort {
         let immut_names = names;
 
         let pairs = vec::zip_slice(expected, immut_names);
-        for pairs.iter().advance |p| {
+        foreach p in pairs.iter() {
             let (a, b) = *p;
             debug!("%d %d", a, b);
             assert_eq!(a, b);

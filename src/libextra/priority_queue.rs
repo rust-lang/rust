@@ -206,7 +206,7 @@ impl<T: Ord, Iter: Iterator<T>> Extendable<T, Iter> for PriorityQueue<T> {
         let len = self.capacity();
         self.reserve_at_least(len + lower);
 
-        for iter.advance |elem| {
+        foreach elem in *iter {
             self.push(elem);
         }
     }
@@ -223,7 +223,7 @@ mod tests {
         let iterout = ~[9, 5, 3];
         let pq = PriorityQueue::from_vec(data);
         let mut i = 0;
-        for pq.iter().advance |el| {
+        foreach el in pq.iter() {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
@@ -369,7 +369,7 @@ mod tests {
 
         let mut q: PriorityQueue<uint> = xs.rev_iter().transform(|&x| x).collect();
 
-        for xs.iter().advance |&x| {
+        foreach &x in xs.iter() {
             assert_eq!(q.pop(), x);
         }
     }

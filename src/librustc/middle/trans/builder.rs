@@ -516,7 +516,7 @@ impl Builder {
         // we care about.
         if ixs.len() < 16 {
             let mut small_vec = [ C_i32(0), ..16 ];
-            for small_vec.mut_iter().zip(ixs.iter()).advance |(small_vec_e, &ix)| {
+            foreach (small_vec_e, &ix) in small_vec.mut_iter().zip(ixs.iter()) {
                 *small_vec_e = C_i32(ix as i32);
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))

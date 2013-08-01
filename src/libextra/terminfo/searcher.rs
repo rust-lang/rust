@@ -35,7 +35,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
                 dirs_to_search.push(homedir.unwrap().push(".terminfo")); // ncurses compatability
             }
             match getenv("TERMINFO_DIRS") {
-                Some(dirs) => for dirs.split_iter(':').advance |i| {
+                Some(dirs) => foreach i in dirs.split_iter(':') {
                     if i == "" {
                         dirs_to_search.push(path("/usr/share/terminfo"));
                     } else {
@@ -54,7 +54,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
     };
 
     // Look for the terminal in all of the search directories
-    for dirs_to_search.iter().advance |p| {
+    foreach p in dirs_to_search.iter() {
         let newp = ~p.push_many(&[str::from_char(first_char), term.to_owned()]);
         if os::path_exists(p) && os::path_exists(newp) {
             return Some(newp);

@@ -53,13 +53,13 @@ impl<T> Rc<T> {
 }
 
 impl<T: Send> Rc<T> {
-    pub fn from_owned(value: T) -> Rc<T> {
+    pub fn from_send(value: T) -> Rc<T> {
         unsafe { Rc::new(value) }
     }
 }
 
 impl<T: Freeze> Rc<T> {
-    pub fn from_const(value: T) -> Rc<T> {
+    pub fn from_freeze(value: T) -> Rc<T> {
         unsafe { Rc::new(value) }
     }
 }
@@ -111,7 +111,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_owned(Cell::new(5));
+        let x = Rc::from_send(Cell::new(5));
         let y = x.clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -121,7 +121,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_owned(Cell::new(5));
+        let x = Rc::from_send(Cell::new(5));
         let y = x.deep_clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -131,13 +131,13 @@ mod test_rc {
 
     #[test]
     fn test_simple() {
-        let x = Rc::from_const(5);
+        let x = Rc::from_freeze(5);
         assert_eq!(*x.borrow(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
-        let x = Rc::from_const(5);
+        let x = Rc::from_freeze(5);
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
         assert_eq!(*y.borrow(), 5);
@@ -145,7 +145,7 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::from_owned(~5);
+        let x = Rc::from_send(~5);
         assert_eq!(**x.borrow(), 5);
     }
 }
@@ -178,13 +178,13 @@ impl<T> RcMut<T> {
 }
 
 impl<T: Send> RcMut<T> {
-    pub fn from_owned(value: T) -> RcMut<T> {
+    pub fn from_send(value: T) -> RcMut<T> {
         unsafe { RcMut::new(value) }
     }
 }
 
 impl<T: Freeze> RcMut<T> {
-    pub fn from_const(value: T) -> RcMut<T> {
+    pub fn from_freeze(value: T) -> RcMut<T> {
         unsafe { RcMut::new(value) }
     }
 }
@@ -258,7 +258,7 @@ mod test_rc_mut {
 
     #[test]
     fn test_clone() {
-        let x = RcMut::from_owned(5);
+        let x = RcMut::from_send(5);
         let y = x.clone();
         do x.with_mut_borrow |value| {
             *value = 20;
@@ -270,7 +270,7 @@ mod test_rc_mut {
 
     #[test]
     fn test_deep_clone() {
-        let x = RcMut::from_const(5);
+        let x = RcMut::from_freeze(5);
         let y = x.deep_clone();
         do x.with_mut_borrow |value| {
             *value = 20;
@@ -282,7 +282,7 @@ mod test_rc_mut {
 
     #[test]
     fn borrow_many() {
-        let x = RcMut::from_owned(5);
+        let x = RcMut::from_send(5);
         let y = x.clone();
 
         do x.with_borrow |a| {
@@ -298,7 +298,7 @@ mod test_rc_mut {
 
     #[test]
     fn modify() {
-        let x = RcMut::from_const(5);
+        let x = RcMut::from_freeze(5);
         let y = x.clone();
 
         do y.with_mut_borrow |a| {
@@ -313,14 +313,14 @@ mod test_rc_mut {
 
     #[test]
     fn release_immutable() {
-        let x = RcMut::from_owned(5);
+        let x = RcMut::from_send(5);
         do x.with_borrow |_| {}
         do x.with_mut_borrow |_| {}
     }
 
     #[test]
     fn release_mutable() {
-        let x = RcMut::from_const(5);
+        let x = RcMut::from_freeze(5);
         do x.with_mut_borrow |_| {}
         do x.with_borrow |_| {}
     }
@@ -328,7 +328,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn frozen() {
-        let x = RcMut::from_owned(5);
+        let x = RcMut::from_send(5);
         let y = x.clone();
 
         do x.with_borrow |_| {
@@ -340,7 +340,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_dupe() {
-        let x = RcMut::from_const(5);
+        let x = RcMut::from_freeze(5);
         let y = x.clone();
 
         do x.with_mut_borrow |_| {
@@ -352,7 +352,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_freeze() {
-        let x = RcMut::from_owned(5);
+        let x = RcMut::from_send(5);
         let y = x.clone();
 
         do x.with_mut_borrow |_| {
@@ -364,7 +364,7 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn restore_freeze() {
-        let x = RcMut::from_const(5);
+        let x = RcMut::from_freeze(5);
         let y = x.clone();
 
         do x.with_borrow |_| {

@@ -17,7 +17,7 @@ pub fn main() {
     loop { i += 1; if i == 20 { break; } }
     assert_eq!(i, 20);
     let xs = [1, 2, 3, 4, 5, 6];
-    for xs.iter().advance |x| {
+    foreach x in xs.iter() {
         if *x == 3 { break; } assert!((*x <= 3));
     }
     i = 0;
@@ -28,7 +28,7 @@ pub fn main() {
         if i >= 10 { break; }
     }
     let ys = ~[1, 2, 3, 4, 5, 6];
-    for ys.iter().advance |x| {
+    foreach x in ys.iter() {
         if *x % 2 == 0 { loop; }
         assert!((*x % 2 != 0));
     }

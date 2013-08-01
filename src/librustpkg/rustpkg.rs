@@ -430,14 +430,14 @@ impl CtxMethods for Ctx {
                target_exec.to_str(), target_lib,
                maybe_executable, maybe_library);
 
-        for maybe_executable.iter().advance |exec| {
+        foreach exec in maybe_executable.iter() {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
             if !(os::mkdir_recursive(&target_exec.dir_path(), U_RWX) &&
                  os::copy_file(exec, &target_exec)) {
                 cond.raise(((*exec).clone(), target_exec.clone()));
             }
         }
-        for maybe_library.iter().advance |lib| {
+        foreach lib in maybe_library.iter() {
             let target_lib = target_lib.clone().expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());

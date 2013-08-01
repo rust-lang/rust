@@ -428,10 +428,10 @@ pub fn check_fn(ccx: @mut CrateCtxt,
       None => ()
     }
 
-    for opt_self_info.iter().advance |self_info| {
+    foreach self_info in opt_self_info.iter() {
         fcx.write_ty(self_info.self_id, self_info.self_ty);
     }
-    for decl.inputs.iter().zip(arg_tys.iter()).advance |(input, arg)| {
+    foreach (input, arg) in decl.inputs.iter().zip(arg_tys.iter()) {
         fcx.write_ty(input.id, *arg);
     }
 
@@ -460,7 +460,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Add the self parameter
-        for opt_self_info.iter().advance |self_info| {
+        foreach self_info in opt_self_info.iter() {
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
@@ -468,7 +468,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
 
         // Add formal parameters.
-        for arg_tys.iter().zip(decl.inputs.iter()).advance |(arg_ty, input)| {
+        foreach (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
             do pat_util::pat_bindings(tcx.def_map, input.pat)
                     |_bm, pat_id, _sp, _path| {
@@ -566,7 +566,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::ident, span)]) {
     let mut field_names = HashMap::new();
 
-    for fields.iter().advance |p| {
+    foreach p in fields.iter() {
         let (id, sp) = *p;
         let orig_sp = field_names.find(&id).map_consume(|x| *x);
         match orig_sp {
@@ -615,13 +615,13 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
-        for ms.iter().advance |m| {
+        foreach m in ms.iter() {
             check_method(ccx, *m);
         }
         vtable::resolve_impl(ccx, it);
       }
       ast::item_trait(_, _, ref trait_methods) => {
-        for (*trait_methods).iter().advance |trait_method| {
+        foreach trait_method in (*trait_methods).iter() {
             match *trait_method {
               required(*) => {
                 // Nothing to do, since required methods don't have
@@ -642,11 +642,11 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       }
       ast::item_foreign_mod(ref m) => {
         if m.abis.is_intrinsic() {
-            for m.items.iter().advance |item| {
+            foreach item in m.items.iter() {
                 check_intrinsic_type(ccx, *item);
             }
         } else {
-            for m.items.iter().advance |item| {
+            foreach item in m.items.iter() {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
                 if tpt.generics.has_type_params() {
                     ccx.tcx.sess.span_err(
@@ -1257,7 +1257,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         let xs = [false, true];
-        for xs.iter().advance |check_blocks| {
+        foreach check_blocks in xs.iter() {
             let check_blocks = *check_blocks;
             debug!("check_blocks=%b", check_blocks);
 
@@ -1268,7 +1268,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 vtable::early_resolve_expr(callee_expr, fcx, true);
             }
 
-            for args.iter().enumerate().advance |(i, arg)| {
+            foreach (i, arg) in args.iter().enumerate() {
                 let is_block = match arg.node {
                     ast::expr_fn_block(*) | ast::expr_loop_body(*) |
                     ast::expr_do_body(*) => true,
@@ -1883,14 +1883,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
-        for field_types.iter().advance |field| {
+        foreach field in field_types.iter() {
             class_field_map.insert(field.ident, (field.id, false));
         }
 
         let mut error_happened = false;
 
         // Typecheck each field.
-        for ast_fields.iter().advance |field| {
+        foreach field in ast_fields.iter() {
             let mut expected_field_type = ty::mk_err();
 
             let pair = class_field_map.find(&field.ident).
@@ -1936,7 +1936,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             assert!(fields_found <= field_types.len());
             if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
-                for field_types.iter().advance |class_field| {
+                foreach class_field in field_types.iter() {
                     let name = class_field.ident;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
@@ -2258,7 +2258,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 _ => mutability = mutbl
             }
             let t: ty::t = fcx.infcx().next_ty_var();
-            for args.iter().advance |e| {
+            foreach e in args.iter() {
                 check_expr_has_type(fcx, *e, t);
                 let arg_t = fcx.expr_ty(*e);
                 if ty::type_is_error(arg_t) {
@@ -2478,10 +2478,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, ty_param_bounds_and_ty.ty);
       }
       ast::expr_inline_asm(ref ia) => {
-          for ia.inputs.iter().advance |&(_, input)| {
+          foreach &(_, input) in ia.inputs.iter() {
               check_expr(fcx, input);
           }
-          for ia.outputs.iter().advance |&(_, out)| {
+          foreach &(_, out) in ia.outputs.iter() {
               check_expr(fcx, out);
           }
           fcx.write_nil(id);
@@ -2748,7 +2748,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let t: ty::t = fcx.infcx().next_ty_var();
         let mut arg_is_bot = false;
         let mut arg_is_err = false;
-        for args.iter().advance |e| {
+        foreach e in args.iter() {
             check_expr_has_type(fcx, *e, t);
             let arg_t = fcx.expr_ty(*e);
             arg_is_bot |= ty::type_is_bot(arg_t);
@@ -3009,7 +3009,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
         let mut last_was_bot = false;
         let mut any_bot = false;
         let mut any_err = false;
-        for blk.stmts.iter().advance |s| {
+        foreach s in blk.stmts.iter() {
             check_stmt(fcx, *s);
             let s_id = ast_util::stmt_id(*s);
             let s_ty = fcx.node_ty(s_id);
@@ -3148,7 +3148,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
         let mut disr_vals: ~[uint] = ~[];
         let mut prev_disr_val: Option<uint> = None;
 
-        for vs.iter().advance |v| {
+        foreach v in vs.iter() {
 
             // If the discriminant value is specified explicitly in the enum check whether the
             // initialization expression is valid, otherwise use the last value plus one.
@@ -3476,7 +3476,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
             true
         });
 
-    for tps_used.iter().enumerate().advance |(i, b)| {
+    foreach (i, b) in tps_used.iter().enumerate() {
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",

@@ -77,7 +77,6 @@ debug!("hello, %s!", "world");
 */
 
 use prelude::*;
-use iterator::IteratorUtil;
 
 /*
  * We have a 'ct' (compile-time) module that parses format strings into a
@@ -616,7 +615,7 @@ pub mod rt {
         let headsize = match head { Some(_) => 1, _ => 0 };
         let uwidth : uint = match cv.width {
             CountImplied => {
-                for head.iter().advance |&c| {
+                foreach &c in head.iter() {
                     buf.push_char(c);
                 }
                 return buf.push_str(s);
@@ -625,7 +624,7 @@ pub mod rt {
         };
         let strlen = s.char_len() + headsize;
         if uwidth <= strlen {
-            for head.iter().advance |&c| {
+            foreach &c in head.iter() {
                 buf.push_char(c);
             }
             return buf.push_str(s);
@@ -633,7 +632,7 @@ pub mod rt {
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            for head.iter().advance |&c| {
+            foreach &c in head.iter() {
                 buf.push_char(c);
             }
             buf.push_str(s);
@@ -667,7 +666,7 @@ pub mod rt {
         // instead.
 
         if signed && zero_padding {
-            for head.iter().advance |&head| {
+            foreach &head in head.iter() {
                 if head == '+' || head == '-' || head == ' ' {
                     buf.push_char(head);
                     buf.push_str(padstr);
@@ -677,7 +676,7 @@ pub mod rt {
             }
         }
         buf.push_str(padstr);
-        for head.iter().advance |&c| {
+        foreach &c in head.iter() {
             buf.push_char(c);
         }
         buf.push_str(s);

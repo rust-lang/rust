@@ -356,7 +356,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
     let test_output = str::from_bytes(p_output.output);
-    for test_output.split_iter('\n').advance |s| {
+    foreach s in test_output.split_iter('\n') {
         result.push(s.to_owned());
     }
     result
@@ -366,7 +366,7 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
     let mut result = ~[];
     let p_output = command_line_test_with_env(args, &os::getcwd(), Some(env));
     let test_output = str::from_bytes(p_output.output);
-    for test_output.split_iter('\n').advance |s| {
+    foreach s in test_output.split_iter('\n') {
         result.push(s.to_owned());
     }
     result
@@ -391,7 +391,7 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
     let contents = os::list_dir_path(&pkg_src_dir);
-    for contents.iter().advance |p| {
+    foreach p in contents.iter() {
         if p.filetype() == Some(~".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
@@ -408,7 +408,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
     let contents = os::list_dir_path(&pkg_src_dir);
     let mut maybe_p = None;
-    for contents.iter().advance |p| {
+    foreach p in contents.iter() {
         if p.filetype() == Some(~".rs") {
             maybe_p = Some(p);
             break;
@@ -811,7 +811,7 @@ fn rust_path_contents() {
         assert!(p.contains(&cwd));
         assert!(p.contains(&parent));
         assert!(p.contains(&grandparent));
-        for p.iter().advance() |a_path| {
+        foreach a_path in p.iter() {
             assert!(!a_path.components.is_empty());
         }
     });

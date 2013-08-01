@@ -1154,7 +1154,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = ~[];
-                for need_base.iter().enumerate().advance |(i, b)| {
+                foreach (i, b) in need_base.iter().enumerate() {
                     if *b {
                         leftovers.push((i, field_tys[i].mt.ty))
                     }
@@ -1208,10 +1208,10 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
     let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
-            for fields.iter().advance |&(_i, e)| {
+            foreach &(_i, e) in fields.iter() {
                 bcx = trans_into(bcx, e, Ignore);
             }
-            for optbase.iter().advance |sbi| {
+            foreach sbi in optbase.iter() {
                 // FIXME #7261: this moves entire base, not just certain fields
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
@@ -1221,18 +1221,18 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
     };
     let mut temp_cleanups = ~[];
     adt::trans_start_init(bcx, repr, addr, discr);
-    for fields.iter().advance |&(i, e)| {
+    foreach &(i, e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_into(bcx, e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
         temp_cleanups.push(dest);
     }
-    for optbase.iter().advance |base| {
+    foreach base in optbase.iter() {
         // FIXME #6573: is it sound to use the destination's repr on the base?
         // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
-        for base.fields.iter().advance |&(i, t)| {
+        foreach &(i, t) in base.fields.iter() {
             let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };
@@ -1241,7 +1241,7 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
         }
     }
 
-    for temp_cleanups.iter().advance |cleanup| {
+    foreach cleanup in temp_cleanups.iter() {
         revoke_clean(bcx, *cleanup);
     }
     return bcx;

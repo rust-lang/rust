@@ -26,7 +26,7 @@ pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> b
                    pkgid.remote_path.to_str(),
                    rust_path().to_str());
     }
-    for workspaces.iter().advance |ws| {
+    foreach ws in workspaces.iter() {
         if action(ws) {
             break;
         }

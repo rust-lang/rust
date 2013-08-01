@@ -102,7 +102,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
             }
         }
 
-        for bodies.mut_iter().advance |a| {
+        foreach a in bodies.mut_iter() {
             a.x[0] += dt * a.v[0];
             a.x[1] += dt * a.v[1];
             a.x[2] += dt * a.v[2];

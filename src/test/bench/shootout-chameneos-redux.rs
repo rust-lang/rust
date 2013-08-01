@@ -22,8 +22,8 @@ use std::uint;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
-    for all.iter().advance |aa| {
-        for all.iter().advance |bb| {
+    foreach aa in all.iter() {
+        foreach bb in all.iter() {
             println(show_color(*aa) + " + " + show_color(*bb) +
                     " -> " + show_color(transform(*aa, *bb)));
         }
@@ -47,7 +47,7 @@ fn show_color(cc: color) -> ~str {
 
 fn show_color_list(set: ~[color]) -> ~str {
     let mut out = ~"";
-    for set.iter().advance |col| {
+    foreach col in set.iter() {
         out.push_char(' ');
         out.push_str(show_color(*col));
     }
@@ -180,13 +180,13 @@ fn rendezvous(nn: uint, set: ~[color]) {
     }
 
     // tell each creature to stop
-    for to_creature.iter().advance |to_one| {
+    foreach to_one in to_creature.iter() {
         to_one.send(None);
     }
 
     // save each creature's meeting stats
     let mut report = ~[];
-    for to_creature.iter().advance |_to_one| {
+    foreach _to_one in to_creature.iter() {
         report.push(from_creatures_log.recv());
     }
 
@@ -194,7 +194,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     io::println(show_color_list(set));
 
     // print each creature's stats
-    for report.iter().advance |rep| {
+    foreach rep in report.iter() {
         io::println(*rep);
     }
 

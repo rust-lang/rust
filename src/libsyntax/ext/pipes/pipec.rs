@@ -210,7 +210,7 @@ impl to_type_decls for state {
 
         let mut items_msg = ~[];
 
-        for self.messages.iter().advance |m| {
+        foreach m in self.messages.iter() {
             let message(name, span, tys, this, next) = (*m).clone();
 
             let tys = match next {
@@ -257,7 +257,7 @@ impl to_type_decls for state {
         let mut items = ~[];
 
         {
-            for self.messages.mut_iter().advance |m| {
+            foreach m in self.messages.mut_iter() {
                 if dir == send {
                     items.push(m.gen_send(cx, true));
                     items.push(m.gen_send(cx, false));
@@ -373,8 +373,8 @@ impl gen_init for protocol {
 
     fn buffer_ty_path(&self, cx: @ExtCtxt) -> ast::Ty {
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
-        for self.states.iter().advance |s| {
-            for s.generics.ty_params.iter().advance |tp| {
+        foreach s in self.states.iter() {
+            foreach tp in s.generics.ty_params.iter() {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push((*tp).clone()),
                   _ => ()
@@ -392,7 +392,7 @@ impl gen_init for protocol {
         let ext_cx = cx;
         let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         let fields = do self.states.iter().transform |s| {
-            for s.generics.ty_params.iter().advance |tp| {
+            foreach tp in s.generics.ty_params.iter() {
                 match params.iter().find_(|tpp| tp.ident == tpp.ident) {
                   None => params.push((*tp).clone()),
                   _ => ()
@@ -434,7 +434,7 @@ impl gen_init for protocol {
         let mut client_states = ~[];
         let mut server_states = ~[];
 
-        for self.states.iter().advance |s| {
+        foreach s in self.states.iter() {
             items.push_all_move(s.to_type_decls(cx));
 
             client_states.push_all_move(s.to_endpoint_decls(cx, send));

@@ -194,7 +194,7 @@ fn visit_block(b: &ast::Block, (rcx, v): (@mut Rcx, rvt)) {
 
 fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
     // see above
-    for arm.pats.iter().advance |&p| {
+    foreach &p in arm.pats.iter() {
         constrain_bindings_in_pat(p, rcx);
     }
 
@@ -280,8 +280,8 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
         }
         ast::expr_match(_, ref arms) => {
             tcx.region_maps.record_cleanup_scope(expr.id);
-            for arms.iter().advance |arm| {
-                for arm.guard.iter().advance |guard| {
+            foreach arm in arms.iter() {
+                foreach guard in arm.guard.iter() {
                     tcx.region_maps.record_cleanup_scope(guard.id);
                 }
             }
@@ -299,7 +299,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
     // Check any autoderefs or autorefs that appear.
     {
         let r = rcx.fcx.inh.adjustments.find(&expr.id);
-        for r.iter().advance |&adjustment| {
+        foreach &adjustment in r.iter() {
             debug!("adjustment=%?", adjustment);
             match *adjustment {
                 @ty::AutoDerefRef(
@@ -307,7 +307,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
                 {
                     let expr_ty = rcx.resolve_node_type(expr.id);
                     constrain_derefs(rcx, expr, autoderefs, expr_ty);
-                    for opt_autoref.iter().advance |autoref| {
+                    foreach autoref in opt_autoref.iter() {
                         guarantor::for_autoref(rcx, expr, autoderefs, autoref);
 
                         // Require that the resulting region encompasses
@@ -555,7 +555,7 @@ fn constrain_call(rcx: @mut Rcx,
     let callee_scope = call_expr.id;
     let callee_region = ty::re_scope(callee_scope);
 
-    for arg_exprs.iter().advance |&arg_expr| {
+    foreach &arg_expr in arg_exprs.iter() {
         // ensure that any regions appearing in the argument type are
         // valid for at least the lifetime of the function:
         constrain_regions_in_type_of_node(
@@ -572,7 +572,7 @@ fn constrain_call(rcx: @mut Rcx,
     }
 
     // as loop above, but for receiver
-    for receiver.iter().advance |&r| {
+    foreach &r in receiver.iter() {
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, infer::CallRcvr(r.span));
         if implicitly_ref_args {
@@ -668,7 +668,7 @@ fn constrain_free_variables(rcx: @mut Rcx,
     let tcx = rcx.fcx.ccx.tcx;
     debug!("constrain_free_variables(%s, %s)",
            region.repr(tcx), expr.repr(tcx));
-    for get_freevars(tcx, expr.id).iter().advance |freevar| {
+    foreach freevar in get_freevars(tcx, expr.id).iter() {
         debug!("freevar def is %?", freevar.def);
         let def = freevar.def;
         let en_region = encl_region_of_def(rcx.fcx, def);
@@ -835,8 +835,8 @@ pub mod guarantor {
         debug!("regionck::for_match()");
         let discr_guarantor = guarantor(rcx, discr);
         debug!("discr_guarantor=%s", discr_guarantor.repr(rcx.tcx()));
-        for arms.iter().advance |arm| {
-            for arm.pats.iter().advance |pat| {
+        foreach arm in arms.iter() {
+            foreach pat in arm.pats.iter() {
                 link_ref_bindings_in_pat(rcx, *pat, discr_guarantor);
             }
         }
@@ -886,7 +886,7 @@ pub mod guarantor {
             sub_region: ty::Region,
             sup_region: Option<ty::Region>)
         {
-            for sup_region.iter().advance |r| {
+            foreach r in sup_region.iter() {
                 rcx.fcx.mk_subr(true, infer::Reborrow(expr.span),
                                 sub_region, *r);
             }
@@ -909,7 +909,7 @@ pub mod guarantor {
         debug!("guarantor::for_by_ref(expr=%?, callee_scope=%?) category=%?",
                expr.id, callee_scope, expr_cat);
         let minimum_lifetime = ty::re_scope(callee_scope);
-        for expr_cat.guarantor.iter().advance |guarantor| {
+        foreach guarantor in expr_cat.guarantor.iter() {
             mk_subregion_due_to_derefence(rcx, expr.span,
                                           minimum_lifetime, *guarantor);
         }
@@ -1215,12 +1215,12 @@ pub mod guarantor {
             ast::pat_ident(ast::bind_by_ref(_), _, opt_p) => {
                 link(rcx, pat.span, pat.id, guarantor);
 
-                for opt_p.iter().advance |p| {
+                foreach p in opt_p.iter() {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
             ast::pat_ident(_, _, opt_p) => {
-                for opt_p.iter().advance |p| {
+                foreach p in opt_p.iter() {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
@@ -1229,7 +1229,7 @@ pub mod guarantor {
                 link_ref_bindings_in_pats(rcx, pats, guarantor);
             }
             ast::pat_struct(_, ref fpats, _) => {
-                for fpats.iter().advance |fpat| {
+                foreach fpat in fpats.iter() {
                     link_ref_bindings_in_pat(rcx, fpat.pat, guarantor);
                 }
             }
@@ -1259,7 +1259,7 @@ pub mod guarantor {
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);
-                for slice.iter().advance |&p| {
+                foreach &p in slice.iter() {
                     link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
                 link_ref_bindings_in_pats(rcx, after, guarantor1);
@@ -1270,7 +1270,7 @@ pub mod guarantor {
     fn link_ref_bindings_in_pats(rcx: @mut Rcx,
                                  pats: &~[@ast::pat],
                                  guarantor: Option<ty::Region>) {
-        for pats.iter().advance |pat| {
+        foreach pat in pats.iter() {
             link_ref_bindings_in_pat(rcx, *pat, guarantor);
         }
     }

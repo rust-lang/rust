@@ -19,7 +19,7 @@ Cross-platform file path handling
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
-use iterator::IteratorUtil;
+use iterator::{Iterator, IteratorUtil};
 use libc;
 use option::{None, Option, Some};
 use str::{OwnedStr, Str, StrSlice, StrVector};
@@ -647,8 +647,8 @@ impl GenericPath for PosixPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = self.components.clone();
-        for cs.iter().advance |e| {
-            for e.as_slice().split_iter(posix::is_sep).advance |s| {
+        foreach e in cs.iter() {
+            foreach s in e.as_slice().split_iter(posix::is_sep) {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -662,7 +662,7 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = self.components.clone();
-        for s.split_iter(posix::is_sep).advance |s| {
+        foreach s in s.split_iter(posix::is_sep) {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
@@ -922,8 +922,8 @@ impl GenericPath for WindowsPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = self.components.clone();
-        for cs.iter().advance |e| {
-            for e.as_slice().split_iter(windows::is_sep).advance |s| {
+        foreach e in cs.iter() {
+            foreach s in e.as_slice().split_iter(windows::is_sep) {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -940,7 +940,7 @@ impl GenericPath for WindowsPath {
 
     fn push(&self, s: &str) -> WindowsPath {
         let mut v = self.components.clone();
-        for s.split_iter(windows::is_sep).advance |s| {
+        foreach s in s.split_iter(windows::is_sep) {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
@@ -989,7 +989,7 @@ impl GenericPath for WindowsPath {
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    for components.iter().advance |c| {
+    foreach c in components.iter() {
         if *c == ~"." && components.len() > 1 { loop; }
         if *c == ~"" { loop; }
         if *c == ~".." && cs.len() != 0 {

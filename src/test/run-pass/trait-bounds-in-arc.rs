@@ -84,20 +84,20 @@ fn main() {
 
 fn check_legs(arc: arc::Arc<~[~Pet:Freeze+Send]>) {
     let mut legs = 0;
-    for arc.get().iter().advance |pet| {
+    foreach pet in arc.get().iter() {
         legs += pet.num_legs();
     }
     assert!(legs == 12);
 }
 fn check_names(arc: arc::Arc<~[~Pet:Freeze+Send]>) {
-    for arc.get().iter().advance |pet| {
+    foreach pet in arc.get().iter() {
         do pet.name |name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         }
     }
 }
 fn check_pedigree(arc: arc::Arc<~[~Pet:Freeze+Send]>) {
-    for arc.get().iter().advance |pet| {
+    foreach pet in arc.get().iter() {
         assert!(pet.of_good_pedigree());
     }
 }
