@@ -25,6 +25,7 @@ use prelude::*;
 use ptr;
 use task;
 use vec::ImmutableVector;
+use str::Str;
 
 /**
  * A value representing a child process.
@@ -147,9 +148,8 @@ impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str],
-               options: ProcessOptions)
-               -> Process {
+    pub fn new<S: Str>(prog: &str, args: &[S], options: ProcessOptions)
+                      -> Process {
         #[fixed_stack_segment]; #[inline(never)];
 
         let (in_pipe, in_fd) = match options.in_fd {
@@ -452,10 +452,10 @@ struct SpawnProcessResult {
 }
 
 #[cfg(windows)]
-fn spawn_process_os(prog: &str, args: &[~str],
-                    env: Option<~[(~str, ~str)]>,
-                    dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+fn spawn_process_os<S: Str>(prog: &str, args: &[S],
+                            env: Option<~[(~str, ~str)]>,
+                            dir: Option<&Path>,
+                            in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
     #[fixed_stack_segment]; #[inline(never)];
 
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
@@ -584,12 +584,12 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 
 // FIXME: this is only pub so it can be tested (see issue #4536)
 #[cfg(windows)]
-pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
+pub fn make_command_line<S: Str>(prog: &str, args: &[S]) -> ~str {
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
     for arg in args.iter() {
         cmd.push_char(' ');
-        append_arg(&mut cmd, *arg);
+        append_arg(&mut cmd, arg.as_slice());
     }
     return cmd;
 
@@ -636,10 +636,10 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 }
 
 #[cfg(unix)]
-fn spawn_process_os(prog: &str, args: &[~str],
-                    env: Option<~[(~str, ~str)]>,
-                    dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+fn spawn_process_os<S: Str>(prog: &str, args: &[S],
+                            env: Option<~[(~str, ~str)]>,
+                            dir: Option<&Path>,
+                            in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
     #[fixed_stack_segment]; #[inline(never)];
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
@@ -700,7 +700,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
+fn with_argv<T, S: Str>(prog: &str, args: &[S], cb: &fn(**libc::c_char) -> T) -> T {
     use vec;
 
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
@@ -711,7 +711,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
     tmps.push(prog.to_c_str());
 
     for arg in args.iter() {
-        tmps.push(arg.to_c_str());
+        tmps.push(arg.as_slice().to_c_str());
     }
 
     // Next, convert each of the byte strings into a pointer. This is
@@ -817,7 +817,7 @@ fn free_handle(_handle: *()) {
  *
  * The process's exit code
  */
-pub fn process_status(prog: &str, args: &[~str]) -> int {
+pub fn process_status<S: Str>(prog: &str, args: &[S]) -> int {
     let mut prog = Process::new(prog, args, ProcessOptions {
         env: None,
         dir: None,
@@ -840,7 +840,7 @@ pub fn process_status(prog: &str, args: &[~str]) -> int {
  *
  * The process's stdout/stderr output and exit code.
  */
-pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
+pub fn process_output<S: Str>(prog: &str, args: &[S]) -> ProcessOutput {
     let mut prog = Process::new(prog, args, ProcessOptions::new());
     prog.finish_with_output()
 }
@@ -981,8 +981,9 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))]
     fn test_process_status() {
-        assert_eq!(run::process_status("false", []), 1);
-        assert_eq!(run::process_status("true", []), 0);
+        let args: &[&str] = [];
+        assert_eq!(run::process_status("false", args), 1);
+        assert_eq!(run::process_status("true", args), 0);
     }
     #[test]
     #[cfg(target_os="android")]
@@ -1052,7 +1053,8 @@ mod tests {
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
 
-        let mut proc = run::Process::new("cat", [], run::ProcessOptions {
+        let args: &[&str] = [];
+        let mut proc = run::Process::new("cat", args, run::ProcessOptions {
             dir: None,
             env: None,
             in_fd: Some(pipe_in.input),
@@ -1098,7 +1100,8 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))]
     fn test_finish_once() {
-        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        let args: &[&str] = [];
+        let mut prog = run::Process::new("false", args, run::ProcessOptions::new());
         assert_eq!(prog.finish(), 1);
     }
     #[test]
@@ -1112,7 +1115,8 @@ mod tests {
     #[test]
     #[cfg(not(target_os="android"))]
     fn test_finish_twice() {
-        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        let args: &[&str] = [];
+        let mut prog = run::Process::new("false", args, run::ProcessOptions::new());
         assert_eq!(prog.finish(), 1);
         assert_eq!(prog.finish(), 1);
     }
@@ -1247,7 +1251,8 @@ mod tests {
 
     #[cfg(unix,not(target_os="android"))]
     fn run_pwd(dir: Option<&Path>) -> run::Process {
-        run::Process::new("pwd", [], run::ProcessOptions {
+        let args: &[&str] = [];
+        run::Process::new("pwd", args, run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
         })
@@ -1302,7 +1307,8 @@ mod tests {
 
     #[cfg(unix,not(target_os="android"))]
     fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
-        run::Process::new("env", [], run::ProcessOptions {
+        let args: &[&str] = [];
+        run::Process::new("env", args, run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
         })

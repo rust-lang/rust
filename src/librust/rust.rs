@@ -165,7 +165,8 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
             let test_exec = Path(*filename).filestem().unwrap() + "test~";
             invoke("rustc", &[~"--test", filename.to_owned(),
                               ~"-o", test_exec.to_owned()], rustc::main_args);
-            let exit_code = run::process_status(~"./" + test_exec, []);
+            let args: &[&str] = [];
+            let exit_code = run::process_status(~"./" + test_exec, args);
             Valid(exit_code)
         }
         _ => Invalid
