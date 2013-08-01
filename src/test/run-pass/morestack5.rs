@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
+
 // This test will call __morestack with various minimum stack sizes
 
 extern mod extra;

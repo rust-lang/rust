@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
+
 // Here we're testing that all of the argument registers, argument
 // stack slots, and return value are preserved across split stacks.
 fn getbig(a0: int,
