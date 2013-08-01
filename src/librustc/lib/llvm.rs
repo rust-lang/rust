@@ -87,6 +87,8 @@ pub enum Attribute {
     NonLazyBindAttribute = 1 << 31,
 
     // Not added to LLVM yet, so may need to stay updated if LLVM changes.
+    // FIXME(#8199): if this changes, be sure to change the relevant constant
+    //               down below
     FixedStackSegment = 1 << 41,
 }
 
@@ -2115,6 +2117,17 @@ pub fn SetFunctionAttribute(Fn: ValueRef, attr: Attribute) {
         let upper = (attr >> 32) & 0xffffffff;
         llvm::LLVMAddFunctionAttr(Fn, lower as c_uint, upper as c_uint);
     }
+}
+
+// FIXME(#8199): this shouldn't require this hackery. On i686
+//               (FixedStackSegment as u64) will return 0 instead of 1 << 41.
+//               Furthermore, if we use a match of any sort then an LLVM
+//               assertion is generated!
+pub fn SetFixedStackSegmentAttribute(Fn: ValueRef) {
+        let attr = 1u64 << 41;
+        let lower = attr & 0xffffffff;
+        let upper = (attr >> 32) & 0xffffffff;
+        llvm::LLVMAddFunctionAttr(Fn, lower as c_uint, upper as c_uint);
 }
 /* Memory-managed object interface to type handles. */
 
