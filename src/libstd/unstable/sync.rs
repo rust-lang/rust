@@ -16,7 +16,6 @@ use ptr;
 use option::*;
 use either::{Either, Left, Right};
 use task;
-use task::atomically;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,SeqCst};
 use unstable::finally::Finally;
 use ops::Drop;
@@ -271,6 +270,48 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 
 /****************************************************************************/
 
+/**
+ * Enables a runtime assertion that no operation in the argument closure shall
+ * use scheduler operations (yield, recv, spawn, etc). This is for use with
+ * pthread mutexes, which may block the entire scheduler thread, rather than
+ * just one task, and is hence prone to deadlocks if mixed with yielding.
+ *
+ * NOTE: THIS DOES NOT PROVIDE LOCKING, or any sort of critical-section
+ * synchronization whatsoever. It only makes sense to use for CPU-local issues.
+ */
+// FIXME(#8140) should not be pub
+pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
+    use rt::task::Task;
+    use task::rt;
+    use rt::local::Local;
+    use rt::{context, OldTaskContext, TaskContext};
+
+    match context() {
+        OldTaskContext => {
+            let t = rt::rust_get_task();
+            do (|| {
+                rt::rust_task_inhibit_kill(t);
+                rt::rust_task_inhibit_yield(t);
+                f()
+            }).finally {
+                rt::rust_task_allow_yield(t);
+                rt::rust_task_allow_kill(t);
+            }
+        }
+        TaskContext => {
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                (*t).death.inhibit_yield();
+                f()
+            }).finally {
+                (*t).death.allow_yield();
+            }
+        }
+        // FIXME(#3095): As in unkillable().
+        _ => f()
+    }
+}
+
 #[allow(non_camel_case_types)] // runtime type
 type rust_little_lock = *libc::c_void;
 
@@ -395,10 +436,17 @@ mod tests {
     use cell::Cell;
     use comm;
     use option::*;
-    use super::{Exclusive, UnsafeAtomicRcBox};
+    use super::{Exclusive, UnsafeAtomicRcBox, atomically};
     use task;
     use uint;
     use util;
+
+    #[test]
+    fn test_atomically() {
+        // NB. The whole runtime will abort on an 'atomic-sleep' violation,
+        // so we can't really test for the converse behaviour.
+        unsafe { do atomically { } } task::yield(); // oughtn't fail
+    }
 
     #[test]
     fn exclusive_new_arc() {
