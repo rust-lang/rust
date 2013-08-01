@@ -19,7 +19,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator, Extendable, Chain};
+use iterator::{Iterator, IteratorUtil, FromIterator, Extendable, Chain, range};
 use num;
 use option::{None, Option, Some};
 use rand::RngUtil;
@@ -284,7 +284,7 @@ impl<K:Hash + Eq,V> Container for HashMap<K, V> {
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
-        for uint::range(0, self.buckets.len()) |idx| {
+        foreach idx in range(0u, self.buckets.len()) {
             self.buckets[idx] = None;
         }
         self.size = 0;
@@ -802,10 +802,8 @@ pub type SetAlgebraIter<'self, T> =
 
 #[cfg(test)]
 mod test_map {
-    use container::{Container, Map};
-    use option::{None, Some};
+    use prelude::*;
     use super::*;
-    use uint;
 
     #[test]
     fn test_create_capacity_zero() {
@@ -930,7 +928,7 @@ mod test_map {
     #[test]
     fn test_iterate() {
         let mut m = linear_map_with_capacity(4);
-        for uint::range(0, 32) |i| {
+        foreach i in range(0u, 32) {
             assert!(m.insert(i, i*2));
         }
         let mut observed = 0;
@@ -1023,7 +1021,6 @@ mod test_set {
     use prelude::*;
     use container::Container;
     use vec::ImmutableEqVector;
-    use uint;
 
     #[test]
     fn test_disjoint() {
@@ -1079,7 +1076,7 @@ mod test_set {
     #[test]
     fn test_iterate() {
         let mut a = HashSet::new();
-        for uint::range(0, 32) |i| {
+        foreach i in range(0u, 32) {
             assert!(a.insert(i));
         }
         let mut observed = 0;

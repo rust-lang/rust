@@ -16,7 +16,6 @@
 use std::num;
 use std::util::{swap, replace};
 use std::iterator::{FromIterator, Extendable};
-use std::uint;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -48,7 +47,7 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
         } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for uint::range(0, self.len()) |_| {
+            foreach _ in range(0u, self.len()) {
                 if x.next().unwrap() != y.next().unwrap() {
                     return false
                 }
@@ -66,7 +65,7 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for uint::range(0, num::min(a_len, b_len)) |_| {
+    foreach _ in range(0u, num::min(a_len, b_len)) {
         let (key_a, value_a) = x.next().unwrap();
         let (key_b, value_b) = y.next().unwrap();
         if *key_a < *key_b { return true; }

@@ -374,7 +374,7 @@ impl RegionVarBindings {
     pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
                                        -> ~[RegionVid] {
         do vec::build |push| {
-            for uint::range(snapshot, self.undo_log.len()) |i| {
+            foreach i in range(snapshot, self.undo_log.len()) {
                 match self.undo_log[i] {
                     AddVar(vid) => push(vid),
                     _ => ()
@@ -962,7 +962,7 @@ impl RegionVarBindings {
 
         let mut opt_graph = None;
 
-        for uint::range(0, self.num_vars()) |idx| {
+        foreach idx in range(0u, self.num_vars()) {
             match var_data[idx].value {
                 Value(_) => {
                     /* Inference successful */
@@ -1027,7 +1027,7 @@ impl RegionVarBindings {
         let mut graph = graph::Graph::with_capacity(num_vars + 1,
                                                     num_edges);
 
-        for uint::range(0, num_vars) |_| {
+        foreach _ in range(0u, num_vars) {
             graph.add_node(());
         }
         let dummy_idx = graph.add_node(());

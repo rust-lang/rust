@@ -10,8 +10,6 @@
 
 extern mod extra;
 
-use std::uint;
-
 #[deriving(Clone)]
 struct Triple {
     x: int,
@@ -28,7 +26,7 @@ fn test(x: bool, foo: ~Triple) -> int {
 
 pub fn main() {
     let x = ~Triple{x: 1, y: 2, z: 3};
-    for uint::range(0u, 10000u) |_i| {
+    foreach _ in range(0u, 10000u) {
         assert_eq!(test(true, x.clone()), 2);
     }
     assert_eq!(test(false, x), 5);

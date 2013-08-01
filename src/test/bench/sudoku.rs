@@ -56,8 +56,8 @@ impl Sudoku {
     }
 
     pub fn equal(&self, other: &Sudoku) -> bool {
-        for u8::range(0u8, 9u8) |row| {
-            for u8::range(0u8, 9u8) |col| {
+        foreach row in range(0u8, 9u8) {
+            foreach col in range(0u8, 9u8) {
                 if self.grid[row][col] != other.grid[row][col] {
                     return false;
                 }
@@ -87,9 +87,9 @@ impl Sudoku {
     }
 
     pub fn write(&self, writer: @io::Writer) {
-        for u8::range(0u8, 9u8) |row| {
+        foreach row in range(0u8, 9u8) {
             writer.write_str(fmt!("%u", self.grid[row][0] as uint));
-            for u8::range(1u8, 9u8) |col| {
+            foreach col in range(1u8, 9u8) {
                 writer.write_str(fmt!(" %u", self.grid[row][col] as uint));
             }
             writer.write_char('\n');
@@ -99,8 +99,8 @@ impl Sudoku {
     // solve sudoku grid
     pub fn solve(&mut self) {
         let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
-        for u8::range(0u8, 9u8) |row| {
-            for u8::range(0u8, 9u8) |col| {
+        foreach row in range(0u8, 9u8) {
+            foreach col in range(0u8, 9u8) {
                 let color = self.grid[row][col];
                 if color == 0u8 {
                     work.push((row, col));
@@ -143,7 +143,7 @@ impl Sudoku {
 
     // find colors available in neighbourhood of (row, col)
     fn drop_colors(&mut self, avail: &mut Colors, row: u8, col: u8) {
-        for u8::range(0u8, 9u8) |idx| {
+        foreach idx in range(0u8, 9u8) {
             avail.remove(self.grid[idx][col]); /* check same column fields */
             avail.remove(self.grid[row][idx]); /* check same row fields */
         }
@@ -151,8 +151,10 @@ impl Sudoku {
         // check same block fields
         let row0 = (row / 3u8) * 3u8;
         let col0 = (col / 3u8) * 3u8;
-        for u8::range(row0, row0 + 3u8) |alt_row| {
-            for u8::range(col0, col0 + 3u8) |alt_col| { avail.remove(self.grid[alt_row][alt_col]); }
+        foreach alt_row in range(row0, row0 + 3u8) {
+            foreach alt_col in range(col0, col0 + 3u8) {
+                avail.remove(self.grid[alt_row][alt_col]);
+            }
         }
     }
 }

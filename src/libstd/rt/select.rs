@@ -111,6 +111,7 @@ mod test {
     use comm::GenericChan;
     use task;
     use cell::Cell;
+    use iterator::{Iterator, range};
 
     #[test] #[ignore(cfg(windows))] #[should_fail]
     fn select_doesnt_get_trolled() {
@@ -263,7 +264,6 @@ mod test {
         select_racing_senders_helper(false, ~[7,8,9]);
 
         fn select_racing_senders_helper(killable: bool, send_on_chans: ~[uint]) {
-            use uint;
             use rt::test::spawntask_random;
 
             do run_in_newsched_task {
@@ -272,7 +272,7 @@ mod test {
                     let send_on_chans = send_on_chans.clone();
                     do task::spawn {
                         let mut ports = ~[];
-                        for uint::range(0, NUM_CHANS) |i| {
+                        foreach i in range(0u, NUM_CHANS) {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {

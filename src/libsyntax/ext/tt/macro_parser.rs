@@ -21,7 +21,6 @@ use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to
 use parse::token;
 
 use std::hashmap::HashMap;
-use std::uint;
 use std::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
@@ -280,7 +279,7 @@ pub fn parse(
                         // most of the time.
 
                         // Only touch the binders we have actually bound
-                        for uint::range(ei.match_lo, ei.match_hi) |idx| {
+                        foreach idx in range(ei.match_lo, ei.match_hi) {
                             let sub = ei.matches[idx].clone();
                             new_pos.matches[idx]
                                 .push(@matched_seq(sub,
@@ -321,7 +320,7 @@ pub fn parse(
                         let mut new_ei = ei.clone();
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
-                        for uint::range(match_idx_lo, match_idx_hi) |idx| {
+                        foreach idx in range(match_idx_lo, match_idx_hi) {
                             new_ei.matches[idx].push(@matched_seq(~[], sp));
                         }
 

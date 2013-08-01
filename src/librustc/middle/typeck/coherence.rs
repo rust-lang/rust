@@ -54,7 +54,6 @@ use util::ppaux::ty_to_str;
 
 use std::hashmap::{HashMap, HashSet};
 use std::result::Ok;
-use std::uint;
 use std::vec;
 
 pub struct UniversalQuantificationResult {
@@ -551,7 +550,7 @@ impl CoherenceChecker {
 
         let mut provided_names = HashSet::new();
         // Implemented methods
-        for uint::range(0, all_methods.len()) |i| {
+        foreach i in range(0u, all_methods.len()) {
             provided_names.insert(all_methods[i].ident);
         }
 

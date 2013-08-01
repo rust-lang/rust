@@ -14,7 +14,5 @@ fn test(_x: ~uint) {}
 
 fn main() {
     let i = ~3;
-    for uint::range(0, 10) |_x| {
-        test(i); //~ ERROR cannot move out
-    }
+    let _f = || test(i); //~ ERROR cannot move out
 }

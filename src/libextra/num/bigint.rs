@@ -1608,7 +1608,7 @@ mod biguint_tests {
     fn test_factor() {
         fn factor(n: uint) -> BigUint {
             let mut f= One::one::<BigUint>();
-            for uint::range(2, n + 1) |i| {
+            foreach i in range(2, n + 1) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // f *= BigUint::from_uint(i);
                 f = f * BigUint::from_uint(i);

@@ -88,13 +88,13 @@ impl<T> Clone for Tube<T> {
 
 #[cfg(test)]
 mod test {
-    use int;
     use cell::Cell;
     use rt::test::*;
     use rt::rtio::EventLoop;
     use rt::sched::Scheduler;
     use rt::local::Local;
     use super::*;
+    use prelude::*;
 
     #[test]
     fn simple_test() {
@@ -166,7 +166,7 @@ mod test {
                 sched.enqueue_blocked_task(task);
             }
 
-            for int::range(0, MAX) |i| {
+            foreach i in range(0, MAX) {
                 let j = tube.recv();
                 assert!(j == i);
             }

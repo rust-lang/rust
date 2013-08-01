@@ -23,7 +23,6 @@ extern mod extra;
 
 use extra::{time, getopts};
 use std::comm::*;
-use std::int::range;
 use std::io::WriterUtil;
 use std::io;
 use std::os;
@@ -84,7 +83,7 @@ fn stress_task(id: int) {
 
 fn stress(num_tasks: int) {
     let mut results = ~[];
-    for range(0, num_tasks) |i| {
+    foreach i in range(0, num_tasks) {
         let mut builder = task::task();
         builder.future_result(|r| results.push(r));
         do builder.spawn {
@@ -117,8 +116,8 @@ fn main() {
 
         let out = io::stdout();
 
-        for range(1, max + 1) |n| {
-            for range(0, num_trials) |_i| {
+        foreach n in range(1, max + 1) {
+            foreach _ in range(0, num_trials) {
                 let start = time::precise_time_ns();
                 let fibn = fib(n);
                 let stop = time::precise_time_ns();

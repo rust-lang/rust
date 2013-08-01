@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint::{range};
-
 trait FooTrait {
     fn foo(&self) -> uint;
 }
@@ -31,7 +29,7 @@ pub fn main() {
         ~BarStruct{ x: 2 } as ~FooTrait
     ];
 
-    for range(0, foos.len()) |i| {
+    foreach i in range(0u, foos.len()) {
         assert_eq!(i, foos[i].foo());
     }
 }

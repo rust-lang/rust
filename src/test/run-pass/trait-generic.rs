@@ -31,8 +31,8 @@ trait map<T> {
 impl<T> map<T> for ~[T] {
     fn map<U>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        // FIXME: #7355 generates bad code with Iterator
-        for std::uint::range(0, self.len()) |i| {
+        // FIXME: #7355 generates bad code with VecIterator
+        foreach i in range(0u, self.len()) {
             r.push(f(&self[i]));
         }
         r

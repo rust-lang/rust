@@ -126,12 +126,6 @@ pub fn range_step_inclusive(start: $T, last: $T, step: $T, it: &fn($T) -> bool) 
 
 
 #[inline]
-/// Iterate over the range [`lo`..`hi`)
-pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
-    range_step(lo, hi, 1 as $T, it)
-}
-
-#[inline]
 /// Iterate over the range (`hi`..`lo`]
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     if hi == min_value { return true; }
@@ -895,9 +889,6 @@ mod tests {
     fn test_ranges() {
         let mut l = ~[];
 
-        for range(0,3) |i| {
-            l.push(i);
-        }
         for range_rev(14,11) |i| {
             l.push(i);
         }
@@ -919,8 +910,7 @@ mod tests {
         for range_step(min_value + 3, min_value, -2) |i| {
             l.push(i);
         }
-        assert_eq!(l, ~[0,1,2,
-                        13,12,11,
+        assert_eq!(l, ~[13,12,11,
                         20,22,24,
                         36,34,32,
                         max_value-2,
@@ -929,9 +919,6 @@ mod tests {
                         min_value+3,min_value+1]);
 
         // None of the `fail`s should execute.
-        for range(10,0) |_i| {
-            fail!(~"unreachable");
-        }
         for range_rev(0,10) |_i| {
             fail!(~"unreachable");
         }

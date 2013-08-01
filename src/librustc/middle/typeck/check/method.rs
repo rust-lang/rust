@@ -97,7 +97,6 @@ use util::common::indenter;
 
 use std::hashmap::HashSet;
 use std::result;
-use std::uint;
 use std::vec;
 use extra::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
@@ -775,7 +774,7 @@ impl<'self> LookupContext<'self> {
             self.tcx().sess.span_err(
                 self.expr.span,
                 "multiple applicable methods in scope");
-            for uint::range(0, relevant_candidates.len()) |idx| {
+            foreach idx in range(0u, relevant_candidates.len()) {
                 self.report_candidate(idx, &relevant_candidates[idx].origin);
             }
         }

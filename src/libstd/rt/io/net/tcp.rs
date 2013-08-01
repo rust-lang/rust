@@ -143,11 +143,11 @@ impl Listener<TcpStream> for TcpListener {
 #[cfg(test)]
 mod test {
     use super::*;
-    use int;
     use cell::Cell;
     use rt::test::*;
     use rt::io::net::ip::Ipv4;
     use rt::io::*;
+    use prelude::*;
 
     #[test] #[ignore]
     fn bind_error() {
@@ -421,7 +421,7 @@ mod test {
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                for int::range(0, MAX) |i| {
+                foreach i in range(0, MAX) {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
@@ -460,7 +460,7 @@ mod test {
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                for int::range(0, MAX) |i| {
+                foreach i in range(0, MAX) {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
@@ -499,7 +499,7 @@ mod test {
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                for int::range(0, MAX) |_| {
+                foreach _ in range(0, MAX) {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection
@@ -537,7 +537,7 @@ mod test {
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                for int::range(0, MAX) |_| {
+                foreach _ in range(0, MAX) {
                     let stream = Cell::new(listener.accept());
                     rtdebug!("accepted");
                     // Start another task to handle the connection

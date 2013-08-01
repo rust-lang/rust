@@ -22,7 +22,6 @@ source code snippets, etc.
 */
 
 use std::cmp;
-use std::uint;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
@@ -364,7 +363,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = ~[];
-        for uint::range(lo.line - 1u, hi.line as uint) |i| {
+        foreach i in range(lo.line - 1u, hi.line as uint) {
             lines.push(i);
         };
         return @FileLines {file: lo.file, lines: lines};

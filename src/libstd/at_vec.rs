@@ -12,10 +12,9 @@
 
 use clone::Clone;
 use container::Container;
-use iterator::Iterator;
+use iterator::{Iterator, range};
 use option::{Option, Some, None};
 use sys;
-use uint;
 use unstable::raw::Repr;
 use vec::{ImmutableVector, OwnedVector};
 
@@ -95,7 +94,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
         foreach x in lhs.iter() {
             push((*x).clone());
         }
-        for uint::range(0, rhs.len()) |i| {
+        foreach i in range(0u, rhs.len()) {
             push(rhs[i].clone());
         }
     }
@@ -323,14 +322,14 @@ pub mod raw {
 #[cfg(test)]
 mod test {
     use super::*;
-    use uint;
+    use prelude::*;
 
     #[test]
     fn test() {
         // Some code that could use that, then:
         fn seq_range(lo: uint, hi: uint) -> @[uint] {
             do build |push| {
-                for uint::range(lo, hi) |i| {
+                foreach i in range(lo, hi) {
                     push(i);
                 }
             }

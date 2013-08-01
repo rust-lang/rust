@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::sys;
-use std::uint;
 
 #[packed]
 #[deriving(Eq)]
@@ -23,7 +22,7 @@ fn main() {
 
     assert_eq!(sys::size_of::<[Foo, .. 10]>(), 90);
 
-    for uint::range(0, 10) |i| {
+    foreach i in range(0u, 10) {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 
