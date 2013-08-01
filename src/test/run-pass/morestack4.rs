@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
+
 // This is testing for stack frames greater than 256 bytes,
 // for which function prologues are generated differently
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
+
 // This test attempts to force the dynamic linker to resolve
 // external symbols as close to the red zone as possible.
 
