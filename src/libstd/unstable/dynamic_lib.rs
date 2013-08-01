@@ -31,7 +31,7 @@ impl Drop for DynamicLibrary {
                 dl::close(self.handle)
             }
         } {
-            Ok(()) => { },
+            Ok(()) => {},
             Err(str) => fail!(str)
         }
     }
@@ -41,14 +41,20 @@ impl DynamicLibrary {
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open(filename: Option<&path::Path>) -> Result<DynamicLibrary, ~str> {
-        do dl::check_for_errors_in {
-            unsafe {
-                DynamicLibrary { handle:
-                    match filename {
-                        Some(name) => dl::open_external(name),
-                        None => dl::open_internal()
-                    }
+        unsafe {
+            let maybe_library = do dl::check_for_errors_in {
+                match filename {
+                    Some(name) => dl::open_external(name),
+                    None => dl::open_internal()
                 }
+            };
+
+            // The dynamic library must not be constructed if there is
+            // an error opening the library so the destructor does not
+            // run.
+            match maybe_library {
+                Err(err) => Err(err),
+                Ok(handle) => Ok(DynamicLibrary { handle: handle })
             }
         }
     }
@@ -58,41 +64,69 @@ impl DynamicLibrary {
         // This function should have a lifetime constraint of 'self on
         // T but that feature is still unimplemented
 
-        do dl::check_for_errors_in {
-            let symbol_value = do symbol.as_c_str |raw_string| {
+        let maybe_symbol_value = do dl::check_for_errors_in {
+            do symbol.as_c_str |raw_string| {
                 dl::symbol(self.handle, raw_string)
-            };
+            }
+        };
 
-            cast::transmute(symbol_value)
+        // The value must not be constructed if there is an error so
+        // the destructor does not run.
+        match maybe_symbol_value {
+            Err(err) => Err(err),
+            Ok(symbol_value) => Ok(cast::transmute(symbol_value))
         }
     }
 }
 
-#[test]
-#[ignore(cfg(windows))]
-priv fn test_loading_cosine () {
-    // The math library does not need to be loaded since it is already
-    // statically linked in
-    let libm = match DynamicLibrary::open(None) {
-        Err (error) => fail!("Could not load self as module: %s", error),
-        Ok (libm) => libm
-    };
 
-    // Unfortunately due to issue #6194 it is not possible to call
-    // this as a C function
-    let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
-        match libm.symbol("cos") {
-            Err (error) => fail!("Could not load function cos: %s", error),
-            Ok (cosine) => cosine
+#[cfg(test)]
+mod test {
+    use super::*;
+    use option::*;
+    use result::*;
+    use path::*;
+    use libc;
+
+    #[test]
+    fn test_loading_cosine() {
+        // The math library does not need to be loaded since it is already
+        // statically linked in
+        let libm = match DynamicLibrary::open(None) {
+            Err(error) => fail!("Could not load self as module: %s", error),
+            Ok(libm) => libm
+        };
+
+        // Unfortunately due to issue #6194 it is not possible to call
+        // this as a C function
+        let cosine: extern fn(libc::c_double) -> libc::c_double = unsafe {
+            match libm.symbol("cos") {
+                Err(error) => fail!("Could not load function cos: %s", error),
+                Ok(cosine) => cosine
+            }
+        };
+
+        let argument = 0.0;
+        let expected_result = 1.0;
+        let result = cosine(argument);
+        if result != expected_result {
+            fail!("cos(%?) != %? but equaled %? instead", argument,
+                  expected_result, result)
         }
-    };
+    }
 
-    let argument = 0.0;
-    let expected_result = 1.0;
-    let result = cosine(argument);
-    if result != expected_result {
-        fail!("cos(%?) != %? but equaled %? instead", argument,
-              expected_result, result)
+    #[test]
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn test_errors_do_not_crash() {
+        // Open /dev/null as a library to get an error, and make sure
+        // that only causes an error, and not a crash.
+        let path = GenericPath::from_str("/dev/null");
+        match DynamicLibrary::open(Some(&path)) {
+            Err(_) => {}
+            Ok(_) => fail!("Successfully opened the empty library.")
+        }
     }
 }
 
