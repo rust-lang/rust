@@ -1079,11 +1079,17 @@ pub mod traits {}
 pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
+
+    /// Convert `self` into a ~str.
+    fn into_owned(self) -> ~str;
 }
 
 impl<'self> Str for &'self str {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str { *self }
+
+    #[inline]
+    fn into_owned(self) -> ~str { self.to_owned() }
 }
 
 impl<'self> Str for ~str {
@@ -1091,6 +1097,9 @@ impl<'self> Str for ~str {
     fn as_slice<'a>(&'a self) -> &'a str {
         let s: &'a str = *self; s
     }
+
+    #[inline]
+    fn into_owned(self) -> ~str { self }
 }
 
 impl<'self> Str for @str {
@@ -1098,6 +1107,9 @@ impl<'self> Str for @str {
     fn as_slice<'a>(&'a self) -> &'a str {
         let s: &'a str = *self; s
     }
+
+    #[inline]
+    fn into_owned(self) -> ~str { self.to_owned() }
 }
 
 impl<'self> Container for &'self str {
