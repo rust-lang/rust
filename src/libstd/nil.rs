@@ -16,6 +16,10 @@ Functions for the unit type.
 
 #[cfg(not(test))]
 use prelude::*;
+#[cfg(not(test))]
+use num::Zero;
+
+
 
 #[cfg(not(test))]
 impl Eq for () {
@@ -48,3 +52,10 @@ impl TotalEq for () {
     #[inline]
     fn equals(&self, _other: &()) -> bool { true }
 }
+
+#[cfg(not(test))]
+impl Zero for () {
+    fn zero() -> () { () }
+    fn is_zero(&self) -> bool { true }
+}
+
