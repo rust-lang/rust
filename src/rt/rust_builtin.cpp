@@ -10,14 +10,16 @@
 
 /* Foreign builtins. */
 
-#include "rust_sched_loop.h"
-#include "rust_task.h"
 #include "rust_util.h"
-#include "rust_scheduler.h"
 #include "sync/timer.h"
 #include "sync/rust_thread.h"
+#include "sync/lock_and_signal.h"
+#include "memory_region.h"
+#include "boxed_region.h"
 #include "rust_abi.h"
+#include "rust_rng.h"
 #include "vg/valgrind.h"
+#include "sp.h"
 
 #include <time.h>
 
@@ -67,12 +69,6 @@ rust_env_pairs() {
     return environ;
 }
 #endif
-
-extern "C" CDECL void *
-rust_local_realloc(rust_opaque_box *ptr, size_t size) {
-    rust_task *task = rust_get_current_task();
-    return task->boxed.realloc(ptr, size);
-}
 
 extern "C" CDECL size_t
 rand_seed_size() {
@@ -148,12 +144,6 @@ int debug_static_mut = 3;
 extern "C" void
 debug_static_mut_check_four() {
     assert(debug_static_mut == 4);
-}
-
-extern "C" CDECL void *
-debug_get_stk_seg() {
-    rust_task *task = rust_get_current_task();
-    return task->stk;
 }
 
 extern "C" CDECL char*
@@ -383,162 +373,25 @@ rust_mktime(rust_tm* timeptr) {
     return mktime(&t);
 }
 
-extern "C" CDECL rust_sched_id
-rust_get_sched_id() {
-    rust_task *task = rust_get_current_task();
-    return task->sched->get_id();
-}
-
-extern "C" CDECL int
-rust_get_argc() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->env->argc;
-}
-
-extern "C" CDECL char**
-rust_get_argv() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->env->argv;
-}
-
-extern "C" CDECL rust_sched_id
-rust_new_sched(uintptr_t threads) {
-    rust_task *task = rust_get_current_task();
-    assert(threads > 0 && "Can't create a scheduler with no threads, silly!");
-    return task->kernel->create_scheduler(threads);
-}
-
-extern "C" CDECL rust_task_id
-get_task_id() {
-    rust_task *task = rust_get_current_task();
-    return task->id;
-}
-
-static rust_task*
-new_task_common(rust_scheduler *sched, rust_task *parent) {
-    return sched->create_task(parent, NULL);
-}
-
-extern "C" CDECL rust_task*
-new_task() {
-    rust_task *task = rust_get_current_task();
-    rust_sched_id sched_id = task->kernel->main_sched_id();
-    rust_scheduler *sched = task->kernel->get_scheduler_by_id(sched_id);
-    assert(sched != NULL && "should always have a main scheduler");
-    return new_task_common(sched, task);
-}
-
-extern "C" CDECL rust_task*
-rust_new_task_in_sched(rust_sched_id id) {
-    rust_task *task = rust_get_current_task();
-    rust_scheduler *sched = task->kernel->get_scheduler_by_id(id);
-    if (sched == NULL)
-        return NULL;
-    return new_task_common(sched, task);
-}
-
-extern "C" rust_task *
-rust_get_task() {
-    return rust_get_current_task();
-}
-
-extern "C" rust_task *
-rust_try_get_task() {
-    return rust_try_get_current_task();
-}
-
-extern "C" CDECL stk_seg *
-rust_get_stack_segment() {
-    return rust_get_current_task()->stk;
-}
-
-extern "C" CDECL stk_seg *
-rust_get_c_stack() {
-    return rust_get_current_task()->get_c_stack();
-}
-
-extern "C" CDECL void
-start_task(rust_task *target, fn_env_pair *f) {
-    target->start(f->f, f->env, NULL);
-}
-
-// This is called by an intrinsic on the Rust stack and must run
-// entirely in the red zone. Do not call on the C stack.
-extern "C" CDECL MUST_CHECK bool
-rust_task_yield(rust_task *task, bool *killed) {
-    return task->yield();
-}
-
-extern "C" CDECL void
-rust_set_exit_status(intptr_t code) {
-    rust_task *task = rust_get_current_task();
-    task->kernel->set_exit_status((int)code);
-}
-
-extern void log_console_on();
+static lock_and_signal log_lock;
+static bool log_to_console = true;
 
 extern "C" CDECL void
 rust_log_console_on() {
-    log_console_on();
+    scoped_lock with(log_lock);
+    log_to_console = true;
 }
-
-extern void log_console_off();
 
 extern "C" CDECL void
 rust_log_console_off() {
-    log_console_off();
+    scoped_lock with(log_lock);
+    log_to_console = false;
 }
-
-extern bool should_log_console();
 
 extern "C" CDECL uintptr_t
 rust_should_log_console() {
-    return (uintptr_t)should_log_console();
-}
-
-extern "C" CDECL rust_sched_id
-rust_osmain_sched_id() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->osmain_sched_id();
-}
-
-extern "C" void
-rust_task_inhibit_kill(rust_task *task) {
-    task->inhibit_kill();
-}
-
-extern "C" void
-rust_task_allow_kill(rust_task *task) {
-    task->allow_kill();
-}
-
-extern "C" void
-rust_task_inhibit_yield(rust_task *task) {
-    task->inhibit_yield();
-}
-
-extern "C" void
-rust_task_allow_yield(rust_task *task) {
-    task->allow_yield();
-}
-
-extern "C" void
-rust_task_kill_other(rust_task *task) { /* Used for linked failure */
-    task->kill();
-}
-
-extern "C" void
-rust_task_kill_all(rust_task *task) { /* Used for linked failure */
-    task->fail_sched_loop();
-    // This must not happen twice.
-    static bool main_taskgroup_failed = false;
-    assert(!main_taskgroup_failed);
-    main_taskgroup_failed = true;
-}
-
-extern "C" CDECL
-bool rust_task_is_unwinding(rust_task *rt) {
-    return rt->unwinding;
+    scoped_lock with(log_lock);
+    return log_to_console;
 }
 
 extern "C" lock_and_signal*
@@ -560,71 +413,6 @@ extern "C" void
 rust_unlock_little_lock(lock_and_signal *lock) {
     lock->unlock();
 }
-
-// get/atexit task_local_data can run on the rust stack for speed.
-extern "C" void **
-rust_get_task_local_data(rust_task *task) {
-    return &task->task_local_data;
-}
-extern "C" void
-rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {
-    task->task_local_data_cleanup = cleanup_fn;
-}
-
-// set/get/atexit task_borrow_list can run on the rust stack for speed.
-extern "C" void *
-rust_take_task_borrow_list(rust_task *task) {
-    void *r = task->borrow_list;
-    task->borrow_list = NULL;
-    return r;
-}
-extern "C" void
-rust_set_task_borrow_list(rust_task *task, void *data) {
-    assert(task->borrow_list == NULL);
-    assert(data != NULL);
-    task->borrow_list = data;
-}
-
-extern "C" void
-task_clear_event_reject(rust_task *task) {
-    task->clear_event_reject();
-}
-
-// Waits on an event, returning the pointer to the event that unblocked this
-// task.
-extern "C" MUST_CHECK bool
-task_wait_event(rust_task *task, void **result) {
-    // Maybe (if not too slow) assert that the passed in task is the currently
-    // running task. We wouldn't want to wait some other task.
-
-    return task->wait_event(result);
-}
-
-extern "C" void
-task_signal_event(rust_task *target, void *event) {
-    target->signal_event(event);
-}
-
-// Can safely run on the rust stack.
-extern "C" void
-rust_task_ref(rust_task *task) {
-    task->ref();
-}
-
-// Don't run on the rust stack!
-extern "C" void
-rust_task_deref(rust_task *task) {
-    task->deref();
-}
-
-// Don't run on the Rust stack!
-extern "C" void
-rust_log_str(uint32_t level, const char *str, size_t size) {
-    rust_task *task = rust_get_current_task();
-    task->sched_loop->get_log().log(task, level, "%.*s", (int)size, str);
-}
-
-extern "C" CDECL void      record_sp_limit(void *limit);
 
 class raw_thread: public rust_thread {
 public:
@@ -684,12 +472,6 @@ rust_readdir() {
 
 #endif
 
-extern "C" rust_env*
-rust_get_rt_env() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->env;
-}
-
 #ifndef _WIN32
 pthread_key_t rt_key = -1;
 #else
@@ -735,12 +517,6 @@ rust_new_memory_region(uintptr_t synchronized,
 extern "C" CDECL void
 rust_delete_memory_region(memory_region *region) {
     delete region;
-}
-
-extern "C" CDECL boxed_region*
-rust_current_boxed_region() {
-    rust_task *task = rust_get_current_task();
-    return &task->boxed;
 }
 
 extern "C" CDECL boxed_region*
@@ -846,6 +622,12 @@ rust_take_change_dir_lock() {
 extern "C" CDECL void
 rust_drop_change_dir_lock() {
     change_dir_lock.unlock();
+}
+
+// Used by i386 __morestack
+extern "C" CDECL uintptr_t
+rust_get_task() {
+    return 0;
 }
 
 //

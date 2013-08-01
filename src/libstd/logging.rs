@@ -14,18 +14,11 @@ use option::*;
 use os;
 use either::*;
 use rt;
-use rt::OldTaskContext;
 use rt::logging::{Logger, StdErrLogger};
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
-    if rt::context() == OldTaskContext {
-        unsafe {
-            rustrt::rust_log_console_on();
-        }
-    } else {
-        rt::logging::console_on();
-    }
+    rt::logging::console_on();
 }
 
 /**
@@ -41,45 +34,24 @@ pub fn console_off() {
         return;
     }
 
-    if rt::context() == OldTaskContext {
-        unsafe {
-            rustrt::rust_log_console_off();
-        }
-    } else {
-        rt::logging::console_off();
-    }
+    rt::logging::console_off();
 }
 
 #[cfg(not(test))]
 #[lang="log_type"]
 #[allow(missing_doc)]
-pub fn log_type<T>(level: u32, object: &T) {
-    use cast;
-    use container::Container;
+pub fn log_type<T>(_level: u32, object: &T) {
     use io;
-    use libc;
     use repr;
-    use rt;
     use str;
-    use vec;
 
     let bytes = do io::with_bytes_writer |writer| {
         repr::write_repr(writer, object);
     };
 
-    match rt::context() {
-        rt::OldTaskContext => {
-            unsafe {
-                let len = bytes.len() as libc::size_t;
-                rustrt::rust_log_str(level, cast::transmute(vec::raw::to_ptr(bytes)), len);
-            }
-        }
-        _ => {
-            // XXX: Bad allocation
-            let msg = str::from_bytes(bytes);
-            newsched_log_str(msg);
-        }
-    }
+    // XXX: Bad allocation
+    let msg = str::from_bytes(bytes);
+    newsched_log_str(msg);
 }
 
 fn newsched_log_str(msg: ~str) {
@@ -98,17 +70,5 @@ fn newsched_log_str(msg: ~str) {
                 logger.log(Left(msg));
             }
         }
-    }
-}
-
-pub mod rustrt {
-    use libc;
-
-    extern {
-        pub fn rust_log_console_on();
-        pub fn rust_log_console_off();
-        pub fn rust_log_str(level: u32,
-                            string: *libc::c_char,
-                            size: libc::size_t);
     }
 }

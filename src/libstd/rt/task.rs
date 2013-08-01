@@ -515,8 +515,8 @@ mod test {
 
         do run_in_newsched_task {
             let (port, chan) = oneshot();
-            send_one(chan, 10);
-            assert!(recv_one(port) == 10);
+            chan.send(10);
+            assert!(port.recv() == 10);
         }
     }
 

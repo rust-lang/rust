@@ -56,13 +56,8 @@ unsafe fn each_live_alloc(read_next_before: bool,
 
 #[cfg(unix)]
 fn debug_mem() -> bool {
-    use rt;
-    use rt::OldTaskContext;
     // XXX: Need to port the environment struct to newsched
-    match rt::context() {
-        OldTaskContext => ::rt::env::get().debug_mem,
-        _ => false
-    }
+    false
 }
 
 #[cfg(windows)]
@@ -145,17 +140,5 @@ pub unsafe fn annihilate() {
         dbg.write_str("\n  bytes_freed: ");
         dbg.write_uint(stats.n_bytes_freed);
         dbg.write_str("\n");
-    }
-}
-
-/// Bindings to the runtime
-pub mod rustrt {
-    use libc::c_void;
-
-    #[link_name = "rustrt"]
-    extern {
-        #[rust_stack]
-        // FIXME (#4386): Unable to make following method private.
-        pub fn rust_get_task() -> *c_void;
     }
 }

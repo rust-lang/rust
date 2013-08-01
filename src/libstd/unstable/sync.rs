@@ -280,39 +280,19 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 // FIXME(#8140) should not be pub
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
-    use task::rt;
     use rt::local::Local;
-    use rt::{context, OldTaskContext};
+    use rt::in_green_task_context;
 
-    match context() {
-        OldTaskContext => {
-            let t = rt::rust_get_task();
-            do (|| {
-                rt::rust_task_inhibit_kill(t);
-                rt::rust_task_inhibit_yield(t);
-                f()
-            }).finally {
-                rt::rust_task_allow_yield(t);
-                rt::rust_task_allow_kill(t);
-            }
+    if in_green_task_context() {
+        let t = Local::unsafe_borrow::<Task>();
+        do (|| {
+            (*t).death.inhibit_yield();
+            f()
+        }).finally {
+            (*t).death.allow_yield();
         }
-        _ => {
-            let t = Local::try_unsafe_borrow::<Task>();
-            match t {
-                Some(t) => {
-                    do (|| {
-                        (*t).death.inhibit_yield();
-                        f()
-                    }).finally {
-                        (*t).death.allow_yield();
-                    }
-                }
-                None => {
-                    // FIXME(#3095): As in unkillable().
-                    f()
-                }
-            }
-        }
+    } else {
+        f()
     }
 }
 

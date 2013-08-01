@@ -174,7 +174,7 @@ mod test_foreign_items {
             #[attr];
 
             #[attr]
-            fn get_task_id() -> libc::intptr_t;
+            fn rust_get_test_int() -> libc::intptr_t;
         }
     }
 }

@@ -10,12 +10,10 @@
 
 // Helper functions used only in tests
 
-#include "rust_sched_loop.h"
-#include "rust_task.h"
 #include "rust_util.h"
-#include "rust_scheduler.h"
 #include "sync/timer.h"
 #include "sync/rust_thread.h"
+#include "sync/lock_and_signal.h"
 #include "rust_abi.h"
 
 // These functions are used in the unit tests for C ABI calls.

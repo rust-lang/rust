@@ -14,7 +14,7 @@
 /// parallelism.
 
 
-use std::comm::Chan;
+use std::comm::{Chan, GenericChan, GenericPort};
 use std::comm;
 use std::task::SchedMode;
 use std::task;

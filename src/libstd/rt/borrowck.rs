@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast::transmute;
-use libc::{c_char, c_void, size_t, STDERR_FILENO};
+use libc::{c_char, size_t, STDERR_FILENO};
 use io;
 use io::{Writer, WriterUtil};
 use option::{Option, None, Some};
@@ -19,9 +19,6 @@ use str::{OwnedStr, StrSlice};
 use sys;
 use unstable::raw;
 use vec::ImmutableVector;
-
-#[allow(non_camel_case_types)]
-type rust_task = c_void;
 
 pub static FROZEN_BIT: uint = 1 << (uint::bits - 1);
 pub static MUT_BIT: uint = 1 << (uint::bits - 2);
@@ -35,34 +32,12 @@ struct BorrowRecord {
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    unsafe {
-        let cur_task: *rust_task = rust_try_get_task();
-        if cur_task.is_not_null() {
-            let ptr = rust_take_task_borrow_list(cur_task);
-            if ptr.is_null() {
-                None
-            } else {
-                let v: ~[BorrowRecord] = transmute(ptr);
-                Some(v)
-            }
-        } else {
-            None
-        }
-    }
+    // XXX
+    None
 }
 
-fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
-    unsafe {
-        let cur_task: *rust_task = rust_try_get_task();
-        if cur_task.is_not_null() {
-            let mut borrow_list: ~[BorrowRecord] = {
-                let ptr = rust_take_task_borrow_list(cur_task);
-                if ptr.is_null() { ~[] } else { transmute(ptr) }
-            };
-            borrow_list = f(borrow_list);
-            rust_set_task_borrow_list(cur_task, transmute(borrow_list));
-        }
-    }
+fn swap_task_borrow_list(_f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
+    // XXX
 }
 
 pub unsafe fn clear_task_borrow_list() {
@@ -113,7 +88,8 @@ unsafe fn debug_borrow<T>(tag: &'static str,
     //! A useful debugging function that prints a pointer + tag + newline
     //! without allocating memory.
 
-    if ENABLE_DEBUG && ::rt::env::get().debug_borrow {
+    // XXX
+    if false {
         debug_borrow_slow(tag, p, old_bits, new_bits, filename, line);
     }
 
@@ -268,16 +244,4 @@ pub unsafe fn check_not_borrowed(a: *u8,
     if (ref_count & FROZEN_BIT) != 0 {
         fail_borrowed(a, file, line);
     }
-}
-
-
-extern {
-    #[rust_stack]
-    pub fn rust_take_task_borrow_list(task: *rust_task) -> *c_void;
-
-    #[rust_stack]
-    pub fn rust_set_task_borrow_list(task: *rust_task, map: *c_void);
-
-    #[rust_stack]
-    pub fn rust_try_get_task() -> *rust_task;
 }
