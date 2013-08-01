@@ -2750,13 +2750,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_vec(ref args, mutbl) => {
         let t: ty::t = fcx.infcx().next_ty_var();
-        let mut arg_is_bot = false;
-        let mut arg_is_err = false;
         foreach e in args.iter() {
             check_expr_has_type(fcx, *e, t);
-            let arg_t = fcx.expr_ty(*e);
-            arg_is_bot |= ty::type_is_bot(arg_t);
-            arg_is_err |= ty::type_is_error(arg_t);
         }
         let typ = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
                               ty::vstore_fixed(args.len()));
