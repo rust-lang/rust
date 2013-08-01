@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
 // error-pattern:explicit failure
 
 // This time we're testing that the stack limits are restored
