@@ -53,8 +53,8 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     do sched.deschedule_running_task_and_then |sched, task| {
         let task_handles = task.make_selectable(ports.len());
 
-        for ports.mut_iter().zip(task_handles.consume_iter()).enumerate().advance
-                |(index, (port, task_handle))| {
+        foreach (index, (port, task_handle)) in
+                ports.mut_iter().zip(task_handles.consume_iter()).enumerate() {
             // If one of the ports has data by now, it will wake the handle.
             if port.block_on(sched, task_handle) {
                 ready_index = index;
