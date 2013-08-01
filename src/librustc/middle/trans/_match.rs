@@ -1155,11 +1155,11 @@ fn store_non_ref_bindings(bcx: @mut Block,
                 let datum = Datum {val: llval, ty: binding_info.ty,
                                    mode: ByRef(ZeroMem)};
                 bcx = datum.store_to(bcx, INIT, lldest);
-                do opt_temp_cleanups.mutate |temp_cleanups| {
+                opt_temp_cleanups.mutate(|temp_cleanups| {
                     add_clean_temp_mem(bcx, lldest, binding_info.ty);
                     temp_cleanups.push(lldest);
                     temp_cleanups
-                }
+                });
             }
             TrByRef => {}
         }
