@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test newsched transition
+
 fn getbig(i: int) {
     if i != 0 {
         getbig(i - 1);
