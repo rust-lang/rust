@@ -16,7 +16,7 @@
 
 extern mod extra;
 
-use std::comm::{PortSet, Chan, stream};
+use std::comm::{SharedChan, Chan, stream};
 use std::io;
 use std::os;
 use std::task;
@@ -30,7 +30,7 @@ enum request {
     stop
 }
 
-fn server(requests: &PortSet<request>, responses: &Chan<uint>) {
+fn server(requests: &Port<request>, responses: &Chan<uint>) {
     let mut count: uint = 0;
     let mut done = false;
     while !done {
@@ -50,9 +50,8 @@ fn server(requests: &PortSet<request>, responses: &Chan<uint>) {
 
 fn run(args: &[~str]) {
     let (from_child, to_parent) = stream();
-    let (from_parent_, to_child) = stream();
-    let from_parent = PortSet::new();
-    from_parent.add(from_parent_);
+    let (from_parent, to_child) = stream();
+    let to_child = SharedChan::new(to_child);
 
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();
@@ -60,8 +59,7 @@ fn run(args: &[~str]) {
     let start = extra::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
-        let (from_parent_, to_child) = stream();
-        from_parent.add(from_parent_);
+        let to_child = to_child.clone();
         let mut builder = task::task();
         builder.future_result(|r| worker_results.push(r));
         do builder.spawn {
