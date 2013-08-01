@@ -95,10 +95,10 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
                     let constraint = p.parse_str();
                     p.expect(&token::LPAREN);
-                    let in = p.parse_expr();
+                    let input = p.parse_expr();
                     p.expect(&token::RPAREN);
 
-                    inputs.push((constraint, in));
+                    inputs.push((constraint, input));
                 }
             }
             Clobbers => {

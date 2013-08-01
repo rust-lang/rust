@@ -27,11 +27,11 @@ pub fn main() {
     assert_eq!(foobar, somefoobar.get());
 }
 
-fn optint(in: int) -> Option<int> {
-    if in == 0 {
+fn optint(input: int) -> Option<int> {
+    if input == 0 {
         return None;
     }
     else {
-        return Some(in);
+        return Some(input);
     }
 }

@@ -626,7 +626,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         }
         expr_inline_asm(ref a) => {
             expr_inline_asm(inline_asm {
-                inputs: a.inputs.map(|&(c, in)| (c, fld.fold_expr(in))),
+                inputs: a.inputs.map(|&(c, input)| (c, fld.fold_expr(input))),
                 outputs: a.outputs.map(|&(c, out)| (c, fld.fold_expr(out))),
                 .. (*a).clone()
             })

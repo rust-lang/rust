@@ -100,7 +100,7 @@ mod test {
             do io_error::cond.trap(|err| {
                 assert_eq!(err.kind, PreviousIoError);
                 called = true;
-            }).in {
+            }).inside {
                 writer.write([0, 0, 0]);
             }
             assert!(called);
@@ -109,7 +109,7 @@ mod test {
             do io_error::cond.trap(|err| {
                 assert_eq!(err.kind, PreviousIoError);
                 called = true;
-            }).in {
+            }).inside {
                 writer.flush();
             }
             assert!(called);
@@ -136,7 +136,7 @@ mod test {
         do read_error::cond.trap(|err| {
             assert_eq!(err.kind, PreviousIoError);
             called = true;
-        }).in {
+        }).inside {
             reader.read(buf);
         }
         assert!(called);
@@ -145,7 +145,7 @@ mod test {
         do io_error::cond.trap(|err| {
             assert_eq!(err.kind, PreviousIoError);
             called = true;
-        }).in {
+        }).inside {
             assert!(reader.eof());
         }
         assert!(called);

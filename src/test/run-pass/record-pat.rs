@@ -12,8 +12,8 @@ enum t1 { a(int), b(uint), }
 struct T2 {x: t1, y: int}
 enum t3 { c(T2, uint), }
 
-fn m(in: t3) -> int {
-    match in {
+fn m(input: t3) -> int {
+    match input {
       c(T2 {x: a(m), _}, _) => { return m; }
       c(T2 {x: b(m), y: y}, z) => { return ((m + z) as int) + y; }
     }
