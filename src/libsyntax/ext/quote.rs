@@ -705,11 +705,11 @@ fn expand_tts(cx: @ExtCtxt,
                                   id_ext("tt"),
                                   cx.expr_vec_uniq(sp, ~[]));
 
-    cx.expr_blk(
-        cx.blk_all(sp, uses,
-                   ~[stmt_let_sp,
-                     stmt_let_tt] + mk_tts(cx, sp, tts),
-                   Some(cx.expr_ident(sp, id_ext("tt")))))
+    cx.expr_block(
+        cx.block_all(sp, uses,
+                     ~[stmt_let_sp,
+                       stmt_let_tt] + mk_tts(cx, sp, tts),
+                     Some(cx.expr_ident(sp, id_ext("tt")))))
 }
 
 fn expand_parse_call(cx: @ExtCtxt,
