@@ -14,6 +14,14 @@ use codemap::{span, spanned};
 use parse::token;
 use opt_vec::OptVec;
 
+// this file defines an ast_fold trait for objects that can perform
+// a "fold" on Rust ASTs. It also contains a structure that implements
+// that trait, and a "default_fold" whose fields contain closures
+// that perform "default traversals", visiting all of the sub-elements
+// and re-assembling the result. The "fun_to_ident_folder" in the
+// test module provides a simple example of creating a very simple
+// fold that only looks at identifiers.
+
 pub trait ast_fold {
     fn fold_crate(@self, &Crate) -> Crate;
     fn fold_view_item(@self, &view_item) -> view_item;
@@ -35,6 +43,7 @@ pub trait ast_fold {
     fn fold_ident(@self, ident) -> ident;
     fn fold_path(@self, &Path) -> Path;
     fn fold_local(@self, @Local) -> @Local;
+    fn fold_mac(@self, &mac) -> mac;
     fn map_exprs(@self, @fn(@expr) -> @expr, &[@expr]) -> ~[@expr];
     fn new_id(@self, NodeId) -> NodeId;
     fn new_span(@self, span) -> span;
@@ -64,6 +73,7 @@ pub struct AstFoldFns {
     fold_ident: @fn(ident, @ast_fold) -> ident,
     fold_path: @fn(&Path, @ast_fold) -> Path,
     fold_local: @fn(@Local, @ast_fold) -> @Local,
+    fold_mac: @fn(&mac_, span, @ast_fold) -> (mac_, span),
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
     new_id: @fn(NodeId) -> NodeId,
     new_span: @fn(span) -> span
@@ -112,41 +122,31 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
     }
 }
 
-//used in noop_fold_expr, and possibly elsewhere in the future
-fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
-    spanned {
-        node: match m.node {
-            mac_invoc_tt(ref p,ref tts) =>
-            mac_invoc_tt(fld.fold_path(p),
-                         fold_tts(*tts,fld))
-        },
-        span: fld.new_span(m.span)
-    }
-}
-
-fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
+// build a new vector of tts by appling the ast_fold's fold_ident to
+// all of the identifiers in the token trees.
+pub fn fold_tts(tts : &[token_tree], f : @ast_fold) -> ~[token_tree] {
     do tts.map |tt| {
         match *tt {
             tt_tok(span, ref tok) =>
-            tt_tok(span,maybe_fold_ident(tok,fld)),
+            tt_tok(span,maybe_fold_ident(tok,f)),
             tt_delim(ref tts) =>
-            tt_delim(@mut fold_tts(**tts, fld)),
+            tt_delim(@mut fold_tts(**tts, f)),
             tt_seq(span, ref pattern, ref sep, is_optional) =>
             tt_seq(span,
-                   @mut fold_tts(**pattern, fld),
-                   sep.map(|tok|maybe_fold_ident(tok,fld)),
+                   @mut fold_tts(**pattern, f),
+                   sep.map(|tok|maybe_fold_ident(tok,f)),
                    is_optional),
             tt_nonterminal(sp,ref ident) =>
-            tt_nonterminal(sp,fld.fold_ident(*ident))
+            tt_nonterminal(sp,f.fold_ident(*ident))
         }
     }
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident(t: &token::Token, fld: @ast_fold) -> token::Token {
+fn maybe_fold_ident(t : &token::Token, f: @ast_fold) -> token::Token {
     match *t {
         token::IDENT(id,followed_by_colons) =>
-        token::IDENT(fld.fold_ident(id),followed_by_colons),
+        token::IDENT(f.fold_ident(id),followed_by_colons),
         _ => (*t).clone()
     }
 }
@@ -209,6 +209,7 @@ pub fn noop_fold_crate(c: &Crate, fld: @ast_fold) -> Crate {
 }
 
 fn noop_fold_view_item(vi: &view_item_, _fld: @ast_fold) -> view_item_ {
+    // FIXME #7654: doesn't iterate over idents in a view_item_use
     return /* FIXME (#2543) */ (*vi).clone();
 }
 
@@ -324,11 +325,10 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
             )
         }
         item_mac(ref m) => {
-            // FIXME #2888: we might actually want to do something here.
-            // ... okay, we're doing something. It would probably be nicer
-            // to add something to the ast_fold trait, but I'll defer
+            // It would probably be nicer
+            // to expose this in the ast_fold trait, but I'll defer
             // that work.
-            item_mac(fold_mac_(m,fld))
+            item_mac(fld.fold_mac(m))
         }
     }
 }
@@ -397,7 +397,6 @@ pub fn noop_fold_block(b: &Block, fld: @ast_fold) -> Block {
 }
 
 fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> Option<stmt_> {
-    let fold_mac = |x| fold_mac_(x, fld);
     match *s {
         stmt_decl(d, nid) => {
             match fld.fold_decl(d) {
@@ -411,7 +410,7 @@ fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> Option<stmt_> {
         stmt_semi(e, nid) => {
             Some(stmt_semi(fld.fold_expr(e), fld.new_id(nid)))
         }
-        stmt_mac(ref mac, semi) => Some(stmt_mac(fold_mac(mac), semi))
+        stmt_mac(ref mac, semi) => Some(stmt_mac(fld.fold_mac(mac), semi))
     }
 }
 
@@ -479,6 +478,12 @@ fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> Option<decl_> {
     }
 }
 
+// lift a function in ast-thingy X fold -> ast-thingy to a function
+// in (ast-thingy X span X fold) -> (ast-thingy X span). Basically,
+// carries the span around.
+// It seems strange to me that the call to new_fold doesn't happen
+// here but instead in the impl down below.... probably just an
+// accident?
 pub fn wrap<T>(f: @fn(&T, @ast_fold) -> T)
             -> @fn(&T, span, @ast_fold) -> (T, span) {
     let result: @fn(&T, span, @ast_fold) -> (T, span) = |x, s, fld| {
@@ -496,8 +501,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         }
     }
     let fold_field = |x| fold_field_(x, fld);
-
-    let fold_mac = |x| fold_mac_(x, fld);
 
     match *e {
         expr_vstore(e, v) => {
@@ -546,7 +549,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
         expr_lit(_) => (*e).clone(),
         expr_cast(expr, ref ty) => {
-            expr_cast(fld.fold_expr(expr), (*ty).clone())
+            expr_cast(fld.fold_expr(expr), fld.fold_ty(ty))
         }
         expr_addr_of(m, ohs) => expr_addr_of(m, fld.fold_expr(ohs)),
         expr_if(cond, ref tr, fl) => {
@@ -631,7 +634,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 .. (*a).clone()
             })
         }
-        expr_mac(ref mac) => expr_mac(fold_mac(mac)),
+        expr_mac(ref mac) => expr_mac(fld.fold_mac(mac)),
         expr_struct(ref path, ref fields, maybe_expr) => {
             expr_struct(
                 fld.fold_path(path),
@@ -644,7 +647,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
 }
 
 pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
-    let fold_mac = |x| fold_mac_(x, fld);
     fn fold_mt(mt: &mt, fld: @ast_fold) -> mt {
         mt {
             ty: ~fld.fold_ty(mt.ty),
@@ -699,7 +701,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 fld.fold_expr(e)
             )
         }
-        ty_mac(ref mac) => ty_mac(fold_mac(mac))
+        ty_mac(ref mac) => ty_mac(fld.fold_mac(mac))
     }
 }
 
@@ -784,6 +786,19 @@ fn noop_fold_local(l: @Local, fld: @ast_fold) -> @Local {
     }
 }
 
+// the default macro traversal. visit the path
+// using fold_path, and the tts using fold_tts,
+// and the span using new_span
+fn noop_fold_mac(m: &mac_, fld: @ast_fold) -> mac_ {
+    match *m {
+        mac_invoc_tt(ref p,ref tts,ctxt) =>
+        mac_invoc_tt(fld.fold_path(p),
+                     fold_tts(*tts,fld),
+                     ctxt)
+    }
+}
+
+
 /* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
    value */
 fn noop_map_exprs(f: @fn(@expr) -> @expr, es: &[@expr]) -> ~[@expr] {
@@ -816,6 +831,7 @@ pub fn default_ast_fold() -> ast_fold_fns {
         fold_ident: noop_fold_ident,
         fold_path: noop_fold_path,
         fold_local: noop_fold_local,
+        fold_mac: wrap(noop_fold_mac),
         map_exprs: noop_map_exprs,
         new_id: noop_id,
         new_span: noop_span,
@@ -921,6 +937,10 @@ impl ast_fold for AstFoldFns {
     fn fold_local(@self, x: @Local) -> @Local {
         (self.fold_local)(x, self as @ast_fold)
     }
+    fn fold_mac(@self, x: &mac) -> mac {
+        let (n, s) = (self.fold_mac)(&x.node, x.span, self as @ast_fold);
+        spanned { node: n, span: (self.new_span)(s) }
+    }
     fn map_exprs(@self,
                  f: @fn(@expr) -> @expr,
                  e: &[@expr])
@@ -945,6 +965,8 @@ impl AstFoldExtensions for @ast_fold {
     }
 }
 
+// brson agrees with me that this function's existence is probably
+// not a good or useful thing.
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
@@ -1016,5 +1038,16 @@ mod test {
                      pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
+    }
+
+    // and in cast expressions... this appears to be an existing bug.
+    #[test] fn ident_transformation_in_types () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@"fn a() {let z = 13 as int;}");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"fn zz(){let zz=13 as zz;}");
     }
 }

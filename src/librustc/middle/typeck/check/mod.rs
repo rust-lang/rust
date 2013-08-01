@@ -1135,10 +1135,10 @@ pub fn impl_self_ty(vcx: &VtableContext,
 pub fn lookup_field_ty(tcx: ty::ctxt,
                        class_id: ast::def_id,
                        items: &[ty::field_ty],
-                       fieldname: ast::ident,
+                       fieldname: ast::Name,
                        substs: &ty::substs) -> Option<ty::t> {
 
-    let o_field = items.iter().find_(|f| f.ident == fieldname);
+    let o_field = items.iter().find_(|f| f.ident.name == fieldname);
     do o_field.map() |f| {
         ty::lookup_field_type(tcx, class_id, f.id, substs)
     }
@@ -1419,7 +1419,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              expr,
                              rcvr,
                              callee_id,
-                             method_name,
+                             method_name.name,
                              expr_t,
                              tps,
                              DontDerefArgs,
@@ -1503,7 +1503,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         op_ex: @ast::expr,
                         self_ex: @ast::expr,
                         self_t: ty::t,
-                        opname: ast::ident,
+                        opname: ast::Name,
                         args: ~[@ast::expr],
                         deref_args: DerefArgs,
                         autoderef_receiver: AutoderefReceiverFlag,
@@ -1643,7 +1643,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             lhs_resolved_t, None)
                 };
                 return lookup_op_method(fcx, callee_id, ex, lhs_expr, lhs_resolved_t,
-                                       fcx.tcx().sess.ident_of(*name),
+                                       token::intern(*name),
                                        ~[rhs], DoDerefArgs, DontAutoderefReceiver, if_op_unbound,
                                        expected_result);
             }
@@ -1677,7 +1677,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     -> ty::t {
        lookup_op_method(
             fcx, callee_id, ex, rhs_expr, rhs_t,
-            fcx.tcx().sess.ident_of(mname), ~[],
+            token::intern(mname), ~[],
             DoDerefArgs, DontAutoderefReceiver,
             || {
                 fcx.type_error_message(ex.span, |actual| {
@@ -1803,7 +1803,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_field(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    base: @ast::expr,
-                   field: ast::ident,
+                   field: ast::Name,
                    tys: &[ast::Ty]) {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base);
@@ -1851,7 +1851,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     |actual| {
                         fmt!("attempted to take value of method `%s` on type `%s` \
                               (try writing an anonymous function)",
-                             tcx.sess.str_of(field), actual)
+                             token::interner_get(field), actual)
                     },
                     expr_t, None);
             }
@@ -1862,7 +1862,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     |actual| {
                         fmt!("attempted access of field `%s` on type `%s`, \
                               but no field with that name was found",
-                             tcx.sess.str_of(field), actual)
+                             token::interner_get(field), actual)
                     },
                     expr_t, None);
             }
@@ -1884,7 +1884,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
         for field_types.iter().advance |field| {
-            class_field_map.insert(field.ident, (field.id, false));
+            class_field_map.insert(field.ident.name, (field.id, false));
         }
 
         let mut error_happened = false;
@@ -1893,7 +1893,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         for ast_fields.iter().advance |field| {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.ident).
+            let pair = class_field_map.find(&field.ident.name).
                                        map_consume(|x| *x);
             match pair {
                 None => {
@@ -1915,7 +1915,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, &substitutions);
                     class_field_map.insert(
-                        field.ident, (field_id, true));
+                        field.ident.name, (field_id, true));
                     fields_found += 1;
                 }
             }
@@ -1937,11 +1937,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
                 for field_types.iter().advance |class_field| {
-                    let name = class_field.ident;
+                    let name = class_field.ident.name;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + tcx.sess.str_of(name) + "`");
+                            ~"`" + token::interner_get(name) + "`");
                     }
                 }
 
@@ -2824,7 +2824,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_field(base, field, ref tys) => {
-        check_field(fcx, expr, base, field, *tys);
+        check_field(fcx, expr, base, field.name, *tys);
       }
       ast::expr_index(callee_id, base, idx) => {
           check_expr(fcx, base);
@@ -2864,7 +2864,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                     expr,
                                                     base,
                                                     resolved,
-                                                    index_ident,
+                                                    index_ident.name,
                                                     ~[idx],
                                                     DoDerefArgs,
                                                     AutoderefReceiver,

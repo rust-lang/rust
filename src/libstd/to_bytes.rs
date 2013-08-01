@@ -251,6 +251,20 @@ impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
   }
 }
 
+impl<A:IterBytes,B:IterBytes,C:IterBytes,D:IterBytes> IterBytes for (A,B,C,D) {
+  #[inline]
+  fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+    match *self {
+      (ref a, ref b, ref c, ref d) => {
+        a.iter_bytes(lsb0, |b| f(b)) &&
+        b.iter_bytes(lsb0, |b| f(b)) &&
+        c.iter_bytes(lsb0, |b| f(b)) &&
+        d.iter_bytes(lsb0, |b| f(b))
+      }
+    }
+  }
+}
+
 // Move this to vec, probably.
 fn borrow<'x,A>(a: &'x [A]) -> &'x [A] {
     a
@@ -358,4 +372,14 @@ impl<A:IterBytes> ToBytes for A {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    // just test to see if it compiles:
+    #[test] fn iterbytes_compiles () {
+        takes_iterbytes((3,4,5,false));
+    }
+    fn takes_iterbytes<T : IterBytes>(x : T) {}
 }
