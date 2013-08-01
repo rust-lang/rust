@@ -140,14 +140,14 @@ impl<T:Freeze+Send> Arc<T> {
     }
 }
 
-/**
- * Duplicate an atomically reference counted wrapper.
- *
- * The resulting two `arc` objects will point to the same underlying data
- * object. However, one of the `arc` objects can be sent to another task,
- * allowing them to share the underlying data.
- */
 impl<T:Freeze + Send> Clone for Arc<T> {
+    /**
+    * Duplicate an atomically reference counted wrapper.
+    *
+    * The resulting two `arc` objects will point to the same underlying data
+    * object. However, one of the `arc` objects can be sent to another task,
+    * allowing them to share the underlying data.
+    */
     fn clone(&self) -> Arc<T> {
         Arc { x: self.x.clone() }
     }
@@ -164,7 +164,7 @@ struct MutexArc<T> { priv x: UnsafeAtomicRcBox<MutexArcInner<T>> }
 
 
 impl<T:Send> Clone for MutexArc<T> {
-    /// Duplicate a mutex-protected Arc, as arc::clone.
+    /// Duplicate a mutex-protected Arc. See arc::clone for more details.
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
@@ -312,12 +312,10 @@ struct RWArc<T> {
     priv x: UnsafeAtomicRcBox<RWArcInner<T>>,
 }
 
-impl<T:Freeze + Send> RWArc<T> {
-    /// Duplicate a rwlock-protected Arc, as arc::clone.
-    pub fn clone(&self) -> RWArc<T> {
-        RWArc {
-            x: self.x.clone(),
-        }
+impl<T:Freeze + Send> Clone for RWArc<T> {
+    /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
+    fn clone(&self) -> RWArc<T> {
+        RWArc { x: self.x.clone() }
     }
 
 }
