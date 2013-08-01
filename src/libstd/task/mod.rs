@@ -685,7 +685,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
             let ch = ch.clone();
             do spawn_unlinked {
                 // Give middle task a chance to fail-but-not-kill-us.
-                for 16.times { task::yield(); }
+                do 16.times { task::yield(); }
                 ch.send(()); // If killed first, grandparent hangs.
             }
             fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -706,7 +706,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do run_in_newsched_task {
         do spawn_supervised { fail!(); }
         // Give child a chance to fail-but-not-kill-us.
-        for 16.times { task::yield(); }
+        do 16.times { task::yield(); }
     }
 }
 #[test] #[ignore(cfg(windows))]
@@ -808,7 +808,7 @@ fn test_spawn_failure_propagate_grandchild() {
             do spawn_supervised {
                 do spawn_supervised { block_forever(); }
             }
-            for 16.times { task::yield(); }
+            do 16.times { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -824,7 +824,7 @@ fn test_spawn_failure_propagate_secondborn() {
             do spawn_supervised {
                 do spawn { block_forever(); } // linked
             }
-            for 16.times { task::yield(); }
+            do 16.times { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -840,7 +840,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             do spawn { // linked
                 do spawn_supervised { block_forever(); }
             }
-            for 16.times { task::yield(); }
+            do 16.times { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -856,7 +856,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             do spawn { // linked
                 do spawn { block_forever(); } // linked
             }
-            for 16.times { task::yield(); }
+            do 16.times { task::yield(); }
             fail!();
         };
         assert!(result.is_err());

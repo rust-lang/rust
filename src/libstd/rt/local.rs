@@ -44,7 +44,13 @@ impl Local for Task {
         }
     }
     unsafe fn unsafe_borrow() -> *mut Task { local_ptr::unsafe_borrow() }
-    unsafe fn try_unsafe_borrow() -> Option<*mut Task> { rtabort!("unimpl task try_unsafe_borrow") }
+    unsafe fn try_unsafe_borrow() -> Option<*mut Task> {
+        if Local::exists::<Task>() {
+            Some(Local::unsafe_borrow())
+        } else {
+            None
+        }
+    }
 }
 
 impl Local for Scheduler {
@@ -95,7 +101,7 @@ impl Local for Scheduler {
         }
     }
     unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> {
-        if Local::exists::<Task>() {
+        if Local::exists::<Scheduler>() {
             Some(Local::unsafe_borrow())
         } else {
             None
