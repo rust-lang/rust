@@ -85,6 +85,7 @@ pub mod getopts;
 pub mod json;
 pub mod md4;
 pub mod tempfile;
+pub mod glob;
 pub mod term;
 pub mod time;
 pub mod arena;
