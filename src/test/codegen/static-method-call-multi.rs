@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#include <stdlib.h>
-#include <assert.h>
+struct Struct {
+    field: int
+}
 
-struct slice {
-  int const *p;
-  size_t len;
-};
+impl Struct {
+    fn method(&self, x: int) -> int {
+        self.field + x
+    }
+}
 
-extern "C"
-size_t test(slice s) {
-  size_t y = 0;
-  for (int i = 0; i < s.len; ++i) {
-	assert(i < s.len);
-	y += s.p[i];
-  }
-  return y;
+#[no_mangle]
+fn test(a: &Struct,
+        b: &Struct,
+        c: &Struct,
+        d: &Struct,
+        e: &Struct) -> int {
+    a.method(b.method(c.method(d.method(e.method(1)))))
 }

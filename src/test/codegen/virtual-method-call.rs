@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#include <stdlib.h>
-#include <assert.h>
+trait Trait {
+    fn method(&self) -> int;
+}
 
-struct slice {
-  int const *p;
-  size_t len;
-};
-
-extern "C"
-size_t test(slice s) {
-  size_t y = 0;
-  for (int i = 0; i < s.len; ++i) {
-	assert(i < s.len);
-	y += s.p[i];
-  }
-  return y;
+#[no_mangle]
+fn test(t: &Trait) -> int {
+    t.method()
 }
