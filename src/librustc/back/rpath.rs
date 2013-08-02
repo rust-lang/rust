@@ -16,7 +16,6 @@ use metadata::filesearch;
 use std::hashmap::HashSet;
 use std::num;
 use std::os;
-use std::uint;
 use std::util;
 use std::vec;
 
@@ -150,7 +149,7 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     }
 
     let mut path = ~[];
-    for uint::range(start_idx, len1 - 1) |_i| { path.push(~".."); };
+    foreach _ in range(start_idx, len1 - 1) { path.push(~".."); };
 
     path.push_all(split2.slice(start_idx, len2 - 1));
 

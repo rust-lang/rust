@@ -269,7 +269,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         foreach (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::bits;
-                for uint::range(0, uint::bits) |offset| {
+                foreach offset in range(0u, uint::bits) {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
@@ -998,7 +998,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     foreach &word in words.iter() {
         let mut v = word;
-        for uint::range(0, uint::bytes) |_| {
+        foreach _ in range(0u, uint::bytes) {
             result.push_char(sep);
             result.push_str(fmt!("%02x", v & 0xFF));
             v >>= 8;
@@ -1025,13 +1025,13 @@ fn bitwise(out_vec: &mut [uint],
            op: &fn(uint, uint) -> uint) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    for uint::range(0, out_vec.len()) |i| {
+    foreach i in range(0u, out_vec.len()) {
         let old_val = out_vec[i];
         let new_val = op(old_val, in_vec[i]);
         out_vec[i] = new_val;
         changed |= (old_val != new_val);
     }
-    return changed;
+    changed
 }
 
 fn set_bit(words: &mut [uint], bit: uint) -> bool {

@@ -1,5 +1,4 @@
 use std::from_str::FromStr;
-use std::i32::range;
 use std::os;
 use std::vec::MutableVector;
 use std::vec;
@@ -42,7 +41,7 @@ fn fannkuch_redux(n: i32) -> i32 {
                 }
 
                 let k2 = (k+1) >> 1;
-                for range(0, k2) |i| {
+                foreach i in range(0i32, k2) {
                     let (perm_i, perm_k_i) = {
                         (perm.unsafe_get(i as uint),
                             perm.unsafe_get((k-i) as uint))

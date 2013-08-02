@@ -13,7 +13,7 @@
 use std::uint;
 
 trait noisy {
-  fn speak(&mut self);
+    fn speak(&mut self);
 }
 
 #[deriving(Clone)]
@@ -48,7 +48,7 @@ impl cat {
 }
 
 impl noisy for cat {
-  fn speak(&mut self) { self.meow(); }
+    fn speak(&mut self) { self.meow(); }
 }
 
 fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
@@ -65,10 +65,10 @@ fn make_speak<C:noisy>(mut c: C) {
 }
 
 pub fn main() {
-  let mut nyan = cat(0u, 2, ~"nyan");
-  nyan.eat();
-  assert!((!nyan.eat()));
-  for uint::range(1u, 10u) |_i| {
-    make_speak(nyan.clone());
-  }
+    let mut nyan = cat(0u, 2, ~"nyan");
+    nyan.eat();
+    assert!((!nyan.eat()));
+    foreach _ in range(1u, 10u) {
+        make_speak(nyan.clone());
+    }
 }

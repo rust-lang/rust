@@ -12,13 +12,11 @@
 // pattern-bound var is an upvar (when translating
 // the for-each body)
 
-use std::uint;
-
 fn foo(src: uint) {
 
     match Some(src) {
       Some(src_id) => {
-        for uint::range(0u, 10u) |i| {
+        foreach i in range(0u, 10u) {
             let yyy = src_id;
             assert_eq!(yyy, 0u);
         }

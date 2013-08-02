@@ -32,7 +32,7 @@ use cast;
 use clone::Clone;
 use container::Container;
 use io;
-use iterator::IteratorUtil;
+use iterator::{IteratorUtil, range};
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::FILE;
@@ -43,7 +43,6 @@ use prelude::*;
 use ptr;
 use str;
 use to_str;
-use uint;
 use unstable::finally::Finally;
 use vec;
 
@@ -1114,7 +1113,7 @@ pub fn set_exit_status(code: int) {
 
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
-    for uint::range(0, argc as uint) |i| {
+    foreach i in range(0u, argc as uint) {
         args.push(str::raw::from_c_str(*argv.offset(i as int)));
     }
     args
@@ -1163,7 +1162,7 @@ pub fn real_args() -> ~[~str] {
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
     let mut args = ~[];
-    for uint::range(0, nArgs as uint) |i| {
+    foreach i in range(0u, nArgs as uint) {
         unsafe {
             // Determine the length of this argument.
             let ptr = *szArgList.offset(i as int);

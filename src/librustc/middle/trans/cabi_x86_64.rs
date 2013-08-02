@@ -21,7 +21,6 @@ use middle::trans::type_::Type;
 use std::num;
 use std::option;
 use std::option::Option;
-use std::uint;
 use std::vec;
 
 #[deriving(Clone, Eq)]
@@ -146,7 +145,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     }
 
     fn all_mem(cls: &mut [RegClass]) {
-        for uint::range(0, cls.len()) |i| {
+        foreach i in range(0u, cls.len()) {
             cls[i] = Memory;
         }
     }

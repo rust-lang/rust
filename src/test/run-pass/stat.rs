@@ -26,7 +26,7 @@ pub fn main() {
         match io::file_writer(&path, [io::Create, io::Truncate]) {
             Err(ref e) => fail!(e.clone()),
             Ok(f) => {
-                for uint::range(0, 1000) |_i| {
+                foreach _ in range(0u, 1000) {
                     f.write_u8(0);
                 }
             }

@@ -2,7 +2,6 @@ extern mod extra;
 
 use std::comm::Chan;
 use std::task;
-use std::uint;
 
 type RingBuffer = ~[float];
 type SamplesFn = ~fn(samples: &RingBuffer);
@@ -18,8 +17,9 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
         let callback: SamplesFn =
             |buffer|
             {
-                for uint::range(0, buffer.len())
-                    |i| {error!("%?: %f", i, buffer[i])}
+                foreach i in range(0u, buffer.len()) {
+                    error!("%?: %f", i, buffer[i])
+                }
             };
         samples_chan.send(GetSamples(name.clone(), callback));
     };

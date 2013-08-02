@@ -19,7 +19,6 @@ use std::ops;
 use std::uint;
 use std::vec;
 
-
 #[deriving(Clone)]
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
@@ -146,7 +145,7 @@ impl BigBitv {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
         let mut changed = false;
-        for uint::range(0, len) |i| {
+        foreach i in range(0, len) {
             let mask = big_mask(nbits, i);
             let w0 = self.storage[i] & mask;
             let w1 = b.storage[i] & mask;
@@ -161,7 +160,7 @@ impl BigBitv {
 
     #[inline]
     pub fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
-        uint::range(0, self.storage.len(), |i| op(&mut self.storage[i]))
+        range(0u, self.storage.len()).advance(|i| op(&mut self.storage[i]))
     }
 
     #[inline]
@@ -511,7 +510,7 @@ impl Bitv {
     }
 
     pub fn ones(&self, f: &fn(uint) -> bool) -> bool {
-        uint::range(0, self.nbits, |i| !self.get(i) || f(i))
+        range(0u, self.nbits).advance(|i| !self.get(i) || f(i))
     }
 
 }
@@ -542,7 +541,7 @@ pub fn from_bools(bools: &[bool]) -> Bitv {
  */
 pub fn from_fn(len: uint, f: &fn(index: uint) -> bool) -> Bitv {
     let mut bitv = Bitv::new(len, false);
-    for uint::range(0, len) |i| {
+    foreach i in range(0u, len) {
         bitv.set(i, f(i));
     }
     bitv
@@ -559,7 +558,7 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
     if bits == 0 {
         return true;
     }
-    for uint::range(0, uint::bits) |i| {
+    foreach i in range(0u, uint::bits) {
         if bits & (1 << i) != 0 {
             if !f(base + i) {
                 return false;
@@ -674,7 +673,7 @@ impl BitvSet {
     fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
-            for uint::range(0, uint::bits) |_| {
+            foreach _ in range(0u, uint::bits) {
                 if w == 0 {
                     break;
                 }
@@ -1283,12 +1282,12 @@ mod tests {
     #[test]
     fn test_equal_sneaky_big() {
         let mut a = bitv::Bitv::new(100, false);
-        for uint::range(0, 100) |i| {
+        foreach i in range(0u, 100) {
             a.set(i, true);
         }
 
         let mut b = bitv::Bitv::new(100, true);
-        for uint::range(0, 100) |i| {
+        foreach i in range(0u, 100) {
             b.set(i, true);
         }
 
