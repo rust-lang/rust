@@ -148,7 +148,7 @@ struct crate_hash {
 pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     let mut result = ~[];
 
-    for cstore.extern_mod_crate_map.each_value |&cnum| {
+    foreach (_, &cnum) in cstore.extern_mod_crate_map.iter() {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         let vers = decoder::get_crate_vers(cdata.data);

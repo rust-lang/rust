@@ -420,44 +420,42 @@ impl<'self> LookupContext<'self> {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
-        for ty::each_bound_trait_and_supertraits(tcx, bounds)
-            |bound_trait_ref|
-        {
+        do ty::each_bound_trait_and_supertraits(tcx, bounds) |bound_trait_ref| {
             let this_bound_idx = next_bound_idx;
             next_bound_idx += 1;
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
-            let pos = {
-                match trait_methods.iter().position(|m| {
-                    m.explicit_self != ast::sty_static &&
-                        m.ident == self.m_name })
-                {
-                    Some(pos) => pos,
-                    None => {
-                        debug!("trait doesn't contain method: %?",
-                               bound_trait_ref.def_id);
-                        loop; // check next trait or bound
-                    }
+            match trait_methods.iter().position(|m| {
+                m.explicit_self != ast::sty_static &&
+                m.ident == self.m_name })
+            {
+                Some(pos) => {
+                    let method = trait_methods[pos];
+
+                    let cand = Candidate {
+                        rcvr_ty: self_ty,
+                        rcvr_substs: bound_trait_ref.substs.clone(),
+                        method_ty: method,
+                        origin: method_param(
+                            method_param {
+                                trait_id: bound_trait_ref.def_id,
+                                method_num: pos,
+                                param_num: param,
+                                bound_num: this_bound_idx,
+                            })
+                    };
+
+                    debug!("pushing inherent candidate for param: %?", cand);
+                    self.inherent_candidates.push(cand);
                 }
-            };
-            let method = trait_methods[pos];
-
-            let cand = Candidate {
-                rcvr_ty: self_ty,
-                rcvr_substs: bound_trait_ref.substs.clone(),
-                method_ty: method,
-                origin: method_param(
-                    method_param {
-                        trait_id: bound_trait_ref.def_id,
-                        method_num: pos,
-                        param_num: param,
-                        bound_num: this_bound_idx,
-                    })
-            };
-
-            debug!("pushing inherent candidate for param: %?", cand);
-            self.inherent_candidates.push(cand);
-        }
+                None => {
+                    debug!("trait doesn't contain method: %?",
+                    bound_trait_ref.def_id);
+                    // check next trait or bound
+                }
+            }
+            true
+        };
     }
 
 

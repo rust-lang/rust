@@ -31,9 +31,10 @@ pub fn main() {
     add_int(ints, 22);
     add_int(ints, 44);
 
-    for iter_ints(ints) |i| {
+    do iter_ints(ints) |i| {
         error!("int = %d", *i);
-    }
+        true
+    };
 
     error!("ints=%?", ints);
 }

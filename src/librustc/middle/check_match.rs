@@ -118,12 +118,13 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
                     _ => false
                 }
             };
-            for walk_pat(*pat) |p| {
+            do walk_pat(*pat) |p| {
                 if pat_matches_nan(p) {
                     cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
                                                    use the is_NaN method in a guard instead");
                 }
-            }
+                true
+            };
 
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
@@ -873,7 +874,7 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     foreach pat in pats.iter() {
-        for walk_pat(*pat) |p| {
+        do walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
@@ -890,6 +891,7 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     }
                 }
             }
-        }
+            true
+        };
     }
 }

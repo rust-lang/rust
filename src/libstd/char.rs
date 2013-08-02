@@ -211,12 +211,13 @@ pub fn escape_unicode(c: char, f: &fn(char)) {
         (c <= '\uffff') { f('u'); 4 }
         _               { f('U'); 8 }
     );
-    for int::range_step(4 * (pad - 1), -1, -4) |offset| {
+    do int::range_step(4 * (pad - 1), -1, -4) |offset| {
         match ((c as u32) >> offset) & 0xf {
             i @ 0 .. 9 => { f('0' + i as char); }
             i => { f('a' + (i - 10) as char); }
         }
-    }
+        true
+    };
 }
 
 ///

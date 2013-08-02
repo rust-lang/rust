@@ -701,7 +701,7 @@ impl IsaacRng {
         if use_rsl {
             macro_rules! memloop (
                 ($arr:expr) => {{
-                    for u32::range_step(0, RAND_SIZE, 8) |i| {
+                    do u32::range_step(0, RAND_SIZE, 8) |i| {
                         a+=$arr[i  ]; b+=$arr[i+1];
                         c+=$arr[i+2]; d+=$arr[i+3];
                         e+=$arr[i+4]; f+=$arr[i+5];
@@ -711,20 +711,22 @@ impl IsaacRng {
                         self.mem[i+2]=c; self.mem[i+3]=d;
                         self.mem[i+4]=e; self.mem[i+5]=f;
                         self.mem[i+6]=g; self.mem[i+7]=h;
-                    }
+                        true
+                    };
                 }}
             );
 
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            for u32::range_step(0, RAND_SIZE, 8) |i| {
+            do u32::range_step(0, RAND_SIZE, 8) |i| {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
                 self.mem[i+4]=e; self.mem[i+5]=f;
                 self.mem[i+6]=g; self.mem[i+7]=h;
-            }
+                true
+            };
         }
 
         self.isaac();
@@ -764,12 +766,13 @@ impl IsaacRng {
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         foreach &(mr_offset, m2_offset) in r.iter() {
-            for uint::range_step(0, MIDPOINT, 4) |base| {
+            do uint::range_step(0, MIDPOINT, 4) |base| {
                 rngstep!(0, 13);
                 rngstep!(1, -6);
                 rngstep!(2, 2);
                 rngstep!(3, -16);
-            }
+                true
+            };
         }
 
         self.a = a;
