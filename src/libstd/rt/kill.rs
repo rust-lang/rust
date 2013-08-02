@@ -548,11 +548,12 @@ impl Death {
     /// All calls must be paired with a subsequent call to allow_kill.
     #[inline]
     pub fn inhibit_kill(&mut self, already_failing: bool) {
-        if self.unkillable == 0 {
+        self.unkillable += 1;
+        // May fail, hence must happen *after* incrementing the counter
+        if self.unkillable == 1 {
             rtassert!(self.kill_handle.is_some());
             self.kill_handle.get_mut_ref().inhibit_kill(already_failing);
         }
-        self.unkillable += 1;
     }
 
     /// Exit a possibly-nested unkillable section of code.
