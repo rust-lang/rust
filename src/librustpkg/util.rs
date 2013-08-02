@@ -166,7 +166,7 @@ pub fn compile_input(ctxt: &Ctx,
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let out_dir = workspace.push("build").push_rel(&*pkg_id.local_path);
+    let out_dir = workspace.push("build").push_rel(&pkg_id.path);
 
     let binary = os::args()[0].to_managed();
 
@@ -246,8 +246,8 @@ pub fn compile_input(ctxt: &Ctx,
     // Inject the link attributes so we get the right package name and version
     if attr::find_linkage_metas(crate.attrs).is_empty() {
         let name_to_use = match what {
-            Test  => fmt!("%stest", pkg_id.local_path.to_str()).to_managed(),
-            Bench => fmt!("%sbench", pkg_id.local_path.to_str()).to_managed(),
+            Test  => fmt!("%stest", pkg_id.short_name).to_managed(),
+            Bench => fmt!("%sbench", pkg_id.short_name).to_managed(),
             _     => pkg_id.short_name.to_managed()
         };
         debug!("Injecting link name: %s", name_to_use);
@@ -256,7 +256,7 @@ pub fn compile_input(ctxt: &Ctx,
               attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())] +
                         if pkg_id.is_complex() {
                         ~[attr::mk_name_value_item_str(@"package_id",
-                                                       pkg_id.local_path.to_str().to_managed())]
+                                                       pkg_id.path.to_str().to_managed())]
                 } else { ~[] };
 
         debug!("link options: %?", link_options);

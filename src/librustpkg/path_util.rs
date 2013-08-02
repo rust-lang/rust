@@ -10,7 +10,6 @@
 
 // rustpkg utilities having to do with paths and directories
 
-pub use package_path::{RemotePath, LocalPath, normalize};
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general};
@@ -94,9 +93,9 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
 pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
     let mut results = ~[];
     let result = workspace.push("src").push(fmt!("%s-%s",
-                     pkgid.local_path.to_str(), pkgid.version.to_str()));
+                     pkgid.path.to_str(), pkgid.version.to_str()));
     results.push(result);
-    results.push(workspace.push("src").push_rel(&*pkgid.remote_path));
+    results.push(workspace.push("src").push_rel(&pkgid.path));
     results
 }
 
@@ -159,14 +158,12 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
 /// Figure out what the library name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
 pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&pkgid.local_path, pkgid.short_name,
-                         Build, workspace, "build")
+    library_in_workspace(&pkgid.path, pkgid.short_name, Build, workspace, "build")
 }
 
 /// Does the actual searching stuff
 pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&normalize(RemotePath(Path(short_name))),
-                         short_name, Install, workspace, "lib")
+    library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib")
 }
 
 
@@ -174,7 +171,7 @@ pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Opt
 /// don't know the entire package ID.
 /// `workspace` is used to figure out the directory to search.
 /// `short_name` is taken as the link name of the library.
-pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
+pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                         workspace: &Path, prefix: &str) -> Option<Path> {
     debug!("library_in_workspace: checking whether a library named %s exists",
            short_name);
@@ -186,7 +183,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
             prefix = %s", short_name, where, workspace.to_str(), prefix);
 
     let dir_to_search = match where {
-        Build => workspace.push(prefix).push_rel(&**path),
+        Build => workspace.push(prefix).push_rel(path),
         Install => workspace.push(prefix)
     };
     debug!("Listing directory %s", dir_to_search.to_str());
@@ -302,7 +299,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match where {
-                Build => workspace.push(subdir).push_rel(&*pkgid.local_path),
+                Build => workspace.push(subdir).push_rel(&pkgid.path),
                 _     => workspace.push(subdir)
     };
     if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
@@ -321,7 +318,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     let mut result = workspace.push("build");
     // n.b. Should actually use a target-specific
     // subdirectory of build/
-    result = result.push_rel(&*pkgid.local_path);
+    result = result.push_rel(&pkgid.path);
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }
@@ -342,7 +339,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
         // If we're installing, it just goes under <workspace>...
         Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
-        Build => workspace.push_rel(&*pkg_id.local_path)
+        Build => workspace.push_rel(&pkg_id.path)
     };
     debug!("[%?:%?] mk_output_path: short_name = %s, path = %s", what, where,
            if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },

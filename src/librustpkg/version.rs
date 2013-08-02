@@ -15,7 +15,6 @@ extern mod std;
 
 use extra::semver;
 use std::{char, os, result, run, str};
-use package_path::RemotePath;
 use extra::tempfile::mkdtemp;
 use path_util::rust_path;
 
@@ -128,7 +127,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 /// If `remote_path` refers to a git repo that can be downloaded,
 /// and the most recent tag in that repo denotes a version, return it;
 /// otherwise, `None`
-pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
+pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
     debug!("try_getting_version: %s", remote_path.to_str());
     if is_url_like(remote_path) {
         debug!("Trying to fetch its sources..");
@@ -199,7 +198,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
 }
 
 /// Just an approximation
-fn is_url_like(p: &RemotePath) -> bool {
+fn is_url_like(p: &Path) -> bool {
     let str = p.to_str();
     str.split_iter('/').len_() > 2
 }

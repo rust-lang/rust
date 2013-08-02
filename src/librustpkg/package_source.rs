@@ -11,7 +11,7 @@
 use target::*;
 use package_id::PkgId;
 use std::path::Path;
-use std::{os, str};
+use std::os;
 use context::*;
 use crate::Crate;
 use messages::*;
@@ -51,8 +51,7 @@ impl PkgSrc {
     fn check_dir(&self) -> Path {
         use conditions::nonexistent_package::cond;
 
-        debug!("Pushing onto root: %s | %s", self.id.remote_path.to_str(),
-               self.root.to_str());
+        debug!("Pushing onto root: %s | %s", self.id.path.to_str(), self.root.to_str());
         let dir;
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
@@ -86,18 +85,18 @@ impl PkgSrc {
         os::remove_dir_recursive(&local);
 
         debug!("Checking whether %s exists locally. Cwd = %s, does it? %?",
-               self.id.local_path.to_str(),
+               self.id.path.to_str(),
                os::getcwd().to_str(),
-               os::path_exists(&*self.id.local_path));
+               os::path_exists(&self.id.path));
 
-        if os::path_exists(&*self.id.local_path) {
+        if os::path_exists(&self.id.path) {
             debug!("%s exists locally! Cloning it into %s",
-                   self.id.local_path.to_str(), local.to_str());
-            git_clone(&*self.id.local_path, &local, &self.id.version);
+                   self.id.path.to_str(), local.to_str());
+            git_clone(&self.id.path, &local, &self.id.version);
             return Some(local);
         }
 
-        let url = fmt!("https://%s", self.id.remote_path.to_str());
+        let url = fmt!("https://%s", self.id.path.to_str());
         note(fmt!("Fetching package: git clone %s %s [version=%s]",
                   url, local.to_str(), self.id.version.to_str()));
         if git_clone_general(url, &local, &self.id.version) {
@@ -122,25 +121,8 @@ impl PkgSrc {
     }
 
     /// True if the given path's stem is self's pkg ID's stem
-    /// or if the pkg ID's stem is <rust-foo> and the given path's
-    /// stem is foo
-    /// Requires that dashes in p have already been normalized to
-    /// underscores
     fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = self.id.local_path.filestem();
-        if self_id == p.filestem() {
-            return true;
-        }
-        else {
-            for pth in self_id.iter() {
-                if pth.starts_with("rust_") // because p is already normalized
-                    && match p.filestem() {
-                           Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
-                           None => false
-                       } { return true; }
-            }
-        }
-        false
+        p.filestem().map_default(false, |p| { p == &self.id.short_name })
     }
 
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
@@ -161,7 +143,7 @@ impl PkgSrc {
         let dir = self.check_dir();
         debug!("Called check_dir, I'm in %s", dir.to_str());
         let prefix = dir.components.len();
-        debug!("Matching against %?", self.id.local_path.filestem());
+        debug!("Matching against %?", self.id.short_name);
         do os::walk_dir(&dir) |pth| {
             match pth.filename() {
                 Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
