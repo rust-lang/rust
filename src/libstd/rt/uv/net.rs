@@ -15,56 +15,45 @@ use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback, UdpSendCallback};
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
-use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
 use num;
 
-pub enum UvIpAddr {
-    UvIpv4(*sockaddr_in),
-    UvIpv6(*sockaddr_in6),
+pub enum UvSocketAddr {
+    UvIpv4SocketAddr(*sockaddr_in),
+    UvIpv6SocketAddr(*sockaddr_in6),
 }
 
-fn sockaddr_to_UvIpAddr(addr: *uvll::sockaddr) -> UvIpAddr {
+fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
     unsafe {
         assert!((is_ip4_addr(addr) || is_ip6_addr(addr)));
         assert!(!(is_ip4_addr(addr) && is_ip6_addr(addr)));
         match addr {
-            _ if is_ip4_addr(addr) => UvIpv4(addr as *uvll::sockaddr_in),
-            _ if is_ip6_addr(addr) => UvIpv6(addr as *uvll::sockaddr_in6),
+            _ if is_ip4_addr(addr) => UvIpv4SocketAddr(addr as *uvll::sockaddr_in),
+            _ if is_ip6_addr(addr) => UvIpv6SocketAddr(addr as *uvll::sockaddr_in6),
             _ => fail!(),
         }
     }
 }
 
-fn ip_as_uv_ip<T>(addr: IpAddr, f: &fn(UvIpAddr) -> T) -> T {
-    let malloc = match addr {
-        Ipv4(*) => malloc_ip4_addr,
-        Ipv6(*) => malloc_ip6_addr,
+fn socket_addr_as_uv_socket_addr<T>(addr: SocketAddr, f: &fn(UvSocketAddr) -> T) -> T {
+    let malloc = match addr.ip {
+        Ipv4Addr(*) => malloc_ip4_addr,
+        Ipv6Addr(*) => malloc_ip6_addr,
     };
-    let wrap = match addr {
-        Ipv4(*) => UvIpv4,
-        Ipv6(*) => UvIpv6,
+    let wrap = match addr.ip {
+        Ipv4Addr(*) => UvIpv4SocketAddr,
+        Ipv6Addr(*) => UvIpv6SocketAddr,
     };
-    let ip_str = match addr {
-        Ipv4(x1, x2, x3, x4, _) =>
-            fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
-        Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
-            fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
-                  x1 as uint, x2 as uint, x3 as uint, x4 as uint,
-                  x5 as uint, x6 as uint, x7 as uint, x8 as uint),
-    };
-    let port = match addr {
-        Ipv4(_, _, _, _, p) | Ipv6(_, _, _, _, _, _, _, _, p) => p as int
-    };
-    let free = match addr {
-        Ipv4(*) => free_ip4_addr,
-        Ipv6(*) => free_ip6_addr,
+    let free = match addr.ip {
+        Ipv4Addr(*) => free_ip4_addr,
+        Ipv6Addr(*) => free_ip6_addr,
     };
 
-    let addr = unsafe { malloc(ip_str, port) };
+    let addr = unsafe { malloc(addr.ip.to_str(), addr.port as int) };
     do (|| {
         f(wrap(addr))
     }).finally {
@@ -72,39 +61,43 @@ fn ip_as_uv_ip<T>(addr: IpAddr, f: &fn(UvIpAddr) -> T) -> T {
     }
 }
 
-fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
+fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T) -> T {
     let ip_size = match addr {
-        UvIpv4(*) => 4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/,
-        UvIpv6(*) => 8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/,
+        UvIpv4SocketAddr(*) => 4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/,
+        UvIpv6SocketAddr(*) => 8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/,
     };
     let ip_name = {
         let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
         unsafe {
+            let buf_ptr = vec::raw::to_ptr(buf);
             match addr {
-                UvIpv4(addr) => uvll::ip4_name(addr, vec::raw::to_ptr(buf), ip_size as size_t),
-                UvIpv6(addr) => uvll::ip6_name(addr, vec::raw::to_ptr(buf), ip_size as size_t),
+                UvIpv4SocketAddr(addr) => uvll::ip4_name(addr, buf_ptr, ip_size as size_t),
+                UvIpv6SocketAddr(addr) => uvll::ip6_name(addr, buf_ptr, ip_size as size_t),
             }
         };
         buf
     };
     let ip_port = unsafe {
         let port = match addr {
-            UvIpv4(addr) => uvll::ip4_port(addr),
-            UvIpv6(addr) => uvll::ip6_port(addr),
+            UvIpv4SocketAddr(addr) => uvll::ip4_port(addr),
+            UvIpv6SocketAddr(addr) => uvll::ip6_port(addr),
         };
         port as u16
     };
     let ip_str = str::from_bytes_slice(ip_name).trim_right_chars(&'\x00');
     let ip = match addr {
-        UvIpv4(*) => {
+        UvIpv4SocketAddr(*) => {
             let ip: ~[u8] =
                 ip_str.split_iter('.')
                       .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
                       .collect();
             assert_eq!(ip.len(), 4);
-            Ipv4(ip[0], ip[1], ip[2], ip[3], ip_port)
+            SocketAddr {
+                ip: Ipv4Addr(ip[0], ip[1], ip[2], ip[3]),
+                port: ip_port
+            }
         },
-        UvIpv6(*) => {
+        UvIpv6SocketAddr(*) => {
             let ip: ~[u16] = {
                 let expand_shorthand_and_convert = |s: &str| -> ~[~[u16]] {
                     let convert_each_segment = |s: &str| -> ~[u16] {
@@ -154,7 +147,10 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
                 }
             };
             assert_eq!(ip.len(), 8);
-            Ipv6(ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7], ip_port)
+            SocketAddr {
+                ip: Ipv6Addr(ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7]),
+                port: ip_port
+            }
         },
     };
 
@@ -162,9 +158,9 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
     f(ip)
 }
 
-pub fn uv_ip_to_ip(addr: UvIpAddr) -> IpAddr {
+pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
     use util;
-    uv_ip_as_ip(addr, util::id)
+    uv_socket_addr_as_socket_addr(addr, util::id)
 }
 
 #[cfg(test)]
@@ -172,7 +168,7 @@ pub fn uv_ip_to_ip(addr: UvIpAddr) -> IpAddr {
 fn test_ip4_conversion() {
     use rt;
     let ip4 = rt::test::next_test_ip4();
-    assert_eq!(ip4, ip_as_uv_ip(ip4, uv_ip_to_ip));
+    assert_eq!(ip4, socket_addr_as_uv_socket_addr(ip4, uv_socket_addr_to_socket_addr));
 }
 
 #[cfg(test)]
@@ -180,7 +176,7 @@ fn test_ip4_conversion() {
 fn test_ip6_conversion() {
     use rt;
     let ip6 = rt::test::next_test_ip6();
-    assert_eq!(ip6, ip_as_uv_ip(ip6, uv_ip_to_ip));
+    assert_eq!(ip6, socket_addr_as_uv_socket_addr(ip6, uv_socket_addr_to_socket_addr));
 }
 
 // uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
@@ -293,12 +289,12 @@ impl TcpWatcher {
         }
     }
 
-    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
-        do ip_as_uv_ip(address) |addr| {
+    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
+        do socket_addr_as_uv_socket_addr(address) |addr| {
             let result = unsafe {
                 match addr {
-                    UvIpv4(addr) => uvll::tcp_bind(self.native_handle(), addr),
-                    UvIpv6(addr) => uvll::tcp_bind6(self.native_handle(), addr),
+                    UvIpv4SocketAddr(addr) => uvll::tcp_bind(self.native_handle(), addr),
+                    UvIpv6SocketAddr(addr) => uvll::tcp_bind6(self.native_handle(), addr),
                 }
             };
             match result {
@@ -308,18 +304,18 @@ impl TcpWatcher {
         }
     }
 
-    pub fn connect(&mut self, address: IpAddr, cb: ConnectionCallback) {
+    pub fn connect(&mut self, address: SocketAddr, cb: ConnectionCallback) {
         unsafe {
             assert!(self.get_watcher_data().connect_cb.is_none());
             self.get_watcher_data().connect_cb = Some(cb);
 
             let connect_handle = ConnectRequest::new().native_handle();
             rtdebug!("connect_t: %x", connect_handle as uint);
-            do ip_as_uv_ip(address) |addr| {
+            do socket_addr_as_uv_socket_addr(address) |addr| {
                 let result = match addr {
-                    UvIpv4(addr) => uvll::tcp_connect(connect_handle,
+                    UvIpv4SocketAddr(addr) => uvll::tcp_connect(connect_handle,
                                                       self.native_handle(), addr, connect_cb),
-                    UvIpv6(addr) => uvll::tcp_connect6(connect_handle,
+                    UvIpv6SocketAddr(addr) => uvll::tcp_connect6(connect_handle,
                                                        self.native_handle(), addr, connect_cb),
                 };
                 assert_eq!(0, result);
@@ -388,12 +384,12 @@ impl UdpWatcher {
         }
     }
 
-    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
-        do ip_as_uv_ip(address) |addr| {
+    pub fn bind(&mut self, address: SocketAddr) -> Result<(), UvError> {
+        do socket_addr_as_uv_socket_addr(address) |addr| {
             let result = unsafe {
                 match addr {
-                    UvIpv4(addr) => uvll::udp_bind(self.native_handle(), addr, 0u32),
-                    UvIpv6(addr) => uvll::udp_bind6(self.native_handle(), addr, 0u32),
+                    UvIpv4SocketAddr(addr) => uvll::udp_bind(self.native_handle(), addr, 0u32),
+                    UvIpv6SocketAddr(addr) => uvll::udp_bind6(self.native_handle(), addr, 0u32),
                 }
             };
             match result {
@@ -432,7 +428,7 @@ impl UdpWatcher {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(udp_watcher, nread as c_int);
-            let addr = uv_ip_to_ip(sockaddr_to_UvIpAddr(addr));
+            let addr = uv_socket_addr_to_socket_addr(sockaddr_to_UvSocketAddr(addr));
             (*cb)(udp_watcher, nread as int, buf, addr, flags as uint, status);
         }
     }
@@ -441,7 +437,7 @@ impl UdpWatcher {
         unsafe { uvll::udp_recv_stop(self.native_handle()); }
     }
 
-    pub fn send(&mut self, buf: Buf, address: IpAddr, cb: UdpSendCallback) {
+    pub fn send(&mut self, buf: Buf, address: SocketAddr, cb: UdpSendCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.udp_send_cb.is_none());
@@ -449,12 +445,12 @@ impl UdpWatcher {
         }
 
         let req = UdpSendRequest::new();
-        do ip_as_uv_ip(address) |addr| {
+        do socket_addr_as_uv_socket_addr(address) |addr| {
             let result = unsafe {
                 match addr {
-                    UvIpv4(addr) => uvll::udp_send(req.native_handle(),
+                    UvIpv4SocketAddr(addr) => uvll::udp_send(req.native_handle(),
                                                    self.native_handle(), [buf], addr, send_cb),
-                    UvIpv6(addr) => uvll::udp_send6(req.native_handle(),
+                    UvIpv6SocketAddr(addr) => uvll::udp_send6(req.native_handle(),
                                                     self.native_handle(), [buf], addr, send_cb),
                 }
             };

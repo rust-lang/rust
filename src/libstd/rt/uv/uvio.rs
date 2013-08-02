@@ -18,10 +18,10 @@ use clone::Clone;
 use libc::{c_int, c_uint, c_void};
 use ptr;
 use rt::io::IoError;
-use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use rt::io::net::ip::{SocketAddr, IpAddr};
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
-use rt::uv::net::{UvIpv4, UvIpv6};
+use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use rt::rtio::*;
 use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
@@ -44,7 +44,7 @@ enum SocketNameKind {
 }
 
 fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
-                                                 handle: U) -> Result<IpAddr, IoError> {
+                                                 handle: U) -> Result<SocketAddr, IoError> {
 
     let getsockname = match sk {
         TcpPeer => uvll::rust_uv_tcp_getpeername,
@@ -67,9 +67,9 @@ fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
 
     let addr = unsafe {
         if uvll::is_ip6_addr(r_addr as *uvll::sockaddr) {
-            net::uv_ip_to_ip(UvIpv6(r_addr as *uvll::sockaddr_in6))
+            net::uv_socket_addr_to_socket_addr(UvIpv6SocketAddr(r_addr as *uvll::sockaddr_in6))
         } else {
-            net::uv_ip_to_ip(UvIpv4(r_addr as *uvll::sockaddr_in))
+            net::uv_socket_addr_to_socket_addr(UvIpv4SocketAddr(r_addr as *uvll::sockaddr_in))
         }
     };
 
@@ -244,7 +244,7 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError> {
+    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
         let result_cell = Cell::new_empty();
@@ -291,7 +291,7 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError> {
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvTcpListener::new(watcher)),
@@ -309,7 +309,7 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError> {
+    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError> {
         let mut watcher = UdpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvUdpSocket(watcher)),
@@ -365,7 +365,7 @@ impl Drop for UvTcpListener {
 }
 
 impl RtioSocket for UvTcpListener {
-    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
         socket_name(Tcp, self.watcher)
     }
 }
@@ -445,7 +445,7 @@ impl Drop for UvTcpStream {
 }
 
 impl RtioSocket for UvTcpStream {
-    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
         socket_name(Tcp, **self)
     }
 }
@@ -519,7 +519,7 @@ impl RtioTcpStream for UvTcpStream {
         return result_cell.take();
     }
 
-    fn peer_name(&mut self) -> Result<IpAddr, IoError> {
+    fn peer_name(&mut self) -> Result<SocketAddr, IoError> {
         socket_name(TcpPeer, **self)
     }
 
@@ -586,15 +586,15 @@ impl Drop for UvUdpSocket {
 }
 
 impl RtioSocket for UvUdpSocket {
-    fn socket_name(&mut self) -> Result<IpAddr, IoError> {
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
         socket_name(Udp, **self)
     }
 }
 
 impl RtioUdpSocket for UvUdpSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError> {
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError> {
         let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(uint, IpAddr), IoError>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<(uint, SocketAddr), IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
         let buf_ptr: *&mut [u8] = &buf;
@@ -626,7 +626,7 @@ impl RtioUdpSocket for UvUdpSocket {
         return result_cell.take();
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<(), IoError> {
+    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
@@ -653,17 +653,8 @@ impl RtioUdpSocket for UvUdpSocket {
     }
 
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let ip_str = match multi {
-            Ipv4(x1, x2, x3, x4, _) =>
-                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
-            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
-                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
-                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
-                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
-        };
-
         let r = unsafe {
-            do ip_str.as_c_str |m_addr| {
+            do multi.to_str().as_c_str |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_JOIN_GROUP)
             }
@@ -676,17 +667,8 @@ impl RtioUdpSocket for UvUdpSocket {
     }
 
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
-        let ip_str = match multi {
-            Ipv4(x1, x2, x3, x4, _) =>
-                fmt!("%u.%u.%u.%u", x1 as uint, x2 as uint, x3 as uint, x4 as uint),
-            Ipv6(x1, x2, x3, x4, x5, x6, x7, x8, _) =>
-                fmt!("%x:%x:%x:%x:%x:%x:%x:%x",
-                      x1 as uint, x2 as uint, x3 as uint, x4 as uint,
-                      x5 as uint, x6 as uint, x7 as uint, x8 as uint),
-        };
-
         let r = unsafe {
-            do ip_str.as_c_str |m_addr| {
+            do multi.to_str().as_c_str |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_LEAVE_GROUP)
             }
