@@ -306,7 +306,7 @@ pub fn trans_get_discr(bcx: @mut Block, r: &Repr, scrutinee: ValueRef)
     -> ValueRef {
     match *r {
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
-        Univariant(*) => C_uint(bcx.ccx(), 0),
+        Univariant(*) => C_disr(bcx.ccx(), 0),
         General(ref cases) => load_discr(bcx, scrutinee, 0, (cases.len() - 1) as Disr),
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             ZExt(bcx, nullable_bitdiscr(bcx, nonnull, nndiscr, ptrfield, scrutinee),
@@ -351,13 +351,13 @@ fn load_discr(bcx: @mut Block, scrutinee: ValueRef, min: Disr, max: Disr)
 pub fn trans_case(bcx: @mut Block, r: &Repr, discr: Disr) -> _match::opt_result {
     match *r {
         CEnum(*) => {
-            _match::single_result(rslt(bcx, C_uint(bcx.ccx(), discr /*bad*/as uint)))
+            _match::single_result(rslt(bcx, C_disr(bcx.ccx(), discr)))
         }
         Univariant(*) => {
             bcx.ccx().sess.bug("no cases for univariants or structs")
         }
         General(*) => {
-            _match::single_result(rslt(bcx, C_uint(bcx.ccx(), discr /*bad*/as uint)))
+            _match::single_result(rslt(bcx, C_disr(bcx.ccx(), discr)))
         }
         NullablePointer{ _ } => {
             assert!(discr == 0 || discr == 1);
@@ -375,7 +375,7 @@ pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr) {
     match *r {
         CEnum(min, max) => {
             assert!(min <= discr && discr <= max);
-            Store(bcx, C_uint(bcx.ccx(), discr/*bad*/ as uint), GEPi(bcx, val, [0, 0]))
+            Store(bcx, C_disr(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(ref st, true) => {
             assert_eq!(discr, 0);
@@ -386,7 +386,7 @@ pub fn trans_start_init(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr) {
             assert_eq!(discr, 0);
         }
         General(*) => {
-            Store(bcx, C_uint(bcx.ccx(), discr/*bad*/ as uint), GEPi(bcx, val, [0, 0]))
+            Store(bcx, C_disr(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr != nndiscr {
@@ -501,7 +501,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         CEnum(min, max) => {
             assert_eq!(vals.len(), 0);
             assert!(min <= discr && discr <= max);
-            C_uint(ccx, discr/*bad*/ as uint)
+            C_disr(ccx, discr)
         }
         Univariant(ref st, _dro) => {
             assert_eq!(discr, 0);
@@ -510,7 +510,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         General(ref cases) => {
             let case = &cases[discr];
             let max_sz = cases.iter().map(|x| x.size).max().unwrap();
-            let discr_ty = C_uint(ccx, discr/*bad*/ as uint);
+            let discr_ty = C_disr(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
             C_struct(contents + &[padding(max_sz - case.size)])
@@ -644,4 +644,8 @@ pub fn is_newtypeish(r: &Repr) -> bool {
         Univariant(ref st, false) => st.fields.len() == 1,
         _ => false
     }
+}
+
+fn C_disr(cx: &CrateContext, i: Disr) -> ValueRef {
+    return C_integral(cx.int_type, i, false);
 }
