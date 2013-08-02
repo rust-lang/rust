@@ -131,6 +131,13 @@ impl<T> ChanOne<T> {
             // acquire barrier that keeps the subsequent access of the
             // ~Task pointer from being reordered.
             let oldstate = (*packet).state.swap(STATE_ONE, SeqCst);
+
+            // Suppress the synchronizing actions in the finalizer. We're
+            // done with the packet. NB: In case of do_resched, this *must*
+            // happen before waking up a blocked task (or be unkillable),
+            // because we might get a kill signal during the reschedule.
+            this.suppress_finalize = true;
+
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
@@ -165,8 +172,6 @@ impl<T> ChanOne<T> {
             }
         }
 
-        // Suppress the synchronizing actions in the finalizer. We're done with the packet.
-        this.suppress_finalize = true;
         return recvr_active;
     }
 }
