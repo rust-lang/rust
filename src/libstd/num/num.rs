@@ -244,7 +244,10 @@ pub trait Bitwise: Not<Self>
                  + BitOr<Self,Self>
                  + BitXor<Self,Self>
                  + Shl<Self,Self>
-                 + Shr<Self,Self> {}
+                 + Shr<Self,Self> {
+    // Computes the bitwise complement
+    fn compl(&self) -> Self;
+}
 
 pub trait BitCount {
     fn population_count(&self) -> Self;
