@@ -397,7 +397,7 @@ impl CoherenceChecker {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(
                             self.span_of_impl(implementation_b),
-                            fmt!("conflicting implementations for trait %s",
+                            fmt!("conflicting implementations for trait `%s`",
                                  ty::item_path_str(self.crate_context.tcx,
                                                    trait_def_id)));
                         session.span_note(self.span_of_impl(implementation_a),
