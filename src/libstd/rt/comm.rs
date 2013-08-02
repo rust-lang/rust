@@ -18,7 +18,7 @@ use kinds::Send;
 use rt::sched::Scheduler;
 use rt::local::Local;
 use rt::select::{Select, SelectPort};
-use unstable::atomics::{AtomicUint, AtomicOption, Acquire, Release, SeqCst};
+use unstable::atomics::{AtomicUint, AtomicOption, Acquire, Relaxed, SeqCst};
 use unstable::sync::UnsafeAtomicRcBox;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
@@ -217,15 +217,15 @@ impl<T> Select for PortOne<T> {
                 }
                 STATE_ONE => {
                     // Re-record that we are the only owner of the packet.
-                    // Release barrier needed in case the task gets reawoken
-                    // on a different core (this is analogous to writing a
-                    // payload; a barrier in enqueueing the task protects it).
+                    // No barrier needed, even if the task gets reawoken
+                    // on a different core -- this is analogous to writing a
+                    // payload; a barrier in enqueueing the task protects it.
                     // NB(#8132). This *must* occur before the enqueue below.
                     // FIXME(#6842, #8130) This is usually only needed for the
                     // assertion in recv_ready, except in the case of select().
                     // This won't actually ever have cacheline contention, but
                     // maybe should be optimized out with a cfg(test) anyway?
-                    (*self.packet()).state.store(STATE_ONE, Release);
+                    (*self.packet()).state.store(STATE_ONE, Relaxed);
 
                     rtdebug!("rendezvous recv");
                     sched.metrics.rendezvous_recvs += 1;
@@ -300,7 +300,7 @@ impl<T> SelectPort<T> for PortOne<T> {
         unsafe {
             // See corresponding store() above in block_on for rationale.
             // FIXME(#8130) This can happen only in test builds.
-            assert!((*packet).state.load(Acquire) == STATE_ONE);
+            assert!((*packet).state.load(Relaxed) == STATE_ONE);
 
             let payload = (*packet).payload.take();
 
@@ -375,9 +375,7 @@ impl<T> Drop for PortOne<T> {
                     // receiver was killed awake. The task can't still be
                     // blocked (we are it), but we need to free the handle.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
-                    // FIXME(#7554)(bblum): Make this cfg(test) dependent.
-                    // in a later commit.
-                    assert!(recvr.wake().is_none());
+                    recvr.assert_already_awake();
                 }
             }
         }
