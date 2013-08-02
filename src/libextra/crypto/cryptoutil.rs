@@ -36,6 +36,18 @@ pub fn write_u32_be(dst: &mut[u8], input: u32) {
     }
 }
 
+/// Write a u32 into a vector, which must be 4 bytes long. The value is written in little-endian
+/// format.
+pub fn write_u32_le(dst: &mut[u8], input: u32) {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(dst.len() == 4);
+    unsafe {
+        let x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
+        *x = to_le32(input as i32);
+    }
+}
+
 /// Read a vector of bytes into a vector of u64s. The values are read in big-endian format.
 pub fn read_u64v_be(dst: &mut[u64], input: &[u8]) {
     use std::cast::transmute;
@@ -62,6 +74,22 @@ pub fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
         let mut y: *i32 = transmute(input.unsafe_ref(0));
         do dst.len().times() {
             *x = to_be32(*y);
+            x = x.offset(1);
+            y = y.offset(1);
+        }
+    }
+}
+
+/// Read a vector of bytes into a vector of u32s. The values are read in little-endian format.
+pub fn read_u32v_le(dst: &mut[u32], input: &[u8]) {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(dst.len() * 4 == input.len());
+    unsafe {
+        let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
+        let mut y: *i32 = transmute(input.unsafe_ref(0));
+        do dst.len().times() {
+            *x = to_le32(*y);
             x = x.offset(1);
             y = y.offset(1);
         }
