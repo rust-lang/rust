@@ -381,6 +381,7 @@ opt clang 0 "prefer clang to gcc for building the runtime"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-patched kernels)"
+opt unicode 0 "build with additional Unicode features"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
@@ -431,6 +432,7 @@ probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
 probe CFG_LLNEXTGEN        LLnextgen
+probe CFG_ICU_CONFIG       icu-config
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
 probe CFG_XETEX            xetex
@@ -446,6 +448,17 @@ fi
 step_msg "looking for target specific programs"
 
 probe CFG_ADB        adb
+
+if [ ! -z "$CFG_ENABLE_UNICODE" ]
+then
+    warn "the ICU binding is experimental."
+    if [ -z "$CFG_ICU_CONFIG" ]
+    then
+        err "enabled unicode but no icu-config found."
+    fi
+    "${CFG_ICU_CONFIG}" --exists
+    need_ok "no ICU library found."
+fi
 
 if [ ! -z "$CFG_PANDOC" ]
 then
@@ -982,6 +995,10 @@ then
     putvar CFG_CCACHE_BASEDIR
 fi
 
+if [ ! -z "$CFG_ENABLE_UNICODE" ]
+then
+    putvar CFG_ENABLE_UNICODE
+fi
 
 if [ ! -z $BAD_PANDOC ]
 then
