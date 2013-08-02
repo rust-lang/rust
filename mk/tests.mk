@@ -15,7 +15,7 @@
 
 # The names of crates that must be tested
 TEST_TARGET_CRATES = std extra
-TEST_HOST_CRATES = syntax rustc rustdoc rust rustpkg rusti
+TEST_HOST_CRATES = rust rusti rustpkg rustc rustdoc syntax
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
@@ -347,6 +347,7 @@ $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -354,6 +355,7 @@ $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 $(3)/stage$(1)/test/rustitest-$(2)$$(X_$(2)):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -361,6 +363,9 @@ $(3)/stage$(1)/test/rustitest-$(2)$$(X_$(2)):					\
 $(3)/stage$(1)/test/rusttest-$(2)$$(X_$(2)):					\
 		$$(RUST_LIB) $$(RUST_INPUTS)		\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTPKG_$(2)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC_$(2)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -368,6 +373,7 @@ $(3)/stage$(1)/test/rusttest-$(2)$$(X_$(2)):					\
 $(3)/stage$(1)/test/rustdoctest-$(2)$$(X_$(2)):					\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
