@@ -600,7 +600,7 @@ impl Scheduler {
 
             // Must happen after running the cleanup job (of course).
             let task = Local::unsafe_borrow::<Task>();
-            (*task).death.check_killed();
+            (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
 

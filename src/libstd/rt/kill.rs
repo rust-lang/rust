@@ -530,13 +530,13 @@ impl Death {
 
     /// Fails if a kill signal was received.
     #[inline]
-    pub fn check_killed(&self) {
+    pub fn check_killed(&self, already_failing: bool) {
         match self.kill_handle {
             Some(ref kill_handle) =>
                 // The task may be both unkillable and killed if it does some
                 // synchronization during unwinding or cleanup (for example,
                 // sending on a notify port). In that case failing won't help.
-                if self.unkillable == 0 && kill_handle.killed() {
+                if self.unkillable == 0 && (!already_failing) && kill_handle.killed() {
                     fail!(KILLED_MSG);
                 },
             // This may happen during task death (see comments in collect_failure).
