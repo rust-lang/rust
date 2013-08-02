@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: conflicting implementations for trait Foo
+// error-pattern: conflicting implementations for trait `Foo`
 trait Foo {
 }
 
