@@ -205,11 +205,10 @@ impl BlockedTask {
                 let flag_arc = match task.death.spare_kill_flag.take() {
                     Some(spare_flag) => spare_flag,
                     None => {
-                        // FIXME(#7544): Uncomment this when terminate_current_task
-                        // stops being *terrible*. That's the only place that violates
-                        // the assumption of "becoming unkillable will fail if the
-                        // task was killed".
-                        // rtassert!(task.unwinder.unwinding);
+                        // A task that kills us won't have a spare kill flag to
+                        // give back to us, so we restore it ourselves here. This
+                        // situation should only arise when we're already failing.
+                        rtassert!(task.unwinder.unwinding);
                         (*task.death.kill_handle.get_ref().get()).killed.clone()
                     }
                 };
