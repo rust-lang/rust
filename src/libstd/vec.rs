@@ -3595,4 +3595,17 @@ mod bench {
             if sum == 0 {fail!()}
         }
     }
+
+    #[bench]
+    fn mut_iterator(bh: &mut BenchHarness) {
+        let mut v = vec::from_elem(100, 0);
+
+        do bh.iter {
+            let mut i = 0;
+            foreach x in v.mut_iter() {
+                *x = i;
+                i += 1;
+            }
+        }
+    }
 }
