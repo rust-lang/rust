@@ -179,7 +179,7 @@ impl<T: Send> GenericChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        chan.send(xx.take_unwrap())
+                        chan.send(xx.take_get())
                     }
                 }
             }
@@ -195,7 +195,7 @@ impl<T: Send> GenericSmartChan<T> for SharedChan<T> {
                 unsafe {
                     let mut xx = Some(x);
                     do chan.with_imm |chan| {
-                        chan.try_send(xx.take_unwrap())
+                        chan.try_send(xx.take_get())
                     }
                 }
             }
@@ -469,7 +469,7 @@ mod pipesy {
                 if message.is_none() {
                     None
                 } else {
-                    let oneshot::send(message) = message.unwrap();
+                    let oneshot::send(message) = message.get();
                     Some(message)
                 }
             }
@@ -586,7 +586,7 @@ mod pipesy {
         fn send(&self, x: T) {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                *self_endp = Some(streamp::client::data(self_endp.take_unwrap(), x))
+                *self_endp = Some(streamp::client::data(self_endp.take_get(), x))
             }
         }
     }
@@ -596,7 +596,7 @@ mod pipesy {
         fn try_send(&self, x: T) -> bool {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
-                match streamp::client::try_data(self_endp.take_unwrap(), x) {
+                match streamp::client::try_data(self_endp.take_get(), x) {
                     Some(next) => {
                         *self_endp = Some(next);
                         true
@@ -613,7 +613,7 @@ mod pipesy {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
                 let endp = self_endp.take();
-                let streamp::data(x, endp) = recv(endp.unwrap());
+                let streamp::data(x, endp) = recv(endp.get());
                 *self_endp = Some(endp);
                 x
             }
@@ -624,7 +624,7 @@ mod pipesy {
             unsafe {
                 let self_endp = transmute_mut(&self.endp);
                 let endp = self_endp.take();
-                match try_recv(endp.unwrap()) {
+                match try_recv(endp.get()) {
                     Some(streamp::data(x, endp)) => {
                         *self_endp = Some(endp);
                         Some(x)

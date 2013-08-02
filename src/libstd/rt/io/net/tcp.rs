@@ -575,13 +575,13 @@ mod test {
                 let listener = TcpListener::bind(addr);
 
                 assert!(listener.is_some());
-                let mut listener = listener.unwrap();
+                let mut listener = listener.get();
 
                 // Make sure socket_name gives
                 // us the socket we binded to.
                 let so_name = listener.socket_name();
                 assert!(so_name.is_some());
-                assert_eq!(addr, so_name.unwrap());
+                assert_eq!(addr, so_name.get());
 
             }
         }
@@ -600,14 +600,14 @@ mod test {
                 let stream = TcpStream::connect(addr);
 
                 assert!(stream.is_some());
-                let mut stream = stream.unwrap();
+                let mut stream = stream.get();
 
                 // Make sure peer_name gives us the
                 // address/port of the peer we've
                 // connected to.
                 let peer_name = stream.peer_name();
                 assert!(peer_name.is_some());
-                assert_eq!(addr, peer_name.unwrap());
+                assert_eq!(addr, peer_name.get());
             }
         }
     }

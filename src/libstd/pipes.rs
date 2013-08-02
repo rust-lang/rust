@@ -432,7 +432,7 @@ fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
       Full => {
         let payload = p.payload.take();
         p.header.state = Empty;
-        return Some(payload.unwrap())
+        return Some(payload.get())
       },
       Terminated => return None,
       _ => {}
@@ -489,7 +489,7 @@ fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
                 }
             }
             p.header.state = Empty;
-            return Some(payload.unwrap())
+            return Some(payload.get())
           }
           Terminated => {
             // This assert detects when we've accidentally unsafely
@@ -675,7 +675,7 @@ impl<T:Send,Tbuffer:Send> Drop for SendPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut SendPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                sender_terminate(this.p.take_unwrap());
+                sender_terminate(this.p.take_get());
             }
         }
     }
@@ -693,7 +693,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
 
 impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     pub fn unwrap(&mut self) -> *mut Packet<T> {
-        self.p.take_unwrap()
+        self.p.take_get()
     }
 
     pub fn header(&mut self) -> *mut PacketHeader {
@@ -709,7 +709,7 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 
     pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
-        self.buffer.take_unwrap()
+        self.buffer.take_get()
     }
 }
 
@@ -732,7 +732,7 @@ impl<T:Send,Tbuffer:Send> Drop for RecvPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut RecvPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                receiver_terminate(this.p.take_unwrap())
+                receiver_terminate(this.p.take_get())
             }
         }
     }
@@ -740,11 +740,11 @@ impl<T:Send,Tbuffer:Send> Drop for RecvPacketBuffered<T,Tbuffer> {
 
 impl<T:Send,Tbuffer:Send> RecvPacketBuffered<T, Tbuffer> {
     pub fn unwrap(&mut self) -> *mut Packet<T> {
-        self.p.take_unwrap()
+        self.p.take_get()
     }
 
     pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
-        self.buffer.take_unwrap()
+        self.buffer.take_get()
     }
 }
 

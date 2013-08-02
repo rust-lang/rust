@@ -85,7 +85,7 @@ fn strip_priv_methods(
             extract::to_str(m.ident) == method.name
         };
         assert!(ast_method.is_some());
-        let ast_method = ast_method.unwrap();
+        let ast_method = ast_method.get();
         match ast_method.vis {
             ast::public => true,
             ast::private => false,

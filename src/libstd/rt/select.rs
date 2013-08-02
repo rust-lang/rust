@@ -199,7 +199,7 @@ mod test {
                 // get it back out
                 util::swap(port.get_mut_ref(), &mut ports[index]);
                 // NB. Not recv(), because optimistic_check randomly fails.
-                let (data, new_port) = port.take_unwrap().recv_ready().unwrap();
+                let (data, new_port) = port.take_get().recv_ready().get();
                 assert!(data == 31337);
                 port = Some(new_port);
             }

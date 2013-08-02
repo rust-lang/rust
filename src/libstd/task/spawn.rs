@@ -244,7 +244,7 @@ fn each_ancestor(list:        &mut AncestorList,
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
-            *list = coalesce_this.unwrap();
+            *list = coalesce_this.get();
         }
         return early_break;
     }
@@ -463,8 +463,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
         // That's ok; only one task needs to do the dirty work. (Might also
         // see 'None' if Somebody already failed and we got a kill signal.)
         if newstate.is_some() {
-            let TaskGroupData { members: members, descendants: descendants } =
-                newstate.unwrap();
+            let TaskGroupData { members: members, descendants: descendants } = newstate.get();
             foreach sibling in members.consume() {
                 // Skip self - killing ourself won't do much good.
                 if &sibling != me {
@@ -774,7 +773,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     };
 
     if opts.notify_chan.is_some() {
-        let notify_chan = opts.notify_chan.take_unwrap();
+        let notify_chan = opts.notify_chan.take_get();
         let notify_chan = Cell::new(notify_chan);
         let on_exit: ~fn(bool) = |success| {
             notify_chan.take().send(

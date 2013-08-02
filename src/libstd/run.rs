@@ -1241,8 +1241,8 @@ mod tests {
         let parent_dir = os::getcwd().normalize();
         let child_dir = Path(output.trim()).normalize();
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat().get();
+        let child_stat = child_dir.stat().get();
 
         assert_eq!(parent_stat.st_dev, child_stat.st_dev);
         assert_eq!(parent_stat.st_ino, child_stat.st_ino);
@@ -1258,8 +1258,8 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
         let child_dir = Path(output.trim()).normalize();
 
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
+        let parent_stat = parent_dir.stat().get();
+        let child_stat = child_dir.stat().get();
 
         assert_eq!(parent_stat.st_dev, child_stat.st_dev);
         assert_eq!(parent_stat.st_ino, child_stat.st_ino);

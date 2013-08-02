@@ -19,7 +19,7 @@ use std::os;
 use std::uint;
 
 pub fn main() {
-    let dir = tempfile::mkdtemp(&Path("."), "").unwrap();
+    let dir = tempfile::mkdtemp(&Path("."), "").get();
     let path = dir.push("file");
 
     {

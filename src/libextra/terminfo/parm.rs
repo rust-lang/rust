@@ -248,7 +248,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         let flags = Flags::new();
                         let res = format(stack.pop(), FormatOp::from_char(cur), flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap())
+                        output.push_all(res.get())
                     } else { return Err(~"stack is empty") },
                     ':'|'#'|' '|'.'|'0'..'9' => {
                         let mut flags = Flags::new();
@@ -343,7 +343,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
                         let res = format(stack.pop(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap());
+                        output.push_all(res.get());
                         old_state = state; // will cause state to go to Nothing
                     } else { return Err(~"stack is empty") },
                     (FormatStateFlags,'#') => {
@@ -580,13 +580,13 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).get(),
                    bytes!("\\E[48;5;1m").to_owned());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
+        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).get(),
                    bytes!("21").to_owned());
     }
 
@@ -612,7 +612,7 @@ mod test {
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
             let res = expand((bytes!("%p1")).to_owned() + cap.as_bytes(), [p], vars);
             assert!(res.is_ok(),
-                    "Op %s failed with 1 stack entry: %s", *cap, res.unwrap_err());
+                    "Op %s failed with 1 stack entry: %s", *cap, res.get_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         foreach cap in caps.iter() {
@@ -624,7 +624,7 @@ mod test {
                     "Binop %s succeeded incorrectly with 1 stack entry", *cap);
             let res = expand((bytes!("%{1}%{2}")).to_owned() + cap.as_bytes(), [], vars);
             assert!(res.is_ok(),
-                    "Binop %s failed with 2 stack entries: %s", *cap, res.unwrap_err());
+                    "Binop %s failed with 2 stack entries: %s", *cap, res.get_err());
         }
     }
 
@@ -639,16 +639,16 @@ mod test {
         foreach &(op, bs) in v.iter() {
             let s = fmt!("%%{1}%%{2}%%%c%%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
+            assert!(res.is_ok(), res.get_err());
+            assert_eq!(res.get(), ~['0' as u8 + bs[0]]);
             let s = fmt!("%%{1}%%{1}%%%c%%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
+            assert!(res.is_ok(), res.get_err());
+            assert_eq!(res.get(), ~['0' as u8 + bs[1]]);
             let s = fmt!("%%{2}%%{1}%%%c%%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);
+            assert!(res.is_ok(), res.get_err());
+            assert_eq!(res.get(), ~['0' as u8 + bs[2]]);
         }
     }
 
@@ -657,14 +657,14 @@ mod test {
         let mut vars = Variables::new();
         let s = bytes!("\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
         let res = expand(s, [Number(1)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[31m").to_owned());
+        assert!(res.is_ok(), res.get_err());
+        assert_eq!(res.get(), bytes!("\\E[31m").to_owned());
         let res = expand(s, [Number(8)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[90m").to_owned());
+        assert!(res.is_ok(), res.get_err());
+        assert_eq!(res.get(), bytes!("\\E[90m").to_owned());
         let res = expand(s, [Number(42)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
+        assert!(res.is_ok(), res.get_err());
+        assert_eq!(res.get(), bytes!("\\E[38;5;42m").to_owned());
     }
 
     #[test]

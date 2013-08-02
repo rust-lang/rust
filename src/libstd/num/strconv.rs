@@ -266,8 +266,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        buf.push(char::from_digit(current_digit.to_int() as uint, radix)
-             .unwrap() as u8);
+        buf.push(char::from_digit(current_digit.to_int() as uint, radix).get() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
         if deccum == _0 { break; }
@@ -322,8 +321,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
             // See note in first loop.
             let current_digit = deccum.trunc().abs();
 
-            buf.push(char::from_digit(
-                current_digit.to_int() as uint, radix).unwrap() as u8);
+            buf.push(char::from_digit(current_digit.to_int() as uint, radix).get() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
@@ -335,10 +333,10 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap() as uint
+                char::to_digit(chr as char, radix).get() as uint
             };
             let value2ascii = |val: uint| {
-                char::from_digit(val, radix).unwrap() as u8
+                char::from_digit(val, radix).get() as u8
             };
 
             let extra_digit = ascii2value(buf.pop());

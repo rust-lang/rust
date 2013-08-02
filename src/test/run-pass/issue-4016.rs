@@ -17,7 +17,7 @@ use extra::serialize::Decodable;
 trait JD : Decodable<json::Decoder> { }
 
 fn exec<T: JD>() {
-    let doc = json::from_str("").unwrap();
+    let doc = json::from_str("").get();
     let mut decoder = json::Decoder(doc);
     let _v: T = Decodable::decode(&mut decoder);
     fail!()

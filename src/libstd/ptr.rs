@@ -540,13 +540,13 @@ pub mod ptr_tests {
             assert_eq!(p.to_option(), None);
 
             let q: *int = &2;
-            assert_eq!(q.to_option().unwrap(), &2);
+            assert_eq!(q.to_option().get(), &2);
 
             let p: *mut int = mut_null();
             assert_eq!(p.to_option(), None);
 
             let q: *mut int = &mut 2;
-            assert_eq!(q.to_option().unwrap(), &2);
+            assert_eq!(q.to_option().get(), &2);
         }
     }
 

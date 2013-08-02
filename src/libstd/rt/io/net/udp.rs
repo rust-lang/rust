@@ -271,13 +271,13 @@ mod test {
                 let server = UdpSocket::bind(addr);
 
                 assert!(server.is_some());
-                let mut server = server.unwrap();
+                let mut server = server.get();
 
                 // Make sure socket_name gives
                 // us the socket we binded to.
                 let so_name = server.socket_name();
                 assert!(so_name.is_some());
-                assert_eq!(addr, so_name.unwrap());
+                assert_eq!(addr, so_name.get());
 
             }
         }

@@ -493,7 +493,7 @@ impl Death {
         do self.on_exit.take_map |on_exit| {
             if success {
                 // We succeeded, but our children might not. Need to wait for them.
-                let mut inner = self.kill_handle.take_unwrap().unwrap();
+                let mut inner = self.kill_handle.take_get().unwrap();
                 if inner.any_child_failed {
                     success = false;
                 } else {
@@ -677,7 +677,7 @@ mod test {
             util::ignore(link);
             // Must have created a tombstone
             let mut parent_inner = parent.unwrap();
-            assert!(parent_inner.child_tombstones.take_unwrap()());
+            assert!(parent_inner.child_tombstones.take_get()());
             assert!(parent_inner.any_child_failed == false);
         }
     }
@@ -697,7 +697,7 @@ mod test {
             // Must have created a tombstone
             let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
-            assert!(parent_inner.child_tombstones.take_unwrap()() == false);
+            assert!(parent_inner.child_tombstones.take_get()() == false);
             assert!(parent_inner.any_child_failed == false);
         }
     }
@@ -716,7 +716,7 @@ mod test {
             util::ignore(link);
             // Must have created a tombstone
             let mut parent_inner = parent.unwrap();
-            assert!(parent_inner.child_tombstones.take_unwrap()());
+            assert!(parent_inner.child_tombstones.take_get()());
             assert!(parent_inner.any_child_failed == false);
         }
     }
@@ -738,7 +738,7 @@ mod test {
             // Must have created a tombstone
             let mut parent_inner = parent.unwrap();
             // Failure must be seen in the tombstone.
-            assert!(parent_inner.child_tombstones.take_unwrap()() == false);
+            assert!(parent_inner.child_tombstones.take_get()() == false);
             assert!(parent_inner.any_child_failed == false);
         }
     }
@@ -812,7 +812,7 @@ mod test {
     #[test]
     fn block_and_wake() {
         do with_test_task |mut task| {
-            BlockedTask::try_block(task).unwrap_right().wake().unwrap()
+            BlockedTask::try_block(task).get_right().wake().get()
         }
     }
 
@@ -820,8 +820,8 @@ mod test {
     fn block_and_get_killed() {
         do with_test_task |mut task| {
             let mut handle = task.death.kill_handle.get_ref().clone();
-            let result = BlockedTask::try_block(task).unwrap_right();
-            let task = handle.kill().unwrap();
+            let result = BlockedTask::try_block(task).get_right();
+            let task = handle.kill().get();
             assert!(result.wake().is_none());
             task
         }
@@ -832,7 +832,7 @@ mod test {
         do with_test_task |mut task| {
             let mut handle = task.death.kill_handle.get_ref().clone();
             assert!(handle.kill().is_none());
-            BlockedTask::try_block(task).unwrap_left()
+            BlockedTask::try_block(task).get_left()
         }
     }
 
@@ -841,9 +841,9 @@ mod test {
         do with_test_task |mut task| {
             let mut handle = task.death.kill_handle.get_ref().clone();
             task.death.inhibit_kill(false);
-            let result = BlockedTask::try_block(task).unwrap_right();
+            let result = BlockedTask::try_block(task).get_right();
             assert!(handle.kill().is_none());
-            let mut task = result.wake().unwrap();
+            let mut task = result.wake().get();
             // This call wants to fail, but we can't have that happen since
             // we're not running in a newsched task, so we can't even use
             // spawntask_try. But the failing behaviour is already tested
@@ -858,10 +858,10 @@ mod test {
         // Tests the "killable" path of casting to/from uint.
         do run_in_newsched_task {
             do with_test_task |mut task| {
-                let result = BlockedTask::try_block(task).unwrap_right();
+                let result = BlockedTask::try_block(task).get_right();
                 let result = unsafe { result.cast_to_uint() };
                 let result = unsafe { BlockedTask::cast_from_uint(result) };
-                result.wake().unwrap()
+                result.wake().get()
             }
         }
     }
@@ -872,10 +872,10 @@ mod test {
         do run_in_newsched_task {
             do with_test_task |mut task| {
                 task.death.inhibit_kill(false);
-                let result = BlockedTask::try_block(task).unwrap_right();
+                let result = BlockedTask::try_block(task).get_right();
                 let result = unsafe { result.cast_to_uint() };
                 let result = unsafe { BlockedTask::cast_from_uint(result) };
-                let mut task = result.wake().unwrap();
+                let mut task = result.wake().get();
                 task.death.allow_kill(false);
                 task
             }

@@ -47,7 +47,7 @@ impl PassManager {
     }
 
     pub fn add_pass_from_name(&mut self, name:&str) {
-        let pass = create_pass(name).unwrap();
+        let pass = create_pass(name).get();
         self.add_pass(pass);
     }
 

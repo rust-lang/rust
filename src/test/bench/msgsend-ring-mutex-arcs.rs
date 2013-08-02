@@ -59,8 +59,8 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     // Send/Receive lots of messages.
     foreach j in range(0u, count) {
         //error!("task %?, iter %?", i, j);
-        let num_chan2 = num_chan.take_unwrap();
-        let num_port2 = num_port.take_unwrap();
+        let num_chan2 = num_chan.take_get();
+        let num_port2 = num_port.take_get();
         send(&num_chan2, i * j);
         num_chan = Some(num_chan2);
         let _n = recv(&num_port2);

@@ -62,7 +62,7 @@ impl AsyncWatcher {
             let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
             {
                 let data = watcher.get_watcher_data();
-                data.close_cb.take_unwrap()();
+                data.close_cb.take_get()();
             }
             watcher.drop_watcher_data();
             unsafe { uvll::free_handle(handle as *c_void); }

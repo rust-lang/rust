@@ -33,6 +33,7 @@ use std::hashmap::{HashMap, HashSet};
 use std::ops;
 use std::ptr::to_unsafe_ptr;
 use std::to_bytes;
+use std::to_str::ToStr;
 use std::u32;
 use std::vec;
 use syntax::ast::*;
@@ -116,7 +117,7 @@ pub struct mt {
     mutbl: ast::mutability,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -124,7 +125,7 @@ pub enum vstore {
     vstore_slice(Region)
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum TraitStore {
     BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
@@ -350,6 +351,12 @@ pub struct t_box_ {
 enum t_opaque {}
 pub type t = *t_opaque;
 
+impl ToStr for t {
+    fn to_str(&self) -> ~str {
+        ~"*t_opaque"
+    }
+}
+
 pub fn get(t: t) -> t_box {
     unsafe {
         let t2: t_box = cast::transmute(t);
@@ -410,7 +417,7 @@ pub struct param_ty {
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -456,13 +463,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: bound_region
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
@@ -620,19 +627,22 @@ pub enum IntVarValue {
     UintType(ast::uint_ty),
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, ToStr)]
 pub enum terr_vstore_kind {
-    terr_vec, terr_str, terr_fn, terr_trait
+    terr_vec,
+    terr_str,
+    terr_fn,
+    terr_trait
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, ToStr)]
 pub struct expected_found<T> {
     expected: T,
     found: T
 }
 
 // Data structures used in type unification
-#[deriving(Clone)]
+#[deriving(Clone, ToStr)]
 pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<purity>),
@@ -674,7 +684,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes, ToStr)]
 pub enum BuiltinBound {
     BoundStatic,
     BoundSend,
@@ -725,7 +735,7 @@ pub enum InferTy {
     FloatVar(FloatVid)
 }
 
-#[deriving(Clone, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, IterBytes, ToStr)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, bound_region)

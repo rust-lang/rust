@@ -340,7 +340,7 @@ impl<T> DList<T> {
                 if take_a {
                     it.next();
                 } else {
-                    it.insert_next_node(other.pop_front_node().unwrap());
+                    it.insert_next_node(other.pop_front_node().get());
                 }
             }
         }
@@ -499,7 +499,7 @@ impl<'self, A> MutDListIterator<'self, A> {
                     None => return self.list.push_front_node(ins_node),
                     Some(prev) => prev,
                 };
-                let node_own = prev_node.next.take_unwrap();
+                let node_own = prev_node.next.take_get();
                 ins_node.next = link_with_prev(node_own, Rawlink::some(ins_node));
                 prev_node.next = link_with_prev(ins_node, Rawlink::some(prev_node));
                 self.list.length += 1;
@@ -634,14 +634,14 @@ mod tests {
         n.push_front(2);
         n.push_front(3);
         {
-            assert_eq!(n.front().unwrap(), &3);
-            let x = n.front_mut().unwrap();
+            assert_eq!(n.front().get(), &3);
+            let x = n.front_mut().get();
             assert_eq!(*x, 3);
             *x = 0;
         }
         {
-            assert_eq!(n.back().unwrap(), &2);
-            let y = n.back_mut().unwrap();
+            assert_eq!(n.back().get(), &2);
+            let y = n.back_mut().get();
             assert_eq!(*y, 2);
             *y = 1;
         }
@@ -750,7 +750,7 @@ mod tests {
         n.push_front(4);
         let mut it = n.iter();
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.next().get(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -778,11 +778,11 @@ mod tests {
         n.push_front(6);
         let mut it = n.iter();
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(it.next().unwrap(), &6);
+        assert_eq!(it.next().get(), &6);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next_back().get(), &4);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next_back().unwrap(), &5);
+        assert_eq!(it.next_back().get(), &5);
         assert_eq!(it.next_back(), None);
         assert_eq!(it.next(), None);
     }
@@ -798,7 +798,7 @@ mod tests {
         n.push_front(4);
         let mut it = n.rev_iter();
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
+        assert_eq!(it.next().get(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -833,11 +833,11 @@ mod tests {
         n.push_front(6);
         let mut it = n.mut_iter();
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(*it.next().unwrap(), 6);
+        assert_eq!(*it.next().get(), 6);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(*it.next_back().unwrap(), 4);
+        assert_eq!(*it.next_back().get(), 4);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(*it.next_back().unwrap(), 5);
+        assert_eq!(*it.next_back().get(), 5);
         assert!(it.next_back().is_none());
         assert!(it.next().is_none());
     }

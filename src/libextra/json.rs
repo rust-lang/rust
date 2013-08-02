@@ -1511,8 +1511,8 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(to_str(&a)).unwrap());
-        assert_eq!(a.clone(), from_str(to_pretty_str(&a)).unwrap());
+        assert_eq!(a.clone(), from_str(to_str(&a)).get());
+        assert_eq!(a.clone(), from_str(to_pretty_str(&a)).get());
     }
 
     #[test]
@@ -1631,15 +1631,15 @@ mod tests {
 
     #[test]
     fn test_decode_identifiers() {
-        let mut decoder = Decoder(from_str("null").unwrap());
+        let mut decoder = Decoder(from_str("null").get());
         let v: () = Decodable::decode(&mut decoder);
         assert_eq!(v, ());
 
-        let mut decoder = Decoder(from_str("true").unwrap());
+        let mut decoder = Decoder(from_str("true").get());
         let v: bool = Decodable::decode(&mut decoder);
         assert_eq!(v, true);
 
-        let mut decoder = Decoder(from_str("false").unwrap());
+        let mut decoder = Decoder(from_str("false").get());
         let v: bool = Decodable::decode(&mut decoder);
         assert_eq!(v, false);
     }
@@ -1674,31 +1674,31 @@ mod tests {
 
     #[test]
     fn test_decode_numbers() {
-        let mut decoder = Decoder(from_str("3").unwrap());
+        let mut decoder = Decoder(from_str("3").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 3f);
 
-        let mut decoder = Decoder(from_str("3.1").unwrap());
+        let mut decoder = Decoder(from_str("3.1").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 3.1f);
 
-        let mut decoder = Decoder(from_str("-1.2").unwrap());
+        let mut decoder = Decoder(from_str("-1.2").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, -1.2f);
 
-        let mut decoder = Decoder(from_str("0.4").unwrap());
+        let mut decoder = Decoder(from_str("0.4").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4f);
 
-        let mut decoder = Decoder(from_str("0.4e5").unwrap());
+        let mut decoder = Decoder(from_str("0.4e5").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e5f);
 
-        let mut decoder = Decoder(from_str("0.4e15").unwrap());
+        let mut decoder = Decoder(from_str("0.4e15").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e15f);
 
-        let mut decoder = Decoder(from_str("0.4e-01").unwrap());
+        let mut decoder = Decoder(from_str("0.4e-01").get());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e-01f);
     }
@@ -1726,39 +1726,39 @@ mod tests {
 
     #[test]
     fn test_decode_str() {
-        let mut decoder = Decoder(from_str("\"\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"");
 
-        let mut decoder = Decoder(from_str("\"foo\"").unwrap());
+        let mut decoder = Decoder(from_str("\"foo\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"foo");
 
-        let mut decoder = Decoder(from_str("\"\\\"\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\\"\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\"");
 
-        let mut decoder = Decoder(from_str("\"\\b\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\b\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\x08");
 
-        let mut decoder = Decoder(from_str("\"\\n\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\n\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\n");
 
-        let mut decoder = Decoder(from_str("\"\\r\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\r\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\r");
 
-        let mut decoder = Decoder(from_str("\"\\t\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\t\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\t");
 
-        let mut decoder = Decoder(from_str("\"\\u12ab\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\u12ab\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\u12ab");
 
-        let mut decoder = Decoder(from_str("\"\\uAB12\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\uAB12\"").get());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\uAB12");
     }
@@ -1791,27 +1791,27 @@ mod tests {
 
     #[test]
     fn test_decode_list() {
-        let mut decoder = Decoder(from_str("[]").unwrap());
+        let mut decoder = Decoder(from_str("[]").get());
         let v: ~[()] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[]);
 
-        let mut decoder = Decoder(from_str("[null]").unwrap());
+        let mut decoder = Decoder(from_str("[null]").get());
         let v: ~[()] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[()]);
 
-        let mut decoder = Decoder(from_str("[true]").unwrap());
+        let mut decoder = Decoder(from_str("[true]").get());
         let v: ~[bool] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
-        let mut decoder = Decoder(from_str("[true]").unwrap());
+        let mut decoder = Decoder(from_str("[true]").get());
         let v: ~[bool] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
-        let mut decoder = Decoder(from_str("[3, 1]").unwrap());
+        let mut decoder = Decoder(from_str("[3, 1]").get());
         let v: ~[int] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[3, 1]);
 
-        let mut decoder = Decoder(from_str("[[3], [1, 2]]").unwrap());
+        let mut decoder = Decoder(from_str("[[3], [1, 2]]").get());
         let v: ~[~[uint]] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[~[3], ~[1, 2]]);
     }
@@ -1866,21 +1866,21 @@ mod tests {
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
 
-        assert_eq!(from_str("{}").unwrap(), mk_object([]));
-        assert_eq!(from_str("{\"a\": 3}").unwrap(),
+        assert_eq!(from_str("{}").get(), mk_object([]));
+        assert_eq!(from_str("{\"a\": 3}").get(),
                   mk_object([(~"a", Number(3.0f))]));
 
         assert_eq!(from_str(
-                      "{ \"a\": null, \"b\" : true }").unwrap(),
+                      "{ \"a\": null, \"b\" : true }").get(),
                   mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
-        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
+        assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").get(),
                   mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
         assert_eq!(from_str(
-                      "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
+                      "{\"a\" : 1.0 ,\"b\": [ true ]}").get(),
                   mk_object([
                       (~"a", Number(1.0)),
                       (~"b", List(~[Boolean(true)]))
@@ -1893,7 +1893,7 @@ mod tests {
                               "\"foo\\nbar\", " +
                               "{ \"c\": {\"d\": null} } " +
                           "]" +
-                      "}").unwrap(),
+                      "}").get(),
                   mk_object([
                       (~"a", Number(1.0f)),
                       (~"b", List(~[
@@ -1913,7 +1913,7 @@ mod tests {
                 { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
             ]
         }";
-        let mut decoder = Decoder(from_str(s).unwrap());
+        let mut decoder = Decoder(from_str(s).get());
         let v: Outer = Decodable::decode(&mut decoder);
         assert_eq!(
             v,
@@ -1927,23 +1927,23 @@ mod tests {
 
     #[test]
     fn test_decode_option() {
-        let mut decoder = Decoder(from_str("null").unwrap());
+        let mut decoder = Decoder(from_str("null").get());
         let value: Option<~str> = Decodable::decode(&mut decoder);
         assert_eq!(value, None);
 
-        let mut decoder = Decoder(from_str("\"jodhpurs\"").unwrap());
+        let mut decoder = Decoder(from_str("\"jodhpurs\"").get());
         let value: Option<~str> = Decodable::decode(&mut decoder);
         assert_eq!(value, Some(~"jodhpurs"));
     }
 
     #[test]
     fn test_decode_enum() {
-        let mut decoder = Decoder(from_str("\"Dog\"").unwrap());
+        let mut decoder = Decoder(from_str("\"Dog\"").get());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Dog);
 
         let mut decoder =
-            Decoder(from_str("[\"Frog\",\"Henry\",349]").unwrap());
+            Decoder(from_str("[\"Frog\",\"Henry\",349]").get());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
@@ -1951,7 +1951,7 @@ mod tests {
     #[test]
     fn test_decode_map() {
         let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
-        let mut decoder = Decoder(from_str(s).unwrap());
+        let mut decoder = Decoder(from_str(s).get());
         let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
 
         assert_eq!(map.pop(&~"a"), Some(Dog));

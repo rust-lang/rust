@@ -87,7 +87,7 @@ mod test {
             let mut writer: Option<MemWriter> = Some(MemWriter::new());
             writer.write([0, 1, 2]);
             writer.flush();
-            assert_eq!(writer.unwrap().inner(), ~[0, 1, 2]);
+            assert_eq!(writer.get().inner(), ~[0, 1, 2]);
         }
     }
 

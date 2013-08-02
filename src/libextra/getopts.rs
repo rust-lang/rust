@@ -196,7 +196,7 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
  * The type returned when the command line does not conform to the
  * expected format. Pass this value to <fail_str> to get an error message.
  */
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, ToStr)]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),

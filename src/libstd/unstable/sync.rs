@@ -141,7 +141,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                         // FIXME(#3224): it should be like this
                         // let ~AtomicRcBoxData { data: user_data, _ } = data;
                         // user_data
-                        data.data.take_unwrap()
+                        data.data.take_get()
                     } else {
                         // The *next* person who sees the refcount hit 0 will wake us.
                         let p1 = Cell::new(p1); // argh
@@ -157,7 +157,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                             // let ~AtomicRcBoxData { data: user_data, _ } = data;
                             // user_data
                             let mut data = data;
-                            data.data.take_unwrap()
+                            data.data.take_get()
                         }).finally {
                             if task::failing() {
                                 // Killed during wait. Because this might happen while
@@ -200,7 +200,7 @@ impl<T: Send> UnsafeAtomicRcBox<T> {
                 // Tell this handle's destructor not to run (we are now it).
                 this.data = ptr::mut_null();
                 // FIXME(#3224) as above
-                Right(data.data.take_unwrap())
+                Right(data.data.take_get())
             } else {
                 cast::forget(data);
                 Left(this)
@@ -594,7 +594,7 @@ mod tests {
         }
         // Have to get rid of our reference before blocking.
         util::ignore(x);
-        res.unwrap().recv();
+        res.get().recv();
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -610,7 +610,7 @@ mod tests {
         }
         assert!(x.unwrap() == ~~"hello");
         // See #4689 for why this can't be just "res.recv()".
-        assert!(res.unwrap().recv() == task::Success);
+        assert!(res.get().recv() == task::Success);
     }
 
     #[test] #[ignore(cfg(windows))]

@@ -140,7 +140,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     marks[key] = key;
 
     while !q.is_empty() {
-        let t = q.pop_front().unwrap();
+        let t = q.pop_front().get();
 
         do graph[t].iter().advance |k| {
             if marks[*k] == -1i64 {

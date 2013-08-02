@@ -63,7 +63,7 @@ impl Local for Scheduler {
     }
     fn take() -> ~Scheduler {
         do Local::borrow::<Task,~Scheduler> |task| {
-            let sched = task.sched.take_unwrap();
+            let sched = task.sched.take_get();
             let task = task;
             task.sched = None;
             sched
@@ -117,7 +117,7 @@ impl Local for IoFactoryObject {
     fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
-        let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
+        let io: *mut IoFactoryObject = (*sched).event_loop.io().get();
         return io;
     }
     unsafe fn try_unsafe_borrow() -> Option<*mut IoFactoryObject> { rtabort!("unimpl") }

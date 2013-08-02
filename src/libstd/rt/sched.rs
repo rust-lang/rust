@@ -381,7 +381,7 @@ impl Scheduler {
     /// Given an input Coroutine sends it back to its home scheduler.
     fn send_task_home(task: ~Task) {
         let mut task = task;
-        let mut home = task.take_unwrap_home();
+        let mut home = task.take_get_home();
         match home {
             Sched(ref mut home_handle) => {
                 home_handle.send(PinnedTask(task));
@@ -418,7 +418,7 @@ impl Scheduler {
         match this.work_queue.pop() {
             Some(task) => {
                 let mut task = task;
-                let home = task.take_unwrap_home();
+                let home = task.take_get_home();
                 match home {
                     Sched(home_handle) => {
                         if home_handle.sched_id != this.sched_id() {
@@ -455,9 +455,9 @@ impl Scheduler {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let mut this = self;
-        let stask = this.sched_task.take_unwrap();
+        let stask = this.sched_task.take_get();
         do this.change_task_context(stask) |sched, mut dead_task| {
-            let coroutine = dead_task.coroutine.take_unwrap();
+            let coroutine = dead_task.coroutine.take_get();
             coroutine.recycle(&mut sched.stack_pool);
         }
     }
@@ -640,7 +640,7 @@ impl Scheduler {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
         let mut this = self;
-        let stask = this.sched_task.take_unwrap();
+        let stask = this.sched_task.take_get();
         // Otherwise this is the same as below.
         this.switch_running_tasks_and_then(stask, f);
     }
@@ -693,7 +693,7 @@ impl Scheduler {
 
     pub fn run_cleanup_job(&mut self) {
         rtdebug!("running cleanup job");
-        let cleanup_job = self.cleanup_job.take_unwrap();
+        let cleanup_job = self.cleanup_job.take_get();
         match cleanup_job {
             DoNothing => { }
             GiveTask(task, f) => f.to_fn()(self, task)

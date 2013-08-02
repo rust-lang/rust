@@ -1127,13 +1127,13 @@ mod tests {
         assert!(test("6", "%w"));
         assert!(test("2009", "%Y"));
         assert!(test("09", "%y"));
-        assert!(strptime("UTC", "%Z").unwrap().tm_zone ==
+        assert!(strptime("UTC", "%Z").get().tm_zone ==
             ~"UTC");
-        assert!(strptime("PST", "%Z").unwrap().tm_zone ==
+        assert!(strptime("PST", "%Z").get().tm_zone ==
             ~"");
-        assert!(strptime("-0000", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0000", "%z").get().tm_gmtoff ==
             0);
-        assert!(strptime("-0800", "%z").unwrap().tm_gmtoff ==
+        assert!(strptime("-0800", "%z").get().tm_gmtoff ==
             0);
         assert!(test("%", "%%"));
 

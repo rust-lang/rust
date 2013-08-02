@@ -19,5 +19,5 @@ fn main() {
             y = Some(cond);
         }
     }
-    y.unwrap().wait();
+    y.get().wait();
 }

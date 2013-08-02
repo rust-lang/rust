@@ -18,5 +18,5 @@ fn main() {
     do m.lock_cond |c| {
         cond = Some(c);
     }
-    cond.unwrap().signal();
+    cond.get().signal();
 }

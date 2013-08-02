@@ -16,7 +16,7 @@ fn main() {
     do x.write |one| {
         y = Some(one);
     }
-    *y.unwrap() = 2;
+    *y.get() = 2;
     //~^ ERROR lifetime of return value does not outlive the function call
     //~^^ ERROR dereference of reference outside its lifetime
 }
