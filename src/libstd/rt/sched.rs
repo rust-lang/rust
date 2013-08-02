@@ -540,6 +540,10 @@ impl Scheduler {
         // The current task is grabbed from TLS, not taken as an input.
         let current_task: ~Task = Local::take::<Task>();
 
+        // Check that the task is not in an atomically() section (e.g.,
+        // holding a pthread mutex, which could deadlock the scheduler).
+        current_task.death.assert_may_sleep();
+
         // These transmutes do something fishy with a closure.
         let f_fake_region = unsafe {
             transmute::<&fn(&mut Scheduler, ~Task),
@@ -600,7 +604,7 @@ impl Scheduler {
 
             // Must happen after running the cleanup job (of course).
             let task = Local::unsafe_borrow::<Task>();
-            (*task).death.check_killed();
+            (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
 

@@ -79,6 +79,12 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[unsafe_no_drop_flag]
 pub struct NonCopyable;
 
+impl NonCopyable {
+    // FIXME(#8233) should not be necessary
+    /// Create a new noncopyable token.
+    pub fn new() -> NonCopyable { NonCopyable }
+}
+
 impl Drop for NonCopyable {
     fn drop(&self) { }
 }
