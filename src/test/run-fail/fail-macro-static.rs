@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task failed at 'test-fail-static'
+// error-pattern:failed at 'test-fail-static'
 
 fn main() {
     fail!("test-fail-static");
