@@ -84,7 +84,8 @@ use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::obsolete::{ObsoleteMutWithMultipleBindings};
-use parse::obsolete::{ObsoleteExternVisibility, ParserObsoleteMethods};
+use parse::obsolete::{ObsoleteExternVisibility, ObsoleteUnsafeExternFn};
+use parse::obsolete::{ParserObsoleteMethods};
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -4066,14 +4067,20 @@ impl Parser {
     fn parse_item_foreign_fn(&self,  attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
+
+        // Parse obsolete purity.
         let purity = self.parse_fn_purity();
+        if purity != impure_fn {
+            self.obsolete(*self.last_span, ObsoleteUnsafeExternFn);
+        }
+
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl();
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
-                             node: foreign_item_fn(decl, purity, generics),
+                             node: foreign_item_fn(decl, generics),
                              id: self.get_id(),
                              span: mk_sp(lo, hi),
                              vis: vis }

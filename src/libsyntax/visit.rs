@@ -317,7 +317,7 @@ pub fn visit_foreign_item<E:Clone>(visitor: @Visitor<E>,
                                    foreign_item: &foreign_item,
                                    env: E) {
     match foreign_item.node {
-        foreign_item_fn(ref function_declaration, _, ref generics) => {
+        foreign_item_fn(ref function_declaration, ref generics) => {
             visit_fn_decl(visitor, function_declaration, env.clone());
             visitor.visit_generics(generics, env)
         }

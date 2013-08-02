@@ -339,7 +339,7 @@ pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {
 
 pub fn visit_foreign_item<E:Clone>(ni: &foreign_item, (e, v): (E, vt<E>)) {
     match ni.node {
-        foreign_item_fn(ref fd, _, ref generics) => {
+        foreign_item_fn(ref fd, ref generics) => {
             visit_fn_decl(fd, (e.clone(), v));
             (v.visit_generics)(generics, (e, v));
         }

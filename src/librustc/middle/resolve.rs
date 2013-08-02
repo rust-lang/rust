@@ -1523,7 +1523,7 @@ impl Resolver {
                            foreign_item.span);
 
         match foreign_item.node {
-            foreign_item_fn(_, _, ref generics) => {
+            foreign_item_fn(_, ref generics) => {
                 let def = def_fn(local_def(foreign_item.id), unsafe_fn);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
@@ -3606,7 +3606,7 @@ impl Resolver {
                 do self.with_scope(Some(item.ident)) {
                     foreach foreign_item in foreign_module.items.iter() {
                         match foreign_item.node {
-                            foreign_item_fn(_, _, ref generics) => {
+                            foreign_item_fn(_, ref generics) => {
                                 self.with_type_parameter_rib(
                                     HasTypeParameters(
                                         generics, foreign_item.id, 0,

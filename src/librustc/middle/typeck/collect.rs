@@ -1137,7 +1137,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                           abis: AbiSet) -> ty::ty_param_bounds_and_ty
 {
     match it.node {
-        ast::foreign_item_fn(ref fn_decl, _, ref generics) => {
+        ast::foreign_item_fn(ref fn_decl, ref generics) => {
             ty_of_foreign_fn_decl(ccx,
                                   fn_decl,
                                   local_def(it.id),

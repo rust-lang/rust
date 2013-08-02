@@ -1151,9 +1151,9 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(_, purity, _) => {
+      foreign_item_fn(*) => {
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, purity_fn_family(purity));
+        encode_family(ebml_w, purity_fn_family(impure_fn));
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ecx, ebml_w, nitem.ident);
