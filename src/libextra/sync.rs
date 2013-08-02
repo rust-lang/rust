@@ -18,6 +18,7 @@
 
 use std::borrow;
 use std::comm;
+use std::comm::SendDeferred;
 use std::task;
 use std::unstable::sync::{Exclusive, UnsafeAtomicRcBox};
 use std::unstable::atomics;
@@ -49,7 +50,7 @@ impl WaitQueue {
         if self.head.peek() {
             // Pop and send a wakeup signal. If the waiter was killed, its port
             // will have closed. Keep trying until we get a live task.
-            if comm::try_send_one(self.head.recv(), ()) {
+            if self.head.recv().try_send_deferred(()) {
                 true
             } else {
                 self.signal()
@@ -62,7 +63,7 @@ impl WaitQueue {
     fn broadcast(&self) -> uint {
         let mut count = 0;
         while self.head.peek() {
-            if comm::try_send_one(self.head.recv(), ()) {
+            if self.head.recv().try_send_deferred(()) {
                 count += 1;
             }
         }
@@ -102,7 +103,7 @@ impl<Q:Send> Sem<Q> {
                     // Tell outer scope we need to block.
                     waiter_nobe = Some(WaitEnd);
                     // Enqueue ourself.
-                    state.waiters.tail.send(SignalEnd);
+                    state.waiters.tail.send_deferred(SignalEnd);
                 }
             }
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
@@ -256,7 +257,7 @@ impl<'self> Condvar<'self> {
                         }
                         // Enqueue ourself to be woken up by a signaller.
                         let SignalEnd = SignalEnd.take_unwrap();
-                        state.blocked[condvar_id].tail.send(SignalEnd);
+                        state.blocked[condvar_id].tail.send_deferred(SignalEnd);
                     } else {
                         out_of_bounds = Some(state.blocked.len());
                     }
