@@ -530,13 +530,13 @@ impl Death {
 
     /// Fails if a kill signal was received.
     #[inline]
-    pub fn check_killed(&self) {
+    pub fn check_killed(&self, already_failing: bool) {
         match self.kill_handle {
             Some(ref kill_handle) =>
                 // The task may be both unkillable and killed if it does some
                 // synchronization during unwinding or cleanup (for example,
                 // sending on a notify port). In that case failing won't help.
-                if self.unkillable == 0 && kill_handle.killed() {
+                if self.unkillable == 0 && (!already_failing) && kill_handle.killed() {
                     fail!(KILLED_MSG);
                 },
             // This may happen during task death (see comments in collect_failure).
@@ -548,11 +548,12 @@ impl Death {
     /// All calls must be paired with a subsequent call to allow_kill.
     #[inline]
     pub fn inhibit_kill(&mut self, already_failing: bool) {
-        if self.unkillable == 0 {
+        self.unkillable += 1;
+        // May fail, hence must happen *after* incrementing the counter
+        if self.unkillable == 1 {
             rtassert!(self.kill_handle.is_some());
             self.kill_handle.get_mut_ref().inhibit_kill(already_failing);
         }
-        self.unkillable += 1;
     }
 
     /// Exit a possibly-nested unkillable section of code.

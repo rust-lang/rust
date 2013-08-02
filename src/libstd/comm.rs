@@ -19,6 +19,7 @@ use either::{Either, Left, Right};
 use kinds::Send;
 use option::{Option, Some};
 use unstable::sync::Exclusive;
+pub use rt::comm::SendDeferred;
 use rtcomm = rt::comm;
 use rt;
 
@@ -101,6 +102,21 @@ impl<T: Send> GenericSmartChan<T> for Chan<T> {
         match self.inner {
             Left(ref chan) => chan.try_send(x),
             Right(ref chan) => chan.try_send(x)
+        }
+    }
+}
+
+impl<T: Send> SendDeferred<T> for Chan<T> {
+    fn send_deferred(&self, x: T) {
+        match self.inner {
+            Left(ref chan) => chan.send(x),
+            Right(ref chan) => chan.send_deferred(x)
+        }
+    }
+    fn try_send_deferred(&self, x: T) -> bool {
+        match self.inner {
+            Left(ref chan) => chan.try_send(x),
+            Right(ref chan) => chan.try_send_deferred(x)
         }
     }
 }
@@ -248,6 +264,20 @@ impl<T: Send> ChanOne<T> {
         match inner {
             Left(p) => p.try_send(data),
             Right(p) => p.try_send(data)
+        }
+    }
+    pub fn send_deferred(self, data: T) {
+        let ChanOne { inner } = self;
+        match inner {
+            Left(p) => p.send(data),
+            Right(p) => p.send_deferred(data)
+        }
+    }
+    pub fn try_send_deferred(self, data: T) -> bool {
+        let ChanOne { inner } = self;
+        match inner {
+            Left(p) => p.try_send(data),
+            Right(p) => p.try_send_deferred(data)
         }
     }
 }
