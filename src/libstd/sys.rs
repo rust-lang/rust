@@ -13,7 +13,6 @@
 #[allow(missing_doc)];
 
 use cast;
-use gc;
 use io;
 use libc;
 use libc::{c_char, size_t};
@@ -147,7 +146,6 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     match context {
         OldTaskContext => {
             unsafe {
-                gc::cleanup_stack_for_failure();
                 rustrt::rust_upcall_fail(msg, file, line);
                 cast::transmute(())
             }
@@ -179,8 +177,6 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                     rterrln!("failed in non-task context at '%s', %s:%i",
                              msg, file, line as int);
                 }
-
-                gc::cleanup_stack_for_failure();
 
                 let task = Local::unsafe_borrow::<Task>();
                 if (*task).unwinder.unwinding {
