@@ -14,7 +14,6 @@
 //! extra::container::Deque`.
 
 use std::num;
-use std::uint;
 use std::vec;
 use std::iterator::{FromIterator, Invert, RandomAccessIterator, Extendable};
 
@@ -278,7 +277,7 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     elts.reserve(newlen);
 
     /* fill with None */
-    for uint::range(elts.len(), elts.capacity()) |_| {
+    foreach _ in range(elts.len(), elts.capacity()) {
         elts.push(None);
     }
 
@@ -293,11 +292,11 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
 
     assert!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A
-        for uint::range(0, lo) |i| {
+        foreach i in range(0u, lo) {
             elts.swap(i, nelts + i);
         }
     } else {                // B
-        for uint::range(lo, nelts) |i| {
+        foreach i in range(lo, nelts) {
             elts.swap(i, newlen - nelts + i);
         }
         *loptr += newlen - nelts;
@@ -345,7 +344,6 @@ mod tests {
     use super::*;
     use std::clone::Clone;
     use std::cmp::Eq;
-    use std::{int, uint};
     use extra::test;
 
     #[test]
@@ -463,21 +461,21 @@ mod tests {
     #[test]
     fn test_push_front_grow() {
         let mut deq = RingBuf::new();
-        for uint::range(0, 66) |i| {
+        foreach i in range(0u, 66) {
             deq.push_front(i);
         }
         assert_eq!(deq.len(), 66);
 
-        for uint::range(0, 66) |i| {
+        foreach i in range(0u, 66) {
             assert_eq!(*deq.get(i), 65 - i);
         }
 
         let mut deq = RingBuf::new();
-        for uint::range(0, 66) |i| {
+        foreach i in range(0u, 66) {
             deq.push_back(i);
         }
 
-        for uint::range(0, 66) |i| {
+        foreach i in range(0u, 66) {
             assert_eq!(*deq.get(i), i);
         }
     }
@@ -608,12 +606,12 @@ mod tests {
         assert_eq!(d.iter().next(), None);
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
-        for int::range(0,5) |i| {
+        foreach i in range(0, 5) {
             d.push_back(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
-        for int::range(6,9) |i| {
+        foreach i in range(6, 9) {
             d.push_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
@@ -633,12 +631,12 @@ mod tests {
         let mut d = RingBuf::new();
         assert_eq!(d.rev_iter().next(), None);
 
-        for int::range(0,5) |i| {
+        foreach i in range(0, 5) {
             d.push_back(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
-        for int::range(6,9) |i| {
+        foreach i in range(6, 9) {
             d.push_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
@@ -649,7 +647,7 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.mut_iter().next().is_none());
 
-        for uint::range(0,3) |i| {
+        foreach i in range(0u, 3) {
             d.push_front(i);
         }
 
@@ -672,7 +670,7 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.mut_rev_iter().next().is_none());
 
-        for uint::range(0,3) |i| {
+        foreach i in range(0u, 3) {
             d.push_front(i);
         }
 

@@ -52,7 +52,6 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
-use std::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -376,7 +375,7 @@ impl mem_categorization_ctxt {
     pub fn cat_expr_autoderefd(&self, expr: @ast::expr, autoderefs: uint)
                                -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
-        for uint::range(1, autoderefs+1) |deref| {
+        foreach deref in range(1u, autoderefs + 1) {
             cmt = self.cat_deref(expr, cmt, deref);
         }
         return cmt;

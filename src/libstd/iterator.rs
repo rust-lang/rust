@@ -47,6 +47,7 @@ pub trait Iterator<A> {
     /// Return a lower bound and upper bound on the remaining length of the iterator.
     ///
     /// The common use case for the estimate is pre-allocating space to store the results.
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
@@ -1513,11 +1514,38 @@ impl<A> Counter<A> {
     }
 }
 
+/// A range of numbers from [0, N)
+#[deriving(Clone, DeepClone)]
+pub struct Range<A> {
+    priv state: A,
+    priv stop: A,
+    priv one: A
+}
+
+/// Return an iterator over the range [start, stop)
+#[inline]
+pub fn range<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> Range<A> {
+    Range{state: start, stop: stop, one: One::one()}
+}
+
+impl<A: Add<A, A> + Ord + Clone + One> Iterator<A> for Range<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.state < self.stop {
+            let result = self.state.clone();
+            self.state = self.state + self.one;
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
 impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let result = self.state.clone();
-        self.state = self.state.add(&self.step); // FIXME: #6050
+        self.state = self.state + self.step;
         Some(result)
     }
 
@@ -1703,13 +1731,13 @@ mod tests {
     #[test]
     fn test_cycle() {
         let cycle_len = 3;
-        let it = Counter::new(0u,1).take_(cycle_len).cycle();
+        let it = Counter::new(0u, 1).take_(cycle_len).cycle();
         assert_eq!(it.size_hint(), (uint::max_value, None));
         foreach (i, x) in it.take_(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
 
-        let mut it = Counter::new(0u,1).take_(0).cycle();
+        let mut it = Counter::new(0u, 1).take_(0).cycle();
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -1717,7 +1745,7 @@ mod tests {
     #[test]
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
-        for uint::range(0, v.len()) |i| {
+        foreach i in range(0u, v.len()) {
             assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
         }
     }

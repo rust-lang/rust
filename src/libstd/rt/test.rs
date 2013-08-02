@@ -14,7 +14,7 @@ use option::{Some, None};
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::Iterator;
+use iterator::{Iterator, range};
 use vec::{OwnedVector, MutableVector};
 use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::sched::Scheduler;
@@ -90,7 +90,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        for uint::range(0, nthreads) |_| {
+        foreach _ in range(0u, nthreads) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_,
                                             work_queue.clone(),

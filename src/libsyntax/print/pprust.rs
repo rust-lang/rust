@@ -29,7 +29,6 @@ use print::pprust;
 
 use std::io;
 use std::u64;
-use std::uint;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -1791,7 +1790,7 @@ pub fn print_generics(s: @ps, generics: &ast::Generics) {
         }
 
         let mut ints = ~[];
-        for uint::range(0, total) |i| {
+        foreach i in range(0u, total) {
             ints.push(i);
         }
 

@@ -95,7 +95,7 @@ class cat : noisy, scratchy, bitey {
 }
 
 fn annoy_neighbors<T:noisy>(critter: T) {
-  for uint::range(0u, 10u) |i| {
+  foreach i in range(0u, 10u) {
       let what = critter.speak();
       info!("%u %d", i, what);
   }

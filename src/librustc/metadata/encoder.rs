@@ -1256,7 +1256,7 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
                 index: ~[entry<T>])
                 -> ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
-    for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
+    foreach _ in range(0u, 256u) { buckets.push(@mut ~[]); };
     foreach elt in index.iter() {
         let h = elt.val.hash() as uint;
         buckets[h % 256].push((*elt).clone());

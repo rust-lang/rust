@@ -10,7 +10,6 @@
 
 use std::comm::*;
 use std::task;
-use std::uint;
 
 fn child(c: &SharedChan<~uint>, i: uint) {
     c.send(~i);
@@ -21,14 +20,14 @@ pub fn main() {
     let ch = SharedChan::new(ch);
     let n = 100u;
     let mut expected = 0u;
-    for uint::range(0u, n) |i| {
+    foreach i in range(0u, n) {
         let ch = ch.clone();
         task::spawn(|| child(&ch, i) );
         expected += i;
     }
 
     let mut actual = 0u;
-    for uint::range(0u, n) |_i| {
+    foreach _ in range(0u, n) {
         let j = p.recv();
         actual += *j;
     }

@@ -261,7 +261,7 @@ impl<T> TrieNode<T> {
 
 impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        for uint::range(0, self.children.len()) |idx| {
+        foreach idx in range(0u, self.children.len()) {
             match self.children[idx] {
                 Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
@@ -396,7 +396,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 #[cfg(test)]
 mod test_map {
     use super::*;
-    use option::{Some, None};
+    use prelude::*;
     use uint;
 
     #[test]
@@ -429,7 +429,7 @@ mod test_map {
             check_integrity(&trie.root);
         }
 
-        for uint::range(0, n) |x| {
+        foreach x in range(0u, n) {
             assert!(trie.contains_key(&x));
             assert!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);

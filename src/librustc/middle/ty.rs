@@ -34,7 +34,6 @@ use std::ops;
 use std::ptr::to_unsafe_ptr;
 use std::to_bytes;
 use std::u32;
-use std::uint;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
@@ -2962,7 +2961,7 @@ pub fn adjust_ty(cx: ctxt,
             let mut adjusted_ty = unadjusted_ty;
 
             if (!ty::type_is_error(adjusted_ty)) {
-                for uint::range(0, adj.autoderefs) |i| {
+                foreach i in range(0, adj.autoderefs) {
                     match ty::deref(cx, adjusted_ty, true) {
                         Some(mt) => { adjusted_ty = mt.ty; }
                         None => {

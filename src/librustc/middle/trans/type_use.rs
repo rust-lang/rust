@@ -34,7 +34,6 @@ use middle::ty;
 use middle::typeck;
 
 use std::option::{Some, None};
-use std::uint;
 use std::vec;
 use extra::list::{List, Cons, Nil};
 use extra::list;
@@ -94,7 +93,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
     // We also mark all of the params as used if it is an extern thing
     // that we haven't been able to inline yet.
     if is_default || fn_id_loc.crate != LOCAL_CRATE {
-        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_all; }
+        foreach n in range(0u, n_tps) { cx.uses[n] |= use_all; }
         return store_type_uses(cx, fn_id);
     }
 
@@ -118,13 +117,13 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
         // This will be a static trait method. For now, we just assume
         // it fully depends on all of the type information. (Doing
         // otherwise would require finding the actual implementation).
-        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_all;}
+        foreach n in range(0u, n_tps) { cx.uses[n] |= use_all;}
         // We need to return early, before the arguments are processed,
         // because of difficulties in the handling of Self.
         return store_type_uses(cx, fn_id);
       }
       ast_map::node_variant(_, _, _) => {
-        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
+        foreach n in range(0u, n_tps) { cx.uses[n] |= use_repr;}
       }
       ast_map::node_foreign_item(i@@foreign_item {
             node: foreign_item_fn(*),
@@ -173,13 +172,13 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                     _ => fail!("unknown intrinsic in type_use")
                 }
             };
-            for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
+            foreach n in range(0u, n_tps) { cx.uses[n] |= flags;}
         }
       }
       ast_map::node_struct_ctor(*) => {
         // Similarly to node_variant, this monomorphized function just
         // uses the representations of all of its type parameters.
-        for uint::range(0, n_tps) |n| { cx.uses[n] |= use_repr; }
+        foreach n in range(0u, n_tps) { cx.uses[n] |= use_repr; }
       }
       _ => {
         ccx.tcx.sess.bug(fmt!("unknown node type in type_use: %s",
@@ -210,7 +209,7 @@ pub fn type_needs(cx: &Context, use_: uint, ty: ty::t) {
         let uses = &*cx.uses;
         uses.len()
     };
-    for uint::range(0, len) |i| {
+    foreach i in range(0u, len) {
         if cx.uses[i] & use_ != use_ {
             type_needs_inner(cx, use_, ty, @Nil);
             return;

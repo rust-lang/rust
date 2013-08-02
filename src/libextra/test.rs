@@ -36,7 +36,6 @@ use std::io;
 use std::result;
 use std::task;
 use std::to_str::ToStr;
-use std::u64;
 use std::f64;
 use std::os;
 
@@ -991,7 +990,7 @@ impl BenchHarness {
     pub fn iter(&mut self, inner:&fn()) {
         self.ns_start = precise_time_ns();
         let k = self.iterations;
-        for u64::range(0, k) |_| {
+        foreach _ in range(0u64, k) {
             inner();
         }
         self.ns_end = precise_time_ns();

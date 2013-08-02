@@ -170,7 +170,6 @@ use ext::build::AstBuilder;
 use codemap::{span,respan};
 use opt_vec;
 
-use std::uint;
 use std::vec;
 
 pub use self::ty::*;
@@ -580,13 +579,13 @@ impl<'self> MethodDef<'self> {
         let mut raw_fields = ~[]; // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
         let mut patterns = ~[];
-        for uint::range(0, self_args.len()) |i| {
+        foreach i in range(0u, self_args.len()) {
             let (pat, ident_expr) = create_struct_pattern(cx, span,
                                                           type_ident, struct_def,
                                                           fmt!("__self_%u", i), ast::m_imm);
             patterns.push(pat);
             raw_fields.push(ident_expr);
-        };
+        }
 
         // transpose raw_fields
         let fields = match raw_fields {
@@ -992,7 +991,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
 
             let mut paths = ~[];
             let mut ident_expr = ~[];
-            for uint::range(0, variant_args.len()) |i| {
+            foreach i in range(0u, variant_args.len()) {
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));
 

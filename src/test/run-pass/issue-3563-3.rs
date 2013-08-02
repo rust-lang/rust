@@ -134,13 +134,13 @@ impl Canvas for AsciiArt {
 
     fn add_rect(&mut self, shape: Rect) {
         // Add the top and bottom lines.
-        for int::range(shape.top_left.x, shape.top_left.x + shape.size.width) |x| {
+        foreach x in range(shape.top_left.x, shape.top_left.x + shape.size.width) {
             self.add_pt(x, shape.top_left.y);
             self.add_pt(x, shape.top_left.y + shape.size.height - 1);
         }
 
         // Add the left and right lines.
-        for int::range(shape.top_left.y, shape.top_left.y + shape.size.height) |y|{
+        foreach y in range(shape.top_left.y, shape.top_left.y + shape.size.height) {
             self.add_pt(shape.top_left.x, y);
             self.add_pt(shape.top_left.x + shape.size.width - 1, y);
         }

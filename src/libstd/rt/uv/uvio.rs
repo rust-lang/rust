@@ -31,11 +31,11 @@ use str::StrSlice;
 use unstable::sync::Exclusive;
 
 #[cfg(test)] use container::Container;
-#[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use rt::test::{spawntask,
                             next_test_ip4,
                             run_in_newsched_task};
+#[cfg(test)] use iterator::{Iterator, range};
 
 enum SocketNameKind {
     TcpPeer,
@@ -843,7 +843,7 @@ fn test_simple_tcp_server_and_client() {
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
                 assert_eq!(nread, 8);
-                for uint::range(0, nread) |i| {
+                foreach i in range(0u, nread) {
                     rtdebug!("%u", buf[i] as uint);
                     assert_eq!(buf[i], i as u8);
                 }
@@ -873,7 +873,7 @@ fn test_simple_udp_server_and_client() {
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
-                for uint::range(0, nread) |i| {
+                foreach i in range(0u, nread) {
                     rtdebug!("%u", buf[i] as uint);
                     assert_eq!(buf[i], i as u8);
                 }
@@ -908,7 +908,7 @@ fn test_read_and_block() {
 
             while current < expected {
                 let nread = stream.read(buf).unwrap();
-                for uint::range(0, nread) |i| {
+                foreach i in range(0u, nread) {
                     let val = buf[i] as uint;
                     assert_eq!(val, current % 8);
                     current += 1;
@@ -973,7 +973,7 @@ fn test_read_read_read() {
                     let nread = stream.read(buf).unwrap();
                     rtdebug!("read %u bytes", nread as uint);
                     total_bytes_read += nread;
-                    for uint::range(0, nread) |i| {
+                    foreach i in range(0u, nread) {
                         assert_eq!(buf[i], 1);
                     }
                 }
@@ -1065,7 +1065,7 @@ fn test_udp_many_read() {
                     let (nread, src) = res.unwrap();
                     assert_eq!(src, server_out_addr);
                     total_bytes_recv += nread;
-                    for uint::range(0, nread) |i| {
+                    foreach i in range(0u, nread) {
                         assert_eq!(buf[i], 1);
                     }
                 }
