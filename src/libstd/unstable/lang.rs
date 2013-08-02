@@ -28,17 +28,12 @@ pub mod rustrt {
 
     extern {
         #[rust_stack]
-        pub unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t)
-                                         -> *c_char;
-
+        pub fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
         #[rust_stack]
-        pub unsafe fn rust_upcall_free(ptr: *c_char);
-
+        pub fn rust_upcall_free(ptr: *c_char);
         #[fast_ffi]
-        pub unsafe fn rust_upcall_malloc_noswitch(td: *c_char,
-                                                  size: uintptr_t)
-                                                  -> *c_char;
-
+        pub fn rust_upcall_malloc_noswitch(td: *c_char, size: uintptr_t)
+                                           -> *c_char;
         #[rust_stack]
         pub fn rust_try_get_task() -> *rust_task;
     }

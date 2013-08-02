@@ -13,7 +13,7 @@
 mod test {
     #[abi = "cdecl"]
     extern {
-        pub unsafe fn free();
+        pub fn free();
     }
 }
 

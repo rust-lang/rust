@@ -49,7 +49,7 @@ impl Drop for Thread {
 }
 
 extern {
-    pub unsafe fn rust_raw_thread_start(f: &(~fn())) -> *raw_thread;
-    pub unsafe fn rust_raw_thread_join(thread: *raw_thread);
-    pub unsafe fn rust_raw_thread_delete(thread: *raw_thread);
+    pub fn rust_raw_thread_start(f: &(~fn())) -> *raw_thread;
+    pub fn rust_raw_thread_join(thread: *raw_thread);
+    pub fn rust_raw_thread_delete(thread: *raw_thread);
 }
