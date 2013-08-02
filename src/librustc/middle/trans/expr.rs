@@ -115,7 +115,7 @@ return type, such as `while` loops or assignments (`a = b`).
 
 
 use back::abi;
-use lib::llvm::{ValueRef, llvm};
+use lib::llvm::{ValueRef, llvm, SetLinkage, ExternalLinkage};
 use lib;
 use metadata::csearch;
 use middle::trans::_match;
@@ -132,7 +132,6 @@ use middle::trans::consts;
 use middle::trans::controlflow;
 use middle::trans::datum::*;
 use middle::trans::debuginfo;
-use middle::trans::inline;
 use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::tvec;
@@ -148,7 +147,6 @@ use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
-use std::cast::transmute;
 use std::hashmap::HashMap;
 use std::vec;
 use syntax::print::pprust::{expr_to_str};
@@ -936,19 +934,9 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
         //! Translates a reference to a path.
 
         let _icx = push_ctxt("trans_def_lvalue");
-        let ccx = bcx.ccx();
         match def {
             ast::def_static(did, _) => {
                 let const_ty = expr_ty(bcx, ref_expr);
-
-                fn get_did(ccx: @mut CrateContext, did: ast::def_id)
-                    -> ast::def_id {
-                    if did.crate != ast::LOCAL_CRATE {
-                        inline::maybe_instantiate_inline(ccx, did)
-                    } else {
-                        did
-                    }
-                }
 
                 fn get_val(bcx: @mut Block, did: ast::def_id, const_ty: ty::t)
                            -> ValueRef {
@@ -976,8 +964,12 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
-                            let llval = llvm::LLVMAddGlobal( bcx.ccx().llmod, llty.to_ref(),
-                                transmute::<&u8,*i8>(&symbol[0]));
+                            let llval = do symbol.as_c_str |buf| {
+                                llvm::LLVMAddGlobal(bcx.ccx().llmod,
+                                                    llty.to_ref(),
+                                                    buf)
+                            };
+                            SetLinkage(llval, ExternalLinkage);
                             let extern_const_values = &mut bcx.ccx().extern_const_values;
                             extern_const_values.insert(did, llval);
                             llval
@@ -985,7 +977,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                     }
                 }
 
-                let did = get_did(ccx, did);
                 let val = get_val(bcx, did, const_ty);
                 DatumBlock {
                     bcx: bcx,

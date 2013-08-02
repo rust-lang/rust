@@ -2458,7 +2458,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // LLVM type is not fully determined by the Rust type.
                             let v = consts::const_expr(ccx, expr);
                             ccx.const_values.insert(id, v);
-                            exprt = m == ast::m_mutbl;
+                            exprt = (m == ast::m_mutbl || i.vis == ast::public);
 
                             unsafe {
                                 let llty = llvm::LLVMTypeOf(v);
