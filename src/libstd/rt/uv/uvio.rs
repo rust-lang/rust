@@ -33,7 +33,7 @@ use unstable::sync::Exclusive;
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use rt::test::{spawntask_immediately,
+#[cfg(test)] use rt::test::{spawntask,
                             next_test_ip4,
                             run_in_newsched_task};
 
@@ -251,13 +251,11 @@ impl IoFactory for UvIoFactory {
         let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
 
         // Block this task and take ownership, switch to scheduler context
-        do scheduler.deschedule_running_task_and_then |sched, task| {
+        do scheduler.deschedule_running_task_and_then |_, task| {
 
             rtdebug!("connect: entered scheduler context");
-            assert!(!sched.in_task_context());
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
             let task_cell = Cell::new(task);
 
@@ -458,11 +456,9 @@ impl RtioTcpStream for UvTcpStream {
         let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
         let buf_ptr: *&mut [u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |sched, task| {
+        do scheduler.deschedule_running_task_and_then |_sched, task| {
             rtdebug!("read: entered scheduler context");
-            assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             // XXX: We shouldn't reallocate these callbacks every
             // call to read
@@ -500,7 +496,6 @@ impl RtioTcpStream for UvTcpStream {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
@@ -602,11 +597,9 @@ impl RtioUdpSocket for UvUdpSocket {
         let result_cell_ptr: *Cell<Result<(uint, IpAddr), IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
         let buf_ptr: *&mut [u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |sched, task| {
+        do scheduler.deschedule_running_task_and_then |_sched, task| {
             rtdebug!("recvfrom: entered scheduler context");
-            assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
             do self.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
@@ -637,7 +630,6 @@ impl RtioUdpSocket for UvUdpSocket {
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
@@ -798,10 +790,8 @@ impl Drop for UvTimer {
 impl RtioTimer for UvTimer {
     fn sleep(&self, msecs: u64) {
         let scheduler = Local::take::<Scheduler>();
-        assert!(scheduler.in_task_context());
-        do scheduler.deschedule_running_task_and_then |sched, task| {
+        do scheduler.deschedule_running_task_and_then |_sched, task| {
             rtdebug!("sleep: entered scheduler context");
-            assert!(!sched.in_task_context());
             let task_cell = Cell::new(task);
             let mut watcher = **self;
             do watcher.start(msecs, 0) |_, status| {
@@ -845,7 +835,7 @@ fn test_simple_tcp_server_and_client() {
         let addr = next_test_ip4();
 
         // Start the server first so it's listening when we connect
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
@@ -860,7 +850,7 @@ fn test_simple_tcp_server_and_client() {
             }
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
@@ -876,7 +866,7 @@ fn test_simple_udp_server_and_client() {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut server_socket = (*io).udp_bind(server_addr).unwrap();
@@ -891,7 +881,7 @@ fn test_simple_udp_server_and_client() {
             }
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut client_socket = (*io).udp_bind(client_addr).unwrap();
@@ -906,7 +896,7 @@ fn test_read_and_block() {
     do run_in_newsched_task {
         let addr = next_test_ip4();
 
-        do spawntask_immediately {
+        do spawntask {
             let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
             let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
             let mut stream = listener.accept().unwrap();
@@ -939,7 +929,7 @@ fn test_read_and_block() {
             assert!(reads > 1);
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
@@ -959,7 +949,7 @@ fn test_read_read_read() {
         let addr = next_test_ip4();
         static MAX: uint = 500000;
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
@@ -973,7 +963,7 @@ fn test_read_read_read() {
             }
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
@@ -999,7 +989,7 @@ fn test_udp_twice() {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut client = (*io).udp_bind(client_addr).unwrap();
@@ -1008,7 +998,7 @@ fn test_udp_twice() {
             }
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut server = (*io).udp_bind(server_addr).unwrap();
@@ -1036,7 +1026,7 @@ fn test_udp_many_read() {
         let client_in_addr = next_test_ip4();
         static MAX: uint = 500_000;
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
@@ -1059,7 +1049,7 @@ fn test_udp_many_read() {
             }
         }
 
-        do spawntask_immediately {
+        do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
                 let mut client_out = (*io).udp_bind(client_out_addr).unwrap();

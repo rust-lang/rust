@@ -17,7 +17,6 @@ use option::*;
 use clone::Clone;
 use super::rc::RC;
 use rt::sched::Scheduler;
-use rt::{context, TaskContext, SchedulerContext};
 use rt::kill::BlockedTask;
 use rt::local::Local;
 use vec::OwnedVector;
@@ -44,8 +43,6 @@ impl<T> Tube<T> {
 
     pub fn send(&mut self, val: T) {
         rtdebug!("tube send");
-        assert!(context() == SchedulerContext);
-
         unsafe {
             let state = self.p.unsafe_borrow_mut();
             (*state).buf.push(val);
@@ -61,8 +58,6 @@ impl<T> Tube<T> {
     }
 
     pub fn recv(&mut self) -> T {
-        assert!(context() == TaskContext);
-
         unsafe {
             let state = self.p.unsafe_borrow_mut();
             if !(*state).buf.is_empty() {
