@@ -677,121 +677,190 @@ fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
 
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
-    let (po, ch) = stream();
-    let ch = SharedChan::new(ch);
-    do spawn_unlinked {
-        let ch = ch.clone();
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let (po, ch) = stream();
+        let ch = SharedChan::new(ch);
         do spawn_unlinked {
-            // Give middle task a chance to fail-but-not-kill-us.
-            do 16.times { task::yield(); }
-            ch.send(()); // If killed first, grandparent hangs.
+            let ch = ch.clone();
+            do spawn_unlinked {
+                // Give middle task a chance to fail-but-not-kill-us.
+                do 16.times { task::yield(); }
+                ch.send(()); // If killed first, grandparent hangs.
+            }
+            fail!(); // Shouldn't kill either (grand)parent or (grand)child.
         }
-        fail!(); // Shouldn't kill either (grand)parent or (grand)child.
+        po.recv();
     }
-    po.recv();
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
-    do spawn_unlinked { fail!(); }
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        do spawn_unlinked { fail!(); }
+    }
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
-    do spawn_supervised { fail!(); }
-    // Give child a chance to fail-but-not-kill-us.
-    do 16.times { task::yield(); }
-}
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_spawn_unlinked_sup_fail_down() {
-    do spawn_supervised { block_forever(); }
-    fail!(); // Shouldn't leave a child hanging around.
-}
-
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
-    // Unidirectional "parenting" shouldn't override bidirectional linked.
-    // We have to cheat with opts - the interface doesn't support them because
-    // they don't make sense (redundant with task().supervised()).
-    let mut b0 = task();
-    b0.opts.linked = true;
-    b0.opts.supervised = true;
-
-    do b0.spawn {
-        fail!();
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        do spawn_supervised { fail!(); }
+        // Give child a chance to fail-but-not-kill-us.
+        do 16.times { task::yield(); }
     }
-    block_forever(); // We should get punted awake
 }
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_unlinked_sup_fail_down() {
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            do spawn_supervised { block_forever(); }
+            fail!(); // Shouldn't leave a child hanging around.
+        };
+        assert!(result.is_err());
+    }
+}
+
+#[test] #[ignore(cfg(windows))]
+fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Unidirectional "parenting" shouldn't override bidirectional linked.
+            // We have to cheat with opts - the interface doesn't support them because
+            // they don't make sense (redundant with task().supervised()).
+            let mut b0 = task();
+            b0.opts.linked = true;
+            b0.opts.supervised = true;
+
+            do b0.spawn {
+                fail!();
+            }
+            block_forever(); // We should get punted awake
+        };
+        assert!(result.is_err());
+    }
+}
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
-    // We have to cheat with opts - the interface doesn't support them because
-    // they don't make sense (redundant with task().supervised()).
-    let mut b0 = task();
-    b0.opts.linked = true;
-    b0.opts.supervised = true;
-    do b0.spawn { block_forever(); }
-    fail!(); // *both* mechanisms would be wrong if this didn't kill the child
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // We have to cheat with opts - the interface doesn't support them because
+            // they don't make sense (redundant with task().supervised()).
+            let mut b0 = task();
+            b0.opts.linked = true;
+            b0.opts.supervised = true;
+            do b0.spawn { block_forever(); }
+            fail!(); // *both* mechanisms would be wrong if this didn't kill the child
+        };
+        assert!(result.is_err());
+    }
 }
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
-    // Default options are to spawn linked & unsupervised.
-    do spawn { fail!(); }
-    block_forever(); // We should get punted awake
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Default options are to spawn linked & unsupervised.
+            do spawn { fail!(); }
+            block_forever(); // We should get punted awake
+        };
+        assert!(result.is_err());
+    }
 }
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
-    // Default options are to spawn linked & unsupervised.
-    do spawn { block_forever(); }
-    fail!();
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Default options are to spawn linked & unsupervised.
+            do spawn { block_forever(); }
+            fail!();
+        };
+        assert!(result.is_err());
+    }
 }
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
-    // Make sure the above test is the same as this one.
-    let mut builder = task();
-    builder.linked();
-    do builder.spawn { block_forever(); }
-    fail!();
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Make sure the above test is the same as this one.
+            let mut builder = task();
+            builder.linked();
+            do builder.spawn { block_forever(); }
+            fail!();
+        };
+        assert!(result.is_err());
+    }
 }
 
 // A couple bonus linked failure tests - testing for failure propagation even
 // when the middle task exits successfully early before kill signals are sent.
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_grandchild() {
-    // Middle task exits; does grandparent's failure propagate across the gap?
-    do spawn_supervised {
-        do spawn_supervised { block_forever(); }
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Middle task exits; does grandparent's failure propagate across the gap?
+            do spawn_supervised {
+                do spawn_supervised { block_forever(); }
+            }
+            do 16.times { task::yield(); }
+            fail!();
+        };
+        assert!(result.is_err());
     }
-    do 16.times { task::yield(); }
-    fail!();
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_secondborn() {
-    // First-born child exits; does parent's failure propagate to sibling?
-    do spawn_supervised {
-        do spawn { block_forever(); } // linked
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // First-born child exits; does parent's failure propagate to sibling?
+            do spawn_supervised {
+                do spawn { block_forever(); } // linked
+            }
+            do 16.times { task::yield(); }
+            fail!();
+        };
+        assert!(result.is_err());
     }
-    do 16.times { task::yield(); }
-    fail!();
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_nephew_or_niece() {
-    // Our sibling exits; does our failure propagate to sibling's child?
-    do spawn { // linked
-        do spawn_supervised { block_forever(); }
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Our sibling exits; does our failure propagate to sibling's child?
+            do spawn { // linked
+                do spawn_supervised { block_forever(); }
+            }
+            do 16.times { task::yield(); }
+            fail!();
+        };
+        assert!(result.is_err());
     }
-    do 16.times { task::yield(); }
-    fail!();
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_propagate_sibling() {
-    // Middle sibling exits - does eldest's failure propagate to youngest?
-    do spawn { // linked
-        do spawn { block_forever(); } // linked
+    use rt::test::run_in_newsched_task;
+    do run_in_newsched_task {
+        let result: Result<(),()> = do try {
+            // Middle sibling exits - does eldest's failure propagate to youngest?
+            do spawn { // linked
+                do spawn { block_forever(); } // linked
+            }
+            do 16.times { task::yield(); }
+            fail!();
+        };
+        assert!(result.is_err());
     }
-    do 16.times { task::yield(); }
-    fail!();
 }
 
 #[test]
@@ -1149,11 +1218,15 @@ fn test_child_doesnt_ref_parent() {
     fn child_no(x: uint) -> ~fn() {
         return || {
             if x < generations {
-                task::spawn(child_no(x+1));
+                let mut t = task();
+                t.unwatched();
+                t.spawn(child_no(x+1));
             }
         }
     }
-    task::spawn(child_no(0));
+    let mut t = task();
+    t.unwatched();
+    t.spawn(child_no(0));
 }
 
 #[test]
@@ -1167,9 +1240,9 @@ fn test_simple_newsched_spawn() {
 
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_watched() {
-    use rt::test::{run_in_newsched_task, spawntask_try};
+    use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
-        let result = do spawntask_try {
+        let result = do try {
             let mut t = task();
             t.unlinked();
             t.watched();
@@ -1189,9 +1262,9 @@ fn test_spawn_watched() {
 
 #[test] #[ignore(cfg(windows))]
 fn test_indestructible() {
-    use rt::test::{run_in_newsched_task, spawntask_try};
+    use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
-        let result = do spawntask_try {
+        let result = do try {
             let mut t = task();
             t.watched();
             t.supervised();

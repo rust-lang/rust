@@ -132,7 +132,7 @@ mod test {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
                         let mut buf = [0];
@@ -149,7 +149,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => client.sendto([99], server_ip),
                     None => fail!()
@@ -164,7 +164,7 @@ mod test {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
                         let mut buf = [0];
@@ -181,7 +181,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => client.sendto([99], server_ip),
                     None => fail!()
@@ -196,7 +196,7 @@ mod test {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
@@ -214,7 +214,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(client) => {
                         let client = ~client;
@@ -233,7 +233,7 @@ mod test {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
@@ -251,7 +251,7 @@ mod test {
                 }
             }
 
-            do spawntask_immediately {
+            do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(client) => {
                         let client = ~client;
@@ -267,7 +267,7 @@ mod test {
     #[cfg(test)]
     fn socket_name(addr: IpAddr) {
         do run_in_newsched_task {
-            do spawntask_immediately {
+            do spawntask {
                 let server = UdpSocket::bind(addr);
 
                 assert!(server.is_some());

@@ -49,12 +49,11 @@ impl Context {
         let argp: *c_void = unsafe { transmute::<&~fn(), *c_void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
-
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs))
+            swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
         };
 
         initialize_call_frame(&mut *regs, fp, argp, sp);
@@ -72,13 +71,14 @@ impl Context {
     then loading the registers from a previously saved Context.
     */
     pub fn swap(out_context: &mut Context, in_context: &Context) {
+        rtdebug!("swapping contexts");
         let out_regs: &mut Registers = match out_context {
             &Context { regs: ~ref mut r, _ } => r
         };
         let in_regs: &Registers = match in_context {
             &Context { regs: ~ref r, _ } => r
         };
-
+        rtdebug!("doing raw swap");
         unsafe { swap_registers(out_regs, in_regs) };
     }
 }
