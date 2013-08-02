@@ -655,6 +655,47 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
     }
 }
 
+#[test] #[ignore(cfg(windows))]
+fn test_kill_unkillable_task() {
+    use rt::test::*;
+
+    // Attempt to test that when a kill signal is received at the start of an
+    // unkillable section, 'unkillable' unwinds correctly. This is actually
+    // quite a difficult race to expose, as the kill has to happen on a second
+    // CPU, *after* the spawner is already switched-back-to (and passes the
+    // killed check at the start of its timeslice). As far as I know, it's not
+    // possible to make this race deterministic, or even more likely to happen.
+    do run_in_newsched_task {
+        do task::try {
+            do task::spawn {
+                fail!();
+            }
+            do task::unkillable { }
+        };
+    }
+}
+
+#[test] #[ignore(cfg(windows))]
+fn test_kill_rekillable_task() {
+    use rt::test::*;
+
+    // Tests that when a kill signal is received, 'rekillable' and
+    // 'unkillable' unwind correctly in conjunction with each other.
+    do run_in_newsched_task {
+        do task::try {
+            do task::unkillable {
+                unsafe {
+                    do task::rekillable {
+                        do task::spawn {
+                            fail!();
+                        }
+                    }
+                }
+            }
+        };
+    }
+}
+
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_cant_dup_task_builder() {
     let mut builder = task();
