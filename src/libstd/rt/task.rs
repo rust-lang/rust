@@ -212,8 +212,13 @@ impl Task {
     pub fn run(&mut self, f: &fn()) {
         rtdebug!("run called on task: %u", borrow::to_uint(self));
         self.unwinder.try(f);
-        { let _ = self.taskgroup.take(); }
-        self.death.collect_failure(!self.unwinder.unwinding);
+        // FIXME(#7544): We pass the taskgroup into death so that it can be
+        // dropped while the unkillable counter is set. This should not be
+        // necessary except for an extraneous clone() in task/spawn.rs that
+        // causes a killhandle to get dropped, which mustn't receive a kill
+        // signal since we're outside of the unwinder's try() scope.
+        // { let _ = self.taskgroup.take(); }
+        self.death.collect_failure(!self.unwinder.unwinding, self.taskgroup.take());
         self.destroy();
     }
 
