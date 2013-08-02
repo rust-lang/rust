@@ -89,7 +89,7 @@ fn newsched_log_str(msg: ~str) {
     use container::Container;
 
     // Truncate the string
-    let buf_bytes = 2048;
+    let buf_bytes = 256;
     let msg = if msg.len() > buf_bytes {
         msg.slice(0, buf_bytes) + "[...]"
     } else {
