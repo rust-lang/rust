@@ -23,9 +23,14 @@ macro_rules! rtdebug_ (
     } )
 )
 
-// An alternate version with no output, for turning off logging
+// An alternate version with no output, for turning off logging. An
+// earlier attempt that did not call the fmt! macro was insufficient,
+// as a case of the "let bind each variable" approach eventually
+// failed without an error message describing the invocation site.
 macro_rules! rtdebug (
-    ($( $arg:expr),+) => ( $(let _ = $arg)*; )
+    ($( $arg:expr),+) => ( {
+        let _x = fmt!( $($arg),+ );
+    })
 )
 
 macro_rules! rtassert (

@@ -24,6 +24,7 @@ use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
 use clone::Clone;
+use rt::{context, SchedulerContext};
 
 /// A combined refcount / BlockedTask-as-uint pointer.
 ///
@@ -90,6 +91,9 @@ impl<T> ChanOne<T> {
     }
 
     pub fn try_send(self, val: T) -> bool {
+
+        rtassert!(context() != SchedulerContext);
+
         let mut this = self;
         let mut recvr_active = true;
         let packet = this.packet();
@@ -127,10 +131,7 @@ impl<T> ChanOne<T> {
                     // Port is blocked. Wake it up.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     do recvr.wake().map_consume |woken_task| {
-                        let mut sched = Local::take::<Scheduler>();
-                        rtdebug!("rendezvous send");
-                        sched.metrics.rendezvous_sends += 1;
-                        sched.schedule_task(woken_task);
+                        Scheduler::run_task(woken_task);
                     };
                 }
             }
@@ -346,8 +347,7 @@ impl<T> Drop for ChanOne<T> {
                     assert!((*this.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     do recvr.wake().map_consume |woken_task| {
-                        let sched = Local::take::<Scheduler>();
-                        sched.schedule_task(woken_task);
+                        Scheduler::run_task(woken_task);
                     };
                 }
             }
@@ -743,7 +743,7 @@ mod test {
         do run_in_newsched_task {
             let (port, chan) = oneshot::<~int>();
             let port_cell = Cell::new(port);
-            do spawntask_immediately {
+            do spawntask {
                 assert!(port_cell.take().recv() == ~10);
             }
 
@@ -1019,5 +1019,4 @@ mod test {
             }
         }
     }
-
 }

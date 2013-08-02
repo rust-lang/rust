@@ -67,9 +67,10 @@ use iter::Times;
 use iterator::{Iterator, IteratorUtil};
 use option::{Some, None};
 use ptr::RawPtr;
+use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
-use rt::task::{Task, Sched};
+use rt::task::{Task, SchedTask, GreenTask, Sched};
 use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
@@ -243,6 +244,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     let nscheds = util::default_sched_threads();
 
+    let main = Cell::new(main);
+
     // The shared list of sleeping schedulers. Schedulers wake each other
     // occassionally to do new work.
     let sleepers = SleeperList::new();
@@ -256,6 +259,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     let mut handles = ~[];
 
     do nscheds.times {
+        rtdebug!("inserting a regular scheduler");
+
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
@@ -267,12 +272,19 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // If we need a main-thread task then create a main thread scheduler
     // that will reject any task that isn't pinned to it
-    let mut main_sched = if use_main_sched {
+    let main_sched = if use_main_sched {
+
+        // Create a friend handle.
+        let mut friend_sched = scheds.pop();
+        let friend_handle = friend_sched.make_handle();
+        scheds.push(friend_sched);
+
         let main_loop = ~UvEventLoop::new();
         let mut main_sched = ~Scheduler::new_special(main_loop,
                                                      work_queue.clone(),
                                                      sleepers.clone(),
-                                                     false);
+                                                     false,
+                                                     Some(friend_handle));
         let main_handle = main_sched.make_handle();
         handles.push(main_handle);
         Some(main_sched)
@@ -309,43 +321,62 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         }
     };
 
-    // Build the main task and queue it up
-    match main_sched {
-        None => {
-            // The default case where we don't need a scheduler on the main thread.
-            // Just put an unpinned task onto one of the default schedulers.
-            let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, main);
-            main_task.death.on_exit = Some(on_exit);
-            main_task.name = Some(~"main");
-            scheds[0].enqueue_task(main_task);
-        }
-        Some(ref mut main_sched) => {
-            let home = Sched(main_sched.make_handle());
-            let mut main_task = ~Task::new_root_homed(&mut scheds[0].stack_pool, home, main);
-            main_task.death.on_exit = Some(on_exit);
-            main_task.name = Some(~"main");
-            main_sched.enqueue_task(main_task);
-        }
-    };
-
-    // Run each scheduler in a thread.
     let mut threads = ~[];
-    while !scheds.is_empty() {
+
+    let on_exit = Cell::new(on_exit);
+
+    if !use_main_sched {
+
+        // In the case where we do not use a main_thread scheduler we
+        // run the main task in one of our threads.
+
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
+                                            main.take());
+        main_task.death.on_exit = Some(on_exit.take());
+        let main_task_cell = Cell::new(main_task);
+
         let sched = scheds.pop();
         let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
             let sched = sched_cell.take();
-            sched.run();
+            sched.bootstrap(main_task_cell.take());
         };
-
         threads.push(thread);
     }
 
-    // Run the main-thread scheduler
-    match main_sched {
-        Some(sched) => { let _ = sched.run(); },
-        None => ()
+    // Run each remaining scheduler in a thread.
+    while !scheds.is_empty() {
+        rtdebug!("creating regular schedulers");
+        let sched = scheds.pop();
+        let sched_cell = Cell::new(sched);
+        let thread = do Thread::start {
+            let mut sched = sched_cell.take();
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+                rtdebug!("boostraping a non-primary scheduler");
+            };
+            sched.bootstrap(bootstrap_task);
+        };
+        threads.push(thread);
     }
+
+    // If we do have a main thread scheduler, run it now.
+
+    if use_main_sched {
+
+        rtdebug!("about to create the main scheduler task");
+
+        let mut main_sched = main_sched.get();
+
+        let home = Sched(main_sched.make_handle());
+        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool,
+                                                  home, main.take());
+        main_task.death.on_exit = Some(on_exit.take());
+        rtdebug!("boostrapping main_task");
+
+        main_sched.bootstrap(main_task);
+    }
+
+    rtdebug!("waiting for threads");
 
     // Wait for schedulers
     foreach thread in threads.consume_iter() {
@@ -378,27 +409,22 @@ pub enum RuntimeContext {
 pub fn context() -> RuntimeContext {
 
     use task::rt::rust_task;
-    use self::local::Local;
-    use self::sched::Scheduler;
 
-    // XXX: Hitting TLS twice to check if the scheduler exists
-    // then to check for the task is not good for perf
     if unsafe { rust_try_get_task().is_not_null() } {
         return OldTaskContext;
-    } else {
-        if Local::exists::<Scheduler>() {
-            let context = Cell::new_empty();
-            do Local::borrow::<Scheduler, ()> |sched| {
-                if sched.in_task_context() {
-                    context.put_back(TaskContext);
-                } else {
-                    context.put_back(SchedulerContext);
-                }
+    } else if Local::exists::<Task>() {
+        // In this case we know it is a new runtime context, but we
+        // need to check which one. Going to try borrowing task to
+        // check. Task should always be in TLS, so hopefully this
+        // doesn't conflict with other ops that borrow.
+        return do Local::borrow::<Task,RuntimeContext> |task| {
+            match task.task_type {
+                SchedTask => SchedulerContext,
+                GreenTask(_) => TaskContext
             }
-            return context.take();
-        } else {
-            return GlobalContext;
-        }
+        };
+    } else {
+        return GlobalContext;
     }
 
     extern {
@@ -410,23 +436,9 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{Scheduler};
-    use rt::local::Local;
-    use rt::test::new_test_uv_sched;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
-        let mut sched = ~new_test_uv_sched();
-        let task = ~do Task::new_root(&mut sched.stack_pool) {
-            assert_eq!(context(), TaskContext);
-            let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then() |sched, task| {
-                assert_eq!(context(), SchedulerContext);
-                sched.enqueue_blocked_task(task);
-            }
-        };
-        sched.enqueue_task(task);
-        sched.run();
     }
 }

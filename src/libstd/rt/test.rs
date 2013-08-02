@@ -18,14 +18,12 @@ use iterator::Iterator;
 use vec::{OwnedVector, MutableVector};
 use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::sched::Scheduler;
-use rt::local::Local;
 use unstable::run_in_bare_thread;
 use rt::thread::Thread;
 use rt::task::Task;
 use rt::uv::uvio::UvEventLoop;
 use rt::work_queue::WorkQueue;
 use rt::sleeper_list::SleeperList;
-use rt::task::{Sched};
 use rt::comm::oneshot;
 use result::{Result, Ok, Err};
 
@@ -34,27 +32,35 @@ pub fn new_test_uv_sched() -> Scheduler {
     let mut sched = Scheduler::new(~UvEventLoop::new(),
                                    WorkQueue::new(),
                                    SleeperList::new());
+
     // Don't wait for the Shutdown message
     sched.no_sleep = true;
     return sched;
+
 }
 
-/// Creates a new scheduler in a new thread and runs a task in it,
-/// then waits for the scheduler to exit. Failure of the task
-/// will abort the process.
 pub fn run_in_newsched_task(f: ~fn()) {
     let f = Cell::new(f);
-
     do run_in_bare_thread {
-        let mut sched = ~new_test_uv_sched();
-        let on_exit: ~fn(bool) = |exit_status| rtassert!(exit_status);
-        let mut task = ~Task::new_root(&mut sched.stack_pool,
-                                       f.take());
-        rtdebug!("newsched_task: %x", ::borrow::to_uint(task));
-        task.death.on_exit = Some(on_exit);
-        sched.enqueue_task(task);
-        sched.run();
+        run_in_newsched_task_core(f.take());
     }
+}
+
+pub fn run_in_newsched_task_core(f: ~fn()) {
+
+    use rt::sched::Shutdown;
+
+    let mut sched = ~new_test_uv_sched();
+    let exit_handle = Cell::new(sched.make_handle());
+
+    let on_exit: ~fn(bool) = |exit_status| {
+        exit_handle.take().send(Shutdown);
+        rtassert!(exit_status);
+    };
+    let mut task = ~Task::new_root(&mut sched.stack_pool, f);
+    task.death.on_exit = Some(on_exit);
+
+    sched.bootstrap(task);
 }
 
 /// Create more than one scheduler and run a function in a task
@@ -65,7 +71,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     use from_str::FromStr;
     use rt::sched::Shutdown;
 
-    let f_cell = Cell::new(f);
+    let f = Cell::new(f);
 
     do run_in_bare_thread {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
@@ -95,7 +101,6 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             scheds.push(sched);
         }
 
-        let f_cell = Cell::new(f_cell.take());
         let handles = Cell::new(handles);
         let on_exit: ~fn(bool) = |exit_status| {
             let mut handles = handles.take();
@@ -107,18 +112,32 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             rtassert!(exit_status);
         };
         let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                        f_cell.take());
+                                        f.take());
         main_task.death.on_exit = Some(on_exit);
-        scheds[0].enqueue_task(main_task);
 
         let mut threads = ~[];
+        let main_task = Cell::new(main_task);
+
+        let main_thread = {
+            let sched = scheds.pop();
+            let sched_cell = Cell::new(sched);
+            do Thread::start {
+                let sched = sched_cell.take();
+                sched.bootstrap(main_task.take());
+            }
+        };
+        threads.push(main_thread);
 
         while !scheds.is_empty() {
-            let sched = scheds.pop();
+            let mut sched = scheds.pop();
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+                rtdebug!("bootstrapping non-primary scheduler");
+            };
+            let bootstrap_task_cell = Cell::new(bootstrap_task);
             let sched_cell = Cell::new(sched);
             let thread = do Thread::start {
                 let sched = sched_cell.take();
-                sched.run();
+                sched.bootstrap(bootstrap_task_cell.take());
             };
 
             threads.push(thread);
@@ -134,187 +153,52 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
 /// Test tasks will abort on failure instead of unwinding
 pub fn spawntask(f: ~fn()) {
-    use super::sched::*;
-    let f = Cell::new(f);
-
-    let task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        rtdebug!("spawntask taking the scheduler from TLS");
-
-
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child(&mut (*sched).stack_pool, f.take())
-        }
-    };
-
-    rtdebug!("new task pointer: %x", ::borrow::to_uint(task));
-
-    let sched = Local::take::<Scheduler>();
-    rtdebug!("spawntask scheduling the new task");
-    sched.schedule_task(task);
-}
-
-
-/// Create a new task and run it right now. Aborts on failure
-pub fn spawntask_immediately(f: ~fn()) {
-    use super::sched::*;
-
-    let f = Cell::new(f);
-
-    let task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child(&mut (*sched).stack_pool,
-                                    f.take())
-        }
-    };
-
-    let sched = Local::take::<Scheduler>();
-    do sched.switch_running_tasks_and_then(task) |sched, task| {
-        sched.enqueue_blocked_task(task);
-    }
+    Scheduler::run_task(Task::build_child(f));
 }
 
 /// Create a new task and run it right now. Aborts on failure
 pub fn spawntask_later(f: ~fn()) {
-    use super::sched::*;
-    let f = Cell::new(f);
-
-    let task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child(&mut (*sched).stack_pool, f.take())
-        }
-    };
-
-    let mut sched = Local::take::<Scheduler>();
-    sched.enqueue_task(task);
-    Local::put(sched);
+    Scheduler::run_task_later(Task::build_child(f));
 }
 
-/// Spawn a task and either run it immediately or run it later
 pub fn spawntask_random(f: ~fn()) {
-    use super::sched::*;
     use rand::{Rand, rng};
-
-    let f = Cell::new(f);
-
-    let task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child(&mut (*sched).stack_pool,
-                                    f.take())
-
-        }
-    };
-
-    let mut sched = Local::take::<Scheduler>();
 
     let mut rng = rng();
     let run_now: bool = Rand::rand(&mut rng);
 
     if run_now {
-        do sched.switch_running_tasks_and_then(task) |sched, task| {
-            sched.enqueue_blocked_task(task);
-        }
+        spawntask(f)
     } else {
-        sched.enqueue_task(task);
-        Local::put(sched);
+        spawntask_later(f)
     }
 }
 
-/// Spawn a task, with the current scheduler as home, and queue it to
-/// run later.
-pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
-    use super::sched::*;
-    use rand::{rng, RngUtil};
-    let mut rng = rng();
-
-    let task = {
-        let sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
-        let handle = sched.make_handle();
-        let home_id = handle.sched_id;
-
-        // now that we know where this is going, build a new function
-        // that can assert it is in the right place
-        let af: ~fn() = || {
-            do Local::borrow::<Scheduler,()>() |sched| {
-                rtdebug!("home_id: %u, runtime loc: %u",
-                         home_id,
-                         sched.sched_id());
-                assert!(home_id == sched.sched_id());
-            };
-            f()
-        };
-
-        ~Task::new_root_homed(&mut sched.stack_pool,
-                              Sched(handle),
-                              af)
-    };
-    let dest_sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
-    // enqueue it for future execution
-    dest_sched.enqueue_task(task);
-}
-
-/// Spawn a task and wait for it to finish, returning whether it
-/// completed successfully or failed
-pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
-    use cell::Cell;
-    use super::sched::*;
-
-    let f = Cell::new(f);
+pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
 
     let (port, chan) = oneshot();
     let chan = Cell::new(chan);
     let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
-    let mut new_task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        do Local::borrow::<Task, ~Task> |_running_task| {
 
-            // I don't understand why using a child task here fails. I
-            // think the fail status is propogating back up the task
-            // tree and triggering a fail for the parent, which we
-            // aren't correctly expecting.
-
-            // ~running_task.new_child(&mut (*sched).stack_pool,
-            ~Task::new_root(&mut (*sched).stack_pool,
-                           f.take())
-        }
-    };
+    let mut new_task = Task::build_root(f);
     new_task.death.on_exit = Some(on_exit);
 
-    let sched = Local::take::<Scheduler>();
-    do sched.switch_running_tasks_and_then(new_task) |sched, old_task| {
-        sched.enqueue_blocked_task(old_task);
-    }
-
-    rtdebug!("enqueued the new task, now waiting on exit_status");
+    Scheduler::run_task(new_task);
 
     let exit_status = port.recv();
     if exit_status { Ok(()) } else { Err(()) }
+
 }
 
 /// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
-    use rt::sched::*;
 
     let f = Cell::new(f);
 
-    let task = unsafe {
-        let sched = Local::unsafe_borrow::<Scheduler>();
-        do Local::borrow::<Task, ~Task>() |running_task| {
-            ~running_task.new_child(&mut (*sched).stack_pool,
-                                    f.take())
-        }
-    };
-
-    let task = Cell::new(task);
-
     let thread = do Thread::start {
-        let mut sched = ~new_test_uv_sched();
-        sched.enqueue_task(task.take());
-        sched.run();
+        run_in_newsched_task_core(f.take());
     };
+
     return thread;
 }
 
@@ -323,11 +207,14 @@ pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
         let task = blk(~Task::new_root(&mut sched.stack_pool, ||{}));
-        sched.enqueue_task(task);
-        sched.run();
+        cleanup_task(task);
     }
 }
 
+/// Use to cleanup tasks created for testing but not "run".
+pub fn cleanup_task(mut task: ~Task) {
+    task.destroyed = true;
+}
 
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
