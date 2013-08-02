@@ -78,7 +78,6 @@ pub mod sha2;
 
 pub mod url;
 pub mod ebml;
-pub mod dbg;
 pub mod getopts;
 pub mod json;
 pub mod md4;

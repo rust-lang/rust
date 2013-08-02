@@ -150,93 +150,6 @@ debug_static_mut_check_four() {
     assert(debug_static_mut == 4);
 }
 
-/* Debug builtins for std::dbg. */
-
-static void
-debug_tydesc_helper(type_desc *t)
-{
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR,
-        t->size, t->align);
-}
-
-extern "C" CDECL void
-debug_tydesc(type_desc *t) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "debug_tydesc");
-    debug_tydesc_helper(t);
-}
-
-extern "C" CDECL void
-debug_opaque(type_desc *t, uint8_t *front) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "debug_opaque");
-    debug_tydesc_helper(t);
-    // Account for alignment. `front` may not indeed be the
-    // front byte of the passed-in argument
-    if (((uintptr_t)front % t->align) != 0) {
-        front = (uint8_t *)align_to((uintptr_t)front, (size_t)t->align);
-    }
-    for (uintptr_t i = 0; i < t->size; ++front, ++i) {
-        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
-    }
-}
-
-extern "C" CDECL void
-debug_box(type_desc *t, rust_opaque_box *box) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
-    debug_tydesc_helper(t);
-    LOG(task, stdlib, "  refcount %" PRIdPTR,
-        box->ref_count - 1);  // -1 because we ref'ed for this call
-    uint8_t *data = (uint8_t *)box_body(box);
-    for (uintptr_t i = 0; i < t->size; ++i) {
-        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, data[i]);
-    }
-}
-
-struct rust_tag {
-    uintptr_t discriminant;
-    uint8_t variant[];
-};
-
-extern "C" CDECL void
-debug_tag(type_desc *t, rust_tag *tag) {
-    rust_task *task = rust_get_current_task();
-
-    LOG(task, stdlib, "debug_tag");
-    debug_tydesc_helper(t);
-    LOG(task, stdlib, "  discriminant %" PRIdPTR, tag->discriminant);
-
-    for (uintptr_t i = 0; i < t->size - sizeof(tag->discriminant); ++i)
-        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i,
-            tag->variant[i]);
-}
-
-extern "C" CDECL void
-debug_fn(type_desc *t, fn_env_pair *fn) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "debug_fn");
-    debug_tydesc_helper(t);
-    LOG(task, stdlib, " fn at 0x%" PRIxPTR, fn->f);
-    LOG(task, stdlib, "  env at 0x%" PRIxPTR, fn->env);
-    if (fn->env) {
-        LOG(task, stdlib, "    refcount %" PRIdPTR, fn->env->ref_count);
-    }
-}
-
-extern "C" CDECL void *
-debug_ptrcast(type_desc *from_ty,
-              type_desc *to_ty,
-              void *ptr) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, stdlib, "debug_ptrcast from");
-    debug_tydesc_helper(from_ty);
-    LOG(task, stdlib, "to");
-    debug_tydesc_helper(to_ty);
-    return ptr;
-}
-
 extern "C" CDECL void *
 debug_get_stk_seg() {
     rust_task *task = rust_get_current_task();
@@ -581,11 +494,6 @@ extern bool should_log_console();
 extern "C" CDECL uintptr_t
 rust_should_log_console() {
     return (uintptr_t)should_log_console();
-}
-
-extern "C" CDECL void
-rust_dbg_breakpoint() {
-    BREAKPOINT_AWESOME;
 }
 
 extern "C" CDECL rust_sched_id
