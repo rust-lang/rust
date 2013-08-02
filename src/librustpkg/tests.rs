@@ -12,11 +12,10 @@
 
 use context::Ctx;
 use std::hashmap::HashMap;
-use std::{io, libc, os, result, run, str};
+use std::{io, libc, os, run, str};
 use extra::tempfile::mkdtemp;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
-use package_path::*;
 use package_id::{PkgId};
 use version::{ExactRevision, NoVersion, Version, Tagged};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
@@ -44,31 +43,25 @@ fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
 
 fn fake_pkg() -> PkgId {
     let sn = ~"bogus";
-    let remote = RemotePath(Path(sn));
     PkgId {
-        local_path: normalize(remote.clone()),
-        remote_path: remote,
+        path: Path(sn),
         short_name: sn,
         version: NoVersion
     }
 }
 
 fn git_repo_pkg() -> PkgId {
-    let remote = RemotePath(Path("mockgithub.com/catamorphism/test-pkg"));
     PkgId {
-        local_path: normalize(remote.clone()),
-        remote_path: remote,
-        short_name: ~"test_pkg",
+        path: Path("mockgithub.com/catamorphism/test-pkg"),
+        short_name: ~"test-pkg",
         version: NoVersion
     }
 }
 
 fn git_repo_pkg_with_tag(a_tag: ~str) -> PkgId {
-    let remote = RemotePath(Path("mockgithub.com/catamorphism/test-pkg"));
     PkgId {
-        local_path: normalize(remote.clone()),
-        remote_path: remote,
-        short_name: ~"test_pkg",
+        path: Path("mockgithub.com/catamorphism/test-pkg"),
+        short_name: ~"test-pkg",
         version: Tagged(a_tag)
     }
 }
@@ -78,13 +71,13 @@ fn writeFile(file_path: &Path, contents: &str) {
     out.write_line(contents);
 }
 
-fn mk_empty_workspace(short_name: &LocalPath, version: &Version) -> Path {
+fn mk_empty_workspace(short_name: &Path, version: &Version) -> Path {
     let workspace_dir = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     mk_workspace(&workspace_dir, short_name, version);
     workspace_dir
 }
 
-fn mk_workspace(workspace: &Path, short_name: &LocalPath, version: &Version) -> Path {
+fn mk_workspace(workspace: &Path, short_name: &Path, version: &Version) -> Path {
     // include version number in directory name
     let package_dir = workspace.push("src").push(fmt!("%s-%s",
                                                       short_name.to_str(), version.to_str()));
@@ -92,7 +85,7 @@ fn mk_workspace(workspace: &Path, short_name: &LocalPath, version: &Version) -> 
     package_dir
 }
 
-fn mk_temp_workspace(short_name: &LocalPath, version: &Version) -> Path {
+fn mk_temp_workspace(short_name: &Path, version: &Version) -> Path {
     let package_dir = mk_empty_workspace(short_name,
                                          version).push("src").push(fmt!("%s-%s",
                                                             short_name.to_str(),
@@ -255,7 +248,7 @@ to make sure the command succeeded
 }
 
 fn create_local_package(pkgid: &PkgId) -> Path {
-    let parent_dir = mk_temp_workspace(&pkgid.local_path, &pkgid.version);
+    let parent_dir = mk_temp_workspace(&pkgid.path, &pkgid.version);
     debug!("Created empty package dir for %s, returning %s", pkgid.to_str(), parent_dir.to_str());
     parent_dir.pop().pop()
 }
@@ -312,7 +305,7 @@ fn create_local_package_with_custom_build_hook(pkgid: &PkgId,
 
 }
 
-fn assert_lib_exists(repo: &Path, short_name: &str, v: Version) {
+fn assert_lib_exists(repo: &Path, short_name: &str, _v: Version) { // ??? version?
     debug!("assert_lib_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
     let lib = installed_library_in_workspace(short_name, repo);
     debug!("assert_lib_exists: checking whether %? exists", lib);
@@ -357,11 +350,11 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
     result
 }
 
-// assumes short_name and local_path are one and the same -- I should fix
+// assumes short_name and path are one and the same -- I should fix
 fn lib_output_file_name(workspace: &Path, parent: &str, short_name: &str) -> Path {
     debug!("lib_output_file_name: given %s and parent %s and short name %s",
            workspace.to_str(), parent, short_name);
-    library_in_workspace(&normalize(RemotePath(Path(short_name))),
+    library_in_workspace(&Path(short_name),
                          short_name,
                          Build,
                          workspace,
@@ -436,7 +429,7 @@ fn test_install_valid() {
     debug!("sysroot = %s", sysroot.to_str());
     let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = fake_pkg();
-    let temp_workspace = mk_temp_workspace(&temp_pkg_id.local_path, &NoVersion).pop().pop();
+    let temp_workspace = mk_temp_workspace(&temp_pkg_id.path, &NoVersion).pop().pop();
     debug!("temp_workspace = %s", temp_workspace.to_str());
     // should have test, bench, lib, and main
     ctxt.install(&temp_workspace, &temp_pkg_id);
@@ -489,7 +482,7 @@ fn test_install_git() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
     let temp_pkg_id = git_repo_pkg();
-    let repo = init_git_repo(&Path(temp_pkg_id.local_path.to_str()));
+    let repo = init_git_repo(&temp_pkg_id.path);
     let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test_pkg");
     writeFile(&repo_subdir.push("main.rs"),
               "fn main() { let _x = (); }");
@@ -502,9 +495,9 @@ fn test_install_git() {
     add_git_tag(&repo_subdir, ~"0.1"); // this has the effect of committing the files
 
     debug!("test_install_git: calling rustpkg install %s in %s",
-           temp_pkg_id.local_path.to_str(), repo.to_str());
+           temp_pkg_id.path.to_str(), repo.to_str());
     // should have test, bench, lib, and main
-    command_line_test([~"install", temp_pkg_id.local_path.to_str()], &repo);
+    command_line_test([~"install", temp_pkg_id.path.to_str()], &repo);
     // Check that all files exist
     debug!("Checking for files in %s", repo.to_str());
     let exec = target_executable_in_workspace(&temp_pkg_id, &repo);
@@ -551,7 +544,7 @@ fn test_package_ids_must_be_relative_path_like() {
     let whatever = PkgId::new("foo");
 
     assert_eq!(~"foo-0.1", whatever.to_str());
-    assert!("github.com/catamorphism/test_pkg-0.1" ==
+    assert!("github.com/catamorphism/test-pkg-0.1" ==
             PkgId::new("github.com/catamorphism/test-pkg").to_str());
 
     do cond.trap(|(p, e)| {
@@ -755,7 +748,7 @@ fn rustpkg_clean_no_arg() {
 #[ignore (reason = "Specifying env doesn't work -- see #8028")]
 fn rust_path_test() {
     let dir_for_path = mkdtemp(&os::tmpdir(), "more_rust").expect("rust_path_test failed");
-    let dir = mk_workspace(&dir_for_path, &normalize(RemotePath(Path("foo"))), &NoVersion);
+    let dir = mk_workspace(&dir_for_path, &Path("foo"), &NoVersion);
     debug!("dir = %s", dir.to_str());
     writeFile(&dir.push("main.rs"), "fn main() { let _x = (); }");
 
@@ -877,7 +870,7 @@ fn install_check_duplicates() {
     let mut contents = ~[];
     let check_dups = |p: &PkgId| {
         if contents.contains(p) {
-            fail!("package %s appears in `list` output more than once", p.local_path.to_str());
+            fail!("package %s appears in `list` output more than once", p.path.to_str());
         }
         else {
             contents.push((*p).clone());
@@ -992,8 +985,8 @@ fn test_uninstall() {
 #[test]
 fn test_non_numeric_tag() {
     let temp_pkg_id = git_repo_pkg();
-    let repo = init_git_repo(&Path(temp_pkg_id.local_path.to_str()));
-    let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test_pkg");
+    let repo = init_git_repo(&temp_pkg_id.path);
+    let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test-pkg");
     writeFile(&repo_subdir.push("foo"), "foo");
     writeFile(&repo_subdir.push("lib.rs"),
               "pub fn f() { let _x = (); }");
@@ -1003,12 +996,10 @@ fn test_non_numeric_tag() {
     writeFile(&repo_subdir.push("not_on_testbranch_only"), "bye bye");
     add_all_and_commit(&repo_subdir);
 
-
-    command_line_test([~"install", fmt!("%s#testbranch", temp_pkg_id.remote_path.to_str())],
-                      &repo);
+    command_line_test([~"install", fmt!("%s#testbranch", temp_pkg_id.path.to_str())], &repo);
     let file1 = repo.push_many(["mockgithub.com", "catamorphism",
-                                "test_pkg", "testbranch_only"]);
-    let file2 = repo.push_many(["mockgithub.com", "catamorphism", "test_pkg",
+                                "test-pkg", "testbranch_only"]);
+    let file2 = repo.push_many(["mockgithub.com", "catamorphism", "test-pkg",
                                 "master_only"]);
     assert!(os::path_exists(&file1));
     assert!(!os::path_exists(&file2));

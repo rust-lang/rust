@@ -55,7 +55,6 @@ mod crate;
 mod installed_packages;
 mod messages;
 mod package_id;
-mod package_path;
 mod package_source;
 mod path_util;
 mod search;
@@ -268,7 +267,7 @@ impl CtxMethods for Ctx {
             "list" => {
                 io::println("Installed packages:");
                 do installed_packages::list_installed_packages |pkg_id| {
-                    println(pkg_id.local_path.to_str());
+                    println(pkg_id.path.to_str());
                     true
                 };
             }
@@ -322,18 +321,18 @@ impl CtxMethods for Ctx {
     fn build(&self, workspace: &Path, pkgid: &PkgId) {
         debug!("build: workspace = %s (in Rust path? %? is git dir? %? \
                 pkgid = %s", workspace.to_str(),
-               in_rust_path(workspace), is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
+               in_rust_path(workspace), is_git_dir(&workspace.push_rel(&pkgid.path)),
                pkgid.to_str());
         let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
         debug!("%? %? %s", in_rust_path(workspace),
-               is_git_dir(&workspace.push_rel(&*pkgid.local_path)),
+               is_git_dir(&workspace.push_rel(&pkgid.path)),
                workspace.to_str());
-        if !in_rust_path(workspace) && is_git_dir(&workspace.push_rel(&*pkgid.local_path)) {
-            let out_dir = default_workspace().push("src").push_rel(&*pkgid.local_path);
-            source_control::git_clone(&workspace.push_rel(&*pkgid.local_path),
+        if !in_rust_path(workspace) && is_git_dir(&workspace.push_rel(&pkgid.path)) {
+            let out_dir = default_workspace().push("src").push_rel(&pkgid.path);
+            source_control::git_clone(&workspace.push_rel(&pkgid.path),
                                       &out_dir, &pkgid.version);
             let default_ws = default_workspace();
             debug!("Calling build recursively with %? and %?", default_ws.to_str(),

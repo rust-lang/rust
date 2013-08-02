@@ -25,7 +25,7 @@ pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> b
         // tjc: make this a condition
         fail!("Package %s not found in any of \
                     the following workspaces: %s",
-                   pkgid.remote_path.to_str(),
+                   pkgid.path.to_str(),
                    rust_path().to_str());
     }
     for ws in workspaces.iter() {
