@@ -1311,7 +1311,114 @@ pub mod consts {
             pub static EPIPE : c_int = 32;
             pub static EDOM : c_int = 33;
             pub static ERANGE : c_int = 34;
+
+            pub static EDEADLK: c_int = 35;
+            pub static ENAMETOOLONG: c_int = 36;
+            pub static ENOLCK: c_int = 37;
+            pub static ENOSYS: c_int = 38;
+            pub static ENOTEMPTY: c_int = 39;
+            pub static ELOOP: c_int = 40;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static ENOMSG: c_int = 42;
+            pub static EIDRM: c_int = 43;
+            pub static ECHRNG: c_int = 44;
+            pub static EL2NSYNC: c_int = 45;
+            pub static EL3HLT: c_int = 46;
+            pub static EL3RST: c_int = 47;
+            pub static ELNRNG: c_int = 48;
+            pub static EUNATCH: c_int = 49;
+            pub static ENOCSI: c_int = 50;
+            pub static EL2HLT: c_int = 51;
+            pub static EBADE: c_int = 52;
+            pub static EBADR: c_int = 53;
+            pub static EXFULL: c_int = 54;
+            pub static ENOANO: c_int = 55;
+            pub static EBADRQC: c_int = 56;
+            pub static EBADSLT: c_int = 57;
+
+            pub static EDEADLOCK: c_int = EDEADLK;
+
+            pub static EBFONT: c_int = 59;
+            pub static ENOSTR: c_int = 60;
+            pub static ENODATA: c_int = 61;
+            pub static ETIME: c_int = 62;
+            pub static ENOSR: c_int = 63;
+            pub static ENONET: c_int = 64;
+            pub static ENOPKG: c_int = 65;
+            pub static EREMOTE: c_int = 66;
+            pub static ENOLINK: c_int = 67;
+            pub static EADV: c_int = 68;
+            pub static ESRMNT: c_int = 69;
+            pub static ECOMM: c_int = 70;
+            pub static EPROTO: c_int = 71;
+            pub static EMULTIHOP: c_int = 72;
+            pub static EDOTDOT: c_int = 73;
+            pub static EBADMSG: c_int = 74;
+            pub static EOVERFLOW: c_int = 75;
+            pub static ENOTUNIQ: c_int = 76;
+            pub static EBADFD: c_int = 77;
+            pub static EREMCHG: c_int = 78;
+            pub static ELIBACC: c_int = 79;
+            pub static ELIBBAD: c_int = 80;
+            pub static ELIBSCN: c_int = 81;
+            pub static ELIBMAX: c_int = 82;
+            pub static ELIBEXEC: c_int = 83;
+            pub static EILSEQ: c_int = 84;
+            pub static ERESTART: c_int = 85;
+            pub static ESTRPIPE: c_int = 86;
+            pub static EUSERS: c_int = 87;
+            pub static ENOTSOCK: c_int = 88;
+            pub static EDESTADDRREQ: c_int = 89;
+            pub static EMSGSIZE: c_int = 90;
+            pub static EPROTOTYPE: c_int = 91;
+            pub static ENOPROTOOPT: c_int = 92;
+            pub static EPROTONOSUPPORT: c_int = 93;
+            pub static ESOCKTNOSUPPORT: c_int = 94;
+            pub static EOPNOTSUPP: c_int = 95;
+            pub static EPFNOSUPPORT: c_int = 96;
+            pub static EAFNOSUPPORT: c_int = 97;
+            pub static EADDRINUSE: c_int = 98;
+            pub static EADDRNOTAVAIL: c_int = 99;
+            pub static ENETDOWN: c_int = 100;
+            pub static ENETUNREACH: c_int = 101;
+            pub static ENETRESET: c_int = 102;
+            pub static ECONNABORTED: c_int = 103;
+            pub static ECONNRESET: c_int = 104;
+            pub static ENOBUFS: c_int = 105;
+            pub static EISCONN: c_int = 106;
+            pub static ENOTCONN: c_int = 107;
+            pub static ESHUTDOWN: c_int = 108;
+            pub static ETOOMANYREFS: c_int = 109;
+            pub static ETIMEDOUT: c_int = 110;
+            pub static ECONNREFUSED: c_int = 111;
+            pub static EHOSTDOWN: c_int = 112;
+            pub static EHOSTUNREACH: c_int = 113;
+            pub static EALREADY: c_int = 114;
+            pub static EINPROGRESS: c_int = 115;
+            pub static ESTALE: c_int = 116;
+            pub static EUCLEAN: c_int = 117;
+            pub static ENOTNAM: c_int = 118;
+            pub static ENAVAIL: c_int = 119;
+            pub static EISNAM: c_int = 120;
+            pub static EREMOTEIO: c_int = 121;
+            pub static EDQUOT: c_int = 122;
+
+            pub static ENOMEDIUM: c_int = 123;
+            pub static EMEDIUMTYPE: c_int = 124;
+            pub static ECANCELED: c_int = 125;
+            pub static ENOKEY: c_int = 126;
+            pub static EKEYEXPIRED: c_int = 127;
+            pub static EKEYREVOKED: c_int = 128;
+            pub static EKEYREJECTED: c_int = 129;
+
+            pub static EOWNERDEAD: c_int = 130;
+            pub static ENOTRECOVERABLE: c_int = 131;
+
+            pub static ERFKILL: c_int = 132;
+
+            pub static EHWPOISON: c_int = 133;
         }
+
         #[cfg(target_arch = "mips")]
         pub mod posix88 {
             use libc::types::os::arch::c95::c_int;
