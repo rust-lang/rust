@@ -607,7 +607,6 @@ pub fn check_links<T>(list: &DList<T>) {
 mod tests {
     use super::*;
     use std::rand;
-    use std::int;
     use extra::test;
 
     #[test]
@@ -944,7 +943,7 @@ mod tests {
     fn fuzz_test(sz: int) {
         let mut m = DList::new::<int>();
         let mut v = ~[];
-        for int::range(0i, sz) |i| {
+        foreach i in range(0, sz) {
             check_links(&m);
             let r: u8 = rand::random();
             match r % 6 {

@@ -53,7 +53,7 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
-    for uint::range(0u, count) |j| {
+    foreach j in range(0u, count) {
         //error!("task %?, iter %?", i, j);
         let num_chan2 = num_chan.take_unwrap();
         let num_port2 = num_port.take_unwrap();
@@ -86,7 +86,7 @@ fn main() {
     // create the ring
     let mut futures = ~[];
 
-    for uint::range(1u, num_tasks) |i| {
+    foreach i in range(1u, num_tasks) {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
         let num_chan2 = Cell::new(num_chan.take());

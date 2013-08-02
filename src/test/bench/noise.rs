@@ -38,11 +38,11 @@ impl Noise2DContext {
     pub fn new() -> Noise2DContext {
         let mut r = rand::rng();
         let mut rgradients = [ Vec2 { x: 0.0, y: 0.0 }, ..256 ];
-        for int::range(0, 256) |i| {
+        foreach i in range(0, 256) {
             rgradients[i] = random_gradient(&mut r);
         }
         let mut permutations = [ 0, ..256 ];
-        for int::range(0, 256) |i| {
+        foreach i in range(0, 256) {
             permutations[i] = i;
         }
         r.shuffle_mut(permutations);
@@ -106,8 +106,8 @@ fn main() {
     let mut pixels = [0f32, ..256*256];
     let n2d = ~Noise2DContext::new();
     do 100.times {
-        for int::range(0, 256) |y| {
-            for int::range(0, 256) |x| {
+        foreach y in range(0, 256) {
+            foreach x in range(0, 256) {
                 let v = n2d.get(
                     x as f32 * 0.1f32,
                     y as f32 * 0.1f32
@@ -117,8 +117,8 @@ fn main() {
         };
     };
 
-    for int::range(0, 256) |y| {
-        for int::range(0, 256) |x| {
+    foreach y in range(0, 256) {
+        foreach x in range(0, 256) {
             print(symbols[pixels[y*256+x] / 0.2f32 as int]);
         }
         println("");

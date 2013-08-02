@@ -1769,7 +1769,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         _ => {}
     }
 
-    for uint::range(0, arg_tys.len()) |arg_n| {
+    foreach arg_n in range(0u, arg_tys.len()) {
         let arg_ty = arg_tys[arg_n];
         let raw_llarg = raw_llargs[arg_n];
 
@@ -1965,7 +1965,7 @@ fn insert_synthetic_type_entries(bcx: @mut Block,
      */
 
     let tcx = bcx.tcx();
-    for uint::range(0, fn_args.len()) |i| {
+    foreach i in range(0u, fn_args.len()) {
         debug!("setting type of argument %u (pat node %d) to %s",
                i, fn_args[i].pat.id, bcx.ty_to_str(arg_tys[i]));
 

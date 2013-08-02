@@ -48,6 +48,7 @@ use clone::Clone;
 use cmp;
 use container::Container;
 use int;
+use iterator::{Iterator, range};
 use local_data;
 use num;
 use prelude::*;
@@ -582,7 +583,7 @@ impl<R: Rng> RngUtil for R {
     fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         foreach item in v.iter() {
-            for uint::range(0u, item.weight) |_i| {
+            foreach _ in range(0u, item.weight) {
                 r.push(item.item.clone());
             }
         }

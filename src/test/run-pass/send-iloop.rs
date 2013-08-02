@@ -13,7 +13,6 @@ extern mod extra;
 
 use std::comm;
 use std::task;
-use std::uint;
 
 fn die() {
     fail!();
@@ -34,7 +33,7 @@ fn iloop() {
 }
 
 pub fn main() {
-    for uint::range(0u, 16u) |_i| {
+    foreach _ in range(0u, 16u) {
         task::spawn_unlinked(|| iloop() );
     }
 }

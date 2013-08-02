@@ -29,12 +29,12 @@ This example sends boxed integers across tasks using serialization.
 let (port, chan) = serial::pipe_stream();
 
 do task::spawn || {
-    for int::range(0, 10) |i| {
+    foreach i in range(0, 10) {
         chan.send(@i)
     }
 }
 
-for int::range(0, 10) |i| {
+foreach i in range(0, 10) {
     assert @i == port.recv()
 }
 ~~~
@@ -641,7 +641,6 @@ mod test {
     use flatpipes::{BytePort, FlatChan, FlatPort};
 
     use std::comm;
-    use std::int;
     use std::io::BytesWriter;
     use std::result;
     use std::task;
@@ -669,12 +668,12 @@ mod test {
         let (port, chan) = serial::pipe_stream();
 
         do task::spawn || {
-            for int::range(0, 10) |i| {
+            foreach i in range(0, 10) {
                 chan.send(i)
             }
         }
 
-        for int::range(0, 10) |i| {
+        foreach i in range(0, 10) {
             assert!(i == port.recv())
         }
     }
@@ -685,12 +684,12 @@ mod test {
         let (port, chan) = serial::pipe_stream();
 
         do task::spawn || {
-            for int::range(0, 10) |i| {
+            foreach i in range(0, 10) {
                 chan.send(@i)
             }
         }
 
-        for int::range(0, 10) |i| {
+        foreach i in range(0, 10) {
             assert!(@i == port.recv())
         }
     }
@@ -716,12 +715,12 @@ mod test {
         let (port, chan) = pod::pipe_stream();
 
         do task::spawn || {
-            for int::range(0, 10) |i| {
+            foreach i in range(0, 10) {
                 chan.send(i)
             }
         }
 
-        for int::range(0, 10) |i| {
+        foreach i in range(0, 10) {
             assert!(i == port.recv())
         }
     }
@@ -827,7 +826,7 @@ mod test {
             // TcpSocketBuf is a Writer!
             let chan = writer_chan(socket_buf);
 
-            for int::range(0, 10) |i| {
+            foreach i in range(0, 10) {
                 debug!("sending %?", i);
                 chan.send(i)
             }
@@ -850,7 +849,7 @@ mod test {
             // TcpSocketBuf is a Reader!
             let port = reader_port(socket_buf);
 
-            for int::range(0, 10) |i| {
+            foreach i in range(0, 10) {
                 let j = port.recv();
                 debug!("received %?", j);
                 assert_eq!(i, j);

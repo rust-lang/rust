@@ -436,9 +436,9 @@ mod tests {
     use cell::Cell;
     use comm;
     use option::*;
+    use prelude::*;
     use super::{Exclusive, UnsafeAtomicRcBox, atomically};
     use task;
-    use uint;
     use util;
 
     #[test]
@@ -458,13 +458,13 @@ mod tests {
 
             let total = Exclusive::new(~0);
 
-            for uint::range(0, num_tasks) |_i| {
+            foreach _ in range(0u, num_tasks) {
                 let total = total.clone();
                 let (port, chan) = comm::stream();
                 futures.push(port);
 
                 do task::spawn || {
-                    for uint::range(0, count) |_i| {
+                    foreach _ in range(0u, count) {
                         do total.with |count| {
                             **count += 1;
                         }

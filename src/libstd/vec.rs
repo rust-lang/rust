@@ -473,7 +473,7 @@ pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) ->
         indices.swap(k, l);
         indices.mut_slice(k+1, length).reverse();
         // fixup permutation based on indices
-        for uint::range(k, length) |i| {
+        foreach i in range(k, length) {
             permutation[i] = values[indices[i]].clone();
         }
     }
@@ -1461,7 +1461,7 @@ impl<T> OwnedVector<T> for ~[T] {
             assert!(newlen <= oldlen);
             unsafe {
                 // This loop is optimized out for non-drop types.
-                for uint::range(newlen, oldlen) |i| {
+                foreach i in range(newlen, oldlen) {
                     ptr::read_and_zero_ptr(ptr::mut_offset(p, i as int));
                 }
             }
@@ -1477,7 +1477,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let len = self.len();
         let mut deleted: uint = 0;
 
-        for uint::range(0, len) |i| {
+        foreach i in range(0u, len) {
             if !f(&self[i]) {
                 deleted += 1;
             } else if deleted > 0 {
@@ -1561,7 +1561,7 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
         let new_len = self.len() + rhs.len();
         self.reserve(new_len);
 
-        for uint::range(0u, rhs.len()) |i| {
+        foreach i in range(0u, rhs.len()) {
             self.push(unsafe { raw::get(rhs, i) })
         }
     }

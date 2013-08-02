@@ -2,7 +2,7 @@ use std::cast::transmute;
 use std::from_str::FromStr;
 use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
 use std::os;
-use std::uint::{min, range};
+use std::uint::min;
 use std::vec::bytes::copy_memory;
 use std::vec;
 
@@ -165,7 +165,7 @@ impl RandomFasta {
             let mut buf = [0, ..LINE_LEN + 1];
 
             do lines.times {
-                for range(0, LINE_LEN) |i| {
+                foreach i in range(0u, LINE_LEN) {
                     buf[i] = self.nextc();
                 }
                 buf[LINE_LEN] = '\n' as u8;
@@ -174,7 +174,7 @@ impl RandomFasta {
                        1,
                        self.stdout);
             }
-            for range(0, chars_left) |i| {
+            foreach i in range(0u, chars_left) {
                 buf[i] = self.nextc();
             }
             fwrite(transmute(&buf[0]), chars_left as size_t, 1, self.stdout);

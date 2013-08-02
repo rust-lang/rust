@@ -23,7 +23,6 @@ use util::logv;
 use std::io;
 use std::os;
 use std::str;
-use std::uint;
 use std::vec;
 
 use extra::test::MetricMap;
@@ -414,7 +413,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
     }
 
-    for uint::range(0u, found_flags.len()) |i| {
+    foreach i in range(0u, found_flags.len()) {
         if !found_flags[i] {
             let ee = &expected_errors[i];
             fatal_ProcRes(fmt!("expected %s on line %u not found: %s",

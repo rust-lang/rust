@@ -14,7 +14,6 @@ encodable.rs for more.
 */
 
 use std::vec;
-use std::uint;
 
 use ast::{MetaItem, item, expr, m_mutbl};
 use codemap::span;
@@ -84,7 +83,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                         cx.expr_ident(span, substr.type_ident)
                     } else {
                         let mut fields = vec::with_capacity(n);
-                        for uint::range(0, n) |i| {
+                        foreach i in range(0, n) {
                             fields.push(getarg(fmt!("_field%u", i).to_managed(), i));
                         }
                         cx.expr_call_ident(span, substr.type_ident, fields)
@@ -126,7 +125,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                             cx.expr_ident(span, name)
                         } else {
                             let mut fields = vec::with_capacity(n);
-                            for uint::range(0, n) |i| {
+                            foreach i in range(0u, n) {
                                 fields.push(getarg(i));
                             }
                             cx.expr_call_ident(span, name, fields)

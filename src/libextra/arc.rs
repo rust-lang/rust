@@ -566,7 +566,6 @@ mod tests {
     use std::cell::Cell;
     use std::comm;
     use std::task;
-    use std::uint;
 
     #[test]
     fn manually_share_arc() {
@@ -851,7 +850,7 @@ mod tests {
                 *state = 31337;
                 // FIXME: #7372: hits type inference bug with iterators
                 // send to other readers
-                for uint::range(0, reader_convos.len()) |i| {
+                foreach i in range(0u, reader_convos.len()) {
                     match reader_convos[i] {
                         (ref rc, _) => rc.send(()),
                     }
@@ -861,7 +860,7 @@ mod tests {
             do (&read_mode).read |state| {
                 // FIXME: #7372: hits type inference bug with iterators
                 // complete handshake with other readers
-                for uint::range(0, reader_convos.len()) |i| {
+                foreach i in range(0u, reader_convos.len()) {
                     match reader_convos[i] {
                         (_, ref rp) => rp.recv(),
                     }

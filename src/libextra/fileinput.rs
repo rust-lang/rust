@@ -596,7 +596,7 @@ mod test {
         input.next_file(); // skip the rest of 1
 
         // read all lines from 1 (but don't read any from 2),
-        for uint::range(1, 4) |i| {
+        foreach i in range(1u, 4) {
             assert_eq!(input.read_line(), fmt!("1 %u", i));
         }
         // 1 is finished, but 2 hasn't been started yet, so this will

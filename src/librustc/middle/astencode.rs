@@ -24,7 +24,6 @@ use middle;
 use util::ppaux::ty_to_str;
 
 use std::at_vec;
-use std::uint;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize;
@@ -1055,7 +1054,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
-            for uint::range(doc.start, doc.end) |i| {
+            foreach i in range(doc.start, doc.end) {
                 str.push_char(doc.data[i] as char);
             }
             str

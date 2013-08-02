@@ -12,7 +12,6 @@ use codemap::{Pos, span};
 use codemap;
 
 use std::io;
-use std::uint;
 use std::local_data;
 use extra::term;
 
@@ -306,7 +305,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
             s.push_char(' ');
         }
         let orig = fm.get_line(lines.lines[0] as int);
-        for uint::range(0u,left-skip) |pos| {
+        foreach pos in range(0u, left-skip) {
             let curChar = (orig[pos] as char);
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
