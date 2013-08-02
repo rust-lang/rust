@@ -280,9 +280,13 @@ pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
     }
 }
 
+pub fn vec_map_to_str<T>(ts: &[T], f: &fn(t: &T) -> ~str) -> ~str {
+    let tstrs = ts.map(f);
+    fmt!("[%s]", tstrs.connect(", "))
+}
+
 pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
-    let tstrs = ts.map(|t| ty_to_str(cx, *t));
-    fmt!("(%s)", tstrs.connect(", "))
+    vec_map_to_str(ts, |t| ty_to_str(cx, *t))
 }
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
@@ -529,7 +533,7 @@ impl<T:Repr> Repr for ~T {
 }
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
-    fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
+    vec_map_to_str(v, |t| t.repr(tcx))
 }
 
 impl<'self, T:Repr> Repr for &'self [T] {
