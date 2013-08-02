@@ -281,7 +281,10 @@ impl Integer for $T {
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
-impl Bitwise for $T {}
+impl Bitwise for $T {
+    #[inline]
+    fn compl(&self) -> $T { -1 as $T ^ *self }
+}
 
 #[cfg(not(test))]
 impl BitOr<$T,$T> for $T {
