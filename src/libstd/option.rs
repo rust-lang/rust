@@ -235,19 +235,25 @@ impl<T> Option<T> {
         self.take().map_consume_default(def, blk)
     }
 
-    /// Apply a function to the contained value or do nothing
-    pub fn mutate(&mut self, f: &fn(T) -> T) {
+    /// Apply a function to the contained value and return true, or return false
+    pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
+            return true;
+        } else {
+            return false;
         }
     }
 
-    /// Apply a function to the contained value or set it to a default
-    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
+    /// Apply a function to the contained value and return true,
+    /// or set it to a default and return false
+    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
+            return true;
         } else {
             *self = Some(def);
+            return false;
         }
     }
 
