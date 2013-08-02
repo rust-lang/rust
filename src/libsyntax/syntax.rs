@@ -72,6 +72,7 @@ pub mod ext {
 
     pub mod cfg;
     pub mod fmt;
+    pub mod ifmt;
     pub mod env;
     pub mod bytes;
     pub mod concat_idents;

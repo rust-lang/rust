@@ -408,6 +408,7 @@ impl CFGBuilder {
 
             ast::expr_mac(*) |
             ast::expr_inline_asm(*) |
+            ast::expr_extfmt_fn(*) |
             ast::expr_self |
             ast::expr_fn_block(*) |
             ast::expr_lit(*) |

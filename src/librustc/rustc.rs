@@ -61,6 +61,7 @@ pub mod middle {
     pub mod const_eval;
     pub mod astencode;
     pub mod lang_items;
+    pub mod fmt;
     pub mod privacy;
     pub mod moves;
     pub mod entry;

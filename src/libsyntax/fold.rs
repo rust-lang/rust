@@ -639,7 +639,8 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 maybe_expr.map(|x| fld.fold_expr(*x))
             )
         },
-        expr_paren(ex) => expr_paren(fld.fold_expr(ex))
+        expr_paren(ex) => expr_paren(fld.fold_expr(ex)),
+        expr_extfmt_fn(s) => expr_extfmt_fn(s),
     }
 }
 

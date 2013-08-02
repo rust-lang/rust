@@ -1007,6 +1007,7 @@ pub mod guarantor {
             // All of these expressions are rvalues and hence their
             // value is not guaranteed by a region pointer.
             ast::expr_inline_asm(*) |
+            ast::expr_extfmt_fn(*) |
             ast::expr_mac(*) |
             ast::expr_lit(_) |
             ast::expr_unary(*) |

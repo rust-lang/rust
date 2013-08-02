@@ -570,6 +570,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
                 (v.visit_expr)(out, (e.clone(), v));
             }
         }
+        expr_extfmt_fn(*) => {}
     }
     (v.visit_expr_post)(ex, (e, v));
 }

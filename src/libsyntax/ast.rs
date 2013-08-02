@@ -505,7 +505,10 @@ pub enum expr_ {
     expr_repeat(@expr /* element */, @expr /* count */, mutability),
 
     // No-op: used solely so we can pretty-print faithfully
-    expr_paren(@expr)
+    expr_paren(@expr),
+
+    // Internal representation of the formatter of an argument to fmt!
+    expr_extfmt_fn(@str),
 }
 
 // When the main rust parser encounters a syntax-extension invocation, it

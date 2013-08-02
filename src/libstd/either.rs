@@ -24,7 +24,7 @@ use vec;
 use vec::{OwnedVector, ImmutableVector};
 
 /// The either type
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum Either<T, U> {
     Left(T),
     Right(U)

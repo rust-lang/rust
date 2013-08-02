@@ -517,7 +517,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
       expr_struct(*) | expr_repeat(*) | expr_paren(*) |
-      expr_inline_asm(*) => {
+      expr_inline_asm(*) | expr_extfmt_fn(*) => {
           visit::visit_expr(expr, (this, vt));
       }
     }
@@ -1226,7 +1226,7 @@ impl Liveness {
             }
           }
 
-          expr_lit(*) => {
+          expr_lit(*) | expr_extfmt_fn(*) => {
             succ
           }
 
@@ -1487,7 +1487,8 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
-      expr_paren(*) | expr_fn_block(*) | expr_path(*) | expr_self(*) => {
+      expr_paren(*) | expr_fn_block(*) | expr_path(*) | expr_self(*) |
+      expr_extfmt_fn(*) => {
         visit::visit_expr(expr, (this, vt));
       }
       expr_for_loop(*) => fail!("non-desugared expr_for_loop")

@@ -72,6 +72,7 @@ struct Stats {
     dep_bytes: uint,
     lang_item_bytes: uint,
     link_args_bytes: uint,
+    fmt_trait_bytes: uint,
     misc_bytes: uint,
     item_bytes: uint,
     index_bytes: uint,
@@ -1478,6 +1479,37 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();   // tag_lang_items
 }
 
+fn encode_fmt_traits(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_fmt_traits);
+
+    for ecx.tcx.fmt_traits.iter().advance |(name, &(def_id, def))| {
+        if !is_local(def_id) { loop }
+
+        ebml_w.start_tag(tag_fmt_traits_item);
+
+        ebml_w.start_tag(tag_fmt_traits_item_node_id);
+        ebml_w.writer.write_be_u32(def_id.node as u32);
+        ebml_w.end_tag();   // tag_fmt_traits_item_id
+
+        match def {
+            ast::def_static_method(_, Some(trait_def_id), _) => {
+                ebml_w.start_tag(tag_fmt_traits_item_trait_id);
+                ebml_w.writer.write_be_u32(trait_def_id.node as u32);
+                ebml_w.end_tag();   // tag_fmt_traits_item_trait_id
+            }
+            _ => fail!()
+        }
+
+        ebml_w.start_tag(tag_fmt_traits_item_name);
+        ebml_w.writer.write_str(*name);
+        ebml_w.end_tag();   // tag_fmt_traits_item_name
+
+        ebml_w.end_tag();   // tag_fmt_traits_item
+    }
+
+    ebml_w.end_tag();   // tag_fmt_traits
+}
+
 fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_link_args);
 
@@ -1554,6 +1586,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         dep_bytes: 0,
         lang_item_bytes: 0,
         link_args_bytes: 0,
+        fmt_trait_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
@@ -1612,6 +1645,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     encode_link_args(&ecx, &mut ebml_w);
     ecx.stats.link_args_bytes = *wr.pos - i;
 
+    // Encode the format traits.
+    i = *wr.pos;
+    encode_fmt_traits(&ecx, &mut ebml_w);
+    ecx.stats.fmt_trait_bytes = *wr.pos - i;
+
     // Encode miscellaneous info.
     i = *wr.pos;
     encode_misc_info(&ecx, crate, &mut ebml_w);
@@ -1643,6 +1681,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         printfln!(" attribute bytes: %u", ecx.stats.attr_bytes);
         printfln!("       dep bytes: %u", ecx.stats.dep_bytes);
         printfln!(" lang item bytes: %u", ecx.stats.lang_item_bytes);
+        printfln!(" fmt trait bytes: %u", ecx.stats.fmt_trait_bytes);
         printfln!(" link args bytes: %u", ecx.stats.link_args_bytes);
         printfln!("      misc bytes: %u", ecx.stats.misc_bytes);
         printfln!("      item bytes: %u", ecx.stats.item_bytes);

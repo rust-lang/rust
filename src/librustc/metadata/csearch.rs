@@ -49,6 +49,16 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
     decoder::each_lang_item(crate_data, f)
 }
 
+/// Iterates over all the fmt traits in the given crate. The yielded arguments
+/// are the format specifier for the trait, the NodeId of the `fmt` function,
+/// and the NodeId of the trait with the fmt function.
+pub fn each_fmt_trait(cstore: @mut cstore::CStore,
+                      cnum: ast::CrateNum,
+                      f: &fn(@str, ast::NodeId, ast::NodeId) -> bool) -> bool {
+    let crate_data = cstore::get_crate_data(cstore, cnum);
+    decoder::each_fmt_trait(crate_data, f)
+}
+
 /// Iterates over all the paths in the given crate.
 pub fn each_path(cstore: @mut cstore::CStore,
                  cnum: ast::CrateNum,
