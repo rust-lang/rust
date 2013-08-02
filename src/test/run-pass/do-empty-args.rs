@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-reformat
+// Testing various forms of `do` with empty arg lists
 
-#[forbid(deprecated_for_loop)];
-
-fn f(_: &fn() -> bool) -> bool {
+fn f(f: &fn() -> bool) -> bool {
     true
 }
 
-fn main() {
-    for f {} //~ ERROR `for` is deprecated
+pub fn main() {
+    do f() || { true };
+    do f() { true };
+    do f || { true };
+    do f { true };
 }

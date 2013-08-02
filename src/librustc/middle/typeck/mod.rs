@@ -299,11 +299,12 @@ impl get_and_find_region for isr_alist {
     }
 
     pub fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
-        for list::each(*self) |isr| {
+        let mut ret = None;
+        do list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;
-            if isr_br == br { return Some(isr_r); }
-        }
-        return None;
+            if isr_br == br { ret = Some(isr_r); false } else { true }
+        };
+        ret
     }
 }
 

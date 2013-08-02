@@ -172,7 +172,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
          lint: deprecated_for_loop,
          desc: "recommend using `foreach` or `do` instead of `for`",
-         default: allow
+         default: deny
      }),
 
     ("path_statement",
@@ -414,35 +414,33 @@ impl Context {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        for each_lint(self.tcx.sess, attrs) |meta, level, lintname| {
-            let lint = match self.dict.find_equiv(&lintname) {
-              None => {
-                self.span_lint(
-                    unrecognized_lint,
-                    meta.span,
-                    fmt!("unknown `%s` attribute: `%s`",
-                         level_to_str(level), lintname));
-                loop
-              }
-              Some(lint) => { lint.lint }
-            };
-
-            let now = self.get_level(lint);
-            if now == forbid && level != forbid {
-                self.tcx.sess.span_err(meta.span,
-                    fmt!("%s(%s) overruled by outer forbid(%s)",
-                         level_to_str(level),
-                         lintname, lintname));
-                loop;
+        do each_lint(self.tcx.sess, attrs) |meta, level, lintname| {
+            match self.dict.find_equiv(&lintname) {
+                None => {
+                    self.span_lint(
+                        unrecognized_lint,
+                        meta.span,
+                        fmt!("unknown `%s` attribute: `%s`",
+                        level_to_str(level), lintname));
+                }
+                Some(lint) => {
+                    let lint = lint.lint;
+                    let now = self.get_level(lint);
+                    if now == forbid && level != forbid {
+                        self.tcx.sess.span_err(meta.span,
+                        fmt!("%s(%s) overruled by outer forbid(%s)",
+                        level_to_str(level),
+                        lintname, lintname));
+                    } else if now != level {
+                        let src = self.get_source(lint);
+                        self.lint_stack.push((lint, now, src));
+                        pushed += 1;
+                        self.set_level(lint, level, Node(meta.span));
+                    }
+                }
             }
-
-            if now != level {
-                let src = self.get_source(lint);
-                self.lint_stack.push((lint, now, src));
-                pushed += 1;
-                self.set_level(lint, level, Node(meta.span));
-            }
-        }
+            true
+        };
 
         // detect doc(hidden)
         let mut doc_hidden = do attrs.iter().any |attr| {
@@ -496,7 +494,7 @@ impl Context {
                 }
             }
             Crate(c) => {
-                for self.visitors.iter().advance |visitor| {
+                foreach visitor in self.visitors.iter() {
                     match *visitor {
                         OldVisitor(_, stopping) => {
                             oldvisit::visit_crate(c, (self, stopping))
@@ -1165,7 +1163,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
     };
 
     // Install defaults.
-    for cx.dict.each_value |spec| {
+    foreach (_, spec) in cx.dict.iter() {
         cx.set_level(spec.lint, spec.default, Default);
     }
 

@@ -371,10 +371,11 @@ fn enc_purity(w: @io::Writer, p: purity) {
 
 fn enc_abi_set(w: @io::Writer, abis: AbiSet) {
     w.write_char('[');
-    for abis.each |abi| {
+    do abis.each |abi| {
         w.write_str(abi.name());
         w.write_char(',');
-    }
+        true
+    };
     w.write_char(']')
 }
 
@@ -412,14 +413,15 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
 }
 
 fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
-    for bs.builtin_bounds.each |bound| {
+    do bs.builtin_bounds.each |bound| {
         match bound {
             ty::BoundSend => w.write_char('S'),
             ty::BoundFreeze => w.write_char('K'),
             ty::BoundStatic => w.write_char('O'),
             ty::BoundSized => w.write_char('Z'),
         }
-    }
+        true
+    };
 
     foreach &tp in bs.trait_bounds.iter() {
         w.write_char('I');

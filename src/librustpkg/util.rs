@@ -323,7 +323,7 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
     debug!("In find_and_install_dependencies...");
     let my_workspace = (*workspace).clone();
     let my_ctxt      = *ctxt;
-    for c.each_view_item() |vi: &ast::view_item| {
+    do c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
             // ignore metadata, I guess
@@ -354,7 +354,8 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
             // Ignore `use`s
             _ => ()
         }
-    }
+        true
+    };
 }
 
 #[cfg(windows)]

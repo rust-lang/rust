@@ -155,13 +155,12 @@ impl<V> SmallIntMap<V> {
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
-        for uint::range_rev(self.v.len(), 0) |i| {
+        do uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i] {
-              Some(ref elt) => if !it(i, elt) { return false; },
-              None => ()
+              Some(ref elt) => it(i, elt),
+              None => true
             }
         }
-        return true;
     }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {

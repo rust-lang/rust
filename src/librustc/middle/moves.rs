@@ -654,16 +654,21 @@ impl VisitContext {
                                       moves_map: MovesMap,
                                       arms: &[arm])
                                       -> Option<@pat> {
+        let mut ret = None;
         foreach arm in arms.iter() {
             foreach &pat in arm.pats.iter() {
-                for ast_util::walk_pat(pat) |p| {
+                let cont = do ast_util::walk_pat(pat) |p| {
                     if moves_map.contains(&p.id) {
-                        return Some(p);
+                        ret = Some(p);
+                        false
+                    } else {
+                        true
                     }
-                }
+                };
+                if !cont { return ret }
             }
         }
-        return None;
+        ret
     }
 
     pub fn compute_captures(&self, fn_expr_id: NodeId) -> @[CaptureVar] {
