@@ -178,17 +178,19 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::NodeId)
         debug!("resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
                id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
-        for fcx.opt_node_ty_substs(id) |substs| {
+        let mut ret = Some(t);
+        do fcx.opt_node_ty_substs(id) |substs| {
           let mut new_tps = ~[];
           foreach subst in substs.tps.iter() {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
                 Some(t) => new_tps.push(t),
-                None => { wbcx.success = false; return None; }
+                None => { wbcx.success = false; ret = None; break }
               }
           }
           write_substs_to_tcx(tcx, id, new_tps);
-        }
-        return Some(t);
+          ret.is_some()
+        };
+        ret
       }
     }
 }

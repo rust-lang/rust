@@ -1726,7 +1726,7 @@ impl Resolver {
         let mut modules = HashMap::new();
 
         // Create all the items reachable by paths.
-        for each_path(self.session.cstore, root.def_id.get().crate)
+        do each_path(self.session.cstore, root.def_id.get().crate)
                 |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
@@ -1893,7 +1893,8 @@ impl Resolver {
                             ignoring field");
                 }
             }
-        }
+            true
+        };
     }
 
     /// Creates and adds an import directive to the given module.
@@ -1992,7 +1993,7 @@ impl Resolver {
                self.module_to_str(module_));
         self.resolve_imports_for_module(module_);
 
-        for module_.children.each_value |&child_node| {
+        foreach (_, &child_node) in module_.children.iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -2003,7 +2004,7 @@ impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each_value |&child_module| {
+        foreach (_, &child_module) in module_.anonymous_children.iter() {
             self.resolve_imports_for_module_subtree(child_module);
         }
     }
@@ -2446,8 +2447,7 @@ impl Resolver {
         assert_eq!(containing_module.glob_count, 0);
 
         // Add all resolved imports from the containing module.
-        for containing_module.import_resolutions.iter().advance
-                |(ident, target_import_resolution)| {
+        foreach (ident, target_import_resolution) in containing_module.import_resolutions.iter() {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2536,8 +2536,7 @@ impl Resolver {
         }
 
         // Add external module children from the containing module.
-        for containing_module.external_module_children.iter().advance
-                |(&ident, module)| {
+        foreach (&ident, module) in containing_module.external_module_children.iter() {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(ident, name_bindings);
@@ -3109,7 +3108,7 @@ impl Resolver {
         }
 
         // Descend into children and anonymous children.
-        for module_.children.each_value |&child_node| {
+        foreach (_, &child_node) in module_.children.iter() {
             match child_node.get_module_if_available() {
                 None => {
                     // Continue.
@@ -3120,7 +3119,7 @@ impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each_value |&module_| {
+        foreach (_, &module_) in module_.anonymous_children.iter() {
             self.report_unresolved_imports(module_);
         }
     }
@@ -3168,7 +3167,7 @@ impl Resolver {
 
         self.record_exports_for_module(module_);
 
-        for module_.children.each_value |&child_name_bindings| {
+        foreach (_, &child_name_bindings) in module_.children.iter() {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -3179,7 +3178,7 @@ impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each_value |&child_module| {
+        foreach (_, &child_module) in module_.anonymous_children.iter() {
             self.record_exports_for_module_subtree(child_module);
         }
     }
@@ -3229,8 +3228,7 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for module_.import_resolutions.iter().advance |(ident,
-                                                        importresolution)| {
+        foreach (ident, importresolution) in module_.import_resolutions.iter() {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
                        self.session.str_of(*ident));
@@ -4195,7 +4193,7 @@ impl Resolver {
                            bindings_list: Option<@mut HashMap<ident,NodeId>>,
                            visitor: ResolveVisitor) {
         let pat_id = pattern.id;
-        for walk_pat(pattern) |pattern| {
+        do walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, ref path, _)
                         if !path.global && path.idents.len() == 1 => {
@@ -4425,7 +4423,8 @@ impl Resolver {
                     // Nothing to do.
                 }
             }
-        }
+            true
+        };
     }
 
     pub fn resolve_bare_identifier_pattern(@mut self, name: ident)
@@ -4838,7 +4837,7 @@ impl Resolver {
         let mut j = this.value_ribs.len();
         while j != 0 {
             j -= 1;
-            for this.value_ribs[j].bindings.each_key |&k| {
+            foreach (&k, _) in this.value_ribs[j].bindings.iter() {
                 maybes.push(this.session.str_of(k));
                 values.push(uint::max_value);
             }
@@ -5166,7 +5165,7 @@ impl Resolver {
                 }
 
                 // Look for trait children.
-                for search_module.children.each_value |&child_name_bindings| {
+                foreach (_, &child_name_bindings) in search_module.children.iter() {
                     match child_name_bindings.def_for_namespace(TypeNS) {
                         Some(def) => {
                             match def {
@@ -5189,9 +5188,7 @@ impl Resolver {
                 }
 
                 // Look for imports.
-                for search_module.import_resolutions.each_value
-                        |&import_resolution| {
-
+                foreach (_, &import_resolution) in search_module.import_resolutions.iter() {
                     match import_resolution.target_for_namespace(TypeNS) {
                         None => {
                             // Continue.
@@ -5370,7 +5367,7 @@ impl Resolver {
         debug!("Dump of module `%s`:", self.module_to_str(module_));
 
         debug!("Children:");
-        for module_.children.each_key |&name| {
+        foreach (&name, _) in module_.children.iter() {
             debug!("* %s", self.session.str_of(name));
         }
 

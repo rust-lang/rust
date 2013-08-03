@@ -277,9 +277,10 @@ impl MoveData {
 
         match self.path_map.find_copy(&lp) {
             Some(index) => {
-                for self.each_base_path(index) |p| {
+                do self.each_base_path(index) |p| {
                     result.push(p);
-                }
+                    true
+                };
             }
             None => {
                 match *lp {
@@ -446,25 +447,29 @@ impl MoveData {
     fn each_applicable_move(&self,
                             index0: MovePathIndex,
                             f: &fn(MoveIndex) -> bool) -> bool {
-        for self.each_extending_path(index0) |index| {
+        let mut ret = true;
+        do self.each_extending_path(index0) |index| {
             let mut p = self.path(index).first_move;
             while p != InvalidMoveIndex {
                 if !f(p) {
-                    return false;
+                    ret = false;
+                    break;
                 }
                 p = self.move(p).next_move;
             }
-        }
-        return true;
+            ret
+        };
+        ret
     }
 
     fn kill_moves(&self,
                   path: MovePathIndex,
                   kill_id: ast::NodeId,
                   dfcx_moves: &mut MoveDataFlow) {
-        for self.each_applicable_move(path) |move_index| {
+        do self.each_applicable_move(path) |move_index| {
             dfcx_moves.add_kill(kill_id, *move_index);
-        }
+            true
+        };
     }
 }
 
@@ -506,14 +511,11 @@ impl FlowedMoveData {
          * Iterates through each path moved by `id`
          */
 
-        for self.dfcx_moves.each_gen_bit_frozen(id) |index| {
+        do self.dfcx_moves.each_gen_bit_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
-            if !f(move, self.move_data.path(moved_path).loan_path) {
-                return false;
-            }
+            f(move, self.move_data.path(moved_path).loan_path)
         }
-        return true;
     }
 
     pub fn each_move_of(&self,
@@ -545,31 +547,33 @@ impl FlowedMoveData {
 
         let opt_loan_path_index = self.move_data.existing_move_path(loan_path);
 
-        for self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
+        let mut ret = true;
+
+        do self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
                 if !f(move, self.move_data.path(moved_path).loan_path) {
-                    return false;
+                    ret = false;
                 }
-                loop;
-            }
-
-            foreach &loan_path_index in opt_loan_path_index.iter() {
-                for self.move_data.each_base_path(moved_path) |p| {
-                    if p == loan_path_index {
-                        // Scenario 3: some extension of `loan_path`
-                        // was moved
-                        if !f(move, self.move_data.path(moved_path).loan_path) {
-                            return false;
+            } else {
+                foreach &loan_path_index in opt_loan_path_index.iter() {
+                    let cont = do self.move_data.each_base_path(moved_path) |p| {
+                        if p == loan_path_index {
+                            // Scenario 3: some extension of `loan_path`
+                            // was moved
+                            f(move, self.move_data.path(moved_path).loan_path)
+                        } else {
+                            true
                         }
-                    }
+                    };
+                    if !cont { ret = false; break }
                 }
             }
+            ret
         }
-        return true;
     }
 
     pub fn is_assignee(&self,
@@ -601,13 +605,14 @@ impl FlowedMoveData {
             }
         };
 
-        for self.dfcx_assign.each_bit_on_entry_frozen(id) |index| {
+        do self.dfcx_assign.each_bit_on_entry_frozen(id) |index| {
             let assignment = &self.move_data.var_assignments[index];
             if assignment.path == loan_path_index && !f(assignment) {
-                return false;
+                false
+            } else {
+                true
             }
         }
-        return true;
     }
 }
 

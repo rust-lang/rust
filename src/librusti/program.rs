@@ -202,13 +202,13 @@ impl Program {
             use extra::serialize::*;
             %s // view items
         ", self.externs, self.view_items);
-        for self.structs.each_value |s| {
+        foreach (_, s) in self.structs.iter() {
             // The structs aren't really useful unless they're encodable
             code.push_str("#[deriving(Encodable, Decodable)]");
             code.push_str(*s);
             code.push_str("\n");
         }
-        for self.items.each_value |s| {
+        foreach (_, s) in self.items.iter() {
             code.push_str(*s);
             code.push_str("\n");
         }

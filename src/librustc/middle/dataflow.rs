@@ -880,11 +880,12 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         debug!("DataFlowContext::walk_pat(pat=%s, in_out=%s)",
                pat.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
 
-        for ast_util::walk_pat(pat) |p| {
+        do ast_util::walk_pat(pat) |p| {
             debug!("  p.id=%? in_out=%s", p.id, bits_to_str(reslice(in_out)));
             self.merge_with_entry_set(p.id, in_out);
             self.dfcx.apply_gen_kill(p.id, in_out);
-        }
+            true
+        };
     }
 
     fn walk_pat_alternatives(&mut self,

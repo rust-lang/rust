@@ -1139,7 +1139,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                       ast_doc: ebml::Doc) {
     let dcx = xcx.dcx;
     let tbl_doc = ast_doc.get(c::tag_table as uint);
-    for reader::docs(tbl_doc) |tag, entry_doc| {
+    do reader::docs(tbl_doc) |tag, entry_doc| {
         let id0 = entry_doc.get(c::tag_table_id as uint).as_int();
         let id = xcx.tr_id(id0);
 
@@ -1218,7 +1218,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
         }
 
         debug!(">< Side table doc loaded");
-    }
+        true
+    };
 }
 
 // ______________________________________________________________________

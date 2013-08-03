@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    fn quux(_: &fn(&int) -> bool) -> () { }
-    for quux |_| { } //~ ERROR expected `for` closure to return
-                     // `bool`, but found `()`
+// Testing that we can drop the || in do exprs
+
+fn f(f: @fn() -> bool) -> bool { true }
+
+fn d(f: @fn()) { }
+
+pub fn main() {
+    do d { }
 }

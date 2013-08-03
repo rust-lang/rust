@@ -182,20 +182,27 @@ impl Combine for Lub {
             // in both A and B.  Replace the variable with the "first"
             // bound region from A that we find it to be associated
             // with.
-            for list::each(a_isr) |pair| {
+            let mut ret = None;
+            do list::each(a_isr) |pair| {
                 let (a_br, a_r) = *pair;
                 if tainted.iter().any(|x| x == &a_r) {
                     debug!("generalize_region(r0=%?): \
                             replacing with %?, tainted=%?",
                            r0, a_br, tainted);
-                    return ty::re_bound(a_br);
+                    ret = Some(ty::re_bound(a_br));
+                    false
+                } else {
+                    true
                 }
-            }
+            };
 
-            this.infcx.tcx.sess.span_bug(
-                this.trace.origin.span(),
-                fmt!("Region %? is not associated with \
-                      any bound region from A!", r0));
+            match ret {
+                Some(x) => x,
+                None => this.infcx.tcx.sess.span_bug(
+                            this.trace.origin.span(),
+                            fmt!("Region %? is not associated with \
+                                  any bound region from A!", r0))
+            }
         }
     }
 
