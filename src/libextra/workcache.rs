@@ -10,8 +10,7 @@
 
 #[allow(missing_doc)];
 
-
-use digest::DigestUtil;
+use digest::Digest;
 use json;
 use sha1::Sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
