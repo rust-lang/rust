@@ -178,7 +178,7 @@ fn encodable_substructure(cx: @ExtCtxt, span: span,
                                           ~[cx.expr_str(span,
                                             cx.str_of(substr.type_ident)),
                                             blk]);
-            cx.expr_blk(cx.blk(span, ~[me], Some(ret)))
+            cx.expr_block(cx.block(span, ~[me], Some(ret)))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in deriving(Encodable)")
