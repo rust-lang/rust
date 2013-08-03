@@ -11,7 +11,7 @@
 use abi;
 use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
-use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
+use ast::{CallSugar, NoSugar, DoSugar};
 use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
@@ -24,7 +24,7 @@ use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
-use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
+use ast::{expr_lit, expr_log, expr_loop, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_self, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
@@ -1626,8 +1626,7 @@ impl Parser {
         } else if self.eat_keyword(keywords::ForEach) {
             return self.parse_for_expr();
         } else if self.eat_keyword(keywords::For) {
-            return self.parse_sugary_call_expr(lo, ~"for", ForSugar,
-                                               expr_loop_body);
+            return self.parse_for_expr();
         } else if self.eat_keyword(keywords::Do) {
             return self.parse_sugary_call_expr(lo, ~"do", DoSugar,
                                                expr_do_body);
@@ -2326,9 +2325,9 @@ impl Parser {
         }
     }
 
-    // parse a 'foreach' .. 'in' expression ('foreach' token already eaten)
+    // parse a 'for' .. 'in' expression ('for' token already eaten)
     pub fn parse_for_expr(&self) -> @expr {
-        // Parse: `foreach <src_pat> in <src_expr> <src_loop_block>`
+        // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
         let lo = self.last_span.lo;
         let pat = self.parse_pat();
