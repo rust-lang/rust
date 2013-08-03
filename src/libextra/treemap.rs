@@ -105,11 +105,6 @@ impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
 }
 
 impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
-    /// Return true if the map contains a value for the specified key
-    fn contains_key(&self, key: &K) -> bool {
-        self.find(key).is_some()
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let mut current: &'a Option<~TreeNode<K, V>> = &self.root;
