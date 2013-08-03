@@ -1159,7 +1159,7 @@ fn store_non_ref_bindings(bcx: @mut Block,
                     add_clean_temp_mem(bcx, lldest, binding_info.ty);
                     temp_cleanups.push(lldest);
                     temp_cleanups
-                }
+                };
             }
             TrByRef => {}
         }
