@@ -66,10 +66,10 @@ pub mod rustrt {
     #[link_name = "rustrt"]
     extern {
         #[rust_stack]
-        pub unsafe fn rust_gc_metadata() -> *Word;
+        pub fn rust_gc_metadata() -> *Word;
 
-        pub unsafe fn rust_get_stack_segment() -> *StackSegment;
-        pub unsafe fn rust_get_c_stack() -> *StackSegment;
+        pub fn rust_get_stack_segment() -> *StackSegment;
+        pub fn rust_get_c_stack() -> *StackSegment;
     }
 }
 

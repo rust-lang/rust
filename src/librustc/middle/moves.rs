@@ -139,8 +139,8 @@ use std::at_vec;
 use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
-use syntax::visit;
-use syntax::visit::vt;
+use syntax::oldvisit;
+use syntax::oldvisit::vt;
 use syntax::codemap::span;
 
 #[deriving(Encodable, Decodable)]
@@ -194,11 +194,11 @@ pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
                      crate: &Crate) -> MoveMaps
 {
-    let visitor = visit::mk_vt(@visit::Visitor {
+    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_fn: compute_modes_for_fn,
         visit_expr: compute_modes_for_expr,
         visit_local: compute_modes_for_local,
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
     let visit_cx = VisitContext {
         tcx: tcx,
@@ -209,7 +209,7 @@ pub fn compute_moves(tcx: ty::ctxt,
             moved_variables_set: @mut HashSet::new()
         }
     };
-    visit::visit_crate(crate, (visit_cx, visitor));
+    oldvisit::visit_crate(crate, (visit_cx, visitor));
     return visit_cx.move_maps;
 }
 
@@ -236,7 +236,7 @@ fn compute_modes_for_local<'a>(local: @Local,
     }
 }
 
-fn compute_modes_for_fn(fk: &visit::fn_kind,
+fn compute_modes_for_fn(fk: &oldvisit::fn_kind,
                         decl: &fn_decl,
                         body: &Block,
                         span: span,
@@ -246,7 +246,7 @@ fn compute_modes_for_fn(fk: &visit::fn_kind,
     foreach a in decl.inputs.iter() {
         cx.use_pat(a.pat);
     }
-    visit::visit_fn(fk, decl, body, span, id, (cx, v));
+    oldvisit::visit_fn(fk, decl, body, span, id, (cx, v));
 }
 
 fn compute_modes_for_expr(expr: @expr,

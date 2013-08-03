@@ -44,12 +44,12 @@ use syntax::ast_map::node_item;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::{span, dummy_sp};
-use syntax::parse;
 use syntax::opt_vec;
-use syntax::visit::{default_simple_visitor, default_visitor};
-use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
-use syntax::visit::{Visitor, SimpleVisitor};
-use syntax::visit::{visit_mod};
+use syntax::oldvisit::{default_simple_visitor, default_visitor};
+use syntax::oldvisit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
+use syntax::oldvisit::{Visitor, SimpleVisitor};
+use syntax::oldvisit::{visit_mod};
+use syntax::parse;
 use util::ppaux::ty_to_str;
 
 use std::hashmap::{HashMap, HashSet};

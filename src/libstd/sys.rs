@@ -27,9 +27,7 @@ pub mod rustrt {
 
     extern {
         #[rust_stack]
-        pub unsafe fn rust_upcall_fail(expr: *c_char,
-                                       file: *c_char,
-                                       line: size_t);
+        pub fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
     }
 }
 

@@ -2400,19 +2400,19 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_char, c_int};
 
             extern {
-                pub unsafe fn isalnum(c: c_int) -> c_int;
-                pub unsafe fn isalpha(c: c_int) -> c_int;
-                pub unsafe fn iscntrl(c: c_int) -> c_int;
-                pub unsafe fn isdigit(c: c_int) -> c_int;
-                pub unsafe fn isgraph(c: c_int) -> c_int;
-                pub unsafe fn islower(c: c_int) -> c_int;
-                pub unsafe fn isprint(c: c_int) -> c_int;
-                pub unsafe fn ispunct(c: c_int) -> c_int;
-                pub unsafe fn isspace(c: c_int) -> c_int;
-                pub unsafe fn isupper(c: c_int) -> c_int;
-                pub unsafe fn isxdigit(c: c_int) -> c_int;
-                pub unsafe fn tolower(c: c_char) -> c_char;
-                pub unsafe fn toupper(c: c_char) -> c_char;
+                pub fn isalnum(c: c_int) -> c_int;
+                pub fn isalpha(c: c_int) -> c_int;
+                pub fn iscntrl(c: c_int) -> c_int;
+                pub fn isdigit(c: c_int) -> c_int;
+                pub fn isgraph(c: c_int) -> c_int;
+                pub fn islower(c: c_int) -> c_int;
+                pub fn isprint(c: c_int) -> c_int;
+                pub fn ispunct(c: c_int) -> c_int;
+                pub fn isspace(c: c_int) -> c_int;
+                pub fn isupper(c: c_int) -> c_int;
+                pub fn isxdigit(c: c_int) -> c_int;
+                pub fn tolower(c: c_char) -> c_char;
+                pub fn toupper(c: c_char) -> c_char;
             }
         }
 
@@ -2423,66 +2423,58 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
             extern {
-                pub unsafe fn fopen(filename: *c_char, mode: *c_char)
-                                    -> *FILE;
-                pub unsafe fn freopen(filename: *c_char,
-                                      mode: *c_char,
-                                      file: *FILE)
-                                      -> *FILE;
-                pub unsafe fn fflush(file: *FILE) -> c_int;
-                pub unsafe fn fclose(file: *FILE) -> c_int;
-                pub unsafe fn remove(filename: *c_char) -> c_int;
-                pub unsafe fn rename(oldname: *c_char, newname: *c_char)
-                                     -> c_int;
-                pub unsafe fn tmpfile() -> *FILE;
-                pub unsafe fn setvbuf(stream: *FILE,
-                                      buffer: *c_char,
-                                      mode: c_int,
-                                      size: size_t)
-                                      -> c_int;
-                pub unsafe fn setbuf(stream: *FILE, buf: *c_char);
+                pub fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
+                pub fn freopen(filename: *c_char, mode: *c_char, file: *FILE)
+                               -> *FILE;
+                pub fn fflush(file: *FILE) -> c_int;
+                pub fn fclose(file: *FILE) -> c_int;
+                pub fn remove(filename: *c_char) -> c_int;
+                pub fn rename(oldname: *c_char, newname: *c_char) -> c_int;
+                pub fn tmpfile() -> *FILE;
+                pub fn setvbuf(stream: *FILE,
+                               buffer: *c_char,
+                               mode: c_int,
+                               size: size_t)
+                               -> c_int;
+                pub fn setbuf(stream: *FILE, buf: *c_char);
                 // Omitted: printf and scanf variants.
-                pub unsafe fn fgetc(stream: *FILE) -> c_int;
+                pub fn fgetc(stream: *FILE) -> c_int;
                 #[fast_ffi]
-                pub unsafe fn fgets(buf: *mut c_char,
-                                    n: c_int,
-                                    stream: *FILE)
-                                    -> *c_char;
+                pub fn fgets(buf: *mut c_char, n: c_int, stream: *FILE)
+                             -> *c_char;
                 #[fast_ffi]
-                pub unsafe fn fputc(c: c_int, stream: *FILE) -> c_int;
+                pub fn fputc(c: c_int, stream: *FILE) -> c_int;
                 #[fast_ffi]
-                pub unsafe fn fputs(s: *c_char, stream: *FILE) -> *c_char;
+                pub fn fputs(s: *c_char, stream: *FILE) -> *c_char;
                 // Omitted: getc, getchar (might be macros).
 
                 // Omitted: gets, so ridiculously unsafe that it should not
                 // survive.
 
                 // Omitted: putc, putchar (might be macros).
-                pub unsafe fn puts(s: *c_char) -> c_int;
-                pub unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
+                pub fn puts(s: *c_char) -> c_int;
+                pub fn ungetc(c: c_int, stream: *FILE) -> c_int;
                 #[fast_ffi]
-                pub unsafe fn fread(ptr: *mut c_void,
-                                    size: size_t,
-                                    nobj: size_t,
-                                    stream: *FILE)
-                                    -> size_t;
+                pub fn fread(ptr: *mut c_void,
+                             size: size_t,
+                             nobj: size_t,
+                             stream: *FILE)
+                             -> size_t;
                 #[fast_ffi]
-                pub unsafe fn fwrite(ptr: *c_void,
-                                     size: size_t,
-                                     nobj: size_t,
-                                     stream: *FILE)
-                                     -> size_t;
-                pub unsafe fn fseek(stream: *FILE,
-                                    offset: c_long,
-                                    whence: c_int)
-                                    -> c_int;
-                pub unsafe fn ftell(stream: *FILE) -> c_long;
-                pub unsafe fn rewind(stream: *FILE);
-                pub unsafe fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-                pub unsafe fn fsetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-                pub unsafe fn feof(stream: *FILE) -> c_int;
-                pub unsafe fn ferror(stream: *FILE) -> c_int;
-                pub unsafe fn perror(s: *c_char);
+                pub fn fwrite(ptr: *c_void,
+                              size: size_t,
+                              nobj: size_t,
+                              stream: *FILE)
+                              -> size_t;
+                pub fn fseek(stream: *FILE, offset: c_long, whence: c_int)
+                             -> c_int;
+                pub fn ftell(stream: *FILE) -> c_long;
+                pub fn rewind(stream: *FILE);
+                pub fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
+                pub fn fsetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
+                pub fn feof(stream: *FILE) -> c_int;
+                pub fn ferror(stream: *FILE) -> c_int;
+                pub fn perror(s: *c_char);
             }
         }
 
@@ -2495,33 +2487,32 @@ pub mod funcs {
             use libc::types::os::arch::c95::{size_t};
 
             extern {
-                pub unsafe fn abs(i: c_int) -> c_int;
-                pub unsafe fn labs(i: c_long) -> c_long;
+                pub fn abs(i: c_int) -> c_int;
+                pub fn labs(i: c_long) -> c_long;
                 // Omitted: div, ldiv (return pub type incomplete).
-                pub unsafe fn atof(s: *c_char) -> c_double;
-                pub unsafe fn atoi(s: *c_char) -> c_int;
-                pub unsafe fn strtod(s: *c_char, endp: **c_char) -> c_double;
-                pub unsafe fn strtol(s: *c_char, endp: **c_char, base: c_int)
-                                     -> c_long;
-                pub unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
-                                      -> c_ulong;
+                pub fn atof(s: *c_char) -> c_double;
+                pub fn atoi(s: *c_char) -> c_int;
+                pub fn strtod(s: *c_char, endp: **c_char) -> c_double;
+                pub fn strtol(s: *c_char, endp: **c_char, base: c_int)
+                              -> c_long;
+                pub fn strtoul(s: *c_char, endp: **c_char, base: c_int)
+                               -> c_ulong;
                 #[fast_ffi]
-                pub unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                pub fn calloc(nobj: size_t, size: size_t) -> *c_void;
                 #[fast_ffi]
-                pub unsafe fn malloc(size: size_t) -> *c_void;
+                pub fn malloc(size: size_t) -> *c_void;
                 #[fast_ffi]
-                pub unsafe fn realloc(p: *mut c_void, size: size_t)
-                                      -> *mut c_void;
+                pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 #[fast_ffi]
-                pub unsafe fn free(p: *c_void);
-                pub unsafe fn abort() -> !;
-                pub unsafe fn exit(status: c_int) -> !;
+                pub fn free(p: *c_void);
+                pub fn abort() -> !;
+                pub fn exit(status: c_int) -> !;
                 // Omitted: atexit.
-                pub unsafe fn system(s: *c_char) -> c_int;
-                pub unsafe fn getenv(s: *c_char) -> *c_char;
+                pub fn system(s: *c_char) -> c_int;
+                pub fn getenv(s: *c_char) -> *c_char;
                 // Omitted: bsearch, qsort
-                pub unsafe fn rand() -> c_int;
-                pub unsafe fn srand(seed: c_uint);
+                pub fn rand() -> c_int;
+                pub fn srand(seed: c_uint);
             }
         }
 
@@ -2533,28 +2524,25 @@ pub mod funcs {
             use libc::types::os::arch::c95::{wchar_t};
 
             extern {
-                pub unsafe fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
-                pub unsafe fn strncpy(dst: *c_char, src: *c_char, n: size_t)
-                                      -> *c_char;
-                pub unsafe fn strcat(s: *c_char, ct: *c_char) -> *c_char;
-                pub unsafe fn strncat(s: *c_char, ct: *c_char, n: size_t)
-                                      -> *c_char;
-                pub unsafe fn strcmp(cs: *c_char, ct: *c_char) -> c_int;
-                pub unsafe fn strncmp(cs: *c_char, ct: *c_char, n: size_t)
-                                      -> c_int;
-                pub unsafe fn strcoll(cs: *c_char, ct: *c_char) -> c_int;
-                pub unsafe fn strchr(cs: *c_char, c: c_int) -> *c_char;
-                pub unsafe fn strrchr(cs: *c_char, c: c_int) -> *c_char;
-                pub unsafe fn strspn(cs: *c_char, ct: *c_char) -> size_t;
-                pub unsafe fn strcspn(cs: *c_char, ct: *c_char) -> size_t;
-                pub unsafe fn strpbrk(cs: *c_char, ct: *c_char) -> *c_char;
-                pub unsafe fn strstr(cs: *c_char, ct: *c_char) -> *c_char;
-                pub unsafe fn strlen(cs: *c_char) -> size_t;
-                pub unsafe fn strerror(n: c_int) -> *c_char;
-                pub unsafe fn strtok(s: *c_char, t: *c_char) -> *c_char;
-                pub unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t)
-                                      -> size_t;
-                pub unsafe fn wcslen(buf: *wchar_t) -> size_t;
+                pub fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
+                pub fn strncpy(dst: *c_char, src: *c_char, n: size_t)
+                               -> *c_char;
+                pub fn strcat(s: *c_char, ct: *c_char) -> *c_char;
+                pub fn strncat(s: *c_char, ct: *c_char, n: size_t) -> *c_char;
+                pub fn strcmp(cs: *c_char, ct: *c_char) -> c_int;
+                pub fn strncmp(cs: *c_char, ct: *c_char, n: size_t) -> c_int;
+                pub fn strcoll(cs: *c_char, ct: *c_char) -> c_int;
+                pub fn strchr(cs: *c_char, c: c_int) -> *c_char;
+                pub fn strrchr(cs: *c_char, c: c_int) -> *c_char;
+                pub fn strspn(cs: *c_char, ct: *c_char) -> size_t;
+                pub fn strcspn(cs: *c_char, ct: *c_char) -> size_t;
+                pub fn strpbrk(cs: *c_char, ct: *c_char) -> *c_char;
+                pub fn strstr(cs: *c_char, ct: *c_char) -> *c_char;
+                pub fn strlen(cs: *c_char) -> size_t;
+                pub fn strerror(n: c_int) -> *c_char;
+                pub fn strtok(s: *c_char, t: *c_char) -> *c_char;
+                pub fn strxfrm(s: *c_char, ct: *c_char, n: size_t) -> size_t;
+                pub fn wcslen(buf: *wchar_t) -> size_t;
 
                 // Omitted: memcpy, memmove, memset (provided by LLVM)
 
@@ -2562,12 +2550,10 @@ pub mod funcs {
                 // in fact, because LLVM generates calls to them!
                 #[rust_stack]
                 #[inline]
-                pub unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
-                                     -> c_int;
+                pub fn memcmp(cx: *c_void, ct: *c_void, n: size_t) -> c_int;
                 #[rust_stack]
                 #[inline]
-                pub unsafe fn memchr(cx: *c_void, c: c_int, n: size_t)
-                                     -> *c_void;
+                pub fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
             }
         }
     }
@@ -2588,16 +2574,13 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_chmod"]
-                pub unsafe fn chmod(path: *c_char, mode: c_int) -> c_int;
-
+                pub fn chmod(path: *c_char, mode: c_int) -> c_int;
                 #[link_name = "_mkdir"]
-                pub unsafe fn mkdir(path: *c_char) -> c_int;
-
+                pub fn mkdir(path: *c_char) -> c_int;
                 #[link_name = "_fstat64"]
-                pub unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
-
+                pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
                 #[link_name = "_stat64"]
-                pub unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
             }
         }
 
@@ -2609,17 +2592,14 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_popen"]
-                pub unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
-
+                pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
                 #[link_name = "_pclose"]
-                pub unsafe fn pclose(stream: *FILE) -> c_int;
-
+                pub fn pclose(stream: *FILE) -> c_int;
                 #[link_name = "_fdopen"]
                 #[fast_ffi]
-                pub unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
-
+                pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
                 #[link_name = "_fileno"]
-                pub unsafe fn fileno(stream: *FILE) -> c_int;
+                pub fn fileno(stream: *FILE) -> c_int;
             }
         }
 
@@ -2629,11 +2609,10 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_int, c_char};
             extern {
                 #[link_name = "_open"]
-                pub unsafe fn open(path: *c_char, oflag: c_int, mode: c_int)
-                                   -> c_int;
-
+                pub fn open(path: *c_char, oflag: c_int, mode: c_int)
+                            -> c_int;
                 #[link_name = "_creat"]
-                pub unsafe fn creat(path: *c_char, mode: c_int) -> c_int;
+                pub fn creat(path: *c_char, mode: c_int) -> c_int;
             }
         }
 
@@ -2653,73 +2632,48 @@ pub mod funcs {
 
             extern {
                 #[link_name = "_access"]
-                pub unsafe fn access(path: *c_char, amode: c_int) -> c_int;
-
+                pub fn access(path: *c_char, amode: c_int) -> c_int;
                 #[link_name = "_chdir"]
-                pub unsafe fn chdir(dir: *c_char) -> c_int;
-
+                pub fn chdir(dir: *c_char) -> c_int;
                 #[link_name = "_close"]
-                pub unsafe fn close(fd: c_int) -> c_int;
-
+                pub fn close(fd: c_int) -> c_int;
                 #[link_name = "_dup"]
-                pub unsafe fn dup(fd: c_int) -> c_int;
-
+                pub fn dup(fd: c_int) -> c_int;
                 #[link_name = "_dup2"]
-                pub unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
-
+                pub fn dup2(src: c_int, dst: c_int) -> c_int;
                 #[link_name = "_execv"]
-                pub unsafe fn execv(prog: *c_char, argv: **c_char)
-                                    -> intptr_t;
-
+                pub fn execv(prog: *c_char, argv: **c_char) -> intptr_t;
                 #[link_name = "_execve"]
-                pub unsafe fn execve(prog: *c_char,
-                                     argv: **c_char,
-                                     envp: **c_char)
-                                     -> c_int;
-
+                pub fn execve(prog: *c_char, argv: **c_char, envp: **c_char)
+                              -> c_int;
                 #[link_name = "_execvp"]
-                pub unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
-
+                pub fn execvp(c: *c_char, argv: **c_char) -> c_int;
                 #[link_name = "_execvpe"]
-                pub unsafe fn execvpe(c: *c_char,
-                                      argv: **c_char,
-                                      envp: **c_char)
-                                      -> c_int;
-
+                pub fn execvpe(c: *c_char, argv: **c_char, envp: **c_char)
+                               -> c_int;
                 #[link_name = "_getcwd"]
-                pub unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
-
+                pub fn getcwd(buf: *c_char, size: size_t) -> *c_char;
                 #[link_name = "_getpid"]
-                pub unsafe fn getpid() -> c_int;
-
+                pub fn getpid() -> c_int;
                 #[link_name = "_isatty"]
-                pub unsafe fn isatty(fd: c_int) -> c_int;
-
+                pub fn isatty(fd: c_int) -> c_int;
                 #[link_name = "_lseek"]
-                pub unsafe fn lseek(fd: c_int, offset: c_long, origin: c_int)
-                                    -> c_long;
-
+                pub fn lseek(fd: c_int, offset: c_long, origin: c_int)
+                             -> c_long;
                 #[link_name = "_pipe"]
-                pub unsafe fn pipe(fds: *mut c_int,
-                                   psize: c_uint,
-                                   textmode: c_int)
-                                   -> c_int;
-
+                pub fn pipe(fds: *mut c_int, psize: c_uint, textmode: c_int)
+                            -> c_int;
                 #[link_name = "_read"]
                 #[fast_ffi]
-                pub unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
-                                   -> c_int;
-
+                pub fn read(fd: c_int, buf: *mut c_void, count: c_uint)
+                            -> c_int;
                 #[link_name = "_rmdir"]
-                pub unsafe fn rmdir(path: *c_char) -> c_int;
-
+                pub fn rmdir(path: *c_char) -> c_int;
                 #[link_name = "_unlink"]
-                pub unsafe fn unlink(c: *c_char) -> c_int;
-
+                pub fn unlink(c: *c_char) -> c_int;
                 #[link_name = "_write"]
                 #[fast_ffi]
-                pub unsafe fn write(fd: c_int, buf: *c_void, count: c_uint)
-                                    -> c_int;
+                pub fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
             }
         }
 
@@ -2741,29 +2695,29 @@ pub mod funcs {
             #[nolink]
             #[abi = "cdecl"]
             extern {
-                pub unsafe fn chmod(path: *c_char, mode: mode_t) -> c_int;
-                pub unsafe fn fchmod(fd: c_int, mode: mode_t) -> c_int;
+                pub fn chmod(path: *c_char, mode: mode_t) -> c_int;
+                pub fn fchmod(fd: c_int, mode: mode_t) -> c_int;
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
-                pub unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+                pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
                 #[cfg(target_os = "macos")]
                 #[link_name = "fstat64"]
-                pub unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+                pub fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
-                pub unsafe fn mkdir(path: *c_char, mode: mode_t) -> c_int;
-                pub unsafe fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
+                pub fn mkdir(path: *c_char, mode: mode_t) -> c_int;
+                pub fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
-                pub unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
 
                 #[cfg(target_os = "macos")]
                 #[link_name = "stat64"]
-                pub unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn stat(path: *c_char, buf: *mut stat) -> c_int;
             }
         }
 
@@ -2774,10 +2728,10 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_char, c_int};
 
             extern {
-                pub unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
-                pub unsafe fn pclose(stream: *FILE) -> c_int;
-                pub unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
-                pub unsafe fn fileno(stream: *FILE) -> c_int;
+                pub fn popen(command: *c_char, mode: *c_char) -> *FILE;
+                pub fn pclose(stream: *FILE) -> c_int;
+                pub fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+                pub fn fileno(stream: *FILE) -> c_int;
             }
         }
 
@@ -2788,10 +2742,10 @@ pub mod funcs {
             use libc::types::os::arch::posix88::mode_t;
 
             extern {
-                pub unsafe fn open(path: *c_char, oflag: c_int, mode: c_int)
-                                   -> c_int;
-                pub unsafe fn creat(path: *c_char, mode: mode_t) -> c_int;
-                pub unsafe fn fcntl(fd: c_int, cmd: c_int) -> c_int;
+                pub fn open(path: *c_char, oflag: c_int, mode: c_int)
+                            -> c_int;
+                pub fn creat(path: *c_char, mode: mode_t) -> c_int;
+                pub fn fcntl(fd: c_int, cmd: c_int) -> c_int;
             }
         }
 
@@ -2815,15 +2769,15 @@ pub mod funcs {
             }
 
             extern {
-                unsafe fn rust_opendir(dirname: *c_char) -> *DIR;
-                unsafe fn rust_readdir(dirp: *DIR) -> *dirent_t;
+                fn rust_opendir(dirname: *c_char) -> *DIR;
+                fn rust_readdir(dirp: *DIR) -> *dirent_t;
             }
 
             extern {
-                pub unsafe fn closedir(dirp: *DIR) -> c_int;
-                pub unsafe fn rewinddir(dirp: *DIR);
-                pub unsafe fn seekdir(dirp: *DIR, loc: c_long);
-                pub unsafe fn telldir(dirp: *DIR) -> c_long;
+                pub fn closedir(dirp: *DIR) -> c_int;
+                pub fn rewinddir(dirp: *DIR);
+                pub fn seekdir(dirp: *DIR, loc: c_long);
+                pub fn telldir(dirp: *DIR) -> c_long;
             }
         }
 
@@ -2837,62 +2791,55 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{ssize_t, uid_t};
 
             extern {
-                pub unsafe fn access(path: *c_char, amode: c_int) -> c_int;
-                pub unsafe fn alarm(seconds: c_uint) -> c_uint;
-                pub unsafe fn chdir(dir: *c_char) -> c_int;
-                pub unsafe fn chown(path: *c_char, uid: uid_t, gid: gid_t)
-                                    -> c_int;
-                pub unsafe fn close(fd: c_int) -> c_int;
-                pub unsafe fn dup(fd: c_int) -> c_int;
-                pub unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
-                pub unsafe fn execv(prog: *c_char, argv: **c_char) -> c_int;
-                pub unsafe fn execve(prog: *c_char,
-                                     argv: **c_char,
-                                     envp: **c_char)
-                                     -> c_int;
-                pub unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
-                pub unsafe fn fork() -> pid_t;
-                pub unsafe fn fpathconf(filedes: c_int, name: c_int)
-                                        -> c_long;
-                pub unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
-                pub unsafe fn getegid() -> gid_t;
-                pub unsafe fn geteuid() -> uid_t;
-                pub unsafe fn getgid() -> gid_t ;
-                pub unsafe fn getgroups(ngroups_max: c_int,
-                                        groups: *mut gid_t)
-                                        -> c_int;
-                pub unsafe fn getlogin() -> *c_char;
-                pub unsafe fn getopt(argc: c_int,
-                                     argv: **c_char,
-                                     optstr: *c_char)
-                                     -> c_int;
-                pub unsafe fn getpgrp() -> pid_t;
-                pub unsafe fn getpid() -> pid_t;
-                pub unsafe fn getppid() -> pid_t;
-                pub unsafe fn getuid() -> uid_t;
-                pub unsafe fn isatty(fd: c_int) -> c_int;
-                pub unsafe fn link(src: *c_char, dst: *c_char) -> c_int;
-                pub unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int)
-                                    -> off_t;
-                pub unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
-                pub unsafe fn pause() -> c_int;
-                pub unsafe fn pipe(fds: *mut c_int) -> c_int;
+                pub fn access(path: *c_char, amode: c_int) -> c_int;
+                pub fn alarm(seconds: c_uint) -> c_uint;
+                pub fn chdir(dir: *c_char) -> c_int;
+                pub fn chown(path: *c_char, uid: uid_t, gid: gid_t) -> c_int;
+                pub fn close(fd: c_int) -> c_int;
+                pub fn dup(fd: c_int) -> c_int;
+                pub fn dup2(src: c_int, dst: c_int) -> c_int;
+                pub fn execv(prog: *c_char, argv: **c_char) -> c_int;
+                pub fn execve(prog: *c_char, argv: **c_char, envp: **c_char)
+                              -> c_int;
+                pub fn execvp(c: *c_char, argv: **c_char) -> c_int;
+                pub fn fork() -> pid_t;
+                pub fn fpathconf(filedes: c_int, name: c_int) -> c_long;
+                pub fn getcwd(buf: *c_char, size: size_t) -> *c_char;
+                pub fn getegid() -> gid_t;
+                pub fn geteuid() -> uid_t;
+                pub fn getgid() -> gid_t ;
+                pub fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
+                                 -> c_int;
+                pub fn getlogin() -> *c_char;
+                pub fn getopt(argc: c_int, argv: **c_char, optstr: *c_char)
+                              -> c_int;
+                pub fn getpgrp() -> pid_t;
+                pub fn getpid() -> pid_t;
+                pub fn getppid() -> pid_t;
+                pub fn getuid() -> uid_t;
+                pub fn isatty(fd: c_int) -> c_int;
+                pub fn link(src: *c_char, dst: *c_char) -> c_int;
+                pub fn lseek(fd: c_int, offset: off_t, whence: c_int)
+                             -> off_t;
+                pub fn pathconf(path: *c_char, name: c_int) -> c_long;
+                pub fn pause() -> c_int;
+                pub fn pipe(fds: *mut c_int) -> c_int;
                 #[fast_ffi]
-                pub unsafe fn read(fd: c_int, buf: *mut c_void, count: size_t)
-                                   -> ssize_t;
-                pub unsafe fn rmdir(path: *c_char) -> c_int;
-                pub unsafe fn setgid(gid: gid_t) -> c_int;
-                pub unsafe fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
-                pub unsafe fn setsid() -> pid_t;
-                pub unsafe fn setuid(uid: uid_t) -> c_int;
-                pub unsafe fn sleep(secs: c_uint) -> c_uint;
-                pub unsafe fn sysconf(name: c_int) -> c_long;
-                pub unsafe fn tcgetpgrp(fd: c_int) -> pid_t;
-                pub unsafe fn ttyname(fd: c_int) -> *c_char;
-                pub unsafe fn unlink(c: *c_char) -> c_int;
+                pub fn read(fd: c_int, buf: *mut c_void, count: size_t)
+                            -> ssize_t;
+                pub fn rmdir(path: *c_char) -> c_int;
+                pub fn setgid(gid: gid_t) -> c_int;
+                pub fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
+                pub fn setsid() -> pid_t;
+                pub fn setuid(uid: uid_t) -> c_int;
+                pub fn sleep(secs: c_uint) -> c_uint;
+                pub fn sysconf(name: c_int) -> c_long;
+                pub fn tcgetpgrp(fd: c_int) -> pid_t;
+                pub fn ttyname(fd: c_int) -> *c_char;
+                pub fn unlink(c: *c_char) -> c_int;
                 #[fast_ffi]
-                pub unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
-                                    -> ssize_t;
+                pub fn write(fd: c_int, buf: *c_void, count: size_t)
+                             -> ssize_t;
             }
         }
 
@@ -2903,7 +2850,7 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{pid_t};
 
             extern {
-                pub unsafe fn kill(pid: pid_t, sig: c_int) -> c_int;
+                pub fn kill(pid: pid_t, sig: c_int) -> c_int;
             }
         }
 
@@ -2915,32 +2862,28 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{mode_t, off_t};
 
             extern {
-                pub unsafe fn mlock(addr: *c_void, len: size_t) -> c_int;
-                pub unsafe fn munlock(addr: *c_void, len: size_t) -> c_int;
-                pub unsafe fn mlockall(flags: c_int) -> c_int;
-                pub unsafe fn munlockall() -> c_int;
+                pub fn mlock(addr: *c_void, len: size_t) -> c_int;
+                pub fn munlock(addr: *c_void, len: size_t) -> c_int;
+                pub fn mlockall(flags: c_int) -> c_int;
+                pub fn munlockall() -> c_int;
 
-                pub unsafe fn mmap(addr: *c_void,
-                                   len: size_t,
-                                   prot: c_int,
-                                   flags: c_int,
-                                   fd: c_int,
-                                   offset: off_t)
-                                   -> *mut c_void;
-                pub unsafe fn munmap(addr: *c_void, len: size_t) -> c_int;
+                pub fn mmap(addr: *c_void,
+                            len: size_t,
+                            prot: c_int,
+                            flags: c_int,
+                            fd: c_int,
+                            offset: off_t)
+                            -> *mut c_void;
+                pub fn munmap(addr: *c_void, len: size_t) -> c_int;
 
-                pub unsafe fn mprotect(addr: *c_void,
-                                       len: size_t,
-                                       prot: c_int)
-                                       -> c_int;
+                pub fn mprotect(addr: *c_void, len: size_t, prot: c_int)
+                                -> c_int;
 
-                pub unsafe fn msync(addr: *c_void, len: size_t, flags: c_int)
-                                    -> c_int;
-                pub unsafe fn shm_open(name: *c_char,
-                                       oflag: c_int,
-                                       mode: mode_t)
-                                       -> c_int;
-                pub unsafe fn shm_unlink(name: *c_char) -> c_int;
+                pub fn msync(addr: *c_void, len: size_t, flags: c_int)
+                             -> c_int;
+                pub fn shm_open(name: *c_char, oflag: c_int, mode: mode_t)
+                                -> c_int;
+                pub fn shm_unlink(name: *c_char) -> c_int;
             }
         }
     }
@@ -2960,11 +2903,11 @@ pub mod funcs {
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "freebsd")]
                 #[cfg(target_os = "android")]
-                pub unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn lstat(path: *c_char, buf: *mut stat) -> c_int;
 
                 #[cfg(target_os = "macos")]
                 #[link_name = "lstat64"]
-                pub unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+                pub fn lstat(path: *c_char, buf: *mut stat) -> c_int;
             }
         }
 
@@ -2975,26 +2918,23 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{ssize_t};
 
             extern {
-                pub unsafe fn readlink(path: *c_char,
-                                       buf: *mut c_char,
-                                       bufsz: size_t)
-                                       -> ssize_t;
+                pub fn readlink(path: *c_char,
+                                buf: *mut c_char,
+                                bufsz: size_t)
+                                -> ssize_t;
 
-                pub unsafe fn fsync(fd: c_int) -> c_int;
+                pub fn fsync(fd: c_int) -> c_int;
 
                 #[cfg(target_os = "linux")]
                 #[cfg(target_os = "android")]
-                pub unsafe fn fdatasync(fd: c_int) -> c_int;
+                pub fn fdatasync(fd: c_int) -> c_int;
 
-                pub unsafe fn setenv(name: *c_char,
-                                     val: *c_char,
-                                     overwrite: c_int)
-                                     -> c_int;
-                pub unsafe fn unsetenv(name: *c_char) -> c_int;
-                pub unsafe fn putenv(string: *c_char) -> c_int;
+                pub fn setenv(name: *c_char, val: *c_char, overwrite: c_int)
+                              -> c_int;
+                pub fn unsetenv(name: *c_char) -> c_int;
+                pub fn putenv(string: *c_char) -> c_int;
 
-                pub unsafe fn symlink(path1: *c_char, path2: *c_char)
-                                      -> c_int;
+                pub fn symlink(path1: *c_char, path2: *c_char) -> c_int;
             }
         }
 
@@ -3005,10 +2945,8 @@ pub mod funcs {
             use libc::types::os::arch::posix88::{pid_t};
 
             extern {
-                pub unsafe fn waitpid(pid: pid_t,
-                                      status: *mut c_int,
-                                      options: c_int)
-                                      -> pid_t;
+                pub fn waitpid(pid: pid_t, status: *mut c_int, options: c_int)
+                               -> pid_t;
             }
         }
 
@@ -3020,11 +2958,11 @@ pub mod funcs {
             use libc::types::os::common::posix01::{glob_t};
 
             extern {
-                pub unsafe fn glob(pattern: *c_char,
-                                   flags: c_int,
-                                   errfunc: *c_void, // XXX callback
-                                   pglob: *mut glob_t);
-                pub unsafe fn globfree(pglob: *mut glob_t);
+                pub fn glob(pattern: *c_char,
+                            flags: c_int,
+                            errfunc: *c_void, // XXX callback
+                            pglob: *mut glob_t);
+                pub fn globfree(pglob: *mut glob_t);
             }
         }
 
@@ -3035,10 +2973,10 @@ pub mod funcs {
             use libc::types::os::arch::c95::{c_int, size_t};
 
             extern {
-                pub unsafe fn posix_madvise(addr: *c_void,
-                                            len: size_t,
-                                            advice: c_int)
-                                            -> c_int;
+                pub fn posix_madvise(addr: *c_void,
+                                     len: size_t,
+                                     advice: c_int)
+                                     -> c_int;
             }
         }
     }
@@ -3079,33 +3017,28 @@ pub mod funcs {
 
         #[abi = "cdecl"]
         extern {
-            pub unsafe fn sysctl(name: *c_int,
-                                 namelen: c_uint,
-                                 oldp: *mut c_void,
-                                 oldlenp: *mut size_t,
-                                 newp: *c_void,
-                                 newlen: size_t)
-                                 -> c_int;
-
-            pub unsafe fn sysctlbyname(name: *c_char,
-                                       oldp: *mut c_void,
-                                       oldlenp: *mut size_t,
-                                       newp: *c_void,
-                                       newlen: size_t)
-                                       -> c_int;
-
-            pub unsafe fn sysctlnametomib(name: *c_char,
-                                          mibp: *mut c_int,
-                                          sizep: *mut size_t)
-                                          -> c_int;
-
-            pub unsafe fn getdtablesize() -> c_int;
-
-            pub unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
-                                  -> c_int;
-
-            pub unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
-                                  -> c_int;
+            pub fn sysctl(name: *c_int,
+                          namelen: c_uint,
+                          oldp: *mut c_void,
+                          oldlenp: *mut size_t,
+                          newp: *c_void,
+                          newlen: size_t)
+                          -> c_int;
+            pub fn sysctlbyname(name: *c_char,
+                                oldp: *mut c_void,
+                                oldlenp: *mut size_t,
+                                newp: *c_void,
+                                newlen: size_t)
+                                -> c_int;
+            pub fn sysctlnametomib(name: *c_char,
+                                   mibp: *mut c_int,
+                                   sizep: *mut size_t)
+                                   -> c_int;
+            pub fn getdtablesize() -> c_int;
+            pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                           -> c_int;
+            pub fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                           -> c_int;
         }
     }
 
@@ -3118,13 +3051,11 @@ pub mod funcs {
 
         #[abi = "cdecl"]
         extern {
-            pub unsafe fn getdtablesize() -> c_int;
-
-            pub unsafe fn madvise(addr: *c_void, len: size_t, advice: c_int)
-                                  -> c_int;
-
-            pub unsafe fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
-                                  -> c_int;
+            pub fn getdtablesize() -> c_int;
+            pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
+                           -> c_int;
+            pub fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)
+                           -> c_int;
         }
     }
 
@@ -3140,9 +3071,8 @@ pub mod funcs {
 
         #[abi = "cdecl"]
         extern {
-            pub unsafe fn _NSGetExecutablePath(buf: *mut c_char,
-                                               bufsize: *mut u32)
-                                               -> c_int;
+            pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32)
+                                        -> c_int;
         }
     }
 
@@ -3173,118 +3103,107 @@ pub mod funcs {
 
             #[abi = "stdcall"]
             extern "stdcall" {
-                pub unsafe fn GetEnvironmentVariableW(n: LPCWSTR,
-                                                      v: LPWSTR,
-                                                      nsize: DWORD)
-                                                      -> DWORD;
-                pub unsafe fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
-                                                      -> BOOL;
-                pub unsafe fn GetEnvironmentStringsA() -> LPTCH;
-                pub unsafe fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
-
-                pub unsafe fn GetModuleFileNameW(hModule: HMODULE,
-                                                 lpFilename: LPWSTR,
-                                                 nSize: DWORD)
-                                                 -> DWORD;
-                pub unsafe fn CreateDirectoryW(lpPathName: LPCWSTR,
-                                               lpSecurityAttributes:
-                                               LPSECURITY_ATTRIBUTES)
-                                            -> BOOL;
-                pub unsafe fn CopyFileW(lpExistingFileName: LPCWSTR,
+                pub fn GetEnvironmentVariableW(n: LPCWSTR,
+                                               v: LPWSTR,
+                                               nsize: DWORD)
+                                               -> DWORD;
+                pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
+                                               -> BOOL;
+                pub fn GetEnvironmentStringsA() -> LPTCH;
+                pub fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
+                pub fn GetModuleFileNameW(hModule: HMODULE,
+                                          lpFilename: LPWSTR,
+                                          nSize: DWORD)
+                                          -> DWORD;
+                pub fn CreateDirectoryW(lpPathName: LPCWSTR,
+                                        lpSecurityAttributes:
+                                        LPSECURITY_ATTRIBUTES)
+                                        -> BOOL;
+                pub fn CopyFileW(lpExistingFileName: LPCWSTR,
                                         lpNewFileName: LPCWSTR,
                                         bFailIfExists: BOOL)
                                         -> BOOL;
-                pub unsafe fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
-                pub unsafe fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-                pub unsafe fn SetCurrentDirectoryW(lpPathName: LPCWSTR)
-                                                   -> BOOL;
-
-                pub unsafe fn GetLastError() -> DWORD;
-                pub unsafe fn FindFirstFileW(fileName: *u16,
-                                             findFileData: HANDLE)
-                                             -> HANDLE;
-                pub unsafe fn FindNextFileW(findFile: HANDLE,
-                                            findFileData: HANDLE)
-                                            -> BOOL;
-                pub unsafe fn FindClose(findFile: HANDLE) -> BOOL;
-                pub unsafe fn DuplicateHandle(hSourceProcessHandle: HANDLE,
-                                              hSourceHandle: HANDLE,
-                                              hTargetProcessHandle: HANDLE,
-                                              lpTargetHandle: LPHANDLE,
-                                              dwDesiredAccess: DWORD,
-                                              bInheritHandle: BOOL,
-                                              dwOptions: DWORD)
-                                              -> BOOL;
-                pub unsafe fn CloseHandle(hObject: HANDLE) -> BOOL;
-                pub unsafe fn OpenProcess(dwDesiredAccess: DWORD,
-                                          bInheritHandle: BOOL,
-                                          dwProcessId: DWORD)
+                pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn GetLastError() -> DWORD;
+                pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
+                                      -> HANDLE;
+                pub fn FindNextFileW(findFile: HANDLE, findFileData: HANDLE)
+                                     -> BOOL;
+                pub fn FindClose(findFile: HANDLE) -> BOOL;
+                pub fn DuplicateHandle(hSourceProcessHandle: HANDLE,
+                                       hSourceHandle: HANDLE,
+                                       hTargetProcessHandle: HANDLE,
+                                       lpTargetHandle: LPHANDLE,
+                                       dwDesiredAccess: DWORD,
+                                       bInheritHandle: BOOL,
+                                       dwOptions: DWORD)
+                                       -> BOOL;
+                pub fn CloseHandle(hObject: HANDLE) -> BOOL;
+                pub fn OpenProcess(dwDesiredAccess: DWORD,
+                                   bInheritHandle: BOOL,
+                                   dwProcessId: DWORD)
+                                   -> HANDLE;
+                pub fn GetCurrentProcess() -> HANDLE;
+                pub fn CreateProcessA(lpApplicationName: LPCTSTR,
+                                      lpCommandLine: LPTSTR,
+                                      lpProcessAttributes:
+                                      LPSECURITY_ATTRIBUTES,
+                                      lpThreadAttributes:
+                                      LPSECURITY_ATTRIBUTES,
+                                      bInheritHandles: BOOL,
+                                      dwCreationFlags: DWORD,
+                                      lpEnvironment: LPVOID,
+                                      lpCurrentDirectory: LPCTSTR,
+                                      lpStartupInfo: LPSTARTUPINFO,
+                                      lpProcessInformation:
+                                      LPPROCESS_INFORMATION)
+                                      -> BOOL;
+                pub fn WaitForSingleObject(hHandle: HANDLE,
+                                           dwMilliseconds: DWORD)
+                                           -> DWORD;
+                pub fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint)
+                                        -> BOOL;
+                pub fn GetExitCodeProcess(hProcess: HANDLE,
+                                          lpExitCode: LPDWORD)
+                                          -> BOOL;
+                pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
+                pub fn VirtualAlloc(lpAddress: LPVOID,
+                                    dwSize: SIZE_T,
+                                    flAllocationType: DWORD,
+                                    flProtect: DWORD)
+                                    -> LPVOID;
+                pub fn VirtualFree(lpAddress: LPVOID,
+                                   dwSize: SIZE_T,
+                                   dwFreeType: DWORD)
+                                   -> BOOL;
+                pub fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                pub fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T)
+                                     -> BOOL;
+                pub fn VirtualProtect(lpAddress: LPVOID,
+                                      dwSize: SIZE_T,
+                                      flNewProtect: DWORD,
+                                      lpflOldProtect: LPDWORD)
+                                      -> BOOL;
+                pub fn VirtualQuery(lpAddress: LPCVOID,
+                                    lpBuffer: LPMEMORY_BASIC_INFORMATION,
+                                    dwLength: SIZE_T)
+                                    -> SIZE_T;
+                pub fn CreateFileMappingW(hFile: HANDLE,
+                                          lpAttributes: LPSECURITY_ATTRIBUTES,
+                                          flProtect: DWORD,
+                                          dwMaximumSizeHigh: DWORD,
+                                          dwMaximumSizeLow: DWORD,
+                                          lpName: LPCTSTR)
                                           -> HANDLE;
-                pub unsafe fn GetCurrentProcess() -> HANDLE;
-                pub unsafe fn CreateProcessA(lpApplicationName: LPCTSTR,
-                                             lpCommandLine: LPTSTR,
-                                             lpProcessAttributes:
-                                             LPSECURITY_ATTRIBUTES,
-                                             lpThreadAttributes:
-                                             LPSECURITY_ATTRIBUTES,
-                                             bInheritHandles: BOOL,
-                                             dwCreationFlags: DWORD,
-                                             lpEnvironment: LPVOID,
-                                             lpCurrentDirectory: LPCTSTR,
-                                             lpStartupInfo: LPSTARTUPINFO,
-                                             lpProcessInformation:
-                                             LPPROCESS_INFORMATION)
-                                             -> BOOL;
-                pub unsafe fn WaitForSingleObject(hHandle: HANDLE,
-                                                  dwMilliseconds: DWORD)
-                                                  -> DWORD;
-                pub unsafe fn TerminateProcess(hProcess: HANDLE,
-                                               uExitCode: c_uint)
-                                               -> BOOL;
-                pub unsafe fn GetExitCodeProcess(hProcess: HANDLE,
-                                                 lpExitCode: LPDWORD)
-                                                 -> BOOL;
-
-                pub unsafe fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
-                pub unsafe fn VirtualAlloc(lpAddress: LPVOID,
-                                           dwSize: SIZE_T,
-                                           flAllocationType: DWORD,
-                                           flProtect: DWORD)
-                                           -> LPVOID;
-                pub unsafe fn VirtualFree(lpAddress: LPVOID,
-                                          dwSize: SIZE_T,
-                                          dwFreeType: DWORD)
-                                          -> BOOL;
-                pub unsafe fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T)
-                                          -> BOOL;
-                pub unsafe fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T)
-                                            -> BOOL;
-                pub unsafe fn VirtualProtect(lpAddress: LPVOID,
-                                             dwSize: SIZE_T,
-                                             flNewProtect: DWORD,
-                                             lpflOldProtect: LPDWORD)
-                                             -> BOOL;
-                pub unsafe fn VirtualQuery(lpAddress: LPCVOID,
-                                           lpBuffer:
-                                           LPMEMORY_BASIC_INFORMATION,
-                                           dwLength: SIZE_T)
-                                           -> SIZE_T;
-
-                pub unsafe fn CreateFileMappingW(hFile: HANDLE,
-                                                 lpAttributes:
-                                                 LPSECURITY_ATTRIBUTES,
-                                                 flProtect: DWORD,
-                                                 dwMaximumSizeHigh: DWORD,
-                                                 dwMaximumSizeLow: DWORD,
-                                                 lpName: LPCTSTR)
-                                                 -> HANDLE;
-                pub unsafe fn MapViewOfFile(hFileMappingObject: HANDLE,
-                                            dwDesiredAccess: DWORD,
-                                            dwFileOffsetHigh: DWORD,
-                                            dwFileOffsetLow: DWORD,
-                                            dwNumberOfBytesToMap: SIZE_T)
-                                            -> LPVOID;
-                pub unsafe fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
+                pub fn MapViewOfFile(hFileMappingObject: HANDLE,
+                                     dwDesiredAccess: DWORD,
+                                     dwFileOffsetHigh: DWORD,
+                                     dwFileOffsetLow: DWORD,
+                                     dwNumberOfBytesToMap: SIZE_T)
+                                     -> LPVOID;
+                pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
             }
         }
 
@@ -3295,10 +3214,10 @@ pub mod funcs {
             #[nolink]
             extern {
                 #[link_name = "_commit"]
-                pub unsafe fn commit(fd: c_int) -> c_int;
+                pub fn commit(fd: c_int) -> c_int;
 
                 #[link_name = "_get_osfhandle"]
-                pub unsafe fn get_osfhandle(fd: c_int) -> c_long;
+                pub fn get_osfhandle(fd: c_int) -> c_long;
             }
         }
     }

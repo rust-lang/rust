@@ -1078,12 +1078,12 @@ mod testrt {
 
     #[nolink]
     extern {
-        pub unsafe fn rust_dbg_lock_create() -> *libc::c_void;
-        pub unsafe fn rust_dbg_lock_destroy(lock: *libc::c_void);
-        pub unsafe fn rust_dbg_lock_lock(lock: *libc::c_void);
-        pub unsafe fn rust_dbg_lock_unlock(lock: *libc::c_void);
-        pub unsafe fn rust_dbg_lock_wait(lock: *libc::c_void);
-        pub unsafe fn rust_dbg_lock_signal(lock: *libc::c_void);
+        pub fn rust_dbg_lock_create() -> *libc::c_void;
+        pub fn rust_dbg_lock_destroy(lock: *libc::c_void);
+        pub fn rust_dbg_lock_lock(lock: *libc::c_void);
+        pub fn rust_dbg_lock_unlock(lock: *libc::c_void);
+        pub fn rust_dbg_lock_wait(lock: *libc::c_void);
+        pub fn rust_dbg_lock_signal(lock: *libc::c_void);
     }
 }
 

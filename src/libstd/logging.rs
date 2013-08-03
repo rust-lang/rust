@@ -105,10 +105,10 @@ pub mod rustrt {
     use libc;
 
     extern {
-        pub unsafe fn rust_log_console_on();
-        pub unsafe fn rust_log_console_off();
-        pub unsafe fn rust_log_str(level: u32,
-                                   string: *libc::c_char,
-                                   size: libc::size_t);
+        pub fn rust_log_console_on();
+        pub fn rust_log_console_off();
+        pub fn rust_log_str(level: u32,
+                            string: *libc::c_char,
+                            size: libc::size_t);
     }
 }
