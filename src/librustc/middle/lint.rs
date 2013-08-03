@@ -76,7 +76,6 @@ pub enum lint {
     unused_imports,
     unnecessary_qualification,
     while_true,
-    deprecated_for_loop,
     path_statement,
     unrecognized_lint,
     non_camel_case_types,
@@ -166,13 +165,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: while_true,
         desc: "suggest using loop { } instead of while(true) { }",
         default: warn
-     }),
-
-    ("deprecated_for_loop",
-     LintSpec {
-         lint: deprecated_for_loop,
-         desc: "recommend using `foreach` or `do` instead of `for`",
-         default: deny
      }),
 
     ("path_statement",
@@ -606,24 +598,6 @@ fn lint_while_true() -> oldvisit::vt<@mut Context> {
                     }
                 }
                 _ => ()
-            }
-            oldvisit::visit_expr(e, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
-}
-
-fn lint_deprecated_for_loop() -> oldvisit::vt<@mut Context> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e, (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
-            match e.node {
-                ast::expr_call(_, _, ast::ForSugar) |
-                ast::expr_method_call(_, _, _, _, _, ast::ForSugar) => {
-                    cx.span_lint(deprecated_for_loop, e.span,
-                                "`for` is deprecated; use `foreach <pat> in \
-                                 <iterator>` or `do`")
-                }
-                _ => {}
             }
             oldvisit::visit_expr(e, (cx, vt));
         },
@@ -1174,7 +1148,6 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
 
     // Register each of the lint passes with the context
     cx.add_oldvisit_lint(lint_while_true());
-    cx.add_oldvisit_lint(lint_deprecated_for_loop());
     cx.add_oldvisit_lint(lint_path_statement());
     cx.add_oldvisit_lint(lint_heap());
     cx.add_oldvisit_lint(lint_type_limits());

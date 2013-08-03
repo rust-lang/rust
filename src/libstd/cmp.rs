@@ -236,7 +236,9 @@ mod test {
         fn t(o1: Ordering, o2: Ordering, e: Ordering) {
             assert_eq!(lexical_ordering(o1, o2), e);
         }
-        for [Less, Equal, Greater].each |&o| {
+
+        let xs = [Less, Equal, Greater];
+        foreach &o in xs.iter() {
             t(Less, o, Less);
             t(Equal, o, o);
             t(Greater, o, Greater);
