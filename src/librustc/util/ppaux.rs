@@ -239,7 +239,6 @@ fn mutability_to_str(m: ast::mutability) -> ~str {
     match m {
         ast::m_mutbl => ~"mut ",
         ast::m_imm => ~"",
-        ast::m_const => ~"const "
     }
 }
 

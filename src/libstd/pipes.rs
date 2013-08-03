@@ -86,6 +86,8 @@ bounded and unbounded protocols allows for less code duplication.
 
 use container::Container;
 use cast::{forget, transmute, transmute_copy, transmute_mut};
+use cast;
+use cmp::Equiv;
 use either::{Either, Left, Right};
 use iterator::{Iterator, IteratorUtil};
 use kinds::Send;
@@ -353,7 +355,10 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &mut *p_ };
-    assert_eq!(ptr::to_unsafe_ptr(&(p.header)), header);
+    unsafe {
+        assert_eq!(ptr::to_unsafe_ptr(&(p.header)),
+                   cast::transmute_immut_unsafe(header));
+    }
     assert!(p.payload.is_none());
     p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
@@ -621,7 +626,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
         let mut pos = None;
         for (i, p) in pkts.mut_iter().enumerate() {
-            if p.header() == event {
+            if p.header().equiv(&event) {
                 pos = Some(i);
                 break;
             }

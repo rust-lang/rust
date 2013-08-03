@@ -417,7 +417,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
 fn parse_mutability(st: &mut PState) -> ast::mutability {
     match peek(st) {
       'm' => { next(st); ast::m_mutbl }
-      '?' => { next(st); ast::m_const }
       _ => { ast::m_imm }
     }
 }

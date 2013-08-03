@@ -13,7 +13,7 @@ struct Foo {
 }
 
 impl Foo {
-    pub fn f(&const self) {}
+    pub fn f(&self) {}
 }
 
 fn g(x: &mut Foo) {
