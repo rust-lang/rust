@@ -17,7 +17,7 @@ use util::ppaux;
 
 use syntax::ast::*;
 use syntax::codemap;
-use syntax::{visit, ast_util, ast_map};
+use syntax::{oldvisit, ast_util, ast_map};
 
 pub fn check_crate(sess: Session,
                    crate: &Crate,
@@ -25,12 +25,12 @@ pub fn check_crate(sess: Session,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
                    tcx: ty::ctxt) {
-    visit::visit_crate(crate, (false, visit::mk_vt(@visit::Visitor {
+    oldvisit::visit_crate(crate, (false, oldvisit::mk_vt(@oldvisit::Visitor {
         visit_item: |a,b| check_item(sess, ast_map, def_map, a, b),
         visit_pat: check_pat,
         visit_expr: |a,b|
             check_expr(sess, def_map, method_map, tcx, a, b),
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     })));
     sess.abort_if_errors();
 }
@@ -40,7 +40,7 @@ pub fn check_item(sess: Session,
                   def_map: resolve::DefMap,
                   it: @item,
                   (_is_const, v): (bool,
-                                   visit::vt<bool>)) {
+                                   oldvisit::vt<bool>)) {
     match it.node {
       item_static(_, _, ex) => {
         (v.visit_expr)(ex, (true, v));
@@ -53,11 +53,11 @@ pub fn check_item(sess: Session,
             }
         }
       }
-      _ => visit::visit_item(it, (false, v))
+      _ => oldvisit::visit_item(it, (false, v))
     }
 }
 
-pub fn check_pat(p: @pat, (_is_const, v): (bool, visit::vt<bool>)) {
+pub fn check_pat(p: @pat, (_is_const, v): (bool, oldvisit::vt<bool>)) {
     fn is_str(e: @expr) -> bool {
         match e.node {
             expr_vstore(
@@ -77,7 +77,7 @@ pub fn check_pat(p: @pat, (_is_const, v): (bool, visit::vt<bool>)) {
         if !is_str(a) { (v.visit_expr)(a, (true, v)); }
         if !is_str(b) { (v.visit_expr)(b, (true, v)); }
       }
-      _ => visit::visit_pat(p, (false, v))
+      _ => oldvisit::visit_pat(p, (false, v))
     }
 }
 
@@ -87,7 +87,7 @@ pub fn check_expr(sess: Session,
                   tcx: ty::ctxt,
                   e: @expr,
                   (is_const, v): (bool,
-                                  visit::vt<bool>)) {
+                                  oldvisit::vt<bool>)) {
     if is_const {
         match e.node {
           expr_unary(_, deref, _) => { }
@@ -191,7 +191,7 @@ pub fn check_expr(sess: Session,
       }
       _ => ()
     }
-    visit::visit_expr(e, (is_const, v));
+    oldvisit::visit_expr(e, (is_const, v));
 }
 
 #[deriving(Clone)]
@@ -217,23 +217,23 @@ pub fn check_item_recursion(sess: Session,
         idstack: @mut ~[]
     };
 
-    let visitor = visit::mk_vt(@visit::Visitor {
+    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_item: visit_item,
         visit_expr: visit_expr,
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
     (visitor.visit_item)(it, (env, visitor));
 
-    fn visit_item(it: @item, (env, v): (env, visit::vt<env>)) {
+    fn visit_item(it: @item, (env, v): (env, oldvisit::vt<env>)) {
         if env.idstack.iter().any(|x| x == &(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);
-        visit::visit_item(it, (env, v));
+        oldvisit::visit_item(it, (env, v));
         env.idstack.pop();
     }
 
-    fn visit_expr(e: @expr, (env, v): (env, visit::vt<env>)) {
+    fn visit_expr(e: @expr, (env, v): (env, oldvisit::vt<env>)) {
         match e.node {
             expr_path(*) => match env.def_map.find(&e.id) {
                 Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
@@ -247,6 +247,6 @@ pub fn check_item_recursion(sess: Session,
             },
             _ => ()
         }
-        visit::visit_expr(e, (env, v));
+        oldvisit::visit_expr(e, (env, v));
     }
 }

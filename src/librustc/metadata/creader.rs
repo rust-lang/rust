@@ -17,14 +17,14 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use std::hashmap::HashMap;
+use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
-use syntax::visit;
-use syntax::ast;
+use syntax::oldvisit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -46,12 +46,12 @@ pub fn read_crates(diag: @span_handler,
         intr: intr
     };
     let v =
-        visit::mk_simple_visitor(@visit::SimpleVisitor {
+        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
             visit_view_item: |a| visit_view_item(e, a),
             visit_item: |a| visit_item(e, a),
-            .. *visit::default_simple_visitor()});
+            .. *oldvisit::default_simple_visitor()});
     visit_crate(e, crate);
-    visit::visit_crate(crate, ((), v));
+    oldvisit::visit_crate(crate, ((), v));
     dump_crates(*e.crate_cache);
     warn_if_multiple_versions(e, diag, *e.crate_cache);
 }

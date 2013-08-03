@@ -92,7 +92,7 @@ pub unsafe fn local_free(ptr: *libc::c_char) {
 
             extern {
                 #[fast_ffi]
-                unsafe fn rust_upcall_free_noswitch(ptr: *libc::c_char);
+                fn rust_upcall_free_noswitch(ptr: *libc::c_char);
             }
         }
         _ => {

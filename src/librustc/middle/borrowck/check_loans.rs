@@ -27,7 +27,7 @@ use syntax::ast::{m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::visit;
+use syntax::oldvisit;
 use util::ppaux::Repr;
 
 #[deriving(Clone)]
@@ -54,12 +54,14 @@ pub fn check_loans(bccx: @BorrowckCtxt,
         reported: @mut HashSet::new(),
     };
 
-    let vt = visit::mk_vt(@visit::Visitor {visit_expr: check_loans_in_expr,
-                                           visit_local: check_loans_in_local,
-                                           visit_block: check_loans_in_block,
-                                           visit_pat: check_loans_in_pat,
-                                           visit_fn: check_loans_in_fn,
-                                           .. *visit::default_visitor()});
+    let vt = oldvisit::mk_vt(@oldvisit::Visitor {
+        visit_expr: check_loans_in_expr,
+        visit_local: check_loans_in_local,
+        visit_block: check_loans_in_block,
+        visit_pat: check_loans_in_pat,
+        visit_fn: check_loans_in_fn,
+        .. *oldvisit::default_visitor()
+    });
     (vt.visit_block)(body, (clcx, vt));
 }
 
@@ -612,27 +614,27 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 }
 
-fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
+fn check_loans_in_fn<'a>(fk: &oldvisit::fn_kind,
                          decl: &ast::fn_decl,
                          body: &ast::Block,
                          sp: span,
                          id: ast::NodeId,
                          (this, visitor): (CheckLoanCtxt<'a>,
-                                           visit::vt<CheckLoanCtxt<'a>>)) {
+                                           oldvisit::vt<CheckLoanCtxt<'a>>)) {
     match *fk {
-        visit::fk_item_fn(*) |
-        visit::fk_method(*) => {
+        oldvisit::fk_item_fn(*) |
+        oldvisit::fk_method(*) => {
             // Don't process nested items.
             return;
         }
 
-        visit::fk_anon(*) |
-        visit::fk_fn_block(*) => {
+        oldvisit::fk_anon(*) |
+        oldvisit::fk_fn_block(*) => {
             check_captured_variables(this, id, sp);
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, id, (this, visitor));
+    oldvisit::visit_fn(fk, decl, body, sp, id, (this, visitor));
 
     fn check_captured_variables(this: CheckLoanCtxt,
                                 closure_id: ast::NodeId,
@@ -677,14 +679,14 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
 
 fn check_loans_in_local<'a>(local: @ast::Local,
                             (this, vt): (CheckLoanCtxt<'a>,
-                                         visit::vt<CheckLoanCtxt<'a>>)) {
-    visit::visit_local(local, (this, vt));
+                                         oldvisit::vt<CheckLoanCtxt<'a>>)) {
+    oldvisit::visit_local(local, (this, vt));
 }
 
 fn check_loans_in_expr<'a>(expr: @ast::expr,
                            (this, vt): (CheckLoanCtxt<'a>,
-                                        visit::vt<CheckLoanCtxt<'a>>)) {
-    visit::visit_expr(expr, (this, vt));
+                                        oldvisit::vt<CheckLoanCtxt<'a>>)) {
+    oldvisit::visit_expr(expr, (this, vt));
 
     debug!("check_loans_in_expr(expr=%s)",
            expr.repr(this.tcx()));
@@ -737,17 +739,17 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
 
 fn check_loans_in_pat<'a>(pat: @ast::pat,
                           (this, vt): (CheckLoanCtxt<'a>,
-                                       visit::vt<CheckLoanCtxt<'a>>))
+                                       oldvisit::vt<CheckLoanCtxt<'a>>))
 {
     this.check_for_conflicting_loans(pat.id);
     this.check_move_out_from_id(pat.id, pat.span);
-    visit::visit_pat(pat, (this, vt));
+    oldvisit::visit_pat(pat, (this, vt));
 }
 
 fn check_loans_in_block<'a>(blk: &ast::Block,
                             (this, vt): (CheckLoanCtxt<'a>,
-                                         visit::vt<CheckLoanCtxt<'a>>))
+                                         oldvisit::vt<CheckLoanCtxt<'a>>))
 {
-    visit::visit_block(blk, (this, vt));
+    oldvisit::visit_block(blk, (this, vt));
     this.check_for_conflicting_loans(blk.id);
 }

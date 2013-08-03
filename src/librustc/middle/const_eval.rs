@@ -14,7 +14,7 @@ use middle::astencode;
 use middle::ty;
 use middle;
 
-use syntax::{ast, ast_map, ast_util, visit};
+use syntax::{ast, ast_map, ast_util, oldvisit};
 use syntax::ast::*;
 
 use std::float;
@@ -267,11 +267,11 @@ pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
 
 pub fn process_crate(crate: &ast::Crate,
                      tcx: ty::ctxt) {
-    let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
+    let v = oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
         visit_expr_post: |e| { classify(e, tcx); },
-        .. *visit::default_simple_visitor()
+        .. *oldvisit::default_simple_visitor()
     });
-    visit::visit_crate(crate, ((), v));
+    oldvisit::visit_crate(crate, ((), v));
     tcx.sess.abort_if_errors();
 }
 

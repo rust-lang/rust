@@ -258,19 +258,17 @@ pub mod rustrt {
 
     extern {
         #[rust_stack]
-        pub unsafe fn rust_get_task() -> *rust_task;
+        pub fn rust_get_task() -> *rust_task;
         #[rust_stack]
-        pub unsafe fn rust_task_ref(task: *rust_task);
-        pub unsafe fn rust_task_deref(task: *rust_task);
+        pub fn rust_task_ref(task: *rust_task);
+        pub fn rust_task_deref(task: *rust_task);
 
         #[rust_stack]
-        pub unsafe fn task_clear_event_reject(task: *rust_task);
+        pub fn task_clear_event_reject(task: *rust_task);
 
-        pub unsafe fn task_wait_event(this: *rust_task,
-                                      killed: &mut *libc::c_void)
-                                   -> bool;
-        pub unsafe fn task_signal_event(target: *rust_task,
-                                        event: *libc::c_void);
+        pub fn task_wait_event(this: *rust_task, killed: &mut *libc::c_void)
+                               -> bool;
+        pub fn task_signal_event(target: *rust_task, event: *libc::c_void);
     }
 }
 

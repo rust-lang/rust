@@ -42,7 +42,7 @@ use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;
 use syntax::parse::token;
-use syntax::visit;
+use syntax::oldvisit;
 
 pub type type_uses = uint; // Bitmask
 pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
@@ -407,27 +407,27 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
 }
 
 pub fn handle_body(cx: &Context, body: &Block) {
-    let v = visit::mk_vt(@visit::Visitor {
+    let v = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_expr: |e, (cx, v)| {
-            visit::visit_expr(e, (cx, v));
+            oldvisit::visit_expr(e, (cx, v));
             mark_for_expr(cx, e);
         },
         visit_local: |l, (cx, v)| {
-            visit::visit_local(l, (cx, v));
+            oldvisit::visit_local(l, (cx, v));
             node_type_needs(cx, use_repr, l.id);
         },
         visit_pat: |p, (cx, v)| {
-            visit::visit_pat(p, (cx, v));
+            oldvisit::visit_pat(p, (cx, v));
             node_type_needs(cx, use_repr, p.id);
         },
         visit_block: |b, (cx, v)| {
-            visit::visit_block(b, (cx, v));
+            oldvisit::visit_block(b, (cx, v));
             foreach e in b.expr.iter() {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
         visit_item: |_i, (_cx, _v)| { },
-        ..*visit::default_visitor()
+        ..*oldvisit::default_visitor()
     });
     (v.visit_block)(body, (cx, v));
 }

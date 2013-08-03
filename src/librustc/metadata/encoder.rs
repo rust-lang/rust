@@ -39,7 +39,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
-use syntax::{ast_util, visit};
+use syntax::{ast_util, oldvisit};
 use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
@@ -1151,9 +1151,9 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(_, purity, _) => {
+      foreign_item_fn(*) => {
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, purity_fn_family(purity));
+        encode_family(ebml_w, purity_fn_family(impure_fn));
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ecx, ebml_w, nitem.ident);
@@ -1199,12 +1199,12 @@ fn encode_info_for_items(ecx: &EncodeContext,
     // See comment in `encode_side_tables_for_ii` in astencode
     let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
 
-    visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
+    oldvisit::visit_crate(crate, ((), oldvisit::mk_vt(@oldvisit::Visitor {
         visit_expr: |_e, (_cx, _v)| { },
         visit_item: {
             let ebml_w = (*ebml_w).clone();
             |i, (cx, v)| {
-                visit::visit_item(i, (cx, v));
+                oldvisit::visit_item(i, (cx, v));
                 match items.get_copy(&i.id) {
                     ast_map::node_item(_, pt) => {
                         let mut ebml_w = ebml_w.clone();
@@ -1219,7 +1219,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
         visit_foreign_item: {
             let ebml_w = (*ebml_w).clone();
             |ni, (cx, v)| {
-                visit::visit_foreign_item(ni, (cx, v));
+                oldvisit::visit_foreign_item(ni, (cx, v));
                 match items.get_copy(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         debug!("writing foreign item %s::%s",
@@ -1243,7 +1243,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                 }
             }
         },
-        ..*visit::default_visitor()
+        ..*oldvisit::default_visitor()
     })));
     ebml_w.end_tag();
     return /*bad*/(*index).clone();

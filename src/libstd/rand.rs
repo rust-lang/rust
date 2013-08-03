@@ -252,8 +252,8 @@ pub mod rustrt {
     use libc::size_t;
 
     extern {
-        pub unsafe fn rand_seed_size() -> size_t;
-        pub unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
+        pub fn rand_seed_size() -> size_t;
+        pub fn rand_gen_seed(buf: *mut u8, sz: size_t);
     }
 }
 
@@ -1085,10 +1085,9 @@ mod test {
             pub enum rust_rng {}
 
             extern {
-                pub unsafe fn rand_new_seeded(buf: *u8, sz: size_t)
-                                              -> *rust_rng;
-                pub unsafe fn rand_next(rng: *rust_rng) -> u32;
-                pub unsafe fn rand_free(rng: *rust_rng);
+                pub fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
+                pub fn rand_next(rng: *rust_rng) -> u32;
+                pub fn rand_free(rng: *rust_rng);
             }
         }
 

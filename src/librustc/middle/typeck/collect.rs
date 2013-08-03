@@ -56,7 +56,7 @@ use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, explicit_self_to_str};
-use syntax::visit;
+use syntax::oldvisit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
@@ -76,12 +76,12 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
         Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
     }
 
-    visit::visit_crate(
+    oldvisit::visit_crate(
         crate, ((),
-        visit::mk_simple_visitor(@visit::SimpleVisitor {
+        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
             visit_item: |a| convert(ccx, a),
             visit_foreign_item: |a|convert_foreign(ccx, a),
-            .. *visit::default_simple_visitor()
+            .. *oldvisit::default_simple_visitor()
         })));
 }
 
@@ -1137,7 +1137,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                           abis: AbiSet) -> ty::ty_param_bounds_and_ty
 {
     match it.node {
-        ast::foreign_item_fn(ref fn_decl, _, ref generics) => {
+        ast::foreign_item_fn(ref fn_decl, ref generics) => {
             ty_of_foreign_fn_decl(ccx,
                                   fn_decl,
                                   local_def(it.id),

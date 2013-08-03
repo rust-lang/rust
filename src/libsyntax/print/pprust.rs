@@ -454,8 +454,8 @@ pub fn print_foreign_item(s: @ps, item: &ast::foreign_item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     match item.node {
-      ast::foreign_item_fn(ref decl, purity, ref generics) => {
-        print_fn(s, decl, Some(purity), AbiSet::Rust(), item.ident, generics, None,
+      ast::foreign_item_fn(ref decl, ref generics) => {
+        print_fn(s, decl, None, AbiSet::Rust(), item.ident, generics, None,
                  item.vis);
         end(s); // end head-ibox
         word(s.s, ";");

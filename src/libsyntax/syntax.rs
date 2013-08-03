@@ -43,6 +43,7 @@ pub mod ast_util;
 pub mod ast_map;
 pub mod visit;
 pub mod fold;
+pub mod oldvisit;
 
 
 pub mod parse;

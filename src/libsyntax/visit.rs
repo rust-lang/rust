@@ -28,10 +28,6 @@ use opt_vec::OptVec;
 // execute before AST node B, then A is visited first.  The borrow checker in
 // particular relies on this property.
 
-// Our typesystem doesn't do circular types, so the visitor record can not
-// hold functions that take visitors. A vt enum is used to break the cycle.
-pub enum vt<E> { mk_vt(visitor<E>), }
-
 pub enum fn_kind<'self> {
     // fn foo() or extern "Abi" fn foo()
     fk_item_fn(ident, &'self Generics, purity, AbiSet),
@@ -70,702 +66,682 @@ pub fn generics_of_fn(fk: &fn_kind) -> Generics {
     }
 }
 
-pub struct Visitor<E> {
-    visit_mod: @fn(&_mod, span, NodeId, (E, vt<E>)),
-    visit_view_item: @fn(&view_item, (E, vt<E>)),
-    visit_foreign_item: @fn(@foreign_item, (E, vt<E>)),
-    visit_item: @fn(@item, (E, vt<E>)),
-    visit_local: @fn(@Local, (E, vt<E>)),
-    visit_block: @fn(&Block, (E, vt<E>)),
-    visit_stmt: @fn(@stmt, (E, vt<E>)),
-    visit_arm: @fn(&arm, (E, vt<E>)),
-    visit_pat: @fn(@pat, (E, vt<E>)),
-    visit_decl: @fn(@decl, (E, vt<E>)),
-    visit_expr: @fn(@expr, (E, vt<E>)),
-    visit_expr_post: @fn(@expr, (E, vt<E>)),
-    visit_ty: @fn(&Ty, (E, vt<E>)),
-    visit_generics: @fn(&Generics, (E, vt<E>)),
-    visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, NodeId, (E, vt<E>)),
-    visit_ty_method: @fn(&TypeMethod, (E, vt<E>)),
-    visit_trait_method: @fn(&trait_method, (E, vt<E>)),
-    visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId, (E, vt<E>)),
-    visit_struct_field: @fn(@struct_field, (E, vt<E>)),
+pub trait Visitor<E> {
+    fn visit_mod(@mut self, &_mod, span, NodeId, E);
+    fn visit_view_item(@mut self, &view_item, E);
+    fn visit_foreign_item(@mut self, @foreign_item, E);
+    fn visit_item(@mut self, @item, E);
+    fn visit_local(@mut self, @Local, E);
+    fn visit_block(@mut self, &Block, E);
+    fn visit_stmt(@mut self, @stmt, E);
+    fn visit_arm(@mut self, &arm, E);
+    fn visit_pat(@mut self, @pat, E);
+    fn visit_decl(@mut self, @decl, E);
+    fn visit_expr(@mut self, @expr, E);
+    fn visit_expr_post(@mut self, @expr, E);
+    fn visit_ty(@mut self, &Ty, E);
+    fn visit_generics(@mut self, &Generics, E);
+    fn visit_fn(@mut self, &fn_kind, &fn_decl, &Block, span, NodeId, E);
+    fn visit_ty_method(@mut self, &TypeMethod, E);
+    fn visit_trait_method(@mut self, &trait_method, E);
+    fn visit_struct_def(@mut self, @struct_def, ident, &Generics, NodeId, E);
+    fn visit_struct_field(@mut self, @struct_field, E);
 }
 
-pub type visitor<E> = @Visitor<E>;
-
-pub fn default_visitor<E:Clone>() -> visitor<E> {
-    return @Visitor {
-        visit_mod: |a,b,c,d|visit_mod::<E>(a, b, c, d),
-        visit_view_item: |a,b|visit_view_item::<E>(a, b),
-        visit_foreign_item: |a,b|visit_foreign_item::<E>(a, b),
-        visit_item: |a,b|visit_item::<E>(a, b),
-        visit_local: |a,b|visit_local::<E>(a, b),
-        visit_block: |a,b|visit_block::<E>(a, b),
-        visit_stmt: |a,b|visit_stmt::<E>(a, b),
-        visit_arm: |a,b|visit_arm::<E>(a, b),
-        visit_pat: |a,b|visit_pat::<E>(a, b),
-        visit_decl: |a,b|visit_decl::<E>(a, b),
-        visit_expr: |a,b|visit_expr::<E>(a, b),
-        visit_expr_post: |_a,_b| (),
-        visit_ty: |a,b|skip_ty::<E>(a, b),
-        visit_generics: |a,b|visit_generics::<E>(a, b),
-        visit_fn: |a,b,c,d,e,f|visit_fn::<E>(a, b, c, d, e, f),
-        visit_ty_method: |a,b|visit_ty_method::<E>(a, b),
-        visit_trait_method: |a,b|visit_trait_method::<E>(a, b),
-        visit_struct_def: |a,b,c,d,e|visit_struct_def::<E>(a, b, c, d, e),
-        visit_struct_field: |a,b|visit_struct_field::<E>(a, b),
-    };
+pub fn visit_crate<E:Clone>(visitor: @Visitor<E>, crate: &Crate, env: E) {
+    visitor.visit_mod(&crate.module, crate.span, CRATE_NODE_ID, env)
 }
 
-pub fn visit_crate<E:Clone>(c: &Crate, (e, v): (E, vt<E>)) {
-    (v.visit_mod)(&c.module, c.span, CRATE_NODE_ID, (e, v));
-}
-
-pub fn visit_mod<E:Clone>(m: &_mod,
-                          _sp: span,
-                          _id: NodeId,
-                          (e, v): (E, vt<E>)) {
-    foreach vi in m.view_items.iter() {
-        (v.visit_view_item)(vi, (e.clone(), v));
+pub fn visit_mod<E:Clone>(visitor: @Visitor<E>, module: &_mod, env: E) {
+    foreach view_item in module.view_items.iter() {
+        visitor.visit_view_item(view_item, env.clone())
     }
-    foreach i in m.items.iter() {
-        (v.visit_item)(*i, (e.clone(), v));
+    foreach item in module.items.iter() {
+        visitor.visit_item(*item, env.clone())
     }
 }
 
-pub fn visit_view_item<E>(_vi: &view_item, (_e, _v): (E, vt<E>)) { }
+pub fn visit_view_item<E:Clone>(_: @Visitor<E>, _: &view_item, _: E) {
+    // Empty!
+}
 
-pub fn visit_local<E:Clone>(loc: &Local, (e, v): (E, vt<E>)) {
-    (v.visit_pat)(loc.pat, (e.clone(), v));
-    (v.visit_ty)(&loc.ty, (e.clone(), v));
-    match loc.init {
-      None => (),
-      Some(ex) => (v.visit_expr)(ex, (e, v))
+pub fn visit_local<E:Clone>(visitor: @Visitor<E>, local: &Local, env: E) {
+    visitor.visit_pat(local.pat, env.clone());
+    visitor.visit_ty(&local.ty, env.clone());
+    match local.init {
+        None => {}
+        Some(initializer) => visitor.visit_expr(initializer, env),
     }
 }
 
-fn visit_trait_ref<E:Clone>(tref: &ast::trait_ref, (e, v): (E, vt<E>)) {
-    visit_path(&tref.path, (e, v));
+fn visit_trait_ref<E:Clone>(visitor: @Visitor<E>,
+                            trait_ref: &ast::trait_ref,
+                            env: E) {
+    visit_path(visitor, &trait_ref.path, env)
 }
 
-pub fn visit_item<E:Clone>(i: &item, (e, v): (E, vt<E>)) {
-    match i.node {
-        item_static(ref t, _, ex) => {
-            (v.visit_ty)(t, (e.clone(), v));
-            (v.visit_expr)(ex, (e.clone(), v));
+pub fn visit_item<E:Clone>(visitor: @Visitor<E>, item: &item, env: E) {
+    match item.node {
+        item_static(ref typ, _, expr) => {
+            visitor.visit_ty(typ, env.clone());
+            visitor.visit_expr(expr, env);
         }
-        item_fn(ref decl, purity, abi, ref generics, ref body) => {
-            (v.visit_fn)(
-                &fk_item_fn(
-                    i.ident,
-                    generics,
-                    purity,
-                    abi
-                ),
-                decl,
-                body,
-                i.span,
-                i.id,
-                (e,
-                 v)
-            );
+        item_fn(ref declaration, purity, abi, ref generics, ref body) => {
+            visitor.visit_fn(&fk_item_fn(item.ident, generics, purity, abi),
+                             declaration,
+                             body,
+                             item.span,
+                             item.id,
+                             env)
         }
-        item_mod(ref m) => (v.visit_mod)(m, i.span, i.id, (e, v)),
-        item_foreign_mod(ref nm) => {
-            foreach vi in nm.view_items.iter() {
-                (v.visit_view_item)(vi, (e.clone(), v));
+        item_mod(ref module) => {
+            visitor.visit_mod(module, item.span, item.id, env)
+        }
+        item_foreign_mod(ref foreign_module) => {
+            foreach view_item in foreign_module.view_items.iter() {
+                visitor.visit_view_item(view_item, env.clone())
             }
-            foreach ni in nm.items.iter() {
-                (v.visit_foreign_item)(*ni, (e.clone(), v));
+            foreach foreign_item in foreign_module.items.iter() {
+                visitor.visit_foreign_item(*foreign_item, env.clone())
             }
         }
-        item_ty(ref t, ref tps) => {
-            (v.visit_ty)(t, (e.clone(), v));
-            (v.visit_generics)(tps, (e, v));
+        item_ty(ref typ, ref type_parameters) => {
+            visitor.visit_ty(typ, env.clone());
+            visitor.visit_generics(type_parameters, env)
         }
-        item_enum(ref enum_definition, ref tps) => {
-            (v.visit_generics)(tps, (e.clone(), v));
-            visit_enum_def(
-                enum_definition,
-                tps,
-                (e, v)
-            );
+        item_enum(ref enum_definition, ref type_parameters) => {
+            visitor.visit_generics(type_parameters, env.clone());
+            visit_enum_def(visitor, enum_definition, type_parameters, env)
         }
-        item_impl(ref tps, ref traits, ref ty, ref methods) => {
-            (v.visit_generics)(tps, (e.clone(), v));
-            foreach p in traits.iter() {
-                visit_trait_ref(p, (e.clone(), v));
+        item_impl(ref type_parameters,
+                  ref trait_references,
+                  ref typ,
+                  ref methods) => {
+            visitor.visit_generics(type_parameters, env.clone());
+            foreach trait_reference in trait_references.iter() {
+                visit_trait_ref(visitor, trait_reference, env.clone())
             }
-            (v.visit_ty)(ty, (e.clone(), v));
-            foreach m in methods.iter() {
-                visit_method_helper(*m, (e.clone(), v))
-            }
-        }
-        item_struct(struct_def, ref generics) => {
-            (v.visit_generics)(generics, (e.clone(), v));
-            (v.visit_struct_def)(struct_def, i.ident, generics, i.id, (e, v));
-        }
-        item_trait(ref generics, ref traits, ref methods) => {
-            (v.visit_generics)(generics, (e.clone(), v));
-            foreach p in traits.iter() {
-                visit_path(&p.path, (e.clone(), v));
-            }
-            foreach m in methods.iter() {
-                (v.visit_trait_method)(m, (e.clone(), v));
+            visitor.visit_ty(typ, env.clone());
+            foreach method in methods.iter() {
+                visit_method_helper(visitor, *method, env.clone())
             }
         }
-        item_mac(ref m) => visit_mac(m, (e, v))
+        item_struct(struct_definition, ref generics) => {
+            visitor.visit_generics(generics, env.clone());
+            visitor.visit_struct_def(struct_definition,
+                                     item.ident,
+                                     generics,
+                                     item.id,
+                                     env)
+        }
+        item_trait(ref generics, ref trait_paths, ref methods) => {
+            visitor.visit_generics(generics, env.clone());
+            foreach trait_path in trait_paths.iter() {
+                visit_path(visitor, &trait_path.path, env.clone())
+            }
+            foreach method in methods.iter() {
+                visitor.visit_trait_method(method, env.clone())
+            }
+        }
+        item_mac(ref macro) => visit_mac(visitor, macro, env),
     }
 }
 
-pub fn visit_enum_def<E:Clone>(enum_definition: &ast::enum_def,
-                               tps: &Generics,
-                               (e, v): (E, vt<E>)) {
-    foreach vr in enum_definition.variants.iter() {
-        match vr.node.kind {
-            tuple_variant_kind(ref variant_args) => {
-                foreach va in variant_args.iter() {
-                    (v.visit_ty)(&va.ty, (e.clone(), v));
+pub fn visit_enum_def<E:Clone>(visitor: @Visitor<E>,
+                               enum_definition: &ast::enum_def,
+                               generics: &Generics,
+                               env: E) {
+    foreach variant in enum_definition.variants.iter() {
+        match variant.node.kind {
+            tuple_variant_kind(ref variant_arguments) => {
+                foreach variant_argument in variant_arguments.iter() {
+                    visitor.visit_ty(&variant_argument.ty, env.clone())
                 }
             }
-            struct_variant_kind(struct_def) => {
-                (v.visit_struct_def)(struct_def, vr.node.name, tps,
-                                     vr.node.id, (e.clone(), v));
+            struct_variant_kind(struct_definition) => {
+                visitor.visit_struct_def(struct_definition,
+                                         variant.node.name,
+                                         generics,
+                                         variant.node.id,
+                                         env.clone())
             }
-        }
-        // Visit the disr expr if it exists
-        foreach ex in vr.node.disr_expr.iter() {
-            (v.visit_expr)(*ex, (e.clone(), v))
         }
     }
 }
 
-pub fn skip_ty<E>(_t: &Ty, (_e,_v): (E, vt<E>)) {}
+pub fn skip_ty<E>(_: @Visitor<E>, _: &Ty, _: E) {
+    // Empty!
+}
 
-pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
-    match t.node {
-        ty_box(ref mt) | ty_uniq(ref mt) |
-        ty_vec(ref mt) | ty_ptr(ref mt) | ty_rptr(_, ref mt) => {
-            (v.visit_ty)(mt.ty, (e, v));
-        },
-        ty_tup(ref ts) => {
-            foreach tt in ts.iter() {
-                (v.visit_ty)(tt, (e.clone(), v));
+pub fn visit_ty<E:Clone>(visitor: @Visitor<E>, typ: &Ty, env: E) {
+    match typ.node {
+        ty_box(ref mutable_type) | ty_uniq(ref mutable_type) |
+        ty_vec(ref mutable_type) | ty_ptr(ref mutable_type) |
+        ty_rptr(_, ref mutable_type) => {
+            visitor.visit_ty(mutable_type.ty, env)
+        }
+        ty_tup(ref tuple_element_types) => {
+            foreach tuple_element_type in tuple_element_types.iter() {
+                visitor.visit_ty(tuple_element_type, env.clone())
             }
-        },
-        ty_closure(ref f) => {
-            foreach a in f.decl.inputs.iter() {
-                (v.visit_ty)(&a.ty, (e.clone(), v));
+        }
+        ty_closure(ref function_declaration) => {
+             foreach argument in function_declaration.decl.inputs.iter() {
+                visitor.visit_ty(&argument.ty, env.clone())
+             }
+             visitor.visit_ty(&function_declaration.decl.output, env.clone());
+             foreach bounds in function_declaration.bounds.iter() {
+                visit_ty_param_bounds(visitor, bounds, env.clone())
+             }
+        }
+        ty_bare_fn(ref function_declaration) => {
+            foreach argument in function_declaration.decl.inputs.iter() {
+                visitor.visit_ty(&argument.ty, env.clone())
             }
-            (v.visit_ty)(&f.decl.output, (e.clone(), v));
-            do f.bounds.map |bounds| {
-                visit_ty_param_bounds(bounds, (e.clone(), v));
-            };
-        },
-        ty_bare_fn(ref f) => {
-            foreach a in f.decl.inputs.iter() {
-                (v.visit_ty)(&a.ty, (e.clone(), v));
+            visitor.visit_ty(&function_declaration.decl.output, env.clone())
+        }
+        ty_path(ref path, ref bounds, _) => {
+            visit_path(visitor, path, env.clone());
+            foreach bounds in bounds.iter() {
+                visit_ty_param_bounds(visitor, bounds, env.clone())
             }
-            (v.visit_ty)(&f.decl.output, (e, v));
-        },
-        ty_path(ref p, ref bounds, _) => {
-            visit_path(p, (e.clone(), v));
-            do bounds.map |bounds| {
-                visit_ty_param_bounds(bounds, (e.clone(), v));
-            };
-        },
-        ty_fixed_length_vec(ref mt, ex) => {
-            (v.visit_ty)(mt.ty, (e.clone(), v));
-            (v.visit_expr)(ex, (e.clone(), v));
-        },
+        }
+        ty_fixed_length_vec(ref mutable_type, expression) => {
+            visitor.visit_ty(mutable_type.ty, env.clone());
+            visitor.visit_expr(expression, env)
+        }
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
     }
 }
 
-pub fn visit_path<E:Clone>(p: &Path, (e, v): (E, vt<E>)) {
-    foreach tp in p.types.iter() { (v.visit_ty)(tp, (e.clone(), v)); }
+pub fn visit_path<E:Clone>(visitor: @Visitor<E>, path: &Path, env: E) {
+    foreach typ in path.types.iter() {
+        visitor.visit_ty(typ, env.clone())
+    }
 }
 
-pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {
-    match p.node {
+pub fn visit_pat<E:Clone>(visitor: @Visitor<E>, pattern: &pat, env: E) {
+    match pattern.node {
         pat_enum(ref path, ref children) => {
-            visit_path(path, (e.clone(), v));
+            visit_path(visitor, path, env.clone());
             foreach children in children.iter() {
                 foreach child in children.iter() {
-                    (v.visit_pat)(*child, (e.clone(), v));
+                    visitor.visit_pat(*child, env.clone())
                 }
             }
         }
         pat_struct(ref path, ref fields, _) => {
-            visit_path(path, (e.clone(), v));
-            foreach f in fields.iter() {
-                (v.visit_pat)(f.pat, (e.clone(), v));
+            visit_path(visitor, path, env.clone());
+            foreach field in fields.iter() {
+                visitor.visit_pat(field.pat, env.clone())
             }
         }
-        pat_tup(ref elts) => {
-            foreach elt in elts.iter() {
-                (v.visit_pat)(*elt, (e.clone(), v))
-            }
-        },
-        pat_box(inner) | pat_uniq(inner) | pat_region(inner) => {
-            (v.visit_pat)(inner, (e, v))
-        },
-        pat_ident(_, ref path, ref inner) => {
-            visit_path(path, (e.clone(), v));
-            foreach subpat in inner.iter() {
-                (v.visit_pat)(*subpat, (e.clone(), v))
+        pat_tup(ref tuple_elements) => {
+            foreach tuple_element in tuple_elements.iter() {
+                visitor.visit_pat(*tuple_element, env.clone())
             }
         }
-        pat_lit(ex) => (v.visit_expr)(ex, (e, v)),
-        pat_range(e1, e2) => {
-            (v.visit_expr)(e1, (e.clone(), v));
-            (v.visit_expr)(e2, (e, v));
+        pat_box(subpattern) |
+        pat_uniq(subpattern) |
+        pat_region(subpattern) => {
+            visitor.visit_pat(subpattern, env)
+        }
+        pat_ident(_, ref path, ref optional_subpattern) => {
+            visit_path(visitor, path, env.clone());
+            match *optional_subpattern {
+                None => {}
+                Some(subpattern) => visitor.visit_pat(subpattern, env),
+            }
+        }
+        pat_lit(expression) => visitor.visit_expr(expression, env),
+        pat_range(lower_bound, upper_bound) => {
+            visitor.visit_expr(lower_bound, env.clone());
+            visitor.visit_expr(upper_bound, env)
         }
         pat_wild => (),
-        pat_vec(ref before, ref slice, ref after) => {
-            foreach elt in before.iter() {
-                (v.visit_pat)(*elt, (e.clone(), v));
+        pat_vec(ref prepattern, ref slice_pattern, ref postpatterns) => {
+            foreach prepattern in prepattern.iter() {
+                visitor.visit_pat(*prepattern, env.clone())
             }
-            foreach elt in slice.iter() {
-                (v.visit_pat)(*elt, (e.clone(), v));
+            foreach slice_pattern in slice_pattern.iter() {
+                visitor.visit_pat(*slice_pattern, env.clone())
             }
-            foreach tail in after.iter() {
-                (v.visit_pat)(*tail, (e.clone(), v));
+            foreach postpattern in postpatterns.iter() {
+                visitor.visit_pat(*postpattern, env.clone())
             }
         }
     }
 }
 
-pub fn visit_foreign_item<E:Clone>(ni: &foreign_item, (e, v): (E, vt<E>)) {
-    match ni.node {
-        foreign_item_fn(ref fd, _, ref generics) => {
-            visit_fn_decl(fd, (e.clone(), v));
-            (v.visit_generics)(generics, (e, v));
+pub fn visit_foreign_item<E:Clone>(visitor: @Visitor<E>,
+                                   foreign_item: &foreign_item,
+                                   env: E) {
+    match foreign_item.node {
+        foreign_item_fn(ref function_declaration, ref generics) => {
+            visit_fn_decl(visitor, function_declaration, env.clone());
+            visitor.visit_generics(generics, env)
         }
-        foreign_item_static(ref t, _) => {
-            (v.visit_ty)(t, (e, v));
-        }
+        foreign_item_static(ref typ, _) => visitor.visit_ty(typ, env),
     }
 }
 
-pub fn visit_ty_param_bounds<E:Clone>(bounds: &OptVec<TyParamBound>,
-                                      (e, v): (E, vt<E>)) {
+pub fn visit_ty_param_bounds<E:Clone>(visitor: @Visitor<E>,
+                                      bounds: &OptVec<TyParamBound>,
+                                      env: E) {
     foreach bound in bounds.iter() {
         match *bound {
-            TraitTyParamBound(ref ty) => visit_trait_ref(ty, (e.clone(), v)),
+            TraitTyParamBound(ref typ) => {
+                visit_trait_ref(visitor, typ, env.clone())
+            }
             RegionTyParamBound => {}
         }
     }
 }
 
-pub fn visit_generics<E:Clone>(generics: &Generics, (e, v): (E, vt<E>)) {
-    foreach tp in generics.ty_params.iter() {
-        visit_ty_param_bounds(&tp.bounds, (e.clone(), v));
+pub fn visit_generics<E:Clone>(visitor: @Visitor<E>,
+                               generics: &Generics,
+                               env: E) {
+    foreach type_parameter in generics.ty_params.iter() {
+        visit_ty_param_bounds(visitor, &type_parameter.bounds, env.clone())
     }
 }
 
-pub fn visit_fn_decl<E:Clone>(fd: &fn_decl, (e, v): (E, vt<E>)) {
-    foreach a in fd.inputs.iter() {
-        (v.visit_pat)(a.pat, (e.clone(), v));
-        (v.visit_ty)(&a.ty, (e.clone(), v));
+pub fn visit_fn_decl<E:Clone>(visitor: @Visitor<E>,
+                              function_declaration: &fn_decl,
+                              env: E) {
+    foreach argument in function_declaration.inputs.iter() {
+        visitor.visit_pat(argument.pat, env.clone());
+        visitor.visit_ty(&argument.ty, env.clone())
     }
-    (v.visit_ty)(&fd.output, (e, v));
+    visitor.visit_ty(&function_declaration.output, env)
 }
 
 // Note: there is no visit_method() method in the visitor, instead override
 // visit_fn() and check for fk_method().  I named this visit_method_helper()
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
-pub fn visit_method_helper<E:Clone>(m: &method, (e, v): (E, vt<E>)) {
-    (v.visit_fn)(&fk_method(m.ident, &m.generics, m),
-                 &m.decl,
-                 &m.body,
-                 m.span,
-                 m.id,
-                 (e, v));
+pub fn visit_method_helper<E:Clone>(visitor: @Visitor<E>,
+                                    method: &method,
+                                    env: E) {
+    visitor.visit_fn(&fk_method(method.ident, &method.generics, method),
+                     &method.decl,
+                     &method.body,
+                     method.span,
+                     method.id,
+                     env)
 }
 
-pub fn visit_fn<E:Clone>(fk: &fn_kind, decl: &fn_decl, body: &Block, _sp: span,
-                         _id: NodeId, (e, v): (E, vt<E>)) {
-    visit_fn_decl(decl, (e.clone(), v));
-    let generics = generics_of_fn(fk);
-    (v.visit_generics)(&generics, (e.clone(), v));
-    (v.visit_block)(body, (e, v));
+pub fn visit_fn<E:Clone>(visitor: @Visitor<E>,
+                         function_kind: &fn_kind,
+                         function_declaration: &fn_decl,
+                         function_body: &Block,
+                         _: span,
+                         _: NodeId,
+                         env: E) {
+    visit_fn_decl(visitor, function_declaration, env.clone());
+    let generics = generics_of_fn(function_kind);
+    visitor.visit_generics(&generics, env.clone());
+    visitor.visit_block(function_body, env)
 }
 
-pub fn visit_ty_method<E:Clone>(m: &TypeMethod, (e, v): (E, vt<E>)) {
-    foreach a in m.decl.inputs.iter() {
-        (v.visit_ty)(&a.ty, (e.clone(), v));
+pub fn visit_ty_method<E:Clone>(visitor: @Visitor<E>,
+                                method_type: &TypeMethod,
+                                env: E) {
+    foreach argument_type in method_type.decl.inputs.iter() {
+        visitor.visit_ty(&argument_type.ty, env.clone())
     }
-    (v.visit_generics)(&m.generics, (e.clone(), v));
-    (v.visit_ty)(&m.decl.output, (e, v));
+    visitor.visit_generics(&method_type.generics, env.clone());
+    visitor.visit_ty(&method_type.decl.output, env.clone())
 }
 
-pub fn visit_trait_method<E:Clone>(m: &trait_method, (e, v): (E, vt<E>)) {
-    match *m {
-      required(ref ty_m) => (v.visit_ty_method)(ty_m, (e, v)),
-      provided(m) => visit_method_helper(m, (e, v))
-    }
-}
-
-pub fn visit_struct_def<E:Clone>(
-    sd: @struct_def,
-    _nm: ast::ident,
-    _generics: &Generics,
-    _id: NodeId,
-    (e, v): (E, vt<E>)
-) {
-    foreach f in sd.fields.iter() {
-        (v.visit_struct_field)(*f, (e.clone(), v));
-    }
-}
-
-pub fn visit_struct_field<E:Clone>(sf: &struct_field, (e, v): (E, vt<E>)) {
-    (v.visit_ty)(&sf.node.ty, (e, v));
-}
-
-pub fn visit_block<E:Clone>(b: &Block, (e, v): (E, vt<E>)) {
-    foreach vi in b.view_items.iter() {
-        (v.visit_view_item)(vi, (e.clone(), v));
-    }
-    foreach s in b.stmts.iter() {
-        (v.visit_stmt)(*s, (e.clone(), v));
-    }
-    visit_expr_opt(b.expr, (e, v));
-}
-
-pub fn visit_stmt<E>(s: &stmt, (e, v): (E, vt<E>)) {
-    match s.node {
-      stmt_decl(d, _) => (v.visit_decl)(d, (e, v)),
-      stmt_expr(ex, _) => (v.visit_expr)(ex, (e, v)),
-      stmt_semi(ex, _) => (v.visit_expr)(ex, (e, v)),
-      stmt_mac(ref mac, _) => visit_mac(mac, (e, v))
+pub fn visit_trait_method<E:Clone>(visitor: @Visitor<E>,
+                                   trait_method: &trait_method,
+                                   env: E) {
+    match *trait_method {
+        required(ref method_type) => {
+            visitor.visit_ty_method(method_type, env)
+        }
+        provided(method) => visit_method_helper(visitor, method, env),
     }
 }
 
-pub fn visit_decl<E:Clone>(d: &decl, (e, v): (E, vt<E>)) {
-    match d.node {
-        decl_local(ref loc) => (v.visit_local)(*loc, (e, v)),
-        decl_item(it) => (v.visit_item)(it, (e, v))
+pub fn visit_struct_def<E:Clone>(visitor: @Visitor<E>,
+                                 struct_definition: @struct_def,
+                                 _: ast::ident,
+                                 _: &Generics,
+                                 _: NodeId,
+                                 env: E) {
+    foreach field in struct_definition.fields.iter() {
+        visitor.visit_struct_field(*field, env.clone())
     }
 }
 
-pub fn visit_expr_opt<E>(eo: Option<@expr>, (e, v): (E, vt<E>)) {
-    match eo { None => (), Some(ex) => (v.visit_expr)(ex, (e, v)) }
+pub fn visit_struct_field<E:Clone>(visitor: @Visitor<E>,
+                                   struct_field: &struct_field,
+                                   env: E) {
+    visitor.visit_ty(&struct_field.node.ty, env)
 }
 
-pub fn visit_exprs<E:Clone>(exprs: &[@expr], (e, v): (E, vt<E>)) {
-    foreach ex in exprs.iter() { (v.visit_expr)(*ex, (e.clone(), v)); }
+pub fn visit_block<E:Clone>(visitor: @Visitor<E>, block: &Block, env: E) {
+    foreach view_item in block.view_items.iter() {
+        visitor.visit_view_item(view_item, env.clone())
+    }
+    foreach statement in block.stmts.iter() {
+        visitor.visit_stmt(*statement, env.clone())
+    }
+    visit_expr_opt(visitor, block.expr, env)
 }
 
-pub fn visit_mac<E>(_m: &mac, (_e, _v): (E, vt<E>)) {
-    /* no user-serviceable parts inside */
+pub fn visit_stmt<E>(visitor: @Visitor<E>, statement: &stmt, env: E) {
+    match statement.node {
+        stmt_decl(declaration, _) => visitor.visit_decl(declaration, env),
+        stmt_expr(expression, _) | stmt_semi(expression, _) => {
+            visitor.visit_expr(expression, env)
+        }
+        stmt_mac(ref macro, _) => visit_mac(visitor, macro, env),
+    }
 }
 
-pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
-    match ex.node {
-        expr_vstore(x, _) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_vec(ref es, _) => visit_exprs(*es, (e.clone(), v)),
+pub fn visit_decl<E:Clone>(visitor: @Visitor<E>, declaration: &decl, env: E) {
+    match declaration.node {
+        decl_local(ref local) => visitor.visit_local(*local, env),
+        decl_item(item) => visitor.visit_item(item, env),
+    }
+}
+
+pub fn visit_expr_opt<E>(visitor: @Visitor<E>,
+                         optional_expression: Option<@expr>,
+                         env: E) {
+    match optional_expression {
+        None => {}
+        Some(expression) => visitor.visit_expr(expression, env),
+    }
+}
+
+pub fn visit_exprs<E:Clone>(visitor: @Visitor<E>,
+                            expressions: &[@expr],
+                            env: E) {
+    foreach expression in expressions.iter() {
+        visitor.visit_expr(*expression, env.clone())
+    }
+}
+
+pub fn visit_mac<E>(_: @Visitor<E>, _: &mac, _: E) {
+    // Empty!
+}
+
+pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
+    match expression.node {
+        expr_vstore(subexpression, _) => {
+            visitor.visit_expr(subexpression, env.clone())
+        }
+        expr_vec(ref subexpressions, _) => {
+            visit_exprs(visitor, *subexpressions, env.clone())
+        }
         expr_repeat(element, count, _) => {
-            (v.visit_expr)(element, (e.clone(), v));
-            (v.visit_expr)(count, (e.clone(), v));
+            visitor.visit_expr(element, env.clone());
+            visitor.visit_expr(count, env.clone())
         }
-        expr_struct(ref p, ref flds, base) => {
-            visit_path(p, (e.clone(), v));
-            foreach f in flds.iter() {
-                (v.visit_expr)(f.expr, (e.clone(), v));
+        expr_struct(ref path, ref fields, optional_base) => {
+            visit_path(visitor, path, env.clone());
+            foreach field in fields.iter() {
+                visitor.visit_expr(field.expr, env.clone())
             }
-            visit_expr_opt(base, (e.clone(), v));
+            visit_expr_opt(visitor, optional_base, env.clone())
         }
-        expr_tup(ref elts) => {
-            foreach el in elts.iter() { (v.visit_expr)(*el, (e.clone(), v)) }
-        }
-        expr_call(callee, ref args, _) => {
-            visit_exprs(*args, (e.clone(), v));
-            (v.visit_expr)(callee, (e.clone(), v));
-        }
-        expr_method_call(_, callee, _, ref tys, ref args, _) => {
-            visit_exprs(*args, (e.clone(), v));
-            foreach tp in tys.iter() {
-                (v.visit_ty)(tp, (e.clone(), v));
-            }
-            (v.visit_expr)(callee, (e.clone(), v));
-        }
-        expr_binary(_, _, a, b) => {
-            (v.visit_expr)(a, (e.clone(), v));
-            (v.visit_expr)(b, (e.clone(), v));
-        }
-        expr_addr_of(_, x) | expr_unary(_, _, x) |
-        expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_lit(_) => (),
-        expr_cast(x, ref t) => {
-            (v.visit_expr)(x, (e.clone(), v));
-            (v.visit_ty)(t, (e.clone(), v));
-        }
-        expr_if(x, ref b, eo) => {
-            (v.visit_expr)(x, (e.clone(), v));
-            (v.visit_block)(b, (e.clone(), v));
-            visit_expr_opt(eo, (e.clone(), v));
-        }
-        expr_while(x, ref b) => {
-            (v.visit_expr)(x, (e.clone(), v));
-            (v.visit_block)(b, (e.clone(), v));
-        }
-        expr_for_loop(pat, iter, ref b) => {
-            (v.visit_pat)(pat, (e.clone(), v));
-            (v.visit_expr)(iter, (e.clone(), v));
-            (v.visit_block)(b, (e.clone(), v));
-        }
-        expr_loop(ref b, _) => (v.visit_block)(b, (e.clone(), v)),
-        expr_match(x, ref arms) => {
-            (v.visit_expr)(x, (e.clone(), v));
-            foreach a in arms.iter() { (v.visit_arm)(a, (e.clone(), v)); }
-        }
-        expr_fn_block(ref decl, ref body) => {
-            (v.visit_fn)(
-                &fk_fn_block,
-                decl,
-                body,
-                ex.span,
-                ex.id,
-                (e.clone(), v)
-            );
-        }
-        expr_block(ref b) => (v.visit_block)(b, (e.clone(), v)),
-        expr_assign(a, b) => {
-            (v.visit_expr)(b, (e.clone(), v));
-            (v.visit_expr)(a, (e.clone(), v));
-        }
-        expr_assign_op(_, _, a, b) => {
-            (v.visit_expr)(b, (e.clone(), v));
-            (v.visit_expr)(a, (e.clone(), v));
-        }
-        expr_field(x, _, ref tys) => {
-            (v.visit_expr)(x, (e.clone(), v));
-            foreach tp in tys.iter() {
-                (v.visit_ty)(tp, (e.clone(), v));
+        expr_tup(ref subexpressions) => {
+            foreach subexpression in subexpressions.iter() {
+                visitor.visit_expr(*subexpression, env.clone())
             }
         }
-        expr_index(_, a, b) => {
-            (v.visit_expr)(a, (e.clone(), v));
-            (v.visit_expr)(b, (e.clone(), v));
-        }
-        expr_path(ref p) => visit_path(p, (e.clone(), v)),
-        expr_self => (),
-        expr_break(_) => (),
-        expr_again(_) => (),
-        expr_ret(eo) => visit_expr_opt(eo, (e.clone(), v)),
-        expr_log(lv, x) => {
-            (v.visit_expr)(lv, (e.clone(), v));
-            (v.visit_expr)(x, (e.clone(), v));
-        }
-        expr_mac(ref mac) => visit_mac(mac, (e.clone(), v)),
-        expr_paren(x) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_inline_asm(ref a) => {
-            foreach &(_, input) in a.inputs.iter() {
-                (v.visit_expr)(input, (e.clone(), v));
+        expr_call(callee_expression, ref arguments, _) => {
+            foreach argument in arguments.iter() {
+                visitor.visit_expr(*argument, env.clone())
             }
-            foreach &(_, out) in a.outputs.iter() {
-                (v.visit_expr)(out, (e.clone(), v));
+            visitor.visit_expr(callee_expression, env.clone())
+        }
+        expr_method_call(_, callee, _, ref types, ref arguments, _) => {
+            visit_exprs(visitor, *arguments, env.clone());
+            foreach typ in types.iter() {
+                visitor.visit_ty(typ, env.clone())
+            }
+            visitor.visit_expr(callee, env.clone())
+        }
+        expr_binary(_, _, left_expression, right_expression) => {
+            visitor.visit_expr(left_expression, env.clone());
+            visitor.visit_expr(right_expression, env.clone())
+        }
+        expr_addr_of(_, subexpression) |
+        expr_unary(_, _, subexpression) |
+        expr_loop_body(subexpression) |
+        expr_do_body(subexpression) => {
+            visitor.visit_expr(subexpression, env.clone())
+        }
+        expr_lit(_) => {}
+        expr_cast(subexpression, ref typ) => {
+            visitor.visit_expr(subexpression, env.clone());
+            visitor.visit_ty(typ, env.clone())
+        }
+        expr_if(head_expression, ref if_block, optional_else) => {
+            visitor.visit_expr(head_expression, env.clone());
+            visitor.visit_block(if_block, env.clone());
+            visit_expr_opt(visitor, optional_else, env.clone())
+        }
+        expr_while(subexpression, ref block) => {
+            visitor.visit_expr(subexpression, env.clone());
+            visitor.visit_block(block, env.clone())
+        }
+        expr_for_loop(pattern, subexpression, ref block) => {
+            visitor.visit_pat(pattern, env.clone());
+            visitor.visit_expr(subexpression, env.clone());
+            visitor.visit_block(block, env.clone())
+        }
+        expr_loop(ref block, _) => visitor.visit_block(block, env.clone()),
+        expr_match(subexpression, ref arms) => {
+            visitor.visit_expr(subexpression, env.clone());
+            foreach arm in arms.iter() {
+                visitor.visit_arm(arm, env.clone())
+            }
+        }
+        expr_fn_block(ref function_declaration, ref body) => {
+            visitor.visit_fn(&fk_fn_block,
+                             function_declaration,
+                             body,
+                             expression.span,
+                             expression.id,
+                             env.clone())
+        }
+        expr_block(ref block) => visitor.visit_block(block, env.clone()),
+        expr_assign(left_hand_expression, right_hand_expression) => {
+            visitor.visit_expr(right_hand_expression, env.clone());
+            visitor.visit_expr(left_hand_expression, env.clone())
+        }
+        expr_assign_op(_, _, left_expression, right_expression) => {
+            visitor.visit_expr(right_expression, env.clone());
+            visitor.visit_expr(left_expression, env.clone())
+        }
+        expr_field(subexpression, _, ref types) => {
+            visitor.visit_expr(subexpression, env.clone());
+            foreach typ in types.iter() {
+                visitor.visit_ty(typ, env.clone())
+            }
+        }
+        expr_index(_, main_expression, index_expression) => {
+            visitor.visit_expr(main_expression, env.clone());
+            visitor.visit_expr(index_expression, env.clone())
+        }
+        expr_path(ref path) => visit_path(visitor, path, env.clone()),
+        expr_self | expr_break(_) | expr_again(_) => {}
+        expr_ret(optional_expression) => {
+            visit_expr_opt(visitor, optional_expression, env.clone())
+        }
+        expr_log(level, subexpression) => {
+            visitor.visit_expr(level, env.clone());
+            visitor.visit_expr(subexpression, env.clone());
+        }
+        expr_mac(ref macro) => visit_mac(visitor, macro, env.clone()),
+        expr_paren(subexpression) => {
+            visitor.visit_expr(subexpression, env.clone())
+        }
+        expr_inline_asm(ref assembler) => {
+            foreach &(_, input) in assembler.inputs.iter() {
+                visitor.visit_expr(input, env.clone())
+            }
+            foreach &(_, output) in assembler.outputs.iter() {
+                visitor.visit_expr(output, env.clone())
             }
         }
     }
-    (v.visit_expr_post)(ex, (e, v));
+
+    visitor.visit_expr_post(expression, env.clone())
 }
 
-pub fn visit_arm<E:Clone>(a: &arm, (e, v): (E, vt<E>)) {
-    foreach p in a.pats.iter() { (v.visit_pat)(*p, (e.clone(), v)); }
-    visit_expr_opt(a.guard, (e.clone(), v));
-    (v.visit_block)(&a.body, (e.clone(), v));
+pub fn visit_arm<E:Clone>(visitor: @Visitor<E>, arm: &arm, env: E) {
+    foreach pattern in arm.pats.iter() {
+        visitor.visit_pat(*pattern, env.clone())
+    }
+    visit_expr_opt(visitor, arm.guard, env.clone());
+    visitor.visit_block(&arm.body, env)
 }
 
 // Simpler, non-context passing interface. Always walks the whole tree, simply
 // calls the given functions on the nodes.
 
-pub struct SimpleVisitor {
-    visit_mod: @fn(&_mod, span, NodeId),
-    visit_view_item: @fn(&view_item),
-    visit_foreign_item: @fn(@foreign_item),
-    visit_item: @fn(@item),
-    visit_local: @fn(@Local),
-    visit_block: @fn(&Block),
-    visit_stmt: @fn(@stmt),
-    visit_arm: @fn(&arm),
-    visit_pat: @fn(@pat),
-    visit_decl: @fn(@decl),
-    visit_expr: @fn(@expr),
-    visit_expr_post: @fn(@expr),
-    visit_ty: @fn(&Ty),
-    visit_generics: @fn(&Generics),
-    visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, NodeId),
-    visit_ty_method: @fn(&TypeMethod),
-    visit_trait_method: @fn(&trait_method),
-    visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId),
-    visit_struct_field: @fn(@struct_field),
-    visit_struct_method: @fn(@method)
+pub trait SimpleVisitor {
+    fn visit_mod(@mut self, &_mod, span, NodeId);
+    fn visit_view_item(@mut self, &view_item);
+    fn visit_foreign_item(@mut self, @foreign_item);
+    fn visit_item(@mut self, @item);
+    fn visit_local(@mut self, @Local);
+    fn visit_block(@mut self, &Block);
+    fn visit_stmt(@mut self, @stmt);
+    fn visit_arm(@mut self, &arm);
+    fn visit_pat(@mut self, @pat);
+    fn visit_decl(@mut self, @decl);
+    fn visit_expr(@mut self, @expr);
+    fn visit_expr_post(@mut self, @expr);
+    fn visit_ty(@mut self, &Ty);
+    fn visit_generics(@mut self, &Generics);
+    fn visit_fn(@mut self, &fn_kind, &fn_decl, &Block, span, NodeId);
+    fn visit_ty_method(@mut self, &TypeMethod);
+    fn visit_trait_method(@mut self, &trait_method);
+    fn visit_struct_def(@mut self, @struct_def, ident, &Generics, NodeId);
+    fn visit_struct_field(@mut self, @struct_field);
+    fn visit_struct_method(@mut self, @method);
 }
 
-pub type simple_visitor = @SimpleVisitor;
+pub struct SimpleVisitorVisitor {
+    simple_visitor: @SimpleVisitor,
+}
 
-pub fn simple_ignore_ty(_t: &Ty) {}
-
-pub fn default_simple_visitor() -> @SimpleVisitor {
-    @SimpleVisitor {
-        visit_mod: |_m, _sp, _id| { },
-        visit_view_item: |_vi| { },
-        visit_foreign_item: |_ni| { },
-        visit_item: |_i| { },
-        visit_local: |_l| { },
-        visit_block: |_b| { },
-        visit_stmt: |_s| { },
-        visit_arm: |_a| { },
-        visit_pat: |_p| { },
-        visit_decl: |_d| { },
-        visit_expr: |_e| { },
-        visit_expr_post: |_e| { },
-        visit_ty: simple_ignore_ty,
-        visit_generics: |_| {},
-        visit_fn: |_, _, _, _, _| {},
-        visit_ty_method: |_| {},
-        visit_trait_method: |_| {},
-        visit_struct_def: |_, _, _, _| {},
-        visit_struct_field: |_| {},
-        visit_struct_method: |_| {},
+impl Visitor<()> for SimpleVisitorVisitor {
+    fn visit_mod(@mut self,
+                 module: &_mod,
+                 span: span,
+                 node_id: NodeId,
+                 env: ()) {
+        self.simple_visitor.visit_mod(module, span, node_id);
+        visit_mod(self as @Visitor<()>, module, env)
+    }
+    fn visit_view_item(@mut self, view_item: &view_item, env: ()) {
+        self.simple_visitor.visit_view_item(view_item);
+        visit_view_item(self as @Visitor<()>, view_item, env)
+    }
+    fn visit_foreign_item(@mut self, foreign_item: @foreign_item, env: ()) {
+        self.simple_visitor.visit_foreign_item(foreign_item);
+        visit_foreign_item(self as @Visitor<()>, foreign_item, env)
+    }
+    fn visit_item(@mut self, item: @item, env: ()) {
+        self.simple_visitor.visit_item(item);
+        visit_item(self as @Visitor<()>, item, env)
+    }
+    fn visit_local(@mut self, local: @Local, env: ()) {
+        self.simple_visitor.visit_local(local);
+        visit_local(self as @Visitor<()>, local, env)
+    }
+    fn visit_block(@mut self, block: &Block, env: ()) {
+        self.simple_visitor.visit_block(block);
+        visit_block(self as @Visitor<()>, block, env)
+    }
+    fn visit_stmt(@mut self, statement: @stmt, env: ()) {
+        self.simple_visitor.visit_stmt(statement);
+        visit_stmt(self as @Visitor<()>, statement, env)
+    }
+    fn visit_arm(@mut self, arm: &arm, env: ()) {
+        self.simple_visitor.visit_arm(arm);
+        visit_arm(self as @Visitor<()>, arm, env)
+    }
+    fn visit_pat(@mut self, pattern: @pat, env: ()) {
+        self.simple_visitor.visit_pat(pattern);
+        visit_pat(self as @Visitor<()>, pattern, env)
+    }
+    fn visit_decl(@mut self, declaration: @decl, env: ()) {
+        self.simple_visitor.visit_decl(declaration);
+        visit_decl(self as @Visitor<()>, declaration, env)
+    }
+    fn visit_expr(@mut self, expression: @expr, env: ()) {
+        self.simple_visitor.visit_expr(expression);
+        visit_expr(self as @Visitor<()>, expression, env)
+    }
+    fn visit_expr_post(@mut self, expression: @expr, _: ()) {
+        self.simple_visitor.visit_expr_post(expression)
+    }
+    fn visit_ty(@mut self, typ: &Ty, env: ()) {
+        self.simple_visitor.visit_ty(typ);
+        visit_ty(self as @Visitor<()>, typ, env)
+    }
+    fn visit_generics(@mut self, generics: &Generics, env: ()) {
+        self.simple_visitor.visit_generics(generics);
+        visit_generics(self as @Visitor<()>, generics, env)
+    }
+    fn visit_fn(@mut self,
+                function_kind: &fn_kind,
+                function_declaration: &fn_decl,
+                block: &Block,
+                span: span,
+                node_id: NodeId,
+                env: ()) {
+        self.simple_visitor.visit_fn(function_kind,
+                                     function_declaration,
+                                     block,
+                                     span,
+                                     node_id);
+        visit_fn(self as @Visitor<()>,
+                 function_kind,
+                 function_declaration,
+                 block,
+                 span,
+                 node_id,
+                 env)
+    }
+    fn visit_ty_method(@mut self, method_type: &TypeMethod, env: ()) {
+        self.simple_visitor.visit_ty_method(method_type);
+        visit_ty_method(self as @Visitor<()>, method_type, env)
+    }
+    fn visit_trait_method(@mut self, trait_method: &trait_method, env: ()) {
+        self.simple_visitor.visit_trait_method(trait_method);
+        visit_trait_method(self as @Visitor<()>, trait_method, env)
+    }
+    fn visit_struct_def(@mut self,
+                        struct_definition: @struct_def,
+                        identifier: ident,
+                        generics: &Generics,
+                        node_id: NodeId,
+                        env: ()) {
+        self.simple_visitor.visit_struct_def(struct_definition,
+                                             identifier,
+                                             generics,
+                                             node_id);
+        visit_struct_def(self as @Visitor<()>,
+                         struct_definition,
+                         identifier,
+                         generics,
+                         node_id,
+                         env)
+    }
+    fn visit_struct_field(@mut self, struct_field: @struct_field, env: ()) {
+        self.simple_visitor.visit_struct_field(struct_field);
+        visit_struct_field(self as @Visitor<()>, struct_field, env)
     }
 }
 
-pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
-    fn v_mod(
-        f: @fn(&_mod, span, NodeId),
-        m: &_mod,
-        sp: span,
-        id: NodeId,
-        (e, v): ((), vt<()>)
-    ) {
-        f(m, sp, id);
-        visit_mod(m, sp, id, (e, v));
-    }
-    fn v_view_item(f: @fn(&view_item), vi: &view_item, (e, v): ((), vt<()>)) {
-        f(vi);
-        visit_view_item(vi, (e, v));
-    }
-    fn v_foreign_item(f: @fn(@foreign_item), ni: @foreign_item, (e, v): ((), vt<()>)) {
-        f(ni);
-        visit_foreign_item(ni, (e, v));
-    }
-    fn v_item(f: @fn(@item), i: @item, (e, v): ((), vt<()>)) {
-        f(i);
-        visit_item(i, (e, v));
-    }
-    fn v_local(f: @fn(@Local), l: @Local, (e, v): ((), vt<()>)) {
-        f(l);
-        visit_local(l, (e, v));
-    }
-    fn v_block(f: @fn(&ast::Block), bl: &ast::Block, (e, v): ((), vt<()>)) {
-        f(bl);
-        visit_block(bl, (e, v));
-    }
-    fn v_stmt(f: @fn(@stmt), st: @stmt, (e, v): ((), vt<()>)) {
-        f(st);
-        visit_stmt(st, (e, v));
-    }
-    fn v_arm(f: @fn(&arm), a: &arm, (e, v): ((), vt<()>)) {
-        f(a);
-        visit_arm(a, (e, v));
-    }
-    fn v_pat(f: @fn(@pat), p: @pat, (e, v): ((), vt<()>)) {
-        f(p);
-        visit_pat(p, (e, v));
-    }
-    fn v_decl(f: @fn(@decl), d: @decl, (e, v): ((), vt<()>)) {
-        f(d);
-        visit_decl(d, (e, v));
-    }
-    fn v_expr(f: @fn(@expr), ex: @expr, (e, v): ((), vt<()>)) {
-        f(ex);
-        visit_expr(ex, (e, v));
-    }
-    fn v_expr_post(f: @fn(@expr), ex: @expr, (_e, _v): ((), vt<()>)) {
-        f(ex);
-    }
-    fn v_ty(f: @fn(&Ty), ty: &Ty, (e, v): ((), vt<()>)) {
-        f(ty);
-        visit_ty(ty, (e, v));
-    }
-    fn v_ty_method(f: @fn(&TypeMethod), ty: &TypeMethod, (e, v): ((), vt<()>)) {
-        f(ty);
-        visit_ty_method(ty, (e, v));
-    }
-    fn v_trait_method(f: @fn(&trait_method),
-                      m: &trait_method,
-                      (e, v): ((), vt<()>)) {
-        f(m);
-        visit_trait_method(m, (e, v));
-    }
-    fn v_struct_def(
-        f: @fn(@struct_def, ident, &Generics, NodeId),
-        sd: @struct_def,
-        nm: ident,
-        generics: &Generics,
-        id: NodeId,
-        (e, v): ((), vt<()>)
-    ) {
-        f(sd, nm, generics, id);
-        visit_struct_def(sd, nm, generics, id, (e, v));
-    }
-    fn v_generics(
-        f: @fn(&Generics),
-        ps: &Generics,
-        (e, v): ((), vt<()>)
-    ) {
-        f(ps);
-        visit_generics(ps, (e, v));
-    }
-    fn v_fn(
-        f: @fn(&fn_kind, &fn_decl, &Block, span, NodeId),
-        fk: &fn_kind,
-        decl: &fn_decl,
-        body: &Block,
-        sp: span,
-        id: NodeId,
-        (e, v): ((), vt<()>)
-    ) {
-        f(fk, decl, body, sp, id);
-        visit_fn(fk, decl, body, sp, id, (e, v));
-    }
-    let visit_ty: @fn(&Ty, ((), vt<()>)) =
-        |a,b| v_ty(v.visit_ty, a, b);
-    fn v_struct_field(f: @fn(@struct_field), sf: @struct_field, (e, v): ((), vt<()>)) {
-        f(sf);
-        visit_struct_field(sf, (e, v));
-    }
-    return mk_vt(@Visitor {
-        visit_mod: |a,b,c,d|v_mod(v.visit_mod, a, b, c, d),
-        visit_view_item: |a,b| v_view_item(v.visit_view_item, a, b),
-        visit_foreign_item:
-            |a,b|v_foreign_item(v.visit_foreign_item, a, b),
-        visit_item: |a,b|v_item(v.visit_item, a, b),
-        visit_local: |a,b|v_local(v.visit_local, a, b),
-        visit_block: |a,b|v_block(v.visit_block, a, b),
-        visit_stmt: |a,b|v_stmt(v.visit_stmt, a, b),
-        visit_arm: |a,b|v_arm(v.visit_arm, a, b),
-        visit_pat: |a,b|v_pat(v.visit_pat, a, b),
-        visit_decl: |a,b|v_decl(v.visit_decl, a, b),
-        visit_expr: |a,b|v_expr(v.visit_expr, a, b),
-        visit_expr_post: |a,b| v_expr_post(v.visit_expr_post, a, b),
-        visit_ty: visit_ty,
-        visit_generics: |a,b|
-            v_generics(v.visit_generics, a, b),
-        visit_fn: |a,b,c,d,e,f|
-            v_fn(v.visit_fn, a, b, c, d, e, f),
-        visit_ty_method: |a,b|
-            v_ty_method(v.visit_ty_method, a, b),
-        visit_trait_method: |a,b|
-            v_trait_method(v.visit_trait_method, a, b),
-        visit_struct_def: |a,b,c,d,e|
-            v_struct_def(v.visit_struct_def, a, b, c, d, e),
-        visit_struct_field: |a,b|
-            v_struct_field(v.visit_struct_field, a, b),
-    });
-}
