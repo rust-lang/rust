@@ -25,13 +25,13 @@ pub mod rustrt {
 
     #[link_name = "rustrt"]
     extern {
-        pub fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
+        pub fn tdefl_compress_mem_to_heap(psrc_buf: *c_void,
                                           src_buf_len: size_t,
                                           pout_len: *mut size_t,
                                           flags: c_int)
                                           -> *c_void;
 
-        pub fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
+        pub fn tinfl_decompress_mem_to_heap(psrc_buf: *c_void,
                                             src_buf_len: size_t,
                                             pout_len: *mut size_t,
                                             flags: c_int)

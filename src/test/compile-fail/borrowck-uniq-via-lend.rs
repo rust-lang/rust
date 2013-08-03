@@ -35,12 +35,6 @@ fn aliased_imm() {
     borrow(v);
 }
 
-fn aliased_const() {
-    let mut v = ~3;
-    let _w = &const v;
-    borrow(v);
-}
-
 fn aliased_mut() {
     let mut v = ~3;
     let _w = &mut v;
