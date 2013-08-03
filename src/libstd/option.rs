@@ -134,7 +134,7 @@ impl<T> Option<T> {
 
     /// Return a consuming iterator over the possibly contained value
     #[inline]
-    pub fn consume_iter(self) -> OptionIterator<T> {
+    pub fn consume(self) -> OptionIterator<T> {
         OptionIterator{opt: self}
     }
 
@@ -410,16 +410,18 @@ impl<T> Zero for Option<T> {
     fn is_zero(&self) -> bool { self.is_none() }
 }
 
-/// Immutable iterator over an Option
+/// An iterator that yields either one or zero elements
 pub struct OptionIterator<A> {
     priv opt: Option<A>
 }
 
 impl<A> Iterator<A> for OptionIterator<A> {
+    #[inline]
     fn next(&mut self) -> Option<A> {
-        util::replace(&mut self.opt, None)
+        self.opt.take()
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         match self.opt {
             Some(_) => (1, Some(1)),
