@@ -889,27 +889,34 @@ mod tests {
     fn test_ranges() {
         let mut l = ~[];
 
-        for range_rev(14,11) |i| {
+        do range_rev(14,11) |i| {
             l.push(i);
-        }
-        for range_step(20,26,2) |i| {
+            true
+        };
+        do range_step(20,26,2) |i| {
             l.push(i);
-        }
-        for range_step(36,30,-2) |i| {
+            true
+        };
+        do range_step(36,30,-2) |i| {
             l.push(i);
-        }
-        for range_step(max_value - 2, max_value, 2) |i| {
+            true
+        };
+        do range_step(max_value - 2, max_value, 2) |i| {
             l.push(i);
-        }
-        for range_step(max_value - 3, max_value, 2) |i| {
+            true
+        };
+        do range_step(max_value - 3, max_value, 2) |i| {
             l.push(i);
-        }
-        for range_step(min_value + 2, min_value, -2) |i| {
+            true
+        };
+        do range_step(min_value + 2, min_value, -2) |i| {
             l.push(i);
-        }
-        for range_step(min_value + 3, min_value, -2) |i| {
+            true
+        };
+        do range_step(min_value + 3, min_value, -2) |i| {
             l.push(i);
-        }
+            true
+        };
         assert_eq!(l, ~[13,12,11,
                         20,22,24,
                         36,34,32,
@@ -919,22 +926,22 @@ mod tests {
                         min_value+3,min_value+1]);
 
         // None of the `fail`s should execute.
-        for range_rev(0,10) |_i| {
+        do range_rev(0,10) |_i| {
             fail!(~"unreachable");
-        }
-        for range_step(10,0,1) |_i| {
+        };
+        do range_step(10,0,1) |_i| {
             fail!(~"unreachable");
-        }
-        for range_step(0,10,-1) |_i| {
+        };
+        do range_step(0,10,-1) |_i| {
             fail!(~"unreachable");
-        }
+        };
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_range_step_zero_step() {
-        for range_step(0,10,0) |_i| {}
+        do range_step(0,10,0) |_i| { true };
     }
 }
 

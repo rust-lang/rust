@@ -2801,7 +2801,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
     // like the multiple borrows. At least, it doesn't
     // like them on the current snapshot. (2013-06-14)
     let mut keys = ~[];
-    for ccx.module_data.each_key |k| {
+    foreach (k, _) in ccx.module_data.iter() {
         keys.push(k.to_managed());
     }
 

@@ -526,7 +526,7 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 
 pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
     let mut result = ~[];
-    for list::each(isr) |pair| {
+    do list::each(isr) |pair| {
         match pair.second() {
             ty::re_infer(ty::ReVar(r)) => { result.push(r); }
             r => {
@@ -535,8 +535,9 @@ pub fn var_ids<T:Combine>(this: &T, isr: isr_alist) -> ~[RegionVid] {
                     fmt!("Found non-region-vid: %?", r));
             }
         }
-    }
-    return result;
+        true
+    };
+    result
 }
 
 pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {

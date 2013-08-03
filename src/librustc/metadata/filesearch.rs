@@ -88,7 +88,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 
 pub fn search<T>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
-    for filesearch.for_each_lib_search_path() |lib_search_path| {
+    do filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
         let r = os::list_dir_path(lib_search_path);
         foreach path in r.iter() {
@@ -102,8 +102,8 @@ pub fn search<T>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
                 debug!("rejected %s", path.to_str());
             }
         }
-        if rslt.is_some() { break; }
-    }
+        rslt.is_none()
+    };
     return rslt;
 }
 

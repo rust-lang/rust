@@ -505,9 +505,10 @@ mod test {
         }
 
         let mut read_lines = ~[];
-        for input_vec(filenames) |line| {
+        do input_vec(filenames) |line| {
             read_lines.push(line.to_owned());
-        }
+            true
+        };
         assert_eq!(read_lines, all_lines);
     }
 
@@ -523,13 +524,14 @@ mod test {
             make_file(filename.get_ref(), contents);
         }
 
-        for input_vec_state(filenames) |line, state| {
+        do input_vec_state(filenames) |line, state| {
             let nums: ~[&str] = line.split_iter(' ').collect();
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
             assert_eq!(line_num, state.line_num_file);
             assert_eq!(file_num * 3 + line_num, state.line_num);
-        }
+            true
+        };
     }
 
     #[test]
@@ -543,7 +545,7 @@ mod test {
         make_file(filenames[2].get_ref(), [~"3", ~"4"]);
 
         let mut count = 0;
-        for input_vec_state(filenames.clone()) |line, state| {
+        do input_vec_state(filenames.clone()) |line, state| {
             let expected_path = match line {
                 "1" | "2" => filenames[0].clone(),
                 "3" | "4" => filenames[2].clone(),
@@ -551,7 +553,8 @@ mod test {
             };
             assert_eq!(state.current_path.clone(), expected_path);
             count += 1;
-        }
+            true
+        };
         assert_eq!(count, 4);
     }
 
@@ -570,9 +573,10 @@ mod test {
         wr.write_str("3\n4");
 
         let mut lines = ~[];
-        for input_vec(~[f1, f2]) |line| {
+        do input_vec(~[f1, f2]) |line| {
             lines.push(line.to_owned());
-        }
+            true
+        };
         assert_eq!(lines, ~[~"1", ~"2", ~"3", ~"4"]);
     }
 
@@ -610,8 +614,9 @@ mod test {
     #[test]
     #[should_fail]
     fn test_input_vec_missing_file() {
-        for input_vec(pathify([~"this/file/doesnt/exist"], true)) |line| {
+        do input_vec(pathify([~"this/file/doesnt/exist"], true)) |line| {
             println(line);
-        }
+            true
+        };
     }
 }

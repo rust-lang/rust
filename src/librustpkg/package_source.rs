@@ -165,7 +165,7 @@ impl PkgSrc {
         debug!("Called check_dir, I'm in %s", dir.to_str());
         let prefix = dir.components.len();
         debug!("Matching against %?", self.id.local_path.filestem());
-        for os::walk_dir(&dir) |pth| {
+        do os::walk_dir(&dir) |pth| {
             match pth.filename() {
                 Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
                                                       prefix,
@@ -181,7 +181,8 @@ impl PkgSrc {
                                                         pth),
                 _ => ()
             }
-        }
+            true
+        };
 
         if self.libs.is_empty() && self.mains.is_empty()
             && self.tests.is_empty() && self.benchs.is_empty() {

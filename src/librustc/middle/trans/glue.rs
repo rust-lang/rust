@@ -736,7 +736,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     ccx.finished_tydescs = true;
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
     let tyds = &mut ccx.tydescs;
-    for tyds.each_value |&val| {
+    foreach (_, &val) in tyds.iter() {
         let ti = val;
 
         // Each of the glue functions needs to be cast to a generic type

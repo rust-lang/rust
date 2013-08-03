@@ -272,14 +272,13 @@ impl<T> TrieNode<T> {
     }
 
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        for uint::range_rev(self.children.len(), 0) |idx| {
+        do uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx] {
-                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
+                Internal(ref x) => x.each_reverse(|i,t| f(i,t)),
+                External(k, ref v) => f(&k, v),
+                Nothing => true
             }
         }
-        true
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
@@ -417,17 +416,19 @@ mod test_map {
         let mut trie = TrieMap::new();
         let n = 300;
 
-        for uint::range_step(1, n, 2) |x| {
+        do uint::range_step(1, n, 2) |x| {
             assert!(trie.insert(x, x + 1));
             assert!(trie.contains_key(&x));
             check_integrity(&trie.root);
-        }
+            true
+        };
 
-        for uint::range_step(0, n, 2) |x| {
+        do uint::range_step(0, n, 2) |x| {
             assert!(!trie.contains_key(&x));
             assert!(trie.insert(x, x + 1));
             check_integrity(&trie.root);
-        }
+            true
+        };
 
         foreach x in range(0u, n) {
             assert!(trie.contains_key(&x));
@@ -435,17 +436,19 @@ mod test_map {
             check_integrity(&trie.root);
         }
 
-        for uint::range_step(1, n, 2) |x| {
+        do uint::range_step(1, n, 2) |x| {
             assert!(trie.remove(&x));
             assert!(!trie.contains_key(&x));
             check_integrity(&trie.root);
-        }
+            true
+        };
 
-        for uint::range_step(0, n, 2) |x| {
+        do uint::range_step(0, n, 2) |x| {
             assert!(trie.contains_key(&x));
             assert!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
-        }
+            true
+        };
     }
 
     #[test]
@@ -471,9 +474,10 @@ mod test_map {
     fn test_each_break() {
         let mut m = TrieMap::new();
 
-        for uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+        do uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
             m.insert(x, x / 2);
-        }
+            true
+        };
 
         let mut n = uint::max_value - 10000;
         do m.each |k, v| {
@@ -511,9 +515,10 @@ mod test_map {
     fn test_each_reverse_break() {
         let mut m = TrieMap::new();
 
-        for uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+        do uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
             m.insert(x, x / 2);
-        }
+            true
+        };
 
         let mut n = uint::max_value - 1;
         do m.each_reverse |k, v| {

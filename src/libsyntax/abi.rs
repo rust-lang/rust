@@ -94,12 +94,17 @@ pub fn lookup(name: &str) -> Option<Abi> {
      * Returns the ABI with the given name (if any).
      */
 
-    for each_abi |abi| {
+    let mut res = None;
+
+    do each_abi |abi| {
         if name == abi.data().name {
-            return Some(abi);
+            res = Some(abi);
+            false
+        } else {
+            true
         }
-    }
-    return None;
+    };
+    res
 }
 
 pub fn all_names() -> ~[&'static str] {
@@ -193,21 +198,24 @@ impl AbiSet {
 
     pub fn for_arch(&self, arch: Architecture) -> Option<Abi> {
         // NB---Single platform ABIs come first
-        for self.each |abi| {
+
+        let mut res = None;
+
+        do self.each |abi| {
             let data = abi.data();
             match data.abi_arch {
-                Archs(a) if (a & arch.bit()) != 0 => { return Some(abi); }
-                Archs(_) => { }
-                RustArch | AllArch => { return Some(abi); }
+                Archs(a) if (a & arch.bit()) != 0 => { res = Some(abi); false }
+                Archs(_) => { true }
+                RustArch | AllArch => { res = Some(abi); false }
             }
-        }
+        };
 
-        None
+        res
     }
 
     pub fn check_valid(&self) -> Option<(Abi, Abi)> {
         let mut abis = ~[];
-        for self.each |abi| { abis.push(abi); }
+        do self.each |abi| { abis.push(abi); true };
 
         foreach (i, abi) in abis.iter().enumerate() {
             let data = abi.data();
@@ -261,9 +269,10 @@ impl ToStr for Abi {
 impl ToStr for AbiSet {
     fn to_str(&self) -> ~str {
         let mut strs = ~[];
-        for self.each |abi| {
+        do self.each |abi| {
             strs.push(abi.data().name);
-        }
+            true
+        };
         fmt!("\"%s\"", strs.connect(" "))
     }
 }

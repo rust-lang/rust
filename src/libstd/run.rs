@@ -665,9 +665,10 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
-        for int::range_rev(getdtablesize() as int, 3) |fd| {
+        do int::range_rev(getdtablesize() as int, 3) |fd| {
             close(fd as c_int);
-        }
+            true
+        };
 
         do with_dirp(dir) |dirp| {
             if !dirp.is_null() && chdir(dirp) == -1 {

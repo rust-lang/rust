@@ -191,7 +191,9 @@ impl Combine for Sub {
         // that the skolemized regions do not "leak".
         let new_vars =
             self.infcx.region_vars.vars_created_since_snapshot(snapshot);
-        for list::each(skol_isr) |pair| {
+
+        let mut ret = Ok(sig);
+        do list::each(skol_isr) |pair| {
             let (skol_br, skol) = *pair;
             let tainted = self.infcx.region_vars.tainted(snapshot, skol);
             foreach tainted_region in tainted.iter() {
@@ -208,16 +210,19 @@ impl Combine for Sub {
 
                 // A is not as polymorphic as B:
                 if self.a_is_expected {
-                    return Err(ty::terr_regions_insufficiently_polymorphic(
+                    ret = Err(ty::terr_regions_insufficiently_polymorphic(
                         skol_br, *tainted_region));
+                    break
                 } else {
-                    return Err(ty::terr_regions_overly_polymorphic(
+                    ret = Err(ty::terr_regions_overly_polymorphic(
                         skol_br, *tainted_region));
+                    break
                 }
             }
-        }
+            ret.is_ok()
+        };
 
-        return Ok(sig);
+        ret
     }
 
     // Traits please (FIXME: #2794):
