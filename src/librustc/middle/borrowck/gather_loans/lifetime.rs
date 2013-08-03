@@ -15,7 +15,7 @@
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
-use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
 use util::ppaux::{note_and_explain_region};
@@ -26,7 +26,7 @@ pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
                           span: span,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
-                          loan_mutbl: ast::mutability) {
+                          loan_mutbl: LoanMutability) {
     debug!("guarantee_lifetime(cmt=%s, loan_region=%s)",
            cmt.repr(bccx.tcx), loan_region.repr(bccx.tcx));
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
@@ -54,7 +54,7 @@ struct GuaranteeLifetimeContext {
 
     span: span,
     loan_region: ty::Region,
-    loan_mutbl: ast::mutability,
+    loan_mutbl: LoanMutability,
     cmt_original: mc::cmt
 }
 
@@ -235,11 +235,11 @@ impl GuaranteeLifetimeContext {
         // we need to dynamically mark it to prevent incompatible
         // borrows from happening later.
         let opt_dyna = match ptr_mutbl {
-            m_imm | m_const => None,
+            m_imm => None,
             m_mutbl => {
                 match self.loan_mutbl {
-                    m_mutbl => Some(DynaMut),
-                    m_imm | m_const => Some(DynaImm)
+                    MutableMutability => Some(DynaMut),
+                    ImmutableMutability | ConstMutability => Some(DynaImm)
                 }
             }
         };

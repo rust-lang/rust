@@ -99,7 +99,6 @@ fn enc_mutability(w: @io::Writer, mt: ast::mutability) {
     match mt {
       m_imm => (),
       m_mutbl => w.write_char('m'),
-      m_const => w.write_char('?')
     }
 }
 

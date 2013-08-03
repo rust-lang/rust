@@ -26,7 +26,7 @@ use util::ppaux::bound_region_to_str;
 
 use extra::list::Nil;
 use extra::list;
-use syntax::ast::{Onceness, m_const, purity};
+use syntax::ast::{Onceness, purity};
 
 pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 
@@ -67,7 +67,7 @@ impl Combine for Sub {
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         debug!("mts(%s <: %s)", a.inf_str(self.infcx), b.inf_str(self.infcx));
 
-        if a.mutbl != b.mutbl && b.mutbl != m_const {
+        if a.mutbl != b.mutbl {
             return Err(ty::terr_mutability);
         }
 
@@ -77,7 +77,7 @@ impl Combine for Sub {
             // (i.e., invariant if mut):
             eq_tys(self, a.ty, b.ty).then(|| Ok(*a))
           }
-          m_imm | m_const => {
+          m_imm => {
             // Otherwise we can be covariant:
             self.tys(a.ty, b.ty).chain(|_t| Ok(*a) )
           }

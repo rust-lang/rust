@@ -24,7 +24,7 @@ use middle::typeck::isr_alist;
 use util::ppaux::mt_to_str;
 
 use extra::list;
-use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};
+use syntax::ast::{Many, Once, extern_fn, impure_fn};
 use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 
@@ -55,14 +55,13 @@ impl Combine for Lub {
                mt_to_str(tcx, a),
                mt_to_str(tcx, b));
 
-        let m = if a.mutbl == b.mutbl {
-            a.mutbl
-        } else {
-            m_const
-        };
+        if a.mutbl != b.mutbl {
+            return Err(ty::terr_mutability)
+        }
 
+        let m = a.mutbl;
         match m {
-          m_imm | m_const => {
+          m_imm => {
             self.tys(a.ty, b.ty).chain(|t| Ok(ty::mt {ty: t, mutbl: m}) )
           }
 
@@ -71,11 +70,7 @@ impl Combine for Lub {
                 eq_tys(self, a.ty, b.ty).then(|| {
                     Ok(ty::mt {ty: a.ty, mutbl: m})
                 })
-            }).chain_err(|_e| {
-                self.tys(a.ty, b.ty).chain(|t| {
-                    Ok(ty::mt {ty: t, mutbl: m_const})
-                })
-            })
+            }).chain_err(|e| Err(e))
           }
         }
     }

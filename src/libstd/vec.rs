@@ -1122,14 +1122,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * foreign interop.
      */
     #[inline]
-    fn as_imm_buf<U>(&self,
-                     /* NB---this CANNOT be const, see below */
-                     f: &fn(*T, uint) -> U) -> U {
-        // NB---Do not change the type of s to `&const [T]`.  This is
-        // unsound.  The reason is that we are going to create immutable pointers
-        // into `s` and pass them to `f()`, but in fact they are potentially
-        // pointing at *mutable memory*.  Use `as_mut_buf` instead!
-
+    fn as_imm_buf<U>(&self, f: &fn(*T, uint) -> U) -> U {
         let s = self.repr();
         f(s.data, s.len / sys::nonzero_size_of::<T>())
     }

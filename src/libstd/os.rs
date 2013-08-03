@@ -1521,7 +1521,7 @@ impl MemoryMap {
         let r = unsafe {
             libc::mmap(addr, len, prot, flags, fd, offset)
         };
-        if r == libc::MAP_FAILED {
+        if r.equiv(&libc::MAP_FAILED) {
             Err(match errno() as c_int {
                 libc::EACCES => ErrFdNotAvail,
                 libc::EBADF => ErrInvalidFd,

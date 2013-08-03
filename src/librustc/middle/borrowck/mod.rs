@@ -241,12 +241,39 @@ pub enum PartialTotal {
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
+#[deriving(Clone, Eq)]
+pub enum LoanMutability {
+    ImmutableMutability,
+    ConstMutability,
+    MutableMutability,
+}
+
+impl LoanMutability {
+    pub fn from_ast_mutability(ast_mutability: ast::mutability)
+                               -> LoanMutability {
+        match ast_mutability {
+            ast::m_imm => ImmutableMutability,
+            ast::m_mutbl => MutableMutability,
+        }
+    }
+}
+
+impl ToStr for LoanMutability {
+    fn to_str(&self) -> ~str {
+        match *self {
+            ImmutableMutability => ~"immutable",
+            ConstMutability => ~"read-only",
+            MutableMutability => ~"mutable",
+        }
+    }
+}
+
 /// Record of a loan that was issued.
 pub struct Loan {
     index: uint,
     loan_path: @LoanPath,
     cmt: mc::cmt,
-    mutbl: ast::mutability,
+    mutbl: LoanMutability,
     restrictions: ~[Restriction],
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
@@ -417,7 +444,7 @@ impl ToStr for DynaFreezeKind {
 // Errors that can occur
 #[deriving(Eq)]
 pub enum bckerr_code {
-    err_mutbl(ast::mutability),
+    err_mutbl(LoanMutability),
     err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
     err_freeze_aliasable_const
@@ -794,17 +821,14 @@ impl BorrowckCtxt {
         mc.cmt_to_str(cmt)
     }
 
-    pub fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
-        let mc = &mc::mem_categorization_ctxt {tcx: self.tcx,
-                                               method_map: self.method_map};
-        mc.mut_to_str(mutbl)
+    pub fn mut_to_str(&self, mutbl: LoanMutability) -> ~str {
+        mutbl.to_str()
     }
 
     pub fn mut_to_keyword(&self, mutbl: ast::mutability) -> &'static str {
         match mutbl {
             ast::m_imm => "",
-            ast::m_const => "const",
-            ast::m_mutbl => "mut"
+            ast::m_mutbl => "mut",
         }
     }
 }
