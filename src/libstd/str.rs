@@ -2024,6 +2024,13 @@ pub trait OwnedStr {
     fn capacity(&self) -> uint;
     fn to_bytes_with_null(self) -> ~[u8];
 
+    /// Allocates a null terminate byte array.
+    ///
+    /// # Failure
+    ///
+    /// Fails if there are any null characters inside the byte array.
+    fn to_c_str(self) -> ~[u8];
+
     /// Work with the mutable byte buffer and length of a slice.
     ///
     /// The given length is one byte longer than the 'official' indexable
@@ -2213,6 +2220,13 @@ impl OwnedStr for ~str {
     #[inline]
     fn to_bytes_with_null(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
+    }
+
+    #[inline]
+    fn to_c_str(self) -> ~[u8] {
+        let bytes = self.to_bytes_with_null();
+        assert!(bytes.slice(0, bytes.len() - 1).iter().all(|byte| *byte != 0));
+        bytes
     }
 
     #[inline]
@@ -3059,6 +3073,18 @@ mod tests {
     }
 
     #[test]
+    fn test_to_c_str() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~[
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109, 0
+        ];
+        assert_eq!((~"").to_c_str(), ~[0]);
+        assert_eq!((~"abc").to_c_str(), ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s.to_c_str(), v);
+    }
+
     fn test_subslice_offset() {
         let a = "kernelsprite";
         let b = a.slice(7, a.len());
