@@ -646,7 +646,8 @@ impl Scheduler {
 
             let current_task: &mut Task = match sched.cleanup_job {
                 Some(GiveTask(ref task, _)) => {
-                    transmute_mut_region(*transmute_mut_unsafe(task))
+                    let task_ptr: *~Task = task;
+                    transmute_mut_region(*transmute_mut_unsafe(task_ptr))
                 }
                 Some(DoNothing) => {
                     rtabort!("no next task");
