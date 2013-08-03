@@ -2141,11 +2141,15 @@ macro_rules! iterator {
                         None
                     } else {
                         let old = self.ptr;
-                        // purposefully don't use 'ptr.offset' because for
-                        // vectors with 0-size elements this would return the
-                        // same pointer.
-                        self.ptr = cast::transmute(self.ptr as uint +
-                                                   sys::nonzero_size_of::<T>());
+                        self.ptr = if sys::size_of::<T>() == 0 {
+                            // purposefully don't use 'ptr.offset' because for
+                            // vectors with 0-size elements this would return the
+                            // same pointer.
+                            cast::transmute(self.ptr as uint + 1)
+                        } else {
+                            self.ptr.offset(1)
+                        };
+
                         Some(cast::transmute(old))
                     }
                 }
@@ -2171,9 +2175,12 @@ macro_rules! double_ended_iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        // See above for why 'ptr.offset' isn't used
-                        self.end = cast::transmute(self.end as uint -
-                                                   sys::nonzero_size_of::<T>());
+                        self.end = if sys::size_of::<T>() == 0 {
+                            // See above for why 'ptr.offset' isn't used
+                            cast::transmute(self.end as uint - 1)
+                        } else {
+                            self.end.offset(-1)
+                        };
                         Some(cast::transmute(self.end))
                     }
                 }
@@ -3564,5 +3571,41 @@ mod tests {
             cnt += 1;
         }
         assert!(cnt == 3);
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use vec;
+    use option::*;
+
+    #[bench]
+    fn iterator(bh: &mut BenchHarness) {
+        // peculiar numbers to stop LLVM from optimising the summation
+        // out.
+        let v = vec::from_fn(100, |i| i ^ (i << 1) ^ (i >> 1));
+
+        do bh.iter {
+            let mut sum = 0;
+            foreach x in v.iter() {
+                sum += *x;
+            }
+            // sum == 11806, to stop dead code elimination.
+            if sum == 0 {fail!()}
+        }
+    }
+
+    #[bench]
+    fn mut_iterator(bh: &mut BenchHarness) {
+        let mut v = vec::from_elem(100, 0);
+
+        do bh.iter {
+            let mut i = 0;
+            foreach x in v.mut_iter() {
+                *x = i;
+                i += 1;
+            }
+        }
     }
 }
