@@ -15,10 +15,10 @@ use syntax::print::pprust;
 use syntax::parse::token;
 
 pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
-    use syntax::visit;
+    use syntax::oldvisit;
 
-    let vt = visit::mk_simple_visitor(
-        @visit::SimpleVisitor {
+    let vt = oldvisit::mk_simple_visitor(
+        @oldvisit::SimpleVisitor {
             visit_pat: |pat| {
                 match pat.node {
                     ast::pat_ident(_, ref path, _) => {
@@ -27,7 +27,7 @@ pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
                     _ => {}
                 }
             },
-            .. *visit::default_simple_visitor()
+            .. *oldvisit::default_simple_visitor()
         }
     );
     (vt.visit_pat)(l.pat, ((), vt));

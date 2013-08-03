@@ -83,7 +83,7 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
-use syntax::visit;
+use syntax::oldvisit;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
@@ -2653,11 +2653,11 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
 }
 
 pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::Crate) {
-    visit::visit_crate(
+    oldvisit::visit_crate(
         crate, ((),
-        visit::mk_simple_visitor(@visit::SimpleVisitor {
+        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
             visit_item: |a| trans_constant(ccx, a),
-            ..*visit::default_simple_visitor()
+            ..*oldvisit::default_simple_visitor()
         })));
 }
 
