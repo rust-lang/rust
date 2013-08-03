@@ -34,11 +34,13 @@ pub trait Mutable: Container {
 /// A map is a key-value store where values may be looked up by their keys. This
 /// trait provides basic operations to operate on these stores.
 pub trait Map<K, V>: Container {
-    /// Return true if the map contains a value for the specified key
-    fn contains_key(&self, key: &K) -> bool;
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V>;
+
+    /// Return true if the map contains a value for the specified key
+    fn contains_key(&self, key: &K) -> bool {
+        self.find(key).is_some()
+    }
 }
 
 /// This trait provides basic operations to modify the contents of a map.

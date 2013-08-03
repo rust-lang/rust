@@ -46,11 +46,6 @@ impl<V> Mutable for SmallIntMap<V> {
 }
 
 impl<V> Map<uint, V> for SmallIntMap<V> {
-    /// Return true if the map contains a value for the specified key
-    fn contains_key(&self, key: &uint) -> bool {
-        self.find(key).is_some()
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
