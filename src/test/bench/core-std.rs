@@ -74,7 +74,7 @@ fn read_line() {
     let path = Path(env!("CFG_SRC_DIR"))
         .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
 
-    foreach _ in range(0, 3) {
+    for _ in range(0, 3) {
         let reader = io::file_reader(&path).unwrap();
         while !reader.eof() {
             reader.read_line();
@@ -119,7 +119,7 @@ fn vec_push_all() {
     let mut r = rand::rng();
 
     let mut v = ~[];
-    foreach i in range(0u, 1500) {
+    for i in range(0u, 1500) {
         let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
         if r.gen() {
             v.push_all(rv);
@@ -133,7 +133,7 @@ fn vec_push_all() {
 
 fn is_utf8_ascii() {
     let mut v : ~[u8] = ~[];
-    foreach _ in range(0u, 20000) {
+    for _ in range(0u, 20000) {
         v.push('b' as u8);
         if !str::is_utf8(v) {
             fail!("is_utf8 failed");
@@ -144,7 +144,7 @@ fn is_utf8_ascii() {
 fn is_utf8_multibyte() {
     let s = "b¢€𤭢";
     let mut v : ~[u8]= ~[];
-    foreach _ in range(0u, 5000) {
+    for _ in range(0u, 5000) {
         v.push_all(s.as_bytes());
         if !str::is_utf8(v) {
             fail!("is_utf8 failed");

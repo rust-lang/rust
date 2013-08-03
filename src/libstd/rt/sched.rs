@@ -761,7 +761,7 @@ mod test {
         let mut task_run_count = 0;
         let task_run_count_ptr: *mut uint = &mut task_run_count;
         do run_in_newsched_task || {
-            foreach _ in range(0u, total) {
+            for _ in range(0u, total) {
                 do spawntask || {
                     unsafe { *task_run_count_ptr = *task_run_count_ptr + 1};
                 }
@@ -960,7 +960,7 @@ mod test {
     #[test]
     fn test_stress_schedule_task_states() {
         let n = stress_factor() * 120;
-        foreach _ in range(0, n as int) {
+        for _ in range(0, n as int) {
             test_schedule_home_states();
         }
     }

@@ -17,7 +17,7 @@ use std::hashmap::HashMap;
 fn main() {
     let mut h = HashMap::new();
     let kvs = [(1, 10), (2, 20), (3, 30)];
-    foreach &(k,v) in kvs.iter() {
+    for &(k,v) in kvs.iter() {
         h.insert(k,v);
     }
     let mut x = 0;
@@ -25,13 +25,13 @@ fn main() {
 
     let mut i = h.iter();
 
-    foreach (&k,&v) in i {
+    for (&k,&v) in i {
         x += k;
         y += v;
         break;
     }
 
-    foreach (&k,&v) in i {
+    for (&k,&v) in i {
         x += k;
         y += v;
     }

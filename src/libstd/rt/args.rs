@@ -112,7 +112,7 @@ mod imp {
     // Copied from `os`.
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
         let mut args = ~[];
-        foreach i in range(0u, argc as uint) {
+        for i in range(0u, argc as uint) {
             args.push(str::raw::from_c_str(*(argv as **libc::c_char).offset(i as int)));
         }
         args

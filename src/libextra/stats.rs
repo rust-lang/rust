@@ -167,7 +167,7 @@ impl<'self> Stats for &'self [f64] {
         } else {
             let mean = self.mean();
             let mut v = 0.0;
-            foreach s in self.iter() {
+            for s in self.iter() {
                 let x = *s - mean;
                 v += x*x;
             }
@@ -254,7 +254,7 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
     sort::tim_sort(tmp);
     let lo = percentile_of_sorted(tmp, pct);
     let hi = percentile_of_sorted(tmp, 100.0-pct);
-    foreach samp in samples.mut_iter() {
+    for samp in samples.mut_iter() {
         if *samp > hi {
             *samp = hi
         } else if *samp < lo {

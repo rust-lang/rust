@@ -176,7 +176,7 @@ impl ReprVisitor {
 
     pub fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        foreach ch in slice.iter() {
+        for ch in slice.iter() {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');

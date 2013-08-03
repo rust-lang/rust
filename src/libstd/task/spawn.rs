@@ -299,7 +299,7 @@ fn each_ancestor(list:        &mut AncestorList,
                         // safe to skip it. This will leave our TaskHandle
                         // hanging around in the group even after it's freed,
                         // but that's ok because, by virtue of the group being
-                        // dead, nobody will ever kill-all (foreach) over it.)
+                        // dead, nobody will ever kill-all (for) over it.)
                         if nobe_is_dead { true } else { forward_blk(tg_opt) }
                     };
                 /*##########################################################*
@@ -357,7 +357,7 @@ impl Drop for Taskgroup {
             // If we are failing, the whole taskgroup needs to die.
             do RuntimeGlue::with_task_handle_and_failing |me, failing| {
                 if failing {
-                    foreach x in this.notifier.mut_iter() {
+                    for x in this.notifier.mut_iter() {
                         x.failed = true;
                     }
                     // Take everybody down with us.
@@ -387,7 +387,7 @@ pub fn Taskgroup(tasks: TaskGroupArc,
        ancestors: AncestorList,
        is_main: bool,
        mut notifier: Option<AutoNotify>) -> Taskgroup {
-    foreach x in notifier.mut_iter() {
+    for x in notifier.mut_iter() {
         x.failed = false;
     }
 
@@ -465,13 +465,13 @@ fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
         if newstate.is_some() {
             let TaskGroupData { members: members, descendants: descendants } =
                 newstate.unwrap();
-            foreach sibling in members.consume() {
+            for sibling in members.consume() {
                 // Skip self - killing ourself won't do much good.
                 if &sibling != me {
                     RuntimeGlue::kill_task(sibling);
                 }
             }
-            foreach child in descendants.consume() {
+            for child in descendants.consume() {
                 assert!(&child != me);
                 RuntimeGlue::kill_task(child);
             }

@@ -44,7 +44,7 @@ impl Code {
 
     fn pack(string: &str) -> Code {
         let mut code = Code(0u64);
-        foreach i in range(0u, string.len()) {
+        for i in range(0u, string.len()) {
             code = code.push_char(string[i]);
         }
         code

@@ -249,7 +249,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let mut most_aligned = None;
             let mut largest_align = 0;
             let mut largest_size = 0;
-            foreach st in sts.iter() {
+            for st in sts.iter() {
                 if largest_size < st.size {
                     largest_size = st.size;
                 }
@@ -545,7 +545,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
 
     let mut offset = 0;
     let mut cfields = ~[];
-    foreach (i, &ty) in st.fields.iter().enumerate() {
+    for (i, &ty) in st.fields.iter().enumerate() {
         let llty = type_of::sizing_type_of(ccx, ty);
         let type_align = machine::llalign_of_min(ccx, llty)
             /*bad*/as u64;

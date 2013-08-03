@@ -40,7 +40,7 @@ pub fn main() {
     let bools = ~[false, false, true, false, false, true, true, false];
     let bools2 = to_bools(Storage{storage: ~[0b01100100]});
 
-    foreach i in range(0u, 8) {
+    for i in range(0u, 8) {
         printfln!("%u => %u vs %u", i, bools[i] as uint, bools2[i] as uint);
     }
 

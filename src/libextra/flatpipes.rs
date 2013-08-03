@@ -29,12 +29,12 @@ This example sends boxed integers across tasks using serialization.
 let (port, chan) = serial::pipe_stream();
 
 do task::spawn || {
-    foreach i in range(0, 10) {
+    for i in range(0, 10) {
         chan.send(@i)
     }
 }
 
-foreach i in range(0, 10) {
+for i in range(0, 10) {
     assert @i == port.recv()
 }
 ~~~
@@ -664,12 +664,12 @@ mod test {
         let (port, chan) = serial::pipe_stream();
 
         do task::spawn || {
-            foreach i in range(0, 10) {
+            for i in range(0, 10) {
                 chan.send(i)
             }
         }
 
-        foreach i in range(0, 10) {
+        for i in range(0, 10) {
             assert!(i == port.recv())
         }
     }
@@ -680,12 +680,12 @@ mod test {
         let (port, chan) = serial::pipe_stream();
 
         do task::spawn || {
-            foreach i in range(0, 10) {
+            for i in range(0, 10) {
                 chan.send(@i)
             }
         }
 
-        foreach i in range(0, 10) {
+        for i in range(0, 10) {
             assert!(@i == port.recv())
         }
     }
@@ -711,12 +711,12 @@ mod test {
         let (port, chan) = pod::pipe_stream();
 
         do task::spawn || {
-            foreach i in range(0, 10) {
+            for i in range(0, 10) {
                 chan.send(i)
             }
         }
 
-        foreach i in range(0, 10) {
+        for i in range(0, 10) {
             assert!(i == port.recv())
         }
     }
@@ -828,7 +828,7 @@ mod test {
             // TcpSocketBuf is a Writer!
             let chan = writer_chan(socket_buf);
 
-            foreach i in range(0, 10) {
+            for i in range(0, 10) {
                 debug!("sending %?", i);
                 chan.send(i)
             }
@@ -851,7 +851,7 @@ mod test {
             // TcpSocketBuf is a Reader!
             let port = reader_port(socket_buf);
 
-            foreach i in range(0, 10) {
+            for i in range(0, 10) {
                 let j = port.recv();
                 debug!("received %?", j);
                 assert_eq!(i, j);

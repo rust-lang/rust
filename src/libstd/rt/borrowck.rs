@@ -83,7 +83,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
         Some(borrow_list) => { // recording borrows
             let mut msg = ~"borrowed";
             let mut sep = " at ";
-            foreach entry in borrow_list.rev_iter() {
+            for entry in borrow_list.rev_iter() {
                 if entry.box == box {
                     msg.push_str(sep);
                     let filename = str::raw::from_c_str(entry.file);

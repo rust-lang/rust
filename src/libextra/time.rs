@@ -257,7 +257,7 @@ impl Tm {
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        foreach ch in needle.byte_iter() {
+        for ch in needle.byte_iter() {
             if s[i] != ch {
                 return false;
             }
@@ -1036,7 +1036,7 @@ mod tests {
             ~"Friday",
             ~"Saturday"
         ];
-        foreach day in days.iter() {
+        for day in days.iter() {
             assert!(test(*day, "%A"));
         }
 
@@ -1049,7 +1049,7 @@ mod tests {
             ~"Fri",
             ~"Sat"
         ];
-        foreach day in days.iter() {
+        for day in days.iter() {
             assert!(test(*day, "%a"));
         }
 
@@ -1067,7 +1067,7 @@ mod tests {
             ~"November",
             ~"December"
         ];
-        foreach day in months.iter() {
+        for day in months.iter() {
             assert!(test(*day, "%B"));
         }
 
@@ -1085,7 +1085,7 @@ mod tests {
             ~"Nov",
             ~"Dec"
         ];
-        foreach day in months.iter() {
+        for day in months.iter() {
             assert!(test(*day, "%b"));
         }
 

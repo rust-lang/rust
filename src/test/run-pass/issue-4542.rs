@@ -12,7 +12,7 @@ use std::os;
 
 pub fn main() {
     let x = os::args();
-    foreach arg in x.iter() {
+    for arg in x.iter() {
         match arg.clone() {
             s => { }
         }

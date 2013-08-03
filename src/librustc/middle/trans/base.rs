@@ -675,7 +675,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
         let tcx = cx.tcx();
         let mut cx = cx;
 
-        foreach (i, &arg) in variant.args.iter().enumerate() {
+        for (i, &arg) in variant.args.iter().enumerate() {
             cx = f(cx,
                    adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
                    ty::subst_tps(tcx, tps, None, arg));
@@ -688,7 +688,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
       ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
-              foreach (i, field_ty) in field_tys.iter().enumerate() {
+              for (i, field_ty) in field_tys.iter().enumerate() {
                   let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
@@ -701,7 +701,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
       }
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          foreach (i, arg) in args.iter().enumerate() {
+          for (i, arg) in args.iter().enumerate() {
               let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
@@ -729,7 +729,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
                                         n_variants);
                   let next_cx = sub_block(cx, "enum-iter-next");
 
-                  foreach variant in (*variants).iter() {
+                  for variant in (*variants).iter() {
                       let variant_cx =
                           sub_block(cx, ~"enum-iter-variant-" +
                                     uint::to_str(variant.disr_val));
@@ -863,7 +863,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef])
             debug!("invoking %x at %x",
                    ::std::cast::transmute(llfn),
                    ::std::cast::transmute(bcx.llbb));
-            foreach &llarg in llargs.iter() {
+            for &llarg in llargs.iter() {
                 debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
@@ -879,7 +879,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef])
             debug!("calling %x at %x",
                    ::std::cast::transmute(llfn),
                    ::std::cast::transmute(bcx.llbb));
-            foreach &llarg in llargs.iter() {
+            for &llarg in llargs.iter() {
                 debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
@@ -908,7 +908,7 @@ pub fn need_invoke(bcx: @mut Block) -> bool {
     loop {
         cur_scope = match cur_scope {
             Some(inf) => {
-                foreach cleanup in inf.cleanups.iter() {
+                for cleanup in inf.cleanups.iter() {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                             if cleanup_type == normal_exit_and_unwind {
@@ -1171,7 +1171,7 @@ pub fn new_block(cx: @mut FunctionContext,
                                   opt_node_info,
                                   cx);
         bcx.scope = scope;
-        foreach cx in parent.iter() {
+        for cx in parent.iter() {
             if cx.unreachable {
                 Unreachable(bcx);
                 break;
@@ -1261,7 +1261,7 @@ pub fn trans_block_cleanups_(bcx: @mut Block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    foreach cu in cleanups.rev_iter() {
+    for cu in cleanups.rev_iter() {
         match *cu {
             clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
@@ -1304,7 +1304,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
                         let mut dest = None;
                         {
                             let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
-                            foreach cp in r.iter() {
+                            for cp in r.iter() {
                                 if cp.size == inf.cleanups.len() {
                                     Br(bcx, cp.dest);
                                     return;
@@ -1326,7 +1326,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
                     bcx = trans_block_cleanups_(sub_cx,
                                                 inf_cleanups,
                                                 is_lpad);
-                    foreach &dest in dest.iter() {
+                    for &dest in dest.iter() {
                         Br(bcx, dest);
                         return;
                     }
@@ -1449,7 +1449,7 @@ pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
 }
 
 pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
-    foreach s in b.stmts.iter() {
+    for s in b.stmts.iter() {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
@@ -1624,7 +1624,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         opt_node_info: Option<NodeInfo>,
                         sp: Option<span>)
                      -> @mut FunctionContext {
-    foreach p in param_substs.iter() { p.validate(); }
+    for p in param_substs.iter() { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, \
             param_substs=%s)",
@@ -1769,7 +1769,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         _ => {}
     }
 
-    foreach arg_n in range(0u, arg_tys.len()) {
+    for arg_n in range(0u, arg_tys.len()) {
         let arg_ty = arg_tys[arg_n];
         let raw_llarg = raw_llargs[arg_n];
 
@@ -1901,7 +1901,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // Put return block after all other blocks.
     // This somewhat improves single-stepping experience in debugger.
     unsafe {
-        foreach &llreturn in fcx.llreturn.iter() {
+        for &llreturn in fcx.llreturn.iter() {
             llvm::LLVMMoveBasicBlockAfter(llreturn, bcx.llbb);
         }
     }
@@ -1965,7 +1965,7 @@ fn insert_synthetic_type_entries(bcx: @mut Block,
      */
 
     let tcx = bcx.tcx();
-    foreach i in range(0u, fn_args.len()) {
+    for i in range(0u, fn_args.len()) {
         debug!("setting type of argument %u (pat node %d) to %s",
                i, fn_args[i].pat.id, bcx.ty_to_str(arg_tys[i]));
 
@@ -2090,7 +2090,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 
     let repr = adt::represent_type(ccx, result_ty);
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
-    foreach (i, fn_arg) in fn_args.iter().enumerate() {
+    for (i, fn_arg) in fn_args.iter().enumerate() {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
                                              fcx.llretptr.get(),
@@ -2106,7 +2106,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
                       id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
-    foreach variant in enum_definition.variants.iter() {
+    for variant in enum_definition.variants.iter() {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
@@ -2156,7 +2156,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      item.id,
                      item.attrs);
         } else {
-            foreach stmt in body.stmts.iter() {
+            for stmt in body.stmts.iter() {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
@@ -2189,7 +2189,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier because we need to get
           // the value of the bool out of LLVM
-          foreach attr in item.attrs.iter() {
+          for attr in item.attrs.iter() {
               if "static_assert" == attr.name() {
                   if m == ast::m_mutbl {
                       ccx.sess.span_fatal(expr.span,
@@ -2237,7 +2237,7 @@ pub fn trans_struct_def(ccx: @mut CrateContext, struct_def: @ast::struct_def) {
 // and control visibility.
 pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
     let _icx = push_ctxt("trans_mod");
-    foreach item in m.items.iter() {
+    for item in m.items.iter() {
         trans_item(ccx, *item);
     }
 }
@@ -2625,7 +2625,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
                                                  node: it.id });
         let mut i = 0;
         let path = item_path(ccx, &it.id);
-        foreach variant in (*enum_definition).variants.iter() {
+        for variant in (*enum_definition).variants.iter() {
             let p = vec::append(path.clone(), [
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
@@ -2801,11 +2801,11 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
     // like the multiple borrows. At least, it doesn't
     // like them on the current snapshot. (2013-06-14)
     let mut keys = ~[];
-    foreach (k, _) in ccx.module_data.iter() {
+    for (k, _) in ccx.module_data.iter() {
         keys.push(k.to_managed());
     }
 
-    foreach key in keys.iter() {
+    for key in keys.iter() {
         let val = *ccx.module_data.find_equiv(key).get();
         let s_const = C_cstr(ccx, *key);
         let s_ptr = p2i(ccx, s_const);
@@ -3032,7 +3032,7 @@ pub fn trans_crate(sess: session::Session,
         do sort::quick_sort(ccx.stats.fn_stats) |&(_, _, insns_a), &(_, _, insns_b)| {
             insns_a > insns_b
         }
-        foreach tuple in ccx.stats.fn_stats.iter() {
+        for tuple in ccx.stats.fn_stats.iter() {
             match *tuple {
                 (ref name, ms, insns) => {
                     printfln!("%u insns, %u ms, %s", insns, ms, *name);
@@ -3041,7 +3041,7 @@ pub fn trans_crate(sess: session::Session,
         }
     }
     if ccx.sess.count_llvm_insns() {
-        foreach (k, v) in ccx.stats.llvm_insns.iter() {
+        for (k, v) in ccx.stats.llvm_insns.iter() {
             printfln!("%-7u %s", *v, *k);
         }
     }

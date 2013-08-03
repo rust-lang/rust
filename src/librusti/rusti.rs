@@ -149,7 +149,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     do find_main(crate, sess) |blk| {
         // Fish out all the view items, be sure to record 'extern mod' items
         // differently beause they must appear before all 'use' statements
-        foreach vi in blk.view_items.iter() {
+        for vi in blk.view_items.iter() {
             let s = do with_pp(intr) |pp, _| {
                 pprust::print_view_item(pp, vi);
             };
@@ -163,7 +163,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
         // Iterate through all of the block's statements, inserting them into
         // the correct portions of the program
-        foreach stmt in blk.stmts.iter() {
+        for stmt in blk.stmts.iter() {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
                 ast::stmt_decl(d, _) => {
@@ -276,7 +276,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
     fn find_main(crate: @ast::Crate, sess: session::Session,
                  f: &fn(&ast::Block)) {
-        foreach item in crate.module.items.iter() {
+        for item in crate.module.items.iter() {
             match item.node {
                 ast::item_fn(_, _, _, _, ref blk) => {
                     if item.ident == sess.ident_of("main") {
@@ -396,7 +396,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
-            foreach arg in args.iter() {
+            for arg in args.iter() {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
                     (arg.slice_to(arg.len() - 3).to_owned(), (*arg).clone())
@@ -408,7 +408,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                     None => { }
                 }
             }
-            foreach crate in loaded_crates.iter() {
+            for crate in loaded_crates.iter() {
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
                 repl.program.record_extern(fmt!("extern mod %s;", *crate));
@@ -571,7 +571,7 @@ mod tests {
     #[cfg(thiswillneverbeacfgflag)]
     fn run_program(prog: &str) {
         let mut r = repl();
-        foreach cmd in prog.split_iter('\n') {
+        for cmd in prog.split_iter('\n') {
             assert!(run_line(&mut r, io::stdin(), io::stdout(),
                              cmd.to_owned(), false),
                     "the command '%s' failed", cmd);

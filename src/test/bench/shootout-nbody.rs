@@ -80,8 +80,8 @@ struct Planet {
 fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
     let mut d = [ 0.0, ..3 ];
     do (steps as uint).times {
-        foreach i in range(0u, N_BODIES) {
-            foreach j in range(i + 1, N_BODIES) {
+        for i in range(0u, N_BODIES) {
+            for j in range(i + 1, N_BODIES) {
                 d[0] = bodies[i].x[0] - bodies[j].x[0];
                 d[1] = bodies[i].x[1] - bodies[j].x[1];
                 d[2] = bodies[i].x[2] - bodies[j].x[2];
@@ -101,7 +101,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
             }
         }
 
-        foreach a in bodies.mut_iter() {
+        for a in bodies.mut_iter() {
             a.x[0] += dt * a.v[0];
             a.x[1] += dt * a.v[1];
             a.x[2] += dt * a.v[2];
@@ -112,13 +112,13 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
 fn energy(bodies: &[Planet, ..N_BODIES]) -> f64 {
     let mut e = 0.0;
     let mut d = [ 0.0, ..3 ];
-    foreach i in range(0u, N_BODIES) {
-        foreach k in range(0u, 3) {
+    for i in range(0u, N_BODIES) {
+        for k in range(0u, 3) {
             e += bodies[i].mass * bodies[i].v[k] * bodies[i].v[k] / 2.0;
         }
 
-        foreach j in range(i + 1, N_BODIES) {
-            foreach k in range(0u, 3) {
+        for j in range(i + 1, N_BODIES) {
+            for k in range(0u, 3) {
                 d[k] = bodies[i].x[k] - bodies[j].x[k];
             }
             let dist = (d[0]*d[0] + d[1]*d[1] + d[2]*d[2]).sqrt();
@@ -129,8 +129,8 @@ fn energy(bodies: &[Planet, ..N_BODIES]) -> f64 {
 }
 
 fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
-    foreach i in range(0u, N_BODIES) {
-        foreach k in range(0u, 3) {
+    for i in range(0u, N_BODIES) {
+        for k in range(0u, 3) {
             bodies[0].v[k] -= bodies[i].v[k] * bodies[i].mass / SOLAR_MASS;
         }
     }

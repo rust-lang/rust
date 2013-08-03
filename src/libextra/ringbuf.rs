@@ -38,7 +38,7 @@ impl<T> Container for RingBuf<T> {
 impl<T> Mutable for RingBuf<T> {
     /// Clear the RingBuf, removing all values.
     fn clear(&mut self) {
-        foreach x in self.elts.mut_iter() { *x = None }
+        for x in self.elts.mut_iter() { *x = None }
         self.nelts = 0;
         self.lo = 0;
     }
@@ -277,7 +277,7 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     elts.reserve(newlen);
 
     /* fill with None */
-    foreach _ in range(elts.len(), elts.capacity()) {
+    for _ in range(elts.len(), elts.capacity()) {
         elts.push(None);
     }
 
@@ -292,11 +292,11 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
 
     assert!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A
-        foreach i in range(0u, lo) {
+        for i in range(0u, lo) {
             elts.swap(i, nelts + i);
         }
     } else {                // B
-        foreach i in range(lo, nelts) {
+        for i in range(lo, nelts) {
             elts.swap(i, newlen - nelts + i);
         }
         *loptr += newlen - nelts;
@@ -333,7 +333,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
 
 impl<A, T: Iterator<A>> Extendable<A, T> for RingBuf<A> {
     fn extend(&mut self, iterator: &mut T) {
-        foreach elt in *iterator {
+        for elt in *iterator {
             self.push_back(elt);
         }
     }
@@ -461,21 +461,21 @@ mod tests {
     #[test]
     fn test_push_front_grow() {
         let mut deq = RingBuf::new();
-        foreach i in range(0u, 66) {
+        for i in range(0u, 66) {
             deq.push_front(i);
         }
         assert_eq!(deq.len(), 66);
 
-        foreach i in range(0u, 66) {
+        for i in range(0u, 66) {
             assert_eq!(*deq.get(i), 65 - i);
         }
 
         let mut deq = RingBuf::new();
-        foreach i in range(0u, 66) {
+        for i in range(0u, 66) {
             deq.push_back(i);
         }
 
-        foreach i in range(0u, 66) {
+        for i in range(0u, 66) {
             assert_eq!(*deq.get(i), i);
         }
     }
@@ -606,12 +606,12 @@ mod tests {
         assert_eq!(d.iter().next(), None);
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
-        foreach i in range(0, 5) {
+        for i in range(0, 5) {
             d.push_back(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
-        foreach i in range(6, 9) {
+        for i in range(6, 9) {
             d.push_front(i);
         }
         assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
@@ -631,12 +631,12 @@ mod tests {
         let mut d = RingBuf::new();
         assert_eq!(d.rev_iter().next(), None);
 
-        foreach i in range(0, 5) {
+        for i in range(0, 5) {
             d.push_back(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
-        foreach i in range(6, 9) {
+        for i in range(6, 9) {
             d.push_front(i);
         }
         assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
@@ -647,11 +647,11 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.mut_iter().next().is_none());
 
-        foreach i in range(0u, 3) {
+        for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        foreach (i, elt) in d.mut_iter().enumerate() {
+        for (i, elt) in d.mut_iter().enumerate() {
             assert_eq!(*elt, 2 - i);
             *elt = i;
         }
@@ -670,11 +670,11 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.mut_rev_iter().next().is_none());
 
-        foreach i in range(0u, 3) {
+        for i in range(0u, 3) {
             d.push_front(i);
         }
 
-        foreach (i, elt) in d.mut_rev_iter().enumerate() {
+        for (i, elt) in d.mut_rev_iter().enumerate() {
             assert_eq!(*elt, i);
             *elt = i;
         }
@@ -698,7 +698,7 @@ mod tests {
 
         let mut seq = iterator::Counter::new(0u, 2).take_(256);
         let deq: RingBuf<uint> = seq.collect();
-        foreach (i, &x) in deq.iter().enumerate() {
+        for (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);
         }
         assert_eq!(deq.len(), 256);
