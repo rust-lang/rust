@@ -77,7 +77,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
         None => { // not recording borrows
             let msg = "borrowed";
             do msg.as_c_str |msg_p| {
-                sys::begin_unwind_(msg_p as *c_char, file, line);
+                sys::begin_unwind_(msg_p, file, line);
             }
         }
         Some(borrow_list) => { // recording borrows
@@ -93,7 +93,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
                 }
             }
             do msg.as_c_str |msg_p| {
-                sys::begin_unwind_(msg_p as *c_char, file, line)
+                sys::begin_unwind_(msg_p, file, line)
             }
         }
     }
@@ -232,7 +232,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
             if br.box != a || br.file != file || br.line != line {
                 let err = fmt!("wrong borrow found, br=%?", br);
                 do err.as_c_str |msg_p| {
-                    sys::begin_unwind_(msg_p as *c_char, file, line)
+                    sys::begin_unwind_(msg_p, file, line)
                 }
             }
             borrow_list
