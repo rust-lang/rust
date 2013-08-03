@@ -527,7 +527,7 @@ impl<'self> MethodDef<'self> {
 
         let method_ident = cx.ident_of(self.name);
         let fn_decl = cx.fn_decl(args, ret_type);
-        let body_block = cx.blk_expr(body);
+        let body_block = cx.block_expr(body);
 
 
         // Create the method.

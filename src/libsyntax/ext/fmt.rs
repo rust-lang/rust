@@ -323,5 +323,5 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                            nargs, expected_nargs));
     }
 
-    cx.expr_blk(cx.blk(fmt_sp, stms, Some(buf())))
+    cx.expr_block(cx.block(fmt_sp, stms, Some(buf())))
 }
