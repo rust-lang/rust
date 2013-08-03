@@ -91,10 +91,10 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 #[inline]
 pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        foreach x in lhs.iter() {
+        for x in lhs.iter() {
             push((*x).clone());
         }
-        foreach i in range(0u, rhs.len()) {
+        for i in range(0u, rhs.len()) {
             push(rhs[i].clone());
         }
     }
@@ -104,7 +104,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        foreach elem in v.iter() {
+        for elem in v.iter() {
             push(f(elem));
         }
     }
@@ -147,7 +147,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        foreach x in v.consume_iter() {
+        for x in v.consume_iter() {
             raw::push(&mut av, x);
         }
         av
@@ -329,7 +329,7 @@ mod test {
         // Some code that could use that, then:
         fn seq_range(lo: uint, hi: uint) -> @[uint] {
             do build |push| {
-                foreach i in range(lo, hi) {
+                for i in range(lo, hi) {
                     push(i);
                 }
             }

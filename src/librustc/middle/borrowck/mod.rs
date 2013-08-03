@@ -139,7 +139,7 @@ fn borrowck_fn(fk: &oldvisit::fn_kind,
                                      LoanDataFlowOperator,
                                      id_range,
                                      all_loans.len());
-            foreach (loan_idx, loan) in all_loans.iter().enumerate() {
+            for (loan_idx, loan) in all_loans.iter().enumerate() {
                 loan_dfcx.add_gen(loan.gen_scope, loan_idx);
                 loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }

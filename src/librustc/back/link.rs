@@ -141,7 +141,7 @@ pub mod jit {
 
             let cstore = sess.cstore;
             let r = cstore::get_used_crate_files(cstore);
-            foreach cratepath in r.iter() {
+            for cratepath in r.iter() {
                 let path = cratepath.to_str();
 
                 debug!("linking: %s", path);
@@ -507,7 +507,7 @@ pub fn build_link_meta(sess: Session,
         let mut cmh_items = ~[];
         let linkage_metas = attr::find_linkage_metas(c.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        foreach meta in linkage_metas.iter() {
+        for meta in linkage_metas.iter() {
             match meta.name_str_pair() {
                 Some((n, value)) if "name" == n => name = Some(value),
                 Some((n, value)) if "vers" == n => vers = Some(value),
@@ -547,7 +547,7 @@ pub fn build_link_meta(sess: Session,
               }
               ast::MetaList(name, ref mis) => {
                 write_string(symbol_hasher, len_and_str(name));
-                foreach m_ in mis.iter() {
+                for m_ in mis.iter() {
                     hash(symbol_hasher, m_);
                 }
               }
@@ -555,11 +555,11 @@ pub fn build_link_meta(sess: Session,
         }
 
         symbol_hasher.reset();
-        foreach m in cmh_items.iter() {
+        for m in cmh_items.iter() {
             hash(symbol_hasher, m);
         }
 
-        foreach dh in dep_hashes.iter() {
+        for dh in dep_hashes.iter() {
             write_string(symbol_hasher, len_and_str(*dh));
         }
 
@@ -665,7 +665,7 @@ pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    foreach c in s.iter() {
+    for c in s.iter() {
         match c {
             // Escape these with $ sequences
             '@' => result.push_str("$SP$"),
@@ -712,7 +712,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     let mut n = ~"_ZN"; // Begin name-sequence.
 
-    foreach s in ss.iter() {
+    for s in ss.iter() {
         match *s {
             path_name(s) | path_mod(s) => {
                 let sani = sanitize(sess.str_of(s));
@@ -905,7 +905,7 @@ pub fn link_args(sess: Session,
 
     let cstore = sess.cstore;
     let r = cstore::get_used_crate_files(cstore);
-    foreach cratepath in r.iter() {
+    for cratepath in r.iter() {
         if cratepath.filetype() == Some(~".rlib") {
             args.push(cratepath.to_str());
             loop;
@@ -917,12 +917,12 @@ pub fn link_args(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    foreach arg in ula.iter() { args.push(arg.to_owned()); }
+    for arg in ula.iter() { args.push(arg.to_owned()); }
 
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {
         let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
-        foreach link_arg in link_args.consume_iter() {
+        for link_arg in link_args.consume_iter() {
             args.push(link_arg);
         }
     }
@@ -935,13 +935,13 @@ pub fn link_args(sess: Session,
     // to be found at compile time so it is still entirely up to outside
     // forces to make sure that library can be found at runtime.
 
-    foreach path in sess.opts.addl_lib_search_paths.iter() {
+    for path in sess.opts.addl_lib_search_paths.iter() {
         args.push(~"-L" + path.to_str());
     }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
-    foreach l in used_libs.iter() { args.push(~"-l" + *l); }
+    for l in used_libs.iter() { args.push(~"-l" + *l); }
 
     if *sess.building_library {
         args.push(lib_cmd);

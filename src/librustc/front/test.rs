@@ -380,7 +380,7 @@ fn is_extra(cx: &TestCtxt) -> bool {
 fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
-    foreach test in cx.testfns.iter() {
+    for test in cx.testfns.iter() {
         descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 

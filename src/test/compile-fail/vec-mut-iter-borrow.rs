@@ -11,7 +11,7 @@
 fn main() {
     let mut xs = ~[1, 2, 3, 4];
 
-    foreach x in xs.mut_iter() {
+    for x in xs.mut_iter() {
         xs.push(1) //~ ERROR cannot borrow `xs` as mutable
     }
 }

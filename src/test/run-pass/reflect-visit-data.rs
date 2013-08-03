@@ -666,7 +666,7 @@ pub fn main() {
         visit_tydesc(td, v);
 
         let r = u.vals.clone();
-        foreach s in r.iter() {
+        for s in r.iter() {
             printfln!("val: %s", *s);
         }
         error!("%?", u.vals.clone());

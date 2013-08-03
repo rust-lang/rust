@@ -587,7 +587,7 @@ msgstr ""
 #, no-wrap
 msgid ""
 "    let mut final_res = 0f64;\n"
-"    foreach ft in futures.mut_iter()  {\n"
+"    for ft in futures.mut_iter()  {\n"
 "        final_res += ft.get();\n"
 "    }\n"
 "    println(fmt!(\"^2/6 is not far from : %?\", final_res));\n"

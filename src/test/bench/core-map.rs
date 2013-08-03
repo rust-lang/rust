@@ -31,19 +31,19 @@ fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     io::println(" Ascending integers:");
 
     do timed("insert") {
-        foreach i in range(0u, n_keys) {
+        for i in range(0u, n_keys) {
             map.insert(i, i + 1);
         }
     }
 
     do timed("search") {
-        foreach i in range(0u, n_keys) {
+        for i in range(0u, n_keys) {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     }
 
     do timed("remove") {
-        foreach i in range(0, n_keys) {
+        for i in range(0, n_keys) {
             assert!(map.remove(&i));
         }
     }
@@ -77,19 +77,19 @@ fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
 fn vector<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
     do timed("insert") {
-        foreach i in range(0u, n_keys) {
+        for i in range(0u, n_keys) {
             map.insert(dist[i], i + 1);
         }
     }
 
     do timed("search") {
-        foreach i in range(0u, n_keys) {
+        for i in range(0u, n_keys) {
             assert_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
         }
     }
 
     do timed("remove") {
-        foreach i in range(0u, n_keys) {
+        for i in range(0u, n_keys) {
             assert!(map.remove(&dist[i]));
         }
     }

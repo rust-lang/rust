@@ -295,7 +295,7 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
  */
 pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
-    foreach elem in v.iter() { result.push_all_move(f(elem)); }
+    for elem in v.iter() { result.push_all_move(f(elem)); }
     result
 }
 
@@ -329,7 +329,7 @@ impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        foreach inner in self.iter() {
+        for inner in self.iter() {
             if first { first = false; } else { r.push((*sep).clone()); }
             r.push_all((*inner).clone());
         }
@@ -347,7 +347,7 @@ impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
     pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
-        foreach &inner in self.iter() {
+        for &inner in self.iter() {
             if first { first = false; } else { r.push((*sep).clone()); }
             r.push_all(inner);
         }
@@ -365,7 +365,7 @@ impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
 pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[];
     let mut us = ~[];
-    foreach p in v.iter() {
+    for p in v.iter() {
         let (t, u) = (*p).clone();
         ts.push(t);
         us.push(u);
@@ -384,7 +384,7 @@ pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[];
     let mut us = ~[];
-    foreach p in v.consume_iter() {
+    for p in v.consume_iter() {
         let (t, u) = p;
         ts.push(t);
         us.push(u);
@@ -473,7 +473,7 @@ pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) ->
         indices.swap(k, l);
         indices.mut_slice(k+1, length).reverse();
         // fixup permutation based on indices
-        foreach i in range(k, length) {
+        for i in range(k, length) {
             permutation[i] = values[indices[i]].clone();
         }
     }
@@ -589,7 +589,7 @@ pub mod traits {
 
     impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
         fn cmp(&self, other: & &'self [T]) -> Ordering {
-            foreach (s,o) in self.iter().zip(other.iter()) {
+            for (s,o) in self.iter().zip(other.iter()) {
                 match s.cmp(o) {
                     Equal => {},
                     non_eq => { return non_eq; }
@@ -611,7 +611,7 @@ pub mod traits {
 
     impl<'self,T:Ord> Ord for &'self [T] {
         fn lt(&self, other: & &'self [T]) -> bool {
-            foreach (s,o) in self.iter().zip(other.iter()) {
+            for (s,o) in self.iter().zip(other.iter()) {
                 if *s < *o { return true; }
                 if *s > *o { return false; }
             }
@@ -725,7 +725,7 @@ impl<'self,T:Clone> CopyableVector<T> for &'self [T] {
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let mut result = with_capacity(self.len());
-        foreach e in self.iter() {
+        for e in self.iter() {
             result.push((*e).clone());
         }
         result
@@ -880,7 +880,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      *
      * ~~~ {.rust}
      * let v = &[1,2,3,4];
-     * foreach win in v.window_iter() {
+     * for win in v.window_iter() {
      *     printfln!(win);
      * }
      * ~~~
@@ -909,7 +909,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      *
      * ~~~ {.rust}
      * let v = &[1,2,3,4,5];
-     * foreach win in v.chunk_iter() {
+     * for win in v.chunk_iter() {
      *     printfln!(win);
      * }
      * ~~~
@@ -975,7 +975,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      */
     #[inline]
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        foreach (i, t) in self.rev_iter().enumerate() {
+        for (i, t) in self.rev_iter().enumerate() {
             if f(t) { return Some(self.len() - i - 1); }
         }
         None
@@ -1075,7 +1075,7 @@ impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
 
     /// Return true if a vector contains an element with the given value
     fn contains(&self, x: &T) -> bool {
-        foreach elt in self.iter() { if *x == *elt { return true; } }
+        for elt in self.iter() { if *x == *elt { return true; } }
         false
     }
 }
@@ -1113,7 +1113,7 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
-        foreach elt in self.iter() {
+        for elt in self.iter() {
             if f(elt) {
                 lefts.push((*elt).clone());
             } else {
@@ -1170,7 +1170,7 @@ impl<T> OwnedVector<T> for ~[T] {
     ///
     /// ~~~ {.rust}
     /// let v = ~[~"a", ~"b"];
-    /// foreach s in v.consume_iter() {
+    /// for s in v.consume_iter() {
     ///   // s has type ~str, not &~str
     ///   println(s);
     /// }
@@ -1461,7 +1461,7 @@ impl<T> OwnedVector<T> for ~[T] {
             assert!(newlen <= oldlen);
             unsafe {
                 // This loop is optimized out for non-drop types.
-                foreach i in range(newlen, oldlen) {
+                for i in range(newlen, oldlen) {
                     ptr::read_and_zero_ptr(ptr::mut_offset(p, i as int));
                 }
             }
@@ -1477,7 +1477,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let len = self.len();
         let mut deleted: uint = 0;
 
-        foreach i in range(0u, len) {
+        for i in range(0u, len) {
             if !f(&self[i]) {
                 deleted += 1;
             } else if deleted > 0 {
@@ -1499,7 +1499,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
-        foreach elt in self.consume_iter() {
+        for elt in self.consume_iter() {
             if f(&elt) {
                 lefts.push(elt);
             } else {
@@ -1561,7 +1561,7 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
         let new_len = self.len() + rhs.len();
         self.reserve(new_len);
 
-        foreach i in range(0u, rhs.len()) {
+        for i in range(0u, rhs.len()) {
             self.push(unsafe { raw::get(rhs, i) })
         }
     }
@@ -1832,7 +1832,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
 
     #[inline]
     fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
-        foreach (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
+        for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
             util::swap(a, b);
         }
         cmp::min(self.len(), end-start)
@@ -1867,7 +1867,7 @@ pub trait MutableCloneableVector<T> {
 impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
     #[inline]
     fn copy_from(self, src: &[T]) -> uint {
-        foreach (a, b) in self.mut_iter().zip(src.iter()) {
+        for (a, b) in self.mut_iter().zip(src.iter()) {
             *a = b.clone();
         }
         cmp::min(self.len(), src.len())
@@ -2276,7 +2276,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
     fn from_iterator(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
-        foreach x in *iterator {
+        for x in *iterator {
             xs.push(x);
         }
         xs
@@ -2288,7 +2288,7 @@ impl<A, T: Iterator<A>> Extendable<A, T> for ~[A] {
         let (lower, _) = iterator.size_hint();
         let len = self.len();
         self.reserve(len + lower);
-        foreach x in *iterator {
+        for x in *iterator {
             self.push(x);
         }
     }
@@ -3246,7 +3246,7 @@ mod tests {
     fn test_mut_iterator() {
         use iterator::*;
         let mut xs = [1, 2, 3, 4, 5];
-        foreach x in xs.mut_iter() {
+        for x in xs.mut_iter() {
             *x += 1;
         }
         assert_eq!(xs, [2, 3, 4, 5, 6])
@@ -3259,7 +3259,7 @@ mod tests {
         let xs = [1, 2, 5, 10, 11];
         let ys = [11, 10, 5, 2, 1];
         let mut i = 0;
-        foreach &x in xs.rev_iter() {
+        for &x in xs.rev_iter() {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -3270,7 +3270,7 @@ mod tests {
     fn test_mut_rev_iterator() {
         use iterator::*;
         let mut xs = [1u, 2, 3, 4, 5];
-        foreach (i,x) in xs.mut_rev_iter().enumerate() {
+        for (i,x) in xs.mut_rev_iter().enumerate() {
             *x += i;
         }
         assert_eq!(xs, [5, 5, 5, 5, 5])
@@ -3514,12 +3514,12 @@ mod tests {
         {
             let (left, right) = values.mut_split(2);
             assert_eq!(left.slice(0, left.len()), [1, 2]);
-            foreach p in left.mut_iter() {
+            for p in left.mut_iter() {
                 *p += 1;
             }
 
             assert_eq!(right.slice(0, right.len()), [3, 4, 5]);
-            foreach p in right.mut_iter() {
+            for p in right.mut_iter() {
                 *p += 2;
             }
         }
@@ -3536,25 +3536,25 @@ mod tests {
         assert_eq!(v.len(), 3);
         let mut cnt = 0;
 
-        foreach f in v.iter() {
+        for f in v.iter() {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 3);
 
-        foreach f in v.slice(1, 3).iter() {
+        for f in v.slice(1, 3).iter() {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 5);
 
-        foreach f in v.mut_iter() {
+        for f in v.mut_iter() {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 8);
 
-        foreach f in v.consume_iter() {
+        for f in v.consume_iter() {
             assert!(f == Foo);
             cnt += 1;
         }
@@ -3566,7 +3566,7 @@ mod tests {
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
         assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()), ~"~[{}, {}]");
         cnt = 0;
-        foreach f in xs.iter() {
+        for f in xs.iter() {
             assert!(*f == Foo);
             cnt += 1;
         }
@@ -3588,7 +3588,7 @@ mod bench {
 
         do bh.iter {
             let mut sum = 0;
-            foreach x in v.iter() {
+            for x in v.iter() {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
@@ -3602,7 +3602,7 @@ mod bench {
 
         do bh.iter {
             let mut i = 0;
-            foreach x in v.mut_iter() {
+            for x in v.mut_iter() {
                 *x = i;
                 i += 1;
             }

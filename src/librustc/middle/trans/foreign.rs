@@ -286,7 +286,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         Some(abi) => abi,
     };
 
-    foreach &foreign_item in foreign_mod.items.iter() {
+    for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;
@@ -498,7 +498,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
             let _icx = push_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
             let n = tys.llsig.llarg_tys.len();
-            foreach i in range(0u, n) {
+            for i in range(0u, n) {
                 let arg_i = bcx.fcx.arg_pos(i);
                 let mut llargval = get_param(llwrapfn, arg_i);
 
@@ -512,7 +512,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                 store_inbounds(bcx, llargval, llargbundle, [0u, i]);
             }
 
-            foreach &retptr in bcx.fcx.llretptr.iter() {
+            for &retptr in bcx.fcx.llretptr.iter() {
                 store_inbounds(bcx, retptr, llargbundle, [0u, n]);
             }
         }
@@ -522,7 +522,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                      llargbundle: ValueRef) {
             let _icx = push_ctxt("foreign::wrap::build_ret");
             let arg_count = shim_types.fn_sig.inputs.len();
-            foreach &retptr in bcx.fcx.llretptr.iter() {
+            for &retptr in bcx.fcx.llretptr.iter() {
                 let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
                 Store(bcx, Load(bcx, llretptr), retptr);
             }
@@ -543,7 +543,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        foreach i in range(0u, num_args) {
+        for i in range(0u, num_args) {
             args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
         }
         let llfn = bcx.ccx().intrinsics.get_copy(&name);

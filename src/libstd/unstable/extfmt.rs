@@ -615,7 +615,7 @@ pub mod rt {
         let headsize = match head { Some(_) => 1, _ => 0 };
         let uwidth : uint = match cv.width {
             CountImplied => {
-                foreach &c in head.iter() {
+                for &c in head.iter() {
                     buf.push_char(c);
                 }
                 return buf.push_str(s);
@@ -624,7 +624,7 @@ pub mod rt {
         };
         let strlen = s.char_len() + headsize;
         if uwidth <= strlen {
-            foreach &c in head.iter() {
+            for &c in head.iter() {
                 buf.push_char(c);
             }
             return buf.push_str(s);
@@ -632,7 +632,7 @@ pub mod rt {
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
-            foreach &c in head.iter() {
+            for &c in head.iter() {
                 buf.push_char(c);
             }
             buf.push_str(s);
@@ -666,7 +666,7 @@ pub mod rt {
         // instead.
 
         if signed && zero_padding {
-            foreach &head in head.iter() {
+            for &head in head.iter() {
                 if head == '+' || head == '-' || head == ' ' {
                     buf.push_char(head);
                     buf.push_str(padstr);
@@ -676,7 +676,7 @@ pub mod rt {
             }
         }
         buf.push_str(padstr);
-        foreach &c in head.iter() {
+        for &c in head.iter() {
             buf.push_char(c);
         }
         buf.push_str(s);

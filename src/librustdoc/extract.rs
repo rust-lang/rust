@@ -142,7 +142,7 @@ fn nmoddoc_from_mod(
     module_: ast::foreign_mod
 ) -> doc::NmodDoc {
     let mut fns = ~[];
-    foreach item in module_.items.iter() {
+    for item in module_.items.iter() {
         let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {

@@ -120,7 +120,7 @@ trait Canvas {
     // Unlike interfaces traits support default implementations.
     // Got an ICE as soon as I added this method.
     fn add_points(&mut self, shapes: &[Point]) {
-        foreach pt in shapes.iter() {self.add_point(*pt)};
+        for pt in shapes.iter() {self.add_point(*pt)};
     }
 }
 
@@ -134,13 +134,13 @@ impl Canvas for AsciiArt {
 
     fn add_rect(&mut self, shape: Rect) {
         // Add the top and bottom lines.
-        foreach x in range(shape.top_left.x, shape.top_left.x + shape.size.width) {
+        for x in range(shape.top_left.x, shape.top_left.x + shape.size.width) {
             self.add_pt(x, shape.top_left.y);
             self.add_pt(x, shape.top_left.y + shape.size.height - 1);
         }
 
         // Add the left and right lines.
-        foreach y in range(shape.top_left.y, shape.top_left.y + shape.size.height) {
+        for y in range(shape.top_left.y, shape.top_left.y + shape.size.height) {
             self.add_pt(shape.top_left.x, y);
             self.add_pt(shape.top_left.x + shape.size.width - 1, y);
         }

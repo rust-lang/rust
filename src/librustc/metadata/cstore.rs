@@ -84,7 +84,7 @@ pub fn have_crate_data(cstore: &CStore, cnum: ast::CrateNum) -> bool {
 
 pub fn iter_crate_data(cstore: &CStore,
                        i: &fn(ast::CrateNum, @crate_metadata)) {
-    foreach (&k, &v) in cstore.metas.iter() {
+    for (&k, &v) in cstore.metas.iter() {
         i(k, v);
     }
 }
@@ -114,7 +114,7 @@ pub fn get_used_libraries<'a>(cstore: &'a CStore) -> &'a [@str] {
 }
 
 pub fn add_used_link_args(cstore: &mut CStore, args: &str) {
-    foreach s in args.split_iter(' ') {
+    for s in args.split_iter(' ') {
         cstore.used_link_args.push(s.to_managed());
     }
 }
@@ -148,7 +148,7 @@ struct crate_hash {
 pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     let mut result = ~[];
 
-    foreach (_, &cnum) in cstore.extern_mod_crate_map.iter() {
+    for (_, &cnum) in cstore.extern_mod_crate_map.iter() {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         let vers = decoder::get_crate_vers(cdata.data);
@@ -165,7 +165,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     };
 
     debug!("sorted:");
-    foreach x in sorted.iter() {
+    for x in sorted.iter() {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
 

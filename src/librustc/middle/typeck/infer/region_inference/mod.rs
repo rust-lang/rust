@@ -374,7 +374,7 @@ impl RegionVarBindings {
     pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
                                        -> ~[RegionVid] {
         do vec::build |push| {
-            foreach i in range(snapshot, self.undo_log.len()) {
+            for i in range(snapshot, self.undo_log.len()) {
                 match self.undo_log[i] {
                     AddVar(vid) => push(vid),
                     _ => ()
@@ -916,7 +916,7 @@ impl RegionVarBindings {
         &self,
         errors: &mut OptVec<RegionResolutionError>)
     {
-        foreach (constraint, _) in self.constraints.iter() {
+        for (constraint, _) in self.constraints.iter() {
             let (sub, sup) = match *constraint {
                 ConstrainVarSubVar(*) |
                 ConstrainRegSubVar(*) |
@@ -962,7 +962,7 @@ impl RegionVarBindings {
 
         let mut opt_graph = None;
 
-        foreach idx in range(0u, self.num_vars()) {
+        for idx in range(0u, self.num_vars()) {
             match var_data[idx].value {
                 Value(_) => {
                     /* Inference successful */
@@ -1027,12 +1027,12 @@ impl RegionVarBindings {
         let mut graph = graph::Graph::with_capacity(num_vars + 1,
                                                     num_edges);
 
-        foreach _ in range(0u, num_vars) {
+        for _ in range(0u, num_vars) {
             graph.add_node(());
         }
         let dummy_idx = graph.add_node(());
 
-        foreach (constraint, _) in self.constraints.iter() {
+        for (constraint, _) in self.constraints.iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.to_uint()),
@@ -1080,8 +1080,8 @@ impl RegionVarBindings {
             return;
         }
 
-        foreach lower_bound in lower_bounds.iter() {
-            foreach upper_bound in upper_bounds.iter() {
+        for lower_bound in lower_bounds.iter() {
+            for upper_bound in upper_bounds.iter() {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(
@@ -1122,8 +1122,8 @@ impl RegionVarBindings {
             return;
         }
 
-        foreach upper_bound_1 in upper_bounds.iter() {
-            foreach upper_bound_2 in upper_bounds.iter() {
+        for upper_bound_1 in upper_bounds.iter() {
+            for upper_bound_2 in upper_bounds.iter() {
                 match self.glb_concrete_regions(upper_bound_1.region,
                                                 upper_bound_2.region) {
                   Ok(_) => {}
@@ -1243,7 +1243,7 @@ impl RegionVarBindings {
             changed = false;
             iteration += 1;
             debug!("---- %s Iteration #%u", tag, iteration);
-            foreach (constraint, _) in self.constraints.iter() {
+            for (constraint, _) in self.constraints.iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint %s",

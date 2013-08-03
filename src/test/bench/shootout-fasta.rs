@@ -46,7 +46,7 @@ struct AminoAcids {
 fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut cp: u32 = 0u32;
     let mut ans: ~[AminoAcids] = ~[];
-    foreach a in aa.iter() {
+    for a in aa.iter() {
         cp += a.prob;
         ans.push(AminoAcids {ch: a.ch, prob: cp});
     }
@@ -81,7 +81,7 @@ fn make_random_fasta(wr: @io::Writer,
         last: rng.next()
     };
     let mut op: ~str = ~"";
-    foreach _ in range(0u, n as uint) {
+    for _ in range(0u, n as uint) {
         op.push_char(select_random(myrandom_next(rng, 100u32),
                                    genelist.clone()));
         if op.len() >= LINE_LENGTH {
@@ -96,7 +96,7 @@ fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
     wr.write_line(~">" + id + " " + desc);
     let mut op = str::with_capacity( LINE_LENGTH );
     let sl = s.len();
-    foreach i in range(0u, n as uint) {
+    for i in range(0u, n as uint) {
         if (op.len() >= LINE_LENGTH) {
             wr.write_line( op );
             op = str::with_capacity( LINE_LENGTH );

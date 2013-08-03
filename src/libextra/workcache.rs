@@ -286,7 +286,7 @@ impl<'self> Prep<'self> {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        foreach (k, v) in map.iter() {
+        for (k, v) in map.iter() {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }

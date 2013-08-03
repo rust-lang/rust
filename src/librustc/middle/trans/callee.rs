@@ -619,7 +619,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         // the cleanup for the self argument
         match callee.data {
             Method(d) => {
-                foreach &v in d.temp_cleanup.iter() {
+                for &v in d.temp_cleanup.iter() {
                     revoke_clean(bcx, v);
                 }
             }
@@ -629,7 +629,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         // Uncomment this to debug calls.
         /*
         printfln!("calling: %s", bcx.val_to_str(llfn));
-        foreach llarg in llargs.iter() {
+        for llarg in llargs.iter() {
             printfln!("arg: %s", bcx.val_to_str(*llarg));
         }
         io::println("---");
@@ -672,7 +672,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 {
                     let r = bcx.fcx.loop_ret;
-                    foreach &(flagptr, _) in r.iter() {
+                    for &(flagptr, _) in r.iter() {
                         Store(bcx, C_bool(true), flagptr);
                         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
                     }
@@ -729,7 +729,7 @@ pub fn trans_args(cx: @mut Block,
     match args {
       ArgExprs(arg_exprs) => {
         let last = arg_exprs.len() - 1u;
-        foreach (i, arg_expr) in arg_exprs.iter().enumerate() {
+        for (i, arg_expr) in arg_exprs.iter().enumerate() {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
                                arg_tys[i],
@@ -750,7 +750,7 @@ pub fn trans_args(cx: @mut Block,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    foreach c in temp_cleanups.iter() {
+    for c in temp_cleanups.iter() {
         revoke_clean(bcx, *c)
     }
 
