@@ -365,7 +365,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                                                  bound_region: br}));
         let opt_self_info =
             opt_self_info.map(
-                |si| SelfInfo {self_ty: opt_self_ty.get(), ..*si});
+                |si| SelfInfo {self_ty: opt_self_ty.unwrap(), ..*si});
         (isr, opt_self_info, fn_sig)
     };
 
@@ -2449,7 +2449,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                            expected,
                                            |x| Some((*x).clone()));
         let inner_ty = match expected_sty {
-            Some(ty::ty_closure(_)) => expected.get(),
+            Some(ty::ty_closure(_)) => expected.unwrap(),
             _ => match expected {
                 Some(expected_t) => {
                     fcx.type_error_message(expr.span, |actual| {

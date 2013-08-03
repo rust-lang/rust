@@ -239,7 +239,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 
       ty::ty_estr(ty::vstore_slice(_)) => {
           // This means we get a nicer name in the output
-          cx.tn.find_type("str_slice").get()
+          cx.tn.find_type("str_slice").unwrap()
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) => {

@@ -922,7 +922,7 @@ pub fn build_output_filenames(input: &input,
           };
 
           let mut stem = match *input {
-              file_input(ref ifile) => (*ifile).filestem().get().to_managed(),
+              file_input(ref ifile) => (*ifile).filestem().unwrap().to_managed(),
               str_input(_) => @"rust_out"
           };
 

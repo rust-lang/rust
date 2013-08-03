@@ -20,23 +20,27 @@ use option::{None, Option, Some};
 use vec;
 use vec::{OwnedVector, ImmutableVector};
 use container::Container;
+use to_str::ToStr;
+use str::StrSlice;
 
-/// The result type
+/// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
+///
+/// In order to provide informative error messages, `E` is reqired to implement `ToStr`.
+/// It is further recommended for `E` to be a descriptive error type, eg a `enum` for
+/// all possible errors cases.
 #[deriving(Clone, Eq)]
-pub enum Result<T, U> {
+pub enum Result<T, E> {
     /// Contains the successful result value
     Ok(T),
     /// Contains the error value
-    Err(U)
+    Err(E)
 }
 
-impl<T, E> Result<T, E> {
-    /**
-     * Convert to the `either` type
-     *
-     * `Ok` result variants are converted to `either::Right` variants, `Err`
-     * result variants are converted to `either::Left`.
-     */
+impl<T, E: ToStr> Result<T, E> {
+    /// Convert to the `either` type
+    ///
+    /// `Ok` result variants are converted to `either::Right` variants, `Err`
+    /// result variants are converted to `either::Left`.
     #[inline]
     pub fn to_either(self)-> either::Either<E, T>{
         match self {
@@ -45,18 +49,16 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /**
-     * Get a reference to the value out of a successful result
-     *
-     * # Failure
-     *
-     * If the result is an error
-     */
+    /// Get a reference to the value out of a successful result
+    ///
+    /// # Failure
+    ///
+    /// If the result is an error
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Ok(ref t) => t,
-            Err(ref e) => fail!("get_ref called on `Err` result: %?", *e),
+            Err(ref e) => fail!("called `Result::get_ref()` on `Err` value: %s", e.to_str()),
         }
     }
 
@@ -75,20 +77,18 @@ impl<T, E> Result<T, E> {
         !self.is_ok()
     }
 
-    /**
-     * Call a method based on a previous result
-     *
-     * If `self` is `Ok` then the value is extracted and passed to `op`
-     * whereupon `op`s result is returned. if `self` is `Err` then it is
-     * immediately returned. This function can be used to compose the results
-     * of two functions.
-     *
-     * Example:
-     *
-     *     do read_file(file).iter |buf| {
-     *         print_buf(buf)
-     *     }
-     */
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Ok` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is returned. if `self` is `Err` then it is
+    /// immediately returned. This function can be used to compose the results
+    /// of two functions.
+    ///
+    /// Example:
+    ///
+    ///     do read_file(file).iter |buf| {
+    ///         print_buf(buf)
+    ///     }
     #[inline]
     pub fn iter(&self, f: &fn(&T)) {
         match *self {
@@ -97,14 +97,12 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /**
-     * Call a method based on a previous result
-     *
-     * If `self` is `Err` then the value is extracted and passed to `op`
-     * whereupon `op`s result is returned. if `self` is `Ok` then it is
-     * immediately returned.  This function can be used to pass through a
-     * successful result while handling an error.
-     */
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Err` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is returned. if `self` is `Ok` then it is
+    /// immediately returned.  This function can be used to pass through a
+    /// successful result while handling an error.
     #[inline]
     pub fn iter_err(&self, f: &fn(&E)) {
         match *self {
@@ -113,38 +111,56 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Unwraps a result, assuming it is an `Ok(T)`
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is a `Err` with an error message derived
+    /// from `E`'s `ToStr` implementation.
     #[inline]
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(_) => fail!("unwrap called on an `Err` result"),
+            Err(e) => fail!("called `Result::unwrap()` on `Err` value: %s", e.to_str()),
         }
     }
 
-    /// Unwraps a result, assuming it is an `Err(U)`
+    /// Unwraps a result, yielding the content of an `Err`.
+    /// Fails if the value is a `Ok`.
     #[inline]
     pub fn unwrap_err(self) -> E {
+        self.expect_err("called `Result::unwrap_err()` on `Ok` value")
+    }
+
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is a `Err` with a custom failure message.
+    #[inline]
+    pub fn expect(self, reason: &str) -> T {
         match self {
-            Err(e) => e,
-            Ok(_) => fail!("unwrap called on an `Ok` result"),
+            Ok(t) => t,
+            Err(_) => fail!(reason.to_owned()),
         }
     }
 
-    /**
-     * Call a method based on a previous result
-     *
-     * If `self` is `Ok` then the value is extracted and passed to `op`
-     * whereupon `op`s result is returned. if `self` is `Err` then it is
-     * immediately returned. This function can be used to compose the results
-     * of two functions.
-     *
-     * Example:
-     *
-     *     let res = do read_file(file) |buf| {
-     *         Ok(parse_bytes(buf))
-     *     };
-     */
+    /// Unwraps a result, yielding the content of an `Err`
+    /// Fails if the value is a `Ok` with a custom failure message.
+    #[inline]
+    pub fn expect_err(self, reason: &str) -> E {
+        match self {
+            Err(e) => e,
+            Ok(_) => fail!(reason.to_owned()),
+        }
+    }
+
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Ok` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is returned. if `self` is `Err` then it is
+    /// immediately returned. This function can be used to compose the results
+    /// of two functions.
+    ///
+    /// Example:
+    ///
+    ///     let res = do read_file(file) |buf| {
+    ///         Ok(parse_bytes(buf))
+    ///     };
     #[inline]
     pub fn chain<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
         match self {
@@ -153,14 +169,12 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /**
-     * Call a function based on a previous result
-     *
-     * If `self` is `Err` then the value is extracted and passed to `op`
-     * whereupon `op`s result is returned. if `self` is `Ok` then it is
-     * immediately returned.  This function can be used to pass through a
-     * successful result while handling an error.
-     */
+    /// Call a function based on a previous result
+    ///
+    /// If `self` is `Err` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is returned. if `self` is `Ok` then it is
+    /// immediately returned.  This function can be used to pass through a
+    /// successful result while handling an error.
     #[inline]
     pub fn chain_err<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
         match self {
@@ -170,32 +184,15 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: Clone, E> Result<T, E> {
-    /**
-     * Get the value out of a successful result
-     *
-     * # Failure
-     *
-     * If the result is an error
-     */
+impl<T: Clone, E: ToStr> Result<T, E> {
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Err` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
+    /// `Ok` then it is immediately returned.  This function can be used to pass
+    /// through a successful result while handling an error.
     #[inline]
-    pub fn get(&self) -> T {
-        match *self {
-            Ok(ref t) => t.clone(),
-            Err(ref e) => fail!("get called on `Err` result: %?", *e),
-        }
-    }
-
-    /**
-     * Call a method based on a previous result
-     *
-     * If `self` is `Err` then the value is extracted and passed to `op`
-     * whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
-     * `Ok` then it is immediately returned.  This function can be used to pass
-     * through a successful result while handling an error.
-     */
-    #[inline]
-    pub fn map_err<F:Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
+    pub fn map_err<F: Clone>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         match *self {
             Ok(ref t) => Ok(t.clone()),
             Err(ref e) => Err(op(e))
@@ -203,38 +200,21 @@ impl<T: Clone, E> Result<T, E> {
     }
 }
 
-impl<T, E: Clone> Result<T, E> {
-    /**
-     * Get the value out of an error result
-     *
-     * # Failure
-     *
-     * If the result is not an error
-     */
+impl<T, E: Clone + ToStr> Result<T, E> {
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Ok` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
+    /// `Err` then it is immediately returned.  This function can be used to
+    /// compose the results of two functions.
+    ///
+    /// Example:
+    ///
+    ///     let res = do read_file(file).map |buf| {
+    ///         parse_bytes(buf)
+    ///     };
     #[inline]
-    pub fn get_err(&self) -> E {
-        match *self {
-            Err(ref e) => e.clone(),
-            Ok(_) => fail!("get_err called on `Ok` result")
-        }
-    }
-
-    /**
-     * Call a method based on a previous result
-     *
-     * If `self` is `Ok` then the value is extracted and passed to `op`
-     * whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
-     * `Err` then it is immediately returned.  This function can be used to
-     * compose the results of two functions.
-     *
-     * Example:
-     *
-     *     let res = do read_file(file).map |buf| {
-     *         parse_bytes(buf)
-     *     };
-     */
-    #[inline]
-    pub fn map<U:Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
+    pub fn map<U: Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         match *self {
             Ok(ref t) => Ok(op(t)),
             Err(ref e) => Err(e.clone())
@@ -242,23 +222,35 @@ impl<T, E: Clone> Result<T, E> {
     }
 }
 
-/**
- * Maps each element in the vector `ts` using the operation `op`.  Should an
- * error occur, no further mappings are performed and the error is returned.
- * Should no error occur, a vector containing the result of each map is
- * returned.
- *
- * Here is an example which increments every integer in a vector,
- * checking for overflow:
- *
- *     fn inc_conditionally(x: uint) -> result<uint,str> {
- *         if x == uint::max_value { return Err("overflow"); }
- *         else { return Ok(x+1u); }
- *     }
- *     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
- *         assert!(incd == ~[2u, 3u, 4u]);
- *     }
- */
+#[inline]
+#[allow(missing_doc)]
+pub fn map_opt<T, U: ToStr, V>(o_t: &Option<T>,
+                               op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
+    match *o_t {
+        None => Ok(None),
+        Some(ref t) => match op(t) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => Err(e)
+        }
+    }
+}
+
+// FIXME: #8228 Replaceable by an external iterator?
+/// Maps each element in the vector `ts` using the operation `op`.  Should an
+/// error occur, no further mappings are performed and the error is returned.
+/// Should no error occur, a vector containing the result of each map is
+/// returned.
+///
+/// Here is an example which increments every integer in a vector,
+/// checking for overflow:
+///
+///     fn inc_conditionally(x: uint) -> result<uint,str> {
+///         if x == uint::max_value { return Err("overflow"); }
+///         else { return Ok(x+1u); }
+///     }
+///     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
+///         assert!(incd == ~[2u, 3u, 4u]);
+///     }
 #[inline]
 pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
                       -> Result<~[V],U> {
@@ -272,36 +264,17 @@ pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
     return Ok(vs);
 }
 
+// FIXME: #8228 Replaceable by an external iterator?
+/// Same as map, but it operates over two parallel vectors.
+///
+/// A precondition is used here to ensure that the vectors are the same
+/// length.  While we do not often use preconditions in the standard
+/// library, a precondition is used here because result::t is generally
+/// used in 'careful' code contexts where it is both appropriate and easy
+/// to accommodate an error like the vectors being of different lengths.
 #[inline]
-#[allow(missing_doc)]
-pub fn map_opt<T,
-               U,
-               V>(
-               o_t: &Option<T>,
-               op: &fn(&T) -> Result<V,U>)
-               -> Result<Option<V>,U> {
-    match *o_t {
-        None => Ok(None),
-        Some(ref t) => match op(t) {
-            Ok(v) => Ok(Some(v)),
-            Err(e) => Err(e)
-        }
-    }
-}
-
-/**
- * Same as map, but it operates over two parallel vectors.
- *
- * A precondition is used here to ensure that the vectors are the same
- * length.  While we do not often use preconditions in the standard
- * library, a precondition is used here because result::t is generally
- * used in 'careful' code contexts where it is both appropriate and easy
- * to accommodate an error like the vectors being of different lengths.
- */
-#[inline]
-pub fn map_vec2<S,T,U,V>(ss: &[S], ts: &[T],
-                op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
-
+pub fn map_vec2<S, T, U: ToStr, V>(ss: &[S], ts: &[T],
+                                   op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
     assert!(vec::same_length(ss, ts));
     let n = ts.len();
     let mut vs = vec::with_capacity(n);
@@ -316,15 +289,13 @@ pub fn map_vec2<S,T,U,V>(ss: &[S], ts: &[T],
     return Ok(vs);
 }
 
-/**
- * Applies op to the pairwise elements from `ss` and `ts`, aborting on
- * error.  This could be implemented using `map_zip()` but it is more efficient
- * on its own as no result vector is built.
- */
+// FIXME: #8228 Replaceable by an external iterator?
+/// Applies op to the pairwise elements from `ss` and `ts`, aborting on
+/// error.  This could be implemented using `map_zip()` but it is more efficient
+/// on its own as no result vector is built.
 #[inline]
-pub fn iter_vec2<S,T,U>(ss: &[S], ts: &[T],
-                         op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
-
+pub fn iter_vec2<S, T, U: ToStr>(ss: &[S], ts: &[T],
+                                 op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
     assert!(vec::same_length(ss, ts));
     let n = ts.len();
     let mut i = 0u;
@@ -353,12 +324,12 @@ mod tests {
 
     #[test]
     pub fn chain_success() {
-        assert_eq!(op1().chain(op2).get(), 667u);
+        assert_eq!(op1().chain(op2).unwrap(), 667u);
     }
 
     #[test]
     pub fn chain_failure() {
-        assert_eq!(op3().chain( op2).get_err(), ~"sadface");
+        assert_eq!(op3().chain( op2).unwrap_err(), ~"sadface");
     }
 
     #[test]

@@ -58,7 +58,7 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
@@ -75,7 +75,7 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {

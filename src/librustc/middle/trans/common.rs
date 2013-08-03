@@ -251,7 +251,7 @@ impl FunctionContext {
 
     pub fn cleanup(&mut self) {
         unsafe {
-            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.get());
+            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
         }
         // Remove the cycle between fcx and bcx, so memory can be freed
         self.entry_bcx = None;
@@ -262,7 +262,7 @@ impl FunctionContext {
             self.llreturn = Some(base::mk_return_basic_block(self.llfn));
         }
 
-        self.llreturn.get()
+        self.llreturn.unwrap()
     }
 }
 

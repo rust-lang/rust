@@ -48,7 +48,7 @@ fn main() {
         args
     };
 
-    let n = int::from_str(args[1]).get();
+    let n = int::from_str(args[1]).unwrap();
     let min_depth = 4;
     let mut max_depth;
     if min_depth + 2 > n {

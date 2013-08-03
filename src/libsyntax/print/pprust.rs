@@ -874,7 +874,7 @@ pub fn print_attribute(s: @ps, attr: &ast::Attribute) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, attr.span.lo);
     if attr.node.is_sugared_doc {
-        let comment = attr.value_str().get();
+        let comment = attr.value_str().unwrap();
         word(s.s, comment);
     } else {
         word(s.s, "#[");
@@ -1085,7 +1085,7 @@ pub fn print_call_post(s: @ps,
     }
     if sugar != ast::NoSugar {
         nbsp(s);
-        match blk.get().node {
+        match blk.unwrap().node {
           // need to handle closures specifically
           ast::expr_do_body(e) => {
             end(s); // we close our head box; closure
@@ -1095,7 +1095,7 @@ pub fn print_call_post(s: @ps,
           }
           _ => {
             // not sure if this can happen.
-            print_expr(s, blk.get());
+            print_expr(s, blk.unwrap());
           }
         }
     }
@@ -1323,13 +1323,13 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         assert!(body.stmts.is_empty());
         assert!(body.expr.is_some());
         // we extract the block, so as not to create another set of boxes
-        match body.expr.get().node {
+        match body.expr.unwrap().node {
             ast::expr_block(ref blk) => {
                 print_block_unclosed(s, blk);
             }
             _ => {
                 // this is a bare expression
-                print_expr(s, body.expr.get());
+                print_expr(s, body.expr.unwrap());
                 end(s); // need to close a box
             }
         }

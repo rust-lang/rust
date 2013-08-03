@@ -62,13 +62,13 @@ fn main() {
         os::args()
     };
     let token = if args.len() > 1u {
-        FromStr::from_str(args[1]).get()
+        FromStr::from_str(args[1]).unwrap()
     }
     else {
         1000
     };
     let n_tasks = if args.len() > 2u {
-        FromStr::from_str(args[2]).get()
+        FromStr::from_str(args[2]).unwrap()
     }
     else {
         503
