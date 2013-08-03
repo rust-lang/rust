@@ -21,7 +21,7 @@ use syntax::attr;
 use syntax::codemap::span;
 use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
-use syntax::{visit, ast_util};
+use syntax::{oldvisit, ast_util};
 
 // Kind analysis pass.
 //
@@ -66,15 +66,15 @@ pub fn check_crate(tcx: ty::ctxt,
         method_map: method_map,
         current_item: -1
     };
-    let visit = visit::mk_vt(@visit::Visitor {
+    let visit = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_expr: check_expr,
         visit_fn: check_fn,
         visit_ty: check_ty,
         visit_item: check_item,
         visit_block: check_block,
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
-    visit::visit_crate(crate, (ctx, visit));
+    oldvisit::visit_crate(crate, (ctx, visit));
     tcx.sess.abort_if_errors();
 }
 
@@ -108,11 +108,12 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(block: &Block, (cx, visitor): (Context, visit::vt<Context>)) {
-    visit::visit_block(block, (cx, visitor));
+fn check_block(block: &Block,
+               (cx, visitor): (Context, oldvisit::vt<Context>)) {
+    oldvisit::visit_block(block, (cx, visitor));
 }
 
-fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
+fn check_item(item: @item, (cx, visitor): (Context, oldvisit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
@@ -152,7 +153,7 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     }
 
     let cx = Context { current_item: item.id, ..cx };
-    visit::visit_item(item, (cx, visitor));
+    oldvisit::visit_item(item, (cx, visitor));
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -226,13 +227,13 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
-    fk: &visit::fn_kind,
+    fk: &oldvisit::fn_kind,
     decl: &fn_decl,
     body: &Block,
     sp: span,
     fn_id: NodeId,
     (cx, v): (Context,
-              visit::vt<Context>)) {
+              oldvisit::vt<Context>)) {
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -242,10 +243,10 @@ fn check_fn(
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, fn_id, (cx, v));
+    oldvisit::visit_fn(fk, decl, body, sp, fn_id, (cx, v));
 }
 
-pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
+pub fn check_expr(e: @expr, (cx, v): (Context, oldvisit::vt<Context>)) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
@@ -310,10 +311,10 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
         }
         _ => {}
     }
-    visit::visit_expr(e, (cx, v));
+    oldvisit::visit_expr(e, (cx, v));
 }
 
-fn check_ty(aty: &Ty, (cx, v): (Context, visit::vt<Context>)) {
+fn check_ty(aty: &Ty, (cx, v): (Context, oldvisit::vt<Context>)) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
@@ -328,7 +329,7 @@ fn check_ty(aty: &Ty, (cx, v): (Context, visit::vt<Context>)) {
       }
       _ => {}
     }
-    visit::visit_ty(aty, (cx, v));
+    oldvisit::visit_ty(aty, (cx, v));
 }
 
 // Calls "any_missing" if any bounds were missing.

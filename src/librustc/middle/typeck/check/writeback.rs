@@ -29,7 +29,7 @@ use util::ppaux;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
-use syntax::visit;
+use syntax::oldvisit;
 
 fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: span, typ: ty::t)
                           -> Option<ty::t> {
@@ -212,12 +212,12 @@ struct WbCtxt {
     success: bool,
 }
 
-type wb_vt = visit::vt<@mut WbCtxt>;
+type wb_vt = oldvisit::vt<@mut WbCtxt>;
 
 fn visit_stmt(s: @ast::stmt, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
-    visit::visit_stmt(s, (wbcx, v));
+    oldvisit::visit_stmt(s, (wbcx, v));
 }
 
 fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
@@ -265,7 +265,7 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
         _ => ()
     }
 
-    visit::visit_expr(e, (wbcx, v));
+    oldvisit::visit_expr(e, (wbcx, v));
 }
 
 fn visit_block(b: &ast::Block, (wbcx, v): (@mut WbCtxt, wb_vt)) {
@@ -274,7 +274,7 @@ fn visit_block(b: &ast::Block, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     }
 
     resolve_type_vars_for_node(wbcx, b.span, b.id);
-    visit::visit_block(b, (wbcx, v));
+    oldvisit::visit_block(b, (wbcx, v));
 }
 
 fn visit_pat(p: @ast::pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
@@ -288,7 +288,7 @@ fn visit_pat(p: @ast::pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
            wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
                                    p.id)));
-    visit::visit_pat(p, (wbcx, v));
+    oldvisit::visit_pat(p, (wbcx, v));
 }
 
 fn visit_local(l: @ast::Local, (wbcx, v): (@mut WbCtxt, wb_vt)) {
@@ -311,20 +311,20 @@ fn visit_local(l: @ast::Local, (wbcx, v): (@mut WbCtxt, wb_vt)) {
             wbcx.success = false;
         }
     }
-    visit::visit_local(l, (wbcx, v));
+    oldvisit::visit_local(l, (wbcx, v));
 }
 fn visit_item(_item: @ast::item, (_wbcx, _v): (@mut WbCtxt, wb_vt)) {
     // Ignore items
 }
 
-fn mk_visitor() -> visit::vt<@mut WbCtxt> {
-    visit::mk_vt(@visit::Visitor {visit_item: visit_item,
+fn mk_visitor() -> oldvisit::vt<@mut WbCtxt> {
+    oldvisit::mk_vt(@oldvisit::Visitor {visit_item: visit_item,
                                   visit_stmt: visit_stmt,
                                   visit_expr: visit_expr,
                                   visit_block: visit_block,
                                   visit_pat: visit_pat,
                                   visit_local: visit_local,
-                                  .. *visit::default_visitor()})
+                                  .. *oldvisit::default_visitor()})
 }
 
 pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {

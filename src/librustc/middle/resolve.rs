@@ -27,16 +27,16 @@ use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
+use syntax::oldvisit::{mk_simple_visitor, default_simple_visitor};
+use syntax::oldvisit::{default_visitor, mk_vt, Visitor, visit_block};
+use syntax::oldvisit::{visit_crate, visit_expr, visit_expr_opt};
+use syntax::oldvisit::{visit_foreign_item, visit_item};
+use syntax::oldvisit::{visit_mod, visit_ty, vt, SimpleVisitor};
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{span, dummy_sp, BytePos};
-use syntax::visit::{mk_simple_visitor, default_simple_visitor, SimpleVisitor};
-use syntax::visit::{default_visitor, mk_vt, Visitor, visit_block};
-use syntax::visit::{visit_crate, visit_expr, visit_expr_opt};
-use syntax::visit::{visit_foreign_item, visit_item};
-use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
 use std::str;
@@ -1523,7 +1523,7 @@ impl Resolver {
                            foreign_item.span);
 
         match foreign_item.node {
-            foreign_item_fn(_, _, ref generics) => {
+            foreign_item_fn(_, ref generics) => {
                 let def = def_fn(local_def(foreign_item.id), unsafe_fn);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
@@ -3606,7 +3606,7 @@ impl Resolver {
                 do self.with_scope(Some(item.ident)) {
                     foreach foreign_item in foreign_module.items.iter() {
                         match foreign_item.node {
-                            foreign_item_fn(_, _, ref generics) => {
+                            foreign_item_fn(_, ref generics) => {
                                 self.with_type_parameter_rib(
                                     HasTypeParameters(
                                         generics, foreign_item.id, 0,

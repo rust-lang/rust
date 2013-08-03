@@ -162,14 +162,13 @@ pub mod icu {
         #[link_name = "icuuc"]
         #[abi = "cdecl"]
         extern {
-            pub unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty)
-                                              -> UBool;
-            pub unsafe fn u_isdigit(c: UChar32) -> UBool;
-            pub unsafe fn u_islower(c: UChar32) -> UBool;
-            pub unsafe fn u_isspace(c: UChar32) -> UBool;
-            pub unsafe fn u_isupper(c: UChar32) -> UBool;
-            pub unsafe fn u_tolower(c: UChar32) -> UChar32;
-            pub unsafe fn u_toupper(c: UChar32) -> UChar32;
+            pub fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
+            pub fn u_isdigit(c: UChar32) -> UBool;
+            pub fn u_islower(c: UChar32) -> UBool;
+            pub fn u_isspace(c: UChar32) -> UBool;
+            pub fn u_isupper(c: UChar32) -> UBool;
+            pub fn u_tolower(c: UChar32) -> UChar32;
+            pub fn u_toupper(c: UChar32) -> UChar32;
         }
     }
 }

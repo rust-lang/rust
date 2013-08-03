@@ -1455,7 +1455,7 @@ compiler needs assistance, though, the arguments and return types may be
 annotated.
 
 ~~~~
-let square = |x: int| -> uint { x * x as uint };
+let square = |x: int| -> uint { (x * x) as uint };
 ~~~~
 
 There are several forms of closure, each with its own role. The most

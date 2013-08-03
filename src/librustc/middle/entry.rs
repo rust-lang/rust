@@ -11,12 +11,13 @@
 
 use driver::session;
 use driver::session::Session;
-use syntax::parse::token::special_idents;
 use syntax::ast::{Crate, NodeId, item, item_fn};
+use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::visit::{default_visitor, mk_vt, vt, Visitor, visit_crate, visit_item};
-use syntax::ast_map;
+use syntax::oldvisit::{default_visitor, mk_vt, vt, Visitor, visit_crate};
+use syntax::oldvisit::{visit_item};
+use syntax::parse::token::special_idents;
 use std::util;
 
 struct EntryContext {

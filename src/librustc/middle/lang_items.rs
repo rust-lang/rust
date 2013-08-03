@@ -26,8 +26,8 @@ use metadata::cstore::iter_crate_data;
 use syntax::ast::{Crate, def_id, MetaItem};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
-use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
-use syntax::visit::visit_crate;
+use syntax::oldvisit::{default_simple_visitor, mk_simple_visitor};
+use syntax::oldvisit::{SimpleVisitor, visit_crate};
 
 use std::hashmap::HashMap;
 

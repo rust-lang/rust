@@ -119,7 +119,7 @@ fn main() {
 
     foreach y in range(0, 256) {
         foreach x in range(0, 256) {
-            print(symbols[pixels[y*256+x] / 0.2f32 as int]);
+            print(symbols[(pixels[y*256+x] / 0.2f32) as int]);
         }
         println("");
     }

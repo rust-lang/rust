@@ -63,6 +63,7 @@ pub enum ObsoleteSyntax {
     ObsoleteMultipleLocalDecl,
     ObsoleteMutWithMultipleBindings,
     ObsoleteExternVisibility,
+    ObsoleteUnsafeExternFn,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -246,7 +247,12 @@ impl ParserObsoleteMethods for Parser {
                 "`pub extern` or `priv extern`",
                 "place the `pub` or `priv` on the individual external items \
                  instead"
-            )
+            ),
+            ObsoleteUnsafeExternFn => (
+                "unsafe external function",
+                "external functions are always unsafe; remove the `unsafe` \
+                 keyword"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);

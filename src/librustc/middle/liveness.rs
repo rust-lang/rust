@@ -119,9 +119,9 @@ use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
-use syntax::visit::{fk_anon, fk_fn_block, fk_item_fn, fk_method};
-use syntax::visit::{vt};
-use syntax::{visit, ast_util};
+use syntax::oldvisit::{fk_anon, fk_fn_block, fk_item_fn, fk_method};
+use syntax::oldvisit::{vt};
+use syntax::{oldvisit, ast_util};
 
 #[deriving(Eq)]
 struct Variable(uint);
@@ -156,18 +156,18 @@ pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    capture_map: moves::CaptureMap,
                    crate: &Crate) {
-    let visitor = visit::mk_vt(@visit::Visitor {
+    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_fn: visit_fn,
         visit_local: visit_local,
         visit_expr: visit_expr,
         visit_arm: visit_arm,
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
 
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
                                    capture_map);
-    visit::visit_crate(crate, (initial_maps, visitor));
+    oldvisit::visit_crate(crate, (initial_maps, visitor));
     tcx.sess.abort_if_errors();
 }
 
@@ -341,7 +341,7 @@ impl IrMaps {
     }
 }
 
-fn visit_fn(fk: &visit::fn_kind,
+fn visit_fn(fk: &oldvisit::fn_kind,
             decl: &fn_decl,
             body: &Block,
             sp: span,
@@ -385,7 +385,7 @@ fn visit_fn(fk: &visit::fn_kind,
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    visit::visit_fn(fk, decl, body, sp, id, (fn_maps, v));
+    oldvisit::visit_fn(fk, decl, body, sp, id, (fn_maps, v));
 
     // Special nodes and variables:
     // - exit_ln represents the end of the fn, either by return or fail
@@ -402,12 +402,12 @@ fn visit_fn(fk: &visit::fn_kind,
     let entry_ln = (*lsets).compute(decl, body);
 
     // check for various error conditions
-    let check_vt = visit::mk_vt(@visit::Visitor {
+    let check_vt = oldvisit::mk_vt(@oldvisit::Visitor {
         visit_fn: check_fn,
         visit_local: check_local,
         visit_expr: check_expr,
         visit_arm: check_arm,
-        .. *visit::default_visitor()
+        .. *oldvisit::default_visitor()
     });
     (check_vt.visit_block)(body, (lsets, check_vt));
     lsets.check_ret(id, sp, fk, entry_ln);
@@ -431,7 +431,7 @@ fn visit_local(local: @Local, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
           kind: kind
         }));
     }
-    visit::visit_local(local, (this, vt));
+    oldvisit::visit_local(local, (this, vt));
 }
 
 fn visit_arm(arm: &arm, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
@@ -450,7 +450,7 @@ fn visit_arm(arm: &arm, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
             }));
         }
     }
-    visit::visit_arm(arm, (this, vt));
+    oldvisit::visit_arm(arm, (this, vt));
 }
 
 fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
@@ -462,7 +462,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         if moves::moved_variable_node_id_from_def(def).is_some() {
             this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
       expr_fn_block(*) => {
         // Interesting control flow (for loops can contain labeled
@@ -495,18 +495,18 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         }
         this.set_captures(expr.id, call_caps);
 
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
 
       // live nodes required for interesting control flow:
       expr_if(*) | expr_match(*) | expr_while(*) | expr_loop(*) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
       expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
       expr_binary(_, op, _, _) if ast_util::lazy_binop(op) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
 
       // otherwise, live nodes are not required:
@@ -518,7 +518,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
       expr_struct(*) | expr_repeat(*) | expr_paren(*) |
       expr_inline_asm(*) => {
-          visit::visit_expr(expr, (this, vt));
+          oldvisit::visit_expr(expr, (this, vt));
       }
     }
 }
@@ -1435,14 +1435,14 @@ fn check_local(local: @Local, (this, vt): (@Liveness, vt<@Liveness>)) {
       }
     }
 
-    visit::visit_local(local, (this, vt));
+    oldvisit::visit_local(local, (this, vt));
 }
 
 fn check_arm(arm: &arm, (this, vt): (@Liveness, vt<@Liveness>)) {
     do this.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     }
-    visit::visit_arm(arm, (this, vt));
+    oldvisit::visit_arm(arm, (this, vt));
 }
 
 fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
@@ -1451,13 +1451,13 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
         this.check_lvalue(l, vt);
         (vt.visit_expr)(r, (this, vt));
 
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
 
       expr_assign_op(_, _, l, _) => {
         this.check_lvalue(l, vt);
 
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
 
       expr_inline_asm(ref ia) => {
@@ -1476,7 +1476,7 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
           (vt.visit_expr)(out, (this, vt));
         }
 
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
 
       // no correctness conditions related to liveness
@@ -1488,14 +1488,17 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
       expr_paren(*) | expr_fn_block(*) | expr_path(*) | expr_self(*) => {
-        visit::visit_expr(expr, (this, vt));
+        oldvisit::visit_expr(expr, (this, vt));
       }
       expr_for_loop(*) => fail!("non-desugared expr_for_loop")
     }
 }
 
-fn check_fn(_fk: &visit::fn_kind, _decl: &fn_decl,
-            _body: &Block, _sp: span, _id: NodeId,
+fn check_fn(_fk: &oldvisit::fn_kind,
+            _decl: &fn_decl,
+            _body: &Block,
+            _sp: span,
+            _id: NodeId,
             (_self, _v): (@Liveness, vt<@Liveness>)) {
     // do not check contents of nested fns
 }
@@ -1511,7 +1514,7 @@ impl Liveness {
     pub fn check_ret(&self,
                      id: NodeId,
                      sp: span,
-                     _fk: &visit::fn_kind,
+                     _fk: &oldvisit::fn_kind,
                      entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
@@ -1560,7 +1563,7 @@ impl Liveness {
           _ => {
             // For other kinds of lvalues, no checks are required,
             // and any embedded expressions are actually rvalues
-            visit::visit_expr(expr, (self, vt));
+            oldvisit::visit_expr(expr, (self, vt));
           }
        }
     }
