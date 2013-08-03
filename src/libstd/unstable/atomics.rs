@@ -509,7 +509,7 @@ pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
  *
  * Accepts `Acquire`, `Release`, `AcqRel` and `SeqCst` orderings.
  */
-#[inline] #[cfg(not(stage0))]
+#[inline]
 pub fn fence(order: Ordering) {
     unsafe {
         match order {
