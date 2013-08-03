@@ -11,16 +11,6 @@ fn foo(t0: & &mut int) {
     **t1 = 22; //~ ERROR cannot assign
 }
 
-fn foo2(t0: &const &mut int) {
-    // Note: reborrowing from an &const actually yields two errors, since it
-    // is unsafe in two ways: we can't control the aliasing, and we can't
-    // control the mutation.
-    let t1 = t0;
-    let p: &int = &**t0; //~ ERROR cannot borrow an `&mut` in a `&const` pointer
-    //~^ ERROR unsafe borrow of aliasable, const value
-    **t1 = 22; //~ ERROR cannot assign
-}
-
 fn foo3(t0: &mut &mut int) {
     let t1 = &mut *t0;
     let p: &int = &**t0; //~ ERROR cannot borrow

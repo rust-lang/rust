@@ -534,6 +534,7 @@ impl Scheduler {
 
             let current_task: &mut Task = match sched.cleanup_job {
                 Some(CleanupJob { task: ref task, _ }) => {
+                    let task_ptr: *~Task = task;
                     transmute_mut_region(*transmute_mut_unsafe(task))
                 }
                 None => {
