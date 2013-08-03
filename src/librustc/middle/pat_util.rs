@@ -72,14 +72,15 @@ pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @pat) -> bool {
 
 pub fn pat_bindings(dm: resolve::DefMap, pat: @pat,
                     it: &fn(binding_mode, NodeId, span, &Path)) {
-    for walk_pat(pat) |p| {
+    do walk_pat(pat) |p| {
         match p.node {
           pat_ident(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {
             it(binding_mode, p.id, p.span, pth);
           }
           _ => {}
         }
-    }
+        true
+    };
 }
 
 pub fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[NodeId] {

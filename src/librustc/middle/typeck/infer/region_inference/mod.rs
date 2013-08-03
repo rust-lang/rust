@@ -1209,7 +1209,7 @@ impl RegionVarBindings {
             debug!("process_edges(source_vid=%?, dir=%?)", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.to_uint());
-            for graph.each_adjacent_edge(source_node_index, dir) |_, edge| {
+            do graph.each_adjacent_edge(source_node_index, dir) |_, edge| {
                 match edge.data {
                     ConstrainVarSubVar(from_vid, to_vid) => {
                         let opp_vid =
@@ -1229,7 +1229,8 @@ impl RegionVarBindings {
 
                     ConstrainRegSubReg(*) => {}
                 }
-            }
+                true
+            };
         }
     }
 

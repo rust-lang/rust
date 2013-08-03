@@ -31,16 +31,6 @@ fn no_env_no_for<'a>(_: &'a uint, blk: &fn(p: &'a fn())) {
     blk(|| ())
 }
 
-fn no_env_but_for<'a>(_: &'a uint, blk: &fn(p: &'a fn() -> bool) -> bool) {
-    // Test that a `for` loop is considered to hvae
-    // implicit free variables.
-    //
-    // FIXME(#4846): The `&'a uint` parameter is needed to ensure that `'a`
-    // is a free and not bound region name.
-
-    for blk { } //~ ERROR cannot infer an appropriate lifetime
-}
-
 fn repeating_loop() {
     // Test that the closure cannot be created within `loop` loop and
     // called without, even though the state that it closes over is

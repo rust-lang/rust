@@ -15,8 +15,6 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use std::iterator::IteratorUtil;
-
 use middle::ty;
 use middle::typeck;
 
@@ -392,8 +390,7 @@ impl ReachableContext {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&self) {
-        for self.tcx.destructor_for_type.iter().advance
-                |(_, destructor_def_id)| {
+        foreach (_, destructor_def_id) in self.tcx.destructor_for_type.iter() {
             if destructor_def_id.crate == LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }

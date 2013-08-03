@@ -112,7 +112,7 @@ impl Engine512State {
 
         // Putting the message schedule inside the same loop as the round calculations allows for
         // the compiler to generate better code.
-        for uint::range_step(0, 64, 8) |t| {
+        do uint::range_step(0, 64, 8) |t| {
             schedule_round!(t + 16);
             schedule_round!(t + 17);
             schedule_round!(t + 18);
@@ -130,9 +130,10 @@ impl Engine512State {
             sha2_round!(d, e, f, g, h, a, b, c, K64, t + 5);
             sha2_round!(c, d, e, f, g, h, a, b, K64, t + 6);
             sha2_round!(b, c, d, e, f, g, h, a, K64, t + 7);
-        }
+            true
+        };
 
-        for uint::range_step(64, 80, 8) |t| {
+        do uint::range_step(64, 80, 8) |t| {
             sha2_round!(a, b, c, d, e, f, g, h, K64, t);
             sha2_round!(h, a, b, c, d, e, f, g, K64, t + 1);
             sha2_round!(g, h, a, b, c, d, e, f, K64, t + 2);
@@ -141,7 +142,8 @@ impl Engine512State {
             sha2_round!(d, e, f, g, h, a, b, c, K64, t + 5);
             sha2_round!(c, d, e, f, g, h, a, b, K64, t + 6);
             sha2_round!(b, c, d, e, f, g, h, a, K64, t + 7);
-        }
+            true
+        };
 
         self.H0 += a;
         self.H1 += b;
@@ -507,7 +509,7 @@ impl Engine256State {
 
         // Putting the message schedule inside the same loop as the round calculations allows for
         // the compiler to generate better code.
-        for uint::range_step(0, 48, 8) |t| {
+        do uint::range_step(0, 48, 8) |t| {
             schedule_round!(t + 16);
             schedule_round!(t + 17);
             schedule_round!(t + 18);
@@ -525,9 +527,10 @@ impl Engine256State {
             sha2_round!(d, e, f, g, h, a, b, c, K32, t + 5);
             sha2_round!(c, d, e, f, g, h, a, b, K32, t + 6);
             sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
-        }
+            true
+        };
 
-        for uint::range_step(48, 64, 8) |t| {
+        do uint::range_step(48, 64, 8) |t| {
             sha2_round!(a, b, c, d, e, f, g, h, K32, t);
             sha2_round!(h, a, b, c, d, e, f, g, K32, t + 1);
             sha2_round!(g, h, a, b, c, d, e, f, K32, t + 2);
@@ -536,7 +539,8 @@ impl Engine256State {
             sha2_round!(d, e, f, g, h, a, b, c, K32, t + 5);
             sha2_round!(c, d, e, f, g, h, a, b, K32, t + 6);
             sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
-        }
+            true
+        };
 
         self.H0 += a;
         self.H1 += b;

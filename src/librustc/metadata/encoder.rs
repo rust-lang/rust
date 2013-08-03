@@ -558,11 +558,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        for each_auxiliary_node_id(*item) |auxiliary_node_id| {
+        do each_auxiliary_node_id(*item) |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
-        }
+            true
+        };
 
         match item.node {
             item_impl(*) => {
@@ -1377,9 +1378,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
         let mut meta_items = ~[name_item, vers_item];
 
-        for items.iter()
-            .filter(|mi| "name" != mi.name() && "vers" != mi.name())
-            .advance |&mi| {
+        foreach &mi in items.iter().filter(|mi| "name" != mi.name() && "vers" != mi.name()) {
             meta_items.push(mi);
         }
         let link_item = attr::mk_list_item(@"link", meta_items);
@@ -1454,26 +1453,24 @@ fn encode_crate_deps(ecx: &EncodeContext,
 fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_lang_items);
 
-    for ecx.tcx.lang_items.each_item |def_id, i| {
-        let def_id = match def_id {
-            Some(id) => id, None => { loop }
-        };
-        if def_id.crate != LOCAL_CRATE {
-            loop;
+    do ecx.tcx.lang_items.each_item |def_id, i| {
+        foreach id in def_id.iter() {
+            if id.crate == LOCAL_CRATE {
+                ebml_w.start_tag(tag_lang_items_item);
+
+                ebml_w.start_tag(tag_lang_items_item_id);
+                ebml_w.writer.write_be_u32(i as u32);
+                ebml_w.end_tag();   // tag_lang_items_item_id
+
+                ebml_w.start_tag(tag_lang_items_item_node_id);
+                ebml_w.writer.write_be_u32(id.node as u32);
+                ebml_w.end_tag();   // tag_lang_items_item_node_id
+
+                ebml_w.end_tag();   // tag_lang_items_item
+            }
         }
-
-        ebml_w.start_tag(tag_lang_items_item);
-
-        ebml_w.start_tag(tag_lang_items_item_id);
-        ebml_w.writer.write_be_u32(i as u32);
-        ebml_w.end_tag();   // tag_lang_items_item_id
-
-        ebml_w.start_tag(tag_lang_items_item_node_id);
-        ebml_w.writer.write_be_u32(def_id.node as u32);
-        ebml_w.end_tag();   // tag_lang_items_item_node_id
-
-        ebml_w.end_tag();   // tag_lang_items_item
-    }
+        true
+    };
 
     ebml_w.end_tag();   // tag_lang_items
 }
@@ -1501,11 +1498,12 @@ fn encode_misc_info(ecx: &EncodeContext,
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
 
-        for each_auxiliary_node_id(item) |auxiliary_node_id| {
+        do each_auxiliary_node_id(item) |auxiliary_node_id| {
             ebml_w.start_tag(tag_mod_child);
             ebml_w.wr_str(def_to_str(local_def(auxiliary_node_id)));
             ebml_w.end_tag();
-        }
+            true
+        };
     }
 
     // Encode reexports for the root module.

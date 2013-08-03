@@ -206,13 +206,14 @@ impl BigBitv {
     #[inline]
     pub fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
-        for uint::iterate(0, len) |i| {
+        do uint::iterate(0, len) |i| {
             let mask = big_mask(nbits, i);
             if mask & self.storage[i] != mask & b.storage[i] {
-                return false;
+                false
+            } else {
+                true
             }
         }
-        return true;
     }
 }
 
@@ -358,7 +359,7 @@ impl Bitv {
     pub fn clear(&mut self) {
         match self.rep {
           Small(ref mut b) => b.clear(),
-          Big(ref mut s) => for s.each_storage() |w| { *w = 0u }
+          Big(ref mut s) => { do s.each_storage() |w| { *w = 0u; true }; }
         }
     }
 
@@ -367,7 +368,8 @@ impl Bitv {
     pub fn set_all(&mut self) {
       match self.rep {
         Small(ref mut b) => b.set_all(),
-        Big(ref mut s) => for s.each_storage() |w| { *w = !0u } }
+        Big(ref mut s) => { do s.each_storage() |w| { *w = !0u; true }; }
+      }
     }
 
     /// Invert all bits
@@ -375,7 +377,8 @@ impl Bitv {
     pub fn negate(&mut self) {
       match self.rep {
         Small(ref mut b) => b.negate(),
-        Big(ref mut s) => for s.each_storage() |w| { *w = !*w } }
+        Big(ref mut s) => { do s.each_storage() |w| { *w = !*w; true }; }
+      }
     }
 
     /**
@@ -718,11 +721,11 @@ impl BitvSet {
     }
 
     pub fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
+        foreach (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
-                return false;
+                return false
             }
-        }
+        };
         /* everything we have that they don't also shows up */
         self.outlier_iter(other).advance(|(mine, i, w)|
             !mine || iterate_bits(i, w, |b| f(&b))
@@ -731,11 +734,11 @@ impl BitvSet {
 
     pub fn symmetric_difference(&self, other: &BitvSet,
                             f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
+        foreach (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
-                return false;
+                return false
             }
-        }
+        };
         self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 
@@ -744,11 +747,11 @@ impl BitvSet {
     }
 
     pub fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        for self.common_iter(other).advance |(i, w1, w2)| {
+        foreach (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
-                return false;
+                return false
             }
-        }
+        };
         self.outlier_iter(other).advance(|(_, i, w)| iterate_bits(i, w, |b| f(&b)))
     }
 }
@@ -758,12 +761,12 @@ impl cmp::Eq for BitvSet {
         if self.size != other.size {
             return false;
         }
-        for self.common_iter(other).advance |(_, w1, w2)| {
+        foreach (_, w1, w2) in self.common_iter(other) {
             if w1 != w2 {
                 return false;
             }
         }
-        for self.outlier_iter(other).advance |(_, _, w)| {
+        foreach (_, _, w) in self.outlier_iter(other) {
             if w != 0 {
                 return false;
             }
@@ -798,7 +801,7 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
-        for self.common_iter(other).advance |(_, w1, w2)| {
+        foreach (_, w1, w2) in self.common_iter(other) {
             if w1 & w2 != w1 {
                 return false;
             }
@@ -806,7 +809,7 @@ impl Set<uint> for BitvSet {
         /* If anything is not ours, then everything is not ours so we're
            definitely a subset in that case. Otherwise if there's any stray
            ones that 'other' doesn't have, we're not a subset. */
-        for self.outlier_iter(other).advance |(mine, _, w)| {
+        foreach (mine, _, w) in self.outlier_iter(other) {
             if !mine {
                 return true;
             } else if w != 0 {

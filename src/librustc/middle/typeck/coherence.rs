@@ -371,9 +371,10 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation_coherence(&self) {
-        for self.crate_context.tcx.trait_impls.each_key |&trait_id| {
+        do self.crate_context.tcx.trait_impls.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
-        }
+            true
+        };
     }
 
     pub fn check_implementation_coherence_of(&self, trait_def_id: def_id) {
@@ -738,14 +739,15 @@ impl CoherenceChecker {
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            for each_path(crate_store, crate_number) |_, def_like, _| {
+            do each_path(crate_store, crate_number) |_, def_like, _| {
                 match def_like {
                     dl_impl(def_id) => {
                         self.add_external_impl(&mut impls_seen, def_id)
                     }
-                    dl_def(_) | dl_field => loop,   // Skip this.
+                    dl_def(_) | dl_field => (),   // Skip this.
                 }
-            }
+                true
+            };
         }
     }
 
