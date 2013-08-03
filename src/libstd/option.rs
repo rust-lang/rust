@@ -235,19 +235,24 @@ impl<T> Option<T> {
         self.take().map_consume_default(def, blk)
     }
 
-    /// Apply a function to the contained value or do nothing
-    pub fn mutate(&mut self, f: &fn(T) -> T) {
+    /// Apply a function to the contained value or do nothing.
+    /// Returns true if the contained value was mutated.
+    pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
-        }
+            true
+        } else { false }
     }
 
-    /// Apply a function to the contained value or set it to a default
-    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) {
+    /// Apply a function to the contained value or set it to a default.
+    /// Returns true if the contained value was mutated, or false if set to the default.
+    pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
+            true
         } else {
             *self = Some(def);
+            false
         }
     }
 
@@ -574,5 +579,19 @@ mod tests {
 
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_mutate() {
+        let mut x = Some(3i);
+        assert!(x.mutate(|i| i+1));
+        assert_eq!(x, Some(4i));
+        assert!(x.mutate_default(0, |i| i+1));
+        assert_eq!(x, Some(5i));
+        x = None;
+        assert!(!x.mutate(|i| i+1));
+        assert_eq!(x, None);
+        assert!(!x.mutate_default(0i, |i| i+1));
+        assert_eq!(x, Some(0i));
     }
 }
