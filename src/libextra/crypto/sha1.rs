@@ -23,6 +23,8 @@
  */
 
 
+use cryptoutil::{write_u32_be, read_u32v_be, shift_add_check_overflow, FixedBuffer, FixedBuffer64,
+    StandardPadding};
 use digest::Digest;
 
 /*
@@ -33,7 +35,6 @@ use digest::Digest;
 
 // Some unexported constants
 static DIGEST_BUF_LEN: uint = 5u;
-static MSG_BLOCK_LEN: uint = 64u;
 static WORK_BUF_LEN: uint = 80u;
 static K0: u32 = 0x5A827999u32;
 static K1: u32 = 0x6ED9EBA1u32;
@@ -43,58 +44,38 @@ static K3: u32 = 0xCA62C1D6u32;
 /// Structure representing the state of a Sha1 computation
 pub struct Sha1 {
     priv h: [u32, ..DIGEST_BUF_LEN],
-    priv len_low: u32,
-    priv len_high: u32,
-    priv msg_block: [u8, ..MSG_BLOCK_LEN],
-    priv msg_block_idx: uint,
+    priv length_bits: u64,
+    priv buffer: FixedBuffer64,
     priv computed: bool,
-    priv work_buf: [u32, ..WORK_BUF_LEN]
 }
 
 fn add_input(st: &mut Sha1, msg: &[u8]) {
     assert!((!st.computed));
-    foreach element in msg.iter() {
-        st.msg_block[st.msg_block_idx] = *element;
-        st.msg_block_idx += 1;
-        st.len_low += 8;
-        if st.len_low == 0 {
-            st.len_high += 1;
-            if st.len_high == 0 {
-                // FIXME: Need better failure mode (#2346)
-                fail!();
-            }
-        }
-        if st.msg_block_idx == MSG_BLOCK_LEN { process_msg_block(st); }
-    }
+    // Assumes that msg.len() can be converted to u64 without overflow
+    st.length_bits = shift_add_check_overflow(st.length_bits, msg.len() as u64, 3);
+    st.buffer.input(msg, |d: &[u8]| { process_msg_block(d, &mut st.h); });
 }
 
-fn process_msg_block(st: &mut Sha1) {
+fn process_msg_block(data: &[u8], h: &mut [u32, ..DIGEST_BUF_LEN]) {
     let mut t: int; // Loop counter
-    let mut w = st.work_buf;
+
+    let mut w = [0u32, ..WORK_BUF_LEN];
 
     // Initialize the first 16 words of the vector w
-    t = 0;
-    while t < 16 {
-        let mut tmp;
-        tmp = (st.msg_block[t * 4] as u32) << 24u32;
-        tmp = tmp | (st.msg_block[t * 4 + 1] as u32) << 16u32;
-        tmp = tmp | (st.msg_block[t * 4 + 2] as u32) << 8u32;
-        tmp = tmp | (st.msg_block[t * 4 + 3] as u32);
-        w[t] = tmp;
-        t += 1;
-    }
+    read_u32v_be(w.mut_slice(0, 16), data);
 
     // Initialize the rest of vector w
+    t = 16;
     while t < 80 {
         let val = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
         w[t] = circular_shift(1, val);
         t += 1;
     }
-    let mut a = st.h[0];
-    let mut b = st.h[1];
-    let mut c = st.h[2];
-    let mut d = st.h[3];
-    let mut e = st.h[4];
+    let mut a = h[0];
+    let mut b = h[1];
+    let mut c = h[2];
+    let mut d = h[3];
+    let mut e = h[4];
     let mut temp: u32;
     t = 0;
     while t < 20 {
@@ -135,12 +116,11 @@ fn process_msg_block(st: &mut Sha1) {
         a = temp;
         t += 1;
     }
-    st.h[0] = st.h[0] + a;
-    st.h[1] = st.h[1] + b;
-    st.h[2] = st.h[2] + c;
-    st.h[3] = st.h[3] + d;
-    st.h[4] = st.h[4] + e;
-    st.msg_block_idx = 0;
+    h[0] += a;
+    h[1] += b;
+    h[2] += c;
+    h[3] += d;
+    h[4] += e;
 }
 
 fn circular_shift(bits: u32, word: u32) -> u32 {
@@ -148,60 +128,20 @@ fn circular_shift(bits: u32, word: u32) -> u32 {
 }
 
 fn mk_result(st: &mut Sha1, rs: &mut [u8]) {
-    if !st.computed { pad_msg(st); st.computed = true; }
-    let mut i = 0;
-    foreach ptr_hpart in st.h.mut_iter() {
-        let hpart = *ptr_hpart;
-        rs[i]   = (hpart >> 24u32 & 0xFFu32) as u8;
-        rs[i+1] = (hpart >> 16u32 & 0xFFu32) as u8;
-        rs[i+2] = (hpart >> 8u32 & 0xFFu32) as u8;
-        rs[i+3] = (hpart & 0xFFu32) as u8;
-        i += 4;
-    }
-}
+    if !st.computed {
+        st.buffer.standard_padding(8, |d: &[u8]| { process_msg_block(d, &mut st.h) });
+        write_u32_be(st.buffer.next(4), (st.length_bits >> 32) as u32 );
+        write_u32_be(st.buffer.next(4), st.length_bits as u32);
+        process_msg_block(st.buffer.full_buffer(), &mut st.h);
 
-/*
- * According to the standard, the message must be padded to an even
- * 512 bits.  The first padding bit must be a '1'.  The last 64 bits
- * represent the length of the original message.  All bits in between
- * should be 0.  This function will pad the message according to those
- * rules by filling the msg_block vector accordingly.  It will also
- * call process_msg_block() appropriately.  When it returns, it
- * can be assumed that the message digest has been computed.
- */
-fn pad_msg(st: &mut Sha1) {
-    /*
-     * Check to see if the current message block is too small to hold
-     * the initial padding bits and length.  If so, we will pad the
-     * block, process it, and then continue padding into a second block.
-     */
-    if st.msg_block_idx > 55 {
-        st.msg_block[st.msg_block_idx] = 0x80;
-        st.msg_block_idx += 1;
-        while st.msg_block_idx < MSG_BLOCK_LEN {
-            st.msg_block[st.msg_block_idx] = 0;
-            st.msg_block_idx += 1;
-        }
-        process_msg_block(st);
-    } else {
-        st.msg_block[st.msg_block_idx] = 0x80;
-        st.msg_block_idx += 1;
-    }
-    while st.msg_block_idx < 56 {
-        st.msg_block[st.msg_block_idx] = 0u8;
-        st.msg_block_idx += 1;
+        st.computed = true;
     }
 
-    // Store the message length as the last 8 octets
-    st.msg_block[56] = (st.len_high >> 24u32 & 0xFFu32) as u8;
-    st.msg_block[57] = (st.len_high >> 16u32 & 0xFFu32) as u8;
-    st.msg_block[58] = (st.len_high >> 8u32 & 0xFFu32) as u8;
-    st.msg_block[59] = (st.len_high & 0xFFu32) as u8;
-    st.msg_block[60] = (st.len_low >> 24u32 & 0xFFu32) as u8;
-    st.msg_block[61] = (st.len_low >> 16u32 & 0xFFu32) as u8;
-    st.msg_block[62] = (st.len_low >> 8u32 & 0xFFu32) as u8;
-    st.msg_block[63] = (st.len_low & 0xFFu32) as u8;
-    process_msg_block(st);
+    write_u32_be(rs.mut_slice(0, 4), st.h[0]);
+    write_u32_be(rs.mut_slice(4, 8), st.h[1]);
+    write_u32_be(rs.mut_slice(8, 12), st.h[2]);
+    write_u32_be(rs.mut_slice(12, 16), st.h[3]);
+    write_u32_be(rs.mut_slice(16, 20), st.h[4]);
 }
 
 impl Sha1 {
@@ -209,12 +149,9 @@ impl Sha1 {
     pub fn new() -> Sha1 {
         let mut st = Sha1 {
             h: [0u32, ..DIGEST_BUF_LEN],
-            len_low: 0u32,
-            len_high: 0u32,
-            msg_block: [0u8, ..MSG_BLOCK_LEN],
-            msg_block_idx: 0,
+            length_bits: 0u64,
+            buffer: FixedBuffer64::new(),
             computed: false,
-            work_buf: [0u32, ..WORK_BUF_LEN]
         };
         st.reset();
         return st;
@@ -223,14 +160,13 @@ impl Sha1 {
 
 impl Digest for Sha1 {
     pub fn reset(&mut self) {
-        self.len_low = 0;
-        self.len_high = 0;
-        self.msg_block_idx = 0;
+        self.length_bits = 0;
         self.h[0] = 0x67452301u32;
         self.h[1] = 0xEFCDAB89u32;
         self.h[2] = 0x98BADCFEu32;
         self.h[3] = 0x10325476u32;
         self.h[4] = 0xC3D2E1F0u32;
+        self.buffer.reset();
         self.computed = false;
     }
     pub fn input(&mut self, msg: &[u8]) { add_input(self, msg); }
@@ -240,8 +176,8 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
-
-    use digest::{Digest, DigestUtil};
+    use cryptoutil::test::test_digest_1million_random;
+    use digest::Digest;
     use sha1::Sha1;
 
     #[deriving(Clone)]
@@ -253,15 +189,6 @@ mod tests {
 
     #[test]
     fn test() {
-        fn a_million_letter_a() -> ~str {
-            let mut i = 0;
-            let mut rs = ~"";
-            while i < 100000 {
-                rs.push_str("aaaaaaaaaa");
-                i += 1;
-            }
-            return rs;
-        }
         // Test messages from FIPS 180-1
 
         let fips_180_1_tests = ~[
@@ -288,17 +215,6 @@ mod tests {
                     0xE5u8, 0x46u8, 0x70u8, 0xF1u8,
                 ],
                 output_str: ~"84983e441c3bd26ebaae4aa1f95129e5e54670f1"
-            },
-            Test {
-                input: a_million_letter_a(),
-                output: ~[
-                    0x34u8, 0xAAu8, 0x97u8, 0x3Cu8,
-                    0xD4u8, 0xC4u8, 0xDAu8, 0xA4u8,
-                    0xF6u8, 0x1Eu8, 0xEBu8, 0x2Bu8,
-                    0xDBu8, 0xADu8, 0x27u8, 0x31u8,
-                    0x65u8, 0x34u8, 0x01u8, 0x6Fu8,
-                ],
-                output_str: ~"34aa973cd4c4daa4f61eeb2bdbad27316534016f"
             },
         ];
         // Examples from wikipedia
@@ -365,6 +281,15 @@ mod tests {
 
             sh.reset();
         }
+    }
+
+    #[test]
+    fn test_1million_random_sha1() {
+        let mut sh = Sha1::new();
+        test_digest_1million_random(
+            &mut sh,
+            64,
+            "34aa973cd4c4daa4f61eeb2bdbad27316534016f");
     }
 }
 

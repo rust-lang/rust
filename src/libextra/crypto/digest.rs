@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::uint;
 use std::vec;
+
 
 /**
  * The Digest trait specifies an interface common to digest functions, such as SHA-1 and the SHA-2
@@ -28,6 +28,10 @@ pub trait Digest {
 
     /**
      * Retrieve the digest result. This method may be called multiple times.
+     *
+     * # Arguments
+     *
+     * * out - the vector to hold the result. Must be large enough to contain output_bits().
      */
     fn result(&mut self, out: &mut [u8]);
 
@@ -41,6 +45,27 @@ pub trait Digest {
      * Get the output size in bits.
      */
     fn output_bits(&self) -> uint;
+
+    /**
+     * Convenience functon that feeds a string into a digest
+     *
+     * # Arguments
+     *
+     * * in The string to feed into the digest
+     */
+    fn input_str(&mut self, input: &str) {
+        self.input(input.as_bytes());
+    }
+
+    /**
+     * Convenience functon that retrieves the result of a digest as a
+     * ~str in hexadecimal format.
+     */
+    fn result_str(&mut self) -> ~str {
+        let mut buf = vec::from_elem((self.output_bits()+7)/8, 0u8);
+        self.result(buf);
+        return to_hex(buf);
+    }
 }
 
 fn to_hex(rr: &[u8]) -> ~str {
@@ -53,35 +78,4 @@ fn to_hex(rr: &[u8]) -> ~str {
         s.push_str(hex);
     }
     return s;
-}
-
-/// Contains utility methods for Digests.
-/// FIXME: #7339: Convert to default methods when issues with them are resolved.
-pub trait DigestUtil {
-    /**
-     * Convenience functon that feeds a string into a digest
-     *
-     * # Arguments
-     *
-     * * in The string to feed into the digest
-     */
-    fn input_str(&mut self, input: &str);
-
-    /**
-     * Convenience functon that retrieves the result of a digest as a
-     * ~str in hexadecimal format.
-     */
-    fn result_str(&mut self) -> ~str;
-}
-
-impl<D: Digest> DigestUtil for D {
-    fn input_str(&mut self, input: &str) {
-        self.input(input.as_bytes());
-    }
-
-    fn result_str(&mut self) -> ~str {
-        let mut buf = vec::from_elem((self.output_bits()+7)/8, 0u8);
-        self.result(buf);
-        return to_hex(buf);
-    }
 }
