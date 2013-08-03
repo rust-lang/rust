@@ -632,7 +632,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
+    use libc::funcs::c95::string::strerror;
     use int;
+    use str::raw::from_c_str;
 
     mod rustrt {
         use libc::c_void;
@@ -645,11 +647,44 @@ fn spawn_process_os(prog: &str, args: &[~str],
     }
 
     unsafe {
+        // TODO: Only use functions defined in libc.rs (if possible?). This
+        // means that there's no pipe2 function. The function fcntl() is
+        // defined in POSIX, but Rust does not provide a way to *set* value
+        // using fcntl(). At the moment it is only possible to get a value.
+
+        // See also https://lkml.org/lkml/2006/7/10/300 for more info about
+        // the use of O_CLOEXEC combined with exec().
+
+        let O_CLOEXEC = 524288;
+        let mut fds = os::Pipe {in: 0 as c_int,
+                                out: 0 as c_int };
+        let result = libc::pipe2(&mut fds.in, O_CLOEXEC) as int;
+        assert_eq!(result, 0);
 
         let pid = fork();
         if pid < 0 {
             fail!("failure in fork: %s", os::last_os_error());
         } else if pid > 0 {
+            close(fds.out);
+
+            // Read the errno value from the child, if the exec failed, or get
+            // 0 if the exec succeeded because the pipe fd was set as
+            // close-on-exec.
+            let reader = io::FILE_reader(os::fdopen(fds.in), false);
+
+            let mut buf = [255 as u8];
+            let n = reader.read(buf, 1);
+
+            if !reader.eof() {
+                if n == 0 {
+                    fail!("failure in read: %s", os::last_os_error());
+                } else if buf[0] != 0 {
+                    // exec failed
+                    let msg = from_c_str(strerror(buf[0] as i32));
+                    fail!("failure in execvp: errno=%s", msg);
+                }
+            }
+
             return SpawnProcessResult {pid: pid, handle: ptr::null()};
         }
 
@@ -666,7 +701,11 @@ fn spawn_process_os(prog: &str, args: &[~str],
         }
         // close all other fds
         for int::range_rev(getdtablesize() as int, 3) |fd| {
-            close(fd as c_int);
+            // Do not close the close-on-exec fd otherwise there's no way of
+            // knowing if the exec failed or succeeded.
+            if fd != (fds.out as int) {
+                close(fd as c_int);
+            }
         }
 
         do with_dirp(dir) |dirp| {
@@ -682,7 +721,11 @@ fn spawn_process_os(prog: &str, args: &[~str],
             do with_argv(prog, args) |argv| {
                 execvp(*argv, argv);
                 // execvp only returns if an error occurred
+                let errno = os::errno();
+                let writer = io::fd_writer(fds.out, false); // false?
+                writer.write_u8(errno as u8);
                 fail!("failure in execvp: %s", os::last_os_error());
+
             }
         }
     }

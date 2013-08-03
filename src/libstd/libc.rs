@@ -2877,6 +2877,7 @@ pub mod funcs {
                 pub unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
                 pub unsafe fn pause() -> c_int;
                 pub unsafe fn pipe(fds: *mut c_int) -> c_int;
+                pub unsafe fn pipe2(fds: *mut c_int, flags: c_int) -> c_int;
                 #[fast_ffi]
                 pub unsafe fn read(fd: c_int, buf: *mut c_void, count: size_t)
                                    -> ssize_t;
