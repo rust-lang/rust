@@ -61,27 +61,7 @@ enum SearchResult {
 
 #[inline]
 fn resize_at(capacity: uint) -> uint {
-    ((capacity as float) * 3. / 4.) as uint
-}
-
-/// Creates a new hash map with the specified capacity.
-pub fn linear_map_with_capacity<K:Eq + Hash,V>(
-    initial_capacity: uint) -> HashMap<K, V> {
-    let mut r = rand::task_rng();
-    linear_map_with_capacity_and_keys(r.gen(), r.gen(),
-                                      initial_capacity)
-}
-
-fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
-    k0: u64, k1: u64,
-    initial_capacity: uint) -> HashMap<K, V> {
-    let cap = num::max(INITIAL_CAPACITY, initial_capacity);
-    HashMap {
-        k0: k0, k1: k1,
-        resize_at: resize_at(cap),
-        size: 0,
-        buckets: vec::from_fn(cap, |_| None)
-    }
+    (capacity * 3) / 4
 }
 
 impl<K:Hash + Eq,V> HashMap<K, V> {
@@ -352,10 +332,28 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Create an empty HashMap with space for at least `n` elements in
-    /// the hash table.
+    /// Create an empty HashMap with space for at least `capacity`
+    /// elements in the hash table.
     pub fn with_capacity(capacity: uint) -> HashMap<K, V> {
-        linear_map_with_capacity(capacity)
+        let mut r = rand::task_rng();
+        HashMap::with_capacity_and_keys(r.gen(), r.gen(), capacity)
+    }
+
+    /// Create an empty HashMap with space for at least `capacity`
+    /// elements, using `k0` and `k1` as the keys.
+    ///
+    /// Warning: `k0` and `k1` are normally randomly generated, and
+    /// are designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting them
+    /// manually using this function can expose a DoS attack vector.
+    pub fn with_capacity_and_keys(k0: u64, k1: u64, capacity: uint) -> HashMap<K, V> {
+        let cap = num::max(INITIAL_CAPACITY, capacity);
+        HashMap {
+            k0: k0, k1: k1,
+            resize_at: resize_at(cap),
+            size: 0,
+            buckets: vec::from_fn(cap, |_| None)
+        }
     }
 
     /// Reserve space for at least `n` elements in the hash table.
@@ -844,7 +842,7 @@ mod test_map {
 
     #[test]
     fn test_insert_conflicts() {
-        let mut m = linear_map_with_capacity(4);
+        let mut m = HashMap::with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
@@ -855,7 +853,7 @@ mod test_map {
 
     #[test]
     fn test_conflict_remove() {
-        let mut m = linear_map_with_capacity(4);
+        let mut m = HashMap::with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
@@ -866,7 +864,7 @@ mod test_map {
 
     #[test]
     fn test_is_empty() {
-        let mut m = linear_map_with_capacity(4);
+        let mut m = HashMap::with_capacity(4);
         assert!(m.insert(1, 2));
         assert!(!m.is_empty());
         assert!(m.remove(&1));
@@ -927,7 +925,7 @@ mod test_map {
 
     #[test]
     fn test_iterate() {
-        let mut m = linear_map_with_capacity(4);
+        let mut m = HashMap::with_capacity(4);
         foreach i in range(0u, 32) {
             assert!(m.insert(i, i*2));
         }
