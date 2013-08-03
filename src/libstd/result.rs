@@ -214,7 +214,7 @@ impl<T, E: Clone + ToStr> Result<T, E> {
     ///         parse_bytes(buf)
     ///     };
     #[inline]
-    pub fn map<U: Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
+    pub fn map<U>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         match *self {
             Ok(ref t) => Ok(op(t)),
             Err(ref e) => Err(e.clone())
