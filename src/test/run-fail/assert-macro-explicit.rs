@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task failed at 'assertion failed: false'
+// error-pattern:failed at 'assertion failed: false'
 
 fn main() {
     assert!(false);
