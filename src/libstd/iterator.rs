@@ -106,6 +106,16 @@ impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Invert<T> {
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
 
+impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterator<A>
+    for Invert<T> {
+    #[inline]
+    fn indexable(&self) -> uint { self.iter.indexable() }
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        self.iter.idx(self.indexable() - index - 1)
+    }
+}
+
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
 /// implementations of the `Iterator` trait.
 ///
@@ -2015,6 +2025,17 @@ mod tests {
     fn test_random_access_enumerate() {
         let xs = [1, 2, 3, 4, 5];
         check_randacc_iter(xs.iter().enumerate(), xs.len());
+    }
+
+    #[test]
+    fn test_random_access_invert() {
+        let xs = [1, 2, 3, 4, 5];
+        check_randacc_iter(xs.iter().invert(), xs.len());
+        let mut it = xs.iter().invert();
+        it.next();
+        it.next_back();
+        it.next();
+        check_randacc_iter(it, xs.len() - 3);
     }
 
     #[test]
