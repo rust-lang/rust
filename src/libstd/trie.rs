@@ -48,12 +48,6 @@ impl<T> Mutable for TrieMap<T> {
 }
 
 impl<T> Map<uint, T> for TrieMap<T> {
-    /// Return true if the map contains a value for the specified key
-    #[inline]
-    fn contains_key(&self, key: &uint) -> bool {
-        self.find(key).is_some()
-    }
-
     /// Return a reference to the value corresponding to the key
     #[inline]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {

@@ -272,14 +272,6 @@ impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
 }
 
 impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
-    /// Return true if the map contains a value for the specified key
-    fn contains_key(&self, k: &K) -> bool {
-        match self.bucket_for_key(k) {
-            FoundEntry(_) => {true}
-            TableFull | FoundHole(_) => {false}
-        }
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         match self.bucket_for_key(k) {
