@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -396,8 +396,11 @@ impl CoherenceChecker {
 
                     if self.polytypes_unify(polytype_a, polytype_b) {
                         let session = self.crate_context.tcx.sess;
-                        session.span_err(self.span_of_impl(implementation_b),
-                                         "conflicting implementations for a trait");
+                        session.span_err(
+                            self.span_of_impl(implementation_b),
+                            fmt!("conflicting implementations for trait `%s`",
+                                 ty::item_path_str(self.crate_context.tcx,
+                                                   trait_def_id)));
                         session.span_note(self.span_of_impl(implementation_a),
                                           "note conflicting implementation here");
                     }
