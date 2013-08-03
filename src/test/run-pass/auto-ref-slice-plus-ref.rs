@@ -13,17 +13,14 @@
 
 trait MyIter {
     fn test_imm(&self);
-    fn test_const(&const self);
 }
 
 impl<'self> MyIter for &'self [int] {
     fn test_imm(&self) { assert_eq!(self[0], 1) }
-    fn test_const(&const self) { assert_eq!(self[0], 1) }
 }
 
 impl<'self> MyIter for &'self str {
     fn test_imm(&self) { assert_eq!(*self, "test") }
-    fn test_const(&const self) { assert_eq!(self[0], 't' as u8) }
 }
 
 pub fn main() {
@@ -39,15 +36,6 @@ pub fn main() {
     (&"test").test_imm();
 
     // XXX: Other types of mutable vecs don't currently exist
-
-    ([1]).test_const();
-    (~[1]).test_const();
-    (@[1]).test_const();
-    (&[1]).test_const();
-    ("test").test_const();
-    (~"test").test_const();
-    (@"test").test_const();
-    (&"test").test_const();
 
     // NB: We don't do this double autoreffing for &mut self because that would
     // allow creating a mutable pointer to a temporary, which would be a source

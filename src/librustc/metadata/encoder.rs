@@ -635,15 +635,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
     fn encode_mutability(ebml_w: &writer::Encoder,
                          m: ast::mutability) {
         match m {
-            m_imm => {
-                ebml_w.writer.write(&[ 'i' as u8 ]);
-            }
-            m_mutbl => {
-                ebml_w.writer.write(&[ 'm' as u8 ]);
-            }
-            m_const => {
-                ebml_w.writer.write(&[ 'c' as u8 ]);
-            }
+            m_imm => ebml_w.writer.write(&[ 'i' as u8 ]),
+            m_mutbl => ebml_w.writer.write(&[ 'm' as u8 ]),
         }
     }
 }

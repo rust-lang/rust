@@ -386,7 +386,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         word(s.s, "[");
         match mt.mutbl {
           ast::m_mutbl => word_space(s, "mut"),
-          ast::m_const => word_space(s, "const"),
           ast::m_imm => ()
         }
         print_type(s, mt.ty);
@@ -429,7 +428,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         word(s.s, "[");
         match mt.mutbl {
             ast::m_mutbl => word_space(s, "mut"),
-            ast::m_const => word_space(s, "const"),
             ast::m_imm => ()
         }
         print_type(s, mt.ty);
@@ -1882,7 +1880,6 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
 pub fn print_mutability(s: @ps, mutbl: ast::mutability) {
     match mutbl {
       ast::m_mutbl => word_nbsp(s, "mut"),
-      ast::m_const => word_nbsp(s, "const"),
       ast::m_imm => {/* nothing */ }
     }
 }

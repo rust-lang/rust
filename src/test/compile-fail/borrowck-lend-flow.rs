@@ -32,14 +32,6 @@ fn pre_freeze() {
     borrow_mut(v); //~ ERROR cannot borrow
 }
 
-fn pre_const() {
-    // In this instance, the freeze starts before the mut borrow.
-
-    let mut v = ~3;
-    let _w = &const v;
-    borrow_mut(v);
-}
-
 fn post_freeze() {
     // In this instance, the const alias starts after the borrow.
 
