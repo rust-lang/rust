@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task failed at 'test-fail-fmt 42 rust'
+// error-pattern:failed at 'test-fail-fmt 42 rust'
 
 fn main() {
     fail!("test-fail-fmt %d %s", 42, "rust");
