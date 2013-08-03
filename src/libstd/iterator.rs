@@ -1565,6 +1565,39 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     }
 }
 
+/// An iterator that repeats an element endlessly
+#[deriving(Clone, DeepClone)]
+pub struct Repeat<A> {
+    priv element: A
+}
+
+impl<A: Clone> Repeat<A> {
+    /// Create a new `Repeat` that enlessly repeats the element `elt`.
+    #[inline]
+    pub fn new(elt: A) -> Repeat<A> {
+        Repeat{element: elt}
+    }
+}
+
+impl<A: Clone> Iterator<A> for Repeat<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> { self.idx(0) }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { (uint::max_value, None) }
+}
+
+impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> { self.idx(0) }
+}
+
+impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
+    #[inline]
+    fn indexable(&self) -> uint { uint::max_value }
+    #[inline]
+    fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
