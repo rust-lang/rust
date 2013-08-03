@@ -567,11 +567,6 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
-Rust also has a `for` construct. It's different from C's `for` and it works
-best when iterating over collections. See the section on [closures](#closures)
-to find out how to use `for` and higher-order functions for enumerating
-elements of a collection.
-
 # Data structures
 
 ## Structs
@@ -1397,8 +1392,8 @@ assert!(crayons.len() == 3);
 assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
-// (`for` is explained in the next section)
-foreach crayon in crayons.iter() {
+// (`for` is explained in the container/iterator tutorial)
+for crayon in crayons.iter() {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
@@ -1749,7 +1744,7 @@ of `vector`:
 ~~~~
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    foreach element in vector.iter() {
+    for element in vector.iter() {
         accumulator.push(function(element));
     }
     return accumulator;
@@ -2027,7 +2022,7 @@ generic types.
 ~~~~
 # trait Printable { fn print(&self); }
 fn print_all<T: Printable>(printable_things: ~[T]) {
-    foreach thing in printable_things.iter() {
+    for thing in printable_things.iter() {
         thing.print();
     }
 }
@@ -2073,7 +2068,7 @@ However, consider this function:
 trait Drawable { fn draw(&self); }
 
 fn draw_all<T: Drawable>(shapes: ~[T]) {
-    foreach shape in shapes.iter() { shape.draw(); }
+    for shape in shapes.iter() { shape.draw(); }
 }
 # let c: Circle = new_circle();
 # draw_all(~[c]);
@@ -2088,7 +2083,7 @@ an _object_.
 ~~~~
 # trait Drawable { fn draw(&self); }
 fn draw_all(shapes: &[@Drawable]) {
-    foreach shape in shapes.iter() { shape.draw(); }
+    for shape in shapes.iter() { shape.draw(); }
 }
 ~~~~
 
