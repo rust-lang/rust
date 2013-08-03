@@ -210,7 +210,7 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         ExprLit(existing_a_expr) => a_expr = existing_a_expr,
                             ConstLit(a_const) => {
                                 let e = const_eval::lookup_const_by_id(tcx, a_const);
-                                a_expr = e.get();
+                                a_expr = e.unwrap();
                             }
                         UnitLikeStructLit(_) => {
                             fail!("UnitLikeStructLit should have been handled \
@@ -223,7 +223,7 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         ExprLit(existing_b_expr) => b_expr = existing_b_expr,
                             ConstLit(b_const) => {
                                 let e = const_eval::lookup_const_by_id(tcx, b_const);
-                                b_expr = e.get();
+                                b_expr = e.unwrap();
                             }
                         UnitLikeStructLit(_) => {
                             fail!("UnitLikeStructLit should have been handled \
@@ -922,7 +922,7 @@ pub fn extract_vec_elems(bcx: @mut Block,
         }
     };
     if slice.is_some() {
-        let n = slice.get();
+        let n = slice.unwrap();
         let slice_offset = Mul(bcx, vt.llunit_size,
             C_int(bcx.ccx(), n as int)
         );
@@ -1280,7 +1280,7 @@ pub fn compile_submatch(bcx: @mut Block,
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     if m.len() == 0u {
-        Br(bcx, chk.get()());
+        Br(bcx, chk.unwrap()());
         return;
     }
     if m[0].pats.len() == 0u {

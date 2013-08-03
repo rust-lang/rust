@@ -218,8 +218,8 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(!doc.cratemod().mods()[0].desc().get().contains("Header"));
-        assert!(!doc.cratemod().mods()[0].desc().get().contains("Body"));
+        assert!(!doc.cratemod().mods()[0].desc().unwrap().contains("Header"));
+        assert!(!doc.cratemod().mods()[0].desc().unwrap().contains("Body"));
     }
 
     #[test]

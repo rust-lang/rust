@@ -485,8 +485,8 @@ fn lexical_block_metadata(bcx: @mut Block) -> DILexicalBlock {
         }
     }
 
-    let span = bcx.node_info.get().span;
-    let id = bcx.node_info.get().id;
+    let span = bcx.node_info.unwrap().span;
+    let id = bcx.node_info.unwrap().id;
 
     // Check whether we already have a cache entry for this node id
     match dbg_cx(cx).created_blocks.find(&id) {

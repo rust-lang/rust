@@ -243,6 +243,8 @@ Out of scope
 */
 
 use prelude::*;
+use to_str::ToStr;
+use str::{StrSlice, OwnedStr};
 
 // Reexports
 pub use self::stdio::stdin;
@@ -334,6 +336,20 @@ pub struct IoError {
     detail: Option<~str>
 }
 
+// FIXME: #8242 implementing manually because deriving doesn't work for some reason
+impl ToStr for IoError {
+    fn to_str(&self) -> ~str {
+        let mut s = ~"IoError { kind: ";
+        s.push_str(self.kind.to_str());
+        s.push_str(", desc: ");
+        s.push_str(self.desc);
+        s.push_str(", detail: ");
+        s.push_str(self.detail.to_str());
+        s.push_str(" }");
+        s
+    }
+}
+
 #[deriving(Eq)]
 pub enum IoErrorKind {
     PreviousIoError,
@@ -346,6 +362,24 @@ pub enum IoErrorKind {
     ConnectionRefused,
     ConnectionReset,
     BrokenPipe
+}
+
+// FIXME: #8242 implementing manually because deriving doesn't work for some reason
+impl ToStr for IoErrorKind {
+    fn to_str(&self) -> ~str {
+        match *self {
+            PreviousIoError => ~"PreviousIoError",
+            OtherIoError => ~"OtherIoError",
+            EndOfFile => ~"EndOfFile",
+            FileNotFound => ~"FileNotFound",
+            PermissionDenied => ~"PermissionDenied",
+            ConnectionFailed => ~"ConnectionFailed",
+            Closed => ~"Closed",
+            ConnectionRefused => ~"ConnectionRefused",
+            ConnectionReset => ~"ConnectionReset",
+            BrokenPipe => ~"BrokenPipe"
+        }
+    }
 }
 
 // XXX: Can't put doc comments on macros

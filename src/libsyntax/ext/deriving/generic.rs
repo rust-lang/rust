@@ -961,7 +961,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
         let field_pats = do vec::build |push| {
             for (&pat, &(id, _)) in subpats.iter().zip(ident_expr.iter()) {
                 // id is guaranteed to be Some
-                push(ast::field_pat { ident: id.get(), pat: pat })
+                push(ast::field_pat { ident: id.unwrap(), pat: pat })
             }
         };
         cx.pat_struct(span, matching_path, field_pats)

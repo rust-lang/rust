@@ -322,24 +322,24 @@ mod test {
 
     #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().get(), "".as_bytes().to_owned());
-        assert_eq!("Zg==".from_base64().get(), "f".as_bytes().to_owned());
-        assert_eq!("Zm8=".from_base64().get(), "fo".as_bytes().to_owned());
-        assert_eq!("Zm9v".from_base64().get(), "foo".as_bytes().to_owned());
-        assert_eq!("Zm9vYg==".from_base64().get(), "foob".as_bytes().to_owned());
-        assert_eq!("Zm9vYmE=".from_base64().get(), "fooba".as_bytes().to_owned());
-        assert_eq!("Zm9vYmFy".from_base64().get(), "foobar".as_bytes().to_owned());
+        assert_eq!("".from_base64().unwrap(), "".as_bytes().to_owned());
+        assert_eq!("Zg==".from_base64().unwrap(), "f".as_bytes().to_owned());
+        assert_eq!("Zm8=".from_base64().unwrap(), "fo".as_bytes().to_owned());
+        assert_eq!("Zm9v".from_base64().unwrap(), "foo".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==".from_base64().unwrap(), "foob".as_bytes().to_owned());
+        assert_eq!("Zm9vYmE=".from_base64().unwrap(), "fooba".as_bytes().to_owned());
+        assert_eq!("Zm9vYmFy".from_base64().unwrap(), "foobar".as_bytes().to_owned());
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().get(),
+        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
                    "foobar".as_bytes().to_owned());
     }
 
     #[test]
     fn test_from_base64_urlsafe() {
-        assert_eq!("-_8".from_base64().get(), "+/8=".from_base64().get());
+        assert_eq!("-_8".from_base64().unwrap(), "+/8=".from_base64().unwrap());
     }
 
     #[test]
@@ -364,7 +364,7 @@ mod test {
                     push(random());
                 }
             };
-            assert_eq!(v.to_base64(STANDARD).from_base64().get(), v);
+            assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }
     }
 

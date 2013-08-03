@@ -18,6 +18,7 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 
+#[deriving(ToStr)]
 pub struct RegionError {
     msg: ~str,
     replacement: ty::Region
