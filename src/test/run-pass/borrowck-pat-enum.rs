@@ -24,30 +24,7 @@ fn match_ref_unused(v: Option<int>) {
     }
 }
 
-fn match_const_reg(v: &const Option<int>) -> int {
-    match *v {
-      Some(ref i) => {*i} //~ ERROR cannot borrow
-        //~^ ERROR unsafe borrow
-      None => {0}
-    }
-}
-
 fn impure(_i: int) {
-}
-
-fn match_const_reg_unused(v: &const Option<int>) {
-    match *v {
-      Some(_) => {impure(0)} // OK because nothing is captured
-      None => {}
-    }
-}
-
-fn match_const_reg_impure(v: &const Option<int>) {
-    match *v {
-      Some(ref i) => {impure(*i)} //~ ERROR cannot borrow
-        //~^ ERROR unsafe borrow
-      None => {}
-    }
 }
 
 fn match_imm_reg(v: &Option<int>) {

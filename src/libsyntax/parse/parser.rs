@@ -36,7 +36,7 @@ use ast::{ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
-use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local, m_const};
+use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, mul, mutability};
 use ast::{named_field, neg, NodeId, noreturn, not, pat, pat_box, pat_enum};
@@ -79,12 +79,13 @@ use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
 use parse::obsolete::ObsoleteMode;
-use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
+use parse::obsolete::{ObsoleteLifetimeNotation};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::obsolete::{ObsoleteMutWithMultipleBindings};
 use parse::obsolete::{ObsoleteExternVisibility, ObsoleteUnsafeExternFn};
+use parse::obsolete::{ObsoleteConstPointer};
 use parse::obsolete::{ParserObsoleteMethods};
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
@@ -1073,9 +1074,6 @@ impl Parser {
         if mt.mutbl != m_imm && sigil == OwnedSigil {
             self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
         }
-        if mt.mutbl == m_const && sigil == ManagedSigil {
-            self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
-        }
 
         ctor(mt)
     }
@@ -1488,7 +1486,8 @@ impl Parser {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
         } else if self.eat_keyword(keywords::Const) {
-            m_const
+            self.obsolete(*self.last_span, ObsoleteConstPointer);
+            m_imm
         } else {
             m_imm
         }
@@ -1645,7 +1644,7 @@ impl Parser {
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
-            if mutbl == m_mutbl || mutbl == m_const {
+            if mutbl == m_mutbl {
                 self.obsolete(*self.last_span, ObsoleteMutVector);
             }
 
@@ -2100,10 +2099,6 @@ impl Parser {
           token::AT => {
             self.bump();
             let m = self.parse_mutability();
-            if m == m_const {
-                self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
-            }
-
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec

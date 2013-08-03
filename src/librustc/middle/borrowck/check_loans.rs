@@ -23,7 +23,7 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
-use syntax::ast::{m_mutbl, m_imm, m_const};
+use syntax::ast::m_mutbl;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -205,9 +205,9 @@ impl<'self> CheckLoanCtxt<'self> {
 
         // Restrictions that would cause the new loan to be illegal:
         let illegal_if = match loan2.mutbl {
-            m_mutbl => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
-            m_imm =>   RESTR_ALIAS | RESTR_FREEZE,
-            m_const => RESTR_ALIAS,
+            MutableMutability   => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
+            ImmutableMutability => RESTR_ALIAS | RESTR_FREEZE,
+            ConstMutability     => RESTR_ALIAS,
         };
         debug!("illegal_if=%?", illegal_if);
 
@@ -216,7 +216,7 @@ impl<'self> CheckLoanCtxt<'self> {
             if restr.loan_path != loan2.loan_path { loop; }
 
             match (new_loan.mutbl, old_loan.mutbl) {
-                (m_mutbl, m_mutbl) => {
+                (MutableMutability, MutableMutability) => {
                     self.bccx.span_err(
                         new_loan.span,
                         fmt!("cannot borrow `%s` as mutable \
@@ -522,7 +522,6 @@ impl<'self> CheckLoanCtxt<'self> {
                     // Otherwise stop iterating
                     LpExtend(_, mc::McDeclared, _) |
                     LpExtend(_, mc::McImmutable, _) |
-                    LpExtend(_, mc::McReadOnly, _) |
                     LpVar(_) => {
                         return true;
                     }
@@ -530,8 +529,11 @@ impl<'self> CheckLoanCtxt<'self> {
 
                 // Check for a non-const loan of `loan_path`
                 let cont = do this.each_in_scope_loan(expr.id) |loan| {
-                    if loan.loan_path == loan_path && loan.mutbl != m_const {
-                        this.report_illegal_mutation(expr, full_loan_path, loan);
+                    if loan.loan_path == loan_path &&
+                            loan.mutbl != ConstMutability {
+                        this.report_illegal_mutation(expr,
+                                                     full_loan_path,
+                                                     loan);
                         false
                     } else {
                         true
