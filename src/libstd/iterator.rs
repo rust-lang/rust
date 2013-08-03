@@ -82,6 +82,17 @@ pub trait DoubleEndedIteratorUtil {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil for T {
     /// Flip the direction of the iterator
+    ///
+    /// The inverted iterator flips the ends on an iterator that can already
+    /// be iterated from the front and from the back.
+    ///
+    ///
+    /// If the iterator also implements RandomAccessIterator, the inverted
+    /// iterator is also random access, with the indices starting at the back
+    /// of the original iterator.
+    ///
+    /// Note: Random access with inverted indices still only applies to the first
+    /// `uint::max_value` elements of the original iterator.
     #[inline]
     fn invert(self) -> Invert<T> {
         Invert{iter: self}
