@@ -929,9 +929,12 @@ pub struct Zip<T, U> {
 impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     #[inline]
     fn next(&mut self) -> Option<(A, B)> {
-        match (self.a.next(), self.b.next()) {
-            (Some(x), Some(y)) => Some((x, y)),
-            _ => None
+        match self.a.next() {
+            None => None,
+            Some(x) => match self.b.next() {
+                None => None,
+                Some(y) => Some((x, y))
+            }
         }
     }
 
@@ -962,9 +965,12 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 
     #[inline]
     fn idx(&self, index: uint) -> Option<(A, B)> {
-        match (self.a.idx(index), self.b.idx(index)) {
-            (Some(x), Some(y)) => Some((x, y)),
-            _ => None
+        match self.a.idx(index) {
+            None => None,
+            Some(x) => match self.b.idx(index) {
+                None => None,
+                Some(y) => Some((x, y))
+            }
         }
     }
 }
