@@ -112,14 +112,14 @@ fn test_tls_multitask() {
         // TLS shouldn't carry over.
         assert!(get(my_key, |k| k.map(|&k| *k)).is_none());
         set(my_key, @~"child data");
-        assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) ==
+        assert!(*(get(my_key, |k| k.map(|&k| *k)).unwrap()) ==
                 ~"child data");
         // should be cleaned up for us
     }
     // Must work multiple times
-    assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
-    assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
-    assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"parent data");
+    assert!(*(get(my_key, |k| k.map(|&k| *k)).unwrap()) == ~"parent data");
+    assert!(*(get(my_key, |k| k.map(|&k| *k)).unwrap()) == ~"parent data");
+    assert!(*(get(my_key, |k| k.map(|&k| *k)).unwrap()) == ~"parent data");
 }
 
 #[test]
@@ -127,14 +127,14 @@ fn test_tls_overwrite() {
     static my_key: Key<@~str> = &Key;
     set(my_key, @~"first data");
     set(my_key, @~"next data"); // Shouldn't leak.
-    assert!(*(get(my_key, |k| k.map(|&k| *k)).get()) == ~"next data");
+    assert!(*(get(my_key, |k| k.map(|&k| *k)).unwrap()) == ~"next data");
 }
 
 #[test]
 fn test_tls_pop() {
     static my_key: Key<@~str> = &Key;
     set(my_key, @~"weasel");
-    assert!(*(pop(my_key).get()) == ~"weasel");
+    assert!(*(pop(my_key).unwrap()) == ~"weasel");
     // Pop must remove the data from the map.
     assert!(pop(my_key).is_none());
 }
@@ -155,7 +155,7 @@ fn test_tls_modify() {
             None                 => fail!("missing value")
         }
     });
-    assert!(*(pop(my_key).get()) == ~"next data");
+    assert!(*(pop(my_key).unwrap()) == ~"next data");
 }
 
 #[test]

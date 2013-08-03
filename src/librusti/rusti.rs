@@ -322,14 +322,14 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             // instead we guess which file is the library by matching
             // the prefix and suffix of out_filename to files in the
             // directory.
-            let file_str = file.filename().get();
-            file_str.starts_with(outputs.out_filename.filestem().get())
-                && file_str.ends_with(outputs.out_filename.filetype().get())
+            let file_str = file.filename().unwrap();
+            file_str.starts_with(outputs.out_filename.filestem().unwrap())
+                && file_str.ends_with(outputs.out_filename.filetype().unwrap())
         };
         match maybe_lib_path {
             Some(lib_path) => {
-                let (src_mtime, _) = src_path.get_mtime().get();
-                let (lib_mtime, _) = lib_path.get_mtime().get();
+                let (src_mtime, _) = src_path.get_mtime().unwrap();
+                let (lib_mtime, _) = lib_path.get_mtime().unwrap();
                 if lib_mtime >= src_mtime {
                     should_compile = false;
                 }

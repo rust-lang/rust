@@ -31,6 +31,6 @@ fn main() {
     } else {
         args
     };
-    let n = int::from_str(args[1]).get();
+    let n = int::from_str(args[1]).unwrap();
     printfln!("%d\n", fib(n));
 }

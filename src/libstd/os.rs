@@ -571,7 +571,7 @@ pub fn tmpdir() -> Path {
 
     #[cfg(unix)]
     fn lookup() -> Path {
-        getenv_nonempty("TMPDIR").get_or_default(Path("/tmp"))
+        getenv_nonempty("TMPDIR").unwrap_or_default(Path("/tmp"))
     }
 
     #[cfg(windows)]
@@ -579,7 +579,7 @@ pub fn tmpdir() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
                 getenv_nonempty("USERPROFILE").or(
-                   getenv_nonempty("WINDIR")))).get_or_default(Path("C:\\Windows"))
+                   getenv_nonempty("WINDIR")))).unwrap_or_default(Path("C:\\Windows"))
     }
 }
 
@@ -1782,7 +1782,7 @@ mod tests {
     fn test_self_exe_path() {
         let path = os::self_exe_path();
         assert!(path.is_some());
-        let path = path.get();
+        let path = path.unwrap();
         debug!(path.clone());
 
         // Hard to test this function

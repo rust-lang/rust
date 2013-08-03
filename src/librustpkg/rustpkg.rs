@@ -102,7 +102,7 @@ impl<'self> PkgScript<'self> {
     debug!("pkgscript parse: %?", os::self_exe_path());
         let options = @session::options {
             binary: binary,
-            maybe_sysroot: Some(@os::self_exe_path().get().pop()),
+            maybe_sysroot: Some(@os::self_exe_path().unwrap().pop()),
             crate_type: session::bin_crate,
             .. (*session::basic_options()).clone()
         };
@@ -535,7 +535,7 @@ pub fn main() {
  * in is the working directory.
  */
 pub fn work_dir() -> Path {
-    os::self_exe_path().get()
+    os::self_exe_path().unwrap()
 }
 
 /**

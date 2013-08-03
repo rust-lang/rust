@@ -533,7 +533,7 @@ impl<R: Rng> RngUtil for R {
 
     /// Choose an item randomly, failing if values is empty
     fn choose<T:Clone>(&mut self, values: &[T]) -> T {
-        self.choose_option(values).get()
+        self.choose_option(values).unwrap()
     }
 
     /// Choose Some(item) randomly, returning None if values is empty
@@ -549,7 +549,7 @@ impl<R: Rng> RngUtil for R {
      * the weights is 0
      */
     fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
-        self.choose_weighted_option(v).get()
+        self.choose_weighted_option(v).unwrap()
     }
 
     /**

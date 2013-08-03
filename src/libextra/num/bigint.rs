@@ -1510,11 +1510,11 @@ mod biguint_tests {
 
     #[test]
     fn test_is_even() {
-        assert!(FromStr::from_str::<BigUint>("1").get().is_odd());
-        assert!(FromStr::from_str::<BigUint>("2").get().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000").get().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000000000000000000000").get().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000000000000000000001").get().is_odd());
+        assert!(FromStr::from_str::<BigUint>("1").unwrap().is_odd());
+        assert!(FromStr::from_str::<BigUint>("2").unwrap().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000").unwrap().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000000000000000000000").unwrap().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000000000000000000001").unwrap().is_odd());
         assert!((BigUint::from_uint(1) << 64).is_even());
         assert!(((BigUint::from_uint(1) << 64) + BigUint::from_uint(1)).is_odd());
     }
@@ -1595,7 +1595,7 @@ mod biguint_tests {
             let &(ref n, ref rs) = num_pair;
             for str_pair in rs.iter() {
                 let &(ref radix, ref str) = str_pair;
-                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).get());
+                assert_eq!(n, &FromStrRadix::from_str_radix(*str, *radix).unwrap());
             }
         }
 

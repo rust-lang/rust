@@ -31,7 +31,7 @@ pub fn num_cpus() -> uint {
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
-        Some(nstr) => FromStr::from_str(nstr).get(),
+        Some(nstr) => FromStr::from_str(nstr).unwrap(),
         None => num_cpus()
     }
 }

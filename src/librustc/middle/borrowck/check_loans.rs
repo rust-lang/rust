@@ -307,7 +307,7 @@ impl<'self> CheckLoanCtxt<'self> {
         // if they cannot already have been assigned
         if self.is_local_variable(cmt) {
             assert!(cmt.mutbl.is_immutable()); // no "const" locals
-            let lp = opt_loan_path(cmt).get();
+            let lp = opt_loan_path(cmt).unwrap();
             do self.move_data.each_assignment_of(expr.id, lp) |assign| {
                 self.bccx.report_reassigned_immutable_variable(
                     expr.span,
