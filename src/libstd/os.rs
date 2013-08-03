@@ -1948,7 +1948,7 @@ mod tests {
           };
           assert!((ostream as uint != 0u));
           let s = ~"hello";
-          let mut buf = s.as_bytes_with_null().to_owned();
+          let mut buf = s.to_owned().to_c_str();
           let len = buf.len();
           do buf.as_mut_buf |b, _len| {
               assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
