@@ -3097,7 +3097,7 @@ impl Resolver {
         let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
         let import_count = imports.len();
         if index != import_count {
-            let sn = self.session.codemap.span_to_snippet(imports[index].span);
+            let sn = self.session.codemap.span_to_snippet(imports[index].span).unwrap();
             if sn.contains("::") {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {
