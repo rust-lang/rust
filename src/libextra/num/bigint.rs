@@ -2028,7 +2028,7 @@ mod bigint_tests {
     #[test]
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
-            let ans = ans.map(|&n| IntConvertible::from_int::<BigInt>(n));
+            let ans = ans.map_move(|n| IntConvertible::from_int::<BigInt>(n));
             assert_eq!(FromStrRadix::from_str_radix(s, 10), ans);
         }
         check("10", Some(10));
