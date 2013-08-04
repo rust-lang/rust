@@ -939,6 +939,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "bswap16" => simple_llvm_intrinsic(bcx, "llvm.bswap.i16", 1),
         "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
         "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
+        "expect32" => simple_llvm_intrinsic(bcx, "llvm.expect.i32", 2),
+        "expect64" => simple_llvm_intrinsic(bcx, "llvm.expect.i64", 2),
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?

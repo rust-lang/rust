@@ -167,6 +167,8 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
 
                     "bswap16" | "bswap32" | "bswap64" => 0,
 
+                    "expect32" | "expect64" => 0,
+
                     // would be cool to make these an enum instead of
                     // strings!
                     _ => fail!("unknown intrinsic in type_use")
