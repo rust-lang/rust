@@ -47,8 +47,8 @@ pub fn check_item(sess: Session,
         check_item_recursion(sess, ast_map, def_map, it);
       }
       item_enum(ref enum_definition, _) => {
-        foreach var in (*enum_definition).variants.iter() {
-            foreach ex in var.node.disr_expr.iter() {
+        for var in (*enum_definition).variants.iter() {
+            for ex in var.node.disr_expr.iter() {
                 (v.visit_expr)(*ex, (true, v));
             }
         }

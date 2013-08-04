@@ -53,7 +53,7 @@ mod bench {
         let mut rng = rand::XorShiftRng::new();
 
         map.clear();
-        foreach _ in range(0, n) {
+        for _ in range(0, n) {
             map.insert(rng.gen::<uint>() % n, 1);
         }
 
@@ -70,7 +70,7 @@ mod bench {
                                                  bh: &mut BenchHarness) {
         // setup
         map.clear();
-        foreach i in range(0u, n) {
+        for i in range(0u, n) {
             map.insert(i*2, 1);
         }
 
@@ -90,7 +90,7 @@ mod bench {
         let mut rng = rand::XorShiftRng::new();
         let mut keys = vec::from_fn(n, |_| rng.gen::<uint>() % n);
 
-        foreach k in keys.iter() {
+        for k in keys.iter() {
             map.insert(*k, 1);
         }
 
@@ -108,7 +108,7 @@ mod bench {
                                                map: &mut M,
                                                bh: &mut BenchHarness) {
         // setup
-        foreach i in range(0u, n) {
+        for i in range(0u, n) {
             map.insert(i, 1);
         }
 

@@ -263,7 +263,7 @@ impl<T, E: Clone> Result<T, E> {
 pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
                       -> Result<~[V],U> {
     let mut vs: ~[V] = vec::with_capacity(ts.len());
-    foreach t in ts.iter() {
+    for t in ts.iter() {
         match op(t) {
           Ok(v) => vs.push(v),
           Err(u) => return Err(u)

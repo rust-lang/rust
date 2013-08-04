@@ -363,7 +363,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = ~[];
-        foreach i in range(lo.line - 1u, hi.line as uint) {
+        for i in range(lo.line - 1u, hi.line as uint) {
             lines.push(i);
         };
         return @FileLines {file: lo.file, lines: lines};
@@ -378,7 +378,7 @@ impl CodeMap {
     }
 
     pub fn get_filemap(&self, filename: &str) -> @FileMap {
-        foreach fm in self.files.iter() { if filename == fm.name { return *fm; } }
+        for fm in self.files.iter() { if filename == fm.name { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
         fail!(); // ("asking for " + filename + " which we don't know about");
@@ -464,7 +464,7 @@ impl CodeMap {
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        foreach mbc in map.multibyte_chars.iter() {
+        for mbc in map.multibyte_chars.iter() {
             debug!("codemap: %?-byte char at %?", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 total_extra_bytes += mbc.bytes;

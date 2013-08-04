@@ -36,7 +36,7 @@ use syntax::codemap::span;
 pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Block {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
-    foreach s in b.stmts.iter() {
+    for s in b.stmts.iter() {
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
@@ -144,7 +144,7 @@ pub fn trans_if(bcx: @mut Block,
 pub fn join_blocks(parent_bcx: @mut Block, in_cxs: &[@mut Block]) -> @mut Block {
     let out = sub_block(parent_bcx, "join");
     let mut reachable = false;
-    foreach bcx in in_cxs.iter() {
+    for bcx in in_cxs.iter() {
         if !bcx.unreachable {
             Br(*bcx, out.llbb);
             reachable = true;
@@ -223,7 +223,7 @@ pub fn trans_log(log_ex: &ast::expr,
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
         let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
-        foreach e in path.iter() {
+        for e in path.iter() {
             match *e {
                 path_mod(_) => { modpath.push(*e) }
                 _ => {}

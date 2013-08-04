@@ -14,7 +14,7 @@ struct trie_node {
 }
 
 fn print_str_vector(vector: ~[~str]) {
-    foreach string in vector.iter() {
+    for string in vector.iter() {
         println(*string);
     }
 }

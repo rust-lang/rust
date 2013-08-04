@@ -25,8 +25,8 @@ pub fn main() {
     // in order for both Ord and TotalOrd
     let es = [e0, e11, e12, e21, e22];
 
-    foreach (i, e1) in es.iter().enumerate() {
-        foreach (j, e2) in es.iter().enumerate() {
+    for (i, e1) in es.iter().enumerate() {
+        for (j, e2) in es.iter().enumerate() {
             let ord = i.cmp(&j);
 
             let eq = i == j;

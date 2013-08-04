@@ -83,14 +83,14 @@ fn stress_task(id: int) {
 
 fn stress(num_tasks: int) {
     let mut results = ~[];
-    foreach i in range(0, num_tasks) {
+    for i in range(0, num_tasks) {
         let mut builder = task::task();
         builder.future_result(|r| results.push(r));
         do builder.spawn {
             stress_task(i);
         }
     }
-    foreach r in results.iter() {
+    for r in results.iter() {
         r.recv();
     }
 }
@@ -116,8 +116,8 @@ fn main() {
 
         let out = io::stdout();
 
-        foreach n in range(1, max + 1) {
-            foreach _ in range(0, num_trials) {
+        for n in range(1, max + 1) {
+            for _ in range(0, num_trials) {
                 let start = time::precise_time_ns();
                 let fibn = fib(n);
                 let stop = time::precise_time_ns();

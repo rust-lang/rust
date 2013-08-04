@@ -11,6 +11,6 @@
 pub fn main() {
     let x = ~[10, 20, 30];
     let mut sum = 0;
-    foreach x in x.iter() { sum += *x; }
+    for x in x.iter() { sum += *x; }
     assert_eq!(sum, 60);
 }

@@ -228,7 +228,7 @@ pub fn store_environment(bcx: @mut Block,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    foreach (i, bv) in bound_values.iter().enumerate() {
+    for (i, bv) in bound_values.iter().enumerate() {
         debug!("Copy %s into closure", bv.to_str(ccx));
 
         if ccx.sess.asm_comments() {
@@ -268,7 +268,7 @@ pub fn build_closure(bcx0: @mut Block,
 
     // Package up the captured upvars
     let mut env_vals = ~[];
-    foreach cap_var in cap_vars.iter() {
+    for cap_var in cap_vars.iter() {
         debug!("Building closure: captured variable %?", *cap_var);
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
@@ -290,7 +290,7 @@ pub fn build_closure(bcx0: @mut Block,
 
     // If this is a `for` loop body, add two special environment
     // variables:
-    foreach flagptr in include_ret_handle.iter() {
+    for flagptr in include_ret_handle.iter() {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
                                 mode: ByRef(ZeroMem)};
@@ -337,7 +337,7 @@ pub fn load_environment(fcx: @mut FunctionContext,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    foreach cap_var in cap_vars.iter() {
+    for cap_var in cap_vars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
         match sigil {
             ast::BorrowedSigil => { upvarptr = Load(bcx, upvarptr); }

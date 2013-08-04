@@ -11,7 +11,7 @@
 fn main() {
     let x = [1,..100];
     let mut y = 0;
-    foreach i in x.iter() {
+    for i in x.iter() {
         if y > 10 {
             break;
         }

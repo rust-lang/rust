@@ -83,7 +83,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                         cx.expr_ident(span, substr.type_ident)
                     } else {
                         let mut fields = vec::with_capacity(n);
-                        foreach i in range(0, n) {
+                        for i in range(0, n) {
                             fields.push(getarg(fmt!("_field%u", i).to_managed(), i));
                         }
                         cx.expr_call_ident(span, substr.type_ident, fields)
@@ -109,7 +109,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
             let mut variants = ~[];
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
-            foreach (i, f) in fields.iter().enumerate() {
+            for (i, f) in fields.iter().enumerate() {
                 let (name, parts) = match *f { (i, ref p) => (i, p) };
                 variants.push(cx.expr_str(span, cx.str_of(name)));
 
@@ -125,7 +125,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                             cx.expr_ident(span, name)
                         } else {
                             let mut fields = vec::with_capacity(n);
-                            foreach i in range(0u, n) {
+                            for i in range(0u, n) {
                                 fields.push(getarg(i));
                             }
                             cx.expr_call_ident(span, name, fields)

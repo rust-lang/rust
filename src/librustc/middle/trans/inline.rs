@@ -68,7 +68,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id)
             ast::item_enum(_, _) => {
               let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
               let vs_there = ty::enum_variants(ccx.tcx, parent_id);
-              foreach (here, there) in vs_here.iter().zip(vs_there.iter()) {
+              for (here, there) in vs_here.iter().zip(vs_there.iter()) {
                   if there.id == fn_id { my_id = here.id.node; }
                   ccx.external.insert(there.id, Some(here.id.node));
               }

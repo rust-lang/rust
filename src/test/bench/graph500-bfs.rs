@@ -87,7 +87,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         HashSet::new()
     };
 
-    foreach e in edges.iter() {
+    for e in edges.iter() {
         match *e {
             (i, j) => {
                 graph[i].insert(j);
@@ -98,7 +98,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 
     do graph.consume_iter().transform |v| {
         let mut vec = ~[];
-        foreach i in v.consume() {
+        for i in v.consume() {
             vec.push(i);
         }
         vec
@@ -119,7 +119,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
         }
     }
     let mut vec = ~[];
-    foreach i in keys.consume() {
+    for i in keys.consume() {
         vec.push(i);
     }
     return vec;
@@ -435,7 +435,7 @@ fn main() {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0;
-    foreach edges in graph.iter() { total_edges += edges.len(); }
+    for edges in graph.iter() { total_edges += edges.len(); }
 
     io::stdout().write_line(fmt!("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2,

@@ -11,7 +11,7 @@
 trait Canvas {
     fn add_point(&self, point: &int);
     fn add_points(&self, shapes: &[int]) {
-        foreach pt in shapes.iter() {
+        for pt in shapes.iter() {
             self.add_point(pt)
         }
     }

@@ -62,7 +62,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   foreach (key, &val) in mm.iter() {
+   for (key, &val) in mm.iter() {
       pairs.push(((*key).clone(), pct(val, total)));
    }
 
@@ -70,7 +70,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    let mut buffer = ~"";
 
-   foreach kv in pairs_sorted.iter() {
+   for kv in pairs_sorted.iter() {
        let (k,v) = (*kv).clone();
        unsafe {
            let b = str::raw::from_bytes(k);
@@ -215,7 +215,7 @@ fn main() {
          (_, true) => {
             let line_bytes = line.as_bytes();
 
-           foreach (ii, _sz) in sizes.iter().enumerate() {
+           for (ii, _sz) in sizes.iter().enumerate() {
                let lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
@@ -227,12 +227,12 @@ fn main() {
    }
 
    // finish...
-    foreach (ii, _sz) in sizes.iter().enumerate() {
+    for (ii, _sz) in sizes.iter().enumerate() {
       to_child[ii].send(~[]);
    }
 
    // now fetch and print result messages
-    foreach (ii, _sz) in sizes.iter().enumerate() {
+    for (ii, _sz) in sizes.iter().enumerate() {
       io::println(from_child[ii].recv());
    }
 }

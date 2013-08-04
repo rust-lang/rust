@@ -215,7 +215,7 @@ fn usage() {
         \n"
     );
 
-    foreach command in COMMANDS.iter() {
+    for command in COMMANDS.iter() {
         let padding = " ".repeat(INDENT - command.cmd.len());
         printfln!("    %s%s%s", command.cmd, padding, command.usage_line);
     }
@@ -240,7 +240,7 @@ pub fn main() {
 
     if !args.is_empty() {
         let r = find_cmd(*args.head());
-        foreach command in r.iter() {
+        for command in r.iter() {
             let result = do_command(command, args.tail());
             match result {
                 Valid(exit_code) => unsafe { exit(exit_code.to_i32()) },

@@ -372,22 +372,22 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        foreach (i, move) in self.moves.iter().enumerate() {
+        for (i, move) in self.moves.iter().enumerate() {
             dfcx_moves.add_gen(move.id, i);
         }
 
-        foreach (i, assignment) in self.var_assignments.iter().enumerate() {
+        for (i, assignment) in self.var_assignments.iter().enumerate() {
             dfcx_assign.add_gen(assignment.id, i);
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        foreach assignment in self.path_assignments.iter() {
+        for assignment in self.path_assignments.iter() {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        foreach path in self.paths.iter() {
+        for path in self.paths.iter() {
             match *path.loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);
@@ -399,7 +399,7 @@ impl MoveData {
         }
 
         // Kill all assignments when the variable goes out of scope:
-        foreach (assignment_index, assignment) in self.var_assignments.iter().enumerate() {
+        for (assignment_index, assignment) in self.var_assignments.iter().enumerate() {
             match *self.path(assignment.path).loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);
@@ -559,7 +559,7 @@ impl FlowedMoveData {
                     ret = false;
                 }
             } else {
-                foreach &loan_path_index in opt_loan_path_index.iter() {
+                for &loan_path_index in opt_loan_path_index.iter() {
                     let cont = do self.move_data.each_base_path(moved_path) |p| {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`

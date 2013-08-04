@@ -267,7 +267,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         elided = true;
     }
     // Print the offending lines
-    foreach line in display_lines.iter() {
+    for line in display_lines.iter() {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
         let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);
@@ -305,7 +305,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
             s.push_char(' ');
         }
         let orig = fm.get_line(lines.lines[0] as int);
-        foreach pos in range(0u, left-skip) {
+        for pos in range(0u, left-skip) {
             let curChar = (orig[pos] as char);
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
@@ -331,7 +331,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 }
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
-    foreach ei in sp.expn_info.iter() {
+    for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
         print_diagnostic(ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));

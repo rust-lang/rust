@@ -502,7 +502,7 @@ mod tests {
         let x = Some(());
         let mut y = Some(5);
         let mut y2 = 0;
-        foreach _x in x.iter() {
+        for _x in x.iter() {
             y2 = y.take_unwrap();
         }
         assert_eq!(y2, 5);

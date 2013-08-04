@@ -198,7 +198,7 @@ impl RegionMaps {
         while i < queue.len() {
             match self.free_region_map.find(&queue[i]) {
                 Some(parents) => {
-                    foreach parent in parents.iter() {
+                    for parent in parents.iter() {
                         if *parent == sup {
                             return true;
                         }
@@ -318,7 +318,7 @@ impl RegionMaps {
 fn parent_to_expr(cx: Context, child_id: ast::NodeId, sp: span) {
     debug!("region::parent_to_expr(span=%?)",
            cx.sess.codemap.span_to_str(sp));
-    foreach parent_id in cx.parent.iter() {
+    for parent_id in cx.parent.iter() {
         cx.region_maps.record_parent(child_id, *parent_id);
     }
 }
@@ -718,7 +718,7 @@ fn determine_rp_in_fn(fk: &oldvisit::fn_kind,
                                       oldvisit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
-            foreach a in decl.inputs.iter() {
+            for a in decl.inputs.iter() {
                 (visitor.visit_ty)(&a.ty, (cx, visitor));
             }
         }
@@ -830,7 +830,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
       ast::ty_path(ref path, _, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
-            foreach tp in path.types.iter() {
+            for tp in path.types.iter() {
                 (visitor.visit_ty)(tp, (cx, visitor));
             }
         }
@@ -843,7 +843,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
         do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
-                foreach a in decl.inputs.iter() {
+                for a in decl.inputs.iter() {
                     (visitor.visit_ty)(&a.ty, (cx, visitor));
                 }
             }
@@ -923,7 +923,7 @@ pub fn determine_rp_in_crate(sess: Session,
             match cx.dep_map.find(&c_id) {
               None => {}
               Some(deps) => {
-                foreach dep in deps.iter() {
+                for dep in deps.iter() {
                     let v = add_variance(dep.ambient_variance, c_variance);
                     cx.add_rp(dep.id, v);
                 }
@@ -935,7 +935,7 @@ pub fn determine_rp_in_crate(sess: Session,
     debug!("%s", {
         debug!("Region variance results:");
         let region_paramd_items = cx.region_paramd_items;
-        foreach (&key, &value) in region_paramd_items.iter() {
+        for (&key, &value) in region_paramd_items.iter() {
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,

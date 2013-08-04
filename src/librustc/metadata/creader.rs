@@ -65,7 +65,7 @@ struct cache_entry {
 
 fn dump_crates(crate_cache: &[cache_entry]) {
     debug!("resolved crates:");
-    foreach entry in crate_cache.iter() {
+    for entry in crate_cache.iter() {
         debug!("cnum: %?", entry.cnum);
         debug!("span: %?", entry.span);
         debug!("hash: %?", entry.hash);
@@ -97,7 +97,7 @@ fn warn_if_multiple_versions(e: @mut Env,
         if matches.len() != 1u {
             diag.handler().warn(
                 fmt!("using multiple versions of crate `%s`", name));
-            foreach match_ in matches.iter() {
+            for match_ in matches.iter() {
                 diag.span_note(match_.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(@"link",
@@ -125,7 +125,7 @@ struct Env {
 fn visit_crate(e: &Env, c: &ast::Crate) {
     let cstore = e.cstore;
 
-    foreach a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
+    for a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
         match a.value_str() {
           Some(ref linkarg) => {
             cstore::add_used_link_args(cstore, *linkarg);
@@ -194,7 +194,7 @@ fn visit_item(e: &Env, i: @ast::item) {
             ast::anonymous => { /* do nothing */ }
         }
 
-        foreach m in link_args.iter() {
+        for m in link_args.iter() {
             match m.value_str() {
                 Some(linkarg) => {
                     cstore::add_used_link_args(cstore, linkarg);
@@ -223,7 +223,7 @@ fn metas_with_ident(ident: @str, metas: ~[@ast::MetaItem])
 
 fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
                -> Option<int> {
-    foreach c in e.crate_cache.iter() {
+    for c in e.crate_cache.iter() {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || c.hash.as_slice() == hash) {
             return Some(c.cnum);
@@ -306,7 +306,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     // numbers
     let mut cnum_map = HashMap::new();
     let r = decoder::get_crate_deps(cdata);
-    foreach dep in r.iter() {
+    for dep in r.iter() {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
         let cname_str = token::ident_to_str(&dep.name);

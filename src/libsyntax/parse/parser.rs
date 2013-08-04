@@ -1623,8 +1623,6 @@ impl Parser {
             hi = self.span.hi;
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
-        } else if self.eat_keyword(keywords::ForEach) {
-            return self.parse_for_expr();
         } else if self.eat_keyword(keywords::For) {
             return self.parse_for_expr();
         } else if self.eat_keyword(keywords::Do) {
@@ -3150,7 +3148,7 @@ impl Parser {
         } = self.parse_items_and_view_items(first_item_attrs,
                                             false, false);
 
-        foreach item in items.iter() {
+        for item in items.iter() {
             let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
             stmts.push(@spanned(item.span.lo, item.span.hi,
                                 stmt_decl(decl, self.get_id())));
@@ -3755,7 +3753,7 @@ impl Parser {
             fields = ~[];
             while *self.token != token::RBRACE {
                 let r = self.parse_struct_decl_field();
-                foreach struct_field in r.iter() {
+                for struct_field in r.iter() {
                     fields.push(*struct_field)
                 }
             }
@@ -4038,7 +4036,7 @@ impl Parser {
             Some(i) => {
                 let stack = &self.sess.included_mod_stack;
                 let mut err = ~"circular modules: ";
-                foreach p in stack.slice(i, stack.len()).iter() {
+                for p in stack.slice(i, stack.len()).iter() {
                     err.push_str(p.to_str());
                     err.push_str(" -> ");
                 }
@@ -4252,7 +4250,7 @@ impl Parser {
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
             let r = self.parse_struct_decl_field();
-            foreach struct_field in r.iter() {
+            for struct_field in r.iter() {
                 fields.push(*struct_field);
             }
         }
@@ -4292,7 +4290,7 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                foreach ty in arg_tys.consume_iter() {
+                for ty in arg_tys.consume_iter() {
                     args.push(ast::variant_arg {
                         ty: ty,
                         id: self.get_id(),
@@ -4401,7 +4399,7 @@ impl Parser {
                 self.bump();
                 let the_string = ident_to_str(&s);
                 let mut abis = AbiSet::empty();
-                foreach word in the_string.word_iter() {
+                for word in the_string.word_iter() {
                     match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {

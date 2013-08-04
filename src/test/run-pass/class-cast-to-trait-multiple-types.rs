@@ -83,7 +83,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 fn annoy_neighbors(critter: @noisy) {
-    foreach i in range(0u, 10) { critter.speak(); }
+    for i in range(0u, 10) { critter.speak(); }
 }
 
 pub fn main() {

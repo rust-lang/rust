@@ -166,7 +166,7 @@ mod test {
                 sched.enqueue_blocked_task(task);
             }
 
-            foreach i in range(0, MAX) {
+            for i in range(0, MAX) {
                 let j = tube.recv();
                 assert!(j == i);
             }
