@@ -758,7 +758,8 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
 
             foreach pair in env.iter() {
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
-                blk.push_all(kv.to_c_str().as_bytes());
+                blk.push_all(kv.as_bytes());
+                blk.push(0);
             }
 
             blk.push(0);

@@ -780,7 +780,7 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
-        C_struct([cs, C_uint(cx, len + 1u /* +1 for null */)])
+        C_struct([cs, C_uint(cx, len)])
     }
 }
 

@@ -58,7 +58,7 @@ impl Reflector {
         let str_vstore = ty::vstore_slice(ty::re_static);
         let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, "", false);
-        let len = C_uint(bcx.ccx(), s.len() + 1);
+        let len = C_uint(bcx.ccx(), s.len());
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));

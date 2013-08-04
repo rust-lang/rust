@@ -265,7 +265,7 @@ pub fn trans_lit_str(bcx: @mut Block,
         Ignore => bcx,
         SaveIn(lldest) => {
             unsafe {
-                let bytes = str_lit.len() + 1; // count null-terminator too
+                let bytes = str_lit.len(); // count null-terminator too
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
@@ -363,7 +363,7 @@ pub fn write_content(bcx: @mut Block,
                     return bcx;
                 }
                 SaveIn(lldest) => {
-                    let bytes = s.len() + 1; // copy null-terminator too
+                    let bytes = s.len();
                     let llbytes = C_uint(bcx.ccx(), bytes);
                     let llcstr = C_cstr(bcx.ccx(), s);
                     base::call_memcpy(bcx, lldest, llcstr, llbytes, 1);
@@ -491,7 +491,7 @@ pub fn elements_required(bcx: @mut Block, content_expr: &ast::expr) -> uint {
 
     match content_expr.node {
         ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
-            s.len() + 1
+            s.len()
         },
         ast::expr_vec(ref es, _) => es.len(),
         ast::expr_repeat(_, count_expr, _) => {
@@ -524,7 +524,6 @@ pub fn get_base_and_len(bcx: @mut Block,
     match vstore {
         ty::vstore_fixed(n) => {
             let base = GEPi(bcx, llval, [0u, 0u]);
-            let n = if ty::type_is_str(vec_ty) { n + 1u } else { n };
             let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
             (base, len)
         }
