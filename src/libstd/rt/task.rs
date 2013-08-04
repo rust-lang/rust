@@ -27,6 +27,7 @@ use super::local_heap::LocalHeap;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use rt::context::Context;
+use unstable::finally::Finally;
 use task::spawn::Taskgroup;
 use cell::Cell;
 
@@ -211,7 +212,27 @@ impl Task {
 
     pub fn run(&mut self, f: &fn()) {
         rtdebug!("run called on task: %u", borrow::to_uint(self));
-        self.unwinder.try(f);
+
+        // The only try/catch block in the world. Attempt to run the task's
+        // client-specified code and catch any failures.
+        do self.unwinder.try {
+
+            // Run the task main function, then do some cleanup.
+            do f.finally {
+
+                // Destroy task-local storage. This may run user dtors.
+                match self.storage {
+                    LocalStorage(ptr, Some(ref dtor)) => {
+                        (*dtor)(ptr)
+                    }
+                    _ => ()
+                }
+
+                // Destroy remaining boxes. Also may run user dtors.
+                unsafe { cleanup::annihilate(); }
+            }
+        }
+
         // FIXME(#7544): We pass the taskgroup into death so that it can be
         // dropped while the unkillable counter is set. This should not be
         // necessary except for an extraneous clone() in task/spawn.rs that
@@ -219,32 +240,6 @@ impl Task {
         // signal since we're outside of the unwinder's try() scope.
         // { let _ = self.taskgroup.take(); }
         self.death.collect_failure(!self.unwinder.unwinding, self.taskgroup.take());
-        self.destroy();
-    }
-
-    /// must be called manually before finalization to clean up
-    /// thread-local resources. Some of the routines here expect
-    /// Task to be available recursively so this must be
-    /// called unsafely, without removing Task from
-    /// thread-local-storage.
-    fn destroy(&mut self) {
-
-        rtdebug!("DESTROYING TASK: %u", borrow::to_uint(self));
-
-        do Local::borrow::<Task, ()> |task| {
-            assert!(borrow::ref_eq(task, self));
-        }
-
-        match self.storage {
-            LocalStorage(ptr, Some(ref dtor)) => {
-                (*dtor)(ptr)
-            }
-            _ => ()
-        }
-
-        // Destroy remaining boxes
-        unsafe { cleanup::annihilate(); }
-
         self.destroyed = true;
     }
 
