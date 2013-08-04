@@ -18,9 +18,8 @@ Higher level communication abstractions.
 
 
 use std::comm::{GenericChan, GenericSmartChan, GenericPort};
-use std::comm::{Chan, Port, Selectable, Peekable};
+use std::comm::{Chan, Port, Peekable};
 use std::comm;
-use std::pipes;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {
@@ -72,12 +71,6 @@ impl<T:Send,U:Send> GenericPort<U> for DuplexStream<T, U> {
 impl<T:Send,U:Send> Peekable<U> for DuplexStream<T, U> {
     fn peek(&self) -> bool {
         self.port.peek()
-    }
-}
-
-impl<T:Send,U:Send> Selectable for DuplexStream<T, U> {
-    fn header(&mut self) -> *mut pipes::PacketHeader {
-        self.port.header()
     }
 }
 
