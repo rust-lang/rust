@@ -126,6 +126,7 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
+    use unstable::run_in_bare_thread;
     use rt::test::*;
     use super::*;
     use rt::task::Task;
@@ -133,56 +134,64 @@ mod test {
 
     #[test]
     fn thread_local_task_smoke_test() {
-        local_ptr::init_tls_key();
-        let mut sched = ~new_test_uv_sched();
-        let task = ~Task::new_root(&mut sched.stack_pool, || {});
-        Local::put(task);
-        let task: ~Task = Local::take();
-        cleanup_task(task);
+        do run_in_bare_thread {
+            local_ptr::init_tls_key();
+            let mut sched = ~new_test_uv_sched();
+            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            Local::put(task);
+            let task: ~Task = Local::take();
+            cleanup_task(task);
+        }
     }
 
     #[test]
     fn thread_local_task_two_instances() {
-        local_ptr::init_tls_key();
-        let mut sched = ~new_test_uv_sched();
-        let task = ~Task::new_root(&mut sched.stack_pool, || {});
-        Local::put(task);
-        let task: ~Task = Local::take();
-        cleanup_task(task);
-        let task = ~Task::new_root(&mut sched.stack_pool, || {});
-        Local::put(task);
-        let task: ~Task = Local::take();
-        cleanup_task(task);
+        do run_in_bare_thread {
+            local_ptr::init_tls_key();
+            let mut sched = ~new_test_uv_sched();
+            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            Local::put(task);
+            let task: ~Task = Local::take();
+            cleanup_task(task);
+            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            Local::put(task);
+            let task: ~Task = Local::take();
+            cleanup_task(task);
+        }
 
     }
 
     #[test]
     fn borrow_smoke_test() {
-        local_ptr::init_tls_key();
-        let mut sched = ~new_test_uv_sched();
-        let task = ~Task::new_root(&mut sched.stack_pool, || {});
-        Local::put(task);
+        do run_in_bare_thread {
+            local_ptr::init_tls_key();
+            let mut sched = ~new_test_uv_sched();
+            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            Local::put(task);
 
-        unsafe {
-            let _task: *mut Task = Local::unsafe_borrow();
+            unsafe {
+                let _task: *mut Task = Local::unsafe_borrow();
+            }
+            let task: ~Task = Local::take();
+            cleanup_task(task);
         }
-        let task: ~Task = Local::take();
-        cleanup_task(task);
     }
 
     #[test]
     fn borrow_with_return() {
-        local_ptr::init_tls_key();
-        let mut sched = ~new_test_uv_sched();
-        let task = ~Task::new_root(&mut sched.stack_pool, || {});
-        Local::put(task);
+        do run_in_bare_thread {
+            local_ptr::init_tls_key();
+            let mut sched = ~new_test_uv_sched();
+            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            Local::put(task);
 
-        let res = do Local::borrow::<Task,bool> |_task| {
-            true
-        };
-        assert!(res)
-        let task: ~Task = Local::take();
-        cleanup_task(task);
+            let res = do Local::borrow::<Task,bool> |_task| {
+                true
+            };
+            assert!(res)
+                let task: ~Task = Local::take();
+            cleanup_task(task);
+        }
     }
 
 }
