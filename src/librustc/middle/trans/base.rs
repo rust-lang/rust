@@ -2753,6 +2753,9 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!("llvm.bswap.i32",[Type::i32()], Type::i32());
     ifn!("llvm.bswap.i64",[Type::i64()], Type::i64());
 
+    ifn!("llvm.expect.i32",[Type::i32(), Type::i32()], Type::i32());
+    ifn!("llvm.expect.i64",[Type::i64(), Type::i64()], Type::i64());
+
     return intrinsics;
 }
 

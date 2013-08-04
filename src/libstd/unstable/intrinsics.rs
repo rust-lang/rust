@@ -419,6 +419,11 @@ extern "rust-intrinsic" {
     pub fn bswap16(x: i16) -> i16;
     pub fn bswap32(x: i32) -> i32;
     pub fn bswap64(x: i64) -> i64;
+
+    #[cfg(not(stage0))]
+    pub fn expect32(value: u32, expected: u32) -> u32;
+    #[cfg(not(stage0))]
+    pub fn expect64(value: u64, expected: u64) -> u64;
 }
 
 #[cfg(target_endian = "little")] pub fn to_le16(x: i16) -> i16 { x }
@@ -434,3 +439,44 @@ extern "rust-intrinsic" {
 #[cfg(target_endian = "big")]    pub fn to_be32(x: i32) -> i32 { x }
 #[cfg(target_endian = "little")] pub fn to_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
 #[cfg(target_endian = "big")]    pub fn to_be64(x: i64) -> i64 { x }
+
+#[cfg(not(stage0))]
+#[inline(always)]
+pub fn likely(cond: bool) -> bool {
+    unsafe {
+        expect32(cond as u32, 1) as bool
+    }
+}
+
+#[cfg(not(stage0))]
+#[inline(always)]
+pub fn unlikely(cond: bool) -> bool {
+    unsafe {
+        expect32(cond as u32, 0) as bool
+    }
+}
+
+#[cfg(stage0)]
+#[inline(always)]
+pub fn likely(cond: bool) -> bool {
+    cond
+}
+
+#[cfg(stage0)]
+#[inline(always)]
+pub fn unlikely(cond: bool) -> bool {
+    cond
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_likely_unlikely() {
+        assert_eq!(true, likely(true));
+        assert_eq!(false, likely(false));
+        assert_eq!(true, unlikely(true));
+        assert_eq!(false, unlikely(false));
+    }
+}
