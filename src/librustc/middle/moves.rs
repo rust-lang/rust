@@ -541,7 +541,6 @@ impl VisitContext {
                 self.consume_expr(count, visitor);
             }
 
-            expr_loop_body(base) |
             expr_do_body(base) => {
                 self.use_expr(base, comp_mode, visitor);
             }

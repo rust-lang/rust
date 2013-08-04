@@ -426,10 +426,6 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             oldvisit::visit_expr(expr, (rcx, v));
         }
 
-        ast::expr_loop_body(subexpr) => {
-            check_expr_fn_block(rcx, subexpr, v, true);
-        }
-
         ast::expr_fn_block(*) => {
             check_expr_fn_block(rcx, expr, v, false);
         }
@@ -1031,7 +1027,6 @@ pub mod guarantor {
             ast::expr_if(*) |
             ast::expr_match(*) |
             ast::expr_fn_block(*) |
-            ast::expr_loop_body(*) |
             ast::expr_do_body(*) |
             ast::expr_block(*) |
             ast::expr_repeat(*) |

@@ -512,7 +512,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) | expr_vec(*) |
       expr_call(*) | expr_method_call(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_addr_of(*) | expr_loop_body(*) |
+      expr_binary(*) | expr_addr_of(*) |
       expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
@@ -1209,7 +1209,6 @@ impl Liveness {
           }
 
           expr_addr_of(_, e) |
-          expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
           expr_unary(_, _, e) |
@@ -1483,7 +1482,7 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_call(*) | expr_method_call(*) | expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) | expr_index(*) | expr_field(*) |
       expr_vstore(*) | expr_vec(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_loop_body(*) | expr_do_body(*) |
+      expr_binary(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |

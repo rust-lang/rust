@@ -1087,7 +1087,7 @@ pub fn print_call_post(s: @ps,
         nbsp(s);
         match blk.get().node {
           // need to handle closures specifically
-          ast::expr_do_body(e) | ast::expr_loop_body(e) => {
+          ast::expr_do_body(e) => {
             end(s); // we close our head box; closure
                     // will create it's own.
             print_expr(s, e);
@@ -1337,9 +1337,6 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         // wrapper so we closed the corresponding opening. so create an
         // empty box to satisfy the close.
         ibox(s, 0);
-      }
-      ast::expr_loop_body(body) => {
-        print_expr(s, body);
       }
       ast::expr_do_body(body) => {
         print_expr(s, body);

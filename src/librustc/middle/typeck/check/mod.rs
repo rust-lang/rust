@@ -170,10 +170,6 @@ pub struct inherited {
 
 #[deriving(Clone)]
 pub enum FnKind {
-    // This is a for-closure.  The ty::t is the return type of the
-    // enclosing function.
-    ForLoop(ty::t),
-
     // A do-closure.
     DoBlock,
 
@@ -230,8 +226,6 @@ pub struct FnCtxt {
     err_count_on_creation: uint,
 
     ret_ty: ty::t,
-    // Used by loop bodies that return from the outer function
-    indirect_ret_ty: Option<ty::t>,
     ps: PurityState,
 
     // Sometimes we generate region pointers where the precise region
@@ -283,7 +277,6 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
     @mut FnCtxt {
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
-        indirect_ret_ty: None,
         ps: PurityState::function(ast::impure_fn, 0),
         region_lb: region_bnd,
         in_scope_regions: @Nil,
@@ -390,17 +383,9 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx: @mut FnCtxt = {
-        // In a for-loop, you have an 'indirect return' because return
-        // does not return out of the directly enclosing fn
-        let indirect_ret_ty = match fn_kind {
-            ForLoop(t) => Some(t),
-            DoBlock | Vanilla => None
-        };
-
         @mut FnCtxt {
             err_count_on_creation: err_count_on_creation,
             ret_ty: ret_ty,
-            indirect_ret_ty: indirect_ret_ty,
             ps: PurityState::function(purity, id),
             region_lb: body.id,
             in_scope_regions: isr,
@@ -958,11 +943,6 @@ impl FnCtxt {
             return;
         }
         match self.fn_kind {
-            ForLoop(_) if !ty::type_is_bool(e) && !ty::type_is_nil(a) =>
-                    self.tcx().sess.span_err(sp, fmt!("A for-loop body must \
-                        return (), but it returns %s here. \
-                        Perhaps you meant to write a `do`-block?",
-                                            ppaux::ty_to_str(self.tcx(), a))),
             DoBlock if ty::type_is_bool(e) && ty::type_is_nil(a) =>
                 // If we expected bool and got ()...
                     self.tcx().sess.span_err(sp, fmt!("Do-block body must \
@@ -1274,7 +1254,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
             for (i, arg) in args.iter().enumerate() {
                 let is_block = match arg.node {
-                    ast::expr_fn_block(*) | ast::expr_loop_body(*) |
+                    ast::expr_fn_block(*) |
                     ast::expr_do_body(*) => true,
                     _ => false
                 };
@@ -2126,121 +2106,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, enum_type);
     }
 
-    fn check_loop_body(fcx: @mut FnCtxt,
-                       expr: @ast::expr,
-                       expected: Option<ty::t>,
-                       loop_body: @ast::expr) {
-        // a loop body is the special argument to a `for` loop.  We know that
-        // there will be an expected type in this context because it can only
-        // appear in the context of a call, so we get the expected type of the
-        // parameter. The catch here is that we need to validate two things:
-        // 1. a closure that returns a bool is expected
-        // 2. the closure that was given returns unit
-        let tcx = fcx.tcx();
-        let mut err_happened = false;
-        let expected_sty = unpack_expected(fcx,
-                                           expected,
-                                           |x| Some((*x).clone()));
-        let inner_ty = match expected_sty {
-            Some(ty::ty_closure(ref fty)) => {
-                match fcx.mk_subty(false, infer::Misc(expr.span),
-                                   fty.sig.output, ty::mk_bool()) {
-                    result::Ok(_) => {
-                        ty::mk_closure(tcx, ty::ClosureTy {
-                            sig: FnSig {
-                                output: ty::mk_nil(),
-                                ..fty.sig.clone()
-                            },
-                            ..(*fty).clone()
-                        })
-                    }
-                    result::Err(_) => {
-                        fcx.type_error_message(
-                            expr.span,
-                            |actual| {
-                                let did_you_mean = {
-                                    if ty::type_is_nil(fty.sig.output) {
-                                        "\nDid you mean to use \
-                                             `do` instead of `for`?"
-                                     } else {
-                                         ""
-                                     }
-                                };
-                                fmt!("A `for` loop iterator should expect a \
-                                      closure that returns `bool`. This \
-                                      iterator expects a closure that \
-                                      returns `%s`.%s",
-                                     actual, did_you_mean)
-                            },
-                            fty.sig.output,
-                            None);
-                        err_happened = true;
-                        fcx.write_error(expr.id);
-                        ty::mk_err()
-                    }
-                }
-            }
-            _ => {
-                match expected {
-                    Some(expected_t) => {
-                        fcx.type_error_message(
-                            expr.span,
-                            |actual| {
-                                fmt!("last argument in `for` call \
-                                      has non-closure type: %s",
-                                     actual)
-                            },
-                            expected_t, None);
-                        let err_ty = ty::mk_err();
-                        fcx.write_error(expr.id);
-                        err_happened = true;
-                        err_ty
-                    }
-                    None => fcx.tcx().sess.impossible_case(
-                        expr.span,
-                        "loop body must have an expected type")
-                }
-            }
-        };
-
-        match loop_body.node {
-            ast::expr_fn_block(ref decl, ref body) => {
-                // If an error occurred, we pretend this isn't a for
-                // loop, so as to assign types to all nodes while also
-                // propagating ty_err throughout so as to suppress
-                // derived errors. If we passed in ForLoop in the
-                // error case, we'd potentially emit a spurious error
-                // message because of the indirect_ret_ty.
-                let fn_kind = if err_happened {
-                    Vanilla
-                } else {
-                    let indirect_ret_ty =
-                        fcx.indirect_ret_ty.get_or_default(fcx.ret_ty);
-                    ForLoop(indirect_ret_ty)
-                };
-                check_expr_fn(fcx, loop_body, None,
-                              decl, body, fn_kind, Some(inner_ty));
-                demand::suptype(fcx, loop_body.span,
-                                inner_ty, fcx.expr_ty(loop_body));
-            }
-            ref n => {
-                fail!("check_loop_body expected expr_fn_block, not %?", n)
-            }
-        }
-
-        let block_ty = structurally_resolved_type(
-            fcx, expr.span, fcx.node_ty(loop_body.id));
-        if err_happened {
-            fcx.write_error(expr.id);
-            fcx.write_error(loop_body.id);
-        } else {
-            let loop_body_ty =
-                ty::replace_closure_return_type(
-                    tcx, block_ty, ty::mk_bool());
-            fcx.write_ty(expr.id, loop_body_ty);
-        }
-    }
-
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
@@ -2494,9 +2359,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_break(_) => { fcx.write_bot(id); }
       ast::expr_again(_) => { fcx.write_bot(id); }
       ast::expr_ret(expr_opt) => {
-        let ret_ty = match fcx.indirect_ret_ty {
-          Some(t) =>  t, None => fcx.ret_ty
-        };
+        let ret_ty = fcx.ret_ty;
         match expr_opt {
           None => match fcx.mk_eqty(false, infer::Misc(expr.span),
                                     ret_ty, ty::mk_nil()) {
@@ -2580,9 +2443,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, body, Vanilla, expected);
-      }
-      ast::expr_loop_body(loop_body) => {
-          check_loop_body(fcx, expr, expected, loop_body);
       }
       ast::expr_do_body(b) => {
         let expected_sty = unpack_expected(fcx,

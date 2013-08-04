@@ -137,7 +137,6 @@ pub fn trans_self_arg(bcx: @mut Block,
                    mentry.self_mode,
                    base,
                    temp_cleanups,
-                   None,
                    DontAutorefArg)
 }
 

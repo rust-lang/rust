@@ -605,27 +605,6 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: @ast::expr,
                                           expr.id, expr.id,
                                           None, dest);
         }
-        ast::expr_loop_body(blk) => {
-            let expr_ty = expr_ty(bcx, expr);
-            let sigil = ty::ty_closure_sigil(expr_ty);
-            match blk.node {
-                ast::expr_fn_block(ref decl, ref body) => {
-                    return closure::trans_expr_fn(bcx,
-                                                  sigil,
-                                                  decl,
-                                                  body,
-                                                  expr.id,
-                                                  blk.id,
-                                                  Some(None),
-                                                  dest);
-                }
-                _ => {
-                    bcx.sess().impossible_case(
-                        expr.span,
-                        "loop_body has the wrong kind of contents")
-                }
-            }
-        }
         ast::expr_do_body(blk) => {
             return trans_into(bcx, blk, dest);
         }
