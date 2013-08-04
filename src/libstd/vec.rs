@@ -547,7 +547,10 @@ impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
     fn idx(&self, index: uint) -> Option<&'self [T]> {
         if index < self.indexable() {
             let lo = index * self.size;
-            Some(self.v.slice(lo, cmp::min(lo, self.v.len() - self.size) + self.size))
+            let mut hi = lo + self.size;
+            if hi < lo || hi > self.v.len() { hi = self.v.len(); }
+
+            Some(self.v.slice(lo, hi))
         } else {
             None
         }
