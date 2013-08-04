@@ -102,7 +102,7 @@
     "do"
     "else" "enum" "extern"
     "false" "fn" "for"
-    "if" "impl"
+    "if" "impl" "in"
     "let" "loop"
     "match" "mod" "mut"
     "priv" "pub"
