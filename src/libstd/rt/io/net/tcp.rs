@@ -10,7 +10,7 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::net::ip::IpAddr;
+use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer, Listener};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{IoFactory, IoFactoryObject,
@@ -26,7 +26,7 @@ impl TcpStream {
         TcpStream(s)
     }
 
-    pub fn connect(addr: IpAddr) -> Option<TcpStream> {
+    pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
         let stream = unsafe {
             rtdebug!("borrowing io to connect");
             let io = Local::unsafe_borrow::<IoFactoryObject>();
@@ -44,7 +44,7 @@ impl TcpStream {
         }
     }
 
-    pub fn peer_name(&mut self) -> Option<IpAddr> {
+    pub fn peer_name(&mut self) -> Option<SocketAddr> {
         match (**self).peer_name() {
             Ok(pn) => Some(pn),
             Err(ioerr) => {
@@ -55,7 +55,7 @@ impl TcpStream {
         }
     }
 
-    pub fn socket_name(&mut self) -> Option<IpAddr> {
+    pub fn socket_name(&mut self) -> Option<SocketAddr> {
         match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
@@ -100,7 +100,7 @@ impl Writer for TcpStream {
 pub struct TcpListener(~RtioTcpListenerObject);
 
 impl TcpListener {
-    pub fn bind(addr: IpAddr) -> Option<TcpListener> {
+    pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
         let listener = unsafe {
             let io = Local::unsafe_borrow::<IoFactoryObject>();
             (*io).tcp_bind(addr)
@@ -114,7 +114,7 @@ impl TcpListener {
         }
     }
 
-    pub fn socket_name(&mut self) -> Option<IpAddr> {
+    pub fn socket_name(&mut self) -> Option<SocketAddr> {
         match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
@@ -145,7 +145,7 @@ mod test {
     use super::*;
     use cell::Cell;
     use rt::test::*;
-    use rt::io::net::ip::Ipv4;
+    use rt::io::net::ip::{Ipv4Addr, SocketAddr};
     use rt::io::*;
     use prelude::*;
 
@@ -157,7 +157,7 @@ mod test {
                 assert!(e.kind == PermissionDenied);
                 called = true;
             }).inside {
-                let addr = Ipv4(0, 0, 0, 0, 1);
+                let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let listener = TcpListener::bind(addr);
                 assert!(listener.is_none());
             }
@@ -173,7 +173,7 @@ mod test {
                 assert!(e.kind == ConnectionRefused);
                 called = true;
             }).inside {
-                let addr = Ipv4(0, 0, 0, 0, 1);
+                let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let stream = TcpStream::connect(addr);
                 assert!(stream.is_none());
             }
@@ -437,7 +437,7 @@ mod test {
 
             connect(0, addr);
 
-            fn connect(i: int, addr: IpAddr) {
+            fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
                 do spawntask {
@@ -476,7 +476,7 @@ mod test {
 
             connect(0, addr);
 
-            fn connect(i: int, addr: IpAddr) {
+            fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
                 do spawntask {
@@ -515,7 +515,7 @@ mod test {
 
             connect(0, addr);
 
-            fn connect(i: int, addr: IpAddr) {
+            fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
                 do spawntask_later {
@@ -553,7 +553,7 @@ mod test {
 
             connect(0, addr);
 
-            fn connect(i: int, addr: IpAddr) {
+            fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
                 do spawntask_later {
@@ -569,7 +569,7 @@ mod test {
     }
 
     #[cfg(test)]
-    fn socket_name(addr: IpAddr) {
+    fn socket_name(addr: SocketAddr) {
         do run_in_newsched_task {
             do spawntask {
                 let listener = TcpListener::bind(addr);
@@ -588,7 +588,7 @@ mod test {
     }
 
     #[cfg(test)]
-    fn peer_name(addr: IpAddr) {
+    fn peer_name(addr: SocketAddr) {
         do run_in_newsched_task {
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
