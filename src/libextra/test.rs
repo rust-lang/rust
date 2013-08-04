@@ -429,11 +429,11 @@ impl ConsoleTestState {
     pub fn write_failures(&self) {
         self.out.write_line("\nfailures:");
         let mut failures = ~[];
-        foreach f in self.failures.iter() {
+        for f in self.failures.iter() {
             failures.push(f.name.to_str());
         }
         sort::tim_sort(failures);
-        foreach name in failures.iter() {
+        for name in failures.iter() {
             self.out.write_line(fmt!("    %s", name.to_str()));
         }
     }
@@ -445,7 +445,7 @@ impl ConsoleTestState {
         let mut added = 0;
         let mut removed = 0;
 
-        foreach (k, v) in diff.iter() {
+        for (k, v) in diff.iter() {
             match *v {
                 LikelyNoise => noise += 1,
                 MetricAdded => {
@@ -565,7 +565,7 @@ pub fn run_tests_console(opts: &TestOpts,
                     TrIgnored => st.ignored += 1,
                     TrMetrics(mm) => {
                         let tname = test.name.to_str();
-                        foreach (k,v) in mm.iter() {
+                        for (k,v) in mm.iter() {
                             st.metrics.insert_metric(tname + "." + *k,
                                                      v.value, v.noise);
                         }
@@ -699,7 +699,7 @@ fn run_tests(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
-    foreach b in filtered_benchs_and_metrics.consume_iter() {
+    for b in filtered_benchs_and_metrics.consume_iter() {
         callback(TeWait(b.desc.clone()));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
@@ -887,7 +887,7 @@ impl MetricMap {
     pub fn compare_to_old(&self, old: &MetricMap,
                           noise_pct: Option<f64>) -> MetricDiff {
         let mut diff : MetricDiff = TreeMap::new();
-        foreach (k, vold) in old.iter() {
+        for (k, vold) in old.iter() {
             let r = match self.find(k) {
                 None => MetricRemoved,
                 Some(v) => {
@@ -924,7 +924,7 @@ impl MetricMap {
             };
             diff.insert((*k).clone(), r);
         }
-        foreach (k, _) in self.iter() {
+        for (k, _) in self.iter() {
             if !diff.contains_key(k) {
                 diff.insert((*k).clone(), MetricAdded);
             }
@@ -990,7 +990,7 @@ impl BenchHarness {
     pub fn iter(&mut self, inner:&fn()) {
         self.ns_start = precise_time_ns();
         let k = self.iterations;
-        foreach _ in range(0u64, k) {
+        for _ in range(0u64, k) {
             inner();
         }
         self.ns_end = precise_time_ns();
@@ -1039,7 +1039,7 @@ impl BenchHarness {
         loop {
             let loop_start = precise_time_ns();
 
-            foreach p in samples.mut_iter() {
+            for p in samples.mut_iter() {
                 self.bench_n(n as u64, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
@@ -1047,7 +1047,7 @@ impl BenchHarness {
             stats::winsorize(samples, 5.0);
             let summ = stats::Summary::new(samples);
 
-            foreach p in samples.mut_iter() {
+            for p in samples.mut_iter() {
                 self.bench_n(5 * n as u64, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
@@ -1287,7 +1287,7 @@ mod tests {
         {
             fn testfn() { }
             let mut tests = ~[];
-            foreach name in names.iter() {
+            for name in names.iter() {
                 let test = TestDescAndFn {
                     desc: TestDesc {
                         name: DynTestName((*name).clone()),
@@ -1313,7 +1313,7 @@ mod tests {
 
         let pairs = vec::zip(expected, filtered);
 
-        foreach p in pairs.iter() {
+        for p in pairs.iter() {
             match *p {
                 (ref a, ref b) => {
                     assert!(*a == b.desc.name.to_str());

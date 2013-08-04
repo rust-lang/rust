@@ -1281,7 +1281,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    foreach f in flags.iter() {
+    for f in flags.iter() {
         match *f {
           Append => fflags |= O_APPEND as c_int,
           Create => fflags |= O_CREAT as c_int,
@@ -1940,7 +1940,7 @@ mod tests {
                 if len <= ivals.len() {
                     assert_eq!(res.len(), len);
                 }
-                foreach (iv, c) in ivals.iter().zip(res.iter()) {
+                for (iv, c) in ivals.iter().zip(res.iter()) {
                     assert!(*iv == *c as int)
                 }
             }
@@ -2054,7 +2054,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).unwrap();
-            foreach i in uints.iter() {
+            for i in uints.iter() {
                 file.write_le_u64(*i);
             }
         }
@@ -2062,7 +2062,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).unwrap();
-            foreach i in uints.iter() {
+            for i in uints.iter() {
                 assert_eq!(file.read_le_u64(), *i);
             }
         }
@@ -2076,7 +2076,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).unwrap();
-            foreach i in uints.iter() {
+            for i in uints.iter() {
                 file.write_be_u64(*i);
             }
         }
@@ -2084,7 +2084,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).unwrap();
-            foreach i in uints.iter() {
+            for i in uints.iter() {
                 assert_eq!(file.read_be_u64(), *i);
             }
         }
@@ -2098,7 +2098,7 @@ mod tests {
         // write the ints to the file
         {
             let file = io::file_writer(&path, [io::Create]).unwrap();
-            foreach i in ints.iter() {
+            for i in ints.iter() {
                 file.write_be_i32(*i);
             }
         }
@@ -2106,7 +2106,7 @@ mod tests {
         // then read them back and check that they are the same
         {
             let file = io::file_reader(&path).unwrap();
-            foreach i in ints.iter() {
+            for i in ints.iter() {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
                 assert_eq!(file.read_be_int_n(4), *i as i64);

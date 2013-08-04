@@ -27,7 +27,6 @@ use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
-use middle::trans::closure;
 use middle::trans::common;
 use middle::trans::common::*;
 use middle::trans::datum::*;
@@ -556,29 +555,9 @@ pub fn trans_call_inner(in_cx: @mut Block,
                         autoref_arg: AutorefArg)
                         -> Result {
     do base::with_scope_result(in_cx, call_info, "call") |cx| {
-        let ret_in_loop = match args {
-          ArgExprs(args) => {
-            args.len() > 0u && match args.last().node {
-              ast::expr_loop_body(@ast::expr {
-                node: ast::expr_fn_block(_, ref body),
-                _
-              }) =>  body_contains_ret(body),
-              _ => false
-            }
-          }
-          _ => false
-        };
-
         let callee = get_callee(cx);
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
-        let ret_flag = if ret_in_loop {
-            let flag = alloca(bcx, Type::bool(), "__ret_flag");
-            Store(bcx, C_bool(false), flag);
-            Some(flag)
-        } else {
-            None
-        };
 
         let (llfn, llenv) = unsafe {
             match callee.data {
@@ -611,15 +590,13 @@ pub fn trans_call_inner(in_cx: @mut Block,
         }
 
         llargs.push(llenv);
-        bcx = trans_args(bcx, args, fn_expr_ty,
-                         ret_flag, autoref_arg, &mut llargs);
-
+        bcx = trans_args(bcx, args, fn_expr_ty, autoref_arg, &mut llargs);
 
         // Now that the arguments have finished evaluating, we need to revoke
         // the cleanup for the self argument
         match callee.data {
             Method(d) => {
-                foreach &v in d.temp_cleanup.iter() {
+                for &v in d.temp_cleanup.iter() {
                     revoke_clean(bcx, v);
                 }
             }
@@ -629,7 +606,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         // Uncomment this to debug calls.
         /*
         printfln!("calling: %s", bcx.val_to_str(llfn));
-        foreach llarg in llargs.iter() {
+        for llarg in llargs.iter() {
             printfln!("arg: %s", bcx.val_to_str(*llarg));
         }
         io::println("---");
@@ -667,20 +644,6 @@ pub fn trans_call_inner(in_cx: @mut Block,
 
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
-        } else if ret_in_loop {
-            let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
-            bcx = do with_cond(bcx, ret_flag_result) |bcx| {
-                {
-                    let r = bcx.fcx.loop_ret;
-                    foreach &(flagptr, _) in r.iter() {
-                        Store(bcx, C_bool(true), flagptr);
-                        Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
-                    }
-                }
-                base::cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
-                Unreachable(bcx);
-                bcx
-            }
         }
         rslt(bcx, llresult)
     }
@@ -713,7 +676,6 @@ pub fn trans_ret_slot(bcx: @mut Block, fn_ty: ty::t, dest: Option<expr::Dest>)
 pub fn trans_args(cx: @mut Block,
                   args: CallArgs,
                   fn_ty: ty::t,
-                  ret_flag: Option<ValueRef>,
                   autoref_arg: AutorefArg,
                   llargs: &mut ~[ValueRef]) -> @mut Block
 {
@@ -728,15 +690,13 @@ pub fn trans_args(cx: @mut Block,
     // to cast her view of the arguments to the caller's view.
     match args {
       ArgExprs(arg_exprs) => {
-        let last = arg_exprs.len() - 1u;
-        foreach (i, arg_expr) in arg_exprs.iter().enumerate() {
+        for (i, arg_expr) in arg_exprs.iter().enumerate() {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
                                arg_tys[i],
                                ty::ByCopy,
                                *arg_expr,
                                &mut temp_cleanups,
-                               if i == last { ret_flag } else { None },
                                autoref_arg)
             });
             llargs.push(arg_val);
@@ -750,7 +710,7 @@ pub fn trans_args(cx: @mut Block,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    foreach c in temp_cleanups.iter() {
+    for c in temp_cleanups.iter() {
         revoke_clean(bcx, *c)
     }
 
@@ -769,49 +729,17 @@ pub fn trans_arg_expr(bcx: @mut Block,
                       self_mode: ty::SelfMode,
                       arg_expr: @ast::expr,
                       temp_cleanups: &mut ~[ValueRef],
-                      ret_flag: Option<ValueRef>,
                       autoref_arg: AutorefArg) -> Result {
     let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
-            ret_flag=%?)",
+    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s)",
            formal_arg_ty.repr(bcx.tcx()),
            self_mode,
-           arg_expr.repr(bcx.tcx()),
-           ret_flag.map(|v| bcx.val_to_str(*v)));
+           arg_expr.repr(bcx.tcx()));
 
     // translate the arg expr to a datum
-    let arg_datumblock = match ret_flag {
-        None => expr::trans_to_datum(bcx, arg_expr),
-
-        // If there is a ret_flag, this *must* be a loop body
-        Some(_) => {
-            match arg_expr.node {
-                ast::expr_loop_body(
-                    blk @ @ast::expr {
-                        node: ast::expr_fn_block(ref decl, ref body),
-                        _
-                    }) => {
-                    let scratch_ty = expr_ty(bcx, arg_expr);
-                    let scratch = alloc_ty(bcx, scratch_ty, "__ret_flag");
-                    let arg_ty = expr_ty(bcx, arg_expr);
-                    let sigil = ty::ty_closure_sigil(arg_ty);
-                    let bcx = closure::trans_expr_fn(
-                        bcx, sigil, decl, body, arg_expr.id,
-                        blk.id, Some(ret_flag), expr::SaveIn(scratch));
-                    DatumBlock {bcx: bcx,
-                                datum: Datum {val: scratch,
-                                              ty: scratch_ty,
-                                              mode: ByRef(RevokeClean)}}
-                }
-                _ => {
-                    bcx.sess().impossible_case(
-                        arg_expr.span, "ret_flag with non-loop-body expr");
-                }
-            }
-        }
-    };
+    let arg_datumblock = expr::trans_to_datum(bcx, arg_expr);
     let arg_datum = arg_datumblock.datum;
     let bcx = arg_datumblock.bcx;
 

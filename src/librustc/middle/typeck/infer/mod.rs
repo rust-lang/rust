@@ -730,7 +730,7 @@ impl InferCtxt {
                         fmt!("%s%s", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
                 }
             }
-            foreach err in err.iter() {
+            for err in err.iter() {
                 ty::note_and_explain_type_err(self.tcx, *err)
             }
         }

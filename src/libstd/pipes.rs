@@ -598,7 +598,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    foreach (i, p) in pkts.mut_iter().enumerate() {
+    for (i, p) in pkts.mut_iter().enumerate() {
         unsafe {
             let p = &mut *p.header();
             let old = p.mark_blocked(this);
@@ -620,7 +620,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
         let event = wait_event(this) as *PacketHeader;
 
         let mut pos = None;
-        foreach (i, p) in pkts.mut_iter().enumerate() {
+        for (i, p) in pkts.mut_iter().enumerate() {
             if p.header() == event {
                 pos = Some(i);
                 break;
@@ -638,7 +638,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     debug!("%?", &mut pkts[ready_packet]);
 
-    foreach p in pkts.mut_iter() {
+    for p in pkts.mut_iter() {
         unsafe {
             (*p.header()).unblock()
         }
@@ -849,7 +849,7 @@ pub fn select<T:Send,Tb:Send>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
                                     Option<T>,
                                     ~[RecvPacketBuffered<T, Tb>]) {
     let mut endpoint_headers = ~[];
-    foreach endpoint in endpoints.mut_iter() {
+    for endpoint in endpoints.mut_iter() {
         endpoint_headers.push(endpoint.header());
     }
 

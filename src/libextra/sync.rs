@@ -893,13 +893,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        foreach port in ports.iter() { let _ = port.recv(); }
+        for port in ports.iter() { let _ = port.recv(); }
         do m.lock_cond |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        foreach port in ports.iter() { let _ = port.recv(); }
+        for port in ports.iter() { let _ = port.recv(); }
     }
     #[test]
     fn test_mutex_cond_broadcast() {
@@ -991,7 +991,7 @@ mod tests {
                     }
                 }
             }
-            foreach p in sibling_convos.iter() {
+            for p in sibling_convos.iter() {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
             do m2.lock { }
@@ -1001,7 +1001,7 @@ mod tests {
         assert!(result.is_err());
         // child task must have finished by the time try returns
         let r = p.recv();
-        foreach p in r.iter() { p.recv(); } // wait on all its siblings
+        for p in r.iter() { p.recv(); } // wait on all its siblings
         do m.lock_cond |cond| {
             let woken = cond.broadcast();
             assert_eq!(woken, 0);
@@ -1253,13 +1253,13 @@ mod tests {
         }
 
         // wait until all children get in the mutex
-        foreach port in ports.iter() { let _ = port.recv(); }
+        for port in ports.iter() { let _ = port.recv(); }
         do lock_cond(x, dg2) |cond| {
             let num_woken = cond.broadcast();
             assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
-        foreach port in ports.iter() { let _ = port.recv(); }
+        for port in ports.iter() { let _ = port.recv(); }
     }
     #[test]
     fn test_rwlock_cond_broadcast() {

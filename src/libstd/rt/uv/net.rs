@@ -701,7 +701,7 @@ mod test {
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
-                        foreach byte in buf.slice(0, nread as uint).iter() {
+                        for byte in buf.slice(0, nread as uint).iter() {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;
@@ -777,7 +777,7 @@ mod test {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
                         let r = buf.slice(0, nread as uint);
-                        foreach byte in r.iter() {
+                        for byte in r.iter() {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
                             count += 1;
@@ -848,7 +848,7 @@ mod test {
                 rtdebug!("got %d bytes", nread);
 
                 let buf = buf.unwrap();
-                foreach &byte in buf.slice(0, nread as uint).iter() {
+                for &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);
                     count += 1;
@@ -908,7 +908,7 @@ mod test {
                 rtdebug!("got %d bytes", nread);
 
                 let buf = buf.unwrap();
-                foreach &byte in buf.slice(0, nread as uint).iter() {
+                for &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);
                     count += 1;

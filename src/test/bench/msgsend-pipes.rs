@@ -58,12 +58,12 @@ fn run(args: &[~str]) {
     let num_bytes = 100;
     let start = extra::time::precise_time_s();
     let mut worker_results = ~[];
-    foreach _ in range(0u, workers) {
+    for _ in range(0u, workers) {
         let to_child = to_child.clone();
         let mut builder = task::task();
         builder.future_result(|r| worker_results.push(r));
         do builder.spawn {
-            foreach _ in range(0u, size / workers) {
+            for _ in range(0u, size / workers) {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
@@ -74,7 +74,7 @@ fn run(args: &[~str]) {
         server(&from_parent, &to_parent);
     }
 
-    foreach r in worker_results.iter() {
+    for r in worker_results.iter() {
         r.recv();
     }
 

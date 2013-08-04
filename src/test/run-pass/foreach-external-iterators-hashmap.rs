@@ -13,12 +13,12 @@ use std::hashmap::HashMap;
 fn main() {
     let mut h = HashMap::new();
     let kvs = [(1, 10), (2, 20), (3, 30)];
-    foreach &(k,v) in kvs.iter() {
+    for &(k,v) in kvs.iter() {
         h.insert(k,v);
     }
     let mut x = 0;
     let mut y = 0;
-    foreach (&k,&v) in h.iter() {
+    for (&k,&v) in h.iter() {
         x += k;
         y += v;
     }

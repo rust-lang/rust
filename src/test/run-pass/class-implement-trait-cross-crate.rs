@@ -63,6 +63,6 @@ pub fn main() {
   let mut nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert!((!nyan.eat()));
-  foreach _ in range(1u, 10u) { nyan.speak(); };
+  for _ in range(1u, 10u) { nyan.speak(); };
   assert!((nyan.eat()));
 }

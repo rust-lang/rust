@@ -13,7 +13,7 @@ use std::util;
 pub fn main() {
     let mut x = 4;
 
-    foreach i in range(0u, 3) {
+    for i in range(0u, 3) {
         // ensure that the borrow in this alt
         // does not inferfere with the swap
         // below.  note that it would it you

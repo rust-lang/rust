@@ -958,11 +958,11 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     }
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
-        foreach tt in substs.tps.iter() { f |= get(*tt).flags; }
+        for tt in substs.tps.iter() { f |= get(*tt).flags; }
         match substs.regions {
             ErasedRegions => {}
             NonerasedRegions(ref regions) => {
-                foreach r in regions.iter() {
+                for r in regions.iter() {
                     f |= rflags(*r)
                 }
             }
@@ -1004,16 +1004,16 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      &ty_tup(ref ts) => foreach tt in ts.iter() { flags |= get(*tt).flags; },
+      &ty_tup(ref ts) => for tt in ts.iter() { flags |= get(*tt).flags; },
       &ty_bare_fn(ref f) => {
-        foreach a in f.sig.inputs.iter() { flags |= get(*a).flags; }
+        for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
         flags &= !(has_ty_bot as uint);
       }
       &ty_closure(ref f) => {
         flags |= rflags(f.region);
-        foreach a in f.sig.inputs.iter() { flags |= get(*a).flags; }
+        for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
         flags &= !(has_ty_bot as uint);
@@ -1268,15 +1268,15 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _, _, _) => {
-        foreach subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
+        for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
       }
-      ty_tup(ref ts) => { foreach tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
+      ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
       ty_bare_fn(ref ft) => {
-        foreach a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+        for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
       ty_closure(ref ft) => {
-        foreach a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+        for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
         maybe_walk_ty(ft.sig.output, f);
       }
     }
@@ -1765,8 +1765,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_enum(did, ref substs) => {
-            foreach v in (*enum_variants(cx, did)).iter() {
-                foreach aty in v.args.iter() {
+            for v in (*enum_variants(cx, did)).iter() {
+                for aty in v.args.iter() {
                     let t = subst(cx, substs, *aty);
                     needs_unwind_cleanup |=
                         type_needs_unwind_cleanup_(cx, t, tycache,
@@ -2436,8 +2436,8 @@ pub fn type_structurally_contains(cx: ctxt,
     if test(sty) { return true; }
     match *sty {
       ty_enum(did, ref substs) => {
-        foreach variant in (*enum_variants(cx, did)).iter() {
-            foreach aty in variant.args.iter() {
+        for variant in (*enum_variants(cx, did)).iter() {
+            for aty in variant.args.iter() {
                 let sty = subst(cx, substs, *aty);
                 if type_structurally_contains(cx, sty, |x| test(x)) { return true; }
             }
@@ -2446,7 +2446,7 @@ pub fn type_structurally_contains(cx: ctxt,
       }
       ty_struct(did, ref substs) => {
         let r = lookup_struct_fields(cx, did);
-        foreach field in r.iter() {
+        for field in r.iter() {
             let ft = lookup_field_type(cx, did, field.id, substs);
             if type_structurally_contains(cx, ft, |x| test(x)) { return true; }
         }
@@ -2454,7 +2454,7 @@ pub fn type_structurally_contains(cx: ctxt,
       }
 
       ty_tup(ref ts) => {
-        foreach tt in ts.iter() {
+        for tt in ts.iter() {
             if type_structurally_contains(cx, *tt, |x| test(x)) { return true; }
         }
         return false;
@@ -2533,7 +2533,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-        foreach variant in (*variants).iter() {
+        for variant in (*variants).iter() {
             // XXX(pcwalton): This is an inefficient way to do this. Don't
             // synthesize a tuple!
             //
@@ -2544,7 +2544,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
         }
       }
       ty_tup(ref elts) => {
-        foreach elt in elts.iter() { if !type_is_pod(cx, *elt) { result = false; } }
+        for elt in elts.iter() { if !type_is_pod(cx, *elt) { result = false; } }
       }
       ty_estr(vstore_fixed(_)) => result = true,
       ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
@@ -2963,7 +2963,7 @@ pub fn adjust_ty(cx: ctxt,
             let mut adjusted_ty = unadjusted_ty;
 
             if (!ty::type_is_error(adjusted_ty)) {
-                foreach i in range(0, adj.autoderefs) {
+                for i in range(0, adj.autoderefs) {
                     match ty::deref(cx, adjusted_ty, true) {
                         Some(mt) => { adjusted_ty = mt.ty; }
                         None => {
@@ -3192,7 +3192,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_if(*) |
         ast::expr_match(*) |
         ast::expr_fn_block(*) |
-        ast::expr_loop_body(*) |
         ast::expr_do_body(*) |
         ast::expr_block(*) |
         ast::expr_repeat(*) |
@@ -3274,14 +3273,14 @@ pub fn stmt_node_id(s: &ast::stmt) -> ast::NodeId {
 
 pub fn field_idx(id: ast::ident, fields: &[field]) -> Option<uint> {
     let mut i = 0u;
-    foreach f in fields.iter() { if f.ident == id { return Some(i); } i += 1u; }
+    for f in fields.iter() { if f.ident == id { return Some(i); } i += 1u; }
     return None;
 }
 
 pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
                      -> uint {
     let mut i = 0u;
-    foreach f in fields.iter() { if f.ident == id { return i; } i += 1u; }
+    for f in fields.iter() { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
         tcx.sess.str_of(id),
@@ -4384,7 +4383,7 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::NodeId),
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         bounds: &[@TraitRef],
                                         f: &fn(@TraitRef) -> bool) -> bool {
-    foreach &bound_trait_ref in bounds.iter() {
+    for &bound_trait_ref in bounds.iter() {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;
@@ -4404,7 +4403,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 
             // Add supertraits to supertrait_set
             let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
-            foreach &supertrait_ref in supertrait_refs.iter() {
+            for &supertrait_ref in supertrait_refs.iter() {
                 debug!("each_bound_trait_and_supertraits(supertrait_ref=%s)",
                        supertrait_ref.repr(tcx));
 
@@ -4425,7 +4424,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 pub fn count_traits_and_supertraits(tcx: ctxt,
                                     type_param_defs: &[TypeParameterDef]) -> uint {
     let mut total = 0;
-    foreach type_param_def in type_param_defs.iter() {
+    for type_param_def in type_param_defs.iter() {
         do each_bound_trait_and_supertraits(
             tcx, type_param_def.bounds.trait_bounds) |_| {
             total += 1;

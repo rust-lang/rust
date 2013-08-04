@@ -121,7 +121,7 @@ should interleave the output in vaguely random order.
 # use std::io::print;
 # use std::task::spawn;
 
-foreach child_task_number in range(0, 20) {
+for child_task_number in range(0, 20) {
     do spawn {
        print(fmt!("I am child number %d\n", child_task_number));
     }
@@ -240,7 +240,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
 
-foreach init_val in range(0u, 3) {
+for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
     do spawn {
@@ -314,7 +314,7 @@ be distributed on the available cores.
 # use std::vec;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
-    foreach num in range(start*100000, (start+1)*100000) {
+    for num in range(start*100000, (start+1)*100000) {
         local_sum += (num as f64 + 1.0).pow(&-2.0);
     }
     local_sum
@@ -324,7 +324,7 @@ fn main() {
     let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
 
     let mut final_res = 0f64;
-    foreach ft in futures.mut_iter()  {
+    for ft in futures.mut_iter()  {
         final_res += ft.get();
     }
     println(fmt!("π^2/6 is not far from : %?", final_res));
@@ -359,7 +359,7 @@ fn main() {
 
     let numbers_arc = Arc::new(numbers);
 
-    foreach num in range(1u, 10) {
+    for num in range(1u, 10) {
         let (port, chan)  = stream();
         chan.send(numbers_arc.clone());
 

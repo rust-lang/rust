@@ -102,7 +102,7 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
   let mut res = ~"*";
   res.push_str(cmd.len().to_str());
   res.push_str("\r\n");
-    foreach s in cmd.iter() {
+    for s in cmd.iter() {
     res.push_str([~"$", s.len().to_str(), ~"\r\n",
                   (*s).clone(), ~"\r\n"].concat() );
     }

@@ -854,7 +854,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.def_map.find(&id);
-        foreach def in r.iter() {
+        for def in r.iter() {
             do ebml_w.tag(c::tag_table_def) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -866,7 +866,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.node_types.find(&(id as uint));
-        foreach &ty in r.iter() {
+        for &ty in r.iter() {
             do ebml_w.tag(c::tag_table_node_type) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -878,7 +878,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.node_type_substs.find(&id);
-        foreach tys in r.iter() {
+        for tys in r.iter() {
             do ebml_w.tag(c::tag_table_node_type_subst) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -890,7 +890,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.freevars.find(&id);
-        foreach &fv in r.iter() {
+        for &fv in r.iter() {
             do ebml_w.tag(c::tag_table_freevars) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -905,7 +905,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     let lid = ast::def_id { crate: ast::LOCAL_CRATE, node: id };
     {
         let r = tcx.tcache.find(&lid);
-        foreach &tpbt in r.iter() {
+        for &tpbt in r.iter() {
             do ebml_w.tag(c::tag_table_tcache) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -917,7 +917,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.ty_param_defs.find(&id);
-        foreach &type_param_def in r.iter() {
+        for &type_param_def in r.iter() {
             do ebml_w.tag(c::tag_table_param_defs) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -929,7 +929,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = maps.method_map.find(&id);
-        foreach &mme in r.iter() {
+        for &mme in r.iter() {
             do ebml_w.tag(c::tag_table_method_map) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -941,7 +941,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = maps.vtable_map.find(&id);
-        foreach &dr in r.iter() {
+        for &dr in r.iter() {
             do ebml_w.tag(c::tag_table_vtable_map) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -953,7 +953,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = tcx.adjustments.find(&id);
-        foreach adj in r.iter() {
+        for adj in r.iter() {
             do ebml_w.tag(c::tag_table_adjustments) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -965,7 +965,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     {
         let r = maps.capture_map.find(&id);
-        foreach &cap_vars in r.iter() {
+        for &cap_vars in r.iter() {
             do ebml_w.tag(c::tag_table_capture_map) |ebml_w| {
                 ebml_w.id(id);
                 do ebml_w.tag(c::tag_table_val) |ebml_w| {
@@ -1054,7 +1054,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
-            foreach i in range(doc.start, doc.end) {
+            for i in range(doc.start, doc.end) {
                 str.push_char(doc.data[i] as char);
             }
             str

@@ -143,7 +143,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
-    foreach variant in variants.iter() {
+    for variant in variants.iter() {
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
 
@@ -208,7 +208,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
             // For each method, construct a suitable ty::Method and
             // store it into the `tcx.methods` table:
-            foreach m in ms.iter() {
+            for m in ms.iter() {
                 let ty_method = @match m {
                     &ast::required(ref m) => {
                         ty_method_of_trait_method(
@@ -395,7 +395,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
-    foreach ast_trait_ref in ast_trait_refs.iter() {
+    for ast_trait_ref in ast_trait_refs.iter() {
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, rp,
                                               generics, self_ty);
 
@@ -494,7 +494,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    foreach (i, trait_param_def) in trait_m.generics.type_param_defs.iter().enumerate() {
+    for (i, trait_param_def) in trait_m.generics.type_param_defs.iter().enumerate() {
         // For each of the corresponding impl ty param's bounds...
         let impl_param_def = &impl_m.generics.type_param_defs[i];
 
@@ -558,10 +558,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // For both the trait and the impl, create an argument to
     // represent the self argument (unless this is a static method).
     // This argument will have the *transformed* self type.
-    foreach &t in trait_m.transformed_self_ty.iter() {
+    for &t in trait_m.transformed_self_ty.iter() {
         trait_fn_args.push(t);
     }
-    foreach &t in impl_m.transformed_self_ty.iter() {
+    for &t in impl_m.transformed_self_ty.iter() {
         impl_fn_args.push(t);
     }
 
@@ -674,7 +674,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
     // Trait methods we don't implement must be default methods, but if not
     // we'll catch it in coherence
     let trait_ms = ty::trait_methods(tcx, trait_ref.def_id);
-    foreach impl_m in impl_ms.iter() {
+    for impl_m in impl_ms.iter() {
         match trait_ms.iter().find_(|trait_m| trait_m.ident == impl_m.mty.ident) {
             Some(trait_m) => {
                 let num_impl_tps = generics.ty_params.len();
@@ -805,7 +805,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  span: span,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
-    foreach ty_param in generics.ty_params.iter() {
+    for ty_param in generics.ty_params.iter() {
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(
                 span,
@@ -858,7 +858,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
         let cms = convert_methods(ccx, it.id, *ms, selfty,
                                   &i_ty_generics, generics,
                                   parent_visibility);
-        foreach t in opt_trait_ref.iter() {
+        for t in opt_trait_ref.iter() {
             check_methods_against_trait(ccx, generics, rp, selfty, t, cms);
         }
       }
@@ -912,7 +912,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
 
     // Write the type of each of the members
-    foreach f in struct_def.fields.iter() {
+    for f in struct_def.fields.iter() {
        convert_field(ccx, rp, tpt.generics.type_param_defs, *f, generics);
     }
     let (_, substs) = mk_item_substs(ccx, generics, rp, None);
@@ -1203,7 +1203,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
             builtin_bounds: ty::EmptyBuiltinBounds(),
             trait_bounds: ~[]
         };
-        foreach ast_bound in ast_bounds.iter() {
+        for ast_bound in ast_bounds.iter() {
             match *ast_bound {
                 TraitTyParamBound(ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);

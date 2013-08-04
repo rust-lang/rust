@@ -782,7 +782,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        foreach r in children.iter() {
+        for r in children.iter() {
             r.recv();
         }
 
@@ -848,7 +848,7 @@ mod tests {
                 *state = 31337;
                 // FIXME: #7372: hits type inference bug with iterators
                 // send to other readers
-                foreach i in range(0u, reader_convos.len()) {
+                for i in range(0u, reader_convos.len()) {
                     match reader_convos[i] {
                         (ref rc, _) => rc.send(()),
                     }
@@ -858,7 +858,7 @@ mod tests {
             do (&read_mode).read |state| {
                 // FIXME: #7372: hits type inference bug with iterators
                 // complete handshake with other readers
-                foreach i in range(0u, reader_convos.len()) {
+                for i in range(0u, reader_convos.len()) {
                     match reader_convos[i] {
                         (_, ref rp) => rp.recv(),
                     }

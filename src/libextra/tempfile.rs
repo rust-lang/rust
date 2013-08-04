@@ -19,7 +19,7 @@ use std::rand;
 /// have the suffix `suffix`. If no directory can be created, None is returned.
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let mut r = rand::rng();
-    foreach _ in range(0u, 1000) {
+    for _ in range(0u, 1000) {
         let p = tmpdir.push(r.gen_str(16) + suffix);
         if os::make_dir(&p, 0x1c0) { // 700
             return Some(p);

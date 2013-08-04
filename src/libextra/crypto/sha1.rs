@@ -250,7 +250,7 @@ mod tests {
         let mut out = [0u8, ..20];
 
         let mut sh = ~Sha1::new();
-        foreach t in tests.iter() {
+        for t in tests.iter() {
             (*sh).input_str(t.input);
             sh.result(out);
             assert!(t.output.as_slice() == out);
@@ -264,7 +264,7 @@ mod tests {
 
 
         // Test that it works when accepting the message in pieces
-        foreach t in tests.iter() {
+        for t in tests.iter() {
             let len = t.input.len();
             let mut left = len;
             while left > 0u {

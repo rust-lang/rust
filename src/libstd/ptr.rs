@@ -13,8 +13,6 @@
 use cast;
 use clone::Clone;
 use option::{Option, Some, None};
-#[cfg(stage0)]
-use sys;
 use unstable::intrinsics;
 use util::swap;
 
@@ -26,42 +24,18 @@ use uint;
 
 /// Calculate the offset from a pointer
 #[inline]
-#[cfg(stage0)]
-pub fn offset<T>(ptr: *T, count: int) -> *T {
-    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
-}
-
-/// Calculate the offset from a const pointer
-#[inline]
-#[cfg(stage0)]
-pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
-    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
-}
-
-/// Calculate the offset from a mut pointer
-#[inline]
-#[cfg(stage0)]
-pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *mut T
-}
-
-/// Calculate the offset from a pointer
-#[inline]
-#[cfg(not(stage0))]
 pub fn offset<T>(ptr: *T, count: int) -> *T {
     unsafe { intrinsics::offset(ptr, count) }
 }
 
 /// Calculate the offset from a const pointer
 #[inline]
-#[cfg(not(stage0))]
 pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
     unsafe { intrinsics::offset(ptr as *T, count) }
 }
 
 /// Calculate the offset from a mut pointer
 #[inline]
-#[cfg(not(stage0))]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     unsafe { intrinsics::offset(ptr as *T, count) as *mut T }
 }

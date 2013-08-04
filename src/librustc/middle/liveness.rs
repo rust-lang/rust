@@ -360,7 +360,7 @@ fn visit_fn(fk: &oldvisit::fn_kind,
         debug!("creating fn_maps: %x", transmute(&*fn_maps));
     }
 
-    foreach arg in decl.inputs.iter() {
+    for arg in decl.inputs.iter() {
         do pat_util::pat_bindings(this.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
@@ -436,7 +436,7 @@ fn visit_local(local: @Local, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
 
 fn visit_arm(arm: &arm, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
     let def_map = this.tcx.def_map;
-    foreach pat in arm.pats.iter() {
+    for pat in arm.pats.iter() {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
@@ -475,7 +475,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
         // construction site.
         let cvs = this.capture_map.get(&expr.id);
         let mut call_caps = ~[];
-        foreach cv in cvs.iter() {
+        for cv in cvs.iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = this.add_live_node(FreeVarNode(cv.span));
@@ -512,7 +512,7 @@ fn visit_expr(expr: @expr, (this, vt): (@mut IrMaps, vt<@mut IrMaps>)) {
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) | expr_vec(*) |
       expr_call(*) | expr_method_call(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_addr_of(*) | expr_loop_body(*) |
+      expr_binary(*) | expr_addr_of(*) |
       expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
@@ -710,7 +710,7 @@ impl Liveness {
 
     pub fn indices(&self, ln: LiveNode, op: &fn(uint)) {
         let node_base_idx = self.idx(ln, Variable(0));
-        foreach var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in range(0u, self.ir.num_vars) {
             op(node_base_idx + var_idx)
         }
     }
@@ -721,7 +721,7 @@ impl Liveness {
                     op: &fn(uint, uint)) {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
-        foreach var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in range(0u, self.ir.num_vars) {
             op(node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -731,7 +731,7 @@ impl Liveness {
                       ln: LiveNode,
                       test: &fn(uint) -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));
-        foreach var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 wr.write_str(" ");
@@ -900,7 +900,7 @@ impl Liveness {
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body %d (entry=%s)",
                {
-                   foreach ln_idx in range(0u, self.ir.num_live_nodes) {
+                   for ln_idx in range(0u, self.ir.num_live_nodes) {
                        debug!("%s", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id
@@ -1084,7 +1084,7 @@ impl Liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            foreach arm in arms.iter() {
+            for arm in arms.iter() {
                 let body_succ =
                     self.propagate_through_block(&arm.body, succ);
                 let guard_succ =
@@ -1209,7 +1209,6 @@ impl Liveness {
           }
 
           expr_addr_of(_, e) |
-          expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
           expr_unary(_, _, e) |
@@ -1461,12 +1460,12 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       }
 
       expr_inline_asm(ref ia) => {
-        foreach &(_, input) in ia.inputs.iter() {
+        for &(_, input) in ia.inputs.iter() {
           (vt.visit_expr)(input, (this, vt));
         }
 
         // Output operands must be lvalues
-        foreach &(_, out) in ia.outputs.iter() {
+        for &(_, out) in ia.outputs.iter() {
           match out.node {
             expr_addr_of(_, inner) => {
               this.check_lvalue(inner, vt);
@@ -1483,7 +1482,7 @@ fn check_expr(expr: @expr, (this, vt): (@Liveness, vt<@Liveness>)) {
       expr_call(*) | expr_method_call(*) | expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) | expr_index(*) | expr_field(*) |
       expr_vstore(*) | expr_vec(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_loop_body(*) | expr_do_body(*) |
+      expr_binary(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
@@ -1606,7 +1605,7 @@ impl Liveness {
     }
 
     pub fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
-        foreach arg in decl.inputs.iter() {
+        for arg in decl.inputs.iter() {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {
                 let var = self.variable(p_id, sp);
@@ -1631,7 +1630,7 @@ impl Liveness {
                              -> bool {
         if !self.used_on_entry(ln, var) {
             let r = self.should_warn(var);
-            foreach name in r.iter() {
+            for name in r.iter() {
 
                 // annoying: for parameters in funcs like `fn(x: int)
                 // {ret}`, there is only one node, so asking about
@@ -1664,7 +1663,7 @@ impl Liveness {
                                   var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             let r = self.should_warn(var);
-            foreach name in r.iter() {
+            for name in r.iter() {
                 self.tcx.sess.add_lint(dead_assignment, id, sp,
                     fmt!("value assigned to `%s` is never read", *name));
             }

@@ -169,7 +169,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        foreach _ in range(0u, nthreads) {
+        for _ in range(0u, nthreads) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_,
                                             work_queue.clone(),
@@ -184,7 +184,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let on_exit: ~fn(bool) = |exit_status| {
             let mut handles = handles.take();
             // Tell schedulers to exit
-            foreach handle in handles.mut_iter() {
+            for handle in handles.mut_iter() {
                 handle.send(Shutdown);
             }
 
@@ -223,7 +223,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         // Wait for schedulers
-        foreach thread in threads.consume_iter() {
+        for thread in threads.consume_iter() {
             thread.join();
         }
     }
@@ -346,7 +346,7 @@ fn base_port() -> uint {
 
     let mut final_base = base;
 
-    foreach &(dir, base) in bases.iter() {
+    for &(dir, base) in bases.iter() {
         if path.contains(dir) {
             final_base = base;
             break;

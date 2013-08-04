@@ -647,8 +647,8 @@ impl GenericPath for PosixPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = self.components.clone();
-        foreach e in cs.iter() {
-            foreach s in e.as_slice().split_iter(posix::is_sep) {
+        for e in cs.iter() {
+            for s in e.as_slice().split_iter(posix::is_sep) {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -662,7 +662,7 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = self.components.clone();
-        foreach s in s.split_iter(posix::is_sep) {
+        for s in s.split_iter(posix::is_sep) {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
@@ -922,8 +922,8 @@ impl GenericPath for WindowsPath {
 
     fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = self.components.clone();
-        foreach e in cs.iter() {
-            foreach s in e.as_slice().split_iter(windows::is_sep) {
+        for e in cs.iter() {
+            for s in e.as_slice().split_iter(windows::is_sep) {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -940,7 +940,7 @@ impl GenericPath for WindowsPath {
 
     fn push(&self, s: &str) -> WindowsPath {
         let mut v = self.components.clone();
-        foreach s in s.split_iter(windows::is_sep) {
+        for s in s.split_iter(windows::is_sep) {
             if !s.is_empty() {
                 v.push(s.to_owned())
             }
@@ -989,7 +989,7 @@ impl GenericPath for WindowsPath {
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    foreach c in components.iter() {
+    for c in components.iter() {
         if *c == ~"." && components.len() > 1 { loop; }
         if *c == ~"" { loop; }
         if *c == ~".." && cs.len() != 0 {
