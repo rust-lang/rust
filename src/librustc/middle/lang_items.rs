@@ -393,7 +393,7 @@ impl<'self> LanguageItemCollector<'self> {
             return;    // Didn't match.
         }
 
-        let item_index = self.item_refs.find(&value).map(|x| **x);
+        let item_index = self.item_refs.find(&value).map_move(|x| *x);
         // prevent borrow checker from considering   ^~~~~~~~~~~
         // self to be borrowed (annoying)
 

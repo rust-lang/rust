@@ -198,8 +198,8 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
 }
 
 fn get_provided_source(d: ebml::Doc, cdata: cmd) -> Option<ast::def_id> {
-    do reader::maybe_get_doc(d, tag_item_method_provided_source).map |doc| {
-        translate_def_id(cdata, reader::with_doc_data(*doc, parse_def_id))
+    do reader::maybe_get_doc(d, tag_item_method_provided_source).map_move |doc| {
+        translate_def_id(cdata, reader::with_doc_data(doc, parse_def_id))
     }
 }
 
@@ -265,10 +265,10 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
 }
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
-    reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        let mut decoder = reader::Decoder(*doc);
+    do reader::maybe_get_doc(item, tag_region_param).map_move |doc| {
+        let mut decoder = reader::Decoder(doc);
         Decodable::decode(&mut decoder)
-    })
+    }
 }
 
 fn item_ty_param_count(item: ebml::Doc) -> uint {
@@ -415,7 +415,7 @@ pub fn get_impl_trait(cdata: cmd,
                        tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
-    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map |&tp| {
+    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map_move |tp| {
         @doc_trait_ref(tp, tcx, cdata)
     }
 }

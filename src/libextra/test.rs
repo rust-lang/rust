@@ -238,20 +238,20 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let run_ignored = getopts::opt_present(&matches, "ignored");
 
     let logfile = getopts::opt_maybe_str(&matches, "logfile");
-    let logfile = logfile.map(|s| Path(*s));
+    let logfile = logfile.map_move(|s| Path(s));
 
     let run_benchmarks = getopts::opt_present(&matches, "bench");
     let run_tests = ! run_benchmarks ||
         getopts::opt_present(&matches, "test");
 
     let ratchet_metrics = getopts::opt_maybe_str(&matches, "ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map(|s| Path(*s));
+    let ratchet_metrics = ratchet_metrics.map_move(|s| Path(s));
 
     let ratchet_noise_percent = getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
-    let ratchet_noise_percent = ratchet_noise_percent.map(|s| f64::from_str(*s).unwrap());
+    let ratchet_noise_percent = ratchet_noise_percent.map_move(|s| f64::from_str(s).unwrap());
 
     let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
-    let save_metrics = save_metrics.map(|s| Path(*s));
+    let save_metrics = save_metrics.map_move(|s| Path(s));
 
     let test_opts = TestOpts {
         filter: filter,

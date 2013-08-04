@@ -674,7 +674,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                     Some((y, y_val))
                 }
             }
-        }).map_consume(|(x, _)| x)
+        }).map_move(|(x, _)| x)
     }
 
     #[inline]
@@ -689,7 +689,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                     Some((y, y_val))
                 }
             }
-        }).map_consume(|(x, _)| x)
+        }).map_move(|(x, _)| x)
     }
 }
 
@@ -1383,7 +1383,7 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
                     return Some(x)
                 }
             }
-            match self.iter.next().map_consume(|x| (self.f)(x)) {
+            match self.iter.next().map_move(|x| (self.f)(x)) {
                 None => return self.backiter.chain_mut_ref(|it| it.next()),
                 next => self.frontiter = next,
             }
@@ -1415,7 +1415,7 @@ impl<'self,
                     y => return y
                 }
             }
-            match self.iter.next_back().map_consume(|x| (self.f)(x)) {
+            match self.iter.next_back().map_move(|x| (self.f)(x)) {
                 None => return self.frontiter.chain_mut_ref(|it| it.next_back()),
                 next => self.backiter = next,
             }

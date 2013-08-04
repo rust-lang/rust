@@ -1010,8 +1010,7 @@ pub fn node_id_type_params(bcx: @mut Block, id: ast::NodeId) -> ~[ty::t] {
 pub fn node_vtables(bcx: @mut Block, id: ast::NodeId)
                  -> Option<typeck::vtable_res> {
     let raw_vtables = bcx.ccx().maps.vtable_map.find(&id);
-    raw_vtables.map(
-        |&vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
+    raw_vtables.map_move(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
 pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res)
