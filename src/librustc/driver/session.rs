@@ -179,7 +179,8 @@ pub struct crate_metadata {
 #[deriving(Eq)]
 pub enum EntryFnType {
     EntryMain,
-    EntryStart
+    EntryStart,
+    EntryNone,
 }
 
 pub struct Session_ {
