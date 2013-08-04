@@ -241,20 +241,6 @@ impl<T> Option<T> {
         util::replace(self, None)
     }
 
-    /// As `map_move`, but swaps a None into the original option rather
-    /// than consuming it by-value.
-    #[inline]
-    pub fn take_map<U>(&mut self, blk: &fn(T) -> U) -> Option<U> {
-        self.take().map_move(blk)
-    }
-
-    /// As `map_move_default`, but swaps a None into the original option
-    /// rather than consuming it by-value.
-    #[inline]
-    pub fn take_map_default<U> (&mut self, def: U, blk: &fn(T) -> U) -> U {
-        self.take().map_move_default(def, blk)
-    }
-
     /// Apply a function to the contained value or do nothing.
     /// Returns true if the contained value was mutated.
     pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
