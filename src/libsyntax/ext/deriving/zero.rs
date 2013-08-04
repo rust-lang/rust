@@ -22,7 +22,7 @@ pub fn expand_deriving_zero(cx: @ExtCtxt,
                             mitem: @MetaItem,
                             in_items: ~[@item])
     -> ~[@item] {
-    options.unused_options_maybe_warn(cx, span, "Zero");
+    options.unused_options_maybe_error(cx, span, "Zero");
 
     let trait_def = TraitDef {
         path: Path::new(~["std", "num", "Zero"]),

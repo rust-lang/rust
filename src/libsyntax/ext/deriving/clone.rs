@@ -21,7 +21,7 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
                              mitem: @MetaItem,
                              in_items: ~[@item])
                           -> ~[@item] {
-    options.unused_options_maybe_warn(cx, span, "Clone");
+    options.unused_options_maybe_error(cx, span, "Clone");
 
     let trait_def = TraitDef {
         path: Path::new(~["std", "clone", "Clone"]),
@@ -49,7 +49,7 @@ pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
                                   mitem: @MetaItem,
                                   in_items: ~[@item])
     -> ~[@item] {
-    options.unused_options_maybe_warn(cx, span, "DeepClone");
+    options.unused_options_maybe_error(cx, span, "DeepClone");
 
     let trait_def = TraitDef {
         path: Path::new(~["std", "clone", "DeepClone"]),

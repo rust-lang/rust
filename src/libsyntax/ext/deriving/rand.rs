@@ -23,7 +23,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                             mitem: @MetaItem,
                             in_items: ~[@item])
     -> ~[@item] {
-    options.unused_options_maybe_warn(cx, span, "Rand");
+    options.unused_options_maybe_error(cx, span, "Rand");
 
     let trait_def = TraitDef {
         path: Path::new(~["std", "rand", "Rand"]),

@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Zero="no options")] //~ WARNING does not use any options
+#[deriving(Zero="no options")] //~ ERROR does not use any options
 struct A { a: int }
 
-#[deriving(Rand(foo))] //~ WARNING does not use any options
+#[deriving(Rand(foo))] //~ ERROR does not use any options
 struct B { b: int }
-
-// At least one error is needed so that compilation fails
-#[static_assert]
-static b: bool = false; //~ ERROR static assertion failed
 
 fn main() {}

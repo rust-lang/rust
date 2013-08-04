@@ -55,11 +55,11 @@ fn ignore() {
     };
 
 
-    ignore == ignore;
-    ignore < ignore;
-    ignore > ignore;
-    ignore <= ignore;
-    ignore >= ignore;
+    assert!(ignore == ignore);
+    assert!(!(ignore < ignore));
+    assert!(!(ignore > ignore));
+    assert!(ignore <= ignore);
+    assert!(ignore >= ignore);
 }
 
 // Test `ok` first,
@@ -109,14 +109,14 @@ macro_rules! t_o_test {
     }
 }
 
-t_o_test! { FailEq, small == large, small == large }
+t_o_test! { FailEq, assert!(!(small == large)), small == large }
 t_o_test! {
     FailOrd,
     {
-        small < large;
-        small > large;
-        small <= large;
-        small >= large;
+        assert!(small < large);
+        assert!(!(small > large));
+        assert!(small <= large);
+        assert!(!(small >= large));
     },
     {
         small < large;
@@ -125,8 +125,8 @@ t_o_test! {
         small >= large;
     }
 }
-t_o_test! { FailTotalEq, small.equals(&large), small.equals(&large) }
-t_o_test! { FailTotalOrd, small.cmp(&large), small.cmp(&large) }
+t_o_test! { FailTotalEq, assert!(!small.equals(&large)), small.equals(&large) }
+t_o_test! { FailTotalOrd, assert_eq!(small.cmp(&large), std::cmp::Less), small.cmp(&large) }
 
 #[deriving(Ord(reverse(x)),
            TotalEq, // satisfy TotalOrd's inheritance
@@ -140,14 +140,18 @@ fn reverse() {
     let small = Reverse { x: 0 };
     let large = Reverse { x: 1 };
 
-    small > large;
-    large < small;
+    assert!(small > large);
+    assert!(!(small < large));
+    assert!(large < small);
+    assert!(!(large > small));
 
-    small <= small;
-    small >= small;
-    large <= large;
-    large >= large;
+    assert!(small <= small);
+    assert!(small >= small);
+    assert!(large <= large);
+    assert!(large >= large);
 
-    small >= large;
-    large <= small;
+    assert!(small >= large);
+    assert!(!(small <= large));
+    assert!(large <= small);
+    assert!(!(large >= small));
 }

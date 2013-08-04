@@ -98,15 +98,16 @@ pub enum DerivingOptions<'self> {
 }
 
 impl<'self> DerivingOptions<'self> {
-    /// Emits a warning when there are options and the deriving
+    /// Emits a error when there are options and the deriving
     /// implementation doesn't use them (i.e. it warns if `self` is
     /// not `NoOptions`.)
-    pub fn unused_options_maybe_warn(&self, cx: @ExtCtxt, span: span, deriving_name: &str) {
+    pub fn unused_options_maybe_error(&self, cx: @ExtCtxt, span: span, deriving_name: &str) {
         match *self {
             NoOptions => {},
             _ => {
-                cx.span_warn(span,
-                             fmt!("`#[deriving(%s)]` does not use any options.", deriving_name));
+                cx.span_err(span,
+                            fmt!("`#[deriving(%s)]` does not use any options.",
+                                 deriving_name));
             }
         }
     }

@@ -1691,8 +1691,9 @@ struct Options {
   `Options` will test `d`, and then `c`, and then the remaining fields
   (subject to `ignore`). All four traits support this.
 * `ignore` excludes the given field from the comparison, so `Options {
-  .., b: 1, ..} == Options {.., b: 2, .. }` if the rest of the fields
-  are identical. Only `Eq` and `Ord` support `ignore`.
+  .., b: 1, ..}` and `Options {.., b: 2, .. }` are equal if the rest
+  of the fields are equal (that is, despite `b` being different). Only
+  `Eq` and `Ord` support `ignore`.
 * `reverse` flips the ordering used for that field, so `Options { a:
   10.0, ... } < Options { a: 0.0, .. }`. Only `Ord` and `TotalOrd`
   support `reverse`.

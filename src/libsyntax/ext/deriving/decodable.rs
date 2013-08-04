@@ -24,9 +24,11 @@ use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_decodable(cx: @ExtCtxt,
                                  span: span,
-                                 _options: DerivingOptions,
+                                 options: DerivingOptions,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "Decodable");
+
     let trait_def = TraitDef {
         path: Path::new_(~["extra", "serialize", "Decodable"], None,
                          ~[~Literal(Path::new_local("__D"))], true),
