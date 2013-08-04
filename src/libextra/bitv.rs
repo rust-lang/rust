@@ -206,14 +206,13 @@ impl BigBitv {
     #[inline]
     pub fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
-        do uint::iterate(0, len) |i| {
+        for i in range(0, len) {
             let mask = big_mask(nbits, i);
             if mask & self.storage[i] != mask & b.storage[i] {
-                false
-            } else {
-                true
+                return false;
             }
         }
+        true
     }
 }
 
