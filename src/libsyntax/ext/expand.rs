@@ -799,18 +799,18 @@ pub fn std_macros() -> @str {
 
     macro_rules! assert(
         ($cond:expr) => {
-            if !$cond {
+            if ::std::unstable::intrinsics::unlikely(!$cond) {
                 ::std::sys::FailWithCause::fail_with(
                     \"assertion failed: \" + stringify!($cond), file!(), line!())
             }
         };
         ($cond:expr, $msg:expr) => {
-            if !$cond {
+            if ::std::unstable::intrinsics::unlikely(!$cond) {
                 ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
             }
         };
         ($cond:expr, $( $arg:expr ),+) => {
-            if !$cond {
+            if ::std::unstable::intrinsics::unlikely(!$cond) {
                 ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
             }
         }
@@ -822,7 +822,9 @@ pub fn std_macros() -> @str {
                 let given_val = $given;
                 let expected_val = $expected;
                 // check both directions of equality....
-                if !((given_val == expected_val) && (expected_val == given_val)) {
+                if ::std::unstable::intrinsics::unlikely(
+                        !((given_val == expected_val) && (expected_val == given_val)))
+                {
                     fail!(\"assertion failed: `(left == right) && (right == \
                     left)` (left: `%?`, right: `%?`)\", given_val, expected_val);
                 }
@@ -838,10 +840,10 @@ pub fn std_macros() -> @str {
                 let given_val = $given;
                 let expected_val = $expected;
                 // check both directions of equality....
-                if !(
+                if ::std::unstable::intrinsics::unlikely(!(
                     given_val.approx_eq(&expected_val) &&
                     expected_val.approx_eq(&given_val)
-                ) {
+                )) {
                     fail!(\"left: %? does not approximately equal right: %?\",
                           given_val, expected_val);
                 }
@@ -855,10 +857,10 @@ pub fn std_macros() -> @str {
                 let expected_val = $expected;
                 let epsilon_val = $epsilon;
                 // check both directions of equality....
-                if !(
+                if ::std::unstable::intrinsics::unlikely(!(
                     given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
                     expected_val.approx_eq_eps(&given_val, &epsilon_val)
-                ) {
+                )) {
                     fail!(\"left: %? does not approximately equal right: %? with epsilon: %?\",
                           given_val, expected_val, epsilon_val);
                 }

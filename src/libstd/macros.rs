@@ -35,7 +35,7 @@ macro_rules! rtdebug (
 
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
-        if !$arg {
+        if ::std::unstable::intrinsics::unlikely(!$arg) {
             rtabort!("assertion failed: %s", stringify!($arg));
         }
     } )
