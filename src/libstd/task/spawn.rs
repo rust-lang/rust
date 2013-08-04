@@ -500,7 +500,7 @@ impl RuntimeGlue {
             OldTask(ptr) => rt::rust_task_kill_other(ptr),
             NewTask(handle) => {
                 let mut handle = handle;
-                do handle.kill().map_consume |killed_task| {
+                do handle.kill().map_move |killed_task| {
                     let killed_task = Cell::new(killed_task);
                     do Local::borrow::<Scheduler, ()> |sched| {
                         sched.enqueue_task(killed_task.take());
@@ -682,7 +682,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
-        let enlist_success = do child_data.take().map_consume_default(true) |child_data| {
+        let enlist_success = do child_data.take().map_move_default(true) |child_data| {
             let child_data = Cell::new(child_data); // :(
             do Local::borrow::<Task, bool> |me| {
                 let (child_tg, ancestors, is_main) = child_data.take();
@@ -854,7 +854,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             // Even if the below code fails to kick the child off, we must
             // send Something on the notify channel.
 
-            let notifier = notify_chan.map_consume(|c| AutoNotify(c));
+            let notifier = notify_chan.map_move(|c| AutoNotify(c));
 
             if enlist_many(OldTask(child), &child_arc, &mut ancestors) {
                 let group = @@mut Taskgroup(child_arc, ancestors, is_main, notifier);

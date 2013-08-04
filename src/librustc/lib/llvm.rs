@@ -2159,7 +2159,7 @@ impl TypeNames {
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
-        self.named_types.find_equiv(&s).map_consume(|x| Type::from_ref(*x))
+        self.named_types.find_equiv(&s).map_move(|x| Type::from_ref(*x))
     }
 
     // We have a depth count, because we seem to make infinite types.

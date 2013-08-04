@@ -407,14 +407,14 @@ mod tests {
 
     #[test]
     pub fn test_impl_map_move() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_move(|x| x + ~"b"), Ok(~"ab"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_move(|x| x + ~"b"), Err(~"a"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map_move(|x| x + "b"), Ok(~"ab"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_move(|x| x + "b"), Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err_move() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_err_move(|x| x + ~"b"), Ok(~"a"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_err_move(|x| x + ~"b"), Err(~"ab"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Ok(~"a"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Err(~"ab"));
     }
 
     #[test]
