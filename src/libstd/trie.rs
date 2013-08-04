@@ -635,14 +635,12 @@ mod test_map {
 
         let mut map = TrieMap::new();
         do uint::range_rev(last, first) |x| {
-            printfln!("%x", x);
             map.insert(x, x / 2);
             true
         };
 
         let mut i = 0;
         for (k, &v) in map.iter() {
-            printfln!("%x", k);
             assert_eq!(k, first + i);
             assert_eq!(v, k / 2);
             i += 1;
