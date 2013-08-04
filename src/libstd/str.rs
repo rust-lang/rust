@@ -1182,7 +1182,6 @@ pub trait StrSlice<'self> {
     fn subslice_offset(&self, inner: &str) -> uint;
 
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
-    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T;
 }
 
 /// Extension methods for strings
@@ -1931,32 +1930,6 @@ impl<'self> StrSlice<'self> for &'self str {
         let v: &[u8] = unsafe { cast::transmute(*self) };
         v.as_imm_buf(f)
     }
-
-    /// Work with the byte buffer of a string as a null-terminated C string.
-    ///
-    /// Allows for unsafe manipulation of strings, which is useful for foreign
-    /// interop. This is similar to `str::as_buf`, but guarantees null-termination.
-    /// If the given slice is not already null-terminated, this function will
-    /// allocate a temporary, copy the slice, null terminate it, and pass
-    /// that instead.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let s = "PATH".as_c_str(|path| libc::getenv(path));
-    /// ~~~
-    #[inline]
-    fn as_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
-        do self.as_imm_buf |buf, len| {
-            // NB: len includes the trailing null.
-            assert!(len > 0);
-            if unsafe { *(ptr::offset(buf, (len - 1) as int)) != 0 } {
-                self.to_owned().as_c_str(|s| f(s))
-            } else {
-                f(buf as *libc::c_char)
-            }
-        }
-    }
 }
 
 #[allow(missing_doc)]
@@ -1972,13 +1945,6 @@ pub trait OwnedStr {
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
     fn to_bytes_with_null(self) -> ~[u8];
-
-    /// Allocates a null terminate byte array.
-    ///
-    /// # Failure
-    ///
-    /// Fails if there are any null characters inside the byte array.
-    fn to_c_str(self) -> ~[u8];
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
@@ -2169,13 +2135,6 @@ impl OwnedStr for ~str {
     #[inline]
     fn to_bytes_with_null(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
-    }
-
-    #[inline]
-    fn to_c_str(self) -> ~[u8] {
-        let bytes = self.to_bytes_with_null();
-        assert!(bytes.slice(0, bytes.len() - 1).iter().all(|byte| *byte != 0));
-        bytes
     }
 
     #[inline]
@@ -2910,63 +2869,6 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
                 assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
                 assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
-                assert_eq!(*ptr::offset(buf, 5), 0);
-            }
-        }
-    }
-
-    #[test]
-    fn test_as_c_str() {
-        let a = ~"";
-        do a.as_c_str |buf| {
-            unsafe {
-                assert_eq!(*ptr::offset(buf, 0), 0);
-            }
-        }
-
-        let a = ~"hello";
-        do a.as_c_str |buf| {
-            unsafe {
-                assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 2), 'l' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 3), 'l' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 5), 0);
-            }
-        }
-    }
-
-    #[test]
-    fn test_to_c_str() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~[
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109, 0
-        ];
-        assert_eq!((~"").to_c_str(), ~[0]);
-        assert_eq!((~"abc").to_c_str(), ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!(s.to_c_str(), v);
-    }
-
-    #[test]
-    fn test_as_c_str() {
-        let a = ~"";
-        do a.as_c_str |buf| {
-            unsafe {
-                assert_eq!(*ptr::offset(buf, 0), 0);
-            }
-        }
-
-        let a = ~"hello";
-        do a.as_c_str |buf| {
-            unsafe {
-                assert_eq!(*ptr::offset(buf, 0), 'h' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 1), 'e' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 2), 'l' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 3), 'l' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 4), 'o' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 5), 0);
             }
         }

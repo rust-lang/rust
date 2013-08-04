@@ -20,6 +20,7 @@ use middle::trans::base;
 use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
 
+use std::c_str::ToCStr;
 use std::vec;
 use std::cast;
 
@@ -170,7 +171,7 @@ impl Type {
 
     pub fn named_struct(name: &str) -> Type {
         let ctx = base::task_llcx();
-        ty!(name.as_c_str(|s| llvm::LLVMStructCreateNamed(ctx, s)))
+        ty!(name.to_c_str().with_ref(|s| llvm::LLVMStructCreateNamed(ctx, s)))
     }
 
     pub fn empty_struct() -> Type {

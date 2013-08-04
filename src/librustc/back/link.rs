@@ -22,6 +22,7 @@ use middle::trans::common::gensym_name;
 use middle::ty;
 use util::ppaux;
 
+use std::c_str::ToCStr;
 use std::char;
 use std::hash::Streaming;
 use std::hash;
@@ -76,9 +77,9 @@ pub fn WriteOutputFile(sess: Session,
         OptLevel: c_int,
         EnableSegmentedStacks: bool) {
     unsafe {
-        do Triple.as_c_str |Triple| {
-            do Feature.as_c_str |Feature| {
-                do Output.as_c_str |Output| {
+        do Triple.to_c_str().with_ref |Triple| {
+            do Feature.to_c_str().with_ref |Feature| {
+                do Output.to_c_str().with_ref |Output| {
                     let result = llvm::LLVMRustWriteOutputFile(
                             PM,
                             M,
@@ -105,6 +106,7 @@ pub mod jit {
     use lib::llvm::{ModuleRef, ContextRef, ExecutionEngineRef};
     use metadata::cstore;
 
+    use std::c_str::ToCStr;
     use std::cast;
     use std::local_data;
     use std::unstable::intrinsics;
@@ -146,7 +148,7 @@ pub mod jit {
 
                 debug!("linking: %s", path);
 
-                do path.as_c_str |buf_t| {
+                do path.to_c_str().with_ref |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
@@ -165,7 +167,7 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do "_rust_main".as_c_str |entry| {
+            let fun = do "_rust_main".to_c_str().with_ref |entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
             };
             if fun.is_null() {
@@ -230,6 +232,7 @@ pub mod write {
 
     use back::passes;
 
+    use std::c_str::ToCStr;
     use std::libc::{c_int, c_uint};
     use std::path::Path;
     use std::run;
@@ -263,14 +266,14 @@ pub mod write {
                   output_type_bitcode => {
                     if opts.optimize != session::No {
                         let filename = output.with_filetype("no-opt.bc");
-                        do filename.to_str().as_c_str |buf| {
+                        do filename.to_c_str().with_ref |buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         }
                     }
                   }
                   _ => {
                     let filename = output.with_filetype("bc");
-                    do filename.to_str().as_c_str |buf| {
+                    do filename.to_c_str().with_ref |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf);
                     }
                   }
@@ -333,7 +336,7 @@ pub mod write {
                     // Always output the bitcode file with --save-temps
 
                     let filename = output.with_filetype("opt.bc");
-                    do filename.to_str().as_c_str |buf| {
+                    do filename.to_c_str().with_ref |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     };
                     // Save the assembly file if -S is used
@@ -391,13 +394,13 @@ pub mod write {
 
             if output_type == output_type_llvm_assembly {
                 // Given options "-S --emit-llvm": output LLVM assembly
-                do output.to_str().as_c_str |buf_o| {
+                do output.to_c_str().with_ref |buf_o| {
                     llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o);
                 }
             } else {
                 // If only a bitcode file is asked for by using the
                 // '--emit-llvm' flag, then output it here
-                do output.to_str().as_c_str |buf| {
+                do output.to_c_str().with_ref |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
