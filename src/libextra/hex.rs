@@ -57,7 +57,7 @@ impl<'self> ToHex for &'self str {
      * # Example
      *
      * ~~~ {.rust}
-         * extern mod extra;
+     * extern mod extra;
      * use extra::ToHex;
      *
      * fn main () {
@@ -74,8 +74,8 @@ impl<'self> ToHex for &'self str {
 
 /// A trait for converting hexadecimal encoded values
 pub trait FromHex {
-    /// Converts the value of `self`, interpreted as base64 encoded data, into
-    /// an owned vector of bytes, returning the vector.
+    /// Converts the value of `self`, interpreted as hexadecimal encoded data,
+    /// into an owned vector of bytes, returning the vector.
     fn from_hex(&self) -> Result<~[u8], ~str>;
 }
 
@@ -83,6 +83,7 @@ impl<'self> FromHex for &'self [u8] {
     /**
      * Convert hexadecimal `u8` vector into u8 byte values.
      * Every 2 encoded characters is converted into 1 octet.
+     * Whitespace is ignored.
      *
      * # Example
      *
@@ -104,18 +105,19 @@ impl<'self> FromHex for &'self [u8] {
         let mut modulus = 0;
         let mut buf = 0u8;
 
-        for &byte in self.iter() {
+        for (idx, &byte) in self.iter().enumerate() {
             buf <<= 4;
 
             match byte as char {
                 'A'..'F' => buf |= byte - ('A' as u8) + 10,
                 'a'..'f' => buf |= byte - ('a' as u8) + 10,
                 '0'..'9' => buf |= byte - ('0' as u8),
-                ' '|'\r'|'\n' => {
+                ' '|'\r'|'\n'|'\t' => {
                     buf >>= 4;
                     loop
                 }
-                _ => return Err(~"Invalid hex char")
+                _ => return Err(fmt!("Invalid byte '%c' found at position %u",
+                                     byte as char, idx))
             }
 
             modulus += 1;
