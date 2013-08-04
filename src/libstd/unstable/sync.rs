@@ -456,13 +456,13 @@ mod tests {
 
             let total = Exclusive::new(~0);
 
-            foreach _ in range(0u, num_tasks) {
+            for _ in range(0u, num_tasks) {
                 let total = total.clone();
                 let (port, chan) = comm::stream();
                 futures.push(port);
 
                 do task::spawn || {
-                    foreach _ in range(0u, count) {
+                    for _ in range(0u, count) {
                         do total.with |count| {
                             **count += 1;
                         }
@@ -471,7 +471,7 @@ mod tests {
                 }
             };
 
-            foreach f in futures.iter() { f.recv() }
+            for f in futures.iter() { f.recv() }
 
             do total.with |total| {
                 assert!(**total == num_tasks * count)

@@ -605,27 +605,6 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: @ast::expr,
                                           expr.id, expr.id,
                                           None, dest);
         }
-        ast::expr_loop_body(blk) => {
-            let expr_ty = expr_ty(bcx, expr);
-            let sigil = ty::ty_closure_sigil(expr_ty);
-            match blk.node {
-                ast::expr_fn_block(ref decl, ref body) => {
-                    return closure::trans_expr_fn(bcx,
-                                                  sigil,
-                                                  decl,
-                                                  body,
-                                                  expr.id,
-                                                  blk.id,
-                                                  Some(None),
-                                                  dest);
-                }
-                _ => {
-                    bcx.sess().impossible_case(
-                        expr.span,
-                        "loop_body has the wrong kind of contents")
-                }
-            }
-        }
         ast::expr_do_body(blk) => {
             return trans_into(bcx, blk, dest);
         }
@@ -1145,7 +1124,7 @@ fn trans_rec_or_struct(bcx: @mut Block,
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = ~[];
-                foreach (i, b) in need_base.iter().enumerate() {
+                for (i, b) in need_base.iter().enumerate() {
                     if *b {
                         leftovers.push((i, field_tys[i].mt.ty))
                     }
@@ -1199,10 +1178,10 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
     let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
-            foreach &(_i, e) in fields.iter() {
+            for &(_i, e) in fields.iter() {
                 bcx = trans_into(bcx, e, Ignore);
             }
-            foreach sbi in optbase.iter() {
+            for sbi in optbase.iter() {
                 // FIXME #7261: this moves entire base, not just certain fields
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
@@ -1212,18 +1191,18 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
     };
     let mut temp_cleanups = ~[];
     adt::trans_start_init(bcx, repr, addr, discr);
-    foreach &(i, e) in fields.iter() {
+    for &(i, e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_into(bcx, e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
         temp_cleanups.push(dest);
     }
-    foreach base in optbase.iter() {
+    for base in optbase.iter() {
         // FIXME #6573: is it sound to use the destination's repr on the base?
         // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
-        foreach &(i, t) in base.fields.iter() {
+        for &(i, t) in base.fields.iter() {
             let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };
@@ -1232,7 +1211,7 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: uint,
         }
     }
 
-    foreach cleanup in temp_cleanups.iter() {
+    for cleanup in temp_cleanups.iter() {
         revoke_clean(bcx, *cleanup);
     }
     return bcx;

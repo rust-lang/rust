@@ -64,7 +64,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: span,
                 stmts.push(cx.stmt_expr(call));
             };
 
-            foreach (i, &(name, e, _)) in fields.iter().enumerate() {
+            for (i, &(name, e, _)) in fields.iter().enumerate() {
                 if i > 0 {
                     push(cx.expr_str(span, @", "));
                 }

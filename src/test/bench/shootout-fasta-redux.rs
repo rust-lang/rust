@@ -58,7 +58,7 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
 fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
     let mut result = ~[];
     let mut p = 0f32;
-    foreach a_i in a.iter() {
+    for a_i in a.iter() {
         let mut a_i = *a_i;
         p += a_i.p;
         a_i.p = p * LOOKUP_SCALE;
@@ -134,7 +134,7 @@ impl RandomFasta {
     fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
         let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
         let mut j = 0;
-        foreach (i, slot) in lookup.mut_iter().enumerate() {
+        for (i, slot) in lookup.mut_iter().enumerate() {
             while a[j].p < (i as f32) {
                 j += 1;
             }
@@ -150,7 +150,7 @@ impl RandomFasta {
 
     fn nextc(&mut self) -> u8 {
         let r = self.rng(1.0);
-        foreach a in self.lookup.iter() {
+        for a in self.lookup.iter() {
             if a.p >= r {
                 return a.c;
             }
@@ -165,7 +165,7 @@ impl RandomFasta {
             let mut buf = [0, ..LINE_LEN + 1];
 
             do lines.times {
-                foreach i in range(0u, LINE_LEN) {
+                for i in range(0u, LINE_LEN) {
                     buf[i] = self.nextc();
                 }
                 buf[LINE_LEN] = '\n' as u8;
@@ -174,7 +174,7 @@ impl RandomFasta {
                        1,
                        self.stdout);
             }
-            foreach i in range(0u, chars_left) {
+            for i in range(0u, chars_left) {
                 buf[i] = self.nextc();
             }
             fwrite(transmute(&buf[0]), chars_left as size_t, 1, self.stdout);

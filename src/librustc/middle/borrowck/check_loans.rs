@@ -116,7 +116,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
         do self.each_in_scope_loan(scope_id) |loan| {
             let mut ret = true;
-            foreach restr in loan.restrictions.iter() {
+            for restr in loan.restrictions.iter() {
                 if restr.loan_path == loan_path {
                     if !op(loan, restr) {
                         ret = false;
@@ -152,16 +152,16 @@ impl<'self> CheckLoanCtxt<'self> {
         debug!("new_loan_indices = %?", new_loan_indices);
 
         do self.each_issued_loan(scope_id) |issued_loan| {
-            foreach &new_loan_index in new_loan_indices.iter() {
+            for &new_loan_index in new_loan_indices.iter() {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
             }
             true
         };
 
-        foreach i in range(0u, new_loan_indices.len()) {
+        for i in range(0u, new_loan_indices.len()) {
             let old_loan = &self.all_loans[new_loan_indices[i]];
-            foreach j in range(i+1, new_loan_indices.len()) {
+            for j in range(i+1, new_loan_indices.len()) {
                 let new_loan = &self.all_loans[new_loan_indices[j]];
                 self.report_error_if_loans_conflict(old_loan, new_loan);
             }
@@ -211,7 +211,7 @@ impl<'self> CheckLoanCtxt<'self> {
         };
         debug!("illegal_if=%?", illegal_if);
 
-        foreach restr in loan1.restrictions.iter() {
+        for restr in loan1.restrictions.iter() {
             if !restr.set.intersects(illegal_if) { loop; }
             if restr.loan_path != loan2.loan_path { loop; }
 
@@ -652,7 +652,7 @@ fn check_loans_in_fn<'a>(fk: &oldvisit::fn_kind,
                                 closure_id: ast::NodeId,
                                 span: span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
-        foreach cap_var in cap_vars.iter() {
+        for cap_var in cap_vars.iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
             this.check_if_path_is_moved(closure_id, span,
@@ -713,7 +713,7 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt=%s", cmt.repr(this.tcx()));
               let r = opt_loan_path(cmt);
-              foreach &lp in r.iter() {
+              for &lp in r.iter() {
                   this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
               }
           }

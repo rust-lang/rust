@@ -206,10 +206,10 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
-    foreach (key, values) in m.iter() {
+    for (key, values) in m.iter() {
         let key = encode_plus(*key);
 
-        foreach value in values.iter() {
+        for value in values.iter() {
             if first {
                 first = false;
             } else {
@@ -331,7 +331,7 @@ fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
 fn query_from_str(rawquery: &str) -> Query {
     let mut query: Query = ~[];
     if !rawquery.is_empty() {
-        foreach p in rawquery.split_iter('&') {
+        for p in rawquery.split_iter('&') {
             let (k, v) = split_char_first(p, '=');
             query.push((decode_component(k), decode_component(v)));
         };
@@ -341,7 +341,7 @@ fn query_from_str(rawquery: &str) -> Query {
 
 pub fn query_to_str(query: &Query) -> ~str {
     let mut strvec = ~[];
-    foreach kv in query.iter() {
+    for kv in query.iter() {
         match kv {
             &(ref k, ref v) => {
                 strvec.push(fmt!("%s=%s",
@@ -356,7 +356,7 @@ pub fn query_to_str(query: &Query) -> ~str {
 
 // returns the scheme and the rest of the url, or a parsing error
 pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
-    foreach (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.iter().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => loop,
           '0' .. '9' | '+' | '-' | '.' => {
@@ -418,7 +418,7 @@ fn get_authority(rawurl: &str) ->
     let mut begin = 2;
     let mut end = len;
 
-    foreach (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.iter().enumerate() {
         if i < 2 { loop; } // ignore the leading //
 
         // deal with input class first
@@ -563,7 +563,7 @@ fn get_path(rawurl: &str, authority: bool) ->
     Result<(~str, ~str), ~str> {
     let len = rawurl.len();
     let mut end = len;
-    foreach (i,c) in rawurl.iter().enumerate() {
+    for (i,c) in rawurl.iter().enumerate() {
         match c {
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='

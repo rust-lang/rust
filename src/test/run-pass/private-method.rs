@@ -22,7 +22,7 @@ impl cat {
 }
 
 impl cat {
-    fn nap(&mut self) { foreach _ in range(1u, 10u) { } }
+    fn nap(&mut self) { for _ in range(1u, 10u) { } }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

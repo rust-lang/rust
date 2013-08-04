@@ -385,7 +385,7 @@ impl Streaming for SipState {
     fn result_str(&mut self) -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
-        foreach b in r.iter() {
+        for b in r.iter() {
             s.push_str(uint::to_str_radix(*b as uint, 16u));
         }
         s
@@ -487,7 +487,7 @@ mod tests {
 
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
-            foreach b in r.iter() {
+            for b in r.iter() {
                 s.push_str(uint::to_str_radix(*b as uint, 16u));
             }
             s

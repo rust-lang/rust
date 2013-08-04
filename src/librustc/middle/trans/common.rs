@@ -138,8 +138,8 @@ pub struct param_substs {
 
 impl param_substs {
     pub fn validate(&self) {
-        foreach t in self.tys.iter() { assert!(!ty::type_needs_infer(*t)); }
-        foreach t in self.self_ty.iter() { assert!(!ty::type_needs_infer(*t)); }
+        for t in self.tys.iter() { assert!(!ty::type_needs_infer(*t)); }
+        for t in self.self_ty.iter() { assert!(!ty::type_needs_infer(*t)); }
     }
 }
 
@@ -437,7 +437,7 @@ pub fn revoke_clean(cx: @mut Block, val: ValueRef) {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
-        foreach i in cleanup_pos.iter() {
+        for i in cleanup_pos.iter() {
             scope_info.cleanups =
                 vec::append(scope_info.cleanups.slice(0u, *i).to_owned(),
                             scope_info.cleanups.slice(*i + 1u,
@@ -943,7 +943,7 @@ pub fn align_to(cx: @mut Block, off: ValueRef, align: ValueRef) -> ValueRef {
 pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     let mut r = ~"";
     let mut first = true;
-    foreach e in p.iter() {
+    for e in p.iter() {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first {

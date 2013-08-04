@@ -307,7 +307,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 }
             }
             let mut name_pos = 0;
-            foreach nm in names.iter() {
+            for nm in names.iter() {
                 name_pos += 1;
                 let optid = match find_opt(opts, (*nm).clone()) {
                   Some(id) => id,
@@ -392,7 +392,7 @@ pub fn opt_count(mm: &Matches, nm: &str) -> uint {
 
 /// Returns true if any of several options were matched
 pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
-    foreach nm in names.iter() {
+    for nm in names.iter() {
         match find_opt(mm.opts, mkname(*nm)) {
             Some(id) if !mm.vals[id].is_empty() => return true,
             _ => (),
@@ -422,7 +422,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
  * option took an argument
  */
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
-    foreach nm in names.iter() {
+    for nm in names.iter() {
         match opt_val(mm, *nm) {
           Some(Val(ref s)) => return (*s).clone(),
           _ => ()
@@ -441,7 +441,7 @@ pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
 pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     let r = opt_vals(mm, nm);
-    foreach v in r.iter() {
+    for v in r.iter() {
         match *v { Val(ref s) => acc.push((*s).clone()), _ => () }
     }
     acc
@@ -671,7 +671,7 @@ pub mod groups {
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
-            foreach word in desc.word_iter() {
+            for word in desc.word_iter() {
                 desc_normalized_whitespace.push_str(word);
                 desc_normalized_whitespace.push_char(' ');
             }

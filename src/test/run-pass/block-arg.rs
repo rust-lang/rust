@@ -15,7 +15,7 @@ pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Statement form does not require parentheses:
-    foreach i in v.iter() {
+    for i in v.iter() {
         info!("%?", *i);
     }
 

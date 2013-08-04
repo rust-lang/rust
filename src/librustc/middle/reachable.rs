@@ -134,7 +134,7 @@ impl ReachableContext {
                     }
                     item_enum(ref enum_def, _) => {
                         if privacy_context == PublicContext {
-                            foreach variant in enum_def.variants.iter() {
+                            for variant in enum_def.variants.iter() {
                                 reachable_symbols.insert(variant.node.id);
                             }
                         }
@@ -153,7 +153,7 @@ impl ReachableContext {
                         };
 
                         // Mark all public methods as reachable.
-                        foreach &method in methods.iter() {
+                        for &method in methods.iter() {
                             if should_be_considered_public(method) {
                                 reachable_symbols.insert(method.id);
                             }
@@ -162,7 +162,7 @@ impl ReachableContext {
                         if generics_require_inlining(generics) {
                             // If the impl itself has generics, add all public
                             // symbols to the worklist.
-                            foreach &method in methods.iter() {
+                            for &method in methods.iter() {
                                 if should_be_considered_public(method) {
                                     worklist.push(method.id)
                                 }
@@ -170,7 +170,7 @@ impl ReachableContext {
                         } else {
                             // Otherwise, add only public methods that have
                             // generics to the worklist.
-                            foreach method in methods.iter() {
+                            for method in methods.iter() {
                                 let generics = &method.generics;
                                 let attrs = &method.attrs;
                                 if generics_require_inlining(generics) ||
@@ -184,7 +184,7 @@ impl ReachableContext {
                     item_trait(_, _, ref trait_methods) => {
                         // Mark all provided methods as reachable.
                         if privacy_context == PublicContext {
-                            foreach trait_method in trait_methods.iter() {
+                            for trait_method in trait_methods.iter() {
                                 match *trait_method {
                                     provided(method) => {
                                         reachable_symbols.insert(method.id);
@@ -390,7 +390,7 @@ impl ReachableContext {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&self) {
-        foreach (_, destructor_def_id) in self.tcx.destructor_for_type.iter() {
+        for (_, destructor_def_id) in self.tcx.destructor_for_type.iter() {
             if destructor_def_id.crate == LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }

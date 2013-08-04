@@ -15,7 +15,7 @@ trait vec_utils<T> {
 impl<T> vec_utils<T> for ~[T] {
     fn map_<U>(x: &~[T], f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        foreach elt in x.iter() {
+        for elt in x.iter() {
             r.push(f(elt));
         }
         r

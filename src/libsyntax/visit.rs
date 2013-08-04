@@ -93,10 +93,10 @@ pub fn visit_crate<E:Clone>(visitor: @Visitor<E>, crate: &Crate, env: E) {
 }
 
 pub fn visit_mod<E:Clone>(visitor: @Visitor<E>, module: &_mod, env: E) {
-    foreach view_item in module.view_items.iter() {
+    for view_item in module.view_items.iter() {
         visitor.visit_view_item(view_item, env.clone())
     }
-    foreach item in module.items.iter() {
+    for item in module.items.iter() {
         visitor.visit_item(*item, env.clone())
     }
 }
@@ -138,10 +138,10 @@ pub fn visit_item<E:Clone>(visitor: @Visitor<E>, item: &item, env: E) {
             visitor.visit_mod(module, item.span, item.id, env)
         }
         item_foreign_mod(ref foreign_module) => {
-            foreach view_item in foreign_module.view_items.iter() {
+            for view_item in foreign_module.view_items.iter() {
                 visitor.visit_view_item(view_item, env.clone())
             }
-            foreach foreign_item in foreign_module.items.iter() {
+            for foreign_item in foreign_module.items.iter() {
                 visitor.visit_foreign_item(*foreign_item, env.clone())
             }
         }
@@ -158,11 +158,11 @@ pub fn visit_item<E:Clone>(visitor: @Visitor<E>, item: &item, env: E) {
                   ref typ,
                   ref methods) => {
             visitor.visit_generics(type_parameters, env.clone());
-            foreach trait_reference in trait_references.iter() {
+            for trait_reference in trait_references.iter() {
                 visit_trait_ref(visitor, trait_reference, env.clone())
             }
             visitor.visit_ty(typ, env.clone());
-            foreach method in methods.iter() {
+            for method in methods.iter() {
                 visit_method_helper(visitor, *method, env.clone())
             }
         }
@@ -176,10 +176,10 @@ pub fn visit_item<E:Clone>(visitor: @Visitor<E>, item: &item, env: E) {
         }
         item_trait(ref generics, ref trait_paths, ref methods) => {
             visitor.visit_generics(generics, env.clone());
-            foreach trait_path in trait_paths.iter() {
+            for trait_path in trait_paths.iter() {
                 visit_path(visitor, &trait_path.path, env.clone())
             }
-            foreach method in methods.iter() {
+            for method in methods.iter() {
                 visitor.visit_trait_method(method, env.clone())
             }
         }
@@ -191,10 +191,10 @@ pub fn visit_enum_def<E:Clone>(visitor: @Visitor<E>,
                                enum_definition: &ast::enum_def,
                                generics: &Generics,
                                env: E) {
-    foreach variant in enum_definition.variants.iter() {
+    for variant in enum_definition.variants.iter() {
         match variant.node.kind {
             tuple_variant_kind(ref variant_arguments) => {
-                foreach variant_argument in variant_arguments.iter() {
+                for variant_argument in variant_arguments.iter() {
                     visitor.visit_ty(&variant_argument.ty, env.clone())
                 }
             }
@@ -221,28 +221,28 @@ pub fn visit_ty<E:Clone>(visitor: @Visitor<E>, typ: &Ty, env: E) {
             visitor.visit_ty(mutable_type.ty, env)
         }
         ty_tup(ref tuple_element_types) => {
-            foreach tuple_element_type in tuple_element_types.iter() {
+            for tuple_element_type in tuple_element_types.iter() {
                 visitor.visit_ty(tuple_element_type, env.clone())
             }
         }
         ty_closure(ref function_declaration) => {
-             foreach argument in function_declaration.decl.inputs.iter() {
+             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&argument.ty, env.clone())
              }
              visitor.visit_ty(&function_declaration.decl.output, env.clone());
-             foreach bounds in function_declaration.bounds.iter() {
+             for bounds in function_declaration.bounds.iter() {
                 visit_ty_param_bounds(visitor, bounds, env.clone())
              }
         }
         ty_bare_fn(ref function_declaration) => {
-            foreach argument in function_declaration.decl.inputs.iter() {
+            for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&argument.ty, env.clone())
             }
             visitor.visit_ty(&function_declaration.decl.output, env.clone())
         }
         ty_path(ref path, ref bounds, _) => {
             visit_path(visitor, path, env.clone());
-            foreach bounds in bounds.iter() {
+            for bounds in bounds.iter() {
                 visit_ty_param_bounds(visitor, bounds, env.clone())
             }
         }
@@ -255,7 +255,7 @@ pub fn visit_ty<E:Clone>(visitor: @Visitor<E>, typ: &Ty, env: E) {
 }
 
 pub fn visit_path<E:Clone>(visitor: @Visitor<E>, path: &Path, env: E) {
-    foreach typ in path.types.iter() {
+    for typ in path.types.iter() {
         visitor.visit_ty(typ, env.clone())
     }
 }
@@ -264,20 +264,20 @@ pub fn visit_pat<E:Clone>(visitor: @Visitor<E>, pattern: &pat, env: E) {
     match pattern.node {
         pat_enum(ref path, ref children) => {
             visit_path(visitor, path, env.clone());
-            foreach children in children.iter() {
-                foreach child in children.iter() {
+            for children in children.iter() {
+                for child in children.iter() {
                     visitor.visit_pat(*child, env.clone())
                 }
             }
         }
         pat_struct(ref path, ref fields, _) => {
             visit_path(visitor, path, env.clone());
-            foreach field in fields.iter() {
+            for field in fields.iter() {
                 visitor.visit_pat(field.pat, env.clone())
             }
         }
         pat_tup(ref tuple_elements) => {
-            foreach tuple_element in tuple_elements.iter() {
+            for tuple_element in tuple_elements.iter() {
                 visitor.visit_pat(*tuple_element, env.clone())
             }
         }
@@ -300,13 +300,13 @@ pub fn visit_pat<E:Clone>(visitor: @Visitor<E>, pattern: &pat, env: E) {
         }
         pat_wild => (),
         pat_vec(ref prepattern, ref slice_pattern, ref postpatterns) => {
-            foreach prepattern in prepattern.iter() {
+            for prepattern in prepattern.iter() {
                 visitor.visit_pat(*prepattern, env.clone())
             }
-            foreach slice_pattern in slice_pattern.iter() {
+            for slice_pattern in slice_pattern.iter() {
                 visitor.visit_pat(*slice_pattern, env.clone())
             }
-            foreach postpattern in postpatterns.iter() {
+            for postpattern in postpatterns.iter() {
                 visitor.visit_pat(*postpattern, env.clone())
             }
         }
@@ -328,7 +328,7 @@ pub fn visit_foreign_item<E:Clone>(visitor: @Visitor<E>,
 pub fn visit_ty_param_bounds<E:Clone>(visitor: @Visitor<E>,
                                       bounds: &OptVec<TyParamBound>,
                                       env: E) {
-    foreach bound in bounds.iter() {
+    for bound in bounds.iter() {
         match *bound {
             TraitTyParamBound(ref typ) => {
                 visit_trait_ref(visitor, typ, env.clone())
@@ -341,7 +341,7 @@ pub fn visit_ty_param_bounds<E:Clone>(visitor: @Visitor<E>,
 pub fn visit_generics<E:Clone>(visitor: @Visitor<E>,
                                generics: &Generics,
                                env: E) {
-    foreach type_parameter in generics.ty_params.iter() {
+    for type_parameter in generics.ty_params.iter() {
         visit_ty_param_bounds(visitor, &type_parameter.bounds, env.clone())
     }
 }
@@ -349,7 +349,7 @@ pub fn visit_generics<E:Clone>(visitor: @Visitor<E>,
 pub fn visit_fn_decl<E:Clone>(visitor: @Visitor<E>,
                               function_declaration: &fn_decl,
                               env: E) {
-    foreach argument in function_declaration.inputs.iter() {
+    for argument in function_declaration.inputs.iter() {
         visitor.visit_pat(argument.pat, env.clone());
         visitor.visit_ty(&argument.ty, env.clone())
     }
@@ -387,7 +387,7 @@ pub fn visit_fn<E:Clone>(visitor: @Visitor<E>,
 pub fn visit_ty_method<E:Clone>(visitor: @Visitor<E>,
                                 method_type: &TypeMethod,
                                 env: E) {
-    foreach argument_type in method_type.decl.inputs.iter() {
+    for argument_type in method_type.decl.inputs.iter() {
         visitor.visit_ty(&argument_type.ty, env.clone())
     }
     visitor.visit_generics(&method_type.generics, env.clone());
@@ -411,7 +411,7 @@ pub fn visit_struct_def<E:Clone>(visitor: @Visitor<E>,
                                  _: &Generics,
                                  _: NodeId,
                                  env: E) {
-    foreach field in struct_definition.fields.iter() {
+    for field in struct_definition.fields.iter() {
         visitor.visit_struct_field(*field, env.clone())
     }
 }
@@ -423,10 +423,10 @@ pub fn visit_struct_field<E:Clone>(visitor: @Visitor<E>,
 }
 
 pub fn visit_block<E:Clone>(visitor: @Visitor<E>, block: &Block, env: E) {
-    foreach view_item in block.view_items.iter() {
+    for view_item in block.view_items.iter() {
         visitor.visit_view_item(view_item, env.clone())
     }
-    foreach statement in block.stmts.iter() {
+    for statement in block.stmts.iter() {
         visitor.visit_stmt(*statement, env.clone())
     }
     visit_expr_opt(visitor, block.expr, env)
@@ -461,7 +461,7 @@ pub fn visit_expr_opt<E>(visitor: @Visitor<E>,
 pub fn visit_exprs<E:Clone>(visitor: @Visitor<E>,
                             expressions: &[@expr],
                             env: E) {
-    foreach expression in expressions.iter() {
+    for expression in expressions.iter() {
         visitor.visit_expr(*expression, env.clone())
     }
 }
@@ -484,25 +484,25 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
         }
         expr_struct(ref path, ref fields, optional_base) => {
             visit_path(visitor, path, env.clone());
-            foreach field in fields.iter() {
+            for field in fields.iter() {
                 visitor.visit_expr(field.expr, env.clone())
             }
             visit_expr_opt(visitor, optional_base, env.clone())
         }
         expr_tup(ref subexpressions) => {
-            foreach subexpression in subexpressions.iter() {
+            for subexpression in subexpressions.iter() {
                 visitor.visit_expr(*subexpression, env.clone())
             }
         }
         expr_call(callee_expression, ref arguments, _) => {
-            foreach argument in arguments.iter() {
+            for argument in arguments.iter() {
                 visitor.visit_expr(*argument, env.clone())
             }
             visitor.visit_expr(callee_expression, env.clone())
         }
         expr_method_call(_, callee, _, ref types, ref arguments, _) => {
             visit_exprs(visitor, *arguments, env.clone());
-            foreach typ in types.iter() {
+            for typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())
             }
             visitor.visit_expr(callee, env.clone())
@@ -513,7 +513,6 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
         }
         expr_addr_of(_, subexpression) |
         expr_unary(_, _, subexpression) |
-        expr_loop_body(subexpression) |
         expr_do_body(subexpression) => {
             visitor.visit_expr(subexpression, env.clone())
         }
@@ -539,7 +538,7 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
         expr_loop(ref block, _) => visitor.visit_block(block, env.clone()),
         expr_match(subexpression, ref arms) => {
             visitor.visit_expr(subexpression, env.clone());
-            foreach arm in arms.iter() {
+            for arm in arms.iter() {
                 visitor.visit_arm(arm, env.clone())
             }
         }
@@ -562,7 +561,7 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
         }
         expr_field(subexpression, _, ref types) => {
             visitor.visit_expr(subexpression, env.clone());
-            foreach typ in types.iter() {
+            for typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())
             }
         }
@@ -584,10 +583,10 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
             visitor.visit_expr(subexpression, env.clone())
         }
         expr_inline_asm(ref assembler) => {
-            foreach &(_, input) in assembler.inputs.iter() {
+            for &(_, input) in assembler.inputs.iter() {
                 visitor.visit_expr(input, env.clone())
             }
-            foreach &(_, output) in assembler.outputs.iter() {
+            for &(_, output) in assembler.outputs.iter() {
                 visitor.visit_expr(output, env.clone())
             }
         }
@@ -597,7 +596,7 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
 }
 
 pub fn visit_arm<E:Clone>(visitor: @Visitor<E>, arm: &arm, env: E) {
-    foreach pattern in arm.pats.iter() {
+    for pattern in arm.pats.iter() {
         visitor.visit_pat(*pattern, env.clone())
     }
     visit_expr_opt(visitor, arm.guard, env.clone());

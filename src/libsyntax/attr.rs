@@ -228,7 +228,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
  */
 pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
     let mut result = ~[];
-    foreach attr in attrs.iter().filter(|at| "link" == at.name()) {
+    for attr in attrs.iter().filter(|at| "link" == at.name()) {
         match attr.meta().node {
             MetaList(_, ref items) => result.push_all(*items),
             _ => ()
@@ -316,7 +316,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 pub fn require_unique_names(diagnostic: @span_handler,
                             metas: &[@MetaItem]) {
     let mut set = HashSet::new();
-    foreach meta in metas.iter() {
+    for meta in metas.iter() {
         let name = meta.name();
 
         // FIXME: How do I silence the warnings? --pcw (#2619)

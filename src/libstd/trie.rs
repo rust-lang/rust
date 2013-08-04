@@ -158,7 +158,7 @@ impl<T, Iter: Iterator<(uint, T)>> FromIterator<(uint, T), Iter> for TrieMap<T> 
 
 impl<T, Iter: Iterator<(uint, T)>> Extendable<(uint, T), Iter> for TrieMap<T> {
     fn extend(&mut self, iter: &mut Iter) {
-        foreach (k, v) in *iter {
+        for (k, v) in *iter {
             self.insert(k, v);
         }
     }
@@ -229,7 +229,7 @@ impl<Iter: Iterator<uint>> FromIterator<uint, Iter> for TrieSet {
 
 impl<Iter: Iterator<uint>> Extendable<uint, Iter> for TrieSet {
     fn extend(&mut self, iter: &mut Iter) {
-        foreach elem in *iter {
+        for elem in *iter {
             self.insert(elem);
         }
     }
@@ -255,7 +255,7 @@ impl<T> TrieNode<T> {
 
 impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        foreach idx in range(0u, self.children.len()) {
+        for idx in range(0u, self.children.len()) {
             match self.children[idx] {
                 Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
@@ -276,7 +276,7 @@ impl<T> TrieNode<T> {
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        foreach child in self.children.mut_iter() {
+        for child in self.children.mut_iter() {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
                     return false
@@ -372,7 +372,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
 
     let mut sum = 0;
 
-    foreach x in trie.children.iter() {
+    for x in trie.children.iter() {
         match *x {
           Nothing => (),
           Internal(ref y) => {
@@ -424,7 +424,7 @@ mod test_map {
             true
         };
 
-        foreach x in range(0u, n) {
+        for x in range(0u, n) {
             assert!(trie.contains_key(&x));
             assert!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
@@ -549,7 +549,7 @@ mod test_map {
 
         let map: TrieMap<int> = xs.iter().transform(|&x| x).collect();
 
-        foreach &(k, v) in xs.iter() {
+        for &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
     }
@@ -590,7 +590,7 @@ mod test_set {
 
         let set: TrieSet = xs.iter().transform(|&x| x).collect();
 
-        foreach x in xs.iter() {
+        for x in xs.iter() {
             assert!(set.contains(x));
         }
     }

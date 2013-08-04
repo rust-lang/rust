@@ -37,7 +37,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
         fail!("can't select on an empty list");
     }
 
-    foreach (index, port) in ports.mut_iter().enumerate() {
+    for (index, port) in ports.mut_iter().enumerate() {
         if port.optimistic_check() {
             return index;
         }
@@ -53,7 +53,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     do sched.deschedule_running_task_and_then |sched, task| {
         let task_handles = task.make_selectable(ports.len());
 
-        foreach (index, (port, task_handle)) in
+        for (index, (port, task_handle)) in
                 ports.mut_iter().zip(task_handles.consume_iter()).enumerate() {
             // If one of the ports has data by now, it will wake the handle.
             if port.block_on(sched, task_handle) {
@@ -66,7 +66,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.
     // Iterate in reverse so the 'earliest' index that's ready gets returned.
-    foreach (index, port) in ports.mut_slice(0, ready_index).mut_rev_iter().enumerate() {
+    for (index, port) in ports.mut_slice(0, ready_index).mut_rev_iter().enumerate() {
         if port.unblock_from() {
             ready_index = index;
         }
@@ -128,7 +128,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| oneshot::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        foreach (i, chan) in chans.consume_iter().enumerate() {
+        for (i, chan) in chans.consume_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {
@@ -145,7 +145,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| stream::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        foreach (i, chan) in chans.consume_iter().enumerate() {
+        for (i, chan) in chans.consume_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {
@@ -192,7 +192,7 @@ mod test {
             let mut ports = ports;
             let mut port = Some(port);
             let order = [5u,0,4,3,2,6,9,8,7,1];
-            foreach &index in order.iter() {
+            for &index in order.iter() {
                 // put the port in the vector at any index
                 util::swap(port.get_mut_ref(), &mut ports[index]);
                 assert!(select(ports) == index);
@@ -272,7 +272,7 @@ mod test {
                     let send_on_chans = send_on_chans.clone();
                     do task::spawn {
                         let mut ports = ~[];
-                        foreach i in range(0u, NUM_CHANS) {
+                        for i in range(0u, NUM_CHANS) {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {

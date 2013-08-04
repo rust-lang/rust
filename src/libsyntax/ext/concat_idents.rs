@@ -18,7 +18,7 @@ use parse::token::{str_to_ident};
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
-    foreach (i, e) in tts.iter().enumerate() {
+    for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
                 ast::tt_tok(_, token::COMMA) => (),

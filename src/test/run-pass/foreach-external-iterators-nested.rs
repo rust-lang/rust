@@ -13,8 +13,8 @@ fn main() {
     let y = [2,..100];
     let mut p = 0;
     let mut q = 0;
-    foreach i in x.iter() {
-        foreach j in y.iter() {
+    for i in x.iter() {
+        for j in y.iter() {
             p += *j;
         }
         q += *i + p;

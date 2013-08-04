@@ -102,11 +102,11 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         Number(0), Number(0), Number(0), Number(0), Number(0),
         Number(0), Number(0), Number(0), Number(0),
     ];
-    foreach (dst, src) in mparams.mut_iter().zip(params.iter()) {
+    for (dst, src) in mparams.mut_iter().zip(params.iter()) {
         *dst = (*src).clone();
     }
 
-    foreach c in cap.iter().transform(|&x| x) {
+    for c in cap.iter().transform(|&x| x) {
         let cur = c as char;
         let mut old_state = state;
         match state {
@@ -605,7 +605,7 @@ mod test {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
-        foreach cap in caps.iter() {
+        for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Op %s succeeded incorrectly with 0 stack entries", *cap);
@@ -615,7 +615,7 @@ mod test {
                     "Op %s failed with 1 stack entry: %s", *cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
-        foreach cap in caps.iter() {
+        for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Binop %s succeeded incorrectly with 0 stack entries", *cap);
@@ -636,7 +636,7 @@ mod test {
     #[test]
     fn test_comparison_ops() {
         let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
-        foreach &(op, bs) in v.iter() {
+        for &(op, bs) in v.iter() {
             let s = fmt!("%%{1}%%{2}%%%c%%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());

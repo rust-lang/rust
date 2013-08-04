@@ -73,8 +73,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut i = uint::max_value;
         let mut can_trim = true;
         let mut first = true;
-        foreach line in lines.iter() {
-            foreach (j, c) in line.iter().enumerate() {
+        for line in lines.iter() {
+            for (j, c) in line.iter().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
                     break;

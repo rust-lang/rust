@@ -53,7 +53,7 @@ pub fn construct(tcx: ty::ctxt,
 impl CFGBuilder {
     fn block(&mut self, blk: &ast::Block, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
-        foreach &stmt in blk.stmts.iter() {
+        for &stmt in blk.stmts.iter() {
             stmts_exit = self.stmt(stmt, stmts_exit);
         }
 
@@ -151,7 +151,7 @@ impl CFGBuilder {
             self.pat(pats[0], pred)
         } else {
             let collect = self.add_dummy_node([]);
-            foreach &pat in pats.iter() {
+            for &pat in pats.iter() {
                 let pat_exit = self.pat(pat, pred);
                 self.add_contained_edge(pat_exit, collect);
             }
@@ -297,7 +297,7 @@ impl CFGBuilder {
 
                 let expr_exit = self.add_node(expr.id, []);
                 let mut guard_exit = discr_exit;
-                foreach arm in arms.iter() {
+                for arm in arms.iter() {
                     guard_exit = self.opt_expr(arm.guard, guard_exit); // 2
                     let pats_exit = self.pats_any(arm.pats, guard_exit); // 3
                     let body_exit = self.block(&arm.body, pats_exit);    // 4
@@ -396,7 +396,6 @@ impl CFGBuilder {
             }
 
             ast::expr_addr_of(_, e) |
-            ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
             ast::expr_unary(_, _, e) |
@@ -460,7 +459,7 @@ impl CFGBuilder {
         assert!(!self.exit_map.contains_key(&id));
         let node = self.graph.add_node(CFGNodeData {id: id});
         self.exit_map.insert(id, node);
-        foreach &pred in preds.iter() {
+        for &pred in preds.iter() {
             self.add_contained_edge(pred, node);
         }
         node
@@ -498,7 +497,7 @@ impl CFGBuilder {
             Some(_) => {
                 match self.tcx.def_map.find(&expr.id) {
                     Some(&ast::def_label(loop_id)) => {
-                        foreach l in self.loop_scopes.iter() {
+                        for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {
                                 return *l;
                             }
