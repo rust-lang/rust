@@ -31,7 +31,6 @@ use num::Zero;
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
-use to_str::ToStr;
 use uint;
 use unstable::raw::Repr;
 use vec;
@@ -113,19 +112,6 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
         s.len += 1;
         cast::transmute(s)
     }
-}
-
-impl ToStr for ~str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
-}
-impl<'self> ToStr for &'self str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
-}
-impl ToStr for @str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /// Convert a byte to a UTF-8 string
@@ -2283,6 +2269,7 @@ mod tests {
     use libc;
     use ptr;
     use str::*;
+    use to_str::ToStr;
     use vec;
     use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};

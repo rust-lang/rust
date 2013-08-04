@@ -15,12 +15,12 @@ The `ToBytes` and `IterBytes` traits
 */
 
 use cast;
-use io;
-use io::Writer;
+use rt::io::{Writer, Decorator};
+use rt::io::mem::MemWriter;
 use iterator::IteratorUtil;
 use option::{None, Option, Some};
 use str::StrSlice;
-use vec::ImmutableVector;
+use vec::{Vector, ImmutableVector};
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
@@ -251,22 +251,17 @@ impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
   }
 }
 
-// Move this to vec, probably.
-fn borrow<'x,A>(a: &'x [A]) -> &'x [A] {
-    a
-}
-
 impl<A:IterBytes> IterBytes for ~[A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        borrow(*self).iter_bytes(lsb0, f)
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for @[A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        borrow(*self).iter_bytes(lsb0, f)
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
@@ -352,11 +347,11 @@ pub trait ToBytes {
 
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
-        do io::with_bytes_writer |wr| {
-            do self.iter_bytes(lsb0) |bytes| {
-                wr.write(bytes);
-                true
-            };
-        }
+        let mut wr = MemWriter::new();
+        do self.iter_bytes(lsb0) |bytes| {
+            wr.write(bytes);
+            true
+        };
+        wr.inner()
     }
 }

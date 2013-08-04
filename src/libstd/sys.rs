@@ -14,13 +14,15 @@
 
 use cast;
 use gc;
-use io;
 use libc;
 use libc::{c_char, size_t};
 use repr;
+use rt::io::Decorator;
+use rt::io::mem::MemWriter;
 use str::StrSlice;
 use str;
 use unstable::intrinsics;
+use util;
 
 pub mod rustrt {
     use libc::{c_char, size_t};
@@ -102,9 +104,10 @@ pub fn refcount<T>(t: @T) -> uint {
 }
 
 pub fn log_str<T>(t: &T) -> ~str {
-    do io::with_str_writer |wr| {
-        repr::write_repr(wr, t)
-    }
+    let wr = @mut MemWriter::new();
+    repr::write_repr(wr, t);
+    let wr_out = util::replace(wr, MemWriter::new());
+    str::from_bytes_owned(wr_out.inner())
 }
 
 /// Trait for initiating task failure.

@@ -19,29 +19,29 @@ More runtime type reflection
 use cast::transmute;
 use char;
 use container::Container;
-use io::{Writer, WriterUtil};
 use iterator::Iterator;
+use iterator::IteratorUtil;
 use libc::c_void;
 use option::{Some, None};
 use ptr;
 use reflect;
 use reflect::{MovePtr, align};
+use rt::io::StringWriter;
 use str::StrSlice;
 use to_str::ToStr;
 use vec::OwnedVector;
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use unstable::raw;
 
-#[cfg(test)] use io;
 
 /// Helpers
 
 trait EscapedCharWriter {
-    fn write_escaped_char(&self, ch: char);
+    fn write_escaped_char(&mut self, ch: char);
 }
 
-impl EscapedCharWriter for @Writer {
-    fn write_escaped_char(&self, ch: char) {
+impl<W: StringWriter> EscapedCharWriter for W {
+    fn write_escaped_char(&mut self, ch: char) {
         match ch {
             '\t' => self.write_str("\\t"),
             '\r' => self.write_str("\\r"),
@@ -62,45 +62,35 @@ impl EscapedCharWriter for @Writer {
 /// Representations
 
 trait Repr {
-    fn write_repr(&self, writer: @Writer);
+    fn write_repr<W: StringWriter>(&self, writer: &mut W);
 }
 
 impl Repr for () {
-    fn write_repr(&self, writer: @Writer) { writer.write_str("()"); }
+    fn write_repr<W: StringWriter>(&self, writer: &mut W) { writer.write_str("()"); }
 }
 
 impl Repr for bool {
-    fn write_repr(&self, writer: @Writer) {
+    fn write_repr<W: StringWriter>(&self, writer: &mut W) {
         writer.write_str(if *self { "true" } else { "false" })
     }
 }
 
-macro_rules! int_repr(($ty:ident) => (impl Repr for $ty {
-    fn write_repr(&self, writer: @Writer) {
-        do ::$ty::to_str_bytes(*self, 10u) |bits| {
-            writer.write(bits);
-        }
-    }
-}))
-
-int_repr!(int)
-int_repr!(i8)
-int_repr!(i16)
-int_repr!(i32)
-int_repr!(i64)
-int_repr!(uint)
-int_repr!(u8)
-int_repr!(u16)
-int_repr!(u32)
-int_repr!(u64)
-
 macro_rules! num_repr(($ty:ident) => (impl Repr for $ty {
-    fn write_repr(&self, writer: @Writer) {
-        let s = self.to_str();
-        writer.write(s.as_bytes());
+    fn write_repr<W: StringWriter>(&self, writer: &mut W) {
+        self.to_str_writer(writer);
     }
 }))
 
+num_repr!(int)
+num_repr!(i8)
+num_repr!(i16)
+num_repr!(i32)
+num_repr!(i64)
+num_repr!(uint)
+num_repr!(u8)
+num_repr!(u16)
+num_repr!(u32)
+num_repr!(u64)
 num_repr!(float)
 num_repr!(f32)
 num_repr!(f64)
@@ -113,13 +103,14 @@ enum VariantState {
     AlreadyFound
 }
 
-pub struct ReprVisitor {
+pub struct ReprVisitor<W> {
     ptr: @mut *c_void,
     ptr_stk: @mut ~[*c_void],
     var_stk: @mut ~[VariantState],
-    writer: @Writer
+    writer: @mut W,
 }
-pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
+
+pub fn ReprVisitor<W: StringWriter>(ptr: *c_void, writer: @mut W) -> ReprVisitor<W> {
     ReprVisitor {
         ptr: @mut ptr,
         ptr_stk: @mut ~[],
@@ -128,7 +119,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
     }
 }
 
-impl MovePtr for ReprVisitor {
+impl<W> MovePtr for ReprVisitor<W> {
     #[inline]
     fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
         *self.ptr = adjustment(*self.ptr);
@@ -141,7 +132,7 @@ impl MovePtr for ReprVisitor {
     }
 }
 
-impl ReprVisitor {
+impl<W: 'static + StringWriter> ReprVisitor<W> {
     // Various helpers for the TyVisitor impl
 
     #[inline]
@@ -175,21 +166,21 @@ impl ReprVisitor {
     }
 
     pub fn write_escaped_slice(&self, slice: &str) {
-        self.writer.write_char('"');
+        (*self.writer).write_char('"');
         foreach ch in slice.iter() {
-            self.writer.write_escaped_char(ch);
+            (*self.writer).write_escaped_char(ch);
         }
-        self.writer.write_char('"');
+        (*self.writer).write_char('"');
     }
 
     pub fn write_mut_qualifier(&self, mtbl: uint) {
         if mtbl == 0 {
-            self.writer.write_str("mut ");
+            (*self.writer).write_str("mut ");
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
             assert_eq!(mtbl, 2);
-            self.writer.write_str("const ");
+            (*self.writer).write_str("const ");
         }
     }
 
@@ -201,7 +192,7 @@ impl ReprVisitor {
                            -> bool {
         let mut p = ptr as *u8;
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
-        self.writer.write_char('[');
+        (*self.writer).write_char('[');
         let mut first = true;
         let mut left = len;
         // unit structs have 0 size, and don't loop forever.
@@ -210,13 +201,13 @@ impl ReprVisitor {
             if first {
                 first = false;
             } else {
-                self.writer.write_str(", ");
+                (*self.writer).write_str(", ");
             }
             self.visit_ptr_inner(p as *c_void, inner);
             p = align(ptr::offset(p, sz as int) as uint, al) as *u8;
             left -= dec;
         }
-        self.writer.write_char(']');
+        (*self.writer).write_char(']');
         true
     }
 
@@ -230,9 +221,9 @@ impl ReprVisitor {
     }
 }
 
-impl TyVisitor for ReprVisitor {
+impl<W: 'static + StringWriter> TyVisitor for ReprVisitor<W> {
     fn visit_bot(&self) -> bool {
-        self.writer.write_str("!");
+        (*self.writer).write_str("!");
         true
     }
     fn visit_nil(&self) -> bool { self.write::<()>() }
@@ -255,21 +246,21 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_char(&self) -> bool {
         do self.get::<char> |&ch| {
-            self.writer.write_char('\'');
-            self.writer.write_escaped_char(ch);
-            self.writer.write_char('\'');
+            (*self.writer).write_char('\'');
+            (*self.writer).write_escaped_char(ch);
+            (*self.writer).write_char('\'');
         }
     }
 
     fn visit_estr_box(&self) -> bool {
         do self.get::<@str> |s| {
-            self.writer.write_char('@');
+            (*self.writer).write_char('@');
             self.write_escaped_slice(*s);
         }
     }
     fn visit_estr_uniq(&self) -> bool {
         do self.get::<~str> |s| {
-            self.writer.write_char('~');
+            (*self.writer).write_char('~');
             self.write_escaped_slice(*s);
         }
     }
@@ -284,7 +275,7 @@ impl TyVisitor for ReprVisitor {
                         _align: uint) -> bool { fail!(); }
 
     fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('@');
+        (*self.writer).write_char('@');
         self.write_mut_qualifier(mtbl);
         do self.get::<&raw::Box<()>> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
@@ -293,14 +284,14 @@ impl TyVisitor for ReprVisitor {
     }
 
     fn visit_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('~');
+        (*self.writer).write_char('~');
         do self.get::<*c_void> |b| {
             self.visit_ptr_inner(*b, inner);
         }
     }
 
     fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('~');
+        (*self.writer).write_char('~');
         do self.get::<&raw::Box<()>> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, inner);
@@ -309,13 +300,13 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
         do self.get::<*c_void> |p| {
-            self.writer.write_str(fmt!("(0x%x as *())",
+            (*self.writer).write_str(fmt!("(0x%x as *())",
                                        *p as uint));
         }
     }
 
     fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('&');
+        (*self.writer).write_char('&');
         self.write_mut_qualifier(mtbl);
         do self.get::<*c_void> |p| {
             self.visit_ptr_inner(*p, inner);
@@ -334,7 +325,7 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&raw::Box<raw::Vec<()>>> |b| {
-            self.writer.write_char('@');
+            (*self.writer).write_char('@');
             self.write_mut_qualifier(mtbl);
             self.write_unboxed_vec_repr(mtbl, &b.data, inner);
         }
@@ -342,21 +333,21 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&raw::Vec<()>> |b| {
-            self.writer.write_char('~');
+            (*self.writer).write_char('~');
             self.write_unboxed_vec_repr(mtbl, *b, inner);
         }
     }
 
     fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<&raw::Box<raw::Vec<()>>> |b| {
-            self.writer.write_char('~');
+            (*self.writer).write_char('~');
             self.write_unboxed_vec_repr(mtbl, &b.data, inner);
         }
     }
 
     fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Slice<()>> |s| {
-            self.writer.write_char('&');
+            (*self.writer).write_char('&');
             self.write_vec_range(mtbl, s.data, s.len, inner);
         }
     }
@@ -370,58 +361,58 @@ impl TyVisitor for ReprVisitor {
 
     fn visit_enter_rec(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('{');
+        (*self.writer).write_char('{');
         true
     }
 
     fn visit_rec_field(&self, i: uint, name: &str,
                        mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            (*self.writer).write_str(", ");
         }
         self.write_mut_qualifier(mtbl);
-        self.writer.write_str(name);
-        self.writer.write_str(": ");
+        (*self.writer).write_str(name);
+        (*self.writer).write_str(": ");
         self.visit_inner(inner);
         true
     }
 
     fn visit_leave_rec(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('}');
+        (*self.writer).write_char('}');
         true
     }
 
     fn visit_enter_class(&self, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('{');
+        (*self.writer).write_char('{');
         true
     }
     fn visit_class_field(&self, i: uint, name: &str,
                          mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            (*self.writer).write_str(", ");
         }
         self.write_mut_qualifier(mtbl);
-        self.writer.write_str(name);
-        self.writer.write_str(": ");
+        (*self.writer).write_str(name);
+        (*self.writer).write_str(": ");
         self.visit_inner(inner);
         true
     }
     fn visit_leave_class(&self, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('}');
+        (*self.writer).write_char('}');
         true
     }
 
     fn visit_enter_tup(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('(');
+        (*self.writer).write_char('(');
         true
     }
     fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            (*self.writer).write_str(", ");
         }
         self.visit_inner(inner);
         true
@@ -429,9 +420,9 @@ impl TyVisitor for ReprVisitor {
     fn visit_leave_tup(&self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
         if _n_fields == 1 {
-            self.writer.write_char(',');
+            (*self.writer).write_char(',');
         }
-        self.writer.write_char(')');
+        (*self.writer).write_char(')');
         true
     }
 
@@ -468,9 +459,9 @@ impl TyVisitor for ReprVisitor {
         }
 
         if write {
-            self.writer.write_str(name);
+            (*self.writer).write_str(name);
             if n_fields > 0 {
-                self.writer.write_char('(');
+                (*self.writer).write_char('(');
             }
         }
         true
@@ -484,7 +475,7 @@ impl TyVisitor for ReprVisitor {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if i != 0 {
-                    self.writer.write_str(", ");
+                    (*self.writer).write_str(", ");
                 }
                 if ! self.visit_inner(inner) {
                     return false;
@@ -502,7 +493,7 @@ impl TyVisitor for ReprVisitor {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if n_fields > 0 {
-                    self.writer.write_char(')');
+                    (*self.writer).write_char(')');
                 }
             }
             _ => ()
@@ -543,7 +534,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_type(&self) -> bool { true }
 
     fn visit_opaque_box(&self) -> bool {
-        self.writer.write_char('@');
+        (*self.writer).write_char('@');
         do self.get::<&raw::Box<()>> |b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
             self.visit_ptr_inner(p, b.type_desc);
@@ -556,7 +547,7 @@ impl TyVisitor for ReprVisitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-pub fn write_repr<T>(writer: @Writer, object: &T) {
+pub fn write_repr<T, W: 'static + StringWriter>(writer: @mut W, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = get_tydesc::<T>();
@@ -571,9 +562,22 @@ struct P {a: int, b: float}
 
 #[test]
 fn test_repr() {
+    use str;
+    use str::Str;
+    use rt::io::Decorator;
+    use rt::io::mem::MemWriter;
+    use util;
+
+    fn log_str<T>(t: &T) -> ~str {
+        let wr = @mut MemWriter::new();
+        write_repr(wr, t);
+        let wr_out = util::replace(wr, MemWriter::new());
+        str::from_bytes_owned(wr_out.inner())
+    }
 
     fn exact_test<T>(t: &T, e:&str) {
-        let s : &str = io::with_str_writer(|w| write_repr(w, t));
+        let s = log_str(t);
+        let s = s.as_slice();
         if s != e {
             error!("expected '%s', got '%s'",
                    e, s);

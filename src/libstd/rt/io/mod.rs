@@ -262,6 +262,7 @@ pub use self::net::udp::UdpStream;
 pub use self::extensions::ReaderUtil;
 pub use self::extensions::ReaderByteConversions;
 pub use self::extensions::WriterByteConversions;
+pub use self::extensions::StringWriter;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
