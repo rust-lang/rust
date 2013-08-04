@@ -72,7 +72,7 @@ fn git_repo_pkg_with_tag(a_tag: ~str) -> PkgId {
 }
 
 fn writeFile(file_path: &Path, contents: &str) {
-    let out = io::file_writer(file_path, [io::Create, io::Truncate]).unwrap();
+    let out = io::file_writer(file_path, [io::Create, io::Truncate]).get();
     out.write_line(contents);
 }
 

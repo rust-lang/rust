@@ -279,7 +279,7 @@ impl Reflector {
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
-            let opaquety = ty::get_opaque_ty(ccx.tcx).unwrap();
+            let opaquety = ty::get_opaque_ty(ccx.tcx).get();
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
@@ -380,7 +380,7 @@ pub fn emit_calls_to_trait_visit_ty(bcx: @mut Block,
                                     visitor_trait_id: def_id)
                                  -> @mut Block {
     let final = sub_block(bcx, "final");
-    let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
+    let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).get();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {
         visitor_val: visitor_val,

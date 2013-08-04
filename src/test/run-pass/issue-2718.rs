@@ -113,7 +113,7 @@ pub mod pipes {
               empty | blocked => { task::yield(); }
               full => {
                 let payload = util::replace(&mut p.payload, None);
-                return Some(payload.unwrap())
+                return Some(payload.get())
               }
               terminated => {
                 assert_eq!(old_state, terminated);
@@ -169,7 +169,7 @@ pub mod pipes {
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
                     let p = util::replace(self_p, None);
-                    sender_terminate(p.unwrap())
+                    sender_terminate(p.get())
                 }
             }
         }
@@ -177,7 +177,7 @@ pub mod pipes {
 
     impl<T:Send> send_packet<T> {
         pub fn unwrap(&mut self) -> *packet<T> {
-            util::replace(&mut self.p, None).unwrap()
+            util::replace(&mut self.p, None).get()
         }
     }
 
@@ -199,7 +199,7 @@ pub mod pipes {
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
                     let p = util::replace(self_p, None);
-                    receiver_terminate(p.unwrap())
+                    receiver_terminate(p.get())
                 }
             }
         }
@@ -207,7 +207,7 @@ pub mod pipes {
 
     impl<T:Send> recv_packet<T> {
         pub fn unwrap(&mut self) -> *packet<T> {
-            util::replace(&mut self.p, None).unwrap()
+            util::replace(&mut self.p, None).get()
         }
     }
 
@@ -272,7 +272,7 @@ pub mod pingpong {
             if packet.is_none() {
                 fail!("sender closed the connection")
             }
-            (pingpong::liberate_pong(packet.unwrap()), ())
+            (pingpong::liberate_pong(packet.get()), ())
         }
     }
 
@@ -287,7 +287,7 @@ pub mod pingpong {
             if packet.is_none() {
                 fail!("sender closed the connection")
             }
-            (pingpong::liberate_ping(packet.unwrap()), ())
+            (pingpong::liberate_ping(packet.get()), ())
         }
 
         pub fn do_pong(c: pong) -> ping {

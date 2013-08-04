@@ -114,17 +114,17 @@ impl Terminal {
             return Err(~"TERM environment variable undefined");
         }
 
-        let entry = open(term.unwrap());
+        let entry = open(term.get());
         if entry.is_err() {
-            return Err(entry.unwrap_err());
+            return Err(entry.get_err());
         }
 
-        let ti = parse(entry.unwrap(), false);
+        let ti = parse(entry.get(), false);
         if ti.is_err() {
-            return Err(ti.unwrap_err());
+            return Err(ti.get_err());
         }
 
-        let inf = ti.unwrap();
+        let inf = ti.get();
         let nc = if inf.strings.find_equiv(&("setaf")).is_some()
                  && inf.strings.find_equiv(&("setab")).is_some() {
                      inf.numbers.find_equiv(&("colors")).map_consume_default(0, |&n| n)
@@ -141,13 +141,13 @@ impl Terminal {
     pub fn fg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
+            let s = expand(*self.ti.strings.find_equiv(&("setaf")).get(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.unwrap());
+                self.out.write(s.get());
                 return true
             } else {
-                warn!("%s", s.unwrap_err());
+                warn!("%s", s.get_err());
             }
         }
         false
@@ -161,13 +161,13 @@ impl Terminal {
     pub fn bg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
+            let s = expand(*self.ti.strings.find_equiv(&("setab")).get(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.unwrap());
+                self.out.write(s.get());
                 return true
             } else {
-                warn!("%s", s.unwrap_err());
+                warn!("%s", s.get_err());
             }
         }
         false
@@ -183,12 +183,12 @@ impl Terminal {
                 let cap = cap_for_attr(attr);
                 let parm = self.ti.strings.find_equiv(&cap);
                 if parm.is_some() {
-                    let s = expand(*parm.unwrap(), [], &mut Variables::new());
+                    let s = expand(*parm.get(), [], &mut Variables::new());
                     if s.is_ok() {
-                        self.out.write(s.unwrap());
+                        self.out.write(s.get());
                         return true
                     } else {
-                        warn!("%s", s.unwrap_err());
+                        warn!("%s", s.get_err());
                     }
                 }
                 false
@@ -224,13 +224,13 @@ impl Terminal {
             expand(*op, [], &mut Variables::new())
         };
         if s.is_ok() {
-            self.out.write(s.unwrap());
+            self.out.write(s.get());
         } else if self.num_colors > 0 {
-            warn!("%s", s.unwrap_err());
+            warn!("%s", s.get_err());
         } else {
             // if we support attributes but not color, it would be nice to still warn!()
             // but it's not worth testing all known attributes just for this.
-            debug!("%s", s.unwrap_err());
+            debug!("%s", s.get_err());
         }
     }
 

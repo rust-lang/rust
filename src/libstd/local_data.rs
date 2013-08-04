@@ -236,15 +236,15 @@ fn test_owned() {
     do get(key) |v| {
         do get(key) |v| {
             do get(key) |v| {
-                assert_eq!(**v.unwrap(), 1);
+                assert_eq!(**v.get(), 1);
             }
-            assert_eq!(**v.unwrap(), 1);
+            assert_eq!(**v.get(), 1);
         }
-        assert_eq!(**v.unwrap(), 1);
+        assert_eq!(**v.get(), 1);
     }
     set(key, ~2);
     do get(key) |v| {
-        assert_eq!(**v.unwrap(), 2);
+        assert_eq!(**v.get(), 2);
     }
 }
 
@@ -254,11 +254,11 @@ fn test_get_mut() {
     set(key, 1);
 
     do get_mut(key) |v| {
-        *v.unwrap() = 2;
+        *v.get() = 2;
     }
 
     do get(key) |v| {
-        assert_eq!(*v.unwrap(), 2);
+        assert_eq!(*v.get(), 2);
     }
 }
 
@@ -275,11 +275,11 @@ fn test_same_key_type() {
     set(key4, 4);
     set(key5, 5);
 
-    get(key1, |x| assert_eq!(*x.unwrap(), 1));
-    get(key2, |x| assert_eq!(*x.unwrap(), 2));
-    get(key3, |x| assert_eq!(*x.unwrap(), 3));
-    get(key4, |x| assert_eq!(*x.unwrap(), 4));
-    get(key5, |x| assert_eq!(*x.unwrap(), 5));
+    get(key1, |x| assert_eq!(*x.get(), 1));
+    get(key2, |x| assert_eq!(*x.get(), 2));
+    get(key3, |x| assert_eq!(*x.get(), 3));
+    get(key4, |x| assert_eq!(*x.get(), 4));
+    get(key5, |x| assert_eq!(*x.get(), 5));
 }
 
 #[test]

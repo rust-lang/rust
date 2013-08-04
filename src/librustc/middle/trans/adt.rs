@@ -165,7 +165,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             if cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
-                return CEnum(*discrs.iter().min().unwrap(), *discrs.iter().max().unwrap());
+                return CEnum(*discrs.iter().min().get(), *discrs.iter().max().get());
             }
 
             if cases.len() == 1 {
@@ -508,7 +508,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: uint,
         }
         General(ref cases) => {
             let case = &cases[discr];
-            let max_sz = cases.iter().transform(|x| x.size).max().unwrap();
+            let max_sz = cases.iter().transform(|x| x.size).max().get();
             let discr_ty = C_uint(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);

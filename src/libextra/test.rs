@@ -803,7 +803,7 @@ pub fn run_test(force_ignore: bool,
             task.future_result(|r| { result_future = Some(r) });
             task.spawn(testfn_cell.take());
 
-            let task_result = result_future.unwrap().recv();
+            let task_result = result_future.get().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
             monitor_ch.send((desc.clone(), test_result));
@@ -867,14 +867,14 @@ impl MetricMap {
     /// Load MetricDiff from a file.
     pub fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
-        let f = io::file_reader(p).unwrap();
+        let f = io::file_reader(p).get();
         let mut decoder = json::Decoder(json::from_reader(f).get());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
-        let f = io::file_writer(p, [io::Create, io::Truncate]).unwrap();
+        let f = io::file_writer(p, [io::Create, io::Truncate]).get();
         json::to_pretty_writer(f, &self.to_json());
     }
 

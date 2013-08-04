@@ -46,7 +46,7 @@ impl<T> Cell<T> {
             fail!("attempt to take an empty cell");
         }
 
-        this.value.take_unwrap()
+        this.value.take_get()
     }
 
     /// Returns the value, failing if the cell is full.

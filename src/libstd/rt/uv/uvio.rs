@@ -62,7 +62,7 @@ fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
 
     if r != 0 {
         let status = status_to_maybe_uv_error(handle, r);
-        return Err(uv_error_to_io_error(status.unwrap()));
+        return Err(uv_error_to_io_error(status.get()));
     }
 
     let addr = unsafe {
@@ -478,7 +478,7 @@ impl RtioTcpStream for UvTcpStream {
                     assert!(nread >= 0);
                     Ok(nread as uint)
                 } else {
-                    Err(uv_error_to_io_error(status.unwrap()))
+                    Err(uv_error_to_io_error(status.get()))
                 };
 
                 unsafe { (*result_cell_ptr).put_back(result); }
@@ -505,7 +505,7 @@ impl RtioTcpStream for UvTcpStream {
                 let result = if status.is_none() {
                     Ok(())
                 } else {
-                    Err(uv_error_to_io_error(status.unwrap()))
+                    Err(uv_error_to_io_error(status.get()))
                 };
 
                 unsafe { (*result_cell_ptr).put_back(result); }
@@ -838,10 +838,10 @@ fn test_simple_tcp_server_and_client() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut listener = (*io).tcp_bind(addr).unwrap();
-                let mut stream = listener.accept().unwrap();
+                let mut listener = (*io).tcp_bind(addr).get();
+                let mut stream = listener.accept().get();
                 let mut buf = [0, .. 2048];
-                let nread = stream.read(buf).unwrap();
+                let nread = stream.read(buf).get();
                 assert_eq!(nread, 8);
                 foreach i in range(0u, nread) {
                     rtdebug!("%u", buf[i] as uint);
@@ -853,7 +853,7 @@ fn test_simple_tcp_server_and_client() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).get();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
         }
@@ -869,9 +869,9 @@ fn test_simple_udp_server_and_client() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut server_socket = (*io).udp_bind(server_addr).unwrap();
+                let mut server_socket = (*io).udp_bind(server_addr).get();
                 let mut buf = [0, .. 2048];
-                let (nread,src) = server_socket.recvfrom(buf).unwrap();
+                let (nread,src) = server_socket.recvfrom(buf).get();
                 assert_eq!(nread, 8);
                 foreach i in range(0u, nread) {
                     rtdebug!("%u", buf[i] as uint);
@@ -884,7 +884,7 @@ fn test_simple_udp_server_and_client() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut client_socket = (*io).udp_bind(client_addr).unwrap();
+                let mut client_socket = (*io).udp_bind(client_addr).get();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
         }
@@ -898,8 +898,8 @@ fn test_read_and_block() {
 
         do spawntask {
             let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
-            let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
-            let mut stream = listener.accept().unwrap();
+            let mut listener = unsafe { (*io).tcp_bind(addr).get() };
+            let mut stream = listener.accept().get();
             let mut buf = [0, .. 2048];
 
             let expected = 32;
@@ -907,7 +907,7 @@ fn test_read_and_block() {
             let mut reads = 0;
 
             while current < expected {
-                let nread = stream.read(buf).unwrap();
+                let nread = stream.read(buf).get();
                 foreach i in range(0u, nread) {
                     let val = buf[i] as uint;
                     assert_eq!(val, current % 8);
@@ -932,7 +932,7 @@ fn test_read_and_block() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).get();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -952,8 +952,8 @@ fn test_read_read_read() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut listener = (*io).tcp_bind(addr).unwrap();
-                let mut stream = listener.accept().unwrap();
+                let mut listener = (*io).tcp_bind(addr).get();
+                let mut stream = listener.accept().get();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
@@ -966,11 +966,11 @@ fn test_read_read_read() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).get();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
-                    let nread = stream.read(buf).unwrap();
+                    let nread = stream.read(buf).get();
                     rtdebug!("read %u bytes", nread as uint);
                     total_bytes_read += nread;
                     foreach i in range(0u, nread) {
@@ -992,7 +992,7 @@ fn test_udp_twice() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut client = (*io).udp_bind(client_addr).unwrap();
+                let mut client = (*io).udp_bind(client_addr).get();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
             }
@@ -1001,11 +1001,11 @@ fn test_udp_twice() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut server = (*io).udp_bind(server_addr).unwrap();
+                let mut server = (*io).udp_bind(server_addr).get();
                 let mut buf1 = [0];
                 let mut buf2 = [0];
-                let (nread1, src1) = server.recvfrom(buf1).unwrap();
-                let (nread2, src2) = server.recvfrom(buf2).unwrap();
+                let (nread1, src1) = server.recvfrom(buf1).get();
+                let (nread2, src2) = server.recvfrom(buf2).get();
                 assert_eq!(nread1, 1);
                 assert_eq!(nread2, 1);
                 assert_eq!(src1, client_addr);
@@ -1029,8 +1029,8 @@ fn test_udp_many_read() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
-                let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
+                let mut server_out = (*io).udp_bind(server_out_addr).get();
+                let mut server_in = (*io).udp_bind(server_in_addr).get();
                 let msg = [1, .. 2048];
                 let mut total_bytes_sent = 0;
                 let mut buf = [1];
@@ -1041,7 +1041,7 @@ fn test_udp_many_read() {
                     // check if the client has received enough
                     let res = server_in.recvfrom(buf);
                     assert!(res.is_ok());
-                    let (nread, src) = res.unwrap();
+                    let (nread, src) = res.get();
                     assert_eq!(nread, 1);
                     assert_eq!(src, client_out_addr);
                 }
@@ -1052,8 +1052,8 @@ fn test_udp_many_read() {
         do spawntask {
             unsafe {
                 let io = Local::unsafe_borrow::<IoFactoryObject>();
-                let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
-                let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
+                let mut client_out = (*io).udp_bind(client_out_addr).get();
+                let mut client_in = (*io).udp_bind(client_in_addr).get();
                 let mut total_bytes_recv = 0;
                 let mut buf = [0, .. 2048];
                 while total_bytes_recv < MAX {
@@ -1062,7 +1062,7 @@ fn test_udp_many_read() {
                     // wait for data
                     let res = client_in.recvfrom(buf);
                     assert!(res.is_ok());
-                    let (nread, src) = res.unwrap();
+                    let (nread, src) = res.get();
                     assert_eq!(src, server_out_addr);
                     total_bytes_recv += nread;
                     foreach i in range(0u, nread) {

@@ -21,7 +21,7 @@ pub fn main() {
     error!("2");
     task::yield();
     error!("3");
-    result.unwrap().recv();
+    result.get().recv();
 }
 
 fn child() {

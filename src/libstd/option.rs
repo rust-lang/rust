@@ -47,7 +47,8 @@ use ops::Add;
 use util;
 use num::Zero;
 use iterator::Iterator;
-use str::StrSlice;
+use str::{StrSlice, OwnedStr};
+use to_str::ToStr;
 use clone::DeepClone;
 
 /// The option type
@@ -85,14 +86,29 @@ impl<T:Ord> Ord for Option<T> {
     }
 }
 
-impl<T:Clone+Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
+impl<T: Add<T, T>> Add<Option<T>, Option<T>> for Option<T> {
     #[inline]
     fn add(&self, other: &Option<T>) -> Option<T> {
         match (&*self, &*other) {
             (&None, &None) => None,
-            (_, &None) => (*self).clone(),
-            (&None, _) => (*other).clone(),
+            (_, &None) => None,
+            (&None, _) => None,
             (&Some(ref lhs), &Some(ref rhs)) => Some(*lhs + *rhs)
+        }
+    }
+}
+
+// FIXME: #8242 implementing manually because deriving doesn't work for some reason
+impl<T: ToStr> ToStr for Option<T> {
+    fn to_str(&self) -> ~str {
+        match *self {
+            Some(ref x) => {
+                let mut s = ~"Some(";
+                s.push_str(x.to_str());
+                s.push_str(")");
+                s
+            }
+            None => ~"None"
         }
     }
 }
@@ -148,8 +164,7 @@ impl<T> Option<T> {
     /// Update an optional value by optionally running its content by reference
     /// through a function that returns an option.
     #[inline]
-    pub fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>)
-                            -> Option<U> {
+    pub fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
         match *self {
             Some(ref x) => f(x),
             None => None
@@ -159,8 +174,7 @@ impl<T> Option<T> {
     /// Update an optional value by optionally running its content by mut reference
     /// through a function that returns an option.
     #[inline]
-    pub fn chain_mut_ref<'a, U>(&'a mut self, f: &fn(x: &'a mut T) -> Option<U>)
-                                -> Option<U> {
+    pub fn chain_mut_ref<'a, U>(&'a mut self, f: &fn(x: &'a mut T) -> Option<U>) -> Option<U> {
         match *self {
             Some(ref mut x) => f(x),
             None => None
@@ -239,7 +253,7 @@ impl<T> Option<T> {
     /// Returns true if the contained value was mutated.
     pub fn mutate(&mut self, f: &fn(T) -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take_get()));
             true
         } else { false }
     }
@@ -248,7 +262,7 @@ impl<T> Option<T> {
     /// Returns true if the contained value was mutated, or false if set to the default.
     pub fn mutate_default(&mut self, def: T, f: &fn(T) -> T) -> bool {
         if self.is_some() {
-            *self = Some(f(self.take_unwrap()));
+            *self = Some(f(self.take_get()));
             true
         } else {
             *self = Some(def);
@@ -256,130 +270,103 @@ impl<T> Option<T> {
         }
     }
 
-    /**
-    Gets an immutable reference to the value inside an option.
-
-    # Failure
-
-    Fails if the value equals `None`
-
-    # Safety note
-
-    In general, because this function may fail, its use is discouraged
-    (calling `get` on `None` is akin to dereferencing a null pointer).
-    Instead, prefer to use pattern matching and handle the `None`
-    case explicitly.
-     */
+    /// Gets an immutable reference to the value inside an option.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`
+    ///
+    /// # Safety note
+    ///
+    /// In general, because this function may fail, its use is discouraged
+    /// (calling `get` on `None` is akin to dereferencing a null pointer).
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
     #[inline]
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
-          Some(ref x) => x,
-          None => fail!("option::get_ref `None`"),
+            Some(ref x) => x,
+            None => fail!("called `Option::get_ref()` on a `None` value"),
         }
     }
 
-    /**
-    Gets a mutable reference to the value inside an option.
-
-    # Failure
-
-    Fails if the value equals `None`
-
-    # Safety note
-
-    In general, because this function may fail, its use is discouraged
-    (calling `get` on `None` is akin to dereferencing a null pointer).
-    Instead, prefer to use pattern matching and handle the `None`
-    case explicitly.
-     */
+    /// Gets a mutable reference to the value inside an option.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`
+    ///
+    /// # Safety note
+    ///
+    /// In general, because this function may fail, its use is discouraged
+    /// (calling `get` on `None` is akin to dereferencing a null pointer).
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
     #[inline]
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
-          Some(ref mut x) => x,
-          None => fail!("option::get_mut_ref `None`"),
+            Some(ref mut x) => x,
+            None => fail!("called `Option::get_mut_ref()` on a `None` value"),
         }
     }
 
-    #[inline]
-    pub fn unwrap(self) -> T {
-        /*!
-        Moves a value out of an option type and returns it.
-
-        Useful primarily for getting strings, vectors and unique pointers out
-        of option types without copying them.
-
-        # Failure
-
-        Fails if the value equals `None`.
-
-        # Safety note
-
-        In general, because this function may fail, its use is discouraged.
-        Instead, prefer to use pattern matching and handle the `None`
-        case explicitly.
-         */
-        match self {
-          Some(x) => x,
-          None => fail!("option::unwrap `None`"),
-        }
-    }
-
-    /**
-     * The option dance. Moves a value out of an option type and returns it,
-     * replacing the original with `None`.
-     *
-     * # Failure
-     *
-     * Fails if the value equals `None`.
-     */
-    #[inline]
-    pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() { fail!("option::take_unwrap `None`") }
-        self.take().unwrap()
-    }
-
-    /**
-     * Gets the value out of an option, printing a specified message on
-     * failure
-     *
-     * # Failure
-     *
-     * Fails if the value equals `None`
-     */
-    #[inline]
-    pub fn expect(self, reason: &str) -> T {
-        match self {
-          Some(val) => val,
-          None => fail!(reason.to_owned()),
-        }
-    }
-
-    /**
-    Gets the value out of an option
-
-    # Failure
-
-    Fails if the value equals `None`
-
-    # Safety note
-
-    In general, because this function may fail, its use is discouraged
-    (calling `get` on `None` is akin to dereferencing a null pointer).
-    Instead, prefer to use pattern matching and handle the `None`
-    case explicitly.
-    */
+    /// Moves a value out of an option type and returns it.
+    ///
+    /// Useful primarily for getting strings, vectors and unique pointers out
+    /// of option types without copying them.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`.
+    ///
+    /// # Safety note
+    ///
+    /// In general, because this function may fail, its use is discouraged.
+    /// Instead, prefer to use pattern matching and handle the `None`
+    /// case explicitly.
     #[inline]
     pub fn get(self) -> T {
         match self {
-          Some(x) => return x,
-          None => fail!("option::get `None`")
+            Some(x) => x,
+            None => fail!("called `Option::get()` on a `None` value"),
+        }
+    }
+
+    /// The option dance. Moves a value out of an option type and returns it,
+    /// replacing the original with `None`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value equals `None`.
+    #[inline]
+    pub fn take_get(&mut self) -> T {
+        if self.is_none() {
+            fail!("called `Option::take_get()` on a `None` value")
+        }
+        self.take().get()
+    }
+
+    ///  Gets the value out of an option, printing a specified message on
+    ///  failure
+    ///
+    ///  # Failure
+    ///
+    ///  Fails if the value equals `None`
+    #[inline]
+    pub fn expect(self, reason: &str) -> T {
+        match self {
+            Some(val) => val,
+            None => fail!(reason.to_owned()),
         }
     }
 
     /// Returns the contained value or a default
     #[inline]
     pub fn get_or_default(self, def: T) -> T {
-        match self { Some(x) => x, None => def }
+        match self {
+            Some(x) => x,
+            None => def
+        }
     }
 
     /// Applies a function zero or more times until the result is `None`.
@@ -387,7 +374,7 @@ impl<T> Option<T> {
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
         let mut opt = self;
         while opt.is_some() {
-            opt = blk(opt.unwrap());
+            opt = blk(opt.get());
         }
     }
 }
@@ -399,6 +386,15 @@ impl<T:Zero> Option<T> {
         match self {
             Some(x) => x,
             None => Zero::zero()
+        }
+    }
+
+    /// Returns self or `Some(zero)` (for this type)
+    #[inline]
+    pub fn or_zero(self) -> Option<T> {
+        match self {
+            None => Some(Zero::zero()),
+            x => x
         }
     }
 }
@@ -450,29 +446,29 @@ mod tests {
     use util;
 
     #[test]
-    fn test_unwrap_ptr() {
+    fn test_get_ptr() {
         unsafe {
             let x = ~0;
             let addr_x: *int = ::cast::transmute(&*x);
             let opt = Some(x);
-            let y = opt.unwrap();
+            let y = opt.get();
             let addr_y: *int = ::cast::transmute(&*y);
             assert_eq!(addr_x, addr_y);
         }
     }
 
     #[test]
-    fn test_unwrap_str() {
+    fn test_get_str() {
         let x = ~"test";
         let addr_x = x.as_imm_buf(|buf, _len| buf);
         let opt = Some(x);
-        let y = opt.unwrap();
+        let y = opt.get();
         let addr_y = y.as_imm_buf(|buf, _len| buf);
         assert_eq!(addr_x, addr_y);
     }
 
     #[test]
-    fn test_unwrap_resource() {
+    fn test_get_resource() {
         struct R {
            i: @mut int,
         }
@@ -492,7 +488,7 @@ mod tests {
         {
             let x = R(i);
             let opt = Some(x);
-            let _y = opt.unwrap();
+            let _y = opt.get();
         }
         assert_eq!(*i, 1);
     }
@@ -503,7 +499,7 @@ mod tests {
         let mut y = Some(5);
         let mut y2 = 0;
         foreach _x in x.iter() {
-            y2 = y.take_unwrap();
+            y2 = y.take_get();
         }
         assert_eq!(y2, 5);
         assert!(y.is_none());
@@ -511,8 +507,8 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_option_too_much_dance() {
         let mut y = Some(util::NonCopyable);
-        let _y2 = y.take_unwrap();
-        let _y3 = y.take_unwrap();
+        let _y2 = y.take_get();
+        let _y3 = y.take_get();
     }
 
     #[test]

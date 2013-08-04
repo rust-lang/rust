@@ -75,7 +75,7 @@ fn read_line() {
         .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
 
     foreach _ in range(0, 3) {
-        let reader = io::file_reader(&path).unwrap();
+        let reader = io::file_reader(&path).get();
         while !reader.eof() {
             reader.read_line();
         }

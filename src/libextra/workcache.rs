@@ -206,7 +206,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 // FIXME(#5121)
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
-        let j = json::from_reader(rdr).unwrap();
+        let j = json::from_reader(rdr).get();
         let mut decoder = json::Decoder(j);
         Decodable::decode(&mut decoder)
     }
@@ -321,7 +321,7 @@ impl<'self> Prep<'self> {
 
             _ => {
                 let (port, chan) = oneshot();
-                let blk = bo.take_unwrap();
+                let blk = bo.take_get();
                 let chan = Cell::new(chan);
 
                 do task::spawn {

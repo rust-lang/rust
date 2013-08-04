@@ -556,8 +556,8 @@ impl<T: Send> SharedChan<T> {
         unsafe {
             let (next_pone, next_cone) = oneshot();
             let cone = (*self.next.get()).swap(~next_cone, SeqCst);
-            cone.unwrap().try_send_inner(StreamPayload { val: val, next: next_pone },
-                                         do_resched)
+            cone.get().try_send_inner(StreamPayload { val: val, next: next_pone },
+                                      do_resched)
         }
     }
 }
@@ -621,7 +621,7 @@ impl<T: Send> GenericPort<T> for SharedPort<T> {
         unsafe {
             let (next_link_port, next_link_chan) = oneshot();
             let link_port = (*self.next_link.get()).swap(~next_link_port, SeqCst);
-            let link_port = link_port.unwrap();
+            let link_port = link_port.get();
             let data_port = link_port.recv();
             let (next_data_port, res) = match data_port.try_recv() {
                 Some(StreamPayload { val, next }) => {

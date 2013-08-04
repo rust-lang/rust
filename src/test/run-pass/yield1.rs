@@ -18,7 +18,7 @@ pub fn main() {
     builder.spawn(child);
     error!("1");
     task::yield();
-    result.unwrap().recv();
+    result.get().recv();
 }
 
 fn child() { error!("2"); }

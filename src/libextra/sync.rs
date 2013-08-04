@@ -111,7 +111,7 @@ impl<Q:Send> Sem<Q> {
             /* do 1000.times { task::yield(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
-                let _ = comm::recv_one(waiter_nobe.unwrap());
+                let _ = comm::recv_one(waiter_nobe.get());
             }
         }
     }
@@ -216,7 +216,7 @@ impl<'self> Condvar<'self> {
                             state.waiters.signal();
                         }
                         // Enqueue ourself to be woken up by a signaller.
-                        let SignalEnd = SignalEnd.take_unwrap();
+                        let SignalEnd = SignalEnd.take_get();
                         state.blocked[condvar_id].tail.send_deferred(SignalEnd);
                     } else {
                         out_of_bounds = Some(state.blocked.len());
@@ -235,7 +235,7 @@ impl<'self> Condvar<'self> {
                 do (|| {
                     unsafe {
                         do task::rekillable {
-                            let _ = comm::recv_one(WaitEnd.take_unwrap());
+                            let _ = comm::recv_one(WaitEnd.take_get());
                         }
                     }
                 }).finally {
@@ -295,7 +295,7 @@ impl<'self> Condvar<'self> {
                 }
             }
             do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-                let queue = queue.take_unwrap();
+                let queue = queue.take_get();
                 queue.broadcast()
             }
         }
@@ -1326,7 +1326,7 @@ mod tests {
         do x.write_downgrade |xwrite| {
             let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
-                y.downgrade(xopt.take_unwrap());
+                y.downgrade(xopt.take_get());
                 error!("oops, y.downgrade(x) should have failed!");
             }
         }

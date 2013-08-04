@@ -37,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_mkdtemp() {
-        let p = mkdtemp(&Path("."), "foobar").unwrap();
+        let p = mkdtemp(&Path("."), "foobar").get();
         os::remove_dir(&p);
         assert!(p.to_str().ends_with("foobar"));
     }

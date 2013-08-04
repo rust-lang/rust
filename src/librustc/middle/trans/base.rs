@@ -94,7 +94,7 @@ static task_local_insn_key: local_data::Key<@~[&'static str]> = &local_data::Key
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
     let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
     if opt.is_some() {
-        blk(*opt.unwrap());
+        blk(*opt.get());
     }
 }
 
@@ -2296,7 +2296,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 // runtime rust_start function
 pub fn create_entry_wrapper(ccx: @mut CrateContext,
                            _sp: span, main_llfn: ValueRef) {
-    let et = ccx.sess.entry_type.unwrap();
+    let et = ccx.sess.entry_type.get();
     if et == session::EntryMain {
         let llfn = create_main(ccx, main_llfn);
         create_entry_fn(ccx, llfn, true);

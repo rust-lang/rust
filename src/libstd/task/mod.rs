@@ -395,7 +395,7 @@ impl TaskBuilder {
             ch.send(f());
         }
 
-        match result.unwrap().recv() {
+        match result.get().recv() {
             Success => result::Ok(po.recv()),
             Failure => result::Err(())
         }
@@ -972,7 +972,7 @@ fn test_future_result() {
     let mut builder = task();
     builder.future_result(|r| result = Some(r));
     do builder.spawn {}
-    assert_eq!(result.unwrap().recv(), Success);
+    assert_eq!(result.get().recv(), Success);
 
     result = None;
     let mut builder = task();
@@ -981,7 +981,7 @@ fn test_future_result() {
     do builder.spawn {
         fail!();
     }
-    assert_eq!(result.unwrap().recv(), Failure);
+    assert_eq!(result.get().recv(), Failure);
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]

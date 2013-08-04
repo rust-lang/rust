@@ -33,7 +33,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    result.unwrap().recv();
+    result.get().recv();
 
     info!("Joined task.");
 }

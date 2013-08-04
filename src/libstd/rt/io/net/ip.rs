@@ -29,11 +29,11 @@ impl ToStr for IpAddr {
             // Ipv4 Compatible address
             Ipv6(0, 0, 0, 0, 0, 0, g, h, p) => {
                 let a = fmt!("%04x", g as uint);
-                let b = FromStrRadix::from_str_radix(a.slice(2, 4), 16).unwrap();
-                let a = FromStrRadix::from_str_radix(a.slice(0, 2), 16).unwrap();
+                let b = FromStrRadix::from_str_radix(a.slice(2, 4), 16).get();
+                let a = FromStrRadix::from_str_radix(a.slice(0, 2), 16).get();
                 let c = fmt!("%04x", h as uint);
-                let d = FromStrRadix::from_str_radix(c.slice(2, 4), 16).unwrap();
-                let c = FromStrRadix::from_str_radix(c.slice(0, 2), 16).unwrap();
+                let d = FromStrRadix::from_str_radix(c.slice(2, 4), 16).get();
+                let c = FromStrRadix::from_str_radix(c.slice(0, 2), 16).get();
 
                 fmt!("[::%u.%u.%u.%u]:%u", a, b, c, d, p as uint)
             }
@@ -41,11 +41,11 @@ impl ToStr for IpAddr {
             // Ipv4-Mapped address
             Ipv6(0, 0, 0, 0, 0, 1, g, h, p) => {
                 let a = fmt!("%04x", g as uint);
-                let b = FromStrRadix::from_str_radix(a.slice(2, 4), 16).unwrap();
-                let a = FromStrRadix::from_str_radix(a.slice(0, 2), 16).unwrap();
+                let b = FromStrRadix::from_str_radix(a.slice(2, 4), 16).get();
+                let a = FromStrRadix::from_str_radix(a.slice(0, 2), 16).get();
                 let c = fmt!("%04x", h as uint);
-                let d = FromStrRadix::from_str_radix(c.slice(2, 4), 16).unwrap();
-                let c = FromStrRadix::from_str_radix(c.slice(0, 2), 16).unwrap();
+                let d = FromStrRadix::from_str_radix(c.slice(2, 4), 16).get();
+                let c = FromStrRadix::from_str_radix(c.slice(0, 2), 16).get();
 
                 fmt!("[::FFFF:%u.%u.%u.%u]:%u", a, b, c, d, p as uint)
             }

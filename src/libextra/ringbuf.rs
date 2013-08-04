@@ -357,9 +357,9 @@ mod tests {
         d.push_back(137);
         assert_eq!(d.len(), 4u);
         debug!(d.front());
-        assert_eq!(*d.front().unwrap(), 42);
+        assert_eq!(*d.front().get(), 42);
         debug!(d.back());
-        assert_eq!(*d.back().unwrap(), 137);
+        assert_eq!(*d.back().get(), 137);
         let mut i = d.pop_front();
         debug!(i);
         assert_eq!(i, Some(42));
@@ -658,9 +658,9 @@ mod tests {
 
         {
             let mut it = d.mut_iter();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            assert_eq!(*it.next().get(), 0);
+            assert_eq!(*it.next().get(), 1);
+            assert_eq!(*it.next().get(), 2);
             assert!(it.next().is_none());
         }
     }
@@ -681,9 +681,9 @@ mod tests {
 
         {
             let mut it = d.mut_rev_iter();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
+            assert_eq!(*it.next().get(), 0);
+            assert_eq!(*it.next().get(), 1);
+            assert_eq!(*it.next().get(), 2);
             assert!(it.next().is_none());
         }
     }

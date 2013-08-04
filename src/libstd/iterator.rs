@@ -448,7 +448,7 @@ pub trait IteratorUtil<A> {
     ///
     /// ~~~ {.rust}
     /// let xs = [-3, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).get(), -10);
     /// ~~~
     fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
 
@@ -458,7 +458,7 @@ pub trait IteratorUtil<A> {
     ///
     /// ~~~ {.rust}
     /// let xs = [-3, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).get(), 0);
     /// ~~~
     fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
 }
@@ -1746,15 +1746,15 @@ mod tests {
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
         foreach i in range(0u, v.len()) {
-            assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
+            assert_eq!(v.iter().nth(i).get(), &v[i]);
         }
     }
 
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last_().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last_().unwrap(), &0);
+        assert_eq!(v.iter().last_().get(), &4);
+        assert_eq!(v.slice(0, 1).iter().last_().get(), &0);
     }
 
     #[test]
@@ -1862,16 +1862,16 @@ mod tests {
     #[test]
     fn test_find() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(*v.iter().find_(|x| *x & 1 == 0).unwrap(), 14);
-        assert_eq!(*v.iter().find_(|x| *x % 3 == 0).unwrap(), 3);
+        assert_eq!(*v.iter().find_(|x| *x & 1 == 0).get(), 14);
+        assert_eq!(*v.iter().find_(|x| *x % 3 == 0).get(), 3);
         assert!(v.iter().find_(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
     fn test_position() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
-        assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
+        assert_eq!(v.iter().position(|x| *x & 1 == 0).get(), 5);
+        assert_eq!(v.iter().position(|x| *x % 3 == 0).get(), 1);
         assert!(v.iter().position(|x| *x % 12 == 0).is_none());
     }
 
@@ -1886,13 +1886,13 @@ mod tests {
     #[test]
     fn test_max_by() {
         let xs = [-3, 0, 1, 5, -10];
-        assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+        assert_eq!(*xs.iter().max_by(|x| x.abs()).get(), -10);
     }
 
     #[test]
     fn test_min_by() {
         let xs = [-3, 0, 1, 5, -10];
-        assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+        assert_eq!(*xs.iter().min_by(|x| x.abs()).get(), 0);
     }
 
     #[test]
@@ -1921,9 +1921,9 @@ mod tests {
     fn test_double_ended_filter() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter(|&x| *x & 1 == 0);
-        assert_eq!(it.next_back().unwrap(), &6);
-        assert_eq!(it.next_back().unwrap(), &4);
-        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next_back().get(), &6);
+        assert_eq!(it.next_back().get(), &4);
+        assert_eq!(it.next().get(), &2);
         assert_eq!(it.next_back(), None);
     }
 
@@ -1931,9 +1931,9 @@ mod tests {
     fn test_double_ended_filter_map() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
-        assert_eq!(it.next_back().unwrap(), 12);
-        assert_eq!(it.next_back().unwrap(), 8);
-        assert_eq!(it.next().unwrap(), 4);
+        assert_eq!(it.next_back().get(), 12);
+        assert_eq!(it.next_back().get(), 8);
+        assert_eq!(it.next().get(), 4);
         assert_eq!(it.next_back(), None);
     }
 
@@ -1942,14 +1942,14 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
         let mut it = xs.iter().chain_(ys.iter()).invert();
-        assert_eq!(it.next().unwrap(), &11)
-        assert_eq!(it.next().unwrap(), &9)
-        assert_eq!(it.next_back().unwrap(), &1)
-        assert_eq!(it.next_back().unwrap(), &2)
-        assert_eq!(it.next_back().unwrap(), &3)
-        assert_eq!(it.next_back().unwrap(), &4)
-        assert_eq!(it.next_back().unwrap(), &5)
-        assert_eq!(it.next_back().unwrap(), &7)
+        assert_eq!(it.next().get(), &11)
+        assert_eq!(it.next().get(), &9)
+        assert_eq!(it.next_back().get(), &1)
+        assert_eq!(it.next_back().get(), &2)
+        assert_eq!(it.next_back().get(), &3)
+        assert_eq!(it.next_back().get(), &4)
+        assert_eq!(it.next_back().get(), &5)
+        assert_eq!(it.next_back().get(), &7)
         assert_eq!(it.next_back(), None)
     }
 
@@ -1978,13 +1978,13 @@ mod tests {
         let u = [0u,1];
         let v = [5,6,7,8];
         let mut it = u.iter().flat_map_(|x| v.slice(*x, v.len()).iter());
-        assert_eq!(it.next_back().unwrap(), &8);
-        assert_eq!(it.next().unwrap(),      &5);
-        assert_eq!(it.next_back().unwrap(), &7);
-        assert_eq!(it.next_back().unwrap(), &6);
-        assert_eq!(it.next_back().unwrap(), &8);
-        assert_eq!(it.next().unwrap(),      &6);
-        assert_eq!(it.next_back().unwrap(), &7);
+        assert_eq!(it.next_back().get(), &8);
+        assert_eq!(it.next().get(),      &5);
+        assert_eq!(it.next_back().get(), &7);
+        assert_eq!(it.next_back().get(), &6);
+        assert_eq!(it.next_back().get(), &8);
+        assert_eq!(it.next().get(),      &6);
+        assert_eq!(it.next_back().get(), &7);
         assert_eq!(it.next_back(), None);
         assert_eq!(it.next(),      None);
         assert_eq!(it.next_back(), None);
@@ -1995,17 +1995,17 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
         let mut it = xs.iter().chain_(ys.iter());
-        assert_eq!(it.idx(0).unwrap(), &1);
-        assert_eq!(it.idx(5).unwrap(), &7);
-        assert_eq!(it.idx(7).unwrap(), &11);
+        assert_eq!(it.idx(0).get(), &1);
+        assert_eq!(it.idx(5).get(), &7);
+        assert_eq!(it.idx(7).get(), &11);
         assert!(it.idx(8).is_none());
 
         it.next();
         it.next();
         it.next_back();
 
-        assert_eq!(it.idx(0).unwrap(), &3);
-        assert_eq!(it.idx(4).unwrap(), &9);
+        assert_eq!(it.idx(0).get(), &3);
+        assert_eq!(it.idx(4).get(), &9);
         assert!(it.idx(6).is_none());
 
         check_randacc_iter(it, xs.len() + ys.len() - 3);

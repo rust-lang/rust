@@ -1030,7 +1030,7 @@ impl Resolver {
                 if (duplicate_type != NoError) {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
-                    let ns = ns.unwrap();
+                    let ns = ns.get();
                     self.session.span_err(sp,
                         fmt!("duplicate definition of %s `%s`",
                              namespace_error_to_str(duplicate_type),

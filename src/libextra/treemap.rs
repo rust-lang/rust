@@ -48,7 +48,7 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
             let mut x = self.iter();
             let mut y = other.iter();
             foreach _ in range(0u, self.len()) {
-                if x.next().unwrap() != y.next().unwrap() {
+                if x.next().get() != y.next().get() {
                     return false
                 }
             }
@@ -66,8 +66,8 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
 
     let (a_len, b_len) = (a.len(), b.len());
     foreach _ in range(0u, num::min(a_len, b_len)) {
-        let (key_a, value_a) = x.next().unwrap();
-        let (key_b, value_b) = y.next().unwrap();
+        let (key_a, value_a) = x.next().get();
+        let (key_b, value_b) = y.next().get();
         if *key_a < *key_b { return true; }
         if *key_a > *key_b { return false; }
         if *value_a < *value_b { return true; }
@@ -350,8 +350,8 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         let mut a = x.next();
         let mut b = y.next();
         while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
             match a1.cmp(b1) {
               Less => a = x.next(),
               Greater => b = y.next(),
@@ -378,8 +378,8 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 return false
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
 
             match a1.cmp(b1) {
               Less => (),
@@ -433,11 +433,11 @@ impl<T: TotalOrd> TreeSet<T> {
 
         while a.is_some() {
             if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
+                return f(a.get()) && x.advance(f);
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
 
             let cmp = a1.cmp(b1);
 
@@ -463,11 +463,11 @@ impl<T: TotalOrd> TreeSet<T> {
 
         while a.is_some() {
             if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
+                return f(a.get()) && x.advance(f);
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
 
             let cmp = a1.cmp(b1);
 
@@ -495,8 +495,8 @@ impl<T: TotalOrd> TreeSet<T> {
         let mut b = y.next();
 
         while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
 
             let cmp = a1.cmp(b1);
 
@@ -522,11 +522,11 @@ impl<T: TotalOrd> TreeSet<T> {
 
         while a.is_some() {
             if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
+                return f(a.get()) && x.advance(f);
             }
 
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
+            let a1 = a.get();
+            let b1 = b.get();
 
             let cmp = a1.cmp(b1);
 
@@ -599,7 +599,7 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
 // Remove left horizontal link by rotating right
 fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
-        let mut save = node.left.take_unwrap();
+        let mut save = node.left.take_get();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
         node.right = Some(save);
@@ -611,7 +611,7 @@ fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
 fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
-        let mut save = node.right.take_unwrap();
+        let mut save = node.right.take_get();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
         swap(node, &mut save);
@@ -690,7 +690,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
-                    let mut left = save.left.take_unwrap();
+                    let mut left = save.left.take_get();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
@@ -700,13 +700,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)
                 } else {
-                    let new = save.left.take_unwrap();
+                    let new = save.left.take_get();
                     let ~TreeNode{value, _} = replace(save, new);
-                    *save = save.left.take_unwrap();
+                    *save = save.left.take_get();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
-                let new = save.right.take_unwrap();
+                let new = save.right.take_get();
                 let ~TreeNode{value, _} = replace(save, new);
                 (Some(value), true)
             } else {
@@ -822,7 +822,7 @@ mod test_treemap {
         assert!(m.insert(5, 2));
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
-        assert_eq!(m.find(&2).unwrap(), &11);
+        assert_eq!(m.find(&2).get(), &11);
     }
 
     #[test]
@@ -860,7 +860,7 @@ mod test_treemap {
         assert_eq!(ctrl.is_empty(), map.is_empty());
         foreach x in ctrl.iter() {
             let &(ref k, ref v) = x;
-            assert!(map.find(k).unwrap() == v)
+            assert!(map.find(k).get() == v)
         }
         foreach (map_k, map_v) in map.iter() {
             let mut found = false;
@@ -1072,11 +1072,11 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        assert_eq!(a.next().unwrap(), (&x1, &y1));
-        assert_eq!(a.next().unwrap(), (&x2, &y2));
-        assert_eq!(a.next().unwrap(), (&x3, &y3));
-        assert_eq!(a.next().unwrap(), (&x4, &y4));
-        assert_eq!(a.next().unwrap(), (&x5, &y5));
+        assert_eq!(a.next().get(), (&x1, &y1));
+        assert_eq!(a.next().get(), (&x2, &y2));
+        assert_eq!(a.next().get(), (&x3, &y3));
+        assert_eq!(a.next().get(), (&x4, &y4));
+        assert_eq!(a.next().get(), (&x5, &y5));
 
         assert!(a.next().is_none());
 
@@ -1377,10 +1377,10 @@ mod test_set {
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&5u, & &"bar"));
+        assert_eq!(result.get(), (&5u, & &"bar"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&11u, & &"foo"));
+        assert_eq!(result.get(), (&11u, & &"foo"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
         assert!(result.is_none());

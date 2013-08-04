@@ -74,6 +74,6 @@ impl Seek for FileStream {
 fn super_simple_smoke_test_lets_go_read_some_files_and_have_a_good_time() {
     let message = "it's alright. have a good time";
     let filename = &Path("test.txt");
-    let mut outstream = FileStream::open(filename, Create, Read).unwrap();
+    let mut outstream = FileStream::open(filename, Create, Read).get();
     outstream.write(message.as_bytes());
 }

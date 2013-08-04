@@ -89,7 +89,7 @@ impl Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
-            let mut sched = running_task.sched.take_unwrap();
+            let mut sched = running_task.sched.take_get();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
                                                          home.take(),
                                                          f.take());
@@ -106,7 +106,7 @@ impl Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
-            let mut sched = running_task.sched.take_unwrap();
+            let mut sched = running_task.sched.take_get();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
                                                     home.take(),
                                                     f.take());
@@ -198,10 +198,10 @@ impl Task {
         }
     }
 
-    pub fn take_unwrap_home(&mut self) -> SchedHome {
+    pub fn take_get_home(&mut self) -> SchedHome {
         match self.task_type {
             GreenTask(ref mut home) => {
-                let out = home.take_unwrap();
+                let out = home.take_get();
                 return *out;
             }
             SchedTask => {
@@ -559,7 +559,7 @@ mod test {
             let mut builder = task();
             builder.future_result(|r| result = Some(r));
             do builder.spawn {}
-            assert_eq!(result.unwrap().recv(), Success);
+            assert_eq!(result.get().recv(), Success);
 
             result = None;
             let mut builder = task();
@@ -568,7 +568,7 @@ mod test {
             do builder.spawn {
                 fail!();
             }
-            assert_eq!(result.unwrap().recv(), Failure);
+            assert_eq!(result.get().recv(), Failure);
         }
     }
 }

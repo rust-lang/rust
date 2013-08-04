@@ -1983,7 +1983,7 @@ pub mod raw {
         let mut box = Some(val);
         do v.as_mut_buf |p, _len| {
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
-                                      box.take_unwrap());
+                                      box.take_get());
         }
     }
 
@@ -2423,9 +2423,9 @@ mod tests {
         let mut a = ~[];
         assert_eq!(a.head_opt(), None);
         a = ~[11];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head_opt().get(), &11);
         a = ~[11, 12];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head_opt().get(), &11);
     }
 
     #[test]
@@ -2513,9 +2513,9 @@ mod tests {
         let mut a = ~[];
         assert_eq!(a.last_opt(), None);
         a = ~[11];
-        assert_eq!(a.last_opt().unwrap(), &11);
+        assert_eq!(a.last_opt().get(), &11);
         a = ~[11, 12];
-        assert_eq!(a.last_opt().unwrap(), &12);
+        assert_eq!(a.last_opt().get(), &12);
     }
 
     #[test]
@@ -3169,15 +3169,15 @@ mod tests {
         let xs = [1, 2, 5, 10, 11];
         let mut it = xs.iter();
         assert_eq!(it.size_hint(), (5, Some(5)));
-        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.next().get(), &1);
         assert_eq!(it.size_hint(), (4, Some(4)));
-        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next().get(), &2);
         assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.next().get(), &5);
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.next().get(), &10);
         assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.next().get(), &11);
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
     }
@@ -3189,32 +3189,32 @@ mod tests {
         let mut it = xs.iter();
 
         assert_eq!(it.indexable(), 5);
-        assert_eq!(it.idx(0).unwrap(), &1);
-        assert_eq!(it.idx(2).unwrap(), &5);
-        assert_eq!(it.idx(4).unwrap(), &11);
+        assert_eq!(it.idx(0).get(), &1);
+        assert_eq!(it.idx(2).get(), &5);
+        assert_eq!(it.idx(4).get(), &11);
         assert!(it.idx(5).is_none());
 
-        assert_eq!(it.next().unwrap(), &1);
+        assert_eq!(it.next().get(), &1);
         assert_eq!(it.indexable(), 4);
-        assert_eq!(it.idx(0).unwrap(), &2);
-        assert_eq!(it.idx(3).unwrap(), &11);
+        assert_eq!(it.idx(0).get(), &2);
+        assert_eq!(it.idx(3).get(), &11);
         assert!(it.idx(4).is_none());
 
-        assert_eq!(it.next().unwrap(), &2);
+        assert_eq!(it.next().get(), &2);
         assert_eq!(it.indexable(), 3);
-        assert_eq!(it.idx(1).unwrap(), &10);
+        assert_eq!(it.idx(1).get(), &10);
         assert!(it.idx(3).is_none());
 
-        assert_eq!(it.next().unwrap(), &5);
+        assert_eq!(it.next().get(), &5);
         assert_eq!(it.indexable(), 2);
-        assert_eq!(it.idx(1).unwrap(), &11);
+        assert_eq!(it.idx(1).get(), &11);
 
-        assert_eq!(it.next().unwrap(), &10);
+        assert_eq!(it.next().get(), &10);
         assert_eq!(it.indexable(), 1);
-        assert_eq!(it.idx(0).unwrap(), &11);
+        assert_eq!(it.idx(0).get(), &11);
         assert!(it.idx(1).is_none());
 
-        assert_eq!(it.next().unwrap(), &11);
+        assert_eq!(it.next().get(), &11);
         assert_eq!(it.indexable(), 0);
         assert!(it.idx(0).is_none());
 

@@ -50,7 +50,7 @@ impl<T> Tube<T> {
             if (*state).blocked_task.is_some() {
                 // There's a waiting task. Wake it up
                 rtdebug!("waking blocked tube");
-                let task = (*state).blocked_task.take_unwrap();
+                let task = (*state).blocked_task.take_get();
                 let sched = Local::take::<Scheduler>();
                 sched.resume_blocked_task_immediately(task);
             }

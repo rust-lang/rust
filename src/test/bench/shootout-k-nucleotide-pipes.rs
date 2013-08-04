@@ -161,7 +161,7 @@ fn main() {
        // get to this massive data set, but include_bin! chokes on it (#2598)
        let path = Path(env!("CFG_SRC_DIR"))
            .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
-       io::file_reader(&path).unwrap()
+       io::file_reader(&path).get()
    } else {
       io::stdin()
    };
@@ -175,7 +175,7 @@ fn main() {
     let to_child   = do sizes.iter().zip(streams.mut_iter()).transform |(sz, stream_ref)| {
         let sz = *sz;
         let stream = util::replace(stream_ref, None);
-        let (from_child_, to_parent_) = stream.unwrap();
+        let (from_child_, to_parent_) = stream.get();
 
         from_child.push(from_child_);
 

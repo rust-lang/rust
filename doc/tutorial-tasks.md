@@ -355,7 +355,7 @@ fn pnorm(nums: &~[float], p: uint) -> float {
 
 fn main() {
     let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
-    println(fmt!("Inf-norm = %?",  *numbers.iter().max().unwrap()));
+    println(fmt!("Inf-norm = %?",  *numbers.iter().max().get()));
 
     let numbers_arc = Arc::new(numbers);
 

@@ -99,7 +99,7 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
         UvIpv4(*) => {
             let ip: ~[u8] =
                 ip_str.split_iter('.')
-                      .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
+                      .transform(|s: &str| -> u8 { FromStr::from_str(s).get() })
                       .collect();
             assert_eq!(ip.len(), 4);
             Ipv4(ip[0], ip[1], ip[2], ip[3], ip_port)
@@ -109,7 +109,7 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
                 let expand_shorthand_and_convert = |s: &str| -> ~[~[u16]] {
                     let convert_each_segment = |s: &str| -> ~[u16] {
                         let read_hex_segment = |s: &str| -> u16 {
-                            num::FromStrRadix::from_str_radix(s, 16u).unwrap()
+                            num::FromStrRadix::from_str_radix(s, 16u).get()
                         };
                         match s {
                             "" => ~[],
@@ -120,7 +120,7 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
                                 let b = s.slice(i + 1, s.len()); // the ipv4 part
 
                                 let h = b.split_iter('.')
-                                   .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
+                                   .transform(|s: &str| -> u8 { FromStr::from_str(s).get() })
                                    .transform(|s: u8| -> ~str { fmt!("%02x", s as uint) })
                                    .collect::<~[~str]>();
 
@@ -129,8 +129,8 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
                                     // first 96 bits are zero leaving 32 bits
                                     // for the ipv4 part
                                     // (i.e ::127.0.0.1 == ::7F00:1)
-                                    ~[num::FromStrRadix::from_str_radix(h[0] + h[1], 16).unwrap(),
-                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).unwrap()]
+                                    ~[num::FromStrRadix::from_str_radix(h[0] + h[1], 16).get(),
+                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).get()]
                                 } else {
                                     // Ipv4-Mapped Address (::FFFF:x.x.x.x)
                                     // first 80 bits are zero, followed by all ones
@@ -138,8 +138,8 @@ fn uv_ip_as_ip<T>(addr: UvIpAddr, f: &fn(IpAddr) -> T) -> T {
                                     // the ipv4 part
                                     // (i.e ::FFFF:127.0.0.1 == ::FFFF:7F00:1)
                                     ~[1,
-                                      num::FromStrRadix::from_str_radix(h[0] + h[1], 16).unwrap(),
-                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).unwrap()]
+                                      num::FromStrRadix::from_str_radix(h[0] + h[1], 16).get(),
+                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).get()]
                                 }
                             },
                             s => s.split_iter(':').transform(read_hex_segment).collect()
@@ -238,7 +238,7 @@ impl StreamWatcher {
             let write_request: WriteRequest = NativeHandle::from_native_handle(req);
             let mut stream_watcher = write_request.stream();
             write_request.delete();
-            let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
+            let cb = stream_watcher.get_watcher_data().write_cb.take_get();
             let status = status_to_maybe_uv_error(stream_watcher, status);
             cb(stream_watcher, status);
         }
@@ -262,7 +262,7 @@ impl StreamWatcher {
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            stream_watcher.get_watcher_data().close_cb.take_unwrap()();
+            stream_watcher.get_watcher_data().close_cb.take_get()();
             stream_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
         }
@@ -330,7 +330,7 @@ impl TcpWatcher {
                 let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
-                let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
+                let cb = stream_watcher.get_watcher_data().connect_cb.take_get();
                 let status = status_to_maybe_uv_error(stream_watcher, status);
                 cb(stream_watcher, status);
             }
@@ -465,7 +465,7 @@ impl UdpWatcher {
             let send_request: UdpSendRequest = NativeHandle::from_native_handle(req);
             let mut udp_watcher = send_request.handle();
             send_request.delete();
-            let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
+            let cb = udp_watcher.get_watcher_data().udp_send_cb.take_get();
             let status = status_to_maybe_uv_error(udp_watcher, status);
             cb(udp_watcher, status);
         }
@@ -483,7 +483,7 @@ impl UdpWatcher {
 
         extern fn close_cb(handle: *uvll::uv_udp_t) {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            udp_watcher.get_watcher_data().close_cb.take_unwrap()();
+            udp_watcher.get_watcher_data().close_cb.take_get()();
             udp_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
         }
@@ -700,7 +700,7 @@ mod test {
                     let mut count = count_cell.take();
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
-                        let buf = buf.unwrap();
+                        let buf = buf.get();
                         foreach byte in buf.slice(0, nread as uint).iter() {
                             assert!(*byte == count as u8);
                             rtdebug!("%u", *byte as uint);
@@ -775,7 +775,7 @@ mod test {
                     let mut count = count_cell.take();
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
-                        let buf = buf.unwrap();
+                        let buf = buf.get();
                         let r = buf.slice(0, nread as uint);
                         foreach byte in r.iter() {
                             assert!(*byte == count as u8);
@@ -847,7 +847,7 @@ mod test {
                 let mut count = 0;
                 rtdebug!("got %d bytes", nread);
 
-                let buf = buf.unwrap();
+                let buf = buf.get();
                 foreach &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);
@@ -907,7 +907,7 @@ mod test {
                 let mut count = 0;
                 rtdebug!("got %d bytes", nread);
 
-                let buf = buf.unwrap();
+                let buf = buf.get();
                 foreach &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
                     rtdebug!("%u", byte as uint);

@@ -224,7 +224,7 @@ impl FileInput {
         let path_option = self.fi.files.shift();
         let file = match path_option {
             None => io::stdin(),
-            Some(ref path) => io::file_reader(path).unwrap()
+            Some(ref path) => io::file_reader(path).get()
         };
 
         self.fi.current_reader = Some(file);
@@ -417,7 +417,7 @@ mod test {
     use std::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {
-        let file = io::file_writer(path, [io::Create, io::Truncate]).unwrap();
+        let file = io::file_writer(path, [io::Create, io::Truncate]).get();
 
         foreach str in contents.iter() {
             file.write_str(*str);
@@ -565,11 +565,9 @@ mod test {
         let f2 =
             Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
-        let wr = io::file_writer(f1.get_ref(),
-                                 [io::Create, io::Truncate]).unwrap();
+        let wr = io::file_writer(f1.get_ref(), [io::Create, io::Truncate]).get();
         wr.write_str("1\n2");
-        let wr = io::file_writer(f2.get_ref(),
-                                 [io::Create, io::Truncate]).unwrap();
+        let wr = io::file_writer(f2.get_ref(), [io::Create, io::Truncate]).get();
         wr.write_str("3\n4");
 
         let mut lines = ~[];

@@ -42,7 +42,7 @@ fn test00() {
         i += 1;
     }
 
-    result.unwrap().recv();
+    result.get().recv();
 
     assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

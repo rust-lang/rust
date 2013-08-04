@@ -141,7 +141,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     }
 
     if current_section.is_some() {
-        sections.push(current_section.unwrap());
+        sections.push(current_section.get());
     }
 
     (new_desc, sections)

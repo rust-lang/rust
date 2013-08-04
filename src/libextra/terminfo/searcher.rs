@@ -32,7 +32,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
         Some(dir) => dirs_to_search.push(path(dir)),
         None => {
             if homedir.is_some() {
-                dirs_to_search.push(homedir.unwrap().push(".terminfo")); // ncurses compatability
+                dirs_to_search.push(homedir.get().push(".terminfo")); // ncurses compatability
             }
             match getenv("TERMINFO_DIRS") {
                 Some(dirs) => foreach i in dirs.split_iter(':') {

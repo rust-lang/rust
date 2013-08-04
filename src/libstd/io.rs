@@ -1860,10 +1860,10 @@ mod tests {
             ~"A hoopy frood who really knows where his towel is.";
         debug!(frood.clone());
         {
-            let out = io::file_writer(tmpfile, [io::Create, io::Truncate]).unwrap();
+            let out = io::file_writer(tmpfile, [io::Create, io::Truncate]).get();
             out.write_str(frood);
         }
-        let inp = io::file_reader(tmpfile).unwrap();
+        let inp = io::file_reader(tmpfile).get();
         let frood2: ~str = inp.read_c_str();
         debug!(frood2.clone());
         assert_eq!(frood, frood2);
@@ -1876,18 +1876,18 @@ mod tests {
 
         {
             // create empty, enough to reproduce a problem
-            io::file_writer(&path, [io::Create]).unwrap();
+            io::file_writer(&path, [io::Create]).get();
         }
 
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             do file.each_byte() |_| {
                 fail!("must be empty")
             };
         }
 
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             do file.each_char() |_| {
                 fail!("must be empty")
             };
@@ -1986,9 +1986,9 @@ mod tests {
     fn test_read_buffer_too_small() {
         let path = &Path("tmp/lib-io-test-read-buffer-too-small.tmp");
         // ensure the file exists
-        io::file_writer(path, [io::Create]).unwrap();
+        io::file_writer(path, [io::Create]).get();
 
-        let file = io::file_reader(path).unwrap();
+        let file = io::file_reader(path).get();
         let mut buf = vec::from_elem(5, 0u8);
         file.read(buf, 6); // this should fail because buf is too small
     }
@@ -1997,9 +1997,9 @@ mod tests {
     fn test_read_buffer_big_enough() {
         let path = &Path("tmp/lib-io-test-read-buffer-big-enough.tmp");
         // ensure the file exists
-        io::file_writer(path, [io::Create]).unwrap();
+        io::file_writer(path, [io::Create]).get();
 
-        let file = io::file_reader(path).unwrap();
+        let file = io::file_reader(path).get();
         let mut buf = vec::from_elem(5, 0u8);
         file.read(buf, 4); // this should succeed because buf is big enough
     }
@@ -2007,7 +2007,7 @@ mod tests {
     #[test]
     fn test_write_empty() {
         let file = io::file_writer(&Path("tmp/lib-io-test-write-empty.tmp"),
-                                   [io::Create]).unwrap();
+                                   [io::Create]).get();
         file.write([]);
     }
 
@@ -2053,7 +2053,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).unwrap();
+            let file = io::file_writer(&path, [io::Create]).get();
             foreach i in uints.iter() {
                 file.write_le_u64(*i);
             }
@@ -2061,7 +2061,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             foreach i in uints.iter() {
                 assert_eq!(file.read_le_u64(), *i);
             }
@@ -2075,7 +2075,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).unwrap();
+            let file = io::file_writer(&path, [io::Create]).get();
             foreach i in uints.iter() {
                 file.write_be_u64(*i);
             }
@@ -2083,7 +2083,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             foreach i in uints.iter() {
                 assert_eq!(file.read_be_u64(), *i);
             }
@@ -2097,7 +2097,7 @@ mod tests {
 
         // write the ints to the file
         {
-            let file = io::file_writer(&path, [io::Create]).unwrap();
+            let file = io::file_writer(&path, [io::Create]).get();
             foreach i in ints.iter() {
                 file.write_be_i32(*i);
             }
@@ -2105,7 +2105,7 @@ mod tests {
 
         // then read them back and check that they are the same
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             foreach i in ints.iter() {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
@@ -2121,12 +2121,12 @@ mod tests {
         let buf = ~[0x41, 0x02, 0x00, 0x00];
 
         {
-            let file = io::file_writer(&path, [io::Create]).unwrap();
+            let file = io::file_writer(&path, [io::Create]).get();
             file.write(buf);
         }
 
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             let f = file.read_be_f32();
             assert_eq!(f, 8.1250);
         }
@@ -2138,13 +2138,13 @@ mod tests {
         let f:f32 = 8.1250;
 
         {
-            let file = io::file_writer(&path, [io::Create]).unwrap();
+            let file = io::file_writer(&path, [io::Create]).get();
             file.write_be_f32(f);
             file.write_le_f32(f);
         }
 
         {
-            let file = io::file_reader(&path).unwrap();
+            let file = io::file_reader(&path).get();
             assert_eq!(file.read_be_f32(), 8.1250);
             assert_eq!(file.read_le_f32(), 8.1250);
         }
