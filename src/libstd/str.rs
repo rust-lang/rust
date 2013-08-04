@@ -763,17 +763,6 @@ pub mod raw {
     use vec::MutableVector;
     use unstable::raw::{Slice, String};
 
-    /// Create a Rust string from a null-terminated *u8 buffer
-    pub unsafe fn from_buf(buf: *u8) -> ~str {
-        let mut curr = buf;
-        let mut i = 0u;
-        while *curr != 0u8 {
-            i += 1u;
-            curr = ptr::offset(buf, i as int);
-        }
-        return from_buf_len(buf, i);
-    }
-
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
@@ -784,17 +773,18 @@ pub mod raw {
         v.push(0u8);
 
         assert!(is_utf8(v));
-        return cast::transmute(v);
+        cast::transmute(v)
     }
 
     /// Create a Rust string from a null-terminated C string
-    pub unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
-        from_buf(c_str as *u8)
-    }
-
-    /// Create a Rust string from a `*c_char` buffer of the given length
-    pub unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
-        from_buf_len(c_str as *u8, len)
+    pub unsafe fn from_c_str(buf: *libc::c_char) -> ~str {
+        let mut curr = buf;
+        let mut i = 0;
+        while *curr != 0 {
+            i += 1;
+            curr = ptr::offset(buf, i);
+        }
+        from_buf_len(buf as *u8, i as uint)
     }
 
     /// Converts a vector of bytes to a new owned string.
@@ -2805,11 +2795,11 @@ mod tests {
     }
 
     #[test]
-    fn test_from_buf() {
+    fn test_raw_from_c_str() {
         unsafe {
-            let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+            let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
             let b = vec::raw::to_ptr(a);
-            let c = raw::from_buf(b);
+            let c = raw::from_c_str(b);
             assert_eq!(c, ~"AAAAAAA");
         }
     }

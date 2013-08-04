@@ -93,7 +93,7 @@ pub fn fill_charp_buf(f: &fn(*mut c_char, size_t) -> bool) -> Option<~str> {
     do buf.as_mut_buf |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
-                Some(str::raw::from_buf(b as *u8))
+                Some(str::raw::from_c_str(b as *c_char))
             }
         } else {
             None
