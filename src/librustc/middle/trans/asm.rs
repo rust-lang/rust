@@ -41,7 +41,6 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    out,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         }));
 
@@ -56,7 +55,6 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    e,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         })
 
@@ -77,7 +75,6 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    input,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         })
 

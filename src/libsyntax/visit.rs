@@ -513,7 +513,6 @@ pub fn visit_expr<E:Clone>(visitor: @Visitor<E>, expression: @expr, env: E) {
         }
         expr_addr_of(_, subexpression) |
         expr_unary(_, _, subexpression) |
-        expr_loop_body(subexpression) |
         expr_do_body(subexpression) => {
             visitor.visit_expr(subexpression, env.clone())
         }

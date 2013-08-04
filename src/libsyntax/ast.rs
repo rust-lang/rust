@@ -472,11 +472,6 @@ pub enum expr_ {
     expr_loop(Block, Option<ident>),
     expr_match(@expr, ~[arm]),
     expr_fn_block(fn_decl, Block),
-    // Inner expr is always an expr_fn_block. We need the wrapping node to
-    // easily type this (a function returning nil on the inside but bool on
-    // the outside).
-    expr_loop_body(@expr),
-    // Like expr_loop_body but for 'do' blocks
     expr_do_body(@expr),
     expr_block(Block),
 

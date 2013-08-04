@@ -70,8 +70,7 @@ pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
-          ast::expr_loop(*) | ast::expr_while(*)
-          | ast::expr_loop_body(*) => {}
+          ast::expr_loop(*) | ast::expr_while(*) => {}
           _ => oldvisit::visit_expr(e, (flag, v))
         }
     };

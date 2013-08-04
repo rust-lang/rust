@@ -396,7 +396,6 @@ impl CFGBuilder {
             }
 
             ast::expr_addr_of(_, e) |
-            ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
             ast::expr_unary(_, _, e) |

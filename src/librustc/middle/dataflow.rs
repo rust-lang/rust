@@ -82,19 +82,8 @@ struct PropagationContext<'self, O> {
     changed: bool
 }
 
-#[deriving(Eq)]
-enum LoopKind {
-    /// A `while` or `loop` loop
-    TrueLoop,
-
-    /// A `for` "loop" (i.e., really a func call where `break`, `return`,
-    /// and `loop` all essentially perform an early return from the closure)
-    ForLoop
-}
-
 struct LoopScope<'self> {
     loop_id: ast::NodeId,
-    loop_kind: LoopKind,
     break_bits: ~[uint]
 }
 
@@ -509,7 +498,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
                     loop_scopes.push(LoopScope {
                         loop_id: expr.id,
-                        loop_kind: ForLoop,
                         break_bits: reslice(in_out).to_owned()
                     });
                     for input in decl.inputs.iter() {
@@ -574,7 +562,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 let mut body_bits = reslice(in_out).to_owned();
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    loop_kind: TrueLoop,
                     break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
@@ -599,7 +586,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.reset(in_out);
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    loop_kind: TrueLoop,
                     break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
@@ -646,20 +632,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_ret(o_e) => {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
-
-                // is this a return from a `for`-loop closure?
-                match loop_scopes.iter().position(|s| s.loop_kind == ForLoop) {
-                    Some(i) => {
-                        // if so, add the in_out bits to the state
-                        // upon exit. Remember that we cannot count
-                        // upon the `for` loop function not to invoke
-                        // the closure again etc.
-                        self.break_from_to(expr, &mut loop_scopes[i], in_out);
-                    }
-
-                    None => {}
-                }
-
                 self.reset(in_out);
             }
 
@@ -671,22 +643,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_again(label) => {
                 let scope = self.find_scope(expr, label, loop_scopes);
-
-                match scope.loop_kind {
-                    TrueLoop => {
-                        self.pop_scopes(expr, scope, in_out);
-                        self.add_to_entry_set(scope.loop_id, reslice(in_out));
-                    }
-
-                    ForLoop => {
-                        // If this `loop` construct is looping back to a `for`
-                        // loop, then `loop` is really just a return from the
-                        // closure. Therefore, we treat it the same as `break`.
-                        // See case for `expr_fn_block` for more details.
-                        self.break_from_to(expr, scope, in_out);
-                    }
-                }
-
+                self.pop_scopes(expr, scope, in_out);
+                self.add_to_entry_set(scope.loop_id, reslice(in_out));
                 self.reset(in_out);
             }
 
@@ -756,7 +714,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_addr_of(_, e) |
-            ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
             ast::expr_unary(_, _, e) |

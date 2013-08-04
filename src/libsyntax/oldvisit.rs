@@ -501,7 +501,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(b, (e.clone(), v));
         }
         expr_addr_of(_, x) | expr_unary(_, _, x) |
-        expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, (e.clone(), v)),
+        expr_do_body(x) => (v.visit_expr)(x, (e.clone(), v)),
         expr_lit(_) => (),
         expr_cast(x, ref t) => {
             (v.visit_expr)(x, (e.clone(), v));
