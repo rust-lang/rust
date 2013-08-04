@@ -419,46 +419,25 @@ pub fn get_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
 }
 
 pub fn set_optimize_for_size(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::OptimizeForSizeAttribute
-                                    as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::OptimizeForSizeAttribute)
 }
 
 pub fn set_no_inline(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoInlineAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoInlineAttribute)
 }
 
 pub fn set_no_unwind(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoUnwindAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoUnwindAttribute)
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 pub fn set_uwtable(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::UWTableAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::UWTableAttribute)
 }
 
 pub fn set_inline_hint(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::InlineHintAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::InlineHintAttribute)
 }
 
 pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
@@ -473,17 +452,11 @@ pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
 }
 
 pub fn set_always_inline(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::AlwaysInlineAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
 }
 
 pub fn set_fixed_stack_segment(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f, 0, 1 << (39 - 32));
-    }
+    lib::llvm::SetFixedStackSegmentAttribute(f);
 }
 
 pub fn set_glue_inlining(f: ValueRef, t: ty::t) {

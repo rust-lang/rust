@@ -1,6 +1,6 @@
 [submodule "src/llvm"]
 	path = src/llvm
-	url = https://github.com/brson/llvm.git
+	url = https://github.com/alexcrichton/llvm.git
 	branch = master
 [submodule "src/libuv"]
 	path = src/libuv
