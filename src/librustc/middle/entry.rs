@@ -50,6 +50,12 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         return;
     }
 
+    // If the user wants no main function at all, then stop here.
+    if attr::contains_name(crate.attrs, "no_main") {
+        *session.entry_type = Some(session::EntryNone);
+        return
+    }
+
     let ctxt = @mut EntryContext {
         session: session,
         ast_map: ast_map,
