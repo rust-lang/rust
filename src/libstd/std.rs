@@ -172,6 +172,7 @@ pub mod local_data;
 
 pub mod gc;
 pub mod libc;
+pub mod c_str;
 pub mod os;
 pub mod path;
 pub mod rand;

@@ -28,6 +28,7 @@
 
 #[allow(missing_doc)];
 
+use c_str::ToCStr;
 use cast;
 use clone::Clone;
 use container::Container;
@@ -241,7 +242,9 @@ pub fn env() -> ~[(~str,~str)] {
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
-            let s = n.as_c_str(|s| libc::getenv(s as *libc::c_char));
+            let s = do n.to_c_str().with_ref |buf| {
+                libc::getenv(buf)
+            };
             if ptr::null::<u8>() == cast::transmute(s) {
                 None
             } else {
@@ -274,8 +277,8 @@ pub fn getenv(n: &str) -> Option<~str> {
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         do with_env_lock {
-            do n.to_str().as_c_str |nbuf| {
-                do v.to_str().as_c_str |vbuf| {
+            do n.to_c_str().with_ref |nbuf| {
+                do v.to_c_str().with_ref |vbuf| {
                     libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
                 }
             }
@@ -306,7 +309,7 @@ pub fn unsetenv(n: &str) {
     fn _unsetenv(n: &str) {
         unsafe {
             do with_env_lock {
-                do n.to_str().as_c_str |nbuf| {
+                do n.to_c_str().with_ref |nbuf| {
                     libc::funcs::posix01::unistd::unsetenv(nbuf);
                 }
             }
@@ -328,7 +331,7 @@ pub fn unsetenv(n: &str) {
 }
 
 pub fn fdopen(fd: c_int) -> *FILE {
-    do "r".as_c_str |modebuf| {
+    do "r".to_c_str().with_ref |modebuf| {
         unsafe {
             libc::fdopen(fd, modebuf)
         }
@@ -462,9 +465,9 @@ pub fn self_exe_path() -> Option<Path> {
             use libc::funcs::posix01::unistd::readlink;
 
             let mut path_str = str::with_capacity(TMPBUF_SZ);
-            let len = do path_str.as_c_str |buf| {
+            let len = do path_str.to_c_str().with_ref |buf| {
                 let buf = buf as *mut c_char;
-                do "/proc/self/exe".as_c_str |proc_self_buf| {
+                do "/proc/self/exe".to_c_str().with_ref |proc_self_buf| {
                     readlink(proc_self_buf, buf, TMPBUF_SZ as size_t)
                 }
             };
@@ -595,7 +598,7 @@ pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
 /// Indicates whether a path represents a directory
 pub fn path_is_dir(p: &Path) -> bool {
     unsafe {
-        do p.to_str().as_c_str |buf| {
+        do p.to_c_str().with_ref |buf| {
             rustrt::rust_path_is_dir(buf) != 0 as c_int
         }
     }
@@ -604,7 +607,7 @@ pub fn path_is_dir(p: &Path) -> bool {
 /// Indicates whether a path exists
 pub fn path_exists(p: &Path) -> bool {
     unsafe {
-        do p.to_str().as_c_str |buf| {
+        do p.to_c_str().with_ref |buf| {
             rustrt::rust_path_exists(buf) != 0 as c_int
         }
     }
@@ -647,7 +650,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 
     #[cfg(unix)]
     fn mkdir(p: &Path, mode: c_int) -> bool {
-        do p.to_str().as_c_str |buf| {
+        do p.to_c_str().with_ref |buf| {
             unsafe {
                 libc::mkdir(buf, mode as libc::mode_t) == (0 as c_int)
             }
@@ -823,7 +826,7 @@ pub fn remove_dir(p: &Path) -> bool {
 
     #[cfg(unix)]
     fn rmdir(p: &Path) -> bool {
-        do p.to_str().as_c_str |buf| {
+        do p.to_c_str().with_ref |buf| {
             unsafe {
                 libc::rmdir(buf) == (0 as c_int)
             }
@@ -848,7 +851,7 @@ pub fn change_dir(p: &Path) -> bool {
 
     #[cfg(unix)]
     fn chdir(p: &Path) -> bool {
-        do p.to_str().as_c_str |buf| {
+        do p.to_c_str().with_ref |buf| {
             unsafe {
                 libc::chdir(buf) == (0 as c_int)
             }
@@ -876,8 +879,8 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
     #[cfg(unix)]
     fn do_copy_file(from: &Path, to: &Path) -> bool {
         unsafe {
-            let istream = do from.to_str().as_c_str |fromp| {
-                do "rb".as_c_str |modebuf| {
+            let istream = do from.to_c_str().with_ref |fromp| {
+                do "rb".to_c_str().with_ref |modebuf| {
                     libc::fopen(fromp, modebuf)
                 }
             };
@@ -888,8 +891,8 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
                                                     for source file");
 
-            let ostream = do to.to_str().as_c_str |top| {
-                do "w+b".as_c_str |modebuf| {
+            let ostream = do to.to_c_str().with_ref |top| {
+                do "w+b".to_c_str().with_ref |modebuf| {
                     libc::fopen(top, modebuf)
                 }
             };
@@ -921,7 +924,7 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             fclose(ostream);
 
             // Give the new file the old file's permissions
-            if do to.to_str().as_c_str |to_buf| {
+            if do to.to_c_str().with_ref |to_buf| {
                 libc::chmod(to_buf, from_mode as libc::mode_t)
             } != 0 {
                 return false; // should be a condition...
@@ -948,7 +951,7 @@ pub fn remove_file(p: &Path) -> bool {
     #[cfg(unix)]
     fn unlink(p: &Path) -> bool {
         unsafe {
-            do p.to_str().as_c_str |buf| {
+            do p.to_c_str().with_ref |buf| {
                 libc::unlink(buf) == (0 as c_int)
             }
         }
@@ -1294,7 +1297,7 @@ pub fn glob(pattern: &str) -> ~[Path] {
     }
 
     let mut g = default_glob_t();
-    do pattern.as_c_str |c_pattern| {
+    do pattern.to_c_str().with_ref |c_pattern| {
         unsafe { libc::glob(c_pattern, 0, ptr::null(), &mut g) }
     };
     do(|| {
@@ -1699,6 +1702,7 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
+    use c_str::ToCStr;
     use libc::{c_int, c_void, size_t};
     use libc;
     use option::Some;
@@ -1711,7 +1715,6 @@ mod tests {
     use rand;
     use run;
     use str::StrSlice;
-    use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
 
@@ -1941,19 +1944,19 @@ mod tests {
             let out = tempdir.push("out.txt");
 
             /* Write the temp input file */
-            let ostream = do input.to_str().as_c_str |fromp| {
-                do "w+b".as_c_str |modebuf| {
+            let ostream = do input.to_c_str().with_ref |fromp| {
+                do "w+b".to_c_str().with_ref |modebuf| {
                     libc::fopen(fromp, modebuf)
                 }
             };
             assert!((ostream as uint != 0u));
             let s = ~"hello";
-            let mut buf = s.to_owned().to_c_str();
-            let len = buf.len();
-            do buf.as_mut_buf |b, _len| {
-                assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
-                                        (s.len() + 1u) as size_t, ostream),
-                           len as size_t)
+            do "hello".to_c_str().with_ref |buf| {
+                let write_len = libc::fwrite(buf as *c_void,
+                                             1u as size_t,
+                                             (s.len() + 1u) as size_t,
+                                             ostream);
+                assert_eq!(write_len, (s.len() + 1) as size_t)
             }
             assert_eq!(libc::fclose(ostream), (0u as c_int));
             let in_mode = input.get_mode();
@@ -2025,11 +2028,11 @@ mod tests {
         remove_file(&path);
 
         let fd = unsafe {
-            let fd = do path.to_str().as_c_str |path| {
+            let fd = do path.to_c_str().with_ref |path| {
                 open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
             };
             lseek_(fd, size);
-            do "x".as_c_str |x| {
+            do "x".to_c_str().with_ref |x| {
                 assert!(write(fd, x as *c_void, 1) == 1);
             }
             fd

@@ -12,6 +12,7 @@
 
 #[allow(missing_doc)];
 
+use c_str::ToCStr;
 use cast;
 use clone::Clone;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
@@ -506,7 +507,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_envp(env) |envp| {
             do with_dirp(dir) |dirp| {
-                do cmd.as_c_str |cmdp| {
+                do cmd.to_c_str().with_ref |cmdp| {
                     let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  0, envp, dirp, &mut si, &mut pi);
@@ -697,17 +698,17 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
     // hold all the ~[u8] byte strings.
     let mut tmps = vec::with_capacity(args.len() + 1);
 
-    tmps.push(prog.to_owned().to_c_str());
+    tmps.push(prog.to_c_str());
 
     foreach arg in args.iter() {
-        tmps.push(arg.to_owned().to_c_str());
+        tmps.push(arg.to_c_str());
     }
 
     // Next, convert each of the byte strings into a pointer. This is
     // technically unsafe as the caller could leak these pointers out of our
     // scope.
     let mut ptrs = do tmps.map |tmp| {
-        tmp.as_imm_buf(|buf, _| buf as *libc::c_char)
+        tmp.with_ref(|buf| buf)
     };
 
     // Finally, make sure we add a null pointer.
@@ -734,7 +735,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
 
             // Once again, this is unsafe.
             let mut ptrs = do tmps.map |tmp| {
-                tmp.as_imm_buf(|buf, _| buf as *libc::c_char)
+                tmp.with_ref(|buf| buf)
             };
             ptrs.push(ptr::null());
 
@@ -757,7 +758,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
 
             foreach pair in env.iter() {
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
-                blk.push_all(kv.to_c_str());
+                blk.push_all(kv.to_c_str().as_bytes());
             }
 
             blk.push(0);
@@ -772,7 +773,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
 
 fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
     match d {
-      Some(dir) => dir.to_str().as_c_str(cb),
+      Some(dir) => dir.to_c_str().with_ref(|buf| cb(buf)),
       None => cb(ptr::null())
     }
 }
