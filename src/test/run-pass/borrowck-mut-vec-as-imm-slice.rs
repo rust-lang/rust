@@ -10,7 +10,7 @@
 
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
-    foreach i in v.iter() { sum += *i; }
+    for i in v.iter() { sum += *i; }
     sum
 }
 

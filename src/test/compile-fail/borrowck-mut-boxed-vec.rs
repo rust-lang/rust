@@ -10,7 +10,7 @@
 
 fn main() {
     let v = @mut [ 1, 2, 3 ];
-    foreach _x in v.iter() {
+    for _x in v.iter() {
         v[1] = 4; //~ ERROR cannot assign
     }
 }

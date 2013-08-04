@@ -11,7 +11,7 @@
 fn main() {
     let x = [1,..100];
     let mut y = 0;
-    foreach (n,i) in x.iter().enumerate() {
+    for (n,i) in x.iter().enumerate() {
         if n < 10 {
             loop;
         }

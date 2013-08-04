@@ -23,7 +23,7 @@ fn main() {
 
     let n = uint::from_str(args[1]).get();
 
-    foreach i in range(0u, n) {
+    for i in range(0u, n) {
         let x = uint::to_str(i);
         info!(x);
     }

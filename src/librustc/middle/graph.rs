@@ -247,7 +247,7 @@ impl<N,E> Graph<N,E> {
         while changed {
             changed = false;
             iteration += 1;
-            foreach (i, edge) in self.edges.iter().enumerate() {
+            for (i, edge) in self.edges.iter().enumerate() {
                 changed |= op(iteration, EdgeIndex(i), edge);
             }
         }

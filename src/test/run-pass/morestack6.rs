@@ -67,7 +67,7 @@ pub fn main() {
         calllink10
     ];
     let mut rng = rand::rng();
-    foreach f in fns.iter() {
+    for f in fns.iter() {
         let f = *f;
         let sz = rng.next() % 256u32 + 256u32;
         let frame_backoff = rng.next() % 10u32 + 1u32;

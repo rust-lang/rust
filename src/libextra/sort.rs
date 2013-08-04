@@ -470,7 +470,7 @@ impl<T:Clone + Ord> MergeState<T> {
         assert!(len1 != 0 && len2 != 0 && base1+len1 == base2);
 
         let mut tmp = ~[];
-        foreach i in range(base1, base1+len1) {
+        for i in range(base1, base1+len1) {
             tmp.push(array[i].clone());
         }
 
@@ -580,7 +580,7 @@ impl<T:Clone + Ord> MergeState<T> {
         assert!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
 
         let mut tmp = ~[];
-        foreach i in range(base2, base2+len2) {
+        for i in range(base2, base2+len2) {
             tmp.push(array[i].clone());
         }
 
@@ -732,7 +732,7 @@ fn copy_vec<T:Clone>(dest: &mut [T],
                     from: &[T]) {
     assert!(s1+from.len() <= dest.len());
 
-    foreach (i, v) in from.iter().enumerate() {
+    for (i, v) in from.iter().enumerate() {
         dest[s1+i] = (*v).clone();
     }
 }
@@ -842,7 +842,7 @@ mod test_qsort {
         let immut_names = names;
 
         let pairs = vec::zip_slice(expected, immut_names);
-        foreach p in pairs.iter() {
+        for p in pairs.iter() {
             let (a, b) = *p;
             debug!("%d %d", a, b);
             assert_eq!(a, b);
@@ -1054,7 +1054,7 @@ mod big_tests {
 
     fn tabulate_unique(lo: uint, hi: uint) {
         fn isSorted<T:Ord>(arr: &[T]) {
-            foreach i in range(0u, arr.len() - 1) {
+            for i in range(0u, arr.len() - 1) {
                 if arr[i] > arr[i+1] {
                     fail!("Array not sorted");
                 }
@@ -1063,7 +1063,7 @@ mod big_tests {
 
         let mut rng = rand::rng();
 
-        foreach i in range(lo, hi) {
+        for i in range(lo, hi) {
             let n = 1 << i;
             let mut arr: ~[float] = do vec::from_fn(n) |_i| {
                 rng.gen()
@@ -1125,7 +1125,7 @@ mod big_tests {
 
     fn tabulate_managed(lo: uint, hi: uint) {
         fn isSorted<T:Ord>(arr: &[@T]) {
-            foreach i in range(0u, arr.len() - 1) {
+            for i in range(0u, arr.len() - 1) {
                 if arr[i] > arr[i+1] {
                     fail!("Array not sorted");
                 }
@@ -1134,7 +1134,7 @@ mod big_tests {
 
         let mut rng = rand::rng();
 
-        foreach i in range(lo, hi) {
+        for i in range(lo, hi) {
             let n = 1 << i;
             let arr: ~[@float] = do vec::from_fn(n) |_i| {
                 @rng.gen()

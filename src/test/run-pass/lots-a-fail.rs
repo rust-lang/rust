@@ -22,7 +22,7 @@ fn iloop() {
 }
 
 pub fn main() {
-    foreach _ in range(0u, 100u) {
+    for _ in range(0u, 100u) {
         task::spawn_unlinked(|| iloop() );
     }
 }

@@ -303,7 +303,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     let on_exit: ~fn(bool) = |exit_success| {
 
         let mut handles = handles.take();
-        foreach handle in handles.mut_iter() {
+        for handle in handles.mut_iter() {
             handle.send(Shutdown);
         }
 
@@ -379,7 +379,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     rtdebug!("waiting for threads");
 
     // Wait for schedulers
-    foreach thread in threads.consume_iter() {
+    for thread in threads.consume_iter() {
         thread.join();
     }
 

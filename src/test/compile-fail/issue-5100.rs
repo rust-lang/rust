@@ -37,7 +37,7 @@ fn main() {
              ('c', 'd'),
              ('e', 'f')];
 
-    foreach &(x,y) in v.iter() {} // should be OK
+    for &(x,y) in v.iter() {} // should be OK
 
     // Make sure none of the errors above were fatal
     let x: char = true; //~ ERROR expected `char` but found `bool`

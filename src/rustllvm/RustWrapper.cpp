@@ -113,6 +113,7 @@ public:
 
   virtual uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
                                        unsigned SectionID, bool isReadOnly);
+  bool finalizeMemory(std::string *ErrMsg) { return false; }
 
   virtual bool applyPermissions(std::string *Str);
 
@@ -340,7 +341,6 @@ LLVMRustBuildJIT(void* mem,
 
   std::string Err;
   TargetOptions Options;
-  Options.JITExceptionHandling = true;
   Options.JITEmitDebugInfo = true;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
@@ -515,15 +515,6 @@ extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
 }
 extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B, AtomicOrdering order) {
     return wrap(unwrap(B)->CreateFence(order));
-}
-extern "C" LLVMValueRef LLVMBuildAtomicRMW(LLVMBuilderRef B,
-                                           AtomicRMWInst::BinOp op,
-                                           LLVMValueRef target,
-                                           LLVMValueRef source,
-                                           AtomicOrdering order) {
-    return wrap(unwrap(B)->CreateAtomicRMW(op,
-                                           unwrap(target), unwrap(source),
-                                           order));
 }
 
 extern "C" void LLVMSetDebug(int Enabled) {

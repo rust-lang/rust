@@ -16,7 +16,7 @@ use clone::Clone;
 use container::Container;
 use iterator::{Iterator, range};
 use vec::{OwnedVector, MutableVector};
-use super::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use rt::sched::Scheduler;
 use unstable::run_in_bare_thread;
 use rt::thread::Thread;
@@ -169,7 +169,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        foreach _ in range(0u, nthreads) {
+        for _ in range(0u, nthreads) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_,
                                             work_queue.clone(),
@@ -184,7 +184,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let on_exit: ~fn(bool) = |exit_status| {
             let mut handles = handles.take();
             // Tell schedulers to exit
-            foreach handle in handles.mut_iter() {
+            for handle in handles.mut_iter() {
                 handle.send(Shutdown);
             }
 
@@ -223,7 +223,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         // Wait for schedulers
-        foreach thread in threads.consume_iter() {
+        for thread in threads.consume_iter() {
             thread.join();
         }
     }
@@ -306,13 +306,13 @@ pub fn next_test_port() -> u16 {
 }
 
 /// Get a unique IPv4 localhost:port pair starting at 9600
-pub fn next_test_ip4() -> IpAddr {
-    Ipv4(127, 0, 0, 1, next_test_port())
+pub fn next_test_ip4() -> SocketAddr {
+    SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: next_test_port() }
 }
 
 /// Get a unique IPv6 localhost:port pair starting at 9600
-pub fn next_test_ip6() -> IpAddr {
-    Ipv6(0, 0, 0, 0, 0, 0, 0, 1, next_test_port())
+pub fn next_test_ip6() -> SocketAddr {
+    SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), port: next_test_port() }
 }
 
 /*
@@ -346,7 +346,7 @@ fn base_port() -> uint {
 
     let mut final_base = base;
 
-    foreach &(dir, base) in bases.iter() {
+    for &(dir, base) in bases.iter() {
         if path.contains(dir) {
             final_base = base;
             break;

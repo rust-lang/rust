@@ -279,7 +279,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[TypeMethod], ~[@method]) {
     let mut reqd = ~[];
     let mut provd = ~[];
-    foreach trt_method in trait_methods.iter() {
+    for trt_method in trait_methods.iter() {
         match *trt_method {
           required(ref tm) => reqd.push((*tm).clone()),
           provided(m) => provd.push(m)
@@ -398,10 +398,10 @@ struct IdVisitor {
 
 impl IdVisitor {
     fn visit_generics_helper(@mut self, generics: &Generics) {
-        foreach type_parameter in generics.ty_params.iter() {
+        for type_parameter in generics.ty_params.iter() {
             (self.visit_callback)(type_parameter.id)
         }
-        foreach lifetime in generics.lifetimes.iter() {
+        for lifetime in generics.lifetimes.iter() {
             (self.visit_callback)(lifetime.id)
         }
     }
@@ -423,7 +423,7 @@ impl Visitor<()> for IdVisitor {
                 (self.visit_callback)(node_id)
             }
             view_item_use(ref view_paths) => {
-                foreach view_path in view_paths.iter() {
+                for view_path in view_paths.iter() {
                     match view_path.node {
                         view_path_simple(_, _, node_id) |
                         view_path_glob(_, node_id) => {
@@ -431,7 +431,7 @@ impl Visitor<()> for IdVisitor {
                         }
                         view_path_list(_, ref paths, node_id) => {
                             (self.visit_callback)(node_id);
-                            foreach path in paths.iter() {
+                            for path in paths.iter() {
                                 (self.visit_callback)(path.node.id)
                             }
                         }
@@ -459,7 +459,7 @@ impl Visitor<()> for IdVisitor {
         (self.visit_callback)(item.id);
         match item.node {
             item_enum(ref enum_definition, _) => {
-                foreach variant in enum_definition.variants.iter() {
+                for variant in enum_definition.variants.iter() {
                     (self.visit_callback)(variant.node.id)
                 }
             }
@@ -504,7 +504,7 @@ impl Visitor<()> for IdVisitor {
     fn visit_expr(@mut self, expression: @expr, env: ()) {
         {
             let optional_callee_id = expression.get_callee_id();
-            foreach callee_id in optional_callee_id.iter() {
+            for callee_id in optional_callee_id.iter() {
                 (self.visit_callback)(*callee_id)
             }
         }
@@ -559,7 +559,7 @@ impl Visitor<()> for IdVisitor {
             visit::fk_anon(_) | visit::fk_fn_block => {}
         }
 
-        foreach argument in function_declaration.inputs.iter() {
+        for argument in function_declaration.inputs.iter() {
             (self.visit_callback)(argument.id)
         }
 

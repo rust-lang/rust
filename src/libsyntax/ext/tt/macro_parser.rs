@@ -137,7 +137,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
-    foreach elt in ms.iter() {
+    for elt in ms.iter() {
         match elt.node {
           match_tok(_) => (),
           match_seq(_,_,_,_,hi) => {
@@ -194,7 +194,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
         match *m {
           codemap::spanned {node: match_tok(_), _} => (),
           codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
-            foreach next_m in more_ms.iter() {
+            for next_m in more_ms.iter() {
                 n_rec(p_s, next_m, res, ret_val)
             };
           }
@@ -210,7 +210,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
         }
     }
     let mut ret_val = HashMap::new();
-    foreach m in ms.iter() { n_rec(p_s, m, res, &mut ret_val) }
+    for m in ms.iter() { n_rec(p_s, m, res, &mut ret_val) }
     ret_val
 }
 
@@ -279,7 +279,7 @@ pub fn parse(
                         // most of the time.
 
                         // Only touch the binders we have actually bound
-                        foreach idx in range(ei.match_lo, ei.match_hi) {
+                        for idx in range(ei.match_lo, ei.match_hi) {
                             let sub = ei.matches[idx].clone();
                             new_pos.matches[idx]
                                 .push(@matched_seq(sub,
@@ -320,7 +320,7 @@ pub fn parse(
                         let mut new_ei = ei.clone();
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
-                        foreach idx in range(match_idx_lo, match_idx_hi) {
+                        for idx in range(match_idx_lo, match_idx_hi) {
                             new_ei.matches[idx].push(@matched_seq(~[], sp));
                         }
 
@@ -355,7 +355,7 @@ pub fn parse(
         if tok == EOF {
             if eof_eis.len() == 1u {
                 let mut v = ~[];
-                foreach dv in eof_eis[0u].matches.mut_iter() {
+                for dv in eof_eis[0u].matches.mut_iter() {
                     v.push(dv.pop());
                 }
                 return success(nameize(sess, ms, v));

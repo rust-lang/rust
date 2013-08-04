@@ -609,9 +609,20 @@ when unwinding through __morestack).
 void
 rust_task::reset_stack_limit() {
     uintptr_t sp = get_sp();
+    bool reseted = false;
     while (!sp_in_stk_seg(sp, stk)) {
+        reseted = true;
         prev_stack();
         assert(stk != NULL && "Failed to find the current stack");
+    }
+
+    // Each call to prev_stack will record the stack limit. If we *didn't*
+    // call prev_stack then we still need to record it now to catch a corner case:
+    // the throw to initiate unwinding starts on the C stack while sp limit is 0.
+    // If we don't set the limit here then the rust code run subsequently will
+    // will veer into the red zone. Lame!
+    if (!reseted) {
+        record_stack_limit();
     }
 }
 

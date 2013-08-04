@@ -12,7 +12,7 @@ use option::*;
 use result::*;
 
 use rt::io::IoError;
-use super::io::net::ip::IpAddr;
+use super::io::net::ip::{IpAddr, SocketAddr};
 use rt::uv::uvio;
 
 // XXX: ~object doesn't work currently so these are some placeholder
@@ -44,9 +44,9 @@ pub trait RemoteCallback {
 }
 
 pub trait IoFactory {
-    fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError>;
-    fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError>;
-    fn udp_bind(&mut self, addr: IpAddr) -> Result<~RtioUdpSocketObject, IoError>;
+    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError>;
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError>;
+    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
 }
 
@@ -59,7 +59,7 @@ pub trait RtioTcpListener : RtioSocket {
 pub trait RtioTcpStream : RtioSocket {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn peer_name(&mut self) -> Result<IpAddr, IoError>;
+    fn peer_name(&mut self) -> Result<SocketAddr, IoError>;
     fn control_congestion(&mut self) -> Result<(), IoError>;
     fn nodelay(&mut self) -> Result<(), IoError>;
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
@@ -67,12 +67,12 @@ pub trait RtioTcpStream : RtioSocket {
 }
 
 pub trait RtioSocket {
-    fn socket_name(&mut self) -> Result<IpAddr, IoError>;
+    fn socket_name(&mut self) -> Result<SocketAddr, IoError>;
 }
 
 pub trait RtioUdpSocket : RtioSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
-    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<(), IoError>;
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError>;
 
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;

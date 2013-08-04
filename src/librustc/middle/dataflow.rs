@@ -82,19 +82,8 @@ struct PropagationContext<'self, O> {
     changed: bool
 }
 
-#[deriving(Eq)]
-enum LoopKind {
-    /// A `while` or `loop` loop
-    TrueLoop,
-
-    /// A `for` "loop" (i.e., really a func call where `break`, `return`,
-    /// and `loop` all essentially perform an early return from the closure)
-    ForLoop
-}
-
 struct LoopScope<'self> {
     loop_id: ast::NodeId,
-    loop_kind: LoopKind,
     break_bits: ~[uint]
 }
 
@@ -266,10 +255,10 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                 f: &fn(uint) -> bool) -> bool {
         //! Helper for iterating over the bits in a bit set.
 
-        foreach (word_index, &word) in words.iter().enumerate() {
+        for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::bits;
-                foreach offset in range(0u, uint::bits) {
+                for offset in range(0u, uint::bits) {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
@@ -391,7 +380,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
         self.merge_with_entry_set(blk.id, in_out);
 
-        foreach &stmt in blk.stmts.iter() {
+        for &stmt in blk.stmts.iter() {
             self.walk_stmt(stmt, in_out, loop_scopes);
         }
 
@@ -509,10 +498,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
                     loop_scopes.push(LoopScope {
                         loop_id: expr.id,
-                        loop_kind: ForLoop,
                         break_bits: reslice(in_out).to_owned()
                     });
-                    foreach input in decl.inputs.iter() {
+                    for input in decl.inputs.iter() {
                         self.walk_pat(input.pat, func_bits, loop_scopes);
                     }
                     self.walk_block(body, func_bits, loop_scopes);
@@ -574,7 +562,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 let mut body_bits = reslice(in_out).to_owned();
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    loop_kind: TrueLoop,
                     break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
@@ -599,7 +586,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.reset(in_out);
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    loop_kind: TrueLoop,
                     break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
@@ -631,7 +617,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 // together the bits from each arm:
                 self.reset(in_out);
 
-                foreach arm in arms.iter() {
+                for arm in arms.iter() {
                     // in_out reflects the discr and all guards to date
                     self.walk_opt_expr(arm.guard, guards, loop_scopes);
 
@@ -646,20 +632,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_ret(o_e) => {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
-
-                // is this a return from a `for`-loop closure?
-                match loop_scopes.iter().position(|s| s.loop_kind == ForLoop) {
-                    Some(i) => {
-                        // if so, add the in_out bits to the state
-                        // upon exit. Remember that we cannot count
-                        // upon the `for` loop function not to invoke
-                        // the closure again etc.
-                        self.break_from_to(expr, &mut loop_scopes[i], in_out);
-                    }
-
-                    None => {}
-                }
-
                 self.reset(in_out);
             }
 
@@ -671,22 +643,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_again(label) => {
                 let scope = self.find_scope(expr, label, loop_scopes);
-
-                match scope.loop_kind {
-                    TrueLoop => {
-                        self.pop_scopes(expr, scope, in_out);
-                        self.add_to_entry_set(scope.loop_id, reslice(in_out));
-                    }
-
-                    ForLoop => {
-                        // If this `loop` construct is looping back to a `for`
-                        // loop, then `loop` is really just a return from the
-                        // closure. Therefore, we treat it the same as `break`.
-                        // See case for `expr_fn_block` for more details.
-                        self.break_from_to(expr, scope, in_out);
-                    }
-                }
-
+                self.pop_scopes(expr, scope, in_out);
+                self.add_to_entry_set(scope.loop_id, reslice(in_out));
                 self.reset(in_out);
             }
 
@@ -706,7 +664,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_struct(_, ref fields, with_expr) => {
-                foreach field in fields.iter() {
+                for field in fields.iter() {
                     self.walk_expr(field.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
@@ -756,7 +714,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_addr_of(_, e) |
-            ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
             ast::expr_unary(_, _, e) |
@@ -767,10 +724,10 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_inline_asm(ref inline_asm) => {
-                foreach &(_, expr) in inline_asm.inputs.iter() {
+                for &(_, expr) in inline_asm.inputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
-                foreach &(_, expr) in inline_asm.outputs.iter() {
+                for &(_, expr) in inline_asm.outputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
             }
@@ -838,7 +795,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                   exprs: &[@ast::expr],
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        foreach &expr in exprs.iter() {
+        for &expr in exprs.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -847,7 +804,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                      opt_expr: Option<@ast::expr>,
                      in_out: &mut [uint],
                      loop_scopes: &mut ~[LoopScope]) {
-        foreach &expr in opt_expr.iter() {
+        for &expr in opt_expr.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }
@@ -901,7 +858,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // alternatives, so we must treat this like an N-way select
         // statement.
         let initial_state = reslice(in_out).to_owned();
-        foreach &pat in pats.iter() {
+        for &pat in pats.iter() {
             let mut temp = initial_state.clone();
             self.walk_pat(pat, temp, loop_scopes);
             join_bits(&self.dfcx.oper, temp, in_out);
@@ -949,7 +906,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
-        foreach b in bits.mut_iter() { *b = e; }
+        for b in bits.mut_iter() { *b = e; }
     }
 
     fn add_to_entry_set(&mut self, id: ast::NodeId, pred_bits: &[uint]) {
@@ -997,9 +954,9 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     // Note: this is a little endian printout of bytes.
 
-    foreach &word in words.iter() {
+    for &word in words.iter() {
         let mut v = word;
-        foreach _ in range(0u, uint::bytes) {
+        for _ in range(0u, uint::bytes) {
             result.push_char(sep);
             result.push_str(fmt!("%02x", v & 0xFF));
             v >>= 8;
@@ -1026,7 +983,7 @@ fn bitwise(out_vec: &mut [uint],
            op: &fn(uint, uint) -> uint) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    foreach i in range(0u, out_vec.len()) {
+    for i in range(0u, out_vec.len()) {
         let old_val = out_vec[i];
         let new_val = op(old_val, in_vec[i]);
         out_vec[i] = new_val;

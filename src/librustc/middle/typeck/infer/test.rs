@@ -79,7 +79,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
 
 impl Env {
     pub fn create_region_hierarchy(&self, rh: &RH) {
-        foreach child_rh in rh.sub.iter() {
+        for child_rh in rh.sub.iter() {
             self.create_region_hierarchy(child_rh);
             self.tcx.region_map.insert(child_rh.id, rh.id);
         }
@@ -109,7 +109,7 @@ impl Env {
                       idx: uint,
                       names: &[~str]) -> Option<ast::node_id> {
             assert!(idx < names.len());
-            foreach item in m.items.iter() {
+            for item in m.items.iter() {
                 if self.tcx.sess.str_of(item.ident) == names[idx] {
                     return search(self, *item, idx+1, names);
                 }
@@ -227,7 +227,7 @@ impl Env {
 
         self.infcx.resolve_regions();
         if self.err_messages.len() != exp_count {
-            foreach msg in self.err_messages.iter() {
+            for msg in self.err_messages.iter() {
                 debug!("Error encountered: %s", *msg);
             }
             fmt!("Resolving regions encountered %u errors but expected %u!",

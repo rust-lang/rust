@@ -548,7 +548,7 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
 
 impl<A, T: Iterator<A>> Extendable<A, T> for DList<A> {
     fn extend(&mut self, iterator: &mut T) {
-        foreach elt in *iterator { self.push_back(elt); }
+        for elt in *iterator { self.push_back(elt); }
     }
 }
 
@@ -687,7 +687,7 @@ mod tests {
         check_links(&m);
         let sum = v + u;
         assert_eq!(sum.len(), m.len());
-        foreach elt in sum.consume_iter() {
+        for elt in sum.consume_iter() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -711,7 +711,7 @@ mod tests {
         check_links(&m);
         let sum = u + v;
         assert_eq!(sum.len(), m.len());
-        foreach elt in sum.consume_iter() {
+        for elt in sum.consume_iter() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -742,7 +742,7 @@ mod tests {
     #[test]
     fn test_iterator() {
         let m = generate_test();
-        foreach (i, elt) in m.iter().enumerate() {
+        for (i, elt) in m.iter().enumerate() {
             assert_eq!(i as int, *elt);
         }
         let mut n = DList::new();
@@ -790,7 +790,7 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let m = generate_test();
-        foreach (i, elt) in m.rev_iter().enumerate() {
+        for (i, elt) in m.rev_iter().enumerate() {
             assert_eq!((6 - i) as int, *elt);
         }
         let mut n = DList::new();
@@ -807,7 +807,7 @@ mod tests {
     fn test_mut_iter() {
         let mut m = generate_test();
         let mut len = m.len();
-        foreach (i, elt) in m.mut_iter().enumerate() {
+        for (i, elt) in m.mut_iter().enumerate() {
             assert_eq!(i as int, *elt);
             len -= 1;
         }
@@ -899,7 +899,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iter() {
         let mut m = generate_test();
-        foreach (i, elt) in m.mut_rev_iter().enumerate() {
+        for (i, elt) in m.mut_rev_iter().enumerate() {
             assert_eq!((6-i) as int, *elt);
         }
         let mut n = DList::new();
@@ -943,7 +943,7 @@ mod tests {
     fn fuzz_test(sz: int) {
         let mut m = DList::new::<int>();
         let mut v = ~[];
-        foreach i in range(0, sz) {
+        for i in range(0, sz) {
             check_links(&m);
             let r: u8 = rand::random();
             match r % 6 {
@@ -969,7 +969,7 @@ mod tests {
         check_links(&m);
 
         let mut i = 0u;
-        foreach (a, &b) in m.consume_iter().zip(v.iter()) {
+        for (a, &b) in m.consume_iter().zip(v.iter()) {
             i += 1;
             assert_eq!(a, b);
         }

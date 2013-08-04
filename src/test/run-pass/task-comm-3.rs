@@ -55,7 +55,7 @@ fn test00() {
 
     // Read from spawned tasks...
     let mut sum = 0;
-    foreach r in results.iter() {
+    for r in results.iter() {
         i = 0;
         while i < number_of_messages {
             let value = po.recv();
@@ -65,7 +65,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    foreach r in results.iter() { r.recv(); }
+    for r in results.iter() { r.recv(); }
 
     info!("Completed: Final number is: ");
     error!(sum);

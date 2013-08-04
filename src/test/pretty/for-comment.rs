@@ -12,7 +12,7 @@
 
 fn f(v: &[int]) {
     let mut n = 0;
-    foreach e in v.iter() {
+    for e in v.iter() {
         n = *e; // This comment once triggered pretty printer bug
     }
 }

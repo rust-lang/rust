@@ -176,9 +176,9 @@ impl Process {
                                    in_fd, out_fd, err_fd);
 
         unsafe {
-            foreach pipe in in_pipe.iter() { libc::close(pipe.input); }
-            foreach pipe in out_pipe.iter() { libc::close(pipe.out); }
-            foreach pipe in err_pipe.iter() { libc::close(pipe.out); }
+            for pipe in in_pipe.iter() { libc::close(pipe.input); }
+            for pipe in out_pipe.iter() { libc::close(pipe.out); }
+            for pipe in err_pipe.iter() { libc::close(pipe.out); }
         }
 
         Process {
@@ -323,7 +323,7 @@ impl Process {
      * If the child has already been finished then the exit code is returned.
      */
     pub fn finish(&mut self) -> int {
-        foreach &code in self.exit_code.iter() {
+        for &code in self.exit_code.iter() {
             return code;
         }
         self.close_input();
@@ -522,7 +522,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        foreach msg in create_err.iter() {
+        for msg in create_err.iter() {
             fail!("failure in CreateProcess: %s", *msg);
         }
 
@@ -578,7 +578,7 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
-    foreach arg in args.iter() {
+    for arg in args.iter() {
         cmd.push_char(' ');
         append_arg(&mut cmd, *arg);
     }
@@ -589,7 +589,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         if quote {
             cmd.push_char('"');
         }
-        foreach i in range(0u, arg.len()) {
+        for i in range(0u, arg.len()) {
             append_char_at(cmd, arg, i);
         }
         if quote {
@@ -700,7 +700,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
 
     tmps.push(prog.to_c_str());
 
-    foreach arg in args.iter() {
+    for arg in args.iter() {
         tmps.push(arg.to_c_str());
     }
 
@@ -726,7 +726,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
         Some(env) => {
             let mut tmps = vec::with_capacity(env.len());
 
-            foreach pair in env.iter() {
+            for pair in env.iter() {
                 // Use of match here is just to workaround limitations
                 // in the stage0 irrefutable pattern impl.
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
@@ -756,7 +756,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
         Some(env) => {
             let mut blk = ~[];
 
-            foreach pair in env.iter() {
+            for pair in env.iter() {
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
                 blk.push_all(kv.as_bytes());
                 blk.push(0);
@@ -1314,7 +1314,7 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        foreach &(ref k, ref v) in r.iter() {
+        for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() || output.contains(fmt!("%s=%s", *k, *v)));
         }
@@ -1328,7 +1328,7 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        foreach &(k, v) in r.iter() {
+        for &(k, v) in r.iter() {
             // don't check android RANDOM variables
             if k != ~"RANDOM" {
                 assert!(output.contains(fmt!("%s=%s", k, v)) ||

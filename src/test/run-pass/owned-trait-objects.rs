@@ -29,7 +29,7 @@ pub fn main() {
         ~BarStruct{ x: 2 } as ~FooTrait
     ];
 
-    foreach i in range(0u, foos.len()) {
+    for i in range(0u, foos.len()) {
         assert_eq!(i, foos[i].foo());
     }
 }

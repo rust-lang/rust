@@ -31,7 +31,7 @@ impl<K,V> AssociationList<K,V> {
 
 impl<K:Eq,V:Clone> Index<K,V> for AssociationList<K,V> {
     fn index(&self, index: &K) -> V {
-        foreach pair in self.pairs.iter() {
+        for pair in self.pairs.iter() {
             if pair.key == *index {
                 return pair.value.clone();
             }

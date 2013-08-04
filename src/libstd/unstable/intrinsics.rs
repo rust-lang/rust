@@ -256,13 +256,9 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_acqrel(dst: &mut int, src: int) -> int;
     pub fn atomic_umax_relaxed(dst: &mut int, src: int) -> int;
 
-    #[cfg(not(stage0))]
     pub fn atomic_fence();
-    #[cfg(not(stage0))]
     pub fn atomic_fence_acq();
-    #[cfg(not(stage0))]
     pub fn atomic_fence_rel();
-    #[cfg(not(stage0))]
     pub fn atomic_fence_acqrel();
 
     /// The size of a type in bytes.
@@ -325,7 +321,6 @@ extern "rust-intrinsic" {
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
-    #[cfg(not(stage0))]
     pub fn offset<T>(dst: *T, offset: int) -> *T;
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of

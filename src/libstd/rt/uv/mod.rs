@@ -47,7 +47,7 @@ use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;
 use unstable::finally::Finally;
-use rt::io::net::ip::IpAddr;
+use rt::io::net::ip::SocketAddr;
 
 use rt::io::IoError;
 
@@ -128,7 +128,7 @@ pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(FsRequest, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
-pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, IpAddr, uint, Option<UvError>);
+pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
 
