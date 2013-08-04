@@ -43,7 +43,10 @@ enum PatternToken {
  *           is '!' in which case it matches any character except those between
  *           the '!' and the ']'.
  *
- * The metacharacters '?', '*', '[', ']' can be matched by using brackets (e.g. '[?]')
+ * The metacharacters '?', '*', '[', ']' can be matched by using brackets (e.g. '[?]').
+ * When a ']' occurs immediately following '[' or '[!' then it is interpreted as
+ * being part of, rather then ending, the character set, so ']' and NOT ']' can be
+ * matched by '[]]' and '[!]]' respectively.
  *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
@@ -117,21 +120,30 @@ fn compile_pattern(pattern_str: &str) -> ~[PatternToken] {
                 pattern.push(AnySequence);
             }
             '[' => {
-                let mut chars = ~[];
-                let is_except = match pattern_iter.next() {
-                    None => false, // let the following loop fail with a message
-                    Some('!') => true,
-                    Some(c) => {
-                        chars.push(c);
-                        false
-                    }
-                };
-                loop {
+
+                // get the next char, or fail with a helpful message
+                let next_pattern_char = || {
                     match pattern_iter.next() {
                         None => fail!("invalid pattern syntax due to unclosed bracket: %s",
                                       pattern_str),
-                        Some(']') => break,
-                        Some(c) => chars.push(c),
+                        Some(c) => c,
+                    }
+                };
+
+                let c = next_pattern_char();
+                let is_except = (c == '!');
+
+                let mut chars = ~[];
+                if is_except {
+                    chars.push(next_pattern_char());
+                } else {
+                    chars.push(c);
+                };
+
+                loop {
+                    match next_pattern_char() {
+                        ']' => break,
+                        c => chars.push(c),
                     }
                 }
                 pattern.push(if is_except { AnyExcept(chars) } else { AnyWithin(chars) });
@@ -222,7 +234,7 @@ mod test {
             mk_file("bbb/specials", true);
             mk_file("bbb/specials/!", false);
 
-            // windows does not allow some meta characters to exist in filenames
+            // windows does not allow '*' or '?' characters to exist in filenames
             if os::consts::FAMILY != os::consts::windows::FAMILY {
                 mk_file("bbb/specials/*", false);
                 mk_file("bbb/specials/?", false);
@@ -306,7 +318,6 @@ mod test {
             assert_eq!(glob_vec("aa[!b]"), ~[abs_path("aaa")]);
             assert_eq!(glob_vec("aa[!bcd]"), ~[abs_path("aaa")]);
             assert_eq!(glob_vec("a[!bcd]a"), ~[abs_path("aaa")]);
-            assert_eq!(glob_vec("aa[!]"), ~[abs_path("aaa")]);
             assert_eq!(glob_vec("aa[!a]"), ~[]);
             assert_eq!(glob_vec("aa[!abc]"), ~[]);
 
@@ -317,6 +328,54 @@ mod test {
             if os::consts::FAMILY != os::consts::windows::FAMILY {
                 assert_eq!(glob_vec("bbb/specials/[*]"), ~[abs_path("bbb/specials/*")]);
                 assert_eq!(glob_vec("bbb/specials/[?]"), ~[abs_path("bbb/specials/?")]);
+            }
+
+            if os::consts::FAMILY == os::consts::windows::FAMILY {
+
+                assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/]")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/[")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+                    abs_path("bbb/specials/["),
+                    abs_path("bbb/specials/]")]);
+
+            } else {
+
+                assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/*"),
+                    abs_path("bbb/specials/?"),
+                    abs_path("bbb/specials/]")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/*"),
+                    abs_path("bbb/specials/?"),
+                    abs_path("bbb/specials/[")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+                    abs_path("bbb/specials/*"),
+                    abs_path("bbb/specials/?"),
+                    abs_path("bbb/specials/["),
+                    abs_path("bbb/specials/]")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!*]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/?"),
+                    abs_path("bbb/specials/["),
+                    abs_path("bbb/specials/]")]);
+
+                assert_eq!(glob_vec("bbb/specials/[!?]"), ~[
+                    abs_path("bbb/specials/!"),
+                    abs_path("bbb/specials/*"),
+                    abs_path("bbb/specials/["),
+                    abs_path("bbb/specials/]")]);
+
             }
         };
     }
@@ -343,6 +402,20 @@ mod test {
     #[cfg(not(windows))]
     fn test_unclosed_bracket() {
         glob("abc[def");
+    }
+
+    #[test]
+    #[should_fail]
+    #[cfg(not(windows))]
+    fn test_unclosed_bracket_special() {
+        glob("abc[]"); // not valid syntax, '[]]' should be used to match ']'
+    }
+
+    #[test]
+    #[should_fail]
+    #[cfg(not(windows))]
+    fn test_unclosed_bracket_special_except() {
+        glob("abc[!]"); // not valid syntax, '[!]]' should be used to match NOT ']'
     }
 }
 
