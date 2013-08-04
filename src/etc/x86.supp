@@ -502,3 +502,16 @@
    fun:*
    ...
 }
+
+{
+   libuv-mac-no-thread-join
+   Memcheck:Leak
+   fun:malloc_zone_malloc
+   fun:_CFRuntimeCreateInstance
+   fun:CFRunLoopSourceCreate
+   fun:uv__platform_loop_init
+   fun:uv__loop_init
+   fun:uv_loop_new
+   fun:rust_uv_loop_new__c_stack_shim
+   ...
+}
