@@ -70,30 +70,6 @@ pub fn div_round(x: uint, y: uint) -> uint {
 ///
 pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
-///
-/// Iterate over the range [`lo`..`hi`), or stop when requested
-///
-/// # Arguments
-///
-/// * lo - The integer at which to start the loop (included)
-/// * hi - The integer at which to stop the loop (excluded)
-/// * it - A block to execute with each consecutive integer of the range.
-///        Return `true` to continue, `false` to stop.
-///
-/// # Return value
-///
-/// `true` If execution proceeded correctly, `false` if it was interrupted,
-/// that is if `it` returned `false` at any point.
-///
-pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
-    let mut i = lo;
-    while i < hi {
-        if (!it(i)) { return false; }
-        i += 1u;
-    }
-    return true;
-}
-
 impl iter::Times for uint {
     #[inline]
     ///

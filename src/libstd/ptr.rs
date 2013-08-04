@@ -12,6 +12,7 @@
 
 use cast;
 use clone::Clone;
+use iterator::{range, Iterator};
 use option::{Option, Some, None};
 use unstable::intrinsics;
 use util::swap;
@@ -20,7 +21,6 @@ use util::swap;
 #[cfg(not(test))] use num::Int;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
-use uint;
 
 /// Calculate the offset from a pointer
 #[inline]
@@ -240,11 +240,10 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     //let start_ptr = *arr;
-    uint::iterate(0, len, |e| {
+    for e in range(0, len) {
         let n = offset(arr, e as int);
         cb(*n);
-        true
-    });
+    }
     debug!("array_each_with_len: after iterate");
 }
 
