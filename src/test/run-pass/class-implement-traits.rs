@@ -68,7 +68,7 @@ pub fn main() {
     let mut nyan = cat(0u, 2, ~"nyan");
     nyan.eat();
     assert!((!nyan.eat()));
-    foreach _ in range(1u, 10u) {
+    for _ in range(1u, 10u) {
         make_speak(nyan.clone());
     }
 }

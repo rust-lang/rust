@@ -56,7 +56,7 @@ impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
     fn to_str(&self) -> ~str {
         let mut acc = ~"{";
         let mut first = true;
-        foreach (key, value) in self.iter() {
+        for (key, value) in self.iter() {
             if first {
                 first = false;
             }
@@ -77,7 +77,7 @@ impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     fn to_str(&self) -> ~str {
         let mut acc = ~"{";
         let mut first = true;
-        foreach element in self.iter() {
+        for element in self.iter() {
             if first {
                 first = false;
             }
@@ -126,7 +126,7 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        foreach elt in self.iter() {
+        for elt in self.iter() {
             if first {
                 first = false;
             }
@@ -145,7 +145,7 @@ impl<A:ToStr> ToStr for ~[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        foreach elt in self.iter() {
+        for elt in self.iter() {
             if first {
                 first = false;
             }
@@ -164,7 +164,7 @@ impl<A:ToStr> ToStr for @[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[";
         let mut first = true;
-        foreach elt in self.iter() {
+        for elt in self.iter() {
             if first {
                 first = false;
             }

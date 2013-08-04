@@ -176,7 +176,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                             variant_def: ast::def_id)
                        -> Option<@expr> {
     fn variant_expr(variants: &[ast::variant], id: ast::NodeId) -> Option<@expr> {
-        foreach variant in variants.iter() {
+        for variant in variants.iter() {
             if variant.node.id == id {
                 return variant.node.disr_expr;
             }

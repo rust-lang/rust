@@ -73,7 +73,7 @@ pub fn usage() {
     println("Usage: rustdoc [options] <cratefile>\n");
     println("Options:\n");
     let r = opts();
-    foreach opt in r.iter() {
+    for opt in r.iter() {
         printfln!("    %s", opt.second());
     }
     println("");

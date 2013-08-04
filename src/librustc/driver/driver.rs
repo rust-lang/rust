@@ -508,7 +508,7 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
 }
 
 pub fn get_os(triple: &str) -> Option<session::os> {
-    foreach &(name, os) in os_names.iter() {
+    for &(name, os) in os_names.iter() {
         if triple.contains(name) { return Some(os) }
     }
     None
@@ -522,7 +522,7 @@ static os_names : &'static [(&'static str, session::os)] = &'static [
     ("freebsd", session::os_freebsd)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    foreach &(arch, abi) in architecture_abis.iter() {
+    for &(arch, abi) in architecture_abis.iter() {
         if triple.contains(arch) { return Some(abi) }
     }
     None
@@ -611,7 +611,7 @@ pub fn build_session_options(binary: @str,
                        lint::deny, lint::forbid];
     let mut lint_opts = ~[];
     let lint_dict = lint::get_lint_dict();
-    foreach level in lint_levels.iter() {
+    for level in lint_levels.iter() {
         let level_name = lint::level_to_str(*level);
 
         // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
@@ -620,7 +620,7 @@ pub fn build_session_options(binary: @str,
         let level_short = level_short.to_ascii().to_upper().to_str_ascii();
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
-        foreach lint_name in flags.iter() {
+        for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {
               None => {
@@ -637,9 +637,9 @@ pub fn build_session_options(binary: @str,
     let mut debugging_opts = 0u;
     let debug_flags = getopts::opt_strs(matches, "Z");
     let debug_map = session::debugging_opts_map();
-    foreach debug_flag in debug_flags.iter() {
+    for debug_flag in debug_flags.iter() {
         let mut this_bit = 0u;
-        foreach tuple in debug_map.iter() {
+        for tuple in debug_map.iter() {
             let (name, bit) = match *tuple { (ref a, _, b) => (a, b) };
             if name == debug_flag { this_bit = bit; break; }
         }

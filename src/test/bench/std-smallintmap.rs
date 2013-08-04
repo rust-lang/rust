@@ -19,13 +19,13 @@ use std::os;
 use std::uint;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
-    foreach i in range(min, max) {
+    for i in range(min, max) {
         map.insert(i, i + 22u);
     }
 }
 
 fn check_sequential(min: uint, max: uint, map: &SmallIntMap<uint>) {
-    foreach i in range(min, max) {
+    for i in range(min, max) {
         assert_eq!(*map.get(&i), i + 22u);
     }
 }
@@ -45,7 +45,7 @@ fn main() {
     let mut checkf = 0.0;
     let mut appendf = 0.0;
 
-    foreach _ in range(0u, rep) {
+    for _ in range(0u, rep) {
         let mut map = SmallIntMap::new();
         let start = extra::time::precise_time_s();
         append_sequential(0u, max, &mut map);

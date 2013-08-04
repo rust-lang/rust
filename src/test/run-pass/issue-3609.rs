@@ -17,7 +17,7 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
         let callback: SamplesFn =
             |buffer|
             {
-                foreach i in range(0u, buffer.len()) {
+                for i in range(0u, buffer.len()) {
                     error!("%?: %f", i, buffer[i])
                 }
             };

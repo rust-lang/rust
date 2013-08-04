@@ -379,7 +379,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 pub fn noop_fold_block(b: &Block, fld: @ast_fold) -> Block {
     let view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let mut stmts = ~[];
-    foreach stmt in b.stmts.iter() {
+    for stmt in b.stmts.iter() {
         match fld.fold_stmt(*stmt) {
             None => {}
             Some(stmt) => stmts.push(stmt)
@@ -541,7 +541,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(ohs)
             )
         }
-        expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
         expr_lit(_) => (*e).clone(),
         expr_cast(expr, ref ty) => {

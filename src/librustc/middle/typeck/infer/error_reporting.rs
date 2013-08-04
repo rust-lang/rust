@@ -114,7 +114,7 @@ pub trait ErrorReporting {
 impl ErrorReporting for InferCtxt {
     pub fn report_region_errors(@mut self,
                                 errors: &OptVec<RegionResolutionError>) {
-        foreach error in errors.iter() {
+        for error in errors.iter() {
             match *error {
                 ConcreteFailure(origin, sub, sup) => {
                     self.report_concrete_failure(origin, sub, sup);

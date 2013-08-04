@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Jul 10
+" Last Change:  2013 Aug 1
 
 if version < 600
   syntax clear
@@ -17,7 +17,7 @@ syn keyword   rustOperator    as
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
 syn keyword   rustKeyword     break copy do extern
-syn keyword   rustKeyword     for if impl let log
+syn keyword   rustKeyword     in if impl let log
 syn keyword   rustKeyword     copy do extern
 syn keyword   rustKeyword     for impl let log
 syn keyword   rustKeyword     loop mod once priv pub
@@ -83,12 +83,26 @@ syn match     rustModPathSep  "::"
 syn match     rustFuncCall    "\w\(\w\)*("he=e-1,me=e-1
 syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 " foo::<T>();
 
+" This is merely a convention; note also the use of [A-Z], restricting it to
+" latin identifiers rather than the full Unicode uppercase. I have not used
+" [:upper:] as it depends upon 'noignorecase'
+"syn match     rustCapsIdent    display "[A-Z]\w\(\w\)*"
+
+syn match     rustOperator     display "\%(+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
+" This one isn't *quite* right, as we could have binary-& with a reference
+syn match     rustSigil        display /&\s\+[&~@*][^)= \t\r\n]/he=e-1,me=e-1
+syn match     rustSigil        display /[&~@*][^)= \t\r\n]/he=e-1,me=e-1
+" This isn't actually correct; a closure with no arguments can be `|| { }`.
+" Last, because the & in && isn't a sigil
+syn match     rustOperator     display "&&\|||"
+
 syn match     rustMacro       '\w\(\w\)*!' contains=rustAssert,rustFail
 syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 
 syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
 syn match     rustFormat      display "%%" contained
-syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat
+syn match     rustSpecial     display contained /\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
+syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
@@ -114,13 +128,13 @@ syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9
 syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9_]\+\)\(f\|f32\|f64\)\>"
 
 " For the benefit of delimitMate
-syn region rustLifetimeCandidate display start=/&'\%(\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'\)\@!/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustLifetime
+syn region rustLifetimeCandidate display start=/&'\%(\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'\)\@!/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustSigil,rustLifetime
 syn region rustGenericRegion display start=/<\%('\|[^[cntrl:][:space:][:punct:]]\)\@=')\S\@=/ end=/>/ contains=rustGenericLifetimeCandidate
-syn region rustGenericLifetimeCandidate display start=/\%(<\|,\s*\)\@<='/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustLifetime
+syn region rustGenericLifetimeCandidate display start=/\%(<\|,\s*\)\@<='/ end=/[[:cntrl:][:space:][:punct:]]\@=\|$/ contains=rustSigil,rustLifetime
 
 "rustLifetime must appear before rustCharacter, or chars will get the lifetime highlighting
 syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
-syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
+syn match   rustCharacter   /'\([^'\\]\|\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial
 
 syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
@@ -140,7 +154,9 @@ hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
 hi def link rustTrait           rustType
 
+hi def link rustSigil         StorageClass
 hi def link rustFormat        Special
+hi def link rustSpecial       Special
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
@@ -152,6 +168,7 @@ hi def link rustOperator      Operator
 hi def link rustKeyword       Keyword
 hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
+hi def link rustCapsIdent     rustIdentifier
 hi def link rustModPath       Include
 hi def link rustModPathSep    Delimiter
 hi def link rustFuncName      Function

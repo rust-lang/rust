@@ -67,7 +67,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     fn make_rt_conv_expr(cx: @ExtCtxt, sp: span, cnv: &Conv) -> @ast::expr {
         fn make_flags(cx: @ExtCtxt, sp: span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
-            foreach f in flags.iter() {
+            for f in flags.iter() {
                 let fstr = match *f {
                   FlagLeftJustify => "flag_left_justify",
                   FlagLeftZeroPad => "flag_left_zero_pad",
@@ -153,7 +153,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        foreach f in cnv.flags.iter() {
+        for f in cnv.flags.iter() {
             match *f {
               FlagLeftJustify => (),
               FlagSignAlways => {
@@ -203,7 +203,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
           Some(p) => { debug!("param: %s", p.to_str()); }
           _ => debug!("param: none")
         }
-        foreach f in c.flags.iter() {
+        for f in c.flags.iter() {
             match *f {
               FlagLeftJustify => debug!("flag: left justify"),
               FlagLeftZeroPad => debug!("flag: left zero pad"),
@@ -269,7 +269,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
        corresponding function in std::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
     let npieces = pieces.len();
-    foreach (i, pc) in pieces.consume_iter().enumerate() {
+    for (i, pc) in pieces.consume_iter().enumerate() {
         match pc {
             /* Raw strings get appended via str::push_str */
             PieceString(s) => {

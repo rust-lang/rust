@@ -129,7 +129,7 @@ fn find_library_crate_aux(
             cx.diag.span_err(
                     cx.span, fmt!("multiple matching crates for `%s`", crate_name));
                 cx.diag.handler().note("candidates:");
-                foreach pair in matches.iter() {
+                for pair in matches.iter() {
                     let ident = pair.first();
                     let data = pair.second();
                     cx.diag.handler().note(fmt!("path: %s", ident));
@@ -143,7 +143,7 @@ fn find_library_crate_aux(
 }
 
 pub fn crate_name_from_metas(metas: &[@ast::MetaItem]) -> @str {
-    foreach m in metas.iter() {
+    for m in metas.iter() {
         match m.name_str_pair() {
             Some((name, s)) if "name" == name => { return s; }
             _ => {}
@@ -156,7 +156,7 @@ pub fn note_linkage_attrs(intr: @ident_interner,
                           diag: @span_handler,
                           attrs: ~[ast::Attribute]) {
     let r = attr::find_linkage_metas(attrs);
-    foreach mi in r.iter() {
+    for mi in r.iter() {
         diag.handler().note(fmt!("meta: %s", pprust::meta_item_to_str(*mi,intr)));
     }
 }

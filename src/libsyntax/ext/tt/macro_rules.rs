@@ -93,7 +93,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
 
         let s_d = cx.parse_sess().span_diagnostic;
 
-        foreach (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
+        for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
             match *lhs {
               @matched_nonterminal(nt_matchers(ref mtcs)) => {
                 // `none` is because we're not interpolating

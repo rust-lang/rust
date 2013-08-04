@@ -136,7 +136,7 @@ impl Ctx {
         // Expressions which are or might be calls:
         {
             let r = ex.get_callee_id();
-            foreach callee_id in r.iter() {
+            for callee_id in r.iter() {
                 self.map.insert(*callee_id, node_callee_scope(ex));
             }
         }
@@ -150,7 +150,7 @@ impl Ctx {
               body: &Block,
               sp: codemap::span,
               id: NodeId) {
-        foreach a in decl.inputs.iter() {
+        for a in decl.inputs.iter() {
             self.map.insert(a.id, node_arg);
         }
         visit::visit_fn(self as @Visitor<()>, fk, decl, body, sp, id, ());
@@ -189,12 +189,12 @@ impl Visitor<()> for Ctx {
         match i.node {
             item_impl(_, _, _, ref ms) => {
                 let impl_did = ast_util::local_def(i.id);
-                foreach m in ms.iter() {
+                for m in ms.iter() {
                     self.map_method(impl_did, self.extend(i.ident), *m, false)
                 }
             }
             item_enum(ref enum_definition, _) => {
-                foreach v in (*enum_definition).variants.iter() {
+                for v in (*enum_definition).variants.iter() {
                     // FIXME #2543: bad clone
                     self.map.insert(v.node.id,
                                     node_variant((*v).clone(),
@@ -203,7 +203,7 @@ impl Visitor<()> for Ctx {
                 }
             }
             item_foreign_mod(ref nm) => {
-                foreach nitem in nm.items.iter() {
+                for nitem in nm.items.iter() {
                     // Compute the visibility for this native item.
                     let visibility = match nitem.vis {
                         public => public,
@@ -233,10 +233,10 @@ impl Visitor<()> for Ctx {
                                     i.ident)
             }
             item_trait(_, ref traits, ref methods) => {
-                foreach p in traits.iter() {
+                for p in traits.iter() {
                     self.map.insert(p.ref_id, node_item(i, item_path));
                 }
-                foreach tm in methods.iter() {
+                for tm in methods.iter() {
                     let id = ast_util::trait_method_to_ty_method(tm).id;
                     let d_id = ast_util::local_def(i.id);
                     self.map.insert(id,

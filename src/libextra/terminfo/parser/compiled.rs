@@ -222,7 +222,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
-        foreach i in range(0, bools_bytes) {
+        for i in range(0, bools_bytes) {
             let b = file.read_byte();
             if b < 0 {
                 error!("EOF reading bools after %? entries", i);
@@ -243,7 +243,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
-        foreach i in range(0, numbers_count) {
+        for i in range(0, numbers_count) {
             let n = file.read_le_u16();
             if n != 0xFFFF {
                 debug!("%s#%?", nnames[i], n);
@@ -258,7 +258,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
     if string_offsets_count != 0 {
         let mut string_offsets = vec::with_capacity(10);
-        foreach _ in range(0, string_offsets_count) {
+        for _ in range(0, string_offsets_count) {
             string_offsets.push(file.read_le_u16());
         }
 
@@ -272,7 +272,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
             return Err(~"error: hit EOF before end of string table");
         }
 
-        foreach (i, v) in string_offsets.iter().enumerate() {
+        for (i, v) in string_offsets.iter().enumerate() {
             let offset = *v;
             if offset == 0xFFFF { // non-entry
                 loop;

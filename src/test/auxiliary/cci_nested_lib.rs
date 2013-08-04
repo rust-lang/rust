@@ -28,7 +28,7 @@ pub fn alist_get<A:Clone + 'static,
                  k: A)
                  -> B {
     let eq_fn = lst.eq_fn;
-    foreach entry in lst.data.iter() {
+    for entry in lst.data.iter() {
         if eq_fn(entry.key.clone(), k.clone()) {
             return entry.value.clone();
         }

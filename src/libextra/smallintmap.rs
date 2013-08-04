@@ -30,7 +30,7 @@ impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
         let mut sz = 0;
-        foreach i in range(0u, self.v.len()) {
+        for i in range(0u, self.v.len()) {
             match self.v[i] {
                 Some(_) => sz += 1,
                 None => {}
@@ -46,11 +46,6 @@ impl<V> Mutable for SmallIntMap<V> {
 }
 
 impl<V> Map<uint, V> for SmallIntMap<V> {
-    /// Return true if the map contains a value for the specified key
-    fn contains_key(&self, key: &uint) -> bool {
-        self.find(key).is_some()
-    }
-
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
@@ -123,7 +118,7 @@ impl<V> SmallIntMap<V> {
 
     /// Visit all key-value pairs in order
     pub fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
-        foreach i in range(0u, self.v.len()) {
+        for i in range(0u, self.v.len()) {
             match self.v[i] {
               Some(ref elt) => if !it(&i, elt) { return false; },
               None => ()
@@ -144,7 +139,7 @@ impl<V> SmallIntMap<V> {
 
     /// Iterate over the map and mutate the contained values
     pub fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
-        foreach i in range(0, self.v.len()) {
+        for i in range(0, self.v.len()) {
             match self.v[i] {
               Some(ref mut elt) => if !it(&i, elt) { return false; },
               None => ()
@@ -446,7 +441,7 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        foreach (k, v) in m.mut_iter() {
+        for (k, v) in m.mut_iter() {
             *v += k as int;
         }
 
@@ -488,7 +483,7 @@ mod test_map {
         assert!(m.insert(6, 10));
         assert!(m.insert(10, 11));
 
-        foreach (k, v) in m.mut_rev_iter() {
+        for (k, v) in m.mut_rev_iter() {
             *v += k as int;
         }
 
@@ -506,7 +501,7 @@ mod test_map {
         let mut m = SmallIntMap::new();
         m.insert(1, ~2);
         let mut called = false;
-        foreach (k, v) in m.consume() {
+        for (k, v) in m.consume() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);

@@ -102,7 +102,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         }
 
         // Desugar expr_for_loop
-        // From: `foreach <src_pat> in <src_expr> <src_loop_block>`
+        // From: `for <src_pat> in <src_expr> <src_loop_block>`
         ast::expr_for_loop(src_pat, src_expr, ref src_loop_block) => {
             let src_pat = src_pat.clone();
             let src_expr = src_expr.clone();
@@ -543,7 +543,7 @@ impl Visitor<()> for NewNameFinderContext {
                     _ => ()
                 }
                 // visit optional subpattern of pat_ident:
-                foreach subpat in inner.iter() {
+                for subpat in inner.iter() {
                     self.visit_pat(*subpat, ())
                 }
             }

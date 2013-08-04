@@ -145,7 +145,7 @@ impl BigBitv {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
         let mut changed = false;
-        foreach i in range(0, len) {
+        for i in range(0, len) {
             let mask = big_mask(nbits, i);
             let w0 = self.storage[i] & mask;
             let w1 = b.storage[i] & mask;
@@ -401,7 +401,7 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_true(self.nbits),
         _ => {
-          foreach i in self.iter() { if !i { return false; } }
+          for i in self.iter() { if !i { return false; } }
           true
         }
       }
@@ -422,7 +422,7 @@ impl Bitv {
       match self.rep {
         Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
-          foreach i in self.iter() { if i { return false; } }
+          for i in self.iter() { if i { return false; } }
           true
         }
       }
@@ -486,7 +486,7 @@ impl Bitv {
      */
      pub fn to_str(&self) -> ~str {
         let mut rs = ~"";
-        foreach i in self.iter() {
+        for i in self.iter() {
             if i {
                 rs.push_char('1');
             } else {
@@ -544,7 +544,7 @@ pub fn from_bools(bools: &[bool]) -> Bitv {
  */
 pub fn from_fn(len: uint, f: &fn(index: uint) -> bool) -> Bitv {
     let mut bitv = Bitv::new(len, false);
-    foreach i in range(0u, len) {
+    for i in range(0u, len) {
         bitv.set(i, f(i));
     }
     bitv
@@ -561,7 +561,7 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
     if bits == 0 {
         return true;
     }
-    foreach i in range(0u, uint::bits) {
+    for i in range(0u, uint::bits) {
         if bits & (1 << i) != 0 {
             if !f(base + i) {
                 return false;
@@ -676,7 +676,7 @@ impl BitvSet {
     fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
-            foreach _ in range(0u, uint::bits) {
+            for _ in range(0u, uint::bits) {
                 if w == 0 {
                     break;
                 }
@@ -688,7 +688,7 @@ impl BitvSet {
         if self.capacity() < other.capacity() {
             self.bitv.storage.grow(other.capacity() / uint::bits, &0);
         }
-        foreach (i, &w) in other.bitv.storage.iter().enumerate() {
+        for (i, &w) in other.bitv.storage.iter().enumerate() {
             let old = self.bitv.storage[i];
             let new = f(old, w);
             self.bitv.storage[i] = new;
@@ -721,7 +721,7 @@ impl BitvSet {
     }
 
     pub fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        foreach (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
                 return false
             }
@@ -734,7 +734,7 @@ impl BitvSet {
 
     pub fn symmetric_difference(&self, other: &BitvSet,
                             f: &fn(&uint) -> bool) -> bool {
-        foreach (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
                 return false
             }
@@ -747,7 +747,7 @@ impl BitvSet {
     }
 
     pub fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
-        foreach (i, w1, w2) in self.common_iter(other) {
+        for (i, w1, w2) in self.common_iter(other) {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
                 return false
             }
@@ -761,12 +761,12 @@ impl cmp::Eq for BitvSet {
         if self.size != other.size {
             return false;
         }
-        foreach (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.common_iter(other) {
             if w1 != w2 {
                 return false;
             }
         }
-        foreach (_, _, w) in self.outlier_iter(other) {
+        for (_, _, w) in self.outlier_iter(other) {
             if w != 0 {
                 return false;
             }
@@ -801,7 +801,7 @@ impl Set<uint> for BitvSet {
     }
 
     fn is_subset(&self, other: &BitvSet) -> bool {
-        foreach (_, w1, w2) in self.common_iter(other) {
+        for (_, w1, w2) in self.common_iter(other) {
             if w1 & w2 != w1 {
                 return false;
             }
@@ -809,7 +809,7 @@ impl Set<uint> for BitvSet {
         /* If anything is not ours, then everything is not ours so we're
            definitely a subset in that case. Otherwise if there's any stray
            ones that 'other' doesn't have, we're not a subset. */
-        foreach (mine, _, w) in self.outlier_iter(other) {
+        for (mine, _, w) in self.outlier_iter(other) {
             if !mine {
                 return true;
             } else if w != 0 {
@@ -1285,12 +1285,12 @@ mod tests {
     #[test]
     fn test_equal_sneaky_big() {
         let mut a = bitv::Bitv::new(100, false);
-        foreach i in range(0u, 100) {
+        for i in range(0u, 100) {
             a.set(i, true);
         }
 
         let mut b = bitv::Bitv::new(100, true);
-        foreach i in range(0u, 100) {
+        for i in range(0u, 100) {
             b.set(i, true);
         }
 
@@ -1333,7 +1333,7 @@ mod tests {
         let bools = [true, false, true, true];
         let bitv = from_bools(bools);
 
-        foreach (act, &ex) in bitv.iter().zip(bools.iter()) {
+        for (act, &ex) in bitv.iter().zip(bools.iter()) {
             assert_eq!(ex, act);
         }
     }
@@ -1639,7 +1639,7 @@ mod tests {
         let bitv = Bitv::new(uint::bits, false);
         do b.iter {
             let mut _sum = 0;
-            foreach pres in bitv.iter() {
+            for pres in bitv.iter() {
                 _sum += pres as uint;
             }
         }
@@ -1650,7 +1650,7 @@ mod tests {
         let bitv = Bitv::new(BENCH_BITS, false);
         do b.iter {
             let mut _sum = 0;
-            foreach pres in bitv.iter() {
+            for pres in bitv.iter() {
                 _sum += pres as uint;
             }
         }
@@ -1662,7 +1662,7 @@ mod tests {
                                               |idx| {idx % 3 == 0}));
         do b.iter {
             let mut _sum = 0;
-            foreach idx in bitv.iter() {
+            for idx in bitv.iter() {
                 _sum += idx;
             }
         }

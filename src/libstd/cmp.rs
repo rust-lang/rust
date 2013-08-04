@@ -238,7 +238,7 @@ mod test {
         }
 
         let xs = [Less, Equal, Greater];
-        foreach &o in xs.iter() {
+        for &o in xs.iter() {
             t(Less, o, Less);
             t(Equal, o, o);
             t(Greater, o, Greater);

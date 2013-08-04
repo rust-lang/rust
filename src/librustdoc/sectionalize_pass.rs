@@ -106,7 +106,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     let mut current_section: Option<doc::Section> = None;
     let mut sections = ~[];
 
-    foreach line in desc.get_ref().any_line_iter() {
+    for line in desc.get_ref().any_line_iter() {
         match parse_header(line) {
           Some(header) => {
             if current_section.is_some() {

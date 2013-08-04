@@ -42,7 +42,6 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    out,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         }));
 
@@ -57,13 +56,12 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    e,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         })
 
     };
 
-    foreach c in cleanups.iter() {
+    for c in cleanups.iter() {
         revoke_clean(bcx, *c);
     }
     cleanups.clear();
@@ -78,13 +76,12 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
                                    ty::ByCopy,
                                    input,
                                    &mut cleanups,
-                                   None,
                                    callee::DontAutorefArg)
         })
 
     };
 
-    foreach c in cleanups.iter() {
+    for c in cleanups.iter() {
         revoke_clean(bcx, *c);
     }
 
@@ -134,7 +131,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         let op = PointerCast(bcx, aoutputs[0], val_ty(outputs[0]).ptr_to());
         Store(bcx, r, op);
     } else {
-        foreach (i, o) in aoutputs.iter().enumerate() {
+        for (i, o) in aoutputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);
             let op = PointerCast(bcx, *o, val_ty(outputs[i]).ptr_to());
             Store(bcx, v, op);
