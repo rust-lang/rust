@@ -762,60 +762,33 @@ pub fn trans_arg_expr(bcx: @mut Block,
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
-                match self_mode {
+                let need_scratch = ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
+                    (bcx.expr_is_lval(arg_expr) &&
+                     arg_datum.appropriate_mode(bcx.tcx()).is_by_ref());
+
+                let arg_datum = if need_scratch {
+                    let scratch = scratch_datum(bcx, arg_datum.ty, "__self", false);
+                    arg_datum.store_to_datum(bcx, INIT, scratch);
+
+                    // Technically, ownership of val passes to the callee.
+                    // However, we must cleanup should we fail before the
+                    // callee is actually invoked.
+                    scratch.add_clean(bcx);
+                    temp_cleanups.push(scratch.val);
+
+                    scratch
+                } else {
+                    arg_datum
+                };
+
+                val = match self_mode {
                     ty::ByRef => {
-                        // This assertion should really be valid, but because
-                        // the explicit self code currently passes by-ref, it
-                        // does not hold.
-                        //
-                        //assert !bcx.ccx().maps.moves_map.contains_key(
-                        //    &arg_expr.id);
-                        debug!("by ref arg with type %s, storing to scratch",
-                               bcx.ty_to_str(arg_datum.ty));
-                        let scratch = scratch_datum(bcx, arg_datum.ty,
-                                                    "__self", false);
-
-                        arg_datum.store_to_datum(bcx,
-                                                 INIT,
-                                                 scratch);
-
-                        // Technically, ownership of val passes to the callee.
-                        // However, we must cleanup should we fail before the
-                        // callee is actually invoked.
-                        scratch.add_clean(bcx);
-                        temp_cleanups.push(scratch.val);
-
-                        val = scratch.to_ref_llval(bcx);
+                        debug!("by ref arg with type %s", bcx.ty_to_str(arg_datum.ty));
+                        arg_datum.to_ref_llval(bcx)
                     }
                     ty::ByCopy => {
-                        if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
-                                arg_datum.appropriate_mode(bcx.tcx()).is_by_ref() {
-                            debug!("by copy arg with type %s, storing to scratch",
-                                   bcx.ty_to_str(arg_datum.ty));
-                            let scratch = scratch_datum(bcx, arg_datum.ty,
-                                                        "__arg", false);
-
-                            arg_datum.store_to_datum(bcx,
-                                                     INIT,
-                                                     scratch);
-
-                            // Technically, ownership of val passes to the callee.
-                            // However, we must cleanup should we fail before the
-                            // callee is actually invoked.
-                            scratch.add_clean(bcx);
-                            temp_cleanups.push(scratch.val);
-
-                            match scratch.appropriate_mode(bcx.tcx()) {
-                                ByValue => val = Load(bcx, scratch.val),
-                                ByRef(_) => val = scratch.val,
-                            }
-                        } else {
-                            debug!("by copy arg with type %s", bcx.ty_to_str(arg_datum.ty));
-                            match arg_datum.mode {
-                                ByRef(_) => val = Load(bcx, arg_datum.val),
-                                ByValue => val = arg_datum.val,
-                            }
-                        }
+                        debug!("by copy arg with type %s", bcx.ty_to_str(arg_datum.ty));
+                        arg_datum.to_appropriate_llval(bcx)
                     }
                 }
             }
