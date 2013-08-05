@@ -193,6 +193,10 @@ impl BlockedTask {
 
     /// Create a blocked task, unless the task was already killed.
     pub fn try_block(mut task: ~Task) -> Either<~Task, BlockedTask> {
+        // NB: As an optimization, we could give a free pass to being unkillable
+        // to tasks whose taskgroups haven't been initialized yet, but that
+        // introduces complications with select() and with the test cases below,
+        // and it's not clear the uncommon performance boost is worth it.
         if task.death.unkillable > 0 {
             Right(Unkillable(task))
         } else {
