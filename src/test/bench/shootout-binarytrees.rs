@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod extra;
-use extra::arena;
+use extra::arena::Arena;
 
 enum Tree<'self> {
     Nil,
@@ -25,7 +25,7 @@ fn item_check(t: &Tree) -> int {
     }
 }
 
-fn bottom_up_tree<'r>(arena: &'r arena::Arena, item: int, depth: int)
+fn bottom_up_tree<'r>(arena: &'r Arena, item: int, depth: int)
                    -> &'r Tree<'r> {
     if depth > 0 {
         return arena.alloc(
@@ -57,7 +57,7 @@ fn main() {
         max_depth = n;
     }
 
-    let stretch_arena = arena::Arena();
+    let stretch_arena = Arena::new();
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
@@ -65,7 +65,7 @@ fn main() {
               stretch_depth,
               item_check(stretch_tree));
 
-    let long_lived_arena = arena::Arena();
+    let long_lived_arena = Arena::new();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
     let mut depth = min_depth;
     while depth <= max_depth {
