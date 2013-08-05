@@ -415,7 +415,7 @@ pub fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
-            fmt!("Expected an identifier pattern but found p: %s",
+            fmt!("Expected an identifier pattern, found p: %s",
                  pat_to_str(p, bcx.sess().intr())));
     }
 }

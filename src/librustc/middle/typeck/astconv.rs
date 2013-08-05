@@ -177,7 +177,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     if !vec::same_length(*decl_generics.type_param_defs, path.types) {
         this.tcx().sess.span_fatal(
             path.span,
-            fmt!("wrong number of type arguments: expected %u but found %u",
+            fmt!("wrong number of type arguments: expected %u, found %u",
                  decl_generics.type_param_defs.len(), path.types.len()));
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, a_t));

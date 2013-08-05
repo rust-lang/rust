@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types: expected `()` but found `bool`
+// error-pattern:mismatched types: expected `()`, found `bool`
 
 fn main() {
     while true {

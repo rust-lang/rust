@@ -17,7 +17,7 @@ type bar = @foo;
 
 fn want_foo(f: foo) {}
 fn have_bar(b: bar) {
-    want_foo(b); //~ ERROR (expected struct foo but found @-ptr)
+    want_foo(b); //~ ERROR (expected struct foo, found @-ptr)
 }
 
 fn main() {}

@@ -12,11 +12,11 @@ struct Foo { a: int, b: int }
 struct Bar { x: int }
 
 static bar: Bar = Bar { x: 5 };
-static foo: Foo = Foo { a: 2, ..bar }; //~ ERROR mismatched types: expected `Foo` but found `Bar`
+static foo: Foo = Foo { a: 2, ..bar }; //~ ERROR mismatched types: expected `Foo`, found `Bar`
 static foo_i: Foo = Foo { a: 2, ..4 }; //~ ERROR mismatched types: expected `Foo`
 
 fn main() {
     let b = Bar { x: 5 };
-    let f = Foo { a: 2, ..b }; //~ ERROR mismatched types: expected `Foo` but found `Bar`
+    let f = Foo { a: 2, ..b }; //~ ERROR mismatched types: expected `Foo`, found `Bar`
     let f_i = Foo { a: 2, ..4 }; //~ ERROR mismatched types: expected `Foo`
 }
