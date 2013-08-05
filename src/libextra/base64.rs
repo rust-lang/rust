@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Base64 binary-to-text encoding
+use std::str;
 
 /// Available encoding character sets
 pub enum CharacterSet {
@@ -40,21 +41,13 @@ pub static URL_SAFE: Config =
 pub static MIME: Config =
     Config {char_set: Standard, pad: true, line_length: Some(76)};
 
-static STANDARD_CHARS: [char, ..64] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
-];
+static STANDARD_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                             "abcdefghijklmnopqrstuvwxyz",
+                                             "0123456789+/");
 
-static URLSAFE_CHARS: [char, ..64] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_'
-];
+static URLSAFE_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                            "abcdefghijklmnopqrstuvwxyz",
+                                            "0123456789-_");
 
 /// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
@@ -80,12 +73,12 @@ impl<'self> ToBase64 for &'self [u8] {
      * ~~~
      */
     fn to_base64(&self, config: Config) -> ~str {
-        let chars = match config.char_set {
+        let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
             UrlSafe => URLSAFE_CHARS
         };
 
-        let mut s = ~"";
+        let mut v: ~[u8] = ~[];
         let mut i = 0;
         let mut cur_length = 0;
         let len = self.len();
@@ -93,7 +86,8 @@ impl<'self> ToBase64 for &'self [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        s.push_str("\r\n");
+                        v.push('\r' as u8);
+                        v.push('\n' as u8);
                         cur_length = 0;
                     },
                 None => ()
@@ -104,10 +98,10 @@ impl<'self> ToBase64 for &'self [u8] {
                     (self[i + 2] as u32);
 
             // This 24-bit number gets separated into four 6-bit numbers.
-            s.push_char(chars[(n >> 18) & 63]);
-            s.push_char(chars[(n >> 12) & 63]);
-            s.push_char(chars[(n >> 6 ) & 63]);
-            s.push_char(chars[n & 63]);
+            v.push(bytes[(n >> 18) & 63]);
+            v.push(bytes[(n >> 12) & 63]);
+            v.push(bytes[(n >> 6 ) & 63]);
+            v.push(bytes[n & 63]);
 
             cur_length += 4;
             i += 3;
@@ -117,7 +111,8 @@ impl<'self> ToBase64 for &'self [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        s.push_str("\r\n");
+                        v.push('\r' as u8);
+                        v.push('\n' as u8);
                     },
                 None => ()
             }
@@ -129,25 +124,29 @@ impl<'self> ToBase64 for &'self [u8] {
             0 => (),
             1 => {
                 let n = (self[i] as u32) << 16;
-                s.push_char(chars[(n >> 18) & 63]);
-                s.push_char(chars[(n >> 12) & 63]);
+                v.push(bytes[(n >> 18) & 63]);
+                v.push(bytes[(n >> 12) & 63]);
                 if config.pad {
-                    s.push_str("==");
+                    v.push('=' as u8);
+                    v.push('=' as u8);
                 }
             }
             2 => {
                 let n = (self[i] as u32) << 16 |
                     (self[i + 1u] as u32) << 8;
-                s.push_char(chars[(n >> 18) & 63]);
-                s.push_char(chars[(n >> 12) & 63]);
-                s.push_char(chars[(n >> 6 ) & 63]);
+                v.push(bytes[(n >> 18) & 63]);
+                v.push(bytes[(n >> 12) & 63]);
+                v.push(bytes[(n >> 6 ) & 63]);
                 if config.pad {
-                    s.push_char('=');
+                    v.push('=' as u8);
                 }
             }
             _ => fail!("Algebra is broken, please alert the math police")
         }
-        s
+
+        unsafe {
+            str::raw::from_bytes_owned(v)
+        }
     }
 }
 
