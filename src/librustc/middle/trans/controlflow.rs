@@ -19,7 +19,6 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::type_of::*;
 use middle::ty;
@@ -38,12 +37,10 @@ pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Bl
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
     for s in b.stmts.iter() {
-        debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
     match b.expr {
         Some(e) => {
-            debuginfo::update_source_pos(bcx, e.span);
             bcx = expr::trans_into(bcx, e, dest);
         }
         None => {
