@@ -107,6 +107,10 @@ else
   CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 endif
 
+ifdef CFG_ENABLE_UNICODE
+  CFG_RUSTC_FLAGS += --cfg unicode
+endif
+
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
