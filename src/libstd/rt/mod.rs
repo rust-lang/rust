@@ -212,6 +212,7 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
+        env::init();
         logging::init(crate_map);
         rust_update_gc_metadata(crate_map);
     }
