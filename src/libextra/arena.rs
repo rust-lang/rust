@@ -67,17 +67,16 @@ pub struct Arena {
     priv chunks: @mut MutList<Chunk>,
 }
 
-#[unsafe_destructor]
-impl Drop for Arena {
-    fn drop(&self) {
-        unsafe {
-            destroy_chunk(&self.head);
-            do self.chunks.each |chunk| {
-                if !chunk.is_pod {
-                    destroy_chunk(chunk);
-                }
-                true
-            };
+impl Arena {
+    pub fn new() -> Arena {
+        Arena::new_with_size(32u)
+    }
+
+    pub fn new_with_size(initial_size: uint) -> Arena {
+        Arena {
+            head: chunk(initial_size, false),
+            pod_head: chunk(initial_size, true),
+            chunks: @mut MutNil,
         }
     }
 }
@@ -92,16 +91,19 @@ fn chunk(size: uint, is_pod: bool) -> Chunk {
     }
 }
 
-pub fn arena_with_size(initial_size: uint) -> Arena {
-    Arena {
-        head: chunk(initial_size, false),
-        pod_head: chunk(initial_size, true),
-        chunks: @mut MutNil,
+#[unsafe_destructor]
+impl Drop for Arena {
+    fn drop(&self) {
+        unsafe {
+            destroy_chunk(&self.head);
+            do self.chunks.each |chunk| {
+                if !chunk.is_pod {
+                    destroy_chunk(chunk);
+                }
+                true
+            };
+        }
     }
-}
-
-pub fn Arena() -> Arena {
-    arena_with_size(32u)
 }
 
 #[inline]
@@ -276,7 +278,7 @@ impl Arena {
 
 #[test]
 fn test_arena_destructors() {
-    let arena = Arena();
+    let arena = Arena::new();
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -291,7 +293,7 @@ fn test_arena_destructors() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let arena = Arena();
+    let arena = Arena::new();
     // Put some stuff in the arena.
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
