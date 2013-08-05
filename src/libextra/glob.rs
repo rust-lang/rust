@@ -175,6 +175,29 @@ impl Pattern {
     }
 
     /**
+     * Escape metacharacters within the given string by surrounding them in
+     * brackets. The resulting string will, when compiled into a Pattern,
+     * match the input string and nothing else.
+     */
+    pub fn escape(s: &str) -> ~str {
+        let mut escaped = ~"";
+        foreach c in s.iter() {
+            match c {
+                // note that ! does not need escaping because it is only special inside brackets
+                '?' | '*' | '[' | ']' => {
+                    escaped.push_char('[');
+                    escaped.push_char(c);
+                    escaped.push_char(']');
+                }
+                c => {
+                    escaped.push_char(c);
+                }
+            }
+        }
+        escaped
+    }
+
+    /**
      * Return if the given str matches this Pattern.
      */
     pub fn matches(&self, file: &str) -> bool {
@@ -467,6 +490,13 @@ mod test {
         assert!(dir_pat.matches("a/bigger/some/path/to/hello.txt"));
         assert!(!dir_pat.matches("some/path/to/hello.txt-and-then-some"));
         assert!(!dir_pat.matches("some/other/path/to/hello.txt"));
+    }
+
+    #[test]
+    fn test_pattern_escape() {
+        let s = "_[_]_?_*_!_";
+        assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
+        assert!(Pattern::new(Pattern::escape(s)).matches(s));
     }
 }
 
