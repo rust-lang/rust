@@ -1316,10 +1316,9 @@ pub struct Take<T> {
 impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let next = self.iter.next();
         if self.n != 0 {
             self.n -= 1;
-            next
+            self.iter.next()
         } else {
             None
         }
