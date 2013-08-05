@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Unit-like struct definition should be written as `struct Foo;`
-struct Foo {}
+// error-pattern: Unit-like struct construction is written with no trailing `{ }`
+struct Foo;
+
+fn i5() {
+    let _end_of_block = { Foo { } };
+}
 
 fn main() {}
