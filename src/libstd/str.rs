@@ -885,7 +885,7 @@ pub mod raw {
     /// If begin is greater than end.
     /// If end is greater than the length of the string.
     #[inline]
-    pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
+    pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         do s.as_imm_buf |sbuf, n| {
              assert!((begin <= end));
              assert!((end <= n));
