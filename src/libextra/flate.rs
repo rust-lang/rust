@@ -46,7 +46,7 @@ static LZ_BEST : c_int = 0xfff; // LZ with 4095 probes, "best"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
-fn deflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
+fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
     do bytes.as_imm_buf |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
@@ -65,14 +65,14 @@ fn deflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
 }
 
 pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
-    deflate_bytes_(bytes, LZ_NORM)
+    deflate_bytes_internal(bytes, LZ_NORM)
 }
 
 pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
-    deflate_bytes_(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
+    deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
     do bytes.as_imm_buf |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
@@ -91,11 +91,11 @@ fn inflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
 }
 
 pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
-    inflate_bytes_(bytes, 0)
+    inflate_bytes_internal(bytes, 0)
 }
 
 pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
-    inflate_bytes_(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
+    inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 
 #[cfg(test)]
