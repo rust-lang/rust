@@ -305,7 +305,7 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = r_doc.as_str_slice();
                     if lbl != str {
-                        fail!("Expected label %s but found %s", lbl, str);
+                        fail!("Expected label %s, found %s", lbl, str);
                     }
                 }
             }
@@ -326,7 +326,7 @@ pub mod reader {
                    r_doc.start,
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
-                fail!("expected EBML doc with tag %? but found tag %?", exp_tag, r_tag);
+                fail!("expected EBML doc with tag %?, found tag %?", exp_tag, r_tag);
             }
             if r_doc.end > self.parent.end {
                 fail!("invalid EBML, child extends to 0x%x, parent to 0x%x",

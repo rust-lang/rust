@@ -30,7 +30,7 @@ trait set_foo_foo {
 
 impl<'self> set_foo_foo for with_foo<'self> {
     fn set_foo(&mut self, f: @foo) {
-        self.f = f; //~ ERROR mismatched types: expected `@foo/&self` but found `@foo/&`
+        self.f = f; //~ ERROR mismatched types: expected `@foo/&self`, found `@foo/&`
     }
 }
 
