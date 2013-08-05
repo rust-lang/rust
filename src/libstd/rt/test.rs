@@ -57,7 +57,7 @@ pub fn run_in_newsched_task_core(f: ~fn()) {
         exit_handle.take().send(Shutdown);
         rtassert!(exit_status);
     };
-    let mut task = ~Task::new_root(&mut sched.stack_pool, f);
+    let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
     task.death.on_exit = Some(on_exit);
 
     sched.bootstrap(task);
@@ -190,8 +190,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
             rtassert!(exit_status);
         };
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                        f.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take());
         main_task.death.on_exit = Some(on_exit);
 
         let mut threads = ~[];
@@ -209,7 +208,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         while !scheds.is_empty() {
             let mut sched = scheds.pop();
-            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("bootstrapping non-primary scheduler");
             };
             let bootstrap_task_cell = Cell::new(bootstrap_task);
@@ -232,12 +231,12 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
 /// Test tasks will abort on failure instead of unwinding
 pub fn spawntask(f: ~fn()) {
-    Scheduler::run_task(Task::build_child(f));
+    Scheduler::run_task(Task::build_child(None, f));
 }
 
 /// Create a new task and run it right now. Aborts on failure
 pub fn spawntask_later(f: ~fn()) {
-    Scheduler::run_task_later(Task::build_child(f));
+    Scheduler::run_task_later(Task::build_child(None, f));
 }
 
 pub fn spawntask_random(f: ~fn()) {
@@ -259,7 +258,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
     let chan = Cell::new(chan);
     let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
 
-    let mut new_task = Task::build_root(f);
+    let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
 
     Scheduler::run_task(new_task);
@@ -285,7 +284,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
-        let task = blk(~Task::new_root(&mut sched.stack_pool, ||{}));
+        let task = blk(~Task::new_root(&mut sched.stack_pool, None, ||{}));
         cleanup_task(task);
     }
 }

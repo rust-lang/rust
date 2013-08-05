@@ -833,7 +833,7 @@ mod test {
             let mut sched = ~new_test_uv_sched();
             let sched_handle = sched.make_handle();
 
-            let mut task = ~do Task::new_root_homed(&mut sched.stack_pool,
+            let mut task = ~do Task::new_root_homed(&mut sched.stack_pool, None,
                                                 Sched(sched_handle)) {
                 unsafe { *task_ran_ptr = true };
                 assert!(Task::on_appropriate_sched());
@@ -893,21 +893,21 @@ mod test {
             //   3) task not homed, sched requeues
             //   4) task not home, send home
 
-            let task1 = ~do Task::new_root_homed(&mut special_sched.stack_pool,
+            let task1 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
                                                  Sched(t1_handle)) || {
                 rtassert!(Task::on_appropriate_sched());
             };
             rtdebug!("task1 id: **%u**", borrow::to_uint(task1));
 
-            let task2 = ~do Task::new_root(&mut normal_sched.stack_pool) {
+            let task2 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtassert!(Task::on_appropriate_sched());
             };
 
-            let task3 = ~do Task::new_root(&mut normal_sched.stack_pool) {
+            let task3 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtassert!(Task::on_appropriate_sched());
             };
 
-            let task4 = ~do Task::new_root_homed(&mut special_sched.stack_pool,
+            let task4 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
                                                  Sched(t4_handle)) {
                 rtassert!(Task::on_appropriate_sched());
             };
@@ -923,7 +923,7 @@ mod test {
             let port = Cell::new(port);
             let chan = Cell::new(chan);
 
-            let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool) {
+            let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtdebug!("*about to submit task2*");
                 Scheduler::run_task(task2.take());
                 rtdebug!("*about to submit task4*");
@@ -938,7 +938,7 @@ mod test {
 
             rtdebug!("normal task: %u", borrow::to_uint(normal_task));
 
-            let special_task = ~do Task::new_root(&mut special_sched.stack_pool) {
+            let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
                 rtdebug!("*about to submit task1*");
                 Scheduler::run_task(task1.take());
                 rtdebug!("*about to submit task3*");
