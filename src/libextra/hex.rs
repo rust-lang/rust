@@ -19,8 +19,7 @@ pub trait ToHex {
     fn to_hex(&self) -> ~str;
 }
 
-static CHARS: [char, ..16] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                              'a', 'b', 'c', 'd', 'e', 'f'];
+static CHARS: &'static[u8] = bytes!("0123456789abcdef");
 
 impl<'self> ToHex for &'self [u8] {
     /**
@@ -39,13 +38,16 @@ impl<'self> ToHex for &'self [u8] {
      * ~~~
      */
     fn to_hex(&self) -> ~str {
-        let mut s = str::with_capacity(self.len() * 2);
+        // +1 for NULL terminator
+        let mut v = vec::with_capacity(self.len() * 2 + 1);
         for &byte in self.iter() {
-            s.push_char(CHARS[byte >> 4]);
-            s.push_char(CHARS[byte & 0xf]);
+            v.push(CHARS[byte >> 4]);
+            v.push(CHARS[byte & 0xf]);
         }
 
-        s
+        unsafe {
+            str::raw::from_bytes_owned(v)
+        }
     }
 }
 
