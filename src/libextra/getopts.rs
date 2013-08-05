@@ -542,6 +542,20 @@ pub mod groups {
                 occur: Optional};
     }
 
+    /// Create a long option that can occur more than once and does not
+    /// take an argument
+    pub fn optflagmulti(short_name: &str, long_name: &str,
+                   desc: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        return OptGroup {short_name: short_name.to_owned(),
+                long_name: long_name.to_owned(),
+                hint: ~"",
+                desc: desc.to_owned(),
+                hasarg: No,
+                occur: Multi};
+    }
+
     /// Create a long option that is optional and takes an optional argument
     pub fn optflagopt(short_name: &str, long_name: &str,
                       desc: &str, hint: &str) -> OptGroup {
