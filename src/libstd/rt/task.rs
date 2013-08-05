@@ -20,6 +20,7 @@ use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
 use option::{Option, Some, None};
+use rt::env;
 use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
@@ -326,10 +327,9 @@ impl Drop for Task {
 impl Coroutine {
 
     pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        static MIN_STACK_SIZE: uint = 2000000; // XXX: Too much stack
-
+        let stack_size = env::min_stack();
         let start = Coroutine::build_start_wrapper(start);
-        let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
+        let mut stack = stack_pool.take_segment(stack_size);
         let initial_context = Context::new(start, &mut stack);
         Coroutine {
             current_stack_segment: stack,
