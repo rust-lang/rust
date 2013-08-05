@@ -20,33 +20,17 @@ use sort;
  */
 pub struct GlobIterator {
     priv root: Path,
-    priv dir_patterns: ~[~[PatternToken]],
+    priv dir_patterns: ~[Pattern],
     priv todo: ~[Path]
 }
 
-enum PatternToken {
-    Char(char),
-    AnyChar,
-    AnySequence,
-    AnyWithin(~[char]),
-    AnyExcept(~[char]),
-}
-
 /**
- * Return an iterator that produces all the paths that match the given pattern,
+ * Return an iterator that produces all the Paths that match the given pattern,
  * which may be absolute or relative to the current working directory.
  *
- * This function accepts Unix shell style patterns:
- *   '?' matches any single character.
- *   '*' matches any (possibly empty) sequence of characters.
- *   '[...]' matches any character inside the brackets, unless the first character
- *           is '!' in which case it matches any character except those between
- *           the '!' and the ']'.
- *
- * The metacharacters '?', '*', '[', ']' can be matched by using brackets (e.g. '[?]').
- * When a ']' occurs immediately following '[' or '[!' then it is interpreted as
- * being part of, rather then ending, the character set, so ']' and NOT ']' can be
- * matched by '[]]' and '[!]]' respectively.
+ * This function accepts Unix shell style patterns as described by Pattern::new(..),
+ * with the exception that path separators (i.e. '/' on Posix systems) must be matched
+ * by their literal representation - they can't be matched by '*', '?', '[...]', etc.
  *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
@@ -55,7 +39,7 @@ pub fn glob(pattern: &str) -> GlobIterator {
     // note that this relies on the glob meta characters not
     // having any special meaning in actual pathnames
     let path = Path(pattern);
-    let dir_patterns = path.components.map(|s| compile_pattern(*s));
+    let dir_patterns = path.components.map(|s| Pattern::new(*s));
 
     let root = if path.is_absolute() {
         Path {components: ~[], .. path} // preserve windows path host/device
@@ -82,7 +66,7 @@ impl Iterator<Path> for GlobIterator {
             let path = self.todo.pop();
             let pattern_index = path.components.len() - self.root.components.len() - 1;
 
-            if pattern_matches(*path.components.last(), self.dir_patterns[pattern_index]) {
+            if self.dir_patterns[pattern_index].matches(*path.components.last()) {
 
                 if pattern_index == self.dir_patterns.len() - 1 {
                     // it is not possible for a pattern to match a directory *AND* its children
@@ -103,96 +87,145 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
     children
 }
 
-fn compile_pattern(pattern_str: &str) -> ~[PatternToken] {
-    let mut pattern = ~[];
-
-    let mut pattern_iter = pattern_str.iter();
-    loop {
-        let pchar = match pattern_iter.next() {
-            None => break,
-            Some(c) => c,
-        };
-        match pchar {
-            '?' => {
-                pattern.push(AnyChar);
-            }
-            '*' => {
-                pattern.push(AnySequence);
-            }
-            '[' => {
-
-                // get the next char, or fail with a helpful message
-                let next_pattern_char = || {
-                    match pattern_iter.next() {
-                        None => fail!("invalid pattern syntax due to unclosed bracket: %s",
-                                      pattern_str),
-                        Some(c) => c,
-                    }
-                };
-
-                let c = next_pattern_char();
-                let is_except = (c == '!');
-
-                let mut chars = ~[];
-                if is_except {
-                    chars.push(next_pattern_char());
-                } else {
-                    chars.push(c);
-                };
-
-                loop {
-                    match next_pattern_char() {
-                        ']' => break,
-                        c => chars.push(c),
-                    }
-                }
-                pattern.push(if is_except { AnyExcept(chars) } else { AnyWithin(chars) });
-            }
-            c => {
-                pattern.push(Char(c));
-            }
-        }
-    }
-
-    pattern
+/**
+ * A compiled Unix shell style pattern.
+ */
+pub struct Pattern {
+    priv tokens: ~[PatternToken]
 }
 
-fn pattern_matches(mut file: &str, pattern: &[PatternToken]) -> bool {
+enum PatternToken {
+    Char(char),
+    AnyChar,
+    AnySequence,
+    AnyWithin(~[char]),
+    AnyExcept(~[char])
+}
 
-    for uint::range(0, pattern.len()) |pi| {
-        match pattern[pi] {
-            AnySequence => {
-                loop {
-                    if pattern_matches(file, pattern.slice_from(pi + 1)) {
-                        return true;
+impl Pattern {
+
+    /**
+     * This function compiles Unix shell style patterns:
+     *   '?' matches any single character.
+     *   '*' matches any (possibly empty) sequence of characters.
+     *   '[...]' matches any character inside the brackets, unless the first character
+     *           is '!' in which case it matches any character except those between
+     *           the '!' and the ']'.
+     *
+     * The metacharacters '?', '*', '[', ']' can be matched by using brackets (e.g. '[?]').
+     * When a ']' occurs immediately following '[' or '[!' then it is interpreted as
+     * being part of, rather then ending, the character set, so ']' and NOT ']' can be
+     * matched by '[]]' and '[!]]' respectively.
+     *
+     * This function will fail if the given pattern string is malformed - e.g. if it contains
+     * a '[...]' sequence that is missing its closing ']'.
+     */
+    pub fn new(pattern: &str) -> Pattern {
+        let mut tokens = ~[];
+
+        let mut pattern_iter = pattern.iter();
+        loop {
+            let pchar = match pattern_iter.next() {
+                None => break,
+                Some(c) => c,
+            };
+            match pchar {
+                '?' => {
+                    tokens.push(AnyChar);
+                }
+                '*' => {
+                    tokens.push(AnySequence);
+                }
+                '[' => {
+
+                    // get the next char, or fail with a helpful message
+                    let next_pattern_char = || {
+                        match pattern_iter.next() {
+                            None => fail!("invalid pattern syntax due to unclosed bracket: %s",
+                                          pattern),
+                            Some(c) => c,
+                        }
+                    };
+
+                    let c = next_pattern_char();
+                    let is_except = (c == '!');
+
+                    let mut chars = ~[];
+                    if is_except {
+                        chars.push(next_pattern_char());
+                    } else {
+                        chars.push(c);
+                    };
+
+                    loop {
+                        match next_pattern_char() {
+                            ']' => break,
+                            c => chars.push(c),
+                        }
                     }
+                    tokens.push(if is_except { AnyExcept(chars) } else { AnyWithin(chars) });
+                }
+                c => {
+                    tokens.push(Char(c));
+                }
+            }
+        }
+
+        Pattern { tokens: tokens }
+    }
+
+    /**
+     * Return if the given str matches this Pattern.
+     */
+    pub fn matches(&self, file: &str) -> bool {
+        self.matches_from(file, 0)
+    }
+
+    /**
+     * Return if the given Path, when converted to a str, matches this Pattern.
+     */
+    pub fn matches_path(&self, path: &Path) -> bool {
+        self.matches(path.to_str())
+    }
+
+    fn matches_from(&self, mut file: &str, i: uint) -> bool {
+
+        for uint::range(i, self.tokens.len()) |ti| {
+            match self.tokens[ti] {
+                AnySequence => {
+                    loop {
+                        if self.matches_from(file, ti + 1) {
+                            return true;
+                        }
+                        if file.is_empty() {
+                            return false;
+                        }
+                        file = file.slice_shift_char().second();
+                    }
+                }
+                _ => {
                     if file.is_empty() {
                         return false;
                     }
-                    file = file.slice_shift_char().second();
+                    let (c, next) = file.slice_shift_char();
+                    let matches = match self.tokens[ti] {
+                        AnyChar => true,
+                        AnyWithin(ref chars) => chars.contains(&c),
+                        AnyExcept(ref chars) => !chars.contains(&c),
+                        Char(c2) => c == c2,
+                        AnySequence => fail!(),
+                    };
+                    if !matches {
+                        return false;
+                    }
+                    file = next;
                 }
-            }
-            _ => {
-                if file.is_empty() {
-                    return false;
-                }
-                let (c, next) = file.slice_shift_char();
-                let matches = match pattern[pi] {
-                    AnyChar => true,
-                    AnyWithin(ref chars) => chars.contains(&c),
-                    AnyExcept(ref chars) => !chars.contains(&c),
-                    Char(c2) => c == c2,
-                    AnySequence => fail!(),
-                };
-                if !matches {
-                    return false;
-                }
-                file = next;
             }
         }
+
+        file.is_empty()
     }
 
-    file.is_empty()
 }
 
 #[cfg(test)]
@@ -401,21 +434,39 @@ mod test {
     #[should_fail]
     #[cfg(not(windows))]
     fn test_unclosed_bracket() {
-        glob("abc[def");
+        Pattern::new("abc[def");
     }
 
     #[test]
     #[should_fail]
     #[cfg(not(windows))]
     fn test_unclosed_bracket_special() {
-        glob("abc[]"); // not valid syntax, '[]]' should be used to match ']'
+        Pattern::new("abc[]"); // not valid syntax, '[]]' should be used to match ']'
     }
 
     #[test]
     #[should_fail]
     #[cfg(not(windows))]
     fn test_unclosed_bracket_special_except() {
-        glob("abc[!]"); // not valid syntax, '[!]]' should be used to match NOT ']'
+        Pattern::new("abc[!]"); // not valid syntax, '[!]]' should be used to match NOT ']'
+    }
+
+    #[test]
+    fn test_pattern_matches() {
+        let txt_pat = Pattern::new("*hello.txt");
+        assert!(txt_pat.matches("hello.txt"));
+        assert!(txt_pat.matches("gareth_says_hello.txt"));
+        assert!(txt_pat.matches("some/path/to/hello.txt"));
+        assert!(txt_pat.matches("some\\path\\to\\hello.txt"));
+        assert!(txt_pat.matches("/an/absolute/path/to/hello.txt"));
+        assert!(!txt_pat.matches("hello.txt-and-then-some"));
+        assert!(!txt_pat.matches("goodbye.txt"));
+
+        let dir_pat = Pattern::new("*some/path/to/hello.txt");
+        assert!(dir_pat.matches("some/path/to/hello.txt"));
+        assert!(dir_pat.matches("a/bigger/some/path/to/hello.txt"));
+        assert!(!dir_pat.matches("some/path/to/hello.txt-and-then-some"));
+        assert!(!dir_pat.matches("some/other/path/to/hello.txt"));
     }
 }
 
