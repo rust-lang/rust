@@ -142,7 +142,8 @@ pub struct TaskOpts {
     indestructible: bool,
     notify_chan: Option<Chan<TaskResult>>,
     name: Option<~str>,
-    sched: SchedOpts
+    sched: SchedOpts,
+    stack_size: Option<uint>
 }
 
 /**
@@ -197,7 +198,8 @@ impl TaskBuilder {
                 indestructible: self.opts.indestructible,
                 notify_chan: notify_chan,
                 name: name,
-                sched: self.opts.sched
+                sched: self.opts.sched,
+                stack_size: self.opts.stack_size
             },
             gen_body: gen_body,
             can_not_copy: None,
@@ -351,7 +353,8 @@ impl TaskBuilder {
             indestructible: x.opts.indestructible,
             notify_chan: notify_chan,
             name: name,
-            sched: x.opts.sched
+            sched: x.opts.sched,
+            stack_size: x.opts.stack_size
         };
         let f = match gen_body {
             Some(gen) => {
@@ -422,7 +425,8 @@ pub fn default_task_opts() -> TaskOpts {
         name: None,
         sched: SchedOpts {
             mode: DefaultScheduler,
-        }
+        },
+        stack_size: None
     }
 }
 
