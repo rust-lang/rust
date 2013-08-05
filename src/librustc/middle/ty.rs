@@ -398,7 +398,7 @@ pub struct ClosureTy {
  * - `output` is the return type. */
 #[deriving(Clone, Eq, IterBytes)]
 pub struct FnSig {
-    bound_lifetime_names: OptVec<ast::ident>,
+    bound_lifetime_names: OptVec<ast::Name>,
     inputs: ~[t],
     output: t
 }
@@ -471,7 +471,7 @@ pub enum bound_region {
     br_anon(uint),
 
     /// Named region parameters for functions (a in &'a T)
-    br_named(ast::ident),
+    br_named(ast::Name),
 
     /// Fresh bound identifiers created during GLB computations.
     br_fresh(uint),
@@ -2714,7 +2714,7 @@ impl cmp::TotalOrd for bound_region {
             (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
             (&ty::br_anon(*), _) => cmp::Less,
 
-            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.name.cmp(&a2.name),
+            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.cmp(a2),
             (&ty::br_named(*), _) => cmp::Less,
 
             (&ty::br_cap_avoid(ref a1, @ref b1),

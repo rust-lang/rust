@@ -69,7 +69,7 @@ pub trait AstBuilder {
 
     fn trait_ref(&self, path: ast::Path) -> ast::trait_ref;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
-    fn lifetime(&self, span: span, ident: ast::ident) -> ast::Lifetime;
+    fn lifetime(&self, span: span, name: ast::Name) -> ast::Lifetime;
 
     // statements
     fn stmt_expr(&self, expr: @ast::expr) -> @ast::stmt;
@@ -365,8 +365,8 @@ impl AstBuilder for @ExtCtxt {
         ast::TraitTyParamBound(self.trait_ref(path))
     }
 
-    fn lifetime(&self, span: span, ident: ast::ident) -> ast::Lifetime {
-        ast::Lifetime { id: self.next_id(), span: span, ident: ident }
+    fn lifetime(&self, span: span, name: ast::Name) -> ast::Lifetime {
+        ast::Lifetime { id: self.next_id(), span: span, name: name }
     }
 
     fn stmt_expr(&self, expr: @ast::expr) -> @ast::stmt {

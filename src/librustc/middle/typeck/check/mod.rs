@@ -680,7 +680,7 @@ impl FnCtxt {
         match in_scope_regions.find(br) {
             Some(r) => result::Ok(r),
             None => {
-                let blk_br = ty::br_named(special_idents::blk);
+                let blk_br = ty::br_named(special_idents::blk.name);
                 if br == blk_br {
                     result::Ok(self.block_region())
                 } else {
@@ -709,7 +709,7 @@ impl region_scope for FnCtxt {
     }
     fn named_region(&self,
                     span: span,
-                    id: ast::ident) -> Result<ty::Region, RegionError> {
+                    id: ast::Name) -> Result<ty::Region, RegionError> {
         self.search_in_scope_regions(span, ty::br_named(id))
     }
 }

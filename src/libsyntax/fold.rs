@@ -183,7 +183,7 @@ pub fn fold_lifetime(l: &Lifetime,
                      fld: @ast_fold) -> Lifetime {
     Lifetime {id: fld.new_id(l.id),
               span: fld.new_span(l.span),
-              ident: l.ident}
+              name: l.name}
 }
 
 pub fn fold_lifetimes(lts: &OptVec<Lifetime>,

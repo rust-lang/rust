@@ -674,7 +674,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 bump(rdr);
             }
             return do with_str_from(rdr, start) |lifetime_name| {
-                token::LIFETIME(str_to_ident(lifetime_name))
+                token::LIFETIME(token::intern(lifetime_name))
             }
         }
 
@@ -905,8 +905,8 @@ mod test {
         let env = setup(@"'abc");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        let id = token::str_to_ident("abc");
-        assert_eq!(tok, token::LIFETIME(id));
+        let name = token::intern("abc");
+        assert_eq!(tok, token::LIFETIME(name));
     }
 
     #[test] fn line_doc_comments() {

@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::dummy_sp;
 use syntax::opt_vec;
+use syntax::parse::token;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -226,7 +227,7 @@ fn parse_bound_region(st: &mut PState) -> ty::bound_region {
         assert_eq!(next(st), '|');
         ty::br_anon(id)
       }
-      '[' => ty::br_named(st.tcx.sess.ident_of(parse_str(st, ']'))),
+      '[' => ty::br_named(token::intern(parse_str(st, ']'))),
       'c' => {
         let id = parse_uint(st) as int;
         assert_eq!(next(st), '|');

@@ -531,10 +531,11 @@ fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
                                         cx.expr_bool(sp, b)]);
         }
 
-        LIFETIME(ident) => {
+        LIFETIME(name) => {
+            let e_name = cx.expr_lit(sp, ast::lit_uint(name as u64, ast::ty_u64));
             return cx.expr_call_ident(sp,
                                       id_ext("LIFETIME"),
-                                      ~[mk_ident(cx, sp, ident)]);
+                                      ~[e_name]);
         }
 
         DOC_COMMENT(ident) => {

@@ -356,17 +356,71 @@ fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
 }
 
 fn mk_tests(cx: &TestCtxt) -> @ast::item {
-
+    use syntax::parse;
     let ext_cx = cx.ext_cx;
 
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
+    // NOTE: Cannot use lifetimes in quote_item due to stage0 and #7743, revert after a snapshot
+    let tt = {
+        pub use syntax::ext::quote::rt::*;
+        use syntax::parse::token;
+        let sp = ext_cx.call_site();
+        let mut t = ~[ tt_tok(sp,
+            IDENT(ext_cx.ident_of("pub"),
+                false)),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("static"),
+                false)),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("TESTS"),
+                false)),
+        tt_tok(sp,
+            COLON),
+        tt_tok(sp,
+            BINOP(AND)),
+        tt_tok(sp,
+            LIFETIME(token::intern("static"))),
+        tt_tok(sp,
+            LBRACKET),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("self"),
+                true)),
+        tt_tok(sp,
+            MOD_SEP),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("extra"),
+                true)),
+        tt_tok(sp,
+            MOD_SEP),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("test"),
+                true)),
+        tt_tok(sp,
+            MOD_SEP),
+        tt_tok(sp,
+            IDENT(ext_cx.ident_of("TestDescAndFn"),
+                false)),
+        tt_tok(sp,
+            RBRACKET),
+        tt_tok(sp,
+            EQ)];
+        t.push_all_move(test_descs.to_tokens(ext_cx));
+        t.push(tt_tok(sp, SEMI));
+        t
+    };
+    parse::new_parser_from_tts(ext_cx.parse_sess(),
+                                ext_cx.cfg(),
+                                tt
+                                ).parse_item(~[]).get()
+    /*
     (quote_item!(
         pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
     )).get()
+    */
 }
 
 fn is_extra(cx: &TestCtxt) -> bool {

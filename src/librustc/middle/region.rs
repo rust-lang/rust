@@ -662,10 +662,10 @@ impl DetermineRpCtxt {
             &None => {
                 self.anon_implies_rp
             }
-            &Some(ref l) if l.ident == special_idents::statik => {
+            &Some(ref l) if l.name == special_idents::statik.name => {
                 false
             }
-            &Some(ref l) if l.ident == special_idents::self_ => {
+            &Some(ref l) if l.name == special_idents::self_.name => {
                 true
             }
             &Some(_) => {
