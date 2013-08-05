@@ -38,8 +38,7 @@ impl<'self> ToHex for &'self [u8] {
      * ~~~
      */
     fn to_hex(&self) -> ~str {
-        // +1 for NULL terminator
-        let mut v = vec::with_capacity(self.len() * 2 + 1);
+        let mut v = vec::with_capacity(self.len() * 2);
         for &byte in self.iter() {
             v.push(CHARS[byte >> 4]);
             v.push(CHARS[byte & 0xf]);
