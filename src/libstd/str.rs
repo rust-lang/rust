@@ -3304,19 +3304,22 @@ mod tests {
     fn test_add() {
         #[allow(unnecessary_allocation)];
         macro_rules! t (
-            ($s1:expr, $s2:expr, $e:expr) => {
-                assert_eq!($s1 + $s2, $e);
-                assert_eq!($s1.to_owned() + $s2, $e);
-                assert_eq!($s1.to_managed() + $s2, $e);
-            }
+            ($s1:expr, $s2:expr, $e:expr) => { {
+                let s1 = $s1;
+                let s2 = $s2;
+                let e = $e;
+                assert_eq!(s1 + s2, e.to_owned());
+                assert_eq!(s1.to_owned() + s2, e.to_owned());
+                assert_eq!(s1.to_managed() + s2, e.to_owned());
+            } }
         );
 
-        t!("foo",  "bar", ~"foobar");
-        t!("foo", @"bar", ~"foobar");
-        t!("foo", ~"bar", ~"foobar");
-        t!("ศไทย中",  "华Việt Nam", ~"ศไทย中华Việt Nam");
-        t!("ศไทย中", @"华Việt Nam", ~"ศไทย中华Việt Nam");
-        t!("ศไทย中", ~"华Việt Nam", ~"ศไทย中华Việt Nam");
+        t!("foo",  "bar", "foobar");
+        t!("foo", @"bar", "foobar");
+        t!("foo", ~"bar", "foobar");
+        t!("ศไทย中",  "华Việt Nam", "ศไทย中华Việt Nam");
+        t!("ศไทย中", @"华Việt Nam", "ศไทย中华Việt Nam");
+        t!("ศไทย中", ~"华Việt Nam", "ศไทย中华Việt Nam");
     }
 
     #[test]
