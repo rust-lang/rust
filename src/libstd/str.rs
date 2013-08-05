@@ -902,7 +902,7 @@ pub mod raw {
         let new_len = s.len() + 1;
         s.reserve_at_least(new_len);
         do s.as_mut_buf |buf, len| {
-            *ptr::mut_offset(buf, len as int) = b;
+            *ptr::mut_offset(buf, (len-1) as int) = b;
         }
         set_len(&mut *s, new_len);
     }
@@ -2823,6 +2823,13 @@ mod tests {
         assert!("\u2009".is_whitespace()); // Thin space
         assert!("  \n\t   ".is_whitespace());
         assert!(!"   _   ".is_whitespace());
+    }
+
+    #[test]
+    fn test_push_byte() {
+        let mut s = ~"ABC";
+        unsafe{raw::push_byte(&mut s, 'D' as u8)};
+        assert_eq!(s, ~"ABCD");
     }
 
     #[test]
