@@ -85,16 +85,6 @@ pub fn log_type<T>(level: u32, object: &T) {
 fn newsched_log_str(msg: ~str) {
     use rt::task::Task;
     use rt::local::Local;
-    use str::StrSlice;
-    use container::Container;
-
-    // Truncate the string
-    let buf_bytes = 256;
-    let msg = if msg.len() > buf_bytes {
-        msg.slice(0, buf_bytes) + "[...]"
-    } else {
-        msg
-    };
 
     unsafe {
         match Local::try_unsafe_borrow::<Task>() {
