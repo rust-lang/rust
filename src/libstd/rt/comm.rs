@@ -508,7 +508,11 @@ impl<T> Peekable<T> for Port<T> {
     }
 }
 
-impl<T> Select for Port<T> {
+// XXX: Kind of gross. A Port<T> should be selectable so you can make an array
+// of them, but a &Port<T> should also be selectable so you can select2 on it
+// alongside a PortOne<U> without passing the port by value in recv_ready.
+
+impl<'self, T> Select for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         do self.next.with_mut_ref |pone| { pone.optimistic_check() }
@@ -526,12 +530,29 @@ impl<T> Select for Port<T> {
     }
 }
 
-impl<T> SelectPort<(T, Port<T>)> for Port<T> {
-    fn recv_ready(self) -> Option<(T, Port<T>)> {
+impl<T> Select for Port<T> {
+    #[inline]
+    fn optimistic_check(&mut self) -> bool {
+        (&*self).optimistic_check()
+    }
+
+    #[inline]
+    fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
+        (&*self).block_on(sched, task)
+    }
+
+    #[inline]
+    fn unblock_from(&mut self) -> bool {
+        (&*self).unblock_from()
+    }
+}
+
+impl<'self, T> SelectPort<T> for &'self Port<T> {
+    fn recv_ready(self) -> Option<T> {
         match self.next.take().recv_ready() {
             Some(StreamPayload { val, next }) => {
                 self.next.put_back(next);
-                Some((val, self))
+                Some(val)
             }
             None => None
         }
