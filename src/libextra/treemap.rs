@@ -184,7 +184,68 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator{stack: ~[], node: &self.root, remaining: self.length}
+        TreeMapIterator {
+            stack: ~[],
+            node: &self.root,
+            remaining_min: self.length,
+            remaining_max: self.length
+        }
+    }
+
+    /// Get a lazy iterator that should be initialized using
+    /// `iter_traverse_left`/`iter_traverse_right`/`iter_traverse_complete`.
+    fn iter_for_traversal<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
+        TreeMapIterator {
+            stack: ~[],
+            node: &self.root,
+            remaining_min: 0,
+            remaining_max: self.length
+        }
+    }
+
+    /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
+    /// If all keys in map are less than `k` an empty iterator is returned.
+    pub fn lower_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+        let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
+        loop {
+            match *iter.node {
+              Some(ref r) => {
+                match k.cmp(&r.key) {
+                  Less => iter_traverse_left(&mut iter),
+                  Greater => iter_traverse_right(&mut iter),
+                  Equal => {
+                    iter_traverse_complete(&mut iter);
+                    return iter;
+                  }
+                }
+              }
+              None => {
+                iter_traverse_complete(&mut iter);
+                return iter;
+              }
+            }
+        }
+    }
+
+    /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
+    /// If all keys in map are not greater than `k` an empty iterator is returned.
+    pub fn upper_bound_iter<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+        let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
+        loop {
+            match *iter.node {
+              Some(ref r) => {
+                match k.cmp(&r.key) {
+                  Less => iter_traverse_left(&mut iter),
+                  Greater => iter_traverse_right(&mut iter),
+                  Equal => iter_traverse_right(&mut iter)
+                }
+              }
+              None => {
+                iter_traverse_complete(&mut iter);
+                return iter;
+              }
+            }
+        }
     }
 
     /// Get a lazy iterator that consumes the treemap.
@@ -205,7 +266,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 pub struct TreeMapIterator<'self, K, V> {
     priv stack: ~[&'self ~TreeNode<K, V>],
     priv node: &'self Option<~TreeNode<K, V>>,
-    priv remaining: uint
+    priv remaining_min: uint,
+    priv remaining_max: uint
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
@@ -222,7 +284,10 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
               None => {
                 let res = self.stack.pop();
                 self.node = &res.right;
-                self.remaining -= 1;
+                self.remaining_max -= 1;
+                if self.remaining_min > 0 {
+                    self.remaining_min -= 1;
+                }
                 return Some((&res.key, &res.value));
               }
             }
@@ -232,7 +297,46 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.remaining, Some(self.remaining))
+        (self.remaining_min, Some(self.remaining_max))
+    }
+}
+
+/// iter_traverse_left, iter_traverse_right and iter_traverse_complete are used to
+/// initialize TreeMapIterator pointing to element inside tree structure.
+///
+/// They should be used in following manner:
+///   - create iterator using TreeMap::iter_for_traversal
+///   - find required node using `iter_traverse_left`/`iter_traverse_right`
+///     (current node is `TreeMapIterator::node` field)
+///   - complete initialization with `iter_traverse_complete`
+#[inline]
+fn iter_traverse_left<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
+    let node = it.node.get_ref();
+    it.stack.push(node);
+    it.node = &node.left;
+}
+
+#[inline]
+fn iter_traverse_right<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
+    it.node = &(it.node.get_ref().right);
+}
+
+/// iter_traverse_left, iter_traverse_right and iter_traverse_complete are used to
+/// initialize TreeMapIterator pointing to element inside tree structure.
+///
+/// Completes traversal. Should be called before using iterator.
+/// Iteration will start from `self.node`.
+/// If `self.node` is None iteration will start from last node from which we
+/// traversed left.
+#[inline]
+fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
+    static none: Option<~TreeNode<K, V>> = None;
+    match *it.node {
+        Some(ref n) => {
+            it.stack.push(n);
+            it.node = &none;
+        }
+        None => ()
     }
 }
 
@@ -415,6 +519,20 @@ impl<T: TotalOrd> TreeSet<T> {
     #[inline]
     pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
+    }
+
+    /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
+    /// If all elements in the set are less than `v` empty iterator is returned.
+    #[inline]
+    pub fn lower_bound_iter<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.lower_bound_iter(v)}
+    }
+
+    /// Get a lazy iterator pointing to the first value greater than `v`.
+    /// If all elements in the set are not greater than `v` empty iterator is returned.
+    #[inline]
+    pub fn upper_bound_iter<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
+        TreeSetIterator{iter: self.map.upper_bound_iter(v)}
     }
 
     /// Visit all values in reverse order
@@ -983,6 +1101,31 @@ mod test_treemap {
             assert_eq!(*v, n * 2);
             n += 1;
         }
+        assert_eq!(n, 5);
+    }
+
+    #[test]
+    fn test_interval_iteration() {
+        let mut m = TreeMap::new();
+        for i in range(1, 100) {
+            assert!(m.insert(i * 2, i * 4));
+        }
+
+        for i in range(1, 198) {
+            let mut lb_it = m.lower_bound_iter(&i);
+            let (&k, &v) = lb_it.next().unwrap();
+            let lb = i + i % 2;
+            assert_eq!(lb, k);
+            assert_eq!(lb * 2, v);
+
+            let mut ub_it = m.upper_bound_iter(&i);
+            let (&k, &v) = ub_it.next().unwrap();
+            let ub = i + 2 - i % 2;
+            assert_eq!(ub, k);
+            assert_eq!(ub * 2, v);
+        }
+        let mut end_it = m.lower_bound_iter(&199);
+        assert_eq!(end_it.next(), None);
     }
 
     #[test]
@@ -1256,7 +1399,6 @@ mod test_set {
 
         let mut n = 0;
         for x in m.iter() {
-            printfln!(x);
             assert_eq!(*x, n);
             n += 1
         }
