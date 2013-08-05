@@ -339,8 +339,8 @@ impl Scheduler {
         let mut this = self;
         match this.message_queue.pop() {
             Some(PinnedTask(task)) => {
-                let mut task = task;
                 this.event_loop.callback(Scheduler::run_sched_once);
+                let mut task = task;
                 task.give_home(Sched(this.make_handle()));
                 this.resume_task_immediately(task);
                 return None;
@@ -351,10 +351,12 @@ impl Scheduler {
                 return this.sched_schedule_task(task);
             }
             Some(Wake) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
                 this.sleepy = false;
                 return Some(this);
             }
             Some(Shutdown) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
                 if this.sleepy {
                     // There may be an outstanding handle on the
                     // sleeper list.  Pop them all to make sure that's
