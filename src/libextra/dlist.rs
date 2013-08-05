@@ -92,6 +92,11 @@ impl<T> Rawlink<T> {
             Some(unsafe { cast::transmute(self.p) })
         }
     }
+
+    /// Return the `Rawlink` and replace with `Rawlink::none()`
+    fn take(&mut self) -> Rawlink<T> {
+        util::replace(self, Rawlink::none())
+    }
 }
 
 impl<T> Clone for Rawlink<T> {
@@ -280,13 +285,16 @@ impl<T> DList<T> {
     /// Add all elements from `other` to the end of the list
     ///
     /// O(1)
-    pub fn append(&mut self, other: DList<T>) {
+    pub fn append(&mut self, mut other: DList<T>) {
         match self.list_tail.resolve() {
             None => *self = other,
             Some(tail) => {
-                match other {
-                    DList{list_head: None, _} => return,
-                    DList{list_head: Some(node), list_tail: o_tail, length: o_length} => {
+                // Carefully empty `other`.
+                let o_tail = other.list_tail.take();
+                let o_length = other.length;
+                match other.list_head.take() {
+                    None => return,
+                    Some(node) => {
                         tail.next = link_with_prev(node, self.list_tail);
                         self.list_tail = o_tail;
                         self.length += o_length;
@@ -403,6 +411,32 @@ impl<T: Ord> DList<T> {
         self.insert_when(elt, |a, b| a >= b)
     }
 }
+
+#[unsafe_destructor]
+impl<T> Drop for DList<T> {
+    fn drop(&self) {
+        let mut_self = unsafe {
+            cast::transmute_mut(self)
+        };
+        // Dissolve the dlist in backwards direction
+        // Just dropping the list_head can lead to stack exhaustion
+        // when length is >> 1_000_000
+        let mut tail = mut_self.list_tail;
+        loop {
+            match tail.resolve() {
+                None => break,
+                Some(prev) => {
+                    prev.next.take(); // release ~Node<T>
+                    tail = prev.prev;
+                }
+            }
+        }
+        mut_self.length = 0;
+        mut_self.list_head = None;
+        mut_self.list_tail = Rawlink::none();
+    }
+}
+
 
 impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
     #[inline]
