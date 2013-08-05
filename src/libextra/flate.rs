@@ -44,8 +44,9 @@ static LZ_FAST : c_int = 0x1;   // LZ with only one probe
 static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
 static LZ_BEST : c_int = 0xfff; // LZ with 4095 probes, "best"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
+static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
-pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
+fn deflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
     do bytes.as_imm_buf |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
@@ -53,7 +54,7 @@ pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
                 rustrt::tdefl_compress_mem_to_heap(b as *c_void,
                                                    len as size_t,
                                                    &mut outsz,
-                                                   LZ_NORM);
+                                                   flags);
             assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                              outsz as uint);
@@ -61,6 +62,14 @@ pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
             out
         }
     }
+}
+
+pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
+    deflate_bytes_(bytes, LZ_NORM)
+}
+
+pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
+    deflate_bytes_(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
 fn inflate_bytes_(bytes: &[u8], flags: c_int) -> ~[u8] {
@@ -117,5 +126,13 @@ mod tests {
                    100.0 * ((cmp.len() as float) / (input.len() as float)));
             assert_eq!(input, out);
         }
+    }
+
+    #[test]
+    fn test_zlib_flate() {
+        let bytes = ~[1, 2, 3, 4, 5];
+        let deflated = deflate_bytes(bytes);
+        let inflated = inflate_bytes(deflated);
+        assert_eq!(inflated, bytes);
     }
 }
