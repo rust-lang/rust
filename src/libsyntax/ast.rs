@@ -24,7 +24,7 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes, ToStr)]
 pub struct ident { name: Name, ctxt: SyntaxContext }
 
 /// Construct an identifier with the given name and an empty context:
@@ -121,7 +121,7 @@ pub type CrateNum = int;
 
 pub type NodeId = int;
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct def_id {
     crate: CrateNum,
     node: NodeId,

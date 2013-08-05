@@ -365,7 +365,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
         rtdebug!("about to create the main scheduler task");
 
-        let mut main_sched = main_sched.get();
+        let mut main_sched = main_sched.unwrap();
 
         let home = Sched(main_sched.make_handle());
         let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool,

@@ -10,7 +10,7 @@
 
 use std::iterator::Iterator;
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes, ToStr)]
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists

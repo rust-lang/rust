@@ -176,7 +176,7 @@ impl Doc {
               doc::CratePage(doc) => Some(doc),
               _ => None
             }
-        }).get()
+        }).unwrap()
     }
 
     pub fn cratemod(&self) -> ModDoc {
