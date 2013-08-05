@@ -15,8 +15,8 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iterator::{Iterator, range};
-use vec::{OwnedVector, MutableVector};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use vec::{OwnedVector, MutableVector, ImmutableVector};
 use rt::sched::Scheduler;
 use unstable::run_in_bare_thread;
 use rt::thread::Thread;
@@ -29,8 +29,12 @@ use result::{Result, Ok, Err};
 
 pub fn new_test_uv_sched() -> Scheduler {
 
+    let queue = WorkQueue::new();
+    let queues = ~[queue.clone()];
+
     let mut sched = Scheduler::new(~UvEventLoop::new(),
-                                   WorkQueue::new(),
+                                   queue,
+                                   queues,
                                    SleeperList::new());
 
     // Don't wait for the Shutdown message
@@ -164,15 +168,21 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         };
 
         let sleepers = SleeperList::new();
-        let work_queue = WorkQueue::new();
 
         let mut handles = ~[];
         let mut scheds = ~[];
+        let mut work_queues = ~[];
 
         for _ in range(0u, nthreads) {
+            let work_queue = WorkQueue::new();
+            work_queues.push(work_queue);
+        }
+
+        for i in range(0u, nthreads) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_,
-                                            work_queue.clone(),
+                                            work_queues[i].clone(),
+                                            work_queues.clone(),
                                             sleepers.clone());
             let handle = sched.make_handle();
 
