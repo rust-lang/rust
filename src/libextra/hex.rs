@@ -50,89 +50,11 @@ impl<'self> ToHex for &'self [u8] {
     }
 }
 
-impl<'self> ToHex for &'self str {
-    /**
-     * Convert any string (literal, `@`, `&`, or `~`) to hexadecimal encoding.
-     *
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * extern mod extra;
-     * use extra::ToHex;
-     *
-     * fn main () {
-     *     let str = "Hello, World".to_hex();
-     *     printfln!("%s", str);
-     * }
-     * ~~~
-     *
-     */
-    fn to_hex(&self) -> ~str {
-        self.as_bytes().to_hex()
-    }
-}
-
 /// A trait for converting hexadecimal encoded values
 pub trait FromHex {
     /// Converts the value of `self`, interpreted as hexadecimal encoded data,
     /// into an owned vector of bytes, returning the vector.
     fn from_hex(&self) -> Result<~[u8], ~str>;
-}
-
-impl<'self> FromHex for &'self [u8] {
-    /**
-     * Convert hexadecimal `u8` vector into u8 byte values.
-     * Every 2 encoded characters is converted into 1 octet.
-     * Whitespace is ignored.
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * extern mod extra;
-     * use extra::hex::{ToHex, FromHex};
-     *
-     * fn main () {
-     *     let str = [52,32].to_hex();
-     *     printfln!("%s", str);
-     *     let bytes = str.from_hex().get();
-     *     printfln!("%?", bytes);
-     * }
-     * ~~~
-     */
-    fn from_hex(&self) -> Result<~[u8], ~str> {
-        // This may be an overestimate if there is any whitespace
-        let mut b = vec::with_capacity(self.len() / 2);
-        let mut modulus = 0;
-        let mut buf = 0u8;
-
-        for (idx, &byte) in self.iter().enumerate() {
-            buf <<= 4;
-
-            match byte as char {
-                'A'..'F' => buf |= byte - ('A' as u8) + 10,
-                'a'..'f' => buf |= byte - ('a' as u8) + 10,
-                '0'..'9' => buf |= byte - ('0' as u8),
-                ' '|'\r'|'\n'|'\t' => {
-                    buf >>= 4;
-                    loop
-                }
-                _ => return Err(fmt!("Invalid byte '%c' found at position %u",
-                                     byte as char, idx))
-            }
-
-            modulus += 1;
-            if modulus == 2 {
-                modulus = 0;
-                b.push(buf);
-            }
-        }
-
-        match modulus {
-            0 => Ok(b),
-            _ => Err(~"Invalid input length")
-        }
-    }
 }
 
 impl<'self> FromHex for &'self str {
@@ -164,7 +86,37 @@ impl<'self> FromHex for &'self str {
      * ~~~
      */
     fn from_hex(&self) -> Result<~[u8], ~str> {
-        self.as_bytes().from_hex()
+        // This may be an overestimate if there is any whitespace
+        let mut b = vec::with_capacity(self.len() / 2);
+        let mut modulus = 0;
+        let mut buf = 0u8;
+
+        for (idx, byte) in self.byte_iter().enumerate() {
+            buf <<= 4;
+
+            match byte as char {
+                'A'..'F' => buf |= byte - ('A' as u8) + 10,
+                'a'..'f' => buf |= byte - ('a' as u8) + 10,
+                '0'..'9' => buf |= byte - ('0' as u8),
+                ' '|'\r'|'\n'|'\t' => {
+                    buf >>= 4;
+                    loop
+                }
+                _ => return Err(fmt!("Invalid character '%c' at position %u",
+                                     self.char_at(idx), idx))
+            }
+
+            modulus += 1;
+            if modulus == 2 {
+                modulus = 0;
+                b.push(buf);
+            }
+        }
+
+        match modulus {
+            0 => Ok(b),
+            _ => Err(~"Invalid input length")
+        }
     }
 }
 
@@ -175,7 +127,7 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".to_hex(), ~"666f6f626172");
+        assert_eq!("foobar".as_bytes().to_hex(), ~"666f6f626172");
     }
 
     #[test]
@@ -223,7 +175,7 @@ mod tests {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         do bh.iter {
-            s.to_hex();
+            s.as_bytes().to_hex();
         }
         bh.bytes = s.len() as u64;
     }
@@ -232,7 +184,7 @@ mod tests {
     pub fn bench_from_hex(bh: & mut BenchHarness) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        let b = s.to_hex();
+        let b = s.as_bytes().to_hex();
         do bh.iter {
             b.from_hex();
         }
