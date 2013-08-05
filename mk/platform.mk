@@ -241,7 +241,7 @@ CFG_RUN_TARG_i686-apple-darwin=$(call CFG_RUN_i686-apple-darwin,,$(2))
 # arm-linux-androideabi configuration
 CC_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
 CXX_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-g++
-CPP_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
+CPP_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc -E
 AR_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-ar
 CFG_LIB_NAME_arm-linux-androideabi=lib$(1).so
 CFG_LIB_GLOB_arm-linux-androideabi=lib$(1)-*.so
@@ -272,7 +272,7 @@ AR_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-ar
 CFG_LIB_NAME_arm-unknown-linux-gnueabihf=lib$(1).so
 CFG_LIB_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC -D__arm__
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabihf := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabihf := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabihf := -Wl,--export-dynamic,--dynamic-list=
@@ -289,6 +289,32 @@ CFG_LDPATH_arm-unknown-linux-gnueabihf :=
 CFG_RUN_arm-unknown-linux-gnueabihf=
 CFG_RUN_TARG_arm-unknown-linux-gnueabihf=
 RUSTC_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CC_arm-unknown-linux-gnueabihf)
+
+# arm-unknown-linux-gnueabi configuration
+CC_arm-unknown-linux-gnueabi=arm-linux-gnueabi-gcc
+CXX_arm-unknown-linux-gnueabi=arm-linux-gnueabi-g++
+CPP_arm-unknown-linux-gnueabi=arm-linux-gnueabi-gcc -E
+AR_arm-unknown-linux-gnueabi=arm-linux-gnueabi-ar
+CFG_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).so
+CFG_LIB_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__
+CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabi := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabi := -shared -fPIC -g
+CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabi := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-linux-gnueabi := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-linux-gnueabi := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_arm-unknown-linux-gnueabi := .linux.def
+CFG_INSTALL_NAME_ar,-unknown-linux-gnueabi =
+CFG_LIBUV_LINK_FLAGS_arm-unknown-linux-gnueabi =
+CFG_EXE_SUFFIX_arm-unknown-linux-gnueabi :=
+CFG_WINDOWSY_arm-unknown-linux-gnueabi :=
+CFG_UNIXY_arm-unknown-linux-gnueabi := 1
+CFG_PATH_MUNGE_arm-unknown-linux-gnueabi := true
+CFG_LDPATH_arm-unknown-linux-gnueabi :=
+CFG_RUN_arm-unknown-linux-gnueabi=
+CFG_RUN_TARG_arm-unknown-linux-gnueabi=
+RUSTC_FLAGS_arm-unknown-linux-gnueabi := --linker=$(CC_arm-unknown-linux-gnueabi)
 
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
@@ -450,7 +476,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifneq ($(1),arm-linux-androideabi)
+  ifneq ($(HOST_$(1)),arm)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
@@ -462,9 +488,9 @@ define CFG_MAKE_TOOLCHAIN
                     -o=$$(1)
   else
 
-  # For the Android cross, use the Android assembler
+  # For the ARM crosses, use the toolchain assembler
   # XXX: We should be able to use the LLVM assembler
-  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+  CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 
   endif
 
