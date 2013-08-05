@@ -31,7 +31,7 @@ pub fn expand_line(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "line!");
 
-    let topmost = topmost_expn_info(cx.backtrace().get());
+    let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
 
     base::MRExpr(cx.expr_uint(topmost.call_site, loc.line))
@@ -42,7 +42,7 @@ pub fn expand_col(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "col!");
 
-    let topmost = topmost_expn_info(cx.backtrace().get());
+    let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
     base::MRExpr(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
 }
@@ -54,7 +54,7 @@ pub fn expand_file(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "file!");
 
-    let topmost = topmost_expn_info(cx.backtrace().get());
+    let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
     let filename = loc.file.name;
     base::MRExpr(cx.expr_str(topmost.call_site, filename))

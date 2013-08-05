@@ -196,7 +196,7 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
  * The type returned when the command line does not conform to the
  * expected format. Pass this value to <fail_str> to get an error message.
  */
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, ToStr)]
 pub enum Fail_ {
     ArgumentMissing(~str),
     UnrecognizedOption(~str),
@@ -288,7 +288,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                       None => {
                         let arg_follows =
                             last_valid_opt_id.is_some() &&
-                            match opts[last_valid_opt_id.get()]
+                            match opts[last_valid_opt_id.unwrap()]
                               .hasarg {
 
                               Yes | Maybe => true,
@@ -322,7 +322,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                   }
                   Maybe => {
                     if !i_arg.is_none() {
-                        vals[optid].push(Val((i_arg.clone()).get()));
+                        vals[optid].push(Val((i_arg.clone()).unwrap()));
                     } else if name_pos < names.len() ||
                                   i + 1 == l || is_arg(args[i + 1]) {
                         vals[optid].push(Given);
@@ -330,7 +330,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                   }
                   Yes => {
                     if !i_arg.is_none() {
-                        vals[optid].push(Val(i_arg.clone().get()));
+                        vals[optid].push(Val(i_arg.clone().unwrap()));
                     } else if i + 1 == l {
                         return Err(ArgumentMissing(name_str(nm)));
                     } else { i += 1; vals[optid].push(Val(args[i].clone())); }

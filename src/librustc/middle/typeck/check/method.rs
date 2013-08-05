@@ -854,7 +854,7 @@ impl<'self> LookupContext<'self> {
                         // like &'a Self.  We then perform a
                         // substitution which will replace Self with
                         // @Trait.
-                        let t = candidate.method_ty.transformed_self_ty.get();
+                        let t = candidate.method_ty.transformed_self_ty.unwrap();
                         ty::subst(tcx, &candidate.rcvr_substs, t)
                     }
                     _ => {
@@ -863,7 +863,7 @@ impl<'self> LookupContext<'self> {
                 }
             }
             _ => {
-                let t = candidate.method_ty.transformed_self_ty.get();
+                let t = candidate.method_ty.transformed_self_ty.unwrap();
                 ty::subst(tcx, &candidate.rcvr_substs, t)
             }
         };
@@ -922,7 +922,7 @@ impl<'self> LookupContext<'self> {
                 tcx, @Nil, Some(transformed_self_ty), &bare_fn_ty.sig,
                 |br| self.fcx.infcx().next_region_var(
                     infer::BoundRegionInFnCall(self.expr.span, br)));
-        let transformed_self_ty = opt_transformed_self_ty.get();
+        let transformed_self_ty = opt_transformed_self_ty.unwrap();
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
             purity: bare_fn_ty.purity,

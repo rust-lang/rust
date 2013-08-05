@@ -105,13 +105,13 @@ pub fn main() {
     assert_eq!(*p, a.value.v5.f);
 
     let p = get_v6_a(&a, 1);
-    assert_eq!(*p, a.value.v6.get().f);
+    assert_eq!(*p, a.value.v6.unwrap().f);
 
     let p = get_v6_b(&a, 1);
-    assert_eq!(*p, a.value.v6.get().f);
+    assert_eq!(*p, a.value.v6.unwrap().f);
 
     let p = get_v6_c(&a, 1);
-    assert_eq!(*p, a.value.v6.get().f);
+    assert_eq!(*p, a.value.v6.unwrap().f);
 
     let p = get_v5_ref(&a, 1);
     assert_eq!(*p, a.value.v5.f);

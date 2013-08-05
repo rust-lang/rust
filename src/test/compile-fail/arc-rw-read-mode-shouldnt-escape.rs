@@ -17,7 +17,7 @@ fn main() {
         y = Some(x.downgrade(write_mode));
         //~^ ERROR cannot infer an appropriate lifetime
     }
-    y.get();
+    y.unwrap();
     // Adding this line causes a method unification failure instead
     // do (&option::unwrap(y)).read |state| { assert!(*state == 1); }
 }

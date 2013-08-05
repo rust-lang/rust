@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:get called on `Err` result: ~"kitty"
+// error-pattern:called `Result::unwrap()` on `Err` value: kitty
 
 use std::result;
 
 fn main() {
-  error!(result::Err::<int,~str>(~"kitty").get());
+    error!(result::Err::<int,~str>(~"kitty").unwrap());
 }

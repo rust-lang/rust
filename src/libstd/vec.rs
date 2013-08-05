@@ -195,10 +195,8 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> ~[A] {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build_sized_opt<A>(size: Option<uint>,
-                          builder: &fn(push: &fn(v: A)))
-                       -> ~[A] {
-    build_sized(size.get_or_default(4), builder)
+pub fn build_sized_opt<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
+    build_sized(size.unwrap_or_default(4), builder)
 }
 
 /// An iterator over the slices of a vector separated by elements that

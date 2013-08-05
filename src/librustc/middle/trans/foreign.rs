@@ -149,7 +149,7 @@ fn build_shim_fn_(ccx: @mut CrateContext,
 
     // Declare the body of the shim function:
     let fcx = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
-    let bcx = fcx.entry_bcx.get();
+    let bcx = fcx.entry_bcx.unwrap();
 
     let llargbundle = get_param(llshimfn, 0u);
     let llargvals = arg_builder(bcx, tys, llargbundle);
@@ -190,7 +190,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
                   ret_builder: wrap_ret_builder) {
     let _icx = push_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
-    let bcx = fcx.entry_bcx.get();
+    let bcx = fcx.entry_bcx.unwrap();
 
     // Patch up the return type if it's not immediate and we're returning via
     // the C ABI.
@@ -226,7 +226,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     } else {
         // Cast if we have to...
         // XXX: This is ugly.
-        let llretptr = BitCast(return_context, fcx.llretptr.get(), return_type.ptr_to());
+        let llretptr = BitCast(return_context, fcx.llretptr.unwrap(), return_type.ptr_to());
         Ret(return_context, Load(return_context, llretptr));
     }
     fcx.cleanup();
@@ -421,7 +421,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         debug!("build_direct_fn(%s)", link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = fcx.entry_bcx.get();
+        let bcx = fcx.entry_bcx.unwrap();
         let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
@@ -431,7 +431,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         });
         let retval = Call(bcx, llbasefn, args);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
-            Store(bcx, retval, fcx.llretptr.get());
+            Store(bcx, retval, fcx.llretptr.unwrap());
         }
         finish_fn(fcx, bcx);
     }
@@ -446,7 +446,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         debug!("build_fast_ffi_fn(%s)", link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = fcx.entry_bcx.get();
+        let bcx = fcx.entry_bcx.unwrap();
         let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
@@ -458,7 +458,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         });
         let retval = Call(bcx, llbasefn, args);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
-            Store(bcx, retval, fcx.llretptr.get());
+            Store(bcx, retval, fcx.llretptr.unwrap());
         }
         finish_fn(fcx, bcx);
     }
@@ -618,7 +618,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
-    let mut bcx = fcx.entry_bcx.get();
+    let mut bcx = fcx.entry_bcx.unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
     let nm = ccx.sess.str_of(item.ident);
@@ -775,7 +775,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let in_type_size = machine::llbitsize_of_real(ccx, llintype);
             let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
             if in_type_size != out_type_size {
-                let sp = match ccx.tcx.items.get_copy(&ref_id.get()) {
+                let sp = match ccx.tcx.items.get_copy(&ref_id.unwrap()) {
                     ast_map::node_expr(e) => e.span,
                     _ => fail!("transmute has non-expr arg"),
                 };
@@ -816,7 +816,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
                     // types.
-                    let lldestptr = fcx.llretptr.get();
+                    let lldestptr = fcx.llretptr.unwrap();
                     let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
                     let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
 
