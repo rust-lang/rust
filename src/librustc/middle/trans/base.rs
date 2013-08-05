@@ -2268,13 +2268,16 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
 pub fn create_entry_wrapper(ccx: @mut CrateContext,
-                           _sp: span, main_llfn: ValueRef) {
+                           _sp: span,
+                           main_llfn: ValueRef) {
     let et = ccx.sess.entry_type.unwrap();
-    if et == session::EntryMain {
-        let llfn = create_main(ccx, main_llfn);
-        create_entry_fn(ccx, llfn, true);
-    } else {
-        create_entry_fn(ccx, main_llfn, false);
+    match et {
+        session::EntryMain => {
+            let llfn = create_main(ccx, main_llfn);
+            create_entry_fn(ccx, llfn, true);
+        }
+        session::EntryStart => create_entry_fn(ccx, main_llfn, false),
+        session::EntryNone => {}    // Do nothing.
     }
 
     fn create_main(ccx: @mut CrateContext, main_llfn: ValueRef) -> ValueRef {
