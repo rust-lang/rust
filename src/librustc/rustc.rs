@@ -298,10 +298,18 @@ bug and need to present an error.
 */
 pub fn monitor(f: ~fn(diagnostic::Emitter)) {
     use std::comm::*;
+
+    // XXX: This is a hack for newsched since it doesn't support split stacks.
+    // rustc needs a lot of stack!
+    static STACK_SIZE: uint = 4000000;
+
     let (p, ch) = stream();
     let ch = SharedChan::new(ch);
     let ch_capture = ch.clone();
-    match do task::try || {
+    let mut task_builder = task::task();
+    task_builder.supervised();
+    task_builder.opts.stack_size = Some(STACK_SIZE);
+    match do task_builder.try {
         let ch = ch_capture.clone();
         let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
