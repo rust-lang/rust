@@ -137,7 +137,7 @@ fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
 }
 
 fn main() {
-    let n: i32 = FromStr::from_str(os::args()[1]).get();
+    let n: i32 = FromStr::from_str(os::args()[1]).unwrap();
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);

@@ -169,7 +169,7 @@ impl FnType {
             } else {
                 Load(bcx, llretval)
             };
-            let llretptr = BitCast(bcx, bcx.fcx.llretptr.get(), self.ret_ty.ty.ptr_to());
+            let llretptr = BitCast(bcx, bcx.fcx.llretptr.unwrap(), self.ret_ty.ty.ptr_to());
             Store(bcx, llretval, llretptr);
         }
     }

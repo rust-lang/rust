@@ -386,8 +386,8 @@ fn test_spec_order() {
               "1.0.0"];
     let mut i = 1;
     while i < vs.len() {
-        let a = parse(vs[i-1]).get();
-        let b = parse(vs[i]).get();
+        let a = parse(vs[i-1]).unwrap();
+        let b = parse(vs[i]).unwrap();
         assert!(a < b);
         i += 1;
     }

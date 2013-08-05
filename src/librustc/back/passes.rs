@@ -319,7 +319,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
     for &(name,_) in transform_passes.iter() {
@@ -327,7 +327,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
     for &(name,_) in utility_passes.iter() {
@@ -335,7 +335,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
 

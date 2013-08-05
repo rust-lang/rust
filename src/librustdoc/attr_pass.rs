@@ -68,7 +68,7 @@ fn fold_crate(
     doc::CrateDoc {
         topmod: doc::ModDoc {
             item: doc::ItemDoc {
-                name: attrs.name.clone().get_or_default(doc.topmod.name_()),
+                name: attrs.name.clone().unwrap_or_default(doc.topmod.name_()),
                 .. doc.topmod.item.clone()
             },
             .. doc.topmod.clone()
@@ -135,7 +135,7 @@ fn fold_enum(
                             let ast_variant =
                                 (*enum_definition.variants.iter().find_(|v| {
                                     to_str(v.node.name) == variant.name
-                                }).get()).clone();
+                                }).unwrap()).clone();
 
                             attr_parser::parse_desc(
                                 ast_variant.node.attrs.clone())

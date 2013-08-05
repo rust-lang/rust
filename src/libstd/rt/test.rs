@@ -154,7 +154,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
     do run_in_bare_thread {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
-            Some(nstr) => FromStr::from_str(nstr).get(),
+            Some(nstr) => FromStr::from_str(nstr).unwrap(),
             None => {
                 // Using more threads than cores in test code
                 // to force the OS to preempt them frequently.
@@ -362,7 +362,7 @@ pub fn stress_factor() -> uint {
     use os::getenv;
 
     match getenv("RUST_RT_STRESS") {
-        Some(val) => uint::from_str(val).get(),
+        Some(val) => uint::from_str(val).unwrap(),
         None => 1
     }
 }

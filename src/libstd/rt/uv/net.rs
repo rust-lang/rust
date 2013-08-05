@@ -108,7 +108,7 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
                             "" => ~[],
                             // IPv4-Mapped/Compatible IPv6 Address?
                             s if s.find('.').is_some() => {
-                                let i = s.rfind(':').get_or_default(-1);
+                                let i = s.rfind(':').unwrap_or_default(-1);
 
                                 let b = s.slice(i + 1, s.len()); // the ipv4 part
 
@@ -614,7 +614,7 @@ mod test {
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("tcp_watcher.connect!");
                 assert!(status.is_some());
-                assert_eq!(status.get().name(), ~"ECONNREFUSED");
+                assert_eq!(status.unwrap().name(), ~"ECONNREFUSED");
                 stream_watcher.close(||());
             }
             loop_.run();
@@ -632,7 +632,7 @@ mod test {
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("tcp_watcher.connect!");
                 assert!(status.is_some());
-                assert_eq!(status.get().name(), ~"ECONNREFUSED");
+                assert_eq!(status.unwrap().name(), ~"ECONNREFUSED");
                 stream_watcher.close(||());
             }
             loop_.run();

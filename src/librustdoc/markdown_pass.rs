@@ -617,10 +617,10 @@ mod test {
               fn d() { }"
         );
 
-        let idx_a = markdown.find_str("# Module `a`").get();
-        let idx_b = markdown.find_str("## Function `b`").get();
-        let idx_c = markdown.find_str("# Module `c`").get();
-        let idx_d = markdown.find_str("## Function `d`").get();
+        let idx_a = markdown.find_str("# Module `a`").unwrap();
+        let idx_b = markdown.find_str("## Function `b`").unwrap();
+        let idx_c = markdown.find_str("# Module `c`").unwrap();
+        let idx_d = markdown.find_str("## Function `d`").unwrap();
 
         assert!(idx_b < idx_d);
         assert!(idx_d < idx_a);
