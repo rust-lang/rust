@@ -408,11 +408,10 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
 #[fixed_stack_segment]
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
-    let outputs = build_output_filenames(input, outdir, output, [], sess);
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let trans = {
+    let (outputs, trans) = {
         let expanded_crate = {
             let crate = phase_1_parse_input(sess, cfg.clone(), input);
             if stop_after_phase_1(sess) { return; }
@@ -420,7 +419,10 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         };
         let analysis = phase_3_run_analysis_passes(sess, expanded_crate);
         if stop_after_phase_3(sess) { return; }
-        phase_4_translate_to_llvm(sess, expanded_crate, &analysis, outputs)
+        let outputs = build_output_filenames(input, outdir, output, [], sess);
+        let trans = phase_4_translate_to_llvm(sess, expanded_crate,
+                                              &analysis, outputs);
+        (outputs, trans)
     };
     phase_5_run_llvm_passes(sess, &trans, outputs);
     if stop_after_phase_5(sess) { return; }
@@ -957,10 +959,7 @@ pub fn build_output_filenames(input: &input,
         };
 
         if *sess.building_library {
-            // FIXME (#2401): We might want to warn here; we're actually not
-            // going to respect the user's choice of library name when it
-            // comes time to link, we'll be linking to
-            // lib<basename>-<hash>-<version>.so no matter what.
+            sess.warn("ignoring specified output filename for library.");
         }
 
         if *odir != None {

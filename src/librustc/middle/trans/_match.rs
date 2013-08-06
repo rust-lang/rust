@@ -171,6 +171,7 @@ use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
+use util::ppaux::{Repr, vec_map_to_str};
 
 use std::hashmap::HashMap;
 use std::vec;
@@ -179,7 +180,6 @@ use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
 use syntax::codemap::{span, dummy_sp};
-use syntax::print::pprust::pat_to_str;
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
@@ -353,17 +353,15 @@ pub struct Match<'self> {
     data: ArmData<'self>
 }
 
-pub fn match_to_str(bcx: @mut Block, m: &Match) -> ~str {
-    if bcx.sess().verbose() {
-        // for many programs, this just take too long to serialize
-        fmt!("%?", m.pats.map(|p| pat_to_str(*p, bcx.sess().intr())))
-    } else {
-        fmt!("%u pats", m.pats.len())
+impl<'self> Repr for Match<'self> {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        if tcx.sess.verbose() {
+            // for many programs, this just take too long to serialize
+            self.pats.repr(tcx)
+        } else {
+            fmt!("%u pats", self.pats.len())
+        }
     }
-}
-
-pub fn matches_to_str(bcx: @mut Block, m: &[Match]) -> ~str {
-    fmt!("%?", m.map(|n| match_to_str(bcx, n)))
 }
 
 pub fn has_nested_bindings(m: &[Match], col: uint) -> bool {
@@ -381,9 +379,9 @@ pub fn expand_nested_bindings<'r>(bcx: @mut Block,
                                   col: uint,
                                   val: ValueRef)
                               -> ~[Match<'r>] {
-    debug!("expand_nested_bindings(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("expand_nested_bindings(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -416,7 +414,7 @@ pub fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::pat) {
         bcx.sess().span_bug(
             p.span,
             fmt!("Expected an identifier pattern but found p: %s",
-                 pat_to_str(p, bcx.sess().intr())));
+                 p.repr(bcx.tcx())));
     }
 }
 
@@ -429,9 +427,9 @@ pub fn enter_match<'r>(bcx: @mut Block,
                        val: ValueRef,
                        e: enter_pat)
                     -> ~[Match<'r>] {
-    debug!("enter_match(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_match(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -467,7 +465,7 @@ pub fn enter_match<'r>(bcx: @mut Block,
         }
     }
 
-    debug!("result=%s", matches_to_str(bcx, result));
+    debug!("result=%s", result.repr(bcx.tcx()));
 
     return result;
 }
@@ -478,9 +476,9 @@ pub fn enter_default<'r>(bcx: @mut Block,
                          col: uint,
                          val: ValueRef)
                       -> ~[Match<'r>] {
-    debug!("enter_default(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_default(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -525,9 +523,9 @@ pub fn enter_opt<'r>(bcx: @mut Block,
                      variant_size: uint,
                      val: ValueRef)
                   -> ~[Match<'r>] {
-    debug!("enter_opt(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_opt(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -637,9 +635,9 @@ pub fn enter_rec_or_struct<'r>(bcx: @mut Block,
                                fields: &[ast::ident],
                                val: ValueRef)
                             -> ~[Match<'r>] {
-    debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -672,9 +670,9 @@ pub fn enter_tup<'r>(bcx: @mut Block,
                      val: ValueRef,
                      n_elts: uint)
                   -> ~[Match<'r>] {
-    debug!("enter_tup(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_tup(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -698,9 +696,9 @@ pub fn enter_tuple_struct<'r>(bcx: @mut Block,
                               val: ValueRef,
                               n_elts: uint)
                           -> ~[Match<'r>] {
-    debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -723,9 +721,9 @@ pub fn enter_box<'r>(bcx: @mut Block,
                      col: uint,
                      val: ValueRef)
                  -> ~[Match<'r>] {
-    debug!("enter_box(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_box(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -750,9 +748,9 @@ pub fn enter_uniq<'r>(bcx: @mut Block,
                       col: uint,
                       val: ValueRef)
                   -> ~[Match<'r>] {
-    debug!("enter_uniq(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_uniq(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -777,9 +775,9 @@ pub fn enter_region<'r>(bcx: @mut Block,
                         col: uint,
                         val: ValueRef)
                     -> ~[Match<'r>] {
-    debug!("enter_region(bcx=%s, m=%s, col=%u, val=%?)",
+    debug!("enter_region(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
+           m.repr(bcx.tcx()),
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
@@ -1213,11 +1211,11 @@ pub fn compile_guard(bcx: @mut Block,
                      vals: &[ValueRef],
                      chk: Option<mk_fail>)
                   -> @mut Block {
-    debug!("compile_guard(bcx=%s, guard_expr=%s, m=%s, vals=%?)",
+    debug!("compile_guard(bcx=%s, guard_expr=%s, m=%s, vals=%s)",
            bcx.to_str(),
            bcx.expr_to_str(guard_expr),
-           matches_to_str(bcx, m),
-           vals.map(|v| bcx.val_to_str(*v)));
+           m.repr(bcx.tcx()),
+           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
 
     let mut bcx = bcx;
@@ -1267,10 +1265,10 @@ pub fn compile_submatch(bcx: @mut Block,
                         m: &[Match],
                         vals: &[ValueRef],
                         chk: Option<mk_fail>) {
-    debug!("compile_submatch(bcx=%s, m=%s, vals=%?)",
+    debug!("compile_submatch(bcx=%s, m=%s, vals=%s)",
            bcx.to_str(),
-           matches_to_str(bcx, m),
-           vals.map(|v| bcx.val_to_str(*v)));
+           m.repr(bcx.tcx()),
+           vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
     let _indenter = indenter();
 
     /*
@@ -1427,6 +1425,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
 
     // Decide what kind of branch we need
     let opts = get_options(bcx, m, col);
+    debug!("options=%?", opts);
     let mut kind = no_branch;
     let mut test_val = val;
     if opts.len() > 0u {
@@ -1914,12 +1913,12 @@ fn bind_irrefutable_pat(bcx: @mut Block,
 
     debug!("bind_irrefutable_pat(bcx=%s, pat=%s, binding_mode=%?)",
            bcx.to_str(),
-           pat_to_str(pat, bcx.sess().intr()),
+           pat.repr(bcx.tcx()),
            binding_mode);
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, fmt!("bind_irrefutable_pat(pat=%s)",
-                              pat_to_str(pat, bcx.sess().intr())));
+                              pat.repr(bcx.tcx())));
     }
 
     let _indenter = indenter();
