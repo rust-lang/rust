@@ -10,6 +10,7 @@
 
 use either::*;
 use libc;
+use str::StrSlice;
 
 pub trait Logger {
     fn log(&mut self, msg: Either<~str, &'static str>);
@@ -35,10 +36,22 @@ impl Logger for StdErrLogger {
                 s
             }
         };
-        let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-        dbg.write_str(s);
-        dbg.write_str("\n");
-        dbg.flush();
+
+        // Truncate the string
+        let buf_bytes = 256;
+        if s.len() > buf_bytes {
+            let s = s.slice(0, buf_bytes) + "[...]";
+            print(s);
+        } else {
+            print(s)
+        };
+
+        fn print(s: &str) {
+            let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
+            dbg.write_str(s);
+            dbg.write_str("\n");
+            dbg.flush();
+        }
     }
 }
 

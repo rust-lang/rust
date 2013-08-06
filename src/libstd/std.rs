@@ -170,7 +170,6 @@ pub mod local_data;
 
 /* Runtime and platform support */
 
-pub mod gc;
 pub mod libc;
 pub mod c_str;
 pub mod os;
@@ -197,7 +196,6 @@ pub mod unstable;
 mod unicode;
 #[path = "num/cmath.rs"]
 mod cmath;
-mod stackwalk;
 
 // XXX: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
