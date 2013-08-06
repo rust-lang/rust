@@ -344,6 +344,11 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called `peek`
     fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self>;
 
+    /// Creates an iterator that buffers elements and yields vectors of length n.
+    /// When the underlying iterator finishes, any leftover elements are yielded
+    /// even if fewer than n.
+    fn chunk(self, n: uint) -> Chunk<Self>;
+
     /// An adaptation of an external iterator to the for-loop protocol of rust.
     ///
     /// # Example
@@ -557,6 +562,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, T> {
         Peek{iter: self, f: f}
+    }
+
+    #[inline]
+    fn chunk(self, n: uint) -> Chunk<T> {
+        Chunk{iter: self, n: n}
     }
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
@@ -1474,6 +1484,53 @@ impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Peek<'sel
     }
 }
 
+/// An iterator that buffers up elements and yields them as a vector.
+pub struct Chunk<T> {
+    priv iter: T,
+    priv n: uint,
+}
+
+// preferably this would yield &'self [A], but it can't do so safely
+// due to issue #8355
+impl<A, T: Iterator<A>> Iterator<~[A]> for Chunk<T> {
+    #[inline]
+    fn next(&mut self) -> Option<~[A]> {
+        use vec::OwnedVector;
+        use container::Container;
+        if self.n == 0 {
+            return None;
+        }
+
+        let mut buf = ::vec::with_capacity(self.n);
+        for _ in range(0, self.n) {
+            match self.iter.next() {
+                None => {
+                    self.n = 0;
+                    break;
+                }
+                Some(x) => buf.push(x)
+            }
+        }
+
+        if buf.is_empty() { None } else { Some(buf) }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.n == 0 {
+            (0, Some(0))
+        } else {
+            let (lo, hi) = self.iter.size_hint();
+            let lo = lo.saturating_add(self.n - 1) / self.n;
+            let hi = match hi {
+                None => None,
+                Some(x) => Some((x / self.n).saturating_add(if x % self.n > 0 { 1 } else { 0 }))
+            };
+            (lo, hi)
+        }
+    }
+}
+
 /// An iterator which just modifies the contained state throughout iteration.
 pub struct Unfoldr<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
@@ -1741,6 +1798,16 @@ mod tests {
 
         assert_eq!(n, xs.len());
         assert_eq!(xs, ys.as_slice());
+    }
+
+    #[test]
+    fn test_chunk() {
+        let xs = [1u, 2, 3, 4, 5, 6, 7, 8];
+
+        assert_eq!(xs.iter().chunk(2).collect::<~[~[&uint]]>(),
+                   ~[~[&1u, &2], ~[&3, &4], ~[&5, &6], ~[&7, &8]]);
+        assert_eq!(xs.iter().chunk(3).collect::<~[~[&uint]]>(),
+                   ~[~[&1u, &2, &3], ~[&4, &5, &6], ~[&7, &8]]);
     }
 
     #[test]
