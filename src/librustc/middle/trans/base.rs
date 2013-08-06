@@ -419,46 +419,25 @@ pub fn get_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
 }
 
 pub fn set_optimize_for_size(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::OptimizeForSizeAttribute
-                                    as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::OptimizeForSizeAttribute)
 }
 
 pub fn set_no_inline(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoInlineAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoInlineAttribute)
 }
 
 pub fn set_no_unwind(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::NoUnwindAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::NoUnwindAttribute)
 }
 
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 pub fn set_uwtable(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::UWTableAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::UWTableAttribute)
 }
 
 pub fn set_inline_hint(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::InlineHintAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::InlineHintAttribute)
 }
 
 pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
@@ -473,17 +452,11 @@ pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
 }
 
 pub fn set_always_inline(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f,
-                                  lib::llvm::AlwaysInlineAttribute as c_uint,
-                                  0);
-    }
+    lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
 }
 
 pub fn set_fixed_stack_segment(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttr(f, 0, 1 << (39 - 32));
-    }
+    lib::llvm::SetFixedStackSegmentAttribute(f);
 }
 
 pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
@@ -1348,7 +1321,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     }
     match leave {
       Some(target) => Br(bcx, target),
-      None => { Resume(bcx, Load(bcx, bcx.fcx.personality.get())); }
+      None => { Resume(bcx, Load(bcx, bcx.fcx.personality.unwrap())); }
     }
 }
 
@@ -1556,7 +1529,7 @@ pub fn alloca_maybe_zeroed(cx: @mut Block, ty: Type, name: &str, zero: bool) -> 
     let p = Alloca(cx, ty, name);
     if zero {
         let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get());
+        b.position_before(cx.fcx.alloca_insert_pt.unwrap());
         memzero(&b, p, ty);
     }
     p
@@ -1602,7 +1575,7 @@ pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> Val
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            let bcx = fcx.entry_bcx.get();
+            let bcx = fcx.entry_bcx.unwrap();
             Alloca(bcx, lloutputtype, "__make_return_pointer")
         }
     }
@@ -1820,7 +1793,7 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @mut Block) {
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: @mut Block) {
     // Return the value if this function immediate; otherwise, return void.
     if fcx.llretptr.is_some() && fcx.has_immediate_return_value {
-        Ret(ret_cx, Load(ret_cx, fcx.llretptr.get()))
+        Ret(ret_cx, Load(ret_cx, fcx.llretptr.unwrap()))
     } else {
         RetVoid(ret_cx)
     }
@@ -1870,7 +1843,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx_top = fcx.entry_bcx.get();
+    let bcx_top = fcx.entry_bcx.unwrap();
     let mut bcx = bcx_top;
     let block_ty = node_id_type(bcx, body.id);
 
@@ -1888,7 +1861,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
-        let dest = expr::SaveIn(fcx.llretptr.get());
+        let dest = expr::SaveIn(fcx.llretptr.unwrap());
         bcx = controlflow::trans_block(bcx, body, dest);
     }
 
@@ -2082,18 +2055,18 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
 
-    let bcx = fcx.entry_bcx.get();
+    let bcx = fcx.entry_bcx.unwrap();
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
     insert_synthetic_type_entries(bcx, fn_args, arg_tys);
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, result_ty);
-    adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.unwrap(), disr);
     for (i, fn_arg) in fn_args.iter().enumerate() {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
-                                             fcx.llretptr.get(),
+                                             fcx.llretptr.unwrap(),
                                              disr,
                                              i);
         let llarg = fcx.llargs.get_copy(&fn_arg.pat.id);
@@ -2245,23 +2218,14 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 pub fn register_fn(ccx: @mut CrateContext,
                    sp: span,
                    sym: ~str,
-                   node_id: ast::NodeId)
-                -> ValueRef {
-    let t = ty::node_id_to_type(ccx.tcx, node_id);
-    register_fn_full(ccx, sp, sym, node_id, t)
-}
-
-pub fn register_fn_full(ccx: @mut CrateContext,
-                        sp: span,
-                        sym: ~str,
-                        node_id: ast::NodeId,
-                        node_type: ty::t)
-                     -> ValueRef {
+                   node_id: ast::NodeId,
+                   node_type: ty::t)
+                   -> ValueRef {
     let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_fuller(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
+    register_fn_llvmty(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
 }
 
-pub fn register_fn_fuller(ccx: @mut CrateContext,
+pub fn register_fn_llvmty(ccx: @mut CrateContext,
                           sp: span,
                           sym: ~str,
                           node_id: ast::NodeId,
@@ -2295,13 +2259,16 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
 pub fn create_entry_wrapper(ccx: @mut CrateContext,
-                           _sp: span, main_llfn: ValueRef) {
+                           _sp: span,
+                           main_llfn: ValueRef) {
     let et = ccx.sess.entry_type.unwrap();
-    if et == session::EntryMain {
-        let llfn = create_main(ccx, main_llfn);
-        create_entry_fn(ccx, llfn, true);
-    } else {
-        create_entry_fn(ccx, main_llfn, false);
+    match et {
+        session::EntryMain => {
+            let llfn = create_main(ccx, main_llfn);
+            create_entry_fn(ccx, llfn, true);
+        }
+        session::EntryStart => create_entry_fn(ccx, main_llfn, false),
+        session::EntryNone => {}    // Do nothing.
     }
 
     fn create_main(ccx: @mut CrateContext, main_llfn: ValueRef) -> ValueRef {
@@ -2317,7 +2284,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         // be updated if this assertion starts to fail.
         assert!(fcx.has_immediate_return_value);
 
-        let bcx = fcx.entry_bcx.get();
+        let bcx = fcx.entry_bcx.unwrap();
         // Call main.
         let llenvarg = unsafe {
             let env_arg = fcx.env_arg_pos();
@@ -2473,7 +2440,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                         ast::item_fn(_, purity, _, _, _) => {
                             let llfn = if purity != ast::extern_fn {
-                                register_fn_full(ccx, i.span, sym, i.id, ty)
+                                register_fn(ccx, i.span, sym, i.id, ty)
                             } else {
                                 foreign::register_foreign_fn(ccx, i.span, sym, i.id)
                             };
@@ -2523,7 +2490,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
                             let sym = exported_name(ccx, path, ty, ni.attrs);
 
-                            register_fn_full(ccx, ni.span, sym, ni.id, ty)
+                            register_fn(ccx, ni.span, sym, ni.id, ty)
                         }
                         ast::foreign_item_static(*) => {
                             let ident = token::ident_to_str(&ni.ident);
@@ -2551,7 +2518,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                             llfn = match enm.node {
                                 ast::item_enum(_, _) => {
-                                    register_fn_full(ccx, (*v).span, sym, id, ty)
+                                    register_fn(ccx, (*v).span, sym, id, ty)
                                 }
                                 _ => fail!("node_variant, shouldn't happen")
                             };
@@ -2575,7 +2542,8 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
                             let sym = exported_name(ccx, (*struct_path).clone(), ty,
                                                     struct_item.attrs);
-                            let llfn = register_fn_full(ccx, struct_item.span, sym, ctor_id, ty);
+                            let llfn = register_fn(ccx, struct_item.span,
+                                                   sym, ctor_id, ty);
                             set_inline_hint(llfn);
                             llfn
                         }
@@ -2610,7 +2578,7 @@ pub fn register_method(ccx: @mut CrateContext,
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 
-    let llfn = register_fn_full(ccx, m.span, sym, id, mty);
+    let llfn = register_fn(ccx, m.span, sym, id, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
     llfn
 }
@@ -2806,7 +2774,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
     }
 
     for key in keys.iter() {
-        let val = *ccx.module_data.find_equiv(key).get();
+        let val = *ccx.module_data.find_equiv(key).unwrap();
         let s_const = C_cstr(ccx, *key);
         let s_ptr = p2i(ccx, s_const);
         let v_ptr = p2i(ccx, val);

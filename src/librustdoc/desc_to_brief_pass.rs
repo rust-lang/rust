@@ -83,7 +83,7 @@ pub fn extract(desc: Option<~str>) -> Option<~str> {
         return None
     }
 
-    parse_desc(desc.clone().get())
+    parse_desc(desc.clone().unwrap())
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {

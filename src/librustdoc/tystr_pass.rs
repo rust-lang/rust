@@ -135,7 +135,7 @@ fn fold_enum(
                             let ast_variant =
                                 (*do enum_definition.variants.iter().find_ |v| {
                                 to_str(v.node.name) == variant.name
-                            }.get()).clone();
+                            }.unwrap()).clone();
 
                             pprust::variant_to_str(
                                 &ast_variant, extract::interner())
@@ -443,7 +443,7 @@ mod test {
     #[test]
     fn should_add_struct_defs() {
         let doc = mk_doc(~"struct S { field: () }");
-        assert!(doc.cratemod().structs()[0].sig.get().contains(
+        assert!(doc.cratemod().structs()[0].sig.unwrap().contains(
             "struct S {"));
     }
 
@@ -451,6 +451,6 @@ mod test {
     fn should_not_serialize_struct_attrs() {
         // All we care about are the fields
         let doc = mk_doc(~"#[wut] struct S { field: () }");
-        assert!(!doc.cratemod().structs()[0].sig.get().contains("wut"));
+        assert!(!doc.cratemod().structs()[0].sig.unwrap().contains("wut"));
     }
 }

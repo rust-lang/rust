@@ -9,15 +9,16 @@
 // except according to those terms.
 
 pub fn main() {
-    let foo = 1;
-    let bar = 2;
+    let foo: int = 1;
+    let bar: int = 2;
     let foobar = foo + bar;
 
-    let nope = optint(0) + optint(0);
-    let somefoo = optint(foo) + optint(0);
-    let somebar = optint(bar) + optint(0);
-    let somefoobar = optint(foo) + optint(bar);
+    let nope = None::<int> + None::<int>;
+    let somefoo = Some(foo) + None::<int>;
+    let somebar = None::<int> + Some(bar);
+    let somefoobar = Some(foo) + Some(bar);
 
+<<<<<<< HEAD
     match nope {
         None => (),
         Some(foo) => fail!("expected None, found %?", foo)
@@ -34,4 +35,10 @@ fn optint(input: int) -> Option<int> {
     else {
         return Some(input);
     }
+=======
+    assert_eq!(nope, None::<int>);
+    assert_eq!(somefoo, None::<int>);
+    assert_eq!(somebar, None::<int>);
+    assert_eq!(foobar, somefoobar.unwrap());
+>>>>>>> 72080954b9deb3a6a5f793d2fd1ef32c3d5acb5d
 }

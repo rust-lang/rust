@@ -97,7 +97,6 @@ pub fn create_standard_passes(level: OptLevel) -> ~[~str] {
         passes.push(~"sroa");
         passes.push(~"domtree");
         passes.push(~"early-cse");
-        passes.push(~"simplify-libcalls");
         passes.push(~"lazy-value-info");
         passes.push(~"jump-threading");
         passes.push(~"correlated-propagation");
@@ -320,7 +319,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
     for &(name,_) in transform_passes.iter() {
@@ -328,7 +327,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
     for &(name,_) in utility_passes.iter() {
@@ -336,7 +335,7 @@ fn passes_exist() {
         if !pass.is_some() {
             failed.push(name);
         } else {
-            unsafe { llvm::LLVMDestroyPass(pass.get()) }
+            unsafe { llvm::LLVMDestroyPass(pass.unwrap()) }
         }
     }
 

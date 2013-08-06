@@ -172,6 +172,10 @@ impl Scheduler {
 
         rtdebug!("stopping scheduler %u", stask.sched.get_ref().sched_id());
 
+        // Should not have any messages
+        let message = stask.sched.get_mut_ref().message_queue.pop();
+        assert!(message.is_none());
+
         stask.destroyed = true;
     }
 
@@ -335,19 +339,24 @@ impl Scheduler {
         let mut this = self;
         match this.message_queue.pop() {
             Some(PinnedTask(task)) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
                 let mut task = task;
                 task.give_home(Sched(this.make_handle()));
                 this.resume_task_immediately(task);
                 return None;
             }
             Some(TaskFromFriend(task)) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
+                rtdebug!("got a task from a friend. lovely!");
                 return this.sched_schedule_task(task);
             }
             Some(Wake) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
                 this.sleepy = false;
                 return Some(this);
             }
             Some(Shutdown) => {
+                this.event_loop.callback(Scheduler::run_sched_once);
                 if this.sleepy {
                     // There may be an outstanding handle on the
                     // sleeper list.  Pop them all to make sure that's
@@ -395,6 +404,7 @@ impl Scheduler {
     /// Take a non-homed task we aren't allowed to run here and send
     /// it to the designated friend scheduler to execute.
     fn send_to_friend(&mut self, task: ~Task) {
+        rtdebug!("sending a task to friend");
         match self.friend_handle {
             Some(ref mut handle) => {
                 handle.send(TaskFromFriend(task));
@@ -426,12 +436,14 @@ impl Scheduler {
                             Scheduler::send_task_home(task);
                             return Some(this);
                         } else {
+                            this.event_loop.callback(Scheduler::run_sched_once);
                             task.give_home(Sched(home_handle));
                             this.resume_task_immediately(task);
                             return None;
                         }
                     }
                     AnySched if this.run_anything => {
+                        this.event_loop.callback(Scheduler::run_sched_once);
                         task.give_home(AnySched);
                         this.resume_task_immediately(task);
                         return None;

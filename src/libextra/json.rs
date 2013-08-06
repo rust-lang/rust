@@ -26,7 +26,6 @@ use std::to_str;
 
 use serialize::Encodable;
 use serialize;
-use sort::Sort;
 use treemap::TreeMap;
 
 /// Represents a json value
@@ -1152,23 +1151,7 @@ impl Ord for Json {
             Object(ref d0) => {
                 match *other {
                     Number(_) | String(_) | Boolean(_) | List(_) => false,
-                    Object(ref d1) => {
-                        let mut d0_flat = ~[];
-                        let mut d1_flat = ~[];
-
-                        // FIXME #4430: this is horribly inefficient...
-                        for (k, v) in d0.iter() {
-                             d0_flat.push((@(*k).clone(), @(*v).clone()));
-                        }
-                        d0_flat.qsort();
-
-                        for (k, v) in d1.iter() {
-                            d1_flat.push((@(*k).clone(), @(*v).clone()));
-                        }
-                        d1_flat.qsort();
-
-                        d0_flat < d1_flat
-                    }
+                    Object(ref d1) => d0 < d1,
                     Null => true
                 }
             }

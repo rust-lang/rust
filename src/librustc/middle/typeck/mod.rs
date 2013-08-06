@@ -295,7 +295,7 @@ trait get_and_find_region {
 
 impl get_and_find_region for isr_alist {
     pub fn get(&self, br: ty::bound_region) -> ty::Region {
-        self.find(br).get()
+        self.find(br).unwrap()
     }
 
     pub fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
@@ -408,9 +408,10 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
           Some((id, sp)) => match *tcx.sess.entry_type {
               Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
+              Some(session::EntryNone) => {}
               None => tcx.sess.bug("entry function without a type")
           },
-          None => tcx.sess.bug("type checking without entry function")
+          None => {}
         }
     }
 }

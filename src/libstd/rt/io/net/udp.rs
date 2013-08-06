@@ -10,7 +10,7 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::io::net::ip::IpAddr;
+use rt::io::net::ip::SocketAddr;
 use rt::io::{Reader, Writer};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{RtioSocket, RtioUdpSocketObject, RtioUdpSocket, IoFactory, IoFactoryObject};
@@ -19,7 +19,7 @@ use rt::local::Local;
 pub struct UdpSocket(~RtioUdpSocketObject);
 
 impl UdpSocket {
-    pub fn bind(addr: IpAddr) -> Option<UdpSocket> {
+    pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
         let socket = unsafe { (*Local::unsafe_borrow::<IoFactoryObject>()).udp_bind(addr) };
         match socket {
             Ok(s) => Some(UdpSocket(s)),
@@ -30,7 +30,7 @@ impl UdpSocket {
         }
     }
 
-    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
+    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {
         match (**self).recvfrom(buf) {
             Ok((nread, src)) => Some((nread, src)),
             Err(ioerr) => {
@@ -43,18 +43,18 @@ impl UdpSocket {
         }
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) {
+    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) {
         match (**self).sendto(buf, dst) {
             Ok(_) => (),
             Err(ioerr) => io_error::cond.raise(ioerr),
         }
     }
 
-    pub fn connect(self, other: IpAddr) -> UdpStream {
+    pub fn connect(self, other: SocketAddr) -> UdpStream {
         UdpStream { socket: self, connectedTo: other }
     }
 
-    pub fn socket_name(&mut self) -> Option<IpAddr> {
+    pub fn socket_name(&mut self) -> Option<SocketAddr> {
         match (***self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
@@ -68,7 +68,7 @@ impl UdpSocket {
 
 pub struct UdpStream {
     socket: UdpSocket,
-    connectedTo: IpAddr
+    connectedTo: SocketAddr
 }
 
 impl UdpStream {
@@ -106,7 +106,7 @@ impl Writer for UdpStream {
 mod test {
     use super::*;
     use rt::test::*;
-    use rt::io::net::ip::Ipv4;
+    use rt::io::net::ip::{Ipv4Addr, SocketAddr};
     use rt::io::*;
     use option::{Some, None};
 
@@ -118,7 +118,7 @@ mod test {
                 assert!(e.kind == PermissionDenied);
                 called = true;
             }).inside {
-                let addr = Ipv4(0, 0, 0, 0, 1);
+                let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
                 let socket = UdpSocket::bind(addr);
                 assert!(socket.is_none());
             }
@@ -265,7 +265,7 @@ mod test {
     }
 
     #[cfg(test)]
-    fn socket_name(addr: IpAddr) {
+    fn socket_name(addr: SocketAddr) {
         do run_in_newsched_task {
             do spawntask {
                 let server = UdpSocket::bind(addr);

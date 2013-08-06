@@ -228,6 +228,19 @@ impl Task {
                     _ => ()
                 }
 
+                // FIXME #8302: Dear diary. I'm so tired and confused.
+                // There's some interaction in rustc between the box
+                // annihilator and the TLS dtor by which TLS is
+                // accessed from annihilated box dtors *after* TLS is
+                // destroyed. Somehow setting TLS back to null, as the
+                // old runtime did, makes this work, but I don't currently
+                // understand how. I would expect that, if the annihilator
+                // reinvokes TLS while TLS is uninitialized, that
+                // TLS would be reinitialized but never destroyed,
+                // but somehow this works. I have no idea what's going
+                // on but this seems to make things magically work. FML.
+                self.storage = LocalStorage(ptr::null(), None);
+
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
             }
@@ -303,7 +316,7 @@ impl Task {
 impl Drop for Task {
     fn drop(&self) {
         rtdebug!("called drop for a task: %u", borrow::to_uint(self));
-        assert!(self.destroyed)
+        rtassert!(self.destroyed)
     }
 }
 
@@ -313,7 +326,7 @@ impl Drop for Task {
 impl Coroutine {
 
     pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        static MIN_STACK_SIZE: uint = 2000000; // XXX: Too much stack
+        static MIN_STACK_SIZE: uint = 3000000; // XXX: Too much stack
 
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
@@ -452,10 +465,10 @@ mod test {
         do run_in_newsched_task() {
             static key: local_data::Key<@~str> = &local_data::Key;
             local_data::set(key, @~"data");
-            assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
+            assert!(*local_data::get(key, |k| k.map(|&k| *k)).unwrap() == ~"data");
             static key2: local_data::Key<@~str> = &local_data::Key;
             local_data::set(key2, @~"data");
-            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
+            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).unwrap() == ~"data");
         }
     }
 

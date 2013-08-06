@@ -109,7 +109,7 @@ pub fn check_arms(cx: &MatchCheckCtxt, arms: &[arm]) {
             let pat_matches_nan: &fn(@pat) -> bool = |p| {
                 match cx.tcx.def_map.find(&p.id) {
                     Some(&def_static(did, false)) => {
-                        let const_expr = lookup_const_by_id(cx.tcx, did).get();
+                        let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                         match eval_const_expr(cx.tcx, const_expr) {
                             const_float(f) if f.is_NaN() => true,
                             _ => false
@@ -304,7 +304,7 @@ pub fn is_useful_specialized(cx: &MatchCheckCtxt,
                           -> useful {
     let ms = m.iter().filter_map(|r| specialize(cx, *r, &ctor, arity, lty)).collect::<matrix>();
     let could_be_useful = is_useful(
-        cx, &ms, specialize(cx, v, &ctor, arity, lty).get());
+        cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       ref u => *u,
@@ -319,7 +319,7 @@ pub fn pat_ctor_id(cx: &MatchCheckCtxt, p: @pat) -> Option<ctor> {
         match cx.tcx.def_map.find(&pat.id) {
           Some(&def_variant(_, id)) => Some(variant(id)),
           Some(&def_static(did, false)) => {
-            let const_expr = lookup_const_by_id(cx.tcx, did).get();
+            let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
             Some(val(eval_const_expr(cx.tcx, const_expr)))
           }
           _ => None
@@ -515,7 +515,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                     }
                     Some(&def_static(did, _)) => {
                         let const_expr =
-                            lookup_const_by_id(cx.tcx, did).get();
+                            lookup_const_by_id(cx.tcx, did).unwrap();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
                             val(ref v) => {
@@ -565,7 +565,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                 match cx.tcx.def_map.get_copy(&pat_id) {
                     def_static(did, _) => {
                         let const_expr =
-                            lookup_const_by_id(cx.tcx, did).get();
+                            lookup_const_by_id(cx.tcx, did).unwrap();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
                             val(ref v) =>
@@ -867,7 +867,7 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 "cannot bind by-move and by-ref \
                  in the same pattern");
             tcx.sess.span_note(
-                by_ref_span.get(),
+                by_ref_span.unwrap(),
                 "by-ref binding occurs here");
         }
     };

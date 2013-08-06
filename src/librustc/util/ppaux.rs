@@ -280,9 +280,13 @@ pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
     }
 }
 
+pub fn vec_map_to_str<T>(ts: &[T], f: &fn(t: &T) -> ~str) -> ~str {
+    let tstrs = ts.map(f);
+    fmt!("[%s]", tstrs.connect(", "))
+}
+
 pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
-    let tstrs = ts.map(|t| ty_to_str(cx, *t));
-    fmt!("(%s)", tstrs.connect(", "))
+    vec_map_to_str(ts, |t| ty_to_str(cx, *t))
 }
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
@@ -529,7 +533,7 @@ impl<T:Repr> Repr for ~T {
 }
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
-    fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
+    vec_map_to_str(v, |t| t.repr(tcx))
 }
 
 impl<'self, T:Repr> Repr for &'self [T] {
@@ -589,15 +593,14 @@ impl Repr for ty::RegionSubsts {
 impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
         let mut res = ~[];
-        do self.builtin_bounds.each |b| {
+        for b in self.builtin_bounds.iter() {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
                 ty::BoundFreeze => ~"Freeze",
                 ty::BoundSized => ~"Sized",
             });
-            true
-        };
+        }
         for t in self.trait_bounds.iter() {
             res.push(t.repr(tcx));
         }
@@ -833,10 +836,9 @@ impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: ctxt) -> ~str {
         if self.is_empty() { ~"<no-bounds>" } else {
             let mut result = ~[];
-            do self.each |bb| {
+            for bb in self.iter() {
                 result.push(bb.user_string(tcx));
-                true
-            };
+            }
             result.connect("+")
         }
     }

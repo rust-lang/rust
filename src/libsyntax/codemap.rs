@@ -369,12 +369,19 @@ impl CodeMap {
         return @FileLines {file: lo.file, lines: lines};
     }
 
-    pub fn span_to_snippet(&self, sp: span) -> ~str {
+    pub fn span_to_snippet(&self, sp: span) -> Option<~str> {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
-        assert_eq!(begin.fm.start_pos, end.fm.start_pos);
-        return begin.fm.src.slice(
-                          begin.pos.to_uint(), end.pos.to_uint()).to_owned();
+
+        // FIXME #8256: this used to be an assert but whatever precondition
+        // it's testing isn't true for all spans in the AST, so to allow the
+        // caller to not have to fail (and it can't catch it since the CodeMap
+        // isn't sendable), return None
+        if begin.fm.start_pos != end.fm.start_pos {
+            None
+        } else {
+            Some(begin.fm.src.slice( begin.pos.to_uint(), end.pos.to_uint()).to_owned())
+        }
     }
 
     pub fn get_filemap(&self, filename: &str) -> @FileMap {

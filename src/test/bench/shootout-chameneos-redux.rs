@@ -212,7 +212,7 @@ fn main() {
         args
     };
 
-    let nn = uint::from_str(args[1]).get();
+    let nn = uint::from_str(args[1]).unwrap();
 
     print_complements();
     io::println("");

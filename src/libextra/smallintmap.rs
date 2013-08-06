@@ -366,9 +366,9 @@ mod test_map {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert_eq!(map.find(&3).get(), &10);
-        assert_eq!(map.find(&5).get(), &3);
-        assert_eq!(map.find(&9).get(), &1);
+        assert_eq!(map.find(&3).unwrap(), &10);
+        assert_eq!(map.find(&5).unwrap(), &3);
+        assert_eq!(map.find(&9).unwrap(), &1);
 
         // sadly, no sevens were counted
         assert!(map.find(&7).is_none());

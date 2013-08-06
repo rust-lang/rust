@@ -159,7 +159,7 @@ fn main() {
     let args = os::args();
     let num_keys = {
         if args.len() == 2 {
-            uint::from_str(args[1]).get()
+            uint::from_str(args[1]).unwrap()
         } else {
             100 // woefully inadequate for any real measurement
         }

@@ -1,5 +1,5 @@
 fn g(x: &Option<int>) {
-    println(x.get().to_str());
+    println(x.unwrap().to_str());
 }
 
 fn f(x: &mut Option<int>) {

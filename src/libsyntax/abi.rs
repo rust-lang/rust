@@ -280,13 +280,13 @@ impl ToStr for AbiSet {
 #[test]
 fn lookup_Rust() {
     let abi = lookup("Rust");
-    assert!(abi.is_some() && abi.get().data().name == "Rust");
+    assert!(abi.is_some() && abi.unwrap().data().name == "Rust");
 }
 
 #[test]
 fn lookup_cdecl() {
     let abi = lookup("cdecl");
-    assert!(abi.is_some() && abi.get().data().name == "cdecl");
+    assert!(abi.is_some() && abi.unwrap().data().name == "cdecl");
 }
 
 #[test]
