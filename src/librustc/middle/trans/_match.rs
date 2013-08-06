@@ -485,7 +485,7 @@ fn enter_default<'r>(bcx: @mut Block,
 
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::pat_wild | ast::pat_tup(_) | ast::pat_struct(*) => Some(~[]),
+          ast::pat_wild | ast::pat_tup(_) => Some(~[]),
           ast::pat_ident(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
@@ -947,24 +947,37 @@ fn extract_vec_elems(bcx: @mut Block,
     ExtractedBlock { vals: elems, bcx: bcx }
 }
 
-// NB: This function does not collect fields from struct-like enum variants.
+/// Checks every pattern in `m` at `col` column.
+/// If there are a struct pattern among them function
+/// returns list of all fields that are matched in these patterns.
+/// Function returns None if there is no struct pattern.
+/// Function doesn't collect fields from struct-like enum variants.
+/// Function can return empty list if there is only wildcard struct pattern.
 fn collect_record_or_struct_fields(bcx: @mut Block,
                                        m: &[Match],
                                        col: uint)
-                                    -> ~[ast::ident] {
+                                    -> Option<~[ast::ident]> {
     let mut fields: ~[ast::ident] = ~[];
+    let mut found = false;
     for br in m.iter() {
         match br.pats[col].node {
           ast::pat_struct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
-              ty::ty_struct(*) => extend(&mut fields, *fs),
+              ty::ty_struct(*) => {
+                   extend(&mut fields, *fs);
+                   found = true;
+              }
               _ => ()
             }
           }
           _ => ()
         }
     }
-    return fields;
+    if found {
+        return Some(fields);
+    } else {
+        return None;
+    }
 
     fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
         for field_pat in field_pats.iter() {
@@ -1336,22 +1349,24 @@ fn compile_submatch_continue(mut bcx: @mut Block,
     // required to root any values.
     assert!(any_box_pat(m, col) || !pats_require_rooting(bcx, m, col));
 
-    let rec_fields = collect_record_or_struct_fields(bcx, m, col);
-    if rec_fields.len() > 0 {
-        let pat_ty = node_id_type(bcx, pat_id);
-        let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-        do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
-            let rec_vals = rec_fields.map(|field_name| {
-                let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
-                adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
-            });
-            compile_submatch(
-                bcx,
-                enter_rec_or_struct(bcx, dm, m, col, rec_fields, val),
-                vec::append(rec_vals, vals_left),
-                chk);
+    match collect_record_or_struct_fields(bcx, m, col) {
+        Some(ref rec_fields) => {
+            let pat_ty = node_id_type(bcx, pat_id);
+            let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+            do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
+                let rec_vals = rec_fields.map(|field_name| {
+                        let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
+                        adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
+                        });
+                compile_submatch(
+                        bcx,
+                        enter_rec_or_struct(bcx, dm, m, col, *rec_fields, val),
+                        vec::append(rec_vals, vals_left),
+                        chk);
+            }
+            return;
         }
-        return;
+        None => {}
     }
 
     if any_tup_pat(m, col) {
