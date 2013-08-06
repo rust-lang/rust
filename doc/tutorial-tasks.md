@@ -492,7 +492,8 @@ either task fails, it kills the other one.
 
 ~~~
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# use std::comm::oneshot;
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # do task::try {
 do spawn {
     do spawn {
@@ -513,9 +514,10 @@ before returning. Hence:
 
 ~~~
 # use std::comm::{stream, Chan, Port};
+# use std::comm::oneshot;
 # use std::task::{spawn, try};
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
 do spawn {  // Bidirectionally linked
@@ -543,7 +545,8 @@ an intermediate generation has already exited:
 
 ~~~
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# use std::comm::oneshot;
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # fn wait_for_a_while() { do 1000.times { task::yield() } }
 # do task::try::<int> {
 do task::spawn_supervised {
