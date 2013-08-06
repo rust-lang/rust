@@ -128,7 +128,7 @@ pub struct FunctionDebugContext {
 }
 
 impl FunctionDebugContext {
-    priv fn new() -> FunctionDebugContext {
+    fn new() -> FunctionDebugContext {
         return FunctionDebugContext {
             scope_map: HashMap::new(),
             argument_counter: 1,
@@ -449,7 +449,7 @@ fn declare_local(bcx: @mut Block,
     let type_metadata = type_metadata(cx, variable_type, span);
     let scope = scope_metadata(bcx.fcx, node_id, span);
 
-    let var_metadata = do name.as_c_str |name| {
+    let var_metadata = do name.to_c_str().with_ref |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateLocalVariable(
                 DIB(cx),
