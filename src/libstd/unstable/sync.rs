@@ -612,7 +612,7 @@ mod tests {
             let x = Exclusive::new(~~"hello");
             let x2 = x.clone();
             do task::spawn {
-                do 10.times { task::yield(); } // try to let the unwrapper go
+                for _ in range(0u, 10) { task::yield(); } // try to let the unwrapper go
                 fail!(); // punt it awake from its deadlock
             }
             let _z = x.unwrap();

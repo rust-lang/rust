@@ -140,7 +140,6 @@ pub mod borrow;
 pub mod from_str;
 #[path = "num/num.rs"]
 pub mod num;
-pub mod iter;
 pub mod iterator;
 pub mod to_str;
 pub mod to_bytes;

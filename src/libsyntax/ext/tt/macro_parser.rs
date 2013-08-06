@@ -403,7 +403,7 @@ pub fn parse(
                 }
                 cur_eis.push(ei);
 
-                do rust_parser.tokens_consumed.times() || {
+                for _ in range(0, *rust_parser.tokens_consumed) {
                     rdr.next_token();
                 }
             }

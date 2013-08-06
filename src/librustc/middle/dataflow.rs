@@ -178,7 +178,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         };
         if expanded {
             let entry = if self.oper.initial_value() { uint::max_value } else {0};
-            do self.words_per_id.times {
+            for _ in range(0, self.words_per_id) {
                 self.gens.push(0);
                 self.kills.push(0);
                 self.on_entry.push(entry);

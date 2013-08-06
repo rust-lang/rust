@@ -367,11 +367,11 @@ mod test {
     fn multiple_connect_serial_ip4() {
         do run_in_newsched_task {
             let addr = next_test_ip4();
-            let max = 10;
+            let max = 10u;
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                do max.times {
+                for _ in range(0, max) {
                     let mut stream = listener.accept();
                     let mut buf = [0];
                     stream.read(buf);
@@ -380,7 +380,7 @@ mod test {
             }
 
             do spawntask {
-                do max.times {
+                for _ in range(0, max) {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }
@@ -392,11 +392,11 @@ mod test {
     fn multiple_connect_serial_ip6() {
         do run_in_newsched_task {
             let addr = next_test_ip6();
-            let max = 10;
+            let max = 10u;
 
             do spawntask {
                 let mut listener = TcpListener::bind(addr);
-                do max.times {
+                for _ in range(0, max) {
                     let mut stream = listener.accept();
                     let mut buf = [0];
                     stream.read(buf);
@@ -405,7 +405,7 @@ mod test {
             }
 
             do spawntask {
-                do max.times {
+                for _ in range(0, max) {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 }

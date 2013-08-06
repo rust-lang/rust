@@ -23,7 +23,7 @@
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
  * let shared_numbers=arc::Arc::new(numbers);
  *
- *   do 10.times {
+ *   for _ in range(0, 10u) {
  *       let (port, chan)  = stream();
  *       chan.send(shared_numbers.clone());
  *
@@ -759,7 +759,7 @@ mod tests {
 
         do task::spawn || {
             do arc2.write |num| {
-                do 10.times {
+                for _ in range(0, 10u) {
                     let tmp = *num;
                     *num = -1;
                     task::yield();
@@ -771,7 +771,7 @@ mod tests {
 
         // Readers try to catch the writer in the act
         let mut children = ~[];
-        do 5.times {
+        for _ in range(0, 5u) {
             let arc3 = (*arc).clone();
             let mut builder = task::task();
             builder.future_result(|r| children.push(r));
@@ -805,7 +805,7 @@ mod tests {
 
         // Reader tasks
         let mut reader_convos = ~[];
-        do 10.times {
+        for _ in range(0, 10u) {
             let ((rp1,rc1),(rp2,rc2)) = (comm::stream(),comm::stream());
             reader_convos.push((rc1, rp2));
             let arcn = (*arc).clone();
@@ -913,7 +913,7 @@ mod tests {
             do read_mode.read |state| {
                 // if writer mistakenly got in, make sure it mutates state
                 // before we assert on it
-                do 5.times { task::yield(); }
+                for _ in range(0, 5u) { task::yield(); }
                 // make sure writer didn't get in.
                 assert!(*state);
             }
@@ -925,6 +925,6 @@ mod tests {
         // helped to expose the race nearly 100% of the time... but adding
         // yields in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
-        do 8.times { test_rw_write_cond_downgrade_read_race_helper() }
+        for _ in range(0, 8u) { test_rw_write_cond_downgrade_read_race_helper() }
     }
 }

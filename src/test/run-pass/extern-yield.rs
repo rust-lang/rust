@@ -36,7 +36,7 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    do 10u.times {
+    for _ in range(0, 10u) {
         do task::spawn {
             let result = count(5u);
             info!("result = %?", result);

@@ -112,7 +112,7 @@ impl<Q:Send> Sem<Q> {
                 }
             }
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-            /* do 1000.times { task::yield(); } */
+            /* for _ in range(0, 1000u) { task::yield(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = waiter_nobe.unwrap().recv();
@@ -150,7 +150,7 @@ impl Sem<~[WaitQueue]> {
     fn new_and_signal(count: int, num_condvars: uint)
         -> Sem<~[WaitQueue]> {
         let mut queues = ~[];
-        do num_condvars.times {
+        for _ in range(0, num_condvars) {
             queues.push(WaitQueue::new());
         }
         Sem::new(count, queues)
@@ -701,7 +701,6 @@ impl<'self> RWLockReadMode<'self> {
 
 #[cfg(test)]
 mod tests {
-
     use sync::*;
 
     use std::cast;
@@ -731,11 +730,11 @@ mod tests {
         let s2 = ~s.clone();
         do task::spawn || {
             do s2.access {
-                do 5.times { task::yield(); }
+                for _ in range(0, 5u) { task::yield(); }
             }
         }
         do s.access {
-            do 5.times { task::yield(); }
+            for _ in range(0, 5u) { task::yield(); }
         }
     }
     #[test]
@@ -748,7 +747,7 @@ mod tests {
             s2.acquire();
             c.send(());
         }
-        do 5.times { task::yield(); }
+        for _ in range(0, 5u) { task::yield(); }
         s.release();
         let _ = p.recv();
 
@@ -757,7 +756,7 @@ mod tests {
         let s = ~Semaphore::new(0);
         let s2 = ~s.clone();
         do task::spawn || {
-            do 5.times { task::yield(); }
+            for _ in range(0, 5u) { task::yield(); }
             s2.release();
             let _ = p.recv();
         }
@@ -800,7 +799,7 @@ mod tests {
                     c.send(());
                 }
                 let _ = p.recv(); // wait for child to come alive
-                do 5.times { task::yield(); } // let the child contend
+                for _ in range(0, 5u) { task::yield(); } // let the child contend
             }
             let _ = p.recv(); // wait for child to be done
         }
@@ -834,7 +833,7 @@ mod tests {
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
-            do n.times {
+            for _ in range(0, n) {
                 do m.lock {
                     let oldval = *sharedstate;
                     task::yield();
@@ -880,7 +879,7 @@ mod tests {
         let m = ~Mutex::new();
         let mut ports = ~[];
 
-        do num_waiters.times {
+        for _ in range(0, num_waiters) {
             let mi = ~m.clone();
             let (port, chan) = comm::stream();
             ports.push(port);
@@ -974,7 +973,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try || {
             let mut sibling_convos = ~[];
-            do 2.times {
+            for _ in range(0, 2u) {
                 let (p,c) = comm::stream();
                 let c = Cell::new(c);
                 sibling_convos.push(p);
@@ -1111,7 +1110,7 @@ mod tests {
 
         fn access_shared(sharedstate: &mut int, x: &RWLock, mode: RWLockMode,
                          n: uint) {
-            do n.times {
+            for _ in range(0, n) {
                 do lock_rwlock_in_mode(x, mode) {
                     let oldval = *sharedstate;
                     task::yield();
@@ -1242,7 +1241,7 @@ mod tests {
         let x = ~RWLock::new();
         let mut ports = ~[];
 
-        do num_waiters.times {
+        for _ in range(0, num_waiters) {
             let xi = (*x).clone();
             let (port, chan) = comm::stream();
             ports.push(port);

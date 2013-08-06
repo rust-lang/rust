@@ -343,7 +343,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                 node_id,
                                 (method_map, visitor));
 
-            do n_added.times {
+            for _ in range(0, n_added) {
                 ignore(privileged_items.pop());
             }
         },
@@ -374,7 +374,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
 
             oldvisit::visit_block(block, (method_map, visitor));
 
-            do n_added.times {
+            for _ in range(0, n_added) {
                 ignore(privileged_items.pop());
             }
         },

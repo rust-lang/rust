@@ -314,9 +314,9 @@ mod test {
         use std::rand::{task_rng, random, RngUtil};
         use std::vec;
 
-        do 1000.times {
+        for _ in range(0, 1000u) {
             let v: ~[u8] = do vec::build |push| {
-                do task_rng().gen_uint_range(1, 100).times {
+                for _ in range(0, task_rng().gen_uint_range(1, 100)) {
                     push(random());
                 }
             };

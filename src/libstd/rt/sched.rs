@@ -1099,13 +1099,12 @@ mod test {
     #[test]
     fn multithreading() {
         use rt::comm::*;
-        use iter::Times;
         use vec::OwnedVector;
         use container::Container;
 
         do run_in_mt_newsched_task {
             let mut ports = ~[];
-            do 10.times {
+            for _ in range(0, 10u) {
                 let (port, chan) = oneshot();
                 let chan_cell = Cell::new(chan);
                 do spawntask_later {
