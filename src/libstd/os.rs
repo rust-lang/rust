@@ -467,7 +467,7 @@ pub fn self_exe_path() -> Option<Path> {
             let mut path = [0 as c_char, .. TMPBUF_SZ];
 
             do path.as_mut_buf |buf, len| {
-                let len = do "/proc/self/exe".to_c_str.with_ref |proc_self_buf| {
+                let len = do "/proc/self/exe".to_c_str().with_ref |proc_self_buf| {
                     readlink(proc_self_buf, buf, len as size_t) as uint
                 };
 
