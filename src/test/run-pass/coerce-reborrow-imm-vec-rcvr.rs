@@ -1,9 +1,3 @@
-/* FIXME #7302
-fn foo(v: &const [uint]) -> ~[uint] {
-    v.to_owned()
-}
-*/
-
 fn bar(v: &mut [uint]) -> ~[uint] {
     v.to_owned()
 }

@@ -792,12 +792,9 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::NodeId,
 fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
     fn get_mutability(ch: u8) -> ast::mutability {
         match ch as char {
-            'i' => { ast::m_imm }
-            'm' => { ast::m_mutbl }
-            'c' => { ast::m_const }
-            _ => {
-                fail!("unknown mutability character: `%c`", ch as char)
-            }
+            'i' => ast::m_imm,
+            'm' => ast::m_mutbl,
+            _ => fail!("unknown mutability character: `%c`", ch as char),
         }
     }
 

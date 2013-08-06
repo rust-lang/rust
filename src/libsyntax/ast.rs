@@ -298,7 +298,10 @@ pub enum pat_ {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum mutability { m_mutbl, m_imm, m_const, }
+pub enum mutability {
+    m_mutbl,
+    m_imm,
+}
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Sigil {
