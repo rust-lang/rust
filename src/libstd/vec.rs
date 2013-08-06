@@ -479,6 +479,7 @@ pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) ->
 
 /// An iterator over the (overlapping) slices of length `size` within
 /// a vector.
+#[deriving(Clone)]
 pub struct WindowIter<'self, T> {
     priv v: &'self [T],
     priv size: uint
@@ -498,6 +499,10 @@ impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
 
 /// An iterator over a vector in (non-overlapping) chunks (`size`
 /// elements at a time).
+///
+/// When the vector len is not evenly divided by the chunk size,
+/// the last slice of the iteration will be the remainer.
+#[deriving(Clone)]
 pub struct ChunkIter<'self, T> {
     priv v: &'self [T],
     priv size: uint
@@ -505,16 +510,49 @@ pub struct ChunkIter<'self, T> {
 
 impl<'self, T> Iterator<&'self [T]> for ChunkIter<'self, T> {
     fn next(&mut self) -> Option<&'self [T]> {
-        if self.size == 0 {
+        if self.v.len() == 0 {
             None
-        } else if self.size >= self.v.len() {
-            // finished
-            self.size = 0;
-            Some(self.v)
         } else {
-            let ret = Some(self.v.slice(0, self.size));
-            self.v = self.v.slice(self.size, self.v.len());
-            ret
+            let chunksz = cmp::min(self.v.len(), self.size);
+            let (fst, snd) = (self.v.slice_to(chunksz),
+                              self.v.slice_from(chunksz));
+            self.v = snd;
+            Some(fst)
+        }
+    }
+}
+
+impl<'self, T> DoubleEndedIterator<&'self [T]> for ChunkIter<'self, T> {
+    fn next_back(&mut self) -> Option<&'self [T]> {
+        if self.v.len() == 0 {
+            None
+        } else {
+            let remainder = self.v.len() % self.size;
+            let chunksz = if remainder != 0 { remainder } else { self.size };
+            let (fst, snd) = (self.v.slice_to(self.v.len() - chunksz),
+                              self.v.slice_from(self.v.len() - chunksz));
+            self.v = fst;
+            Some(snd)
+        }
+    }
+}
+
+impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.v.len()/self.size + if self.v.len() % self.size != 0 { 1 } else { 0 }
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<&'self [T]> {
+        if index < self.indexable() {
+            let lo = index * self.size;
+            let mut hi = lo + self.size;
+            if hi < lo || hi > self.v.len() { hi = self.v.len(); }
+
+            Some(self.v.slice(lo, hi))
+        } else {
+            None
         }
     }
 }
@@ -3378,6 +3416,14 @@ mod tests {
         assert_eq!(v.chunk_iter(2).collect::<~[&[int]]>(), ~[&[1i,2], &[3,4], &[5]]);
         assert_eq!(v.chunk_iter(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[4,5]]);
         assert_eq!(v.chunk_iter(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
+
+        assert_eq!(v.chunk_iter(2).invert().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
+        let it = v.chunk_iter(2);
+        assert_eq!(it.indexable(), 3);
+        assert_eq!(it.idx(0).unwrap(), &[1,2]);
+        assert_eq!(it.idx(1).unwrap(), &[3,4]);
+        assert_eq!(it.idx(2).unwrap(), &[5]);
+        assert_eq!(it.idx(3), None);
     }
 
     #[test]

@@ -116,7 +116,7 @@ impl<T: ToStr> ToStr for Option<T> {
 impl<T> Option<T> {
     /// Return an iterator over the possibly contained value
     #[inline]
-    pub fn iter<'r>(&'r self) -> OptionIterator<'r, T> {
+    pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
         match *self {
             Some(ref x) => OptionIterator{opt: Some(x)},
             None => OptionIterator{opt: None}
@@ -125,11 +125,17 @@ impl<T> Option<T> {
 
     /// Return a mutable iterator over the possibly contained value
     #[inline]
-    pub fn mut_iter<'r>(&'r mut self) -> OptionMutIterator<'r, T> {
+    pub fn mut_iter<'r>(&'r mut self) -> OptionIterator<&'r mut T> {
         match *self {
-            Some(ref mut x) => OptionMutIterator{opt: Some(x)},
-            None => OptionMutIterator{opt: None}
+            Some(ref mut x) => OptionIterator{opt: Some(x)},
+            None => OptionIterator{opt: None}
         }
+    }
+
+    /// Return a consuming iterator over the possibly contained value
+    #[inline]
+    pub fn consume(self) -> OptionIterator<T> {
+        OptionIterator{opt: self}
     }
 
     /// Returns true if the option equals `None`
@@ -404,34 +410,18 @@ impl<T> Zero for Option<T> {
     fn is_zero(&self) -> bool { self.is_none() }
 }
 
-/// Immutable iterator over an `Option<A>`
-pub struct OptionIterator<'self, A> {
-    priv opt: Option<&'self A>
+/// An iterator that yields either one or zero elements
+pub struct OptionIterator<A> {
+    priv opt: Option<A>
 }
 
-impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
-    fn next(&mut self) -> Option<&'self A> {
-        util::replace(&mut self.opt, None)
+impl<A> Iterator<A> for OptionIterator<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        self.opt.take()
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        match self.opt {
-            Some(_) => (1, Some(1)),
-            None => (0, Some(0)),
-        }
-    }
-}
-
-/// Mutable iterator over an `Option<A>`
-pub struct OptionMutIterator<'self, A> {
-    priv opt: Option<&'self mut A>
-}
-
-impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
-    fn next(&mut self) -> Option<&'self mut A> {
-        util::replace(&mut self.opt, None)
-    }
-
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         match self.opt {
             Some(_) => (1, Some(1)),
