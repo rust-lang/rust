@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test linked failure
 // error-pattern:explicit failure
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.

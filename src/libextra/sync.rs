@@ -935,6 +935,7 @@ mod tests {
         // child task must have finished by the time try returns
         do m.lock { }
     }
+    #[ignore(reason = "linked failure")]
     #[test] #[ignore(cfg(windows))]
     fn test_mutex_killed_cond() {
         // Getting killed during cond wait must not corrupt the mutex while
@@ -961,6 +962,7 @@ mod tests {
             assert!(!woken);
         }
     }
+    #[ignore(reason = "linked failure")]
     #[test] #[ignore(cfg(windows))]
     fn test_mutex_killed_broadcast() {
         use std::unstable::finally::Finally;

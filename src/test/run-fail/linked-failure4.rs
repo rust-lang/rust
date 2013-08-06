@@ -9,6 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test linked failure
 // error-pattern:1 == 2
 
 use std::comm;
