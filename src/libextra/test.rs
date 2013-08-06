@@ -247,9 +247,8 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let ratchet_metrics = getopts::opt_maybe_str(&matches, "ratchet-metrics");
     let ratchet_metrics = ratchet_metrics.map(|s| Path(*s));
 
-    let ratchet_noise_percent =
-        getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
-    let ratchet_noise_percent = ratchet_noise_percent.map(|s| f64::from_str(*s).get());
+    let ratchet_noise_percent = getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
+    let ratchet_noise_percent = ratchet_noise_percent.map(|s| f64::from_str(*s).unwrap());
 
     let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
     let save_metrics = save_metrics.map(|s| Path(*s));
@@ -631,8 +630,8 @@ fn should_sort_failures_before_printing_them() {
         st.write_failures();
     };
 
-    let apos = s.find_str("a").get();
-    let bpos = s.find_str("b").get();
+    let apos = s.find_str("a").unwrap();
+    let bpos = s.find_str("b").unwrap();
     assert!(apos < bpos);
 }
 
@@ -868,7 +867,7 @@ impl MetricMap {
     pub fn load(p: &Path) -> MetricMap {
         assert!(os::path_exists(p));
         let f = io::file_reader(p).unwrap();
-        let mut decoder = json::Decoder(json::from_reader(f).get());
+        let mut decoder = json::Decoder(json::from_reader(f).unwrap());
         MetricMap(Decodable::decode(&mut decoder))
     }
 
@@ -1207,7 +1206,7 @@ mod tests {
           either::Left(o) => o,
           _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!("filter" == opts.filter.clone().get());
+        assert!("filter" == opts.filter.clone().unwrap());
     }
 
     #[test]
@@ -1346,28 +1345,28 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.find(&~"in-both-noise").get()), LikelyNoise);
-        assert_eq!(*(diff1.find(&~"in-first-noise").get()), MetricRemoved);
-        assert_eq!(*(diff1.find(&~"in-second-noise").get()), MetricAdded);
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").get()),
+        assert_eq!(*(diff1.find(&~"in-both-noise").unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.find(&~"in-first-noise").unwrap()), MetricRemoved);
+        assert_eq!(*(diff1.find(&~"in-second-noise").unwrap()), MetricAdded);
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").unwrap()),
                    Regression(100.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").get()),
+        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").unwrap()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").get()),
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").unwrap()),
                    Regression(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").get()),
+        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").unwrap()),
                    Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.find(&~"in-both-noise").get()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-first-noise").get()), MetricRemoved);
-        assert_eq!(*(diff2.find(&~"in-second-noise").get()), MetricAdded);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").get()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").get()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").get()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-noise").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-first-noise").unwrap()), MetricRemoved);
+        assert_eq!(*(diff2.find(&~"in-second-noise").unwrap()), MetricAdded);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").unwrap()), LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
 
@@ -1391,28 +1390,28 @@ mod tests {
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.find(&~"runtime").get()), Regression(10.0));
-        assert_eq!(*(diff1.find(&~"throughput").get()), LikelyNoise);
+        assert_eq!(*(diff1.find(&~"runtime").unwrap()), Regression(10.0));
+        assert_eq!(*(diff1.find(&~"throughput").unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&~"runtime").get()), Metric { value: 1000.0, noise: 2.0 });
-        assert_eq!(*(m3.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+        assert_eq!(*(m3.find(&~"runtime").unwrap()), Metric { value: 1000.0, noise: 2.0 });
+        assert_eq!(*(m3.find(&~"throughput").unwrap()), Metric { value: 50.0, noise: 2.0 });
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.find(&~"runtime").get()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"throughput").get()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"runtime").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&~"throughput").unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&~"runtime").get()), Metric { value: 1100.0, noise: 2.0 });
-        assert_eq!(*(m4.find(&~"throughput").get()), Metric { value: 50.0, noise: 2.0 });
+        assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric { value: 1100.0, noise: 2.0 });
+        assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric { value: 50.0, noise: 2.0 });
 
         os::remove_dir_recursive(&dpth);
     }

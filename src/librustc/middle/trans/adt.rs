@@ -260,7 +260,7 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
                     most_aligned = Some(st);
                 }
             }
-            let most_aligned = most_aligned.get();
+            let most_aligned = most_aligned.unwrap();
             let padding = largest_size - most_aligned.size;
 
             struct_llfields(cx, most_aligned, sizing)

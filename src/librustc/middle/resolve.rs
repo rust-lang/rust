@@ -1726,7 +1726,7 @@ impl Resolver {
         let mut modules = HashMap::new();
 
         // Create all the items reachable by paths.
-        do each_path(self.session.cstore, root.def_id.get().crate)
+        do each_path(self.session.cstore, root.def_id.unwrap().crate)
                 |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
@@ -2350,7 +2350,7 @@ impl Resolver {
         match type_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found type target: %?",
-                        name_bindings.type_def.get().type_def);
+                        name_bindings.type_def.unwrap().type_def);
                 import_resolution.type_target =
                     Some(Target(target_module, name_bindings));
                 import_resolution.type_id = directive.id;
@@ -3097,7 +3097,7 @@ impl Resolver {
         let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
         let import_count = imports.len();
         if index != import_count {
-            let sn = self.session.codemap.span_to_snippet(imports[index].span);
+            let sn = self.session.codemap.span_to_snippet(imports[index].span).unwrap();
             if sn.contains("::") {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {

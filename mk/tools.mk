@@ -49,7 +49,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4)):		\
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTPKG_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) $$(WFLAGS_ST$(1)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTPKG_GLOB_$(4)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X_$(4)):				\
@@ -67,7 +67,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4)):		\
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOC_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOC_GLOB_$(4)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X_$(4)):			\
@@ -85,7 +85,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4)):		\
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTI_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTI_GLOB_$(4)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X_$(4)):			\
@@ -106,7 +106,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)):		\
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUST_GLOB_$(4)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X_$(4)):			\

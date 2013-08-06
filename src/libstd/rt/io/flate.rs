@@ -10,7 +10,7 @@
 
 //! Some various other I/O types
 
-// NOTE: These ultimately belong somewhere else
+// FIXME(#3660): should move to libextra
 
 use prelude::*;
 use super::*;
@@ -115,7 +115,7 @@ mod test {
         let mem_reader = MemReader::new(buf);
         let mut inflate_reader = InflateReader::new(mem_reader);
         let mut out_bytes = [0, .. 100];
-        let bytes_read = inflate_reader.read(out_bytes).get();
+        let bytes_read = inflate_reader.read(out_bytes).unwrap();
         assert_eq!(bytes_read, in_bytes.len());
         let out_msg = str::from_bytes(out_bytes);
         assert!(in_msg == out_msg);

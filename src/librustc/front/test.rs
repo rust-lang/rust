@@ -308,7 +308,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
             #[main];
             extra::test::test_main_static(::std::os::args(), TESTS);
         }
-    )).get();
+    )).unwrap();
 
     let testmod = ast::_mod {
         view_items: view_items,
@@ -366,7 +366,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
         pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
-    )).get()
+    )).unwrap()
 }
 
 fn is_extra(cx: &TestCtxt) -> bool {

@@ -278,7 +278,7 @@ impl IoFactory for UvIoFactory {
                     rtdebug!("status is some");
                     let task_cell = Cell::new(task_cell.take());
                     do stream_watcher.close {
-                        let res = Err(uv_error_to_io_error(status.get()));
+                        let res = Err(uv_error_to_io_error(status.unwrap()));
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler = Local::take::<Scheduler>();
                         scheduler.resume_blocked_task_immediately(task_cell.take());

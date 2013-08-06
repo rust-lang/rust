@@ -223,13 +223,13 @@ mod test {
             config::DocPerCrate,
             ~"mod a { } fn b() { }"
         );
-        assert!(doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+        assert!(doc.cratemod().index.unwrap().entries[0] == doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"#module-a"
         });
-        assert!(doc.cratemod().index.get().entries[1] == doc::IndexEntry {
+        assert!(doc.cratemod().index.unwrap().entries[1] == doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -243,13 +243,13 @@ mod test {
             config::DocPerMod,
             ~"mod a { } fn b() { }"
         );
-        assert_eq!(doc.cratemod().index.get().entries[0], doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.unwrap().entries[0], doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"a.html"
         });
-        assert_eq!(doc.cratemod().index.get().entries[1], doc::IndexEntry {
+        assert_eq!(doc.cratemod().index.unwrap().entries[1], doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -263,7 +263,7 @@ mod test {
             config::DocPerMod,
             ~"#[doc = \"test\"] mod a { }"
         );
-        assert_eq!(doc.cratemod().index.get().entries[0].brief, Some(~"test"));
+        assert_eq!(doc.cratemod().index.unwrap().entries[0].brief, Some(~"test"));
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod test {
             ~"extern { fn b(); }"
         );
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().nmods()[0].index.get().entries[0],
+        assert_eq!(doc.cratemod().nmods()[0].index.unwrap().entries[0],
                    doc::IndexEntry {
                        kind: ~"Function",
                        name: ~"b",

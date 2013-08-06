@@ -926,7 +926,7 @@ fn test_named_task() {
         t.name(~"ada lovelace");
         do t.spawn {
             do with_task_name |name| {
-                assert!(name.get() == "ada lovelace");
+                assert!(name.unwrap() == "ada lovelace");
             }
         }
     }

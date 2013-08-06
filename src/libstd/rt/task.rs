@@ -465,10 +465,10 @@ mod test {
         do run_in_newsched_task() {
             static key: local_data::Key<@~str> = &local_data::Key;
             local_data::set(key, @~"data");
-            assert!(*local_data::get(key, |k| k.map(|&k| *k)).get() == ~"data");
+            assert!(*local_data::get(key, |k| k.map(|&k| *k)).unwrap() == ~"data");
             static key2: local_data::Key<@~str> = &local_data::Key;
             local_data::set(key2, @~"data");
-            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).get() == ~"data");
+            assert!(*local_data::get(key2, |k| k.map(|&k| *k)).unwrap() == ~"data");
         }
     }
 

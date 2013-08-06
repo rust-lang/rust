@@ -82,6 +82,17 @@ pub trait DoubleEndedIteratorUtil {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil for T {
     /// Flip the direction of the iterator
+    ///
+    /// The inverted iterator flips the ends on an iterator that can already
+    /// be iterated from the front and from the back.
+    ///
+    ///
+    /// If the iterator also implements RandomAccessIterator, the inverted
+    /// iterator is also random access, with the indices starting at the back
+    /// of the original iterator.
+    ///
+    /// Note: Random access with inverted indices still only applies to the first
+    /// `uint::max_value` elements of the original iterator.
     #[inline]
     fn invert(self) -> Invert<T> {
         Invert{iter: self}
@@ -104,6 +115,16 @@ impl<A, T: DoubleEndedIterator<A>> Iterator<A> for Invert<T> {
 impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Invert<T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
+}
+
+impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterator<A>
+    for Invert<T> {
+    #[inline]
+    fn indexable(&self) -> uint { self.iter.indexable() }
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        self.iter.idx(self.indexable() - index - 1)
+    }
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -1555,6 +1576,39 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     }
 }
 
+/// An iterator that repeats an element endlessly
+#[deriving(Clone, DeepClone)]
+pub struct Repeat<A> {
+    priv element: A
+}
+
+impl<A: Clone> Repeat<A> {
+    /// Create a new `Repeat` that enlessly repeats the element `elt`.
+    #[inline]
+    pub fn new(elt: A) -> Repeat<A> {
+        Repeat{element: elt}
+    }
+}
+
+impl<A: Clone> Iterator<A> for Repeat<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> { self.idx(0) }
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { (uint::max_value, None) }
+}
+
+impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> { self.idx(0) }
+}
+
+impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
+    #[inline]
+    fn indexable(&self) -> uint { uint::max_value }
+    #[inline]
+    fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2015,6 +2069,17 @@ mod tests {
     fn test_random_access_enumerate() {
         let xs = [1, 2, 3, 4, 5];
         check_randacc_iter(xs.iter().enumerate(), xs.len());
+    }
+
+    #[test]
+    fn test_random_access_invert() {
+        let xs = [1, 2, 3, 4, 5];
+        check_randacc_iter(xs.iter().invert(), xs.len());
+        let mut it = xs.iter().invert();
+        it.next();
+        it.next_back();
+        it.next();
+        check_randacc_iter(it, xs.len() - 3);
     }
 
     #[test]

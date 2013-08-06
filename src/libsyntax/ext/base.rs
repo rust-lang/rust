@@ -538,20 +538,20 @@ mod test {
         m.insert (@"def",@16);
         // FIXME: #4492 (ICE)  assert_eq!(m.find(&@"abc"),Some(@15));
         //  ....               assert_eq!(m.find(&@"def"),Some(@16));
-        assert_eq!(*(m.find(&@"abc").get()),15);
-        assert_eq!(*(m.find(&@"def").get()),16);
+        assert_eq!(*(m.find(&@"abc").unwrap()),15);
+        assert_eq!(*(m.find(&@"def").unwrap()),16);
         let n = m.push_frame();
         // old bindings are still present:
-        assert_eq!(*(n.find(&@"abc").get()),15);
-        assert_eq!(*(n.find(&@"def").get()),16);
+        assert_eq!(*(n.find(&@"abc").unwrap()),15);
+        assert_eq!(*(n.find(&@"def").unwrap()),16);
         n.insert (@"def",@17);
         // n shows the new binding
-        assert_eq!(*(n.find(&@"abc").get()),15);
-        assert_eq!(*(n.find(&@"def").get()),17);
+        assert_eq!(*(n.find(&@"abc").unwrap()),15);
+        assert_eq!(*(n.find(&@"def").unwrap()),17);
         // ... but m still has the old ones
         // FIXME: #4492: assert_eq!(m.find(&@"abc"),Some(@15));
         // FIXME: #4492: assert_eq!(m.find(&@"def"),Some(@16));
-        assert_eq!(*(m.find(&@"abc").get()),15);
-        assert_eq!(*(m.find(&@"def").get()),16);
+        assert_eq!(*(m.find(&@"abc").unwrap()),15);
+        assert_eq!(*(m.find(&@"def").unwrap()),16);
     }
 }

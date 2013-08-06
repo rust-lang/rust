@@ -1042,7 +1042,7 @@ pub fn stdin() -> @Reader {
 
 pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
     let f = do path.to_c_str().with_ref |pathbuf| {
-        do "r".to_c_str().with_ref |modebuf| {
+        do "rb".to_c_str().with_ref |modebuf| {
             unsafe { libc::fopen(pathbuf, modebuf as *libc::c_char) }
         }
     };
