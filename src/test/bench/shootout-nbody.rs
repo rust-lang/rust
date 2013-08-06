@@ -1,3 +1,5 @@
+// xfail-test reading from os::args()[1] - bogus!
+
 use std::from_str::FromStr;
 use std::os;
 
