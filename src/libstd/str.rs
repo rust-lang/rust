@@ -1064,13 +1064,22 @@ pub mod raw {
     }
 
     /// Appends a byte to a string. (Not UTF-8 safe).
+    #[cfg(stage0)]
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
         let new_len = s.len() + 1;
         s.reserve_at_least(new_len);
         do s.as_mut_buf |buf, len| {
-            *ptr::mut_offset(buf, (len-1) as int) = b;
+            *ptr::mut_offset(buf, len as int) = b;
         }
         set_len(&mut *s, new_len);
+    }
+
+    /// Appends a byte to a string. (Not UTF-8 safe).
+    #[cfg(not(stage0))]
+    #[inline]
+    pub unsafe fn push_byte(s: &mut ~str, b: u8) {
+        let v: &mut ~[u8] = cast::transmute(s);
+        v.push(b);
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
