@@ -230,8 +230,6 @@ pub struct FunctionContext {
     ccx: @mut CrateContext,
 
     // Used and maintained by the debuginfo module.
-    // @jdm: Not sure if the Option-wrapper is a good idea. It allows to save some space in
-    // non-debug builds, but generates quite a bit of noise at usage sites. What's your opinion?
     debug_context: Option<~debuginfo::FunctionDebugContext>
 }
 
