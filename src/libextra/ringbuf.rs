@@ -696,7 +696,7 @@ mod tests {
         let u: ~[int] = deq.iter().transform(|&x| x).collect();
         assert_eq!(u, v);
 
-        let mut seq = iterator::Counter::new(0u, 2).take_(256);
+        let mut seq = iterator::count(0u, 2).take_(256);
         let deq: RingBuf<uint> = seq.collect();
         for (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);
