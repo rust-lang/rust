@@ -614,6 +614,7 @@ mod test {
     // Test cases don't care about the spare killed flag.
     fn make_kill_handle() -> KillHandle { let (h,_) = KillHandle::new(); h }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn no_tombstone_success() {
         do run_in_newsched_task {
@@ -819,6 +820,7 @@ mod test {
         }
     }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn block_and_get_killed() {
         do with_test_task |mut task| {
@@ -830,6 +832,7 @@ mod test {
         }
     }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn block_already_killed() {
         do with_test_task |mut task| {
@@ -839,6 +842,7 @@ mod test {
         }
     }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn block_unkillably_and_get_killed() {
         do with_test_task |mut task| {
@@ -856,6 +860,7 @@ mod test {
         }
     }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn block_on_pipe() {
         // Tests the "killable" path of casting to/from uint.
@@ -869,6 +874,7 @@ mod test {
         }
     }
 
+    #[ignore(reason = "linked failure")]
     #[test]
     fn block_unkillably_on_pipe() {
         // Tests the "indestructible" path of casting to/from uint.

@@ -611,6 +611,7 @@ mod tests {
             }
         }
     }
+
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_arc_condvar_poison() {
         unsafe {

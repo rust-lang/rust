@@ -659,6 +659,7 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_kill_unkillable_task() {
     use rt::test::*;
@@ -679,6 +680,7 @@ fn test_kill_unkillable_task() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_kill_rekillable_task() {
     use rt::test::*;
@@ -720,6 +722,7 @@ fn test_cant_dup_task_builder() {
 #[cfg(test)]
 fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     use rt::test::run_in_newsched_task;
@@ -738,6 +741,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
         po.recv();
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
@@ -745,6 +749,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
         do spawn_unlinked { fail!(); }
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
@@ -754,6 +759,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
         do 16.times { task::yield(); }
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
     use rt::test::run_in_newsched_task;
@@ -766,6 +772,7 @@ fn test_spawn_unlinked_sup_fail_down() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     use rt::test::run_in_newsched_task;
@@ -786,6 +793,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
         assert!(result.is_err());
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
@@ -802,6 +810,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
         assert!(result.is_err());
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     use rt::test::run_in_newsched_task;
@@ -814,6 +823,7 @@ fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
         assert!(result.is_err());
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
@@ -826,6 +836,7 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
         assert!(result.is_err());
     }
 }
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
@@ -844,6 +855,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
 // A couple bonus linked failure tests - testing for failure propagation even
 // when the middle task exits successfully early before kill signals are sent.
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_grandchild() {
     use rt::test::run_in_newsched_task;
@@ -860,6 +872,7 @@ fn test_spawn_failure_propagate_grandchild() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_secondborn() {
     use rt::test::run_in_newsched_task;
@@ -876,6 +889,7 @@ fn test_spawn_failure_propagate_secondborn() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_failure_propagate_nephew_or_niece() {
     use rt::test::run_in_newsched_task;
@@ -892,6 +906,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_propagate_sibling() {
     use rt::test::run_in_newsched_task;
@@ -1195,6 +1210,7 @@ fn test_avoid_copying_the_body_unlinked() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
@@ -1230,6 +1246,7 @@ fn test_unkillable() {
     po.recv();
 }
 
+#[ignore(reason = "linked failure")]
 #[test]
 #[ignore(cfg(windows))]
 #[should_fail]
@@ -1296,6 +1313,7 @@ fn test_simple_newsched_spawn() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_watched() {
     use rt::test::run_in_newsched_task;
@@ -1318,6 +1336,7 @@ fn test_spawn_watched() {
     }
 }
 
+#[ignore(reason = "linked failure")]
 #[test] #[ignore(cfg(windows))]
 fn test_indestructible() {
     use rt::test::run_in_newsched_task;
