@@ -619,6 +619,16 @@ pub fn rng() -> IsaacRng {
     IsaacRng::new()
 }
 
+/// Create a weak random number generator with a default algorithm and seed.
+///
+/// It returns the fatest `Rng` algorithm currently available in Rust without
+/// consideration for cryptography or security. If you require a specifically
+/// seeded `Rng` for consistency over time you should pick one algorithm and
+/// create the `Rng` yourself.
+pub fn weak_rng() -> XorShiftRng {
+    XorShiftRng::new()
+}
+
 static RAND_SIZE_LEN: u32 = 8;
 static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 
