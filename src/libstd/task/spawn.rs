@@ -568,7 +568,8 @@ impl RuntimeGlue {
                 let me = Local::unsafe_borrow::<Task>();
                 blk(match (*me).taskgroup {
                     None => {
-                        // Main task, doing first spawn ever. Lazily initialize.
+                        // First task in its (unlinked/unsupervised) taskgroup.
+                        // Lazily initialize.
                         let mut members = TaskSet::new();
                         let my_handle = (*me).death.kill_handle.get_ref().clone();
                         members.insert(NewTask(my_handle));
@@ -591,37 +592,46 @@ impl RuntimeGlue {
     }
 }
 
+// Returns 'None' in the case where the child's TG should be lazily initialized.
 fn gen_child_taskgroup(linked: bool, supervised: bool)
-    -> (TaskGroupArc, AncestorList, bool) {
-    do RuntimeGlue::with_my_taskgroup |spawner_group| {
-        let ancestors = AncestorList(spawner_group.ancestors.map(|x| x.clone()));
-        if linked {
-            // Child is in the same group as spawner.
-            // Child's ancestors are spawner's ancestors.
-            // Propagate main-ness.
-            (spawner_group.tasks.clone(), ancestors, spawner_group.is_main)
-        } else {
-            // Child is in a separate group from spawner.
-            let g = Exclusive::new(Some(TaskGroupData {
-                members:     TaskSet::new(),
-                descendants: TaskSet::new(),
-            }));
-            let a = if supervised {
-                let new_generation = incr_generation(&ancestors);
-                assert!(new_generation < uint::max_value);
-                // Child's ancestors start with the spawner.
-                // Build a new node in the ancestor list.
-                AncestorList(Some(Exclusive::new(AncestorNode {
-                    generation: new_generation,
-                    parent_group: spawner_group.tasks.clone(),
-                    ancestors: ancestors,
-                })))
+    -> Option<(TaskGroupArc, AncestorList, bool)> {
+    // FIXME(#7544): Not safe to lazily initialize in the old runtime. Remove
+    // this context check once 'spawn_raw_oldsched' is gone.
+    if context() == OldTaskContext || linked || supervised {
+        // with_my_taskgroup will lazily initialize the parent's taskgroup if
+        // it doesn't yet exist. We don't want to call it in the unlinked case.
+        do RuntimeGlue::with_my_taskgroup |spawner_group| {
+            let ancestors = AncestorList(spawner_group.ancestors.map(|x| x.clone()));
+            if linked {
+                // Child is in the same group as spawner.
+                // Child's ancestors are spawner's ancestors.
+                // Propagate main-ness.
+                Some((spawner_group.tasks.clone(), ancestors, spawner_group.is_main))
             } else {
-                // Child has no ancestors.
-                AncestorList(None)
-            };
-            (g, a, false)
+                // Child is in a separate group from spawner.
+                let g = Exclusive::new(Some(TaskGroupData {
+                    members:     TaskSet::new(),
+                    descendants: TaskSet::new(),
+                }));
+                let a = if supervised {
+                    let new_generation = incr_generation(&ancestors);
+                    assert!(new_generation < uint::max_value);
+                    // Child's ancestors start with the spawner.
+                    // Build a new node in the ancestor list.
+                    AncestorList(Some(Exclusive::new(AncestorNode {
+                        generation: new_generation,
+                        parent_group: spawner_group.tasks.clone(),
+                        ancestors: ancestors,
+                    })))
+                } else {
+                    // Child has no ancestors.
+                    AncestorList(None)
+                };
+                Some((g, a, false))
+            }
         }
+    } else {
+        None
     }
 }
 
@@ -670,20 +680,24 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 
     let child_wrapper: ~fn() = || {
         // Child task runs this code.
-        let child_data = Cell::new(child_data.take()); // :(
-        let enlist_success = do Local::borrow::<Task, bool> |me| {
-            let (child_tg, ancestors, is_main) = child_data.take();
-            let mut ancestors = ancestors;
-            // FIXME(#7544): Optimize out the xadd in this clone, somehow.
-            let handle = me.death.kill_handle.get_ref().clone();
-            // Atomically try to get into all of our taskgroups.
-            if enlist_many(NewTask(handle), &child_tg, &mut ancestors) {
-                // Got in. We can run the provided child body, and can also run
-                // the taskgroup's exit-time-destructor afterward.
-                me.taskgroup = Some(Taskgroup(child_tg, ancestors, is_main, None));
-                true
-            } else {
-                false
+
+        // If child data is 'None', the enlist is vacuously successful.
+        let enlist_success = do child_data.take().map_consume_default(true) |child_data| {
+            let child_data = Cell::new(child_data); // :(
+            do Local::borrow::<Task, bool> |me| {
+                let (child_tg, ancestors, is_main) = child_data.take();
+                let mut ancestors = ancestors;
+                // FIXME(#7544): Optimize out the xadd in this clone, somehow.
+                let handle = me.death.kill_handle.get_ref().clone();
+                // Atomically try to get into all of our taskgroups.
+                if enlist_many(NewTask(handle), &child_tg, &mut ancestors) {
+                    // Got in. We can run the provided child body, and can also run
+                    // the taskgroup's exit-time-destructor afterward.
+                    me.taskgroup = Some(Taskgroup(child_tg, ancestors, is_main, None));
+                    true
+                } else {
+                    false
+                }
             }
         };
         // Should be run after the local-borrowed task is returned.
@@ -749,7 +763,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
                 let join_task = join_task_cell.take();
 
                 let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool) || {
-                    rtdebug!("boostraping a 1:1 scheduler");
+                    rtdebug!("bootstrapping a 1:1 scheduler");
                 };
                 new_sched.bootstrap(bootstrap_task);
 
@@ -793,7 +807,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
 
     let (child_tg, ancestors, is_main) =
-        gen_child_taskgroup(opts.linked, opts.supervised);
+        gen_child_taskgroup(opts.linked, opts.supervised).expect("old runtime needs TG");
 
     unsafe {
         let child_data = Cell::new((child_tg, ancestors, f));
