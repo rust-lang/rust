@@ -78,7 +78,7 @@ impl<'self> FromHex for &'self str {
      * fn main () {
      *     let hello_str = "Hello, World".to_hex();
      *     printfln!("%s", hello_str);
-     *     let bytes = hello_str.from_hex().get();
+     *     let bytes = hello_str.from_hex().unwrap();
      *     printfln!("%?", bytes);
      *     let result_str = str::from_bytes(bytes);
      *     printfln!("%s", result_str);
@@ -132,9 +132,9 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().get(),
+        assert_eq!("666f6f626172".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
-        assert_eq!("666F6F626172".from_hex().get(),
+        assert_eq!("666F6F626172".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
     }
 
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().get(),
+        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
     }
 
@@ -165,8 +165,8 @@ mod tests {
     #[test]
     pub fn test_from_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!(fmt!("%02x", i as uint).from_hex().get(), ~[i as u8]);
-            assert_eq!(fmt!("%02X", i as uint).from_hex().get(), ~[i as u8]);
+            assert_eq!(fmt!("%02x", i as uint).from_hex().unwrap(), ~[i as u8]);
+            assert_eq!(fmt!("%02X", i as uint).from_hex().unwrap(), ~[i as u8]);
         }
     }
 
