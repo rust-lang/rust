@@ -27,7 +27,7 @@ pub struct CString {
     priv owns_buffer_: bool,
 }
 
-impl<'self> CString {
+impl CString {
     /// Create a C String from a pointer.
     pub fn new(buf: *libc::c_char, owns_buffer: bool) -> CString {
         CString { buf: buf, owns_buffer_: owns_buffer }
@@ -80,7 +80,7 @@ impl<'self> CString {
     /// # Failure
     ///
     /// Fails if the CString is null.
-    pub fn as_bytes(&self) -> &'self [u8] {
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
             let len = libc::strlen(self.buf) as uint;
@@ -89,7 +89,7 @@ impl<'self> CString {
     }
 
     /// Return a CString iterator.
-    fn iter(&self) -> CStringIterator<'self> {
+    fn iter<'a>(&'a self) -> CStringIterator<'a> {
         CStringIterator {
             ptr: self.buf,
             lifetime: unsafe { cast::transmute(self.buf) },
