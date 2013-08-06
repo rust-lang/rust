@@ -136,7 +136,7 @@ Additional help:
 
 pub fn describe_warnings() {
     use extra::sort::Sort;
-    printfln!("
+    println("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
@@ -157,7 +157,7 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    printfln!("\nAvailable lint checks:\n");
+    println("\nAvailable lint checks:\n");
     printfln!("    %s  %7.7s  %s",
               padded(max_key, "name"), "default", "meaning");
     printfln!("    %s  %7.7s  %s\n",
@@ -173,7 +173,7 @@ Available lint options:
 }
 
 pub fn describe_debug_flags() {
-    printfln!("\nAvailable debug options:\n");
+    println("\nAvailable debug options:\n");
     let r = session::debugging_opts_map();
     for tuple in r.iter() {
         match *tuple {
