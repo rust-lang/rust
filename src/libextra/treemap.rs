@@ -42,39 +42,23 @@ pub struct TreeMap<K, V> {
 
 impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
     fn eq(&self, other: &TreeMap<K, V>) -> bool {
-        if self.len() != other.len() {
-            false
-        } else {
-            let mut x = self.iter();
-            let mut y = other.iter();
-            for _ in range(0u, self.len()) {
-                if x.next().unwrap() != y.next().unwrap() {
-                    return false
-                }
-            }
-            true
-        }
+        self.len() == other.len() &&
+            self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
-    fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
 }
 
 // Lexicographical comparison
 fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
                                  b: &TreeMap<K, V>) -> bool {
-    let mut x = a.iter();
-    let mut y = b.iter();
-
-    let (a_len, b_len) = (a.len(), b.len());
-    for _ in range(0u, num::min(a_len, b_len)) {
-        let (key_a, value_a) = x.next().unwrap();
-        let (key_b, value_b) = y.next().unwrap();
+    // the Zip iterator is as long as the shortest of a and b.
+    for ((key_a, value_a), (key_b, value_b)) in a.iter().zip(b.iter()) {
         if *key_a < *key_b { return true; }
         if *key_a > *key_b { return false; }
         if *value_a < *value_b { return true; }
         if *value_a > *value_b { return false; }
     }
 
-    a_len < b_len
+    a.len() < b.len()
 }
 
 impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
