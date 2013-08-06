@@ -433,20 +433,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        let mut a = x.next();
-        let mut b = y.next();
-        while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-            match a1.cmp(b1) {
-              Less => a = x.next(),
-              Greater => b = y.next(),
-              Equal => return false
-            }
-        }
-        true
+        self.intersection(other).next().is_none()
     }
 
     /// Return true if the set is a subset of another
@@ -526,124 +513,25 @@ impl<T: TotalOrd> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the difference
-    pub fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                if !f(a1) { return false; }
-                a = x.next();
-            } else {
-                if cmp == Equal { a = x.next() }
-                b = y.next();
-            }
-        }
-        return true;
+    pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> Difference<'a, T> {
+        Difference{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
     }
 
     /// Visit the values (in-order) representing the symmetric difference
-    pub fn symmetric_difference(&self, other: &TreeSet<T>,
-                            f: &fn(&T) -> bool) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                if !f(a1) { return false; }
-                a = x.next();
-            } else {
-                if cmp == Greater {
-                    if !f(b1) { return false; }
-                } else {
-                    a = x.next();
-                }
-                b = y.next();
-            }
-        }
-        b.iter().advance(|&x| f(x)) && y.advance(f)
+    pub fn symmetric_difference<'a>(&'a self, other: &'a TreeSet<T>)
+        -> SymDifference<'a, T> {
+        SymDifference{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
     }
 
     /// Visit the values (in-order) representing the intersection
-    pub fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                a = x.next();
-            } else {
-                if cmp == Equal {
-                    if !f(a1) { return false }
-                }
-                b = y.next();
-            }
-        }
-        return true;
+    pub fn intersection<'a>(&'a self, other: &'a TreeSet<T>)
+        -> Intersection<'a, T> {
+        Intersection{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
     }
 
     /// Visit the values (in-order) representing the union
-    pub fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return f(a.unwrap()) && x.advance(f);
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Greater {
-                if !f(b1) { return false; }
-                b = y.next();
-            } else {
-                if !f(a1) { return false; }
-                if cmp == Equal {
-                    b = y.next();
-                }
-                a = x.next();
-            }
-        }
-        b.iter().advance(|&x| f(x)) && y.advance(f)
+    pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> Union<'a, T> {
+        Union{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
     }
 }
 
@@ -651,6 +539,138 @@ impl<T: TotalOrd> TreeSet<T> {
 pub struct TreeSetIterator<'self, T> {
     priv iter: TreeMapIterator<'self, T, ()>
 }
+
+// Encapsulate an iterator and hold its latest value until stepped forward
+struct Focus<A, T> {
+    priv iter: T,
+    priv focus: Option<A>,
+}
+
+impl<A, T: Iterator<A>> Focus<A, T> {
+    fn new(mut it: T) -> Focus<A, T> {
+        Focus{focus: it.next(), iter: it}
+    }
+    fn step(&mut self) {
+        self.focus = self.iter.next()
+    }
+}
+
+/// Lazy iterator producing elements in the set difference (in-order)
+pub struct Difference<'self, T> {
+    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+}
+
+/// Lazy iterator producing elements in the set symmetric difference (in-order)
+pub struct SymDifference<'self, T> {
+    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+}
+
+/// Lazy iterator producing elements in the set intersection (in-order)
+pub struct Intersection<'self, T> {
+    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+}
+
+/// Lazy iterator producing elements in the set intersection (in-order)
+pub struct Union<'self, T> {
+    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+}
+
+impl<'self, T: TotalOrd> Iterator<&'self T> for Difference<'self, T> {
+    fn next(&mut self) -> Option<&'self T> {
+        loop {
+            match (self.a.focus, self.b.focus) {
+                (None    , _       ) => return None,
+                (ret     , None    ) => { self.a.step(); return ret },
+                (Some(a1), Some(b1)) => {
+                    let cmp = a1.cmp(b1);
+                    if cmp == Less {
+                        self.a.step();
+                        return Some(a1);
+                    } else {
+                        if cmp == Equal { self.a.step() }
+                        self.b.step();
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'self, T: TotalOrd> Iterator<&'self T> for SymDifference<'self, T> {
+    fn next(&mut self) -> Option<&'self T> {
+        loop {
+            match (self.a.focus, self.b.focus) {
+                (ret     , None    ) => { self.a.step(); return ret },
+                (None    , ret     ) => { self.b.step(); return ret },
+                (Some(a1), Some(b1)) => {
+                    let cmp = a1.cmp(b1);
+                    if cmp == Less {
+                        self.a.step();
+                        return Some(a1);
+                    } else {
+                        self.b.step();
+                        if cmp == Greater {
+                            return Some(b1);
+                        } else {
+                            self.a.step();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'self, T: TotalOrd> Iterator<&'self T> for Intersection<'self, T> {
+    fn next(&mut self) -> Option<&'self T> {
+        loop {
+            match (self.a.focus, self.b.focus) {
+                (None    , _       ) => return None,
+                (_       , None    ) => return None,
+                (Some(a1), Some(b1)) => {
+                    let cmp = a1.cmp(b1);
+                    if cmp == Less {
+                        self.a.step();
+                    } else {
+                        self.b.step();
+                        if cmp == Equal {
+                            return Some(a1);
+                        }
+                    }
+                },
+            }
+        }
+    }
+}
+
+impl<'self, T: TotalOrd> Iterator<&'self T> for Union<'self, T> {
+    fn next(&mut self) -> Option<&'self T> {
+        loop {
+            match (self.a.focus, self.b.focus) {
+                (ret     , None) => { self.a.step(); return ret },
+                (None    , ret ) => { self.b.step(); return ret },
+                (Some(a1), Some(b1)) => {
+                    let cmp = a1.cmp(b1);
+                    if cmp == Greater {
+                        self.b.step();
+                        return Some(b1);
+                    } else {
+                        self.a.step();
+                        if cmp == Equal {
+                            self.b.step();
+                        }
+                        return Some(a1);
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 // Nodes keep track of their level in the tree, starting at 1 in the
 // leaves and with a red child sharing the level of the parent.
@@ -1426,7 +1446,7 @@ mod test_set {
     #[test]
     fn test_intersection() {
         fn check_intersection(a: &[int], b: &[int], expected: &[int]) {
-            check(a, b, expected, |x, y, z| x.intersection(y, z))
+            check(a, b, expected, |x, y, f| x.intersection(y).advance(f))
         }
 
         check_intersection([], [], []);
@@ -1442,7 +1462,7 @@ mod test_set {
     #[test]
     fn test_difference() {
         fn check_difference(a: &[int], b: &[int], expected: &[int]) {
-            check(a, b, expected, |x, y, z| x.difference(y, z))
+            check(a, b, expected, |x, y, f| x.difference(y).advance(f))
         }
 
         check_difference([], [], []);
@@ -1460,7 +1480,7 @@ mod test_set {
     fn test_symmetric_difference() {
         fn check_symmetric_difference(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, z| x.symmetric_difference(y, z))
+            check(a, b, expected, |x, y, f| x.symmetric_difference(y).advance(f))
         }
 
         check_symmetric_difference([], [], []);
@@ -1475,7 +1495,7 @@ mod test_set {
     fn test_union() {
         fn check_union(a: &[int], b: &[int],
                                       expected: &[int]) {
-            check(a, b, expected, |x, y, z| x.union(y, z))
+            check(a, b, expected, |x, y, f| x.union(y).advance(f))
         }
 
         check_union([], [], []);
