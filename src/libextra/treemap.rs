@@ -13,7 +13,6 @@
 //! `TotalOrd`.
 
 
-use std::num;
 use std::util::{swap, replace};
 use std::iterator::{FromIterator, Extendable};
 
@@ -152,7 +151,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
-        each_reverse(&self.root, f)
+        self.rev_iter().advance(|(k,v)| f(k, v))
     }
 
     /// Visit all keys in reverse order
@@ -174,6 +173,12 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
             remaining_min: self.length,
             remaining_max: self.length
         }
+    }
+
+    /// Get a lazy reverse iterator over the key-value pairs in the map.
+    /// Requires that it be frozen (immutable).
+    pub fn rev_iter<'a>(&'a self) -> TreeMapRevIterator<'a, K, V> {
+        TreeMapRevIterator{iter: self.iter()}
     }
 
     /// Get a lazy iterator that should be initialized using
@@ -254,20 +259,18 @@ pub struct TreeMapIterator<'self, K, V> {
     priv remaining_max: uint
 }
 
-impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+impl<'self, K, V> TreeMapIterator<'self, K, V> {
+    #[inline(always)]
+    fn next_(&mut self, forward: bool) -> Option<(&'self K, &'self V)> {
         while !self.stack.is_empty() || self.node.is_some() {
             match *self.node {
               Some(ref x) => {
                 self.stack.push(x);
-                self.node = &x.left;
+                self.node = if forward { &x.left } else { &x.right };
               }
               None => {
                 let res = self.stack.pop();
-                self.node = &res.right;
+                self.node = if forward { &res.right } else { &res.left };
                 self.remaining_max -= 1;
                 if self.remaining_min > 0 {
                     self.remaining_min -= 1;
@@ -278,10 +281,38 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
         }
         None
     }
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
+    /// Advance the iterator to the next node (in order) and return a
+    /// tuple with a reference to the key and value. If there are no
+    /// more nodes, return `None`.
+    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+        self.next_(true)
+    }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         (self.remaining_min, Some(self.remaining_max))
+    }
+}
+
+/// Lazy backward iterator over a map
+pub struct TreeMapRevIterator<'self, K, V> {
+    priv iter: TreeMapIterator<'self, K, V>,
+}
+
+impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapRevIterator<'self, K, V> {
+    /// Advance the iterator to the next node (in order) and return a
+    /// tuple with a reference to the key and value. If there are no
+    /// more nodes, return `None`.
+    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+        self.iter.next_(false)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.iter.size_hint()
     }
 }
 
@@ -379,6 +410,14 @@ impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
         do self.iter.next().map_move |(value, _)| { value }
+    }
+}
+
+impl<'self, T> Iterator<&'self T> for TreeSetRevIterator<'self, T> {
+    /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
+    #[inline]
+    fn next(&mut self) -> Option<&'self T> {
+        do self.iter.next().map |&(value, _)| { value }
     }
 }
 
@@ -492,6 +531,13 @@ impl<T: TotalOrd> TreeSet<T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    #[inline]
+    pub fn rev_iter<'a>(&'a self) -> TreeSetRevIterator<'a, T> {
+        TreeSetRevIterator{iter: self.map.rev_iter()}
+    }
+
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     #[inline]
@@ -538,6 +584,11 @@ impl<T: TotalOrd> TreeSet<T> {
 /// Lazy forward iterator over a set
 pub struct TreeSetIterator<'self, T> {
     priv iter: TreeMapIterator<'self, T, ()>
+}
+
+/// Lazy backward iterator over a set
+pub struct TreeSetRevIterator<'self, T> {
+    priv iter: TreeMapRevIterator<'self, T, ()>
 }
 
 // Encapsulate an iterator and hold its latest value until stepped forward
@@ -689,18 +740,6 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
     pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
-}
-
-fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                            f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each(&x.left,  |k,v| f(k,v)) && f(&x.key, &x.value) &&
-                            each(&x.right, |k,v| f(k,v)))
-}
-
-fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                                    f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.iter().advance(|x| each_reverse(&x.right, |k,v| f(k,v)) && f(&x.key, &x.value) &&
-                            each_reverse(&x.left,  |k,v| f(k,v)))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
