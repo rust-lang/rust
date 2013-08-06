@@ -410,7 +410,7 @@ impl IdVisitor {
 impl Visitor<()> for IdVisitor {
     fn visit_mod(@mut self,
                  module: &_mod,
-                 span: span,
+                 _span: span,
                  node_id: NodeId,
                  env: ()) {
         (self.visit_callback)(node_id);

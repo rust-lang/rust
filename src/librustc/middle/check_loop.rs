@@ -52,7 +52,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: &Crate) {
               }
               expr_again(_) => {
                 if !cx.in_loop {
-                    tcx.sess.span_err(e.span, "`again` outside of loop");
+                    tcx.sess.span_err(e.span, "`loop` outside of loop");
                 }
               }
               expr_ret(oe) => {

@@ -915,7 +915,7 @@ pub fn link_args(sess: Session,
         }
         let dir = cratepath.dirname();
         if dir != ~"" { args.push(~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem().get());
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem().unwrap());
         args.push(~"-l" + libarg);
     }
 
@@ -953,7 +953,7 @@ pub fn link_args(sess: Session,
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             args.push(~"-Wl,-install_name,@rpath/"
-                      + output.filename().get());
+                      + output.filename().unwrap());
         }
     }
 

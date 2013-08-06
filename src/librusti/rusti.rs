@@ -322,14 +322,14 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             // instead we guess which file is the library by matching
             // the prefix and suffix of out_filename to files in the
             // directory.
-            let file_str = file.filename().get();
-            file_str.starts_with(outputs.out_filename.filestem().get())
-                && file_str.ends_with(outputs.out_filename.filetype().get())
+            let file_str = file.filename().unwrap();
+            file_str.starts_with(outputs.out_filename.filestem().unwrap())
+                && file_str.ends_with(outputs.out_filename.filetype().unwrap())
         };
         match maybe_lib_path {
             Some(lib_path) => {
-                let (src_mtime, _) = src_path.get_mtime().get();
-                let (lib_mtime, _) = lib_path.get_mtime().get();
+                let (src_mtime, _) = src_path.get_mtime().unwrap();
+                let (lib_mtime, _) = lib_path.get_mtime().unwrap();
                 if lib_mtime >= src_mtime {
                     should_compile = false;
                 }
@@ -565,10 +565,7 @@ mod tests {
         }
     }
 
-    // FIXME: #7220 rusti on 32bit mac doesn't work.
-    // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
-    // FIXME: #7115 re-enable once LLVM has been upgraded
-    #[cfg(thiswillneverbeacfgflag)]
+    #[cfg(not(target_word_size = "32"))]
     fn run_program(prog: &str) {
         let mut r = repl();
         for cmd in prog.split_iter('\n') {
@@ -577,6 +574,9 @@ mod tests {
                     "the command '%s' failed", cmd);
         }
     }
+    // FIXME: #7220 rusti on 32bit mac doesn't work
+    // FIXME: #7641 rusti on 32bit linux cross compile doesn't work
+    #[cfg(target_word_size = "32")]
     fn run_program(_: &str) {}
 
     #[test]
@@ -594,13 +594,12 @@ mod tests {
         run_program("let a = 3;");
     }
 
-    #[test] #[ignore]
+    #[test]
     fn new_tasks() {
-        // XXX: can't spawn new tasks because the JIT code is cleaned up
-        //      after the main function is done.
         run_program("
-            spawn( || println(\"Please don't segfault\") );
-            do spawn { println(\"Please?\"); }
+            use std::task::try;
+            try( || println(\"Please don't segfault\") );
+            do try { println(\"Please?\"); }
         ");
     }
 

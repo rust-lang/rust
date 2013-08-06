@@ -225,7 +225,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         // the default implementation.
         // Having to do this this is really unfortunate.
         let method_id = ty::method(tcx, method_id).provided_source
-            .get_or_default(method_id);
+            .unwrap_or_default(method_id);
 
         if method_id.crate == LOCAL_CRATE {
             let is_private = method_is_private(span, method_id.node);

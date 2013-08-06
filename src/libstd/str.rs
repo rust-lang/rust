@@ -59,7 +59,7 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
@@ -76,7 +76,7 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).get();
+        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
@@ -1029,7 +1029,7 @@ pub mod raw {
     /// If end is greater than the length of the string.
     #[cfg(stage0)]
     #[inline]
-    pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
+    pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         do s.as_imm_buf |sbuf, n| {
              assert!((begin <= end));
              assert!((end <= n));

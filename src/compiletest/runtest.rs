@@ -145,7 +145,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     let rounds =
         match props.pp_exact { Some(_) => 1, None => 2 };
 
-    let mut srcs = ~[io::read_whole_file_str(testfile).get()];
+    let mut srcs = ~[io::read_whole_file_str(testfile).unwrap()];
 
     let mut round = 0;
     while round < rounds {
@@ -166,7 +166,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         match props.pp_exact {
           Some(ref file) => {
             let filepath = testfile.dir_path().push_rel(file);
-            io::read_whole_file_str(&filepath).get()
+            io::read_whole_file_str(&filepath).unwrap()
           }
           None => { srcs[srcs.len() - 2u].clone() }
         };
@@ -448,7 +448,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if opt.is_none() {
         return false;
     }
-    *idx = opt.get();
+    *idx = opt.unwrap();
     return true;
 }
 
@@ -709,7 +709,7 @@ fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
 }
 
 fn output_testname(testfile: &Path) -> Path {
-    Path(testfile.filestem().get())
+    Path(testfile.filestem().unwrap())
 }
 
 fn output_base_name(config: &config, testfile: &Path) -> Path {
@@ -878,7 +878,7 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     if suffix.len() == 0 {
         (*p).clone()
     } else {
-        let stem = p.filestem().get();
+        let stem = p.filestem().unwrap();
         p.with_filestem(stem + "-" + suffix)
     }
 }
@@ -938,7 +938,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 
 fn count_extracted_lines(p: &Path) -> uint {
-    let x = io::read_whole_file_str(&p.with_filetype("ll")).get();
+    let x = io::read_whole_file_str(&p.with_filetype("ll")).unwrap();
     x.line_iter().len_()
 }
 
