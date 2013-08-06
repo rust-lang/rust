@@ -317,11 +317,20 @@ extern "rust-intrinsic" {
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
-    /// Adjust a pointer by an offset.
+    /// Calculates the offset from a pointer.
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
     pub fn offset<T>(dst: *T, offset: int) -> *T;
+
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
+    /// undefined behaviour.
+    ///
+    /// This intrinsic should be preferred over `offset` when the guarantee can
+    /// be satisfied, to enable better optimization.
+    #[cfg(not(stage0))]
+    pub fn offset_inbounds<T>(dst: *T, offset: int) -> *T;
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
