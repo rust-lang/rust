@@ -18,7 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One};
+use num::{Zero, One, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul};
 use cmp::Ord;
@@ -863,15 +863,10 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Chain<T, U> {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
-        let lower = if uint::max_value - a_lower < b_lower {
-            uint::max_value
-        } else {
-            a_lower + b_lower
-        };
+        let lower = a_lower.saturating_add(b_lower);
 
         let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) if uint::max_value - x < y => Some(uint::max_value),
-            (Some(x), Some(y)) => Some(x + y),
+            (Some(x), Some(y)) => Some(x.saturating_add(y)),
             _ => None
         };
 
@@ -895,12 +890,7 @@ for Chain<T, U> {
     #[inline]
     fn indexable(&self) -> uint {
         let (a, b) = (self.a.indexable(), self.b.indexable());
-        let total = a + b;
-        if total < a || total < b {
-            uint::max_value
-        } else {
-            total
-        }
+        a.saturating_add(b)
     }
 
     #[inline]
@@ -1252,11 +1242,10 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (lower, upper) = self.iter.size_hint();
 
-        let lower = if lower >= self.n { lower - self.n } else { 0 };
+        let lower = lower.saturating_sub(self.n);
 
         let upper = match upper {
-            Some(x) if x >= self.n => Some(x - self.n),
-            Some(_) => Some(0),
+            Some(x) => Some(x.saturating_sub(self.n)),
             None => None
         };
 
@@ -1267,12 +1256,7 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
 impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
     #[inline]
     fn indexable(&self) -> uint {
-        let N = self.iter.indexable();
-        if N < self.n {
-            0
-        } else {
-            N - self.n
-        }
+        self.iter.indexable().saturating_sub(self.n)
     }
 
     #[inline]
@@ -1389,9 +1373,10 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (flo, fhi) = self.frontiter.map_default((0, Some(0)), |it| it.size_hint());
         let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
+        let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (flo + blo, Some(a + b)),
-            _ => (flo + blo, None)
+            ((0, Some(0)), Some(a), Some(b)) => (lo, Some(a.saturating_add(b))),
+            _ => (lo, None)
         }
     }
 }
