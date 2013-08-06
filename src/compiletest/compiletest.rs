@@ -11,7 +11,6 @@
 #[crate_type = "bin"];
 
 #[allow(non_camel_case_types)];
-#[allow(unrecognized_lint)]; // NOTE: remove after snapshot
 #[deny(warnings)];
 
 extern mod extra;
