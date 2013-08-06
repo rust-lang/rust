@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp::Eq;
 use either;
 use iterator::Iterator;
-use option::{None, Option, Some};
+use option::{None, Option, Some, OptionIterator};
 use vec;
 use vec::{OwnedVector, ImmutableVector};
 use container::Container;
@@ -86,15 +86,15 @@ impl<T, E: ToStr> Result<T, E> {
     ///
     /// Example:
     ///
-    ///     do read_file(file).iter |buf| {
+    ///     for buf in read_file(file) {
     ///         print_buf(buf)
     ///     }
     #[inline]
-    pub fn iter(&self, f: &fn(&T)) {
+    pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
         match *self {
-            Ok(ref t) => f(t),
-            Err(_) => (),
-        }
+            Ok(ref t) => Some(t),
+            Err(*) => None,
+        }.consume()
     }
 
     /// Call a method based on a previous result
@@ -104,11 +104,11 @@ impl<T, E: ToStr> Result<T, E> {
     /// immediately returned.  This function can be used to pass through a
     /// successful result while handling an error.
     #[inline]
-    pub fn iter_err(&self, f: &fn(&E)) {
+    pub fn iter_err<'r>(&'r self) -> OptionIterator<&'r E> {
         match *self {
-            Ok(_) => (),
-            Err(ref e) => f(e),
-        }
+            Ok(*) => None,
+            Err(ref t) => Some(t),
+        }.consume()
     }
 
     /// Unwraps a result, yielding the content of an `Ok`.
@@ -214,7 +214,7 @@ impl<T, E: Clone + ToStr> Result<T, E> {
     ///         parse_bytes(buf)
     ///     };
     #[inline]
-    pub fn map<U: Clone>(&self, op: &fn(&T) -> U) -> Result<U,E> {
+    pub fn map<U>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         match *self {
             Ok(ref t) => Ok(op(t)),
             Err(ref e) => Err(e.clone())
@@ -335,21 +335,25 @@ mod tests {
     #[test]
     pub fn test_impl_iter() {
         let mut valid = false;
-        Ok::<~str, ~str>(~"a").iter(|_x| valid = true);
+        let okval = Ok::<~str, ~str>(~"a");
+        do okval.iter().next().map |_| { valid = true; };
         assert!(valid);
 
-        Err::<~str, ~str>(~"b").iter(|_x| valid = false);
+        let errval = Err::<~str, ~str>(~"b");
+        do errval.iter().next().map |_| { valid = false; };
         assert!(valid);
     }
 
     #[test]
     pub fn test_impl_iter_err() {
         let mut valid = true;
-        Ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
+        let okval = Ok::<~str, ~str>(~"a");
+        do okval.iter_err().next().map |_| { valid = false };
         assert!(valid);
 
         valid = false;
-        Err::<~str, ~str>(~"b").iter_err(|_x| valid = true);
+        let errval = Err::<~str, ~str>(~"b");
+        do errval.iter_err().next().map |_| { valid = true };
         assert!(valid);
     }
 

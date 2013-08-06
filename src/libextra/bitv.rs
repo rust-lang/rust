@@ -13,7 +13,7 @@
 
 use std::cmp;
 use std::iterator::RandomAccessIterator;
-use std::iterator::{Invert, Enumerate};
+use std::iterator::{Invert, Enumerate, Repeat, Map, Zip};
 use std::num;
 use std::ops;
 use std::uint;
@@ -206,14 +206,13 @@ impl BigBitv {
     #[inline]
     pub fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
-        do uint::iterate(0, len) |i| {
+        for i in range(0, len) {
             let mask = big_mask(nbits, i);
             if mask & self.storage[i] != mask & b.storage[i] {
-                false
-            } else {
-                true
+                return false;
             }
         }
+        true
     }
 }
 
@@ -864,13 +863,12 @@ impl BitvSet {
     /// w1, w2) where the bit location is the number of bits offset so far,
     /// and w1/w2 are the words coming from the two vectors self, other.
     fn common_iter<'a>(&'a self, other: &'a BitvSet)
-        -> MapE<(uint,&uint),(uint,uint,uint), &'a ~[uint],Enumerate<vec::VecIterator<'a,uint>>> {
-        let min = num::min(self.bitv.storage.len(),
-                            other.bitv.storage.len());
-        MapE{iter: self.bitv.storage.slice(0, min).iter().enumerate(),
-             env: &other.bitv.storage,
-             f: |(i, &w): (uint, &uint), o_store| (i * uint::bits, w, o_store[i])
-        }
+        -> Map<'static, ((uint, &'a uint), &'a ~[uint]), (uint, uint, uint),
+               Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<&'a ~[uint]>>> {
+        let min = num::min(self.bitv.storage.len(), other.bitv.storage.len());
+        self.bitv.storage.slice(0, min).iter().enumerate()
+            .zip(Repeat::new(&other.bitv.storage))
+            .transform(|((i, &w), o_store)| (i * uint::bits, w, o_store[i]))
     }
 
     /// Visits each word in self or other that extends beyond the other. This
@@ -881,44 +879,20 @@ impl BitvSet {
     /// is true if the word comes from 'self', and false if it comes from
     /// 'other'.
     fn outlier_iter<'a>(&'a self, other: &'a BitvSet)
-        -> MapE<(uint, &uint),(bool, uint, uint), uint, Enumerate<vec::VecIterator<'a, uint>>> {
-        let len1 = self.bitv.storage.len();
-        let len2 = other.bitv.storage.len();
-        let min = num::min(len1, len2);
+        -> Map<'static, ((uint, &'a uint), uint), (bool, uint, uint),
+               Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<uint>>> {
+        let slen = self.bitv.storage.len();
+        let olen = other.bitv.storage.len();
 
-        if min < len1 {
-            MapE{iter: self.bitv.storage.slice(min, len1).iter().enumerate(),
-                 env: min,
-                 f: |(i, &w): (uint, &uint), min| (true, (i + min) * uint::bits, w)
-            }
+        if olen < slen {
+            self.bitv.storage.slice_from(olen).iter().enumerate()
+                .zip(Repeat::new(olen))
+                .transform(|((i, &w), min)| (true, (i + min) * uint::bits, w))
         } else {
-            MapE{iter: other.bitv.storage.slice(min, len2).iter().enumerate(),
-                 env: min,
-                 f: |(i, &w): (uint, &uint), min| (false, (i + min) * uint::bits, w)
-            }
+            other.bitv.storage.slice_from(slen).iter().enumerate()
+                .zip(Repeat::new(slen))
+                .transform(|((i, &w), min)| (false, (i + min) * uint::bits, w))
         }
-    }
-}
-
-/// Like iterator::Map with explicit env capture
-struct MapE<A, B, Env, I> {
-    priv env: Env,
-    priv f: &'static fn(A, Env) -> B,
-    priv iter: I,
-}
-
-impl<'self, A, B, Env: Clone, I: Iterator<A>> Iterator<B> for MapE<A, B, Env, I> {
-    #[inline]
-    fn next(&mut self) -> Option<B> {
-        match self.iter.next() {
-            Some(elt) => Some((self.f)(elt, self.env.clone())),
-            None => None
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.iter.size_hint()
     }
 }
 
