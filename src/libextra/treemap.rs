@@ -134,34 +134,9 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Visit all keys in order
-    pub fn each_key(&self, f: &fn(&K) -> bool) -> bool {
-        self.iter().advance(|(k, _)| f(k))
-    }
-
-    /// Visit all values in order
-    pub fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
-        self.iter().advance(|(_, v)| f(v))
-    }
-
     /// Iterate over the map and mutate the contained values
     pub fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
         mutate_values(&mut self.root, f)
-    }
-
-    /// Visit all key-value pairs in reverse order
-    pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
-        self.rev_iter().advance(|(k,v)| f(k, v))
-    }
-
-    /// Visit all keys in reverse order
-    pub fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
-        self.each_reverse(|k, _| f(k))
-    }
-
-    /// Visit all values in reverse order
-    pub fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
-        self.each_reverse(|_, v| f(v))
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
@@ -550,12 +525,6 @@ impl<T: TotalOrd> TreeSet<T> {
     #[inline]
     pub fn upper_bound_iter<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.upper_bound_iter(v)}
-    }
-
-    /// Visit all values in reverse order
-    #[inline]
-    pub fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
-        self.map.each_key_reverse(f)
     }
 
     /// Visit the values (in-order) representing the difference
@@ -1172,7 +1141,7 @@ mod test_treemap {
     }
 
     #[test]
-    fn test_each_reverse() {
+    fn test_rev_iter() {
         let mut m = TreeMap::new();
 
         assert!(m.insert(3, 6));
@@ -1182,12 +1151,11 @@ mod test_treemap {
         assert!(m.insert(1, 2));
 
         let mut n = 4;
-        do m.each_reverse |k, v| {
+        for (k, v) in m.rev_iter() {
             assert_eq!(*k, n);
             assert_eq!(*v, n * 2);
             n -= 1;
-            true
-        };
+        }
     }
 
     #[test]
@@ -1448,7 +1416,7 @@ mod test_set {
     }
 
     #[test]
-    fn test_each_reverse() {
+    fn test_rev_iter() {
         let mut m = TreeSet::new();
 
         assert!(m.insert(3));
@@ -1458,11 +1426,10 @@ mod test_set {
         assert!(m.insert(1));
 
         let mut n = 4;
-        do m.each_reverse |x| {
+        for x in m.rev_iter() {
             assert_eq!(*x, n);
             n -= 1;
-            true
-        };
+        }
     }
 
     fn check(a: &[int], b: &[int], expected: &[int],
