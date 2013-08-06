@@ -1075,13 +1075,13 @@ fn pick_col(m: &[Match]) -> uint {
     }
     let mut scores = vec::from_elem(m[0].pats.len(), 0u);
     for br in m.iter() {
-        let mut i = 0u;
-        for p in br.pats.iter() { scores[i] += score(*p); i += 1u; }
+        for (i, p) in br.pats.iter().enumerate() {
+            scores[i] += score(*p);
+        }
     }
     let mut max_score = 0u;
     let mut best_col = 0u;
-    let mut i = 0u;
-    for score in scores.iter() {
+    for (i, score) in scores.iter().enumerate() {
         let score = *score;
 
         // Irrefutable columns always go first, they'd only be duplicated in
@@ -1090,7 +1090,6 @@ fn pick_col(m: &[Match]) -> uint {
         // If no irrefutable ones are found, we pick the one with the biggest
         // branching factor.
         if score > max_score { max_score = score; best_col = i; }
-        i += 1u;
     }
     return best_col;
 }
@@ -1490,13 +1489,11 @@ fn compile_submatch_continue(mut bcx: @mut Block,
     let defaults = enter_default(else_cx, dm, m, col, val);
     let exhaustive = chk.is_none() && defaults.len() == 0u;
     let len = opts.len();
-    let mut i = 0u;
 
     // Compile subtrees for each option
-    for opt in opts.iter() {
-        i += 1u;
+    for (i, opt) in opts.iter().enumerate() {
         let mut opt_cx = else_cx;
-        if !exhaustive || i < len {
+        if !exhaustive || i+1 < len {
             opt_cx = sub_block(bcx, "match_case");
             match kind {
               single => Br(bcx, opt_cx.llbb),
