@@ -18,27 +18,8 @@ pub fn main() {
     let somebar = None::<int> + Some(bar);
     let somefoobar = Some(foo) + Some(bar);
 
-<<<<<<< HEAD
-    match nope {
-        None => (),
-        Some(foo) => fail!("expected None, found %?", foo)
-    }
-    assert_eq!(foo, somefoo.get());
-    assert_eq!(bar, somebar.get());
-    assert_eq!(foobar, somefoobar.get());
-}
-
-fn optint(input: int) -> Option<int> {
-    if input == 0 {
-        return None;
-    }
-    else {
-        return Some(input);
-    }
-=======
     assert_eq!(nope, None::<int>);
     assert_eq!(somefoo, None::<int>);
     assert_eq!(somebar, None::<int>);
     assert_eq!(foobar, somefoobar.unwrap());
->>>>>>> 72080954b9deb3a6a5f793d2fd1ef32c3d5acb5d
 }
