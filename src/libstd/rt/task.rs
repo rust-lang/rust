@@ -20,6 +20,7 @@ use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
 use option::{Option, Some, None};
+use rt::env;
 use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
@@ -85,12 +86,13 @@ impl Task {
 
     // A helper to build a new task using the dynamically found
     // scheduler and task. Only works in GreenTask context.
-    pub fn build_homed_child(f: ~fn(), home: SchedHome) -> ~Task {
+    pub fn build_homed_child(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
+                                                         stack_size,
                                                          home.take(),
                                                          f.take());
             running_task.sched = Some(sched);
@@ -98,25 +100,26 @@ impl Task {
         }
     }
 
-    pub fn build_child(f: ~fn()) -> ~Task {
-        Task::build_homed_child(f, AnySched)
+    pub fn build_child(stack_size: Option<uint>, f: ~fn()) -> ~Task {
+        Task::build_homed_child(stack_size, f, AnySched)
     }
 
-    pub fn build_homed_root(f: ~fn(), home: SchedHome) -> ~Task {
+    pub fn build_homed_root(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
-                                                    home.take(),
-                                                    f.take());
+                                                 stack_size,
+                                                 home.take(),
+                                                 f.take());
             running_task.sched = Some(sched);
             new_task
         }
     }
 
-    pub fn build_root(f: ~fn()) -> ~Task {
-        Task::build_homed_root(f, AnySched)
+    pub fn build_root(stack_size: Option<uint>, f: ~fn()) -> ~Task {
+        Task::build_homed_root(stack_size, f, AnySched)
     }
 
     pub fn new_sched_task() -> Task {
@@ -137,17 +140,20 @@ impl Task {
     }
 
     pub fn new_root(stack_pool: &mut StackPool,
+                    stack_size: Option<uint>,
                     start: ~fn()) -> Task {
-        Task::new_root_homed(stack_pool, AnySched, start)
+        Task::new_root_homed(stack_pool, stack_size, AnySched, start)
     }
 
     pub fn new_child(&mut self,
                      stack_pool: &mut StackPool,
+                     stack_size: Option<uint>,
                      start: ~fn()) -> Task {
-        self.new_child_homed(stack_pool, AnySched, start)
+        self.new_child_homed(stack_pool, stack_size, AnySched, start)
     }
 
     pub fn new_root_homed(stack_pool: &mut StackPool,
+                          stack_size: Option<uint>,
                           home: SchedHome,
                           start: ~fn()) -> Task {
         Task {
@@ -160,7 +166,7 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             name: None,
-            coroutine: Some(Coroutine::new(stack_pool, start)),
+            coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
             task_type: GreenTask(Some(~home))
         }
@@ -168,6 +174,7 @@ impl Task {
 
     pub fn new_child_homed(&mut self,
                            stack_pool: &mut StackPool,
+                           stack_size: Option<uint>,
                            home: SchedHome,
                            start: ~fn()) -> Task {
         Task {
@@ -181,7 +188,7 @@ impl Task {
             death: self.death.new_child(),
             destroyed: false,
             name: None,
-            coroutine: Some(Coroutine::new(stack_pool, start)),
+            coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
             task_type: GreenTask(Some(~home))
         }
@@ -325,11 +332,13 @@ impl Drop for Task {
 
 impl Coroutine {
 
-    pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        static MIN_STACK_SIZE: uint = 3000000; // XXX: Too much stack
-
+    pub fn new(stack_pool: &mut StackPool, stack_size: Option<uint>, start: ~fn()) -> Coroutine {
+        let stack_size = match stack_size {
+            Some(size) => size,
+            None => env::min_stack()
+        };
         let start = Coroutine::build_start_wrapper(start);
-        let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
+        let mut stack = stack_pool.take_segment(stack_size);
         let initial_context = Context::new(start, &mut stack);
         Coroutine {
             current_stack_segment: stack,

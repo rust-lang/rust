@@ -998,6 +998,7 @@ fn test_rustpkg_test() {
 }
 
 #[test]
+#[ignore(reason = "test not yet implemented")]
 fn test_uninstall() {
     let workspace = create_local_package(&PkgId::new("foo", &os::getcwd()));
     let _output = command_line_test([~"info", ~"foo"], &workspace);
