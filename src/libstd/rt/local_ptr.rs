@@ -52,7 +52,9 @@ pub unsafe fn put<T>(sched: ~T) {
 pub unsafe fn take<T>() -> ~T {
     let key = tls_key();
     let void_ptr: *mut c_void = tls::get(key);
-    rtassert!(void_ptr.is_not_null());
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!");
+    }
     let ptr: ~T = cast::transmute(void_ptr);
     tls::set(key, ptr::mut_null());
     return ptr;
@@ -68,8 +70,8 @@ pub fn exists() -> bool {
     }
 }
 
-/// Borrow the thread-local scheduler from thread-local storage.
-/// While the scheduler is borrowed it is not available in TLS.
+/// Borrow the thread-local value from thread-local storage.
+/// While the value is borrowed it is not available in TLS.
 ///
 /// # Safety note
 ///
@@ -88,21 +90,23 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
     }
 }
 
-/// Borrow a mutable reference to the thread-local Scheduler
+/// Borrow a mutable reference to the thread-local value
 ///
 /// # Safety Note
 ///
-/// Because this leaves the Scheduler in thread-local storage it is possible
+/// Because this leaves the value in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
 pub unsafe fn unsafe_borrow<T>() -> *mut T {
     let key = tls_key();
-    let mut void_sched: *mut c_void = tls::get(key);
-    rtassert!(void_sched.is_not_null());
+    let mut void_ptr: *mut c_void = tls::get(key);
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!");
+    }
     {
-        let sched: *mut *mut c_void = &mut void_sched;
-        let sched: *mut ~T = sched as *mut ~T;
-        let sched: *mut T = &mut **sched;
-        return sched;
+        let ptr: *mut *mut c_void = &mut void_ptr;
+        let ptr: *mut ~T = ptr as *mut ~T;
+        let ptr: *mut T = &mut **ptr;
+        return ptr;
     }
 }
 

@@ -432,13 +432,3 @@ pub fn context() -> RuntimeContext {
         pub fn rust_try_get_task() -> *rust_task;
     }
 }
-
-#[test]
-fn test_context() {
-    use unstable::run_in_bare_thread;
-
-    assert_eq!(context(), OldTaskContext);
-    do run_in_bare_thread {
-        assert_eq!(context(), GlobalContext);
-    }
-}
