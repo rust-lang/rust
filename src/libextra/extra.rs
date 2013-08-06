@@ -91,6 +91,7 @@ pub mod par;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
+pub mod enum_set;
 #[path="num/bigint.rs"]
 pub mod bigint;
 #[path="num/rational.rs"]
