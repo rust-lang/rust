@@ -1894,7 +1894,7 @@ struct TimeBomb {
 
 impl Drop for TimeBomb {
     fn drop(&self) {
-        do self.explosivity.times {
+        for _ in range(0, self.explosivity) {
             println("blam!");
         }
     }

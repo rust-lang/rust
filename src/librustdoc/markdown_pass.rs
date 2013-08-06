@@ -637,7 +637,7 @@ mod test {
         let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
         write_markdown(doc, writer_factory);
         // We expect two pages to have been written
-        do 2.times {
+        for _ in range(0, 2u) {
             po.recv();
         }
     }
@@ -649,7 +649,7 @@ mod test {
             ~"#[link(name = \"core\")]; mod a { }");
         let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
         write_markdown(doc, writer_factory);
-        do 2.times {
+        for _ in range(0, 2u) {
             let (page, markdown) = po.recv();
             match page {
                 doc::CratePage(_) => {
