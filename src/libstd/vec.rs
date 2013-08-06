@@ -855,7 +855,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
                             lifetime: cast::transmute(p)}
             } else {
                 VecIterator{ptr: p,
-                            end: p.offset(self.len() as int),
+                            end: p.offset_inbounds(self.len() as int),
                             lifetime: cast::transmute(p)}
             }
         }
@@ -1837,7 +1837,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
                                lifetime: cast::transmute(p)}
             } else {
                 VecMutIterator{ptr: p,
-                               end: p.offset(self.len() as int),
+                               end: p.offset_inbounds(self.len() as int),
                                lifetime: cast::transmute(p)}
             }
         }
@@ -2193,7 +2193,7 @@ macro_rules! iterator {
                             // same pointer.
                             cast::transmute(self.ptr as uint + 1)
                         } else {
-                            self.ptr.offset(1)
+                            self.ptr.offset_inbounds(1)
                         };
 
                         Some(cast::transmute(old))
@@ -2225,7 +2225,7 @@ macro_rules! double_ended_iterator {
                             // See above for why 'ptr.offset' isn't used
                             cast::transmute(self.end as uint - 1)
                         } else {
-                            self.end.offset(-1)
+                            self.end.offset_inbounds(-1)
                         };
                         Some(cast::transmute(self.end))
                     }
