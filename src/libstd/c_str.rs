@@ -124,7 +124,7 @@ impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
         do self.as_imm_buf |self_buf, self_len| {
             unsafe {
-                let buf = libc::malloc(self_len as u64 + 1) as *mut u8;
+                let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
                 if buf.is_null() {
                     fail!("failed to allocate memory!");
                 }
