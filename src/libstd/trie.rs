@@ -271,8 +271,8 @@ impl<T> TrieNode<T> {
 
 impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        for idx in range(0u, self.children.len()) {
-            match self.children[idx] {
+        for elt in self.children.iter() {
+            match *elt {
                 Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()

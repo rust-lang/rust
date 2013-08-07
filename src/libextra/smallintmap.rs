@@ -28,14 +28,12 @@ pub struct SmallIntMap<T> {
 impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     fn len(&self) -> uint {
-        let mut sz = 0;
-        for i in range(0u, self.v.len()) {
-            match self.v[i] {
-                Some(_) => sz += 1,
-                None => {}
-            }
-        }
-        sz
+        self.v.iter().count(|elt| elt.is_some())
+    }
+
+    /// Return true if there are no elements in the map
+    fn is_empty(&self) -> bool {
+        self.v.iter().all(|elt| elt.is_none())
     }
 }
 

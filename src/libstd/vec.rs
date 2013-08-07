@@ -1597,8 +1597,8 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
         let new_len = self.len() + rhs.len();
         self.reserve(new_len);
 
-        for i in range(0u, rhs.len()) {
-            self.push(unsafe { raw::get(rhs, i) })
+        for elt in rhs.iter() {
+            self.push((*elt).clone())
         }
     }
 
