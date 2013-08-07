@@ -169,7 +169,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     let mut creatures_met = 0;
 
     // set up meetings...
-    do nn.times {
+    for _ in range(0, nn) {
         let fst_creature: CreatureInfo = from_creatures.recv();
         let snd_creature: CreatureInfo = from_creatures.recv();
 
