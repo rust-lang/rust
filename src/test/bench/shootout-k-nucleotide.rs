@@ -54,7 +54,7 @@ impl Code {
     fn unpack(&self, frame: i32) -> ~str {
         let mut key = **self;
         let mut result = ~[];
-        do (frame as uint).times {
+        for _ in range(0, frame) {
             result.push(unpack_symbol((key as u8) & 3));
             key >>= 2;
         }
@@ -251,7 +251,7 @@ fn generate_frequencies(frequencies: &mut Table,
     let mut code = Code(0);
 
     // Pull first frame.
-    do (frame as uint).times {
+    for _ in range(0, frame) {
         code = code.push_char(input[0]);
         input = next_char(input);
     }
