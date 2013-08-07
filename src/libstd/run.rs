@@ -763,14 +763,14 @@ fn with_dirp<T>(d: Option<&Path>,
 }
 
 #[cfg(windows)]
-priv fn free_handle(handle: *()) {
+fn free_handle(handle: *()) {
     unsafe {
         libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
     }
 }
 
 #[cfg(unix)]
-priv fn free_handle(_handle: *()) {
+fn free_handle(_handle: *()) {
     // unix has no process handle object, just a pid
 }
 
@@ -825,7 +825,7 @@ pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
  * operate on a none-existant process or, even worse, on a newer process
  * with the same id.
  */
-priv fn waitpid(pid: pid_t) -> int {
+fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]

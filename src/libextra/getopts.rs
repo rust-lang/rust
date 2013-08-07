@@ -708,9 +708,9 @@ pub mod groups {
      *  Fails during iteration if the string contains a non-whitespace
      *  sequence longer than the limit.
      */
-    priv fn each_split_within<'a>(ss: &'a str,
-                                lim: uint,
-                                it: &fn(&'a str) -> bool) -> bool {
+    fn each_split_within<'a>(ss: &'a str,
+                             lim: uint,
+                             it: &fn(&'a str) -> bool) -> bool {
         // Just for fun, let's write this as an state machine:
 
         enum SplitWithinState {
@@ -778,7 +778,7 @@ pub mod groups {
     }
 
     #[test]
-    priv fn test_split_within() {
+    fn test_split_within() {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
             do each_split_within(s, i) |s| { v.push(s.to_owned()); true };

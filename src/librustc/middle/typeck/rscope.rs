@@ -215,7 +215,7 @@ impl region_scope for MethodRscope {
 pub struct type_rscope(Option<RegionParameterization>);
 
 impl type_rscope {
-    priv fn replacement(&self) -> ty::Region {
+    fn replacement(&self) -> ty::Region {
         if self.is_some() {
             ty::re_bound(ty::br_self)
         } else {

@@ -75,7 +75,7 @@ pub mod attr {
 }
 
 #[cfg(not(target_os = "win32"))]
-priv fn cap_for_attr(attr: attr::Attr) -> &'static str {
+fn cap_for_attr(attr: attr::Attr) -> &'static str {
     match attr {
         attr::Bold               => "bold",
         attr::Dim                => "dim",
@@ -234,7 +234,7 @@ impl Terminal {
         }
     }
 
-    priv fn dim_if_necessary(&self, color: color::Color) -> color::Color {
+    fn dim_if_necessary(&self, color: color::Color) -> color::Color {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
         } else { color }
