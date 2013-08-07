@@ -57,7 +57,7 @@ impl CString {
     /// Fails if the CString is null.
     pub fn with_mut_ref<T>(&mut self, f: &fn(*mut libc::c_char) -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
-        f(unsafe { cast::transmute(self.buf) })
+        f(unsafe { cast::transmute_mut_unsafe(self.buf) })
     }
 
     /// Returns true if the CString is a null.
@@ -99,7 +99,7 @@ impl CString {
 
 impl Drop for CString {
     fn drop(&self) {
-        if self.owns_buffer_ && self.buf.is_not_null() {
+        if self.owns_buffer_ {
             unsafe {
                 libc::free(self.buf as *libc::c_void)
             }
