@@ -29,7 +29,7 @@ pub struct CString {
 
 impl CString {
     /// Create a C String from a pointer.
-    pub fn new(buf: *libc::c_char, owns_buffer: bool) -> CString {
+    pub unsafe fn new(buf: *libc::c_char, owns_buffer: bool) -> CString {
         CString { buf: buf, owns_buffer_: owns_buffer }
     }
 
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_is_null() {
-        let c_str = CString::new(ptr::null(), false);
+        let c_str = unsafe { CString::new(ptr::null(), false) };
         assert!(c_str.is_null());
         assert!(!c_str.is_not_null());
     }
