@@ -1742,8 +1742,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         _ => {}
     }
 
-    for arg_n in range(0u, arg_tys.len()) {
-        let arg_ty = arg_tys[arg_n];
+    for (arg_n, &arg_ty) in arg_tys.iter().enumerate() {
         let raw_llarg = raw_llargs[arg_n];
 
         // For certain mode/type combinations, the raw llarg values are passed
