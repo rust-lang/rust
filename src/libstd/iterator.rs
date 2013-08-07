@@ -18,9 +18,9 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One, Saturating};
+use num::{Zero, One, Integer, Saturating};
 use option::{Option, Some, None};
-use ops::{Add, Mul};
+use ops::{Add, Mul, Sub};
 use cmp::Ord;
 use clone::Clone;
 use uint;
@@ -1531,13 +1531,29 @@ pub fn range<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> Range<A> {
     Range{state: start, stop: stop, one: One::one()}
 }
 
-impl<A: Add<A, A> + Ord + Clone + One> Iterator<A> for Range<A> {
+impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.state < self.stop {
             let result = self.state.clone();
             self.state = self.state + self.one;
             Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        if self.stop > self.state {
+            // Integer doesn't technically define this rule, but we're going to assume that every
+            // Integer is reachable from every other one by adding or subtracting enough Ones. This
+            // seems like a reasonable-enough rule that every Integer should conform to, even if it
+            // can't be statically checked.
+            self.stop = self.stop - self.one;
+            Some(self.stop.clone())
         } else {
             None
         }
@@ -2120,5 +2136,18 @@ mod tests {
         let empty: &[int] = [];
         check_randacc_iter(xs.iter().cycle().take_(27), 27);
         check_randacc_iter(empty.iter().cycle(), 0);
+    }
+
+    #[test]
+    fn test_double_ended_range() {
+        assert_eq!(range(11i, 14).invert().collect::<~[int]>(), ~[13i, 12, 11]);
+        for _ in range(10i, 0).invert() {
+            fail!("unreachable");
+        }
+
+        assert_eq!(range(11u, 14).invert().collect::<~[uint]>(), ~[13u, 12, 11]);
+        for _ in range(10u, 0).invert() {
+            fail!("unreachable");
+        }
     }
 }
