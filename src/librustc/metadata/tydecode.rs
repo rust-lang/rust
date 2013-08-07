@@ -138,12 +138,20 @@ fn parse_path(st: &mut PState) -> @ast::Path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @ast::Path { span: dummy_sp(),
-                                    global: false,
-                                    idents: idents,
-                                    rp: None,
-                                    types: ~[] };
-            } else { idents.push(parse_ident_(st, is_last)); }
+                return @ast::Path {
+                    span: dummy_sp(),
+                    global: false,
+                    segments: idents.consume_iter().transform(|identifier| {
+                        ast::PathSegment {
+                            identifier: identifier,
+                            lifetime: None,
+                            types: opt_vec::Empty,
+                        }
+                    }).collect()
+                };
+            } else {
+                idents.push(parse_ident_(st, is_last));
+            }
           }
         }
     };
