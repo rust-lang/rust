@@ -28,8 +28,8 @@ pub fn path_name_i(idents: &[ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
-pub fn path_to_ident(p: &Path) -> ident {
-    *p.idents.last()
+pub fn path_to_ident(path: &Path) -> ident {
+    path.segments.last().identifier
 }
 
 pub fn local_def(id: NodeId) -> def_id {
@@ -217,12 +217,18 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, i: ident) -> Path {
-    ast::Path { span: s,
-                 global: false,
-                 idents: ~[i],
-                 rp: None,
-                 types: ~[] }
+pub fn ident_to_path(s: span, identifier: ident) -> Path {
+    ast::Path {
+        span: s,
+        global: false,
+        segments: ~[
+            ast::PathSegment {
+                identifier: identifier,
+                lifetime: None,
+                types: opt_vec::Empty,
+            }
+        ],
+    }
 }
 
 pub fn ident_to_pat(id: NodeId, s: span, i: ident) -> @pat {
@@ -420,7 +426,7 @@ impl IdVisitor {
 impl Visitor<()> for IdVisitor {
     fn visit_mod(&mut self,
                  module: &_mod,
-                 _span: span,
+                 _: span,
                  node_id: NodeId,
                  env: ()) {
         (self.visit_callback)(node_id);
