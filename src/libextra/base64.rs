@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Base64 binary-to-text encoding
+use std::str;
 
 /// Available encoding character sets
 pub enum CharacterSet {
@@ -40,21 +41,13 @@ pub static URL_SAFE: Config =
 pub static MIME: Config =
     Config {char_set: Standard, pad: true, line_length: Some(76)};
 
-static STANDARD_CHARS: [char, ..64] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
-];
+static STANDARD_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                             "abcdefghijklmnopqrstuvwxyz",
+                                             "0123456789+/");
 
-static URLSAFE_CHARS: [char, ..64] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_'
-];
+static URLSAFE_CHARS: &'static[u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                            "abcdefghijklmnopqrstuvwxyz",
+                                            "0123456789-_");
 
 /// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
@@ -80,12 +73,12 @@ impl<'self> ToBase64 for &'self [u8] {
      * ~~~
      */
     fn to_base64(&self, config: Config) -> ~str {
-        let chars = match config.char_set {
+        let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
             UrlSafe => URLSAFE_CHARS
         };
 
-        let mut s = ~"";
+        let mut v: ~[u8] = ~[];
         let mut i = 0;
         let mut cur_length = 0;
         let len = self.len();
@@ -93,7 +86,8 @@ impl<'self> ToBase64 for &'self [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        s.push_str("\r\n");
+                        v.push('\r' as u8);
+                        v.push('\n' as u8);
                         cur_length = 0;
                     },
                 None => ()
@@ -104,10 +98,10 @@ impl<'self> ToBase64 for &'self [u8] {
                     (self[i + 2] as u32);
 
             // This 24-bit number gets separated into four 6-bit numbers.
-            s.push_char(chars[(n >> 18) & 63]);
-            s.push_char(chars[(n >> 12) & 63]);
-            s.push_char(chars[(n >> 6 ) & 63]);
-            s.push_char(chars[n & 63]);
+            v.push(bytes[(n >> 18) & 63]);
+            v.push(bytes[(n >> 12) & 63]);
+            v.push(bytes[(n >> 6 ) & 63]);
+            v.push(bytes[n & 63]);
 
             cur_length += 4;
             i += 3;
@@ -117,7 +111,8 @@ impl<'self> ToBase64 for &'self [u8] {
             match config.line_length {
                 Some(line_length) =>
                     if cur_length >= line_length {
-                        s.push_str("\r\n");
+                        v.push('\r' as u8);
+                        v.push('\n' as u8);
                     },
                 None => ()
             }
@@ -129,48 +124,29 @@ impl<'self> ToBase64 for &'self [u8] {
             0 => (),
             1 => {
                 let n = (self[i] as u32) << 16;
-                s.push_char(chars[(n >> 18) & 63]);
-                s.push_char(chars[(n >> 12) & 63]);
+                v.push(bytes[(n >> 18) & 63]);
+                v.push(bytes[(n >> 12) & 63]);
                 if config.pad {
-                    s.push_str("==");
+                    v.push('=' as u8);
+                    v.push('=' as u8);
                 }
             }
             2 => {
                 let n = (self[i] as u32) << 16 |
                     (self[i + 1u] as u32) << 8;
-                s.push_char(chars[(n >> 18) & 63]);
-                s.push_char(chars[(n >> 12) & 63]);
-                s.push_char(chars[(n >> 6 ) & 63]);
+                v.push(bytes[(n >> 18) & 63]);
+                v.push(bytes[(n >> 12) & 63]);
+                v.push(bytes[(n >> 6 ) & 63]);
                 if config.pad {
-                    s.push_char('=');
+                    v.push('=' as u8);
                 }
             }
             _ => fail!("Algebra is broken, please alert the math police")
         }
-        s
-    }
-}
 
-impl<'self> ToBase64 for &'self str {
-    /**
-     * Convert any string (literal, `@`, `&`, or `~`) to base64 encoding.
-     *
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * extern mod extra;
-     * use extra::base64::{ToBase64, standard};
-     *
-     * fn main () {
-     *     let str = "Hello, World".to_base64(standard);
-     *     printfln!("%s", str);
-     * }
-     * ~~~
-     *
-     */
-    fn to_base64(&self, config: Config) -> ~str {
-        self.as_bytes().to_base64(config)
+        unsafe {
+            str::raw::from_bytes_owned(v)
+        }
     }
 }
 
@@ -179,76 +155,6 @@ pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
     fn from_base64(&self) -> Result<~[u8], ~str>;
-}
-
-impl<'self> FromBase64 for &'self [u8] {
-    /**
-     * Convert base64 `u8` vector into u8 byte values.
-     * Every 4 encoded characters is converted into 3 octets, modulo padding.
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * extern mod extra;
-     * use extra::base64::{ToBase64, FromBase64, standard};
-     *
-     * fn main () {
-     *     let str = [52,32].to_base64(standard);
-     *     printfln!("%s", str);
-     *     let bytes = str.from_base64();
-     *     printfln!("%?", bytes);
-     * }
-     * ~~~
-     */
-    fn from_base64(&self) -> Result<~[u8], ~str> {
-        let mut r = ~[];
-        let mut buf: u32 = 0;
-        let mut modulus = 0;
-
-        let mut it = self.iter();
-        for &byte in it {
-            let ch = byte as char;
-            let val = byte as u32;
-
-            match ch {
-                'A'..'Z' => buf |= val - 0x41,
-                'a'..'z' => buf |= val - 0x47,
-                '0'..'9' => buf |= val + 0x04,
-                '+'|'-' => buf |= 0x3E,
-                '/'|'_' => buf |= 0x3F,
-                '\r'|'\n' => loop,
-                '=' => break,
-                _ => return Err(~"Invalid Base64 character")
-            }
-
-            buf <<= 6;
-            modulus += 1;
-            if modulus == 4 {
-                modulus = 0;
-                r.push((buf >> 22) as u8);
-                r.push((buf >> 14) as u8);
-                r.push((buf >> 6 ) as u8);
-            }
-        }
-
-        if !it.all(|&byte| {byte as char == '='}) {
-            return Err(~"Invalid Base64 character");
-        }
-
-        match modulus {
-            2 => {
-                r.push((buf >> 10) as u8);
-            }
-            3 => {
-                r.push((buf >> 16) as u8);
-                r.push((buf >> 8 ) as u8);
-            }
-            0 => (),
-            _ => return Err(~"Invalid Base64 length")
-        }
-
-        Ok(r)
-    }
 }
 
 impl<'self> FromBase64 for &'self str {
@@ -280,7 +186,56 @@ impl<'self> FromBase64 for &'self str {
      * ~~~
      */
     fn from_base64(&self) -> Result<~[u8], ~str> {
-        self.as_bytes().from_base64()
+        let mut r = ~[];
+        let mut buf: u32 = 0;
+        let mut modulus = 0;
+
+        let mut it = self.byte_iter().enumerate();
+        for (idx, byte) in it {
+            let val = byte as u32;
+
+            match byte as char {
+                'A'..'Z' => buf |= val - 0x41,
+                'a'..'z' => buf |= val - 0x47,
+                '0'..'9' => buf |= val + 0x04,
+                '+'|'-' => buf |= 0x3E,
+                '/'|'_' => buf |= 0x3F,
+                '\r'|'\n' => loop,
+                '=' => break,
+                _ => return Err(fmt!("Invalid character '%c' at position %u",
+                                     self.char_at(idx), idx))
+            }
+
+            buf <<= 6;
+            modulus += 1;
+            if modulus == 4 {
+                modulus = 0;
+                r.push((buf >> 22) as u8);
+                r.push((buf >> 14) as u8);
+                r.push((buf >> 6 ) as u8);
+            }
+        }
+
+        for (idx, byte) in it {
+            if (byte as char) != '=' {
+                return Err(fmt!("Invalid character '%c' at position %u",
+                                self.char_at(idx), idx));
+            }
+        }
+
+        match modulus {
+            2 => {
+                r.push((buf >> 10) as u8);
+            }
+            3 => {
+                r.push((buf >> 16) as u8);
+                r.push((buf >> 8 ) as u8);
+            }
+            0 => (),
+            _ => return Err(~"Invalid Base64 length")
+        }
+
+        Ok(r)
     }
 }
 
@@ -291,27 +246,28 @@ mod test {
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".to_base64(STANDARD), ~"");
-        assert_eq!("f".to_base64(STANDARD), ~"Zg==");
-        assert_eq!("fo".to_base64(STANDARD), ~"Zm8=");
-        assert_eq!("foo".to_base64(STANDARD), ~"Zm9v");
-        assert_eq!("foob".to_base64(STANDARD), ~"Zm9vYg==");
-        assert_eq!("fooba".to_base64(STANDARD), ~"Zm9vYmE=");
-        assert_eq!("foobar".to_base64(STANDARD), ~"Zm9vYmFy");
+        assert_eq!("".as_bytes().to_base64(STANDARD), ~"");
+        assert_eq!("f".as_bytes().to_base64(STANDARD), ~"Zg==");
+        assert_eq!("fo".as_bytes().to_base64(STANDARD), ~"Zm8=");
+        assert_eq!("foo".as_bytes().to_base64(STANDARD), ~"Zm9v");
+        assert_eq!("foob".as_bytes().to_base64(STANDARD), ~"Zm9vYg==");
+        assert_eq!("fooba".as_bytes().to_base64(STANDARD), ~"Zm9vYmE=");
+        assert_eq!("foobar".as_bytes().to_base64(STANDARD), ~"Zm9vYmFy");
     }
 
     #[test]
     fn test_to_base64_line_break() {
         assert!(![0u8, 1000].to_base64(Config {line_length: None, ..STANDARD})
                 .contains("\r\n"));
-        assert_eq!("foobar".to_base64(Config {line_length: Some(4), ..STANDARD}),
+        assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
+                                                         ..STANDARD}),
                    ~"Zm9v\r\nYmFy");
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
-        assert_eq!("fo".to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
+        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
+        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
     }
 
     #[test]
@@ -345,7 +301,7 @@ mod test {
     #[test]
     fn test_from_base64_invalid_char() {
         assert!("Zm$=".from_base64().is_err())
-            assert!("Zg==$".from_base64().is_err());
+        assert!("Zg==$".from_base64().is_err());
     }
 
     #[test]
@@ -369,20 +325,20 @@ mod test {
     }
 
     #[bench]
-    pub fn to_base64(bh: & mut BenchHarness) {
+    pub fn bench_to_base64(bh: & mut BenchHarness) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         do bh.iter {
-            s.to_base64(STANDARD);
+            s.as_bytes().to_base64(STANDARD);
         }
         bh.bytes = s.len() as u64;
     }
 
     #[bench]
-    pub fn from_base64(bh: & mut BenchHarness) {
+    pub fn bench_from_base64(bh: & mut BenchHarness) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        let b = s.to_base64(STANDARD);
+        let b = s.as_bytes().to_base64(STANDARD);
         do bh.iter {
             b.from_base64();
         }
