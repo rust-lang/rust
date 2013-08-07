@@ -469,10 +469,7 @@ impl<T:Clone + Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert!(len1 != 0 && len2 != 0 && base1+len1 == base2);
 
-        let mut tmp = ~[];
-        for i in range(base1, base1+len1) {
-            tmp.push(array[i].clone());
-        }
+        let mut tmp = array.slice(base1, base1 + len1).to_owned();
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -579,10 +576,7 @@ impl<T:Clone + Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
 
-        let mut tmp = ~[];
-        for i in range(base2, base2+len2) {
-            tmp.push(array[i].clone());
-        }
+        let mut tmp = array.slice(base2, base2 + len2).to_owned();
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
