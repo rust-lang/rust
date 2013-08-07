@@ -148,10 +148,10 @@ pub struct CStringIterator<'self> {
 
 impl<'self> Iterator<libc::c_char> for CStringIterator<'self> {
     fn next(&mut self) -> Option<libc::c_char> {
-        if self.ptr.is_null() {
+        let ch = unsafe { *self.ptr };
+        if ch == 0 {
             None
         } else {
-            let ch = unsafe { *self.ptr };
             self.ptr = ptr::offset(self.ptr, 1);
             Some(ch)
         }
@@ -163,6 +163,7 @@ mod tests {
     use super::*;
     use libc;
     use ptr;
+    use option::{Some, None};
 
     #[test]
     fn test_to_c_str() {
@@ -210,7 +211,23 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_with_ref_empty_fail() {
-        let c_str = CString::new(ptr::null(), false);
+        let c_str = unsafe { CString::new(ptr::null(), false) };
         c_str.with_ref(|_| ());
+    }
+
+    #[test]
+    fn test_iterator() {
+        let c_str = "".to_c_str();
+        let mut iter = c_str.iter();
+        assert_eq!(iter.next(), None);
+
+        let c_str = "hello".to_c_str();
+        let mut iter = c_str.iter();
+        assert_eq!(iter.next(), Some('h' as libc::c_char));
+        assert_eq!(iter.next(), Some('e' as libc::c_char));
+        assert_eq!(iter.next(), Some('l' as libc::c_char));
+        assert_eq!(iter.next(), Some('l' as libc::c_char));
+        assert_eq!(iter.next(), Some('o' as libc::c_char));
+        assert_eq!(iter.next(), None);
     }
 }
