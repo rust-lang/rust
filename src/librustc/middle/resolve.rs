@@ -13,7 +13,7 @@ use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
 use metadata::csearch::get_method_name_and_explicit_self;
 use metadata::csearch::get_static_methods_if_impl;
-use metadata::csearch::get_type_name_if_impl;
+use metadata::csearch::{get_type_name_if_impl, get_struct_fields};
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -1700,9 +1700,12 @@ impl Resolver {
           }
           def_struct(def_id) => {
             debug!("(building reduced graph for external \
-                    crate) building type %s",
+                    crate) building type and value for %s",
                    final_ident);
             child_name_bindings.define_type(privacy, def, dummy_sp());
+            if get_struct_fields(self.session.cstore, def_id).len() == 0 {
+                child_name_bindings.define_value(privacy, def, dummy_sp());
+            }
             self.structs.insert(def_id);
           }
           def_method(*) => {
