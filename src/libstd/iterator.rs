@@ -18,7 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One};
+use num::{Zero, One, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul};
 use cmp::Ord;
@@ -313,7 +313,7 @@ pub trait IteratorUtil<A> {
     /// ~~~ {.rust}
     /// let xs = [2u, 3];
     /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map_(|&x| Counter::new(0u, 1).take_(x));
+    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take_(x));
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
     /// for x: uint in it {
@@ -351,7 +351,7 @@ pub trait IteratorUtil<A> {
     /// ~~~ {.rust}
     /// use std::iterator::Counter;
     ///
-    /// for i in Counter::new(0, 10) {
+    /// for i in count(0, 10) {
     ///     printfln!("%d", i);
     /// }
     /// ~~~
@@ -723,7 +723,7 @@ pub trait MultiplicativeIterator<A> {
     /// use std::iterator::Counter;
     ///
     /// fn factorial(n: uint) -> uint {
-    ///     Counter::new(1u, 1).take_while(|&i| i <= n).product()
+    ///     count(1u, 1).take_while(|&i| i <= n).product()
     /// }
     /// assert!(factorial(0) == 1);
     /// assert!(factorial(1) == 1);
@@ -790,7 +790,7 @@ pub trait ClonableIterator {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// let a = Counter::new(1,1).take_(1);
+    /// let a = count(1,1).take_(1);
     /// let mut cy = a.cycle();
     /// assert_eq!(cy.next(), Some(1));
     /// assert_eq!(cy.next(), Some(1));
@@ -884,15 +884,10 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Chain<T, U> {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
-        let lower = if uint::max_value - a_lower < b_lower {
-            uint::max_value
-        } else {
-            a_lower + b_lower
-        };
+        let lower = a_lower.saturating_add(b_lower);
 
         let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) if uint::max_value - x < y => Some(uint::max_value),
-            (Some(x), Some(y)) => Some(x + y),
+            (Some(x), Some(y)) => Some(x.saturating_add(y)),
             _ => None
         };
 
@@ -916,12 +911,7 @@ for Chain<T, U> {
     #[inline]
     fn indexable(&self) -> uint {
         let (a, b) = (self.a.indexable(), self.b.indexable());
-        let total = a + b;
-        if total < a || total < b {
-            uint::max_value
-        } else {
-            total
-        }
+        a.saturating_add(b)
     }
 
     #[inline]
@@ -1273,11 +1263,10 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (lower, upper) = self.iter.size_hint();
 
-        let lower = if lower >= self.n { lower - self.n } else { 0 };
+        let lower = lower.saturating_sub(self.n);
 
         let upper = match upper {
-            Some(x) if x >= self.n => Some(x - self.n),
-            Some(_) => Some(0),
+            Some(x) => Some(x.saturating_sub(self.n)),
             None => None
         };
 
@@ -1288,12 +1277,7 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
 impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
     #[inline]
     fn indexable(&self) -> uint {
-        let N = self.iter.indexable();
-        if N < self.n {
-            0
-        } else {
-            N - self.n
-        }
+        self.iter.indexable().saturating_sub(self.n)
     }
 
     #[inline]
@@ -1316,10 +1300,9 @@ pub struct Take<T> {
 impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let next = self.iter.next();
         if self.n != 0 {
             self.n -= 1;
-            next
+            self.iter.next()
         } else {
             None
         }
@@ -1410,9 +1393,10 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (flo, fhi) = self.frontiter.map_default((0, Some(0)), |it| it.size_hint());
         let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
+        let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (flo + blo, Some(a + b)),
-            _ => (flo + blo, None)
+            ((0, Some(0)), Some(a), Some(b)) => (lo, Some(a.saturating_add(b))),
+            _ => (lo, None)
         }
     }
 }
@@ -1527,12 +1511,10 @@ pub struct Counter<A> {
     step: A
 }
 
-impl<A> Counter<A> {
-    /// Creates a new counter with the specified start/step
-    #[inline]
-    pub fn new(start: A, step: A) -> Counter<A> {
-        Counter{state: start, step: step}
-    }
+/// Creates a new counter with the specified start/step
+#[inline]
+pub fn count<A>(start: A, step: A) -> Counter<A> {
+    Counter{state: start, step: step}
 }
 
 /// A range of numbers from [0, N)
@@ -1619,7 +1601,7 @@ mod tests {
 
     #[test]
     fn test_counter_from_iter() {
-        let mut it = Counter::new(0, 5).take_(10);
+        let mut it = count(0, 5).take_(10);
         let xs: ~[int] = FromIterator::from_iterator(&mut it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
@@ -1637,7 +1619,7 @@ mod tests {
         }
         assert_eq!(i, expected.len());
 
-        let ys = Counter::new(30u, 10).take_(4);
+        let ys = count(30u, 10).take_(4);
         let mut it = xs.iter().transform(|&x| x).chain_(ys);
         let mut i = 0;
         for x in it {
@@ -1649,7 +1631,7 @@ mod tests {
 
     #[test]
     fn test_filter_map() {
-        let mut it = Counter::new(0u, 1u).take_(10)
+        let mut it = count(0u, 1u).take_(10)
             .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
         assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
@@ -1738,7 +1720,7 @@ mod tests {
     fn test_iterator_flat_map() {
         let xs = [0u, 3, 6];
         let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
-        let mut it = xs.iter().flat_map_(|&x| Counter::new(x, 1).take_(3));
+        let mut it = xs.iter().flat_map_(|&x| count(x, 1).take_(3));
         let mut i = 0;
         for x in it {
             assert_eq!(x, ys[i]);
@@ -1785,13 +1767,13 @@ mod tests {
     #[test]
     fn test_cycle() {
         let cycle_len = 3;
-        let it = Counter::new(0u, 1).take_(cycle_len).cycle();
+        let it = count(0u, 1).take_(cycle_len).cycle();
         assert_eq!(it.size_hint(), (uint::max_value, None));
         for (i, x) in it.take_(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
 
-        let mut it = Counter::new(0u, 1).take_(0).cycle();
+        let mut it = count(0u, 1).take_(0).cycle();
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -1853,7 +1835,7 @@ mod tests {
 
     #[test]
     fn test_iterator_size_hint() {
-        let c = Counter::new(0, 1);
+        let c = count(0, 1);
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
         let v2 = &[10, 11, 12];
         let vi = v.iter();

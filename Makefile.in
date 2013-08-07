@@ -297,7 +297,7 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/librustc/,      \
 
 LIBSYNTAX_CRATE := $(S)src/libsyntax/syntax.rs
 LIBSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
-                           *.rs */*.rs */*/*.rs))
+                           *.rs */*.rs */*/*.rs */*/*/*.rs))
 
 DRIVER_CRATE := $(S)src/driver/driver.rs
 

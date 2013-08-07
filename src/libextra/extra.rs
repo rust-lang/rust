@@ -102,6 +102,7 @@ pub mod stats;
 pub mod semver;
 pub mod fileinput;
 pub mod flate;
+pub mod hex;
 
 #[cfg(unicode)]
 mod unicode;
