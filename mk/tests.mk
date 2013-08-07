@@ -123,7 +123,7 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
     $(if $(findstring adb,$(CFG_ADB)), \
-      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+      $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info check: $(target) test enabled \
           $(info check: android device attached) \
           $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
