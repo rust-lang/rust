@@ -65,6 +65,11 @@ pub struct Export2 {
     reexport: bool,     // Whether this is a reexport.
 }
 
+// This set is a set of all item nodes which can be used by external crates if
+// we're building a library. The necessary qualifications for this are that all
+// items leading down to the current item (excluding an `impl`) must be `pub`.
+pub type ExportedItems = HashSet<NodeId>;
+
 #[deriving(Eq)]
 pub enum PatternBindingMode {
     RefutableMode,
@@ -818,6 +823,7 @@ pub fn Resolver(session: Session,
 
         xray_context: NoXray,
         current_trait_refs: None,
+        path_all_public: true,
 
         self_ident: special_idents::self_,
         type_self_ident: special_idents::type_self,
@@ -830,6 +836,7 @@ pub fn Resolver(session: Session,
         export_map2: @mut HashMap::new(),
         trait_map: HashMap::new(),
         used_imports: HashSet::new(),
+        exported_items: @mut HashSet::new(),
 
         emit_errors: true,
         intr: session.intr()
@@ -873,6 +880,13 @@ pub struct Resolver {
 
     // The trait that the current context can refer to.
     current_trait_refs: Option<~[def_id]>,
+
+    // A set of all items which are re-exported to be used across crates
+    exported_items: @mut ExportedItems,
+
+    // When determinining the list of exported items, this is relevant for
+    // determining if `pub` uses should be re-exported across crates
+    path_all_public: bool,
 
     // The ident for the keyword "self".
     self_ident: ident,
@@ -1780,8 +1794,8 @@ impl Resolver {
                 |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
-                        entry: %s (%?)",
-                    path_string, def_like);
+                        entry: %s (%?, %?)",
+                    path_string, def_like, visibility);
 
             let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
             let final_ident_str = pieces.pop();
@@ -1927,8 +1941,10 @@ impl Resolver {
                                         let def = def_fn(
                                             static_method_info.def_id,
                                             static_method_info.purity);
+                                        let p = visibility_to_privacy(
+                                            static_method_info.vis);
                                         method_name_bindings.define_value(
-                                            Public, def, dummy_sp());
+                                            p, def, dummy_sp());
                                     }
                                 }
 
@@ -3252,14 +3268,15 @@ impl Resolver {
         match (namebindings.def_for_namespace(ns),
                namebindings.privacy_for_namespace(ns)) {
             (Some(d), Some(Public)) => {
+                let def = def_id_of_def(d);
                 debug!("(computing exports) YES: %s '%s' => %?",
                        if reexport { ~"reexport" } else { ~"export"},
                        self.session.str_of(ident),
-                       def_id_of_def(d));
+                       def);
                 exports2.push(Export2 {
                     reexport: reexport,
                     name: self.session.str_of(ident),
-                    def_id: def_id_of_def(d)
+                    def_id: def,
                 });
             }
             (Some(_), Some(privacy)) => {
@@ -3511,6 +3528,13 @@ impl Resolver {
             self.xray_context = Xray;
         }
 
+        let orig_path_all_public = self.path_all_public;
+        self.path_all_public = self.path_all_public && item.vis == ast::public;
+
+        if self.path_all_public {
+            self.exported_items.insert(item.id);
+        }
+
         match item.node {
 
             // enum item: resolve all the variants' discrs,
@@ -3550,6 +3574,10 @@ impl Resolver {
                       ref implemented_traits,
                       ref self_type,
                       ref methods) => {
+                self.path_all_public = orig_path_all_public;
+                if self.path_all_public {
+                    self.exported_items.insert(item.id);
+                }
                 self.resolve_implementation(item.id,
                                             generics,
                                             implemented_traits,
@@ -3634,6 +3662,11 @@ impl Resolver {
             }
 
             item_foreign_mod(ref foreign_module) => {
+                self.path_all_public = orig_path_all_public;
+                if self.path_all_public {
+                    self.exported_items.insert(item.id);
+                }
+
                 do self.with_scope(Some(item.ident)) {
                     for foreign_item in foreign_module.items.iter() {
                         match foreign_item.node {
@@ -3681,6 +3714,7 @@ impl Resolver {
         }
 
         self.xray_context = orig_xray_flag;
+        self.path_all_public = orig_path_all_public;
     }
 
     pub fn with_type_parameter_rib(@mut self,
@@ -5464,8 +5498,9 @@ impl Resolver {
 
 pub struct CrateMap {
     def_map: DefMap,
+    trait_map: TraitMap,
     exp_map2: ExportMap2,
-    trait_map: TraitMap
+    exported_items: @mut ExportedItems,
 }
 
 /// Entry point to crate resolution.
@@ -5478,6 +5513,7 @@ pub fn resolve_crate(session: Session,
     CrateMap {
         def_map: resolver.def_map,
         exp_map2: resolver.export_map2,
+        exported_items: resolver.exported_items,
         trait_map: resolver.trait_map.clone(),
     }
 }

@@ -11,7 +11,7 @@
 #[link (name = "issue2378a")];
 #[crate_type = "lib"];
 
-enum maybe<T> { just(T), nothing }
+pub enum maybe<T> { just(T), nothing }
 
 impl <T:Clone> Index<uint,T> for maybe<T> {
     fn index(&self, _idx: &uint) -> T {
