@@ -46,7 +46,7 @@ impl<A> Drop for Future<A> {
     fn drop(&self) {}
 }
 
-priv enum FutureState<A> {
+enum FutureState<A> {
     Pending(~fn() -> A),
     Evaluating,
     Forced(A)
