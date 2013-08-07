@@ -148,7 +148,8 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
                     "visit_tydesc"  | "forget" | "frame_address" |
                     "morestack_addr" => 0,
 
-                    "offset" | "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
+                    "offset" | "offset_inbounds" |
+                    "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |
                     "memset32" | "memset64" => use_repr,
 
                     "sqrtf32" | "sqrtf64" | "powif32" | "powif64" |
