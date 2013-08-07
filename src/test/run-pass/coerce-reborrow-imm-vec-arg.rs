@@ -12,10 +12,4 @@ fn sum_imm(y: &[int]) -> int {
     sum(y)
 }
 
-/* FIXME #7304
-fn sum_const(y: &const [int]) -> int {
-    sum(y)
-}
-*/
-
 pub fn main() {}
