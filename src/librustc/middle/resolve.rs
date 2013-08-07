@@ -3358,7 +3358,7 @@ impl Resolver {
                   // item, it's ok
                   match def {
                     def_ty_param(did, _)
-                        if self.def_map.find(&did.node).map_consume(|x| *x)
+                        if self.def_map.find(&did.node).map_move(|x| *x)
                             == Some(def_typaram_binder(item_id)) => {
                       // ok
                     }

@@ -479,7 +479,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
             ConsMapChain(ref map,_) => map
         };
         // strip one layer of indirection off the pointer.
-        map.find(key).map(|r| {**r})
+        map.find(key).map_move(|r| {*r})
     }
 
     // insert the binding into the top-level map

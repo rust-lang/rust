@@ -162,9 +162,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         round += 1;
     }
 
-    let mut expected =
-        match props.pp_exact {
-          Some(ref file) => {
+    let mut expected = match props.pp_exact {
+        Some(ref file) => {
             let filepath = testfile.dir_path().push_rel(file);
             io::read_whole_file_str(&filepath).unwrap()
           }

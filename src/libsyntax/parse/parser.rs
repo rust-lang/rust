@@ -1313,7 +1313,7 @@ impl Parser {
 
         // If the path might have bounds on it, they should be parsed before
         // the parameters, e.g. module::TraitName:B1+B2<T>
-        before_tps.map_consume(|callback| callback());
+        before_tps.map_move(|callback| callback());
 
         // Parse the (obsolete) trailing region parameter, if any, which will
         // be written "foo/&x"

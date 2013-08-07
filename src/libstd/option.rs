@@ -208,6 +208,12 @@ impl<T> Option<T> {
         match *self { Some(ref mut x) => Some(f(x)), None => None }
     }
 
+    /// Applies a function to the contained value or returns a default
+    #[inline]
+    pub fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
+        match *self { None => def, Some(ref t) => f(t) }
+    }
+
     /// Maps a `Some` value from one type to another by a mutable reference,
     /// or returns a default value.
     #[inline]
@@ -218,41 +224,21 @@ impl<T> Option<T> {
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
     #[inline]
-    pub fn map_consume<U>(self, f: &fn(v: T) -> U) -> Option<U> {
-        match self { None => None, Some(v) => Some(f(v)) }
-    }
-
-    /// Applies a function to the contained value or returns a default
-    #[inline]
-    pub fn map_default<'a, U>(&'a self, def: U, f: &fn(&'a T) -> U) -> U {
-        match *self { None => def, Some(ref t) => f(t) }
+    pub fn map_move<U>(self, f: &fn(T) -> U) -> Option<U> {
+        match self { Some(x) => Some(f(x)), None => None }
     }
 
     /// As `map_default`, but consumes the option and gives `f`
     /// ownership to avoid copying.
     #[inline]
-    pub fn map_consume_default<U>(self, def: U, f: &fn(v: T) -> U) -> U {
-        match self { None => def, Some(v) => f(v) }
+    pub fn map_move_default<U>(self, def: U, f: &fn(T) -> U) -> U {
+        match self { None => def, Some(t) => f(t) }
     }
 
     /// Take the value out of the option, leaving a `None` in its place.
     #[inline]
     pub fn take(&mut self) -> Option<T> {
         util::replace(self, None)
-    }
-
-    /// As `map_consume`, but swaps a None into the original option rather
-    /// than consuming it by-value.
-    #[inline]
-    pub fn take_map<U>(&mut self, blk: &fn(T) -> U) -> Option<U> {
-        self.take().map_consume(blk)
-    }
-
-    /// As `map_consume_default`, but swaps a None into the original option
-    /// rather than consuming it by-value.
-    #[inline]
-    pub fn take_map_default<U> (&mut self, def: U, blk: &fn(T) -> U) -> U {
-        self.take().map_consume_default(def, blk)
     }
 
     /// Apply a function to the contained value or do nothing.

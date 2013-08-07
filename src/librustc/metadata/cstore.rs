@@ -133,7 +133,7 @@ pub fn add_extern_mod_stmt_cnum(cstore: &mut CStore,
 pub fn find_extern_mod_stmt_cnum(cstore: &CStore,
                                  emod_id: ast::NodeId)
                        -> Option<ast::CrateNum> {
-    cstore.extern_mod_crate_map.find(&emod_id).map_consume(|x| *x)
+    cstore.extern_mod_crate_map.find(&emod_id).map_move(|x| *x)
 }
 
 #[deriving(Clone)]

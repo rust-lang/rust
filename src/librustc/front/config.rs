@@ -61,7 +61,9 @@ fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
         filter_item(cx, *a).chain(|x| fld.fold_item(x))
     }.collect();
     let filtered_view_items = do m.view_items.iter().filter_map |a| {
-        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
+        do filter_view_item(cx, a).map_move |x| {
+            fld.fold_view_item(x)
+        }
     }.collect();
     ast::_mod {
         view_items: filtered_view_items,
@@ -83,7 +85,9 @@ fn fold_foreign_mod(
 ) -> ast::foreign_mod {
     let filtered_items = nm.items.iter().filter_map(|a| filter_foreign_item(cx, *a)).collect();
     let filtered_view_items = do nm.view_items.iter().filter_map |a| {
-        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
+        do filter_view_item(cx, a).map_move |x| {
+            fld.fold_view_item(x)
+        }
     }.collect();
     ast::foreign_mod {
         sort: nm.sort,
@@ -138,7 +142,7 @@ fn fold_block(
         filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
-        filter_view_item(cx, a).map(|&x| fld.fold_view_item(x))
+        filter_view_item(cx, a).map(|x| fld.fold_view_item(*x))
     }.collect();
     ast::Block {
         view_items: filtered_view_items,

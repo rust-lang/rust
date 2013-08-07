@@ -888,7 +888,7 @@ pub fn new_sctable_internal() -> SCTable {
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_sctable() -> @mut SCTable {
     static sctable_key: local_data::Key<@@mut SCTable> = &local_data::Key;
-    match local_data::get(sctable_key, |k| k.map(|&k| *k)) {
+    match local_data::get(sctable_key, |k| k.map_move(|k| *k)) {
         None => {
             let new_table = @@mut new_sctable_internal();
             local_data::set(sctable_key,new_table);
