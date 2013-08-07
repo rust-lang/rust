@@ -621,9 +621,9 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
         in_binding_rscope(rscope,
                           RegionParamNames(bound_lifetime_names.clone()));
 
-    let opt_transformed_self_ty = opt_self_info.map(|&self_info| {
+    let opt_transformed_self_ty = do opt_self_info.map_move |self_info| {
         transform_self_ty(this, &rb, self_info)
-    });
+    };
 
     let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, a, None));
 

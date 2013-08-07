@@ -364,8 +364,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 |br| ty::re_free(ty::FreeRegion {scope_id: body.id,
                                                  bound_region: br}));
         let opt_self_info =
-            opt_self_info.map(
-                |si| SelfInfo {self_ty: opt_self_ty.unwrap(), ..*si});
+            opt_self_info.map_move(
+                |si| SelfInfo {self_ty: opt_self_ty.unwrap(), .. si});
         (isr, opt_self_info, fn_sig)
     };
 
@@ -536,7 +536,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
 {
     let method_def_id = local_def(method.id);
     let method_ty = ty::method(ccx.tcx, method_def_id);
-    let opt_self_info = method_ty.transformed_self_ty.map(|&ty| {
+    let opt_self_info = method_ty.transformed_self_ty.map_move(|ty| {
         SelfInfo {self_ty: ty,
                   self_id: method.self_id,
                   span: method.explicit_self.span}
@@ -557,7 +557,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
 
     for p in fields.iter() {
         let (id, sp) = *p;
-        let orig_sp = field_names.find(&id).map_consume(|x| *x);
+        let orig_sp = field_names.find(&id).map_move(|x| *x);
         match orig_sp {
             Some(orig_sp) => {
                 tcx.sess.span_err(sp, fmt!("Duplicate field name %s in record type declaration",
@@ -601,7 +601,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
       ast::item_impl(_, _, _, ref ms) => {
-        let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
+        let rp = ccx.tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         for m in ms.iter() {
@@ -1877,8 +1877,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         for field in ast_fields.iter() {
             let mut expected_field_type = ty::mk_err();
 
-            let pair = class_field_map.find(&field.ident).
-                                       map_consume(|x| *x);
+            let pair = class_field_map.find(&field.ident).map_move(|x| *x);
             match pair {
                 None => {
                     tcx.sess.span_err(
@@ -1962,7 +1961,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         if class_id.crate == ast::LOCAL_CRATE {
             region_parameterized =
                 tcx.region_paramd_items.find(&class_id.node).
-                    map_consume(|x| *x);
+                    map_move(|x| *x);
             match tcx.items.find(&class_id.node) {
                 Some(&ast_map::node_item(@ast::item {
                         node: ast::item_struct(_, ref generics),
@@ -2050,7 +2049,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let raw_type;
         if enum_id.crate == ast::LOCAL_CRATE {
             region_parameterized =
-                tcx.region_paramd_items.find(&enum_id.node).map_consume(|x| *x);
+                tcx.region_paramd_items.find(&enum_id.node).map_move(|x| *x);
             match tcx.items.find(&enum_id.node) {
                 Some(&ast_map::node_item(@ast::item {
                         node: ast::item_enum(_, ref generics),

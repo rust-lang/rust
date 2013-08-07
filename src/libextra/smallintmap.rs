@@ -203,7 +203,7 @@ impl<V> SmallIntMap<V> {
     {
         let values = replace(&mut self.v, ~[]);
         values.consume_iter().enumerate().filter_map(|(i, v)| {
-            v.map_consume(|v| (i, v))
+            v.map_move(|v| (i, v))
         })
     }
 }
