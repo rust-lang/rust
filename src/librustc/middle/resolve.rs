@@ -1277,7 +1277,7 @@ impl Resolver {
                     &Ty {
                         node: ty_path(ref path, _, _),
                         _
-                    } if path.idents.len() == 1 => {
+                    } if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
                         let new_parent = match parent.children.find(&name) {
@@ -1476,20 +1476,22 @@ impl Resolver {
                     let mut module_path = ~[];
                     match view_path.node {
                         view_path_simple(_, ref full_path, _) => {
-                            let path_len = full_path.idents.len();
+                            let path_len = full_path.segments.len();
                             assert!(path_len != 0);
 
-                            for (i, ident) in full_path.idents.iter().enumerate() {
+                            for (i, segment) in full_path.segments
+                                                         .iter()
+                                                         .enumerate() {
                                 if i != path_len - 1 {
-                                    module_path.push(*ident);
+                                    module_path.push(segment.identifier)
                                 }
                             }
                         }
 
                         view_path_glob(ref module_ident_path, _) |
                         view_path_list(ref module_ident_path, _, _) => {
-                            for ident in module_ident_path.idents.iter() {
-                                module_path.push(*ident);
+                            for segment in module_ident_path.segments.iter() {
+                                module_path.push(segment.identifier)
                             }
                         }
                     }
@@ -1498,7 +1500,8 @@ impl Resolver {
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
                         view_path_simple(binding, ref full_path, id) => {
-                            let source_ident = *full_path.idents.last();
+                            let source_ident =
+                                full_path.segments.last().identifier;
                             let subclass = @SingleImport(binding,
                                                          source_ident);
                             self.build_import_directive(privacy,
@@ -2107,6 +2110,14 @@ impl Resolver {
             result.push_str(self.session.str_of(*ident));
         };
         return result;
+    }
+
+    fn path_idents_to_str(@mut self, path: &Path) -> ~str {
+        let identifiers: ~[ast::ident] = path.segments
+                                             .iter()
+                                             .transform(|seg| seg.identifier)
+                                             .collect();
+        self.idents_to_str(identifiers)
     }
 
     pub fn import_directive_subclass_to_str(@mut self,
@@ -3841,8 +3852,7 @@ impl Resolver {
                                    reference_type: TraitReferenceType) {
         match self.resolve_path(id, &trait_reference.path, TypeNS, true, visitor) {
             None => {
-                let path_str = self.idents_to_str(trait_reference.path.idents);
-
+                let path_str = self.path_idents_to_str(&trait_reference.path);
                 let usage_str = match reference_type {
                     TraitBoundingTypeParameter => "bound type parameter with",
                     TraitImplementation        => "implement",
@@ -4141,8 +4151,8 @@ impl Resolver {
                 let mut result_def = None;
 
                 // First, check to see whether the name is a primitive type.
-                if path.idents.len() == 1 {
-                    let name = *path.idents.last();
+                if path.segments.len() == 1 {
+                    let name = path.segments.last().identifier;
 
                     match self.primitive_type_table
                             .primitive_types
@@ -4165,7 +4175,7 @@ impl Resolver {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
                                        self.session.str_of(
-                                            *path.idents.last()),
+                                            path.segments.last().identifier),
                                        def);
                                 result_def = Some(def);
                             }
@@ -4184,14 +4194,15 @@ impl Resolver {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `%s` \
                                 (id %d)",
-                               self.idents_to_str(path.idents),
+                               self.path_idents_to_str(path),
                                path_id);
                         self.record_def(path_id, def);
                     }
                     None => {
                         self.resolve_error
-                            (ty.span, fmt!("use of undeclared type name `%s`",
-                                           self.idents_to_str(path.idents)));
+                            (ty.span,
+                             fmt!("use of undeclared type name `%s`",
+                                  self.path_idents_to_str(path)))
                     }
                 }
 
@@ -4230,7 +4241,7 @@ impl Resolver {
         do walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, ref path, _)
-                        if !path.global && path.idents.len() == 1 => {
+                        if !path.global && path.segments.len() == 1 => {
 
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant or unit-like struct
@@ -4241,7 +4252,7 @@ impl Resolver {
                     // such a value is simply disallowed (since it's rarely
                     // what you want).
 
-                    let ident = path.idents[0];
+                    let ident = path.segments[0].identifier;
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def)
@@ -4351,7 +4362,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map_(|seg| seg.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4375,7 +4388,7 @@ impl Resolver {
                                 path.span,
                                 fmt!("`%s` is not an enum variant or constant",
                                      self.session.str_of(
-                                         *path.idents.last())));
+                                         path.segments.last().identifier)))
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4384,7 +4397,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map_(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4402,8 +4417,10 @@ impl Resolver {
                             self.resolve_error(
                                 path.span,
                                 fmt!("`%s` is not an enum variant, struct or const",
-                                     self.session.str_of(
-                                         *path.idents.last())));
+                                     self.session
+                                         .str_of(path.segments
+                                                     .last()
+                                                     .identifier)));
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4413,7 +4430,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map_(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4448,7 +4467,7 @@ impl Resolver {
                             self.resolve_error(
                                 path.span,
                                 fmt!("`%s` does not name a structure",
-                                     self.idents_to_str(path.idents)));
+                                     self.path_idents_to_str(path)));
                         }
                     }
                 }
@@ -4510,7 +4529,7 @@ impl Resolver {
                         visitor: &mut ResolveVisitor)
                         -> Option<def> {
         // First, resolve the types.
-        for ty in path.types.iter() {
+        for ty in path.segments.iter().flat_map_(|s| s.types.iter()) {
             self.resolve_type(ty, visitor);
         }
 
@@ -4520,12 +4539,17 @@ impl Resolver {
                                                     namespace);
         }
 
-        let unqualified_def = self.resolve_identifier(
-            *path.idents.last(), namespace, check_ribs, path.span);
+        let unqualified_def = self.resolve_identifier(path.segments
+                                                          .last()
+                                                          .identifier,
+                                                      namespace,
+                                                      check_ribs,
+                                                      path.span);
 
-        if path.idents.len() > 1 {
-            let def = self.resolve_module_relative_path(
-                path, self.xray_context, namespace);
+        if path.segments.len() > 1 {
+            let def = self.resolve_module_relative_path(path,
+                                                        self.xray_context,
+                                                        namespace);
             match (def, unqualified_def) {
                 (Some(d), Some(ud)) if d == ud => {
                     self.session.add_lint(unnecessary_qualification,
@@ -4640,12 +4664,12 @@ impl Resolver {
 
     pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[ident] {
         let mut module_path_idents = ~[];
-        for (index, ident) in path.idents.iter().enumerate() {
-            if index == path.idents.len() - 1 {
+        for (index, segment) in path.segments.iter().enumerate() {
+            if index == path.segments.len() - 1 {
                 break;
             }
 
-            module_path_idents.push(*ident);
+            module_path_idents.push(segment.identifier);
         }
 
         return module_path_idents;
@@ -4681,7 +4705,7 @@ impl Resolver {
             }
         }
 
-        let name = *path.idents.last();
+        let name = path.segments.last().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
@@ -4749,7 +4773,7 @@ impl Resolver {
             }
         }
 
-        let name = *path.idents.last();
+        let name = path.segments.last().identifier;
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
@@ -4969,7 +4993,7 @@ impl Resolver {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
-                               self.idents_to_str(path.idents));
+                               self.path_idents_to_str(path));
 
                         // First-class methods are not supported yet; error
                         // out here.
@@ -4989,8 +5013,7 @@ impl Resolver {
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name = self.idents_to_str(
-                            path.idents);
+                        let wrong_name = self.path_idents_to_str(path);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.resolve_error(expr.span,
                                         fmt!("unresolved name `%s`. \
@@ -5066,7 +5089,7 @@ impl Resolver {
                         self.resolve_error(
                             path.span,
                             fmt!("`%s` does not name a structure",
-                                 self.idents_to_str(path.idents)));
+                                 self.path_idents_to_str(path)));
                     }
                 }
 
