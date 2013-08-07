@@ -260,9 +260,9 @@ fn fold_impl(
                 }, _) => {
                     let bounds = pprust::generics_to_str(generics, extract::interner());
                     let bounds = if bounds.is_empty() { None } else { Some(bounds) };
-                    let trait_types = opt_trait_type.map_default(~[], |p| {
+                    let trait_types = do opt_trait_type.map_default(~[]) |p| {
                         ~[pprust::path_to_str(&p.path, extract::interner())]
-                    });
+                    };
                     (bounds,
                      trait_types,
                      Some(pprust::ty_to_str(

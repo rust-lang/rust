@@ -417,7 +417,7 @@ fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> Option<stmt_> {
 fn noop_fold_arm(a: &arm, fld: @ast_fold) -> arm {
     arm {
         pats: a.pats.map(|x| fld.fold_pat(*x)),
-        guard: a.guard.map(|x| fld.fold_expr(*x)),
+        guard: a.guard.map_move(|x| fld.fold_expr(x)),
         body: fld.fold_block(&a.body),
     }
 }
@@ -429,7 +429,7 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
             pat_ident(
                 binding_mode,
                 fld.fold_path(pth),
-                sub.map(|x| fld.fold_pat(*x))
+                sub.map_move(|x| fld.fold_pat(x))
             )
         }
         pat_lit(e) => pat_lit(fld.fold_expr(e)),
@@ -459,7 +459,7 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
         pat_vec(ref before, ref slice, ref after) => {
             pat_vec(
                 before.map(|x| fld.fold_pat(*x)),
-                slice.map(|x| fld.fold_pat(*x)),
+                slice.map_move(|x| fld.fold_pat(x)),
                 after.map(|x| fld.fold_pat(*x))
             )
         }
@@ -551,7 +551,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             expr_if(
                 fld.fold_expr(cond),
                 fld.fold_block(tr),
-                fl.map(|x| fld.fold_expr(*x))
+                fl.map_move(|x| fld.fold_expr(x))
             )
         }
         expr_while(cond, ref body) => {
@@ -565,7 +565,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_loop(ref body, opt_ident) => {
             expr_loop(
                 fld.fold_block(body),
-                opt_ident.map(|x| fld.fold_ident(*x))
+                opt_ident.map_move(|x| fld.fold_ident(x))
             )
         }
         expr_match(expr, ref arms) => {
@@ -608,13 +608,13 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_path(ref pth) => expr_path(fld.fold_path(pth)),
         expr_self => expr_self,
         expr_break(ref opt_ident) => {
-            expr_break(opt_ident.map(|x| fld.fold_ident(*x)))
+            expr_break(opt_ident.map_move(|x| fld.fold_ident(x)))
         }
         expr_again(ref opt_ident) => {
-            expr_again(opt_ident.map(|x| fld.fold_ident(*x)))
+            expr_again(opt_ident.map_move(|x| fld.fold_ident(x)))
         }
         expr_ret(ref e) => {
-            expr_ret(e.map(|x| fld.fold_expr(*x)))
+            expr_ret(e.map_move(|x| fld.fold_expr(x)))
         }
         expr_log(lv, e) => {
             expr_log(
@@ -634,7 +634,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             expr_struct(
                 fld.fold_path(path),
                 fields.map(|x| fold_field(*x)),
-                maybe_expr.map(|x| fld.fold_expr(*x))
+                maybe_expr.map_move(|x| fld.fold_expr(x))
             )
         },
         expr_paren(ex) => expr_paren(fld.fold_expr(ex))
@@ -731,7 +731,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
                 fold_variant_arg(/*bad*/ (*x).clone())
             })
         }
-        struct_variant_kind(struct_def) => {
+        struct_variant_kind(ref struct_def) => {
             kind = struct_variant_kind(@ast::struct_def {
                 fields: struct_def.fields.iter()
                     .transform(|f| fld.fold_struct_field(*f)).collect(),
@@ -776,7 +776,7 @@ fn noop_fold_local(l: @Local, fld: @ast_fold) -> @Local {
         is_mutbl: l.is_mutbl,
         ty: fld.fold_ty(&l.ty),
         pat: fld.fold_pat(l.pat),
-        init: l.init.map(|e| fld.fold_expr(*e)),
+        init: l.init.map_move(|e| fld.fold_expr(e)),
         id: fld.new_id(l.id),
         span: fld.new_span(l.span),
     }

@@ -548,7 +548,7 @@ impl BigUint {
 
     pub fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
-        let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
+        let new_len = v.rposition(|n| *n != 0).map_move_default(0, |p| p + 1);
 
         if new_len == v.len() { return BigUint { data: v }; }
         let mut v = v;
@@ -1145,7 +1145,7 @@ impl BigInt {
             start = 1;
         }
         return BigUint::parse_bytes(buf.slice(start, buf.len()), radix)
-            .map_consume(|bu| BigInt::from_biguint(sign, bu));
+            .map_move(|bu| BigInt::from_biguint(sign, bu));
     }
 
     pub fn to_uint(&self) -> uint {
@@ -2028,7 +2028,7 @@ mod bigint_tests {
     #[test]
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
-            let ans = ans.map(|&n| IntConvertible::from_int::<BigInt>(n));
+            let ans = ans.map_move(|n| IntConvertible::from_int::<BigInt>(n));
             assert_eq!(FromStrRadix::from_str_radix(s, 10), ans);
         }
         check("10", Some(10));

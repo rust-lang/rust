@@ -325,7 +325,7 @@ impl Scheduler {
     /// As enqueue_task, but with the possibility for the blocked task to
     /// already have been killed.
     pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
-        do blocked_task.wake().map_consume |task| {
+        do blocked_task.wake().map_move |task| {
             self.enqueue_task(task);
         };
     }
@@ -533,7 +533,7 @@ impl Scheduler {
                 sched.enqueue_blocked_task(last_task);
             }
         };
-        opt.map_consume(Local::put);
+        opt.map_move(Local::put);
     }
 
     // The primary function for changing contexts. In the current

@@ -152,6 +152,40 @@ impl<T, E: ToStr> Result<T, E> {
     /// Call a method based on a previous result
     ///
     /// If `self` is `Ok` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is wrapped in `Ok` and returned. if `self` is
+    /// `Err` then it is immediately returned.  This function can be used to
+    /// compose the results of two functions.
+    ///
+    /// Example:
+    ///
+    ///     let res = do read_file(file).map_move |buf| {
+    ///         parse_bytes(buf)
+    ///     }
+    #[inline]
+    pub fn map_move<U>(self, op: &fn(T) -> U) -> Result<U,E> {
+        match self {
+          Ok(t) => Ok(op(t)),
+          Err(e) => Err(e)
+        }
+    }
+
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Err` then the value is extracted and passed to `op`
+    /// whereupon `op`s result is wrapped in an `Err` and returned. if `self` is
+    /// `Ok` then it is immediately returned.  This function can be used to pass
+    /// through a successful result while handling an error.
+    #[inline]
+    pub fn map_err_move<F>(self, op: &fn(E) -> F) -> Result<T,F> {
+        match self {
+          Ok(t) => Ok(t),
+          Err(e) => Err(op(e))
+        }
+    }
+
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Ok` then the value is extracted and passed to `op`
     /// whereupon `op`s result is returned. if `self` is `Err` then it is
     /// immediately returned. This function can be used to compose the results
     /// of two functions.
@@ -312,7 +346,9 @@ pub fn iter_vec2<S, T, U: ToStr>(ss: &[S], ts: &[T],
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use either;
+    use str::OwnedStr;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
 
@@ -359,14 +395,26 @@ mod tests {
 
     #[test]
     pub fn test_impl_map() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map(|_x| ~"b"), Ok(~"b"));
-        assert_eq!(Err::<~str, ~str>(~"a").map(|_x| ~"b"), Err(~"a"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map(|x| (~"b").append(*x)), Ok(~"ba"));
+        assert_eq!(Err::<~str, ~str>(~"a").map(|x| (~"b").append(*x)), Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|_x| ~"b"), Ok(~"a"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_err(|_x| ~"b"), Err(~"b"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|x| (~"b").append(*x)), Ok(~"a"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_err(|x| (~"b").append(*x)), Err(~"ba"));
+    }
+
+    #[test]
+    pub fn test_impl_map_move() {
+        assert_eq!(Ok::<~str, ~str>(~"a").map_move(|x| x + "b"), Ok(~"ab"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_move(|x| x + "b"), Err(~"a"));
+    }
+
+    #[test]
+    pub fn test_impl_map_err_move() {
+        assert_eq!(Ok::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Ok(~"a"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_err_move(|x| x + "b"), Err(~"ab"));
     }
 
     #[test]

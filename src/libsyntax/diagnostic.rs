@@ -192,7 +192,7 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
     let stderr = io::stderr();
 
     if stderr.get_type() == io::Screen {
-        let t = match local_data::get(tls_terminal, |v| v.map_consume(|&k|k)) {
+        let t = match local_data::get(tls_terminal, |v| v.map_move(|k| *k)) {
             None => {
                 let t = term::Terminal::new(stderr);
                 let tls = @match t {
