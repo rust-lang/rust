@@ -30,6 +30,7 @@ use rt::context::Context;
 use unstable::finally::Finally;
 use task::spawn::Taskgroup;
 use cell::Cell;
+use rand::{Rng, XorShiftRng};
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -50,7 +51,8 @@ pub struct Task {
     name: Option<~str>,
     coroutine: Option<Coroutine>,
     sched: Option<~Scheduler>,
-    task_type: TaskType
+    task_type: TaskType,
+    rng: ~XorShiftRng
 }
 
 pub enum TaskType {
@@ -85,7 +87,7 @@ impl Task {
 
     // A helper to build a new task using the dynamically found
     // scheduler and task. Only works in GreenTask context.
-    pub fn build_homed_child(f: ~fn(), home: SchedHome) -> ~Task {
+    pub fn build_homed_child(home: SchedHome, f: ~fn()) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
@@ -99,24 +101,24 @@ impl Task {
     }
 
     pub fn build_child(f: ~fn()) -> ~Task {
-        Task::build_homed_child(f, AnySched)
+        Task::build_homed_child(AnySched, f)
     }
 
-    pub fn build_homed_root(f: ~fn(), home: SchedHome) -> ~Task {
+    pub fn build_homed_root(home: SchedHome, f: ~fn()) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
         do Local::borrow::<Task, ~Task> |running_task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
-                                                    home.take(),
-                                                    f.take());
+                                                 home.take(),
+                                                 f.take());
             running_task.sched = Some(sched);
             new_task
         }
     }
 
     pub fn build_root(f: ~fn()) -> ~Task {
-        Task::build_homed_root(f, AnySched)
+        Task::build_homed_root(AnySched, f)
     }
 
     pub fn new_sched_task() -> Task {
@@ -132,7 +134,8 @@ impl Task {
             coroutine: Some(Coroutine::empty()),
             name: None,
             sched: None,
-            task_type: SchedTask
+            task_type: SchedTask,
+            rng: ~XorShiftRng::new()
         }
     }
 
@@ -162,7 +165,8 @@ impl Task {
             name: None,
             coroutine: Some(Coroutine::new(stack_pool, start)),
             sched: None,
-            task_type: GreenTask(Some(~home))
+            task_type: GreenTask(Some(~home)),
+            rng: ~XorShiftRng::new()
         }
     }
 
@@ -183,7 +187,8 @@ impl Task {
             name: None,
             coroutine: Some(Coroutine::new(stack_pool, start)),
             sched: None,
-            task_type: GreenTask(Some(~home))
+            task_type: GreenTask(Some(~home)),
+            rng: ~XorShiftRng::new()
         }
     }
 
@@ -311,6 +316,12 @@ impl Task {
             }
         }
     }
+
+    // Build a new TaskRng
+    pub fn rng() -> TaskRng {
+        return TaskRng::new()
+    }
+
 }
 
 impl Drop for Task {
@@ -318,6 +329,30 @@ impl Drop for Task {
         rtdebug!("called drop for a task: %u", borrow::to_uint(self));
         rtassert!(self.destroyed)
     }
+}
+
+// We want to be able to quickly get random numbers inside a task. To
+// do that we have an XorShiftRng inside the task struct, and we go
+// through a proxy Rng that simply looks up the task rng in tls and
+// calls next on it. Note that this means these can easily be sent
+// between tasks, as they will always look at the local task to get a
+// number.
+pub struct TaskRng;
+
+impl TaskRng {
+    fn new() -> TaskRng {
+        TaskRng
+    }
+}
+
+impl Rng for TaskRng {
+
+    fn next(&mut self) -> u32 {
+        do Local::borrow::<Task, u32>() |task| {
+            task.rng.next()
+        }
+    }
+
 }
 
 // Coroutines represent nothing more than a context and a stack
@@ -584,5 +619,13 @@ mod test {
             assert_eq!(result.unwrap().recv(), Failure);
         }
     }
-}
 
+    #[test]
+    fn task_random_test() {
+        use rt::task::Task;
+        do run_in_newsched_task {
+            let _i = Task::rng().next();
+        }
+    }
+
+}

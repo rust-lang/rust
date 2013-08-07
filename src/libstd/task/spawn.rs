@@ -736,9 +736,9 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
-                Task::build_homed_child(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_child(Sched(new_sched_handle), child_wrapper)
             } else {
-                Task::build_homed_root(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_root(Sched(new_sched_handle), child_wrapper)
             };
 
             // Create a task that will later be used to join with the new scheduler

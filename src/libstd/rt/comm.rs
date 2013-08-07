@@ -225,8 +225,9 @@ impl<T> Select for PortOne<T> {
     fn optimistic_check(&mut self) -> bool {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
-        use rand::{Rand, rng};
-        let mut rng = rng();
+        use rand::Rand;
+        use rt::task::Task;
+        let mut rng = Task::rng();
         let actually_check = Rand::rand(&mut rng);
         if actually_check {
             unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
