@@ -366,7 +366,7 @@ impl Parser {
         } else {
             self.fatal(
                 fmt!(
-                    "expected `%s` but found `%s`",
+                    "expected `%s`, found `%s`",
                     self.token_to_str(t),
                     self.this_token_to_str()
                 )
@@ -872,7 +872,7 @@ impl Parser {
               _ => {
                     p.fatal(
                         fmt!(
-                            "expected `;` or `}` but found `%s`",
+                            "expected `;` or `}`, found `%s`",
                             self.this_token_to_str()
                         )
                     );
@@ -3192,7 +3192,7 @@ impl Parser {
                                         self.fatal(
                                             fmt!(
                                                 "expected `;` or `}` after \
-                                                 expression but found `%s`",
+                                                 expression, found `%s`",
                                                 self.token_to_str(t)
                                             )
                                         );
@@ -3391,7 +3391,7 @@ impl Parser {
         if !self.is_self_ident() {
             self.fatal(
                 fmt!(
-                    "expected `self` but found `%s`",
+                    "expected `self`, found `%s`",
                     self.this_token_to_str()
                 )
             );
@@ -3789,7 +3789,7 @@ impl Parser {
             self.fatal(
                 fmt!(
                     "expected `{`, `(`, or `;` after struct name \
-                    but found `%s`",
+                   , found `%s`",
                     self.this_token_to_str()
                 )
             );
@@ -3833,7 +3833,7 @@ impl Parser {
             token::RBRACE => {}
             _ => {
                 self.span_fatal(*self.span,
-                                fmt!("expected `,`, or '}' but found `%s`",
+                                fmt!("expected `,`, or '}', found `%s`",
                                      self.this_token_to_str()));
             }
         }
@@ -3917,7 +3917,7 @@ impl Parser {
                                  the module");
               }
               _ => {
-                self.fatal(fmt!("expected item but found `%s`",
+                self.fatal(fmt!("expected item, found `%s`",
                                 self.this_token_to_str()));
               }
             }
@@ -4165,7 +4165,7 @@ impl Parser {
             self.expect_keyword(keywords::Mod);
         } else if *self.token != token::LBRACE {
             self.span_fatal(*self.span,
-                            fmt!("expected `{` or `mod` but found `%s`",
+                            fmt!("expected `{` or `mod`, found `%s`",
                                  self.this_token_to_str()));
         }
 
