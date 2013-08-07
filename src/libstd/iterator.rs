@@ -1266,6 +1266,8 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
         let lower = lower.saturating_sub(self.n);
 
         let upper = match upper {
+            // if uint::max_value, leave it there
+            Some(x) if x == uint::max_value => Some(x),
             Some(x) => Some(x.saturating_sub(self.n)),
             None => None
         };
