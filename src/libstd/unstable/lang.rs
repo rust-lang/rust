@@ -135,7 +135,7 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
     use os;
 
     unsafe {
-        let use_old_rt = os::getenv("RUST_NEWRT").is_none();
+        let use_old_rt = os::getenv("RUST_OLDRT").is_some();
         if use_old_rt {
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;

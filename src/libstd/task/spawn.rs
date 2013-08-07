@@ -713,9 +713,9 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     let mut task = unsafe {
         if opts.sched.mode != SingleThreaded {
             if opts.watched {
-                Task::build_child(child_wrapper)
+                Task::build_child(opts.stack_size, child_wrapper)
             } else {
-                Task::build_root(child_wrapper)
+                Task::build_root(opts.stack_size, child_wrapper)
             }
         } else {
             // Creating a 1:1 task:thread ...
@@ -736,16 +736,16 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
-                Task::build_homed_child(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_child(opts.stack_size, child_wrapper, Sched(new_sched_handle))
             } else {
-                Task::build_homed_root(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_root(opts.stack_size, child_wrapper, Sched(new_sched_handle))
             };
 
             // Create a task that will later be used to join with the new scheduler
             // thread when it is ready to terminate
             let (thread_port, thread_chan) = oneshot();
             let thread_port_cell = Cell::new(thread_port);
-            let join_task = do Task::build_child() {
+            let join_task = do Task::build_child(None) {
                 rtdebug!("running join task");
                 let thread_port = thread_port_cell.take();
                 let thread: Thread = thread_port.recv();
@@ -762,8 +762,8 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
                 let mut orig_sched_handle = orig_sched_handle_cell.take();
                 let join_task = join_task_cell.take();
 
-                let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool) || {
-                    rtdebug!("bootstrapping a 1:1 scheduler");
+                let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
+                    rtdebug!("boostrapping a 1:1 scheduler");
                 };
                 new_sched.bootstrap(bootstrap_task);
 

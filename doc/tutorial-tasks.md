@@ -424,7 +424,7 @@ there is no way to "catch" the exception.
 All tasks are, by default, _linked_ to each other. That means that the fates
 of all tasks are intertwined: if one fails, so do all the others.
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::task::spawn;
 # use std::task;
 # fn do_some_work() { loop { task::yield() } }
@@ -447,7 +447,7 @@ pattern-match on a result to check whether it's an `Ok` result with an `int`
 field (representing a successful result) or an `Err` result (representing
 termination with an error).
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::task;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
@@ -490,9 +490,10 @@ proceed). Hence, you will need different _linked failure modes_.
 By default, task failure is _bidirectionally linked_, which means that if
 either task fails, it kills the other one.
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# use std::comm::oneshot;
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # do task::try {
 do spawn {
     do spawn {
@@ -511,11 +512,12 @@ function `task::try`, which we saw previously, uses `spawn_supervised`
 internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::comm::{stream, Chan, Port};
+# use std::comm::oneshot;
 # use std::task::{spawn, try};
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
 do spawn {  // Bidirectionally linked
@@ -541,9 +543,10 @@ also fail.
 Supervised task failure propagates across multiple generations even if
 an intermediate generation has already exited:
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::task;
-# fn sleep_forever() { loop { task::yield() } }
+# use std::comm::oneshot;
+# fn sleep_forever() { loop { let (p, c) = oneshot::<()>(); p.recv(); } }
 # fn wait_for_a_while() { for _ in range(0, 1000u) { task::yield() } }
 # do task::try::<int> {
 do task::spawn_supervised {
@@ -560,7 +563,7 @@ fail!();  // Will kill grandchild even if child has already exited
 Finally, tasks can be configured to not propagate failure to each
 other at all, using `task::spawn_unlinked` for _isolated failure_.
 
-~~~
+~~~{.xfail-test .linked-failure}
 # use std::task;
 # fn random() -> uint { 100 }
 # fn sleep_for(i: uint) { for _ in range(0, i) { task::yield() } }
@@ -588,7 +591,7 @@ that repeatedly receives a `uint` message, converts it to a string, and sends
 the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
-~~~~
+~~~{.xfail-test .linked-failure}
 # use extra::comm::DuplexStream;
 # use std::uint;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
@@ -611,7 +614,7 @@ response itself is simply the stringified version of the received value,
 
 Here is the code for the parent task:
 
-~~~~
+~~~{.xfail-test .linked-failure}
 # use std::task::spawn;
 # use std::uint;
 # use extra::comm::DuplexStream;

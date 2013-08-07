@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test linked failure
 // xfail-win32
 
 // Create a task that is supervised by another task, join the supervised task
