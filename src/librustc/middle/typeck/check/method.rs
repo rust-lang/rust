@@ -772,8 +772,8 @@ impl<'self> LookupContext<'self> {
             self.tcx().sess.span_err(
                 self.expr.span,
                 "multiple applicable methods in scope");
-            for idx in range(0u, relevant_candidates.len()) {
-                self.report_candidate(idx, &relevant_candidates[idx].origin);
+            for (idx, candidate) in relevant_candidates.iter().enumerate() {
+                self.report_candidate(idx, &candidate.origin);
             }
         }
 
