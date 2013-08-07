@@ -21,7 +21,7 @@ struct dog {
 }
 
 impl dog {
-    priv fn bark(&self) -> int {
+    fn bark(&self) -> int {
       info!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {

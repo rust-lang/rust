@@ -64,6 +64,7 @@ pub enum ObsoleteSyntax {
     ObsoleteMutWithMultipleBindings,
     ObsoleteExternVisibility,
     ObsoleteUnsafeExternFn,
+    ObsoletePrivVisibility,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -252,6 +253,10 @@ impl ParserObsoleteMethods for Parser {
                 "unsafe external function",
                 "external functions are always unsafe; remove the `unsafe` \
                  keyword"
+            ),
+            ObsoletePrivVisibility => (
+                "`priv` not necessary",
+                "an item without a visibility qualifier is private by default"
             ),
         };
 
