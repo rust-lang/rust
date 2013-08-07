@@ -145,8 +145,8 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     }
 
     fn all_mem(cls: &mut [RegClass]) {
-        for i in range(0u, cls.len()) {
-            cls[i] = Memory;
+        for elt in cls.mut_iter() {
+            *elt = Memory;
         }
     }
 
