@@ -416,6 +416,15 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
+    /// Retrieves a value for the given key. A passed default value is
+    /// returned if the key is not present.
+    pub fn get_or_default<'a>(&'a self, k: &K, default: &'a V) -> &'a V {
+        match self.find(k) {
+            Some(v) => v,
+            None => default
+        }
+    }
+
     /// Retrieves a (mutable) value for the given key, failing if the key
     /// is not present.
     pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
@@ -878,6 +887,15 @@ mod test_map {
         let mut m = HashMap::new::<int, int>();
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
+    }
+
+    #[test]
+    fn test_get_or_default() {
+        let mut m = HashMap::new::<int, int>();
+        let default_value = 23;
+        m.insert(1, 1);
+        assert_eq!(*m.get_or_default(&1, &default_value), 1);
+        assert_eq!(*m.get_or_default(&2, &default_value), default_value);
     }
 
     #[test]
