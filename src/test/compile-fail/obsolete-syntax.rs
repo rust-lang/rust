@@ -54,9 +54,9 @@ extern mod obsolete_name {
     fn bar();
 }
 
-pub extern {
-    //~^ ERROR obsolete syntax: `pub extern`
-    pub fn bar();
+trait A {
+    pub fn foo(); //~ ERROR: visibility not necessary
+    pub fn bar(); //~ ERROR: visibility not necessary
 }
 
 fn main() { }
