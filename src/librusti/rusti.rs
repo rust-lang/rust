@@ -579,16 +579,19 @@ mod tests {
     }
     fn run_program(_: &str) {}
 
+    #[ignore]
     #[test]
     fn super_basic() {
         run_program("");
     }
 
+    #[ignore]
     #[test]
     fn regression_5937() {
         run_program("use std::hashmap;");
     }
 
+    #[ignore]
     #[test]
     fn regression_5784() {
         run_program("let a = 3;");
@@ -604,6 +607,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn inferred_integers_usable() {
         run_program("let a = 2;\n()\n");
@@ -614,6 +618,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn local_variables_allow_shadowing() {
         run_program("
@@ -623,6 +628,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn string_usable() {
         run_program("
@@ -634,6 +640,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn vectors_usable() {
         run_program("
@@ -646,6 +653,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn structs_usable() {
         run_program("
@@ -655,6 +663,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn mutable_variables_work() {
         run_program("
@@ -667,6 +676,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn functions_saved() {
         run_program("
@@ -677,6 +687,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn modules_saved() {
         run_program("
@@ -685,6 +696,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn multiple_functions() {
         run_program("
@@ -694,6 +706,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn multiple_items_same_name() {
         run_program("
@@ -706,6 +719,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn simultaneous_definition_and_expression() {
         run_program("
@@ -713,6 +727,7 @@ mod tests {
         ");
     }
 
+    #[ignore]
     #[test]
     fn exit_quits() {
         let mut r = repl();

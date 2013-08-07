@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+// xfail-test broken in newrt?
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz

@@ -10,6 +10,7 @@
 // except according to those terms.
 
 
+// xfail-test linked failure
 // error-pattern:1 == 2
 extern mod extra;
 

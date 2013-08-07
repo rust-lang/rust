@@ -34,7 +34,10 @@ fn grandchild_group(num_tasks: uint) {
 
     for _ in range(0, num_tasks) {
         let ch = ch.clone();
-        do task::spawn { // linked
+        let mut t = task::task();
+        t.linked();
+        t.unwatched();
+        do t.spawn { // linked
             ch.send(());
             let (p, _c) = stream::<()>();
             p.recv(); // block forever

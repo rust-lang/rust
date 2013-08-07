@@ -212,6 +212,7 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);
+        env::init();
         logging::init(crate_map);
         rust_update_gc_metadata(crate_map);
     }
@@ -330,8 +331,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         // In the case where we do not use a main_thread scheduler we
         // run the main task in one of our threads.
 
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                            main.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, main.take());
         main_task.death.on_exit = Some(on_exit.take());
         let main_task_cell = Cell::new(main_task);
 
@@ -351,7 +351,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
             let mut sched = sched_cell.take();
-            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("boostraping a non-primary scheduler");
             };
             sched.bootstrap(bootstrap_task);
@@ -368,7 +368,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         let mut main_sched = main_sched.unwrap();
 
         let home = Sched(main_sched.make_handle());
-        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool,
+        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool, None,
                                                   home, main.take());
         main_task.death.on_exit = Some(on_exit.take());
         rtdebug!("boostrapping main_task");
