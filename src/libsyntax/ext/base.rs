@@ -329,20 +329,6 @@ pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: &str) -> @str {
     }
 }
 
-pub fn expr_to_ident(cx: @ExtCtxt,
-                     expr: @ast::expr,
-                     err_msg: &str) -> ast::ident {
-    match expr.node {
-      ast::expr_path(ref p) => {
-        if p.types.len() > 0u || p.idents.len() != 1u {
-            cx.span_fatal(expr.span, err_msg);
-        }
-        return p.idents[0];
-      }
-      _ => cx.span_fatal(expr.span, err_msg)
-    }
-}
-
 pub fn check_zero_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
                       name: &str) {
     if tts.len() != 0 {
@@ -353,15 +339,15 @@ pub fn check_zero_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
 pub fn get_single_str_from_tts(cx: @ExtCtxt,
                                sp: span,
                                tts: &[ast::token_tree],
-                               name: &str) -> @str {
+                               name: &str)
+                               -> @str {
     if tts.len() != 1 {
         cx.span_fatal(sp, fmt!("%s takes 1 argument.", name));
     }
 
     match tts[0] {
         ast::tt_tok(_, token::LIT_STR(ident)) => cx.str_of(ident),
-        _ =>
-        cx.span_fatal(sp, fmt!("%s requires a string.", name))
+        _ => cx.span_fatal(sp, fmt!("%s requires a string.", name)),
     }
 }
 
