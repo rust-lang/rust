@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -32,7 +32,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     }
     let fmt =
         expr_to_str(cx, args[0],
-                    ~"first argument to fmt! must be a string literal.");
+                    "first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
     debug!("Format string: %s", fmt);
     fn parse_fmt_err_(cx: @ExtCtxt, sp: span, msg: &str) -> ! {
