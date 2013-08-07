@@ -428,6 +428,60 @@ extern "rust-intrinsic" {
     pub fn bswap16(x: i16) -> i16;
     pub fn bswap32(x: i32) -> i32;
     pub fn bswap64(x: i64) -> i64;
+
+    #[cfg(not(stage0))]
+    pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
+    #[cfg(not(stage0))]
+    pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
+    #[cfg(not(stage0))]
+    pub fn i32_add_with_overflow(x: i32, y: i32) -> (i32, bool);
+    #[cfg(not(stage0))]
+    pub fn i64_add_with_overflow(x: i64, y: i64) -> (i64, bool);
+
+    #[cfg(not(stage0))]
+    pub fn u8_add_with_overflow(x: u8, y: u8) -> (u8, bool);
+    #[cfg(not(stage0))]
+    pub fn u16_add_with_overflow(x: u16, y: u16) -> (u16, bool);
+    #[cfg(not(stage0))]
+    pub fn u32_add_with_overflow(x: u32, y: u32) -> (u32, bool);
+    #[cfg(not(stage0))]
+    pub fn u64_add_with_overflow(x: u64, y: u64) -> (u64, bool);
+
+    #[cfg(not(stage0))]
+    pub fn i8_sub_with_overflow(x: i8, y: i8) -> (i8, bool);
+    #[cfg(not(stage0))]
+    pub fn i16_sub_with_overflow(x: i16, y: i16) -> (i16, bool);
+    #[cfg(not(stage0))]
+    pub fn i32_sub_with_overflow(x: i32, y: i32) -> (i32, bool);
+    #[cfg(not(stage0))]
+    pub fn i64_sub_with_overflow(x: i64, y: i64) -> (i64, bool);
+
+    #[cfg(not(stage0))]
+    pub fn u8_sub_with_overflow(x: u8, y: u8) -> (u8, bool);
+    #[cfg(not(stage0))]
+    pub fn u16_sub_with_overflow(x: u16, y: u16) -> (u16, bool);
+    #[cfg(not(stage0))]
+    pub fn u32_sub_with_overflow(x: u32, y: u32) -> (u32, bool);
+    #[cfg(not(stage0))]
+    pub fn u64_sub_with_overflow(x: u64, y: u64) -> (u64, bool);
+
+    #[cfg(not(stage0))]
+    pub fn i8_mul_with_overflow(x: i8, y: i8) -> (i8, bool);
+    #[cfg(not(stage0))]
+    pub fn i16_mul_with_overflow(x: i16, y: i16) -> (i16, bool);
+    #[cfg(not(stage0))]
+    pub fn i32_mul_with_overflow(x: i32, y: i32) -> (i32, bool);
+    #[cfg(not(stage0))]
+    pub fn i64_mul_with_overflow(x: i64, y: i64) -> (i64, bool);
+
+    #[cfg(not(stage0))]
+    pub fn u8_mul_with_overflow(x: u8, y: u8) -> (u8, bool);
+    #[cfg(not(stage0))]
+    pub fn u16_mul_with_overflow(x: u16, y: u16) -> (u16, bool);
+    #[cfg(not(stage0))]
+    pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
+    #[cfg(not(stage0))]
+    pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 }
 
 #[cfg(target_endian = "little")] pub fn to_le16(x: i16) -> i16 { x }

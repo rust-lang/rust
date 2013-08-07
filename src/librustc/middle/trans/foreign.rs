@@ -550,6 +550,24 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         Ret(bcx, Call(bcx, llfn, args.slice(0, num_args)));
     }
 
+    fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
+        let first_real_arg = bcx.fcx.arg_pos(0u);
+        let a = get_param(bcx.fcx.llfn, first_real_arg);
+        let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
+        let llfn = bcx.ccx().intrinsics.get_copy(&name);
+
+        // convert `i1` to a `bool`, and write to the out parameter
+        let val = Call(bcx, llfn, [a, b]);
+        let result = ExtractValue(bcx, val, 0);
+        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
+        let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
+        let ret = Load(bcx, retptr);
+        let ret = InsertValue(bcx, ret, result, 0);
+        let ret = InsertValue(bcx, ret, overflow, 1);
+        Store(bcx, ret, retptr);
+        RetVoid(bcx)
+    }
+
     fn memcpy_intrinsic(bcx: @mut Block, name: &'static str, tp_ty: ty::t, sizebits: u8) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -944,6 +962,37 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "bswap16" => simple_llvm_intrinsic(bcx, "llvm.bswap.i16", 1),
         "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
         "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
+
+        "i8_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8"),
+        "i16_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i16"),
+        "i32_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i32"),
+        "i64_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i64"),
+
+        "u8_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i8"),
+        "u16_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i16"),
+        "u32_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i32"),
+        "u64_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.uadd.with.overflow.i64"),
+
+        "i8_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i8"),
+        "i16_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i16"),
+        "i32_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i32"),
+        "i64_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.ssub.with.overflow.i64"),
+
+        "u8_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i8"),
+        "u16_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i16"),
+        "u32_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i32"),
+        "u64_sub_with_overflow" => with_overflow_instrinsic(bcx, "llvm.usub.with.overflow.i64"),
+
+        "i8_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i8"),
+        "i16_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i16"),
+        "i32_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i32"),
+        "i64_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.smul.with.overflow.i64"),
+
+        "u8_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i8"),
+        "u16_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i16"),
+        "u32_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i32"),
+        "u64_mul_with_overflow" => with_overflow_instrinsic(bcx, "llvm.umul.with.overflow.i64"),
+
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
