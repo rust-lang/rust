@@ -54,7 +54,7 @@ pub struct CrateDoc {
 pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
-    ConstTag(ConstDoc),
+    StaticTag(StaticDoc),
     FnTag(FnDoc),
     EnumTag(EnumDoc),
     TraitTag(TraitDoc),
@@ -95,7 +95,7 @@ pub struct NmodDoc {
     index: Option<Index>
 }
 
-pub type ConstDoc = SimpleItemDoc;
+pub type StaticDoc = SimpleItemDoc;
 
 pub type FnDoc = SimpleItemDoc;
 
@@ -214,8 +214,8 @@ impl ModDoc {
         md!(FnTag)
     }
 
-    pub fn consts(&self) -> ~[ConstDoc] {
-        md!(ConstTag)
+    pub fn statics(&self) -> ~[StaticDoc] {
+        md!(StaticTag)
     }
 
     pub fn enums(&self) -> ~[EnumDoc] {
@@ -249,7 +249,7 @@ pub trait PageUtils {
     fn mods(&self) -> ~[ModDoc];
     fn nmods(&self) -> ~[NmodDoc];
     fn fns(&self) -> ~[FnDoc];
-    fn consts(&self) -> ~[ConstDoc];
+    fn statics(&self) -> ~[StaticDoc];
     fn enums(&self) -> ~[EnumDoc];
     fn traits(&self) -> ~[TraitDoc];
     fn impls(&self) -> ~[ImplDoc];
@@ -270,8 +270,8 @@ impl PageUtils for ~[Page] {
         pu!(FnTag)
     }
 
-    fn consts(&self) -> ~[ConstDoc] {
-        pu!(ConstTag)
+    fn statics(&self) -> ~[StaticDoc] {
+        pu!(StaticTag)
     }
 
     fn enums(&self) -> ~[EnumDoc] {
@@ -301,7 +301,7 @@ impl Item for ItemTag {
           &doc::ModTag(ref doc) => doc.item.clone(),
           &doc::NmodTag(ref doc) => doc.item.clone(),
           &doc::FnTag(ref doc) => doc.item.clone(),
-          &doc::ConstTag(ref doc) => doc.item.clone(),
+          &doc::StaticTag(ref doc) => doc.item.clone(),
           &doc::EnumTag(ref doc) => doc.item.clone(),
           &doc::TraitTag(ref doc) => doc.item.clone(),
           &doc::ImplTag(ref doc) => doc.item.clone(),

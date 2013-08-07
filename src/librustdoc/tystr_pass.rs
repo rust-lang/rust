@@ -39,7 +39,7 @@ pub fn run(
     let fold = Fold {
         ctxt: srv.clone(),
         fold_fn: fold_fn,
-        fold_const: fold_const,
+        fold_static: fold_static,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
@@ -93,10 +93,10 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
     }
 }
 
-fn fold_const(
+fn fold_static(
     fold: &fold::Fold<astsrv::Srv>,
-    doc: doc::ConstDoc
-) -> doc::ConstDoc {
+    doc: doc::StaticDoc
+) -> doc::StaticDoc {
     let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
@@ -109,7 +109,7 @@ fn fold_const(
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
-                    _ => fail!("fold_const: id not bound to a const item")
+                    _ => fail!("fold_static: id not bound to a static item")
                 }
             }}),
         .. doc
@@ -384,9 +384,9 @@ mod test {
     }
 
     #[test]
-    fn should_add_const_types() {
+    fn should_add_static_types() {
         let doc = mk_doc(~"static a: bool = true;");
-        assert!(doc.cratemod().consts()[0].sig == Some(~"bool"));
+        assert!(doc.cratemod().statics()[0].sig == Some(~"bool"));
     }
 
     #[test]
