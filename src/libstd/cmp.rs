@@ -153,7 +153,6 @@ pub fn cmp2<A:TotalOrd,B:TotalOrd>(
 Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
 lexical ordering on a type `(int, int)`.
 */
-// used in deriving code in libsyntax
 #[inline]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     match o1 {
