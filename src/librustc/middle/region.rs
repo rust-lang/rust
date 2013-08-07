@@ -797,7 +797,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
           Some(&ast::def_trait(did)) |
           Some(&ast::def_struct(did)) => {
             if did.crate == ast::LOCAL_CRATE {
-                if cx.region_is_relevant(&path.rp) {
+                if cx.region_is_relevant(&path.segments.last().lifetime) {
                     cx.add_dep(did.node);
                 }
             } else {
@@ -807,7 +807,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, sess.intr()));
-                    if cx.region_is_relevant(&path.rp) {
+                    if cx.region_is_relevant(&path.segments.last().lifetime) {
                         let rv = cx.add_variance(variance);
                         cx.add_rp(cx.item_id, rv)
                     }
@@ -830,7 +830,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
       ast::ty_path(ref path, _, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
-            for tp in path.types.iter() {
+            for tp in path.segments.iter().flat_map_(|s| s.types.iter()) {
                 (visitor.visit_ty)(tp, (cx, visitor));
             }
         }

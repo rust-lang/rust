@@ -255,8 +255,10 @@ pub fn visit_ty<E:Clone>(visitor: @Visitor<E>, typ: &Ty, env: E) {
 }
 
 pub fn visit_path<E:Clone>(visitor: @Visitor<E>, path: &Path, env: E) {
-    for typ in path.types.iter() {
-        visitor.visit_ty(typ, env.clone())
+    for segment in path.segments.iter() {
+        for typ in segment.types.iter() {
+            visitor.visit_ty(typ, env.clone())
+        }
     }
 }
 
