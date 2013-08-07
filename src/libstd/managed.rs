@@ -12,7 +12,7 @@
 
 use ptr::to_unsafe_ptr;
 
-#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::*;
 
 pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
 pub static RC_IMMORTAL : uint = 0x77777777;
@@ -71,6 +71,29 @@ impl<T:Ord> Ord for @mut T {
     fn gt(&self, other: &@mut T) -> bool { *(*self) > *(*other) }
 }
 
+#[cfg(not(test))]
+impl<T: TotalOrd> TotalOrd for @T {
+    #[inline]
+    fn cmp(&self, other: &@T) -> Ordering { (**self).cmp(*other) }
+}
+
+#[cfg(not(test))]
+impl<T: TotalOrd> TotalOrd for @mut T {
+    #[inline]
+    fn cmp(&self, other: &@mut T) -> Ordering { (**self).cmp(*other) }
+}
+
+#[cfg(not(test))]
+impl<T: TotalEq> TotalEq for @T {
+    #[inline]
+    fn equals(&self, other: &@T) -> bool { (**self).equals(*other) }
+}
+
+#[cfg(not(test))]
+impl<T: TotalEq> TotalEq for @mut T {
+    #[inline]
+    fn equals(&self, other: &@mut T) -> bool { (**self).equals(*other) }
+}
 #[test]
 fn test() {
     let x = @3;
