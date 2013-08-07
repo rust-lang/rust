@@ -10,7 +10,12 @@
 
 //! Runtime environment settings
 
+use from_str::FromStr;
 use libc::{size_t, c_char, c_int};
+use option::{Some, None};
+use os;
+
+// OLD RT stuff
 
 pub struct Environment {
     /// The number of threads to use by default
@@ -46,4 +51,27 @@ pub fn get() -> &Environment {
 
 extern {
     fn rust_get_rt_env() -> &Environment;
+}
+
+// NEW RT stuff
+
+// Note that these are all accessed without any synchronization.
+// They are expected to be initialized once then left alone.
+
+static mut MIN_STACK: uint = 2000000;
+
+pub fn init() {
+    unsafe {
+        match os::getenv("RUST_MIN_STACK") {
+            Some(s) => match FromStr::from_str(s) {
+                Some(i) => MIN_STACK = i,
+                None => ()
+            },
+            None => ()
+        }
+    }
+}
+
+pub fn min_stack() -> uint {
+    unsafe { MIN_STACK }
 }
