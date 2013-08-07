@@ -3481,6 +3481,20 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                    mutbl: ast::m_imm
                }))
             }
+            "offset_inbounds" => {
+              (1,
+               ~[
+                  ty::mk_ptr(tcx, ty::mt {
+                      ty: param(ccx, 0),
+                      mutbl: ast::m_imm
+                  }),
+                  ty::mk_int()
+               ],
+               ty::mk_ptr(tcx, ty::mt {
+                   ty: param(ccx, 0),
+                   mutbl: ast::m_imm
+               }))
+            }
             "memcpy32" => {
               (1,
                ~[

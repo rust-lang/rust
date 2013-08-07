@@ -32,7 +32,7 @@ fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();
     let ch = SharedChan::new(ch);
 
-    do num_tasks.times {
+    for _ in range(0, num_tasks) {
         let ch = ch.clone();
         do task::spawn { // linked
             ch.send(());
@@ -41,7 +41,7 @@ fn grandchild_group(num_tasks: uint) {
         }
     }
     error!("Grandchild group getting started");
-    do num_tasks.times {
+    for _ in range(0, num_tasks) {
         // Make sure all above children are fully spawned; i.e., enlisted in
         // their ancestor groups.
         po.recv();

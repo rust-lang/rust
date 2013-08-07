@@ -272,6 +272,7 @@ pub trait RawPtr<T> {
     fn is_not_null(&self) -> bool;
     unsafe fn to_option(&self) -> Option<&T>;
     fn offset(&self, count: int) -> Self;
+    unsafe fn offset_inbounds(self, count: int) -> Self;
 }
 
 /// Extension methods for immutable pointers
@@ -304,6 +305,22 @@ impl<T> RawPtr<T> for *T {
     /// Calculates the offset from a pointer.
     #[inline]
     fn offset(&self, count: int) -> *T { offset(*self, count) }
+
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end.
+    #[inline]
+    #[cfg(stage0)]
+    unsafe fn offset_inbounds(self, count: int) -> *T {
+        intrinsics::offset(self, count)
+    }
+
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end.
+    #[inline]
+    #[cfg(not(stage0))]
+    unsafe fn offset_inbounds(self, count: int) -> *T {
+        intrinsics::offset_inbounds(self, count)
+    }
 }
 
 /// Extension methods for mutable pointers
@@ -336,6 +353,30 @@ impl<T> RawPtr<T> for *mut T {
     /// Calculates the offset from a mutable pointer.
     #[inline]
     fn offset(&self, count: int) -> *mut T { mut_offset(*self, count) }
+
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
+    /// undefined behaviour.
+    ///
+    /// This method should be preferred over `offset` when the guarantee can be
+    /// satisfied, to enable better optimization.
+    #[inline]
+    #[cfg(stage0)]
+    unsafe fn offset_inbounds(self, count: int) -> *mut T {
+        intrinsics::offset(self as *T, count) as *mut T
+    }
+
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
+    /// undefined behaviour.
+    ///
+    /// This method should be preferred over `offset` when the guarantee can be
+    /// satisfied, to enable better optimization.
+    #[inline]
+    #[cfg(not(stage0))]
+    unsafe fn offset_inbounds(self, count: int) -> *mut T {
+        intrinsics::offset_inbounds(self as *T, count) as *mut T
+    }
 }
 
 // Equality for pointers
