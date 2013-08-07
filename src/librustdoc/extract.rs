@@ -101,8 +101,8 @@ fn moddoc_from_mod(
                 ))
               }
               ast::item_static(*) => {
-                Some(doc::ConstTag(
-                    constdoc_from_const(ItemDoc)
+                Some(doc::StaticTag(
+                    staticdoc_from_static(ItemDoc)
                 ))
               }
               ast::item_enum(enum_definition, _) => {
@@ -165,7 +165,7 @@ fn fndoc_from_fn(itemdoc: doc::ItemDoc) -> doc::FnDoc {
     }
 }
 
-fn constdoc_from_const(itemdoc: doc::ItemDoc) -> doc::ConstDoc {
+fn staticdoc_from_static(itemdoc: doc::ItemDoc) -> doc::StaticDoc {
     doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
@@ -356,10 +356,10 @@ mod test {
     }
 
     #[test]
-    fn should_extract_const_name_and_id() {
+    fn should_extract_static_name_and_id() {
         let doc = mk_doc(@"static a: int = 0;");
-        assert!(doc.cratemod().consts()[0].id() != 0);
-        assert!(doc.cratemod().consts()[0].name_() == ~"a");
+        assert!(doc.cratemod().statics()[0].id() != 0);
+        assert!(doc.cratemod().statics()[0].name_() == ~"a");
     }
 
     #[test]
