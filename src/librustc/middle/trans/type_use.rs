@@ -168,6 +168,22 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
 
                     "bswap16" | "bswap32" | "bswap64" => 0,
 
+
+                    "i8_add_with_overflow"  | "u8_add_with_overflow" |
+                    "i16_add_with_overflow" | "u16_add_with_overflow" |
+                    "i32_add_with_overflow" | "u32_add_with_overflow" |
+                    "i64_add_with_overflow" | "u64_add_with_overflow" => 0,
+
+                    "i8_sub_with_overflow"  | "u8_sub_with_overflow" |
+                    "i16_sub_with_overflow" | "u16_sub_with_overflow" |
+                    "i32_sub_with_overflow" | "u32_sub_with_overflow" |
+                    "i64_sub_with_overflow" | "u64_sub_with_overflow" => 0,
+
+                    "i8_mul_with_overflow"  | "u8_mul_with_overflow" |
+                    "i16_mul_with_overflow" | "u16_mul_with_overflow" |
+                    "i32_mul_with_overflow" | "u32_mul_with_overflow" |
+                    "i64_mul_with_overflow" | "u64_mul_with_overflow" => 0,
+
                     // would be cool to make these an enum instead of
                     // strings!
                     _ => fail!("unknown intrinsic in type_use")

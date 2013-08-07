@@ -237,7 +237,7 @@ impl FunctionContext {
     }
 
     pub fn out_arg_pos(&self) -> uint {
-        assert!(self.has_immediate_return_value);
+        assert!(!self.has_immediate_return_value);
         0u
     }
 

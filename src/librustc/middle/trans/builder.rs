@@ -861,11 +861,11 @@ impl Builder {
     }
 
     pub fn insert_value(&self, agg_val: ValueRef, elt: ValueRef,
-                       idx: uint) {
+                       idx: uint) -> ValueRef {
         self.count_insn("insertvalue");
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
-                                       noname());
+                                       noname())
         }
     }
 
