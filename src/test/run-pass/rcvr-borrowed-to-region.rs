@@ -12,7 +12,9 @@ trait get {
     fn get(self) -> int;
 }
 
-// FIXME #7302: Note: impl on a slice
+// Note: impl on a slice; we're checking that the pointers below
+// correctly get borrowed to `&`. (similar to impling for `int`, with
+// `&self` instead of `self`.)
 impl<'self> get for &'self int {
     fn get(self) -> int {
         return *self;
@@ -25,11 +27,6 @@ pub fn main() {
     assert_eq!(y, 6);
 
     let x = @6;
-    let y = x.get();
-    info!("y=%d", y);
-    assert_eq!(y, 6);
-
-    let x = ~6;
     let y = x.get();
     info!("y=%d", y);
     assert_eq!(y, 6);
