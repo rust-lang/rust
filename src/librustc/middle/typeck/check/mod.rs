@@ -490,7 +490,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       tcx.sess.str_of(path.idents[0]),
+                       tcx.sess.str_of(path.segments[0].identifier),
                        fcx.infcx().ty_to_str(
                            fcx.inh.locals.get_copy(&p.id)));
               }
@@ -3166,7 +3166,10 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
-    let ty_substs_len = pth.types.len();
+    let mut ty_substs_len = 0;
+    for segment in pth.segments.iter() {
+        ty_substs_len += segment.types.len()
+    }
 
     debug!("ty_param_count=%? ty_substs_len=%?",
            ty_param_count,
@@ -3174,7 +3177,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
 
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
-    let regions = match pth.rp {
+    let regions = match pth.segments.last().lifetime {
         Some(_) => { // user supplied a lifetime parameter...
             match tpt.generics.region_param {
                 None => { // ...but the type is not lifetime parameterized!
@@ -3184,7 +3187,10 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                 }
                 Some(_) => { // ...and the type is lifetime parameterized, ok.
                     opt_vec::with(
-                        ast_region_to_region(fcx, fcx, span, &pth.rp))
+                        ast_region_to_region(fcx,
+                                             fcx,
+                                             span,
+                                             &pth.segments.last().lifetime))
                 }
             }
         }
@@ -3223,12 +3229,18 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         }
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
-        pth.types.map(|aty| fcx.to_ty(aty))
+        pth.segments
+           .iter()
+           .flat_map_(|s| s.types.iter())
+           .transform(|aty| fcx.to_ty(aty))
+           .collect()
     };
 
-    let substs = substs {regions: ty::NonerasedRegions(regions),
-                         self_ty: None,
-                         tps: tps };
+    let substs = substs {
+        regions: ty::NonerasedRegions(regions),
+        self_ty: None,
+        tps: tps
+    };
     fcx.write_ty_substs(node_id, tpt.ty, substs);
 
     debug!("<<<");

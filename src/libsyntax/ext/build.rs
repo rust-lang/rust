@@ -233,18 +233,31 @@ impl AstBuilder for @ExtCtxt {
     fn path_global(&self, span: span, strs: ~[ast::ident]) -> ast::Path {
         self.path_all(span, true, strs, None, ~[])
     }
-    fn path_all(&self, sp: span,
+    fn path_all(&self,
+                sp: span,
                 global: bool,
-                idents: ~[ast::ident],
+                mut idents: ~[ast::ident],
                 rp: Option<ast::Lifetime>,
                 types: ~[ast::Ty])
-        -> ast::Path {
+                -> ast::Path {
+        let last_identifier = idents.pop();
+        let mut segments: ~[ast::PathSegment] = idents.consume_iter()
+                                                      .transform(|ident| {
+            ast::PathSegment {
+                identifier: ident,
+                lifetime: None,
+                types: opt_vec::Empty,
+            }
+        }).collect();
+        segments.push(ast::PathSegment {
+            identifier: last_identifier,
+            lifetime: rp,
+            types: opt_vec::from(types),
+        });
         ast::Path {
             span: sp,
             global: global,
-            idents: idents,
-            rp: rp,
-            types: types
+            segments: segments,
         }
     }
 
