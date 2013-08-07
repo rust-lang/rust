@@ -129,27 +129,27 @@ struct FileInput_ {
     `Some(path)` is the file represented by `path`, `None` is
     `stdin`. Consumed as the files are read.
     */
-    priv files: ~[Option<Path>],
+    files: ~[Option<Path>],
     /**
     The current file: `Some(r)` for an open file, `None` before
     starting and after reading everything.
     */
-    priv current_reader: Option<@io::Reader>,
-    priv state: FileInputState,
+    current_reader: Option<@io::Reader>,
+    state: FileInputState,
 
     /**
     Used to keep track of whether we need to insert the newline at the
     end of a file that is missing it, which is needed to separate the
     last and first lines.
     */
-    priv previous_was_newline: bool
+    previous_was_newline: bool
 }
 
 // XXX: remove this when Reader has &mut self. Should be removable via
 // "self.fi." -> "self." and renaming FileInput_. Documentation above
 // will likely have to be updated to use `let mut in = ...`.
 pub struct FileInput  {
-    priv fi: @mut FileInput_
+    fi: @mut FileInput_
 }
 
 impl FileInput {
@@ -198,7 +198,7 @@ impl FileInput {
         FileInput::from_vec(pathed)
     }
 
-    priv fn current_file_eof(&self) -> bool {
+    fn current_file_eof(&self) -> bool {
         match self.fi.current_reader {
             None => false,
             Some(r) => r.eof()
@@ -240,7 +240,7 @@ impl FileInput {
     Returns `true` if it had to move to the next file and did
     so successfully.
     */
-    priv fn next_file_if_eof(&self) -> bool {
+    fn next_file_if_eof(&self) -> bool {
         match self.fi.current_reader {
             None => self.next_file(),
             Some(r) => {

@@ -223,7 +223,7 @@ impl<'self> Stats for &'self [f64] {
 
 // Helper function: extract a value representing the `pct` percentile of a sorted sample-set, using
 // linear interpolation. If samples are not sorted, return nonsensical value.
-priv fn percentile_of_sorted(sorted_samples: &[f64],
+fn percentile_of_sorted(sorted_samples: &[f64],
                              pct: f64) -> f64 {
     assert!(sorted_samples.len() != 0);
     if sorted_samples.len() == 1 {
