@@ -8,33 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// original problem
-pub fn foo<T>() -> int {
-    {
-        static foo: int = 2;
-        foo
+// aux-build:static_priv_by_default.rs
+
+extern mod static_priv_by_default;
+
+mod child {
+    pub mod childs_child {
+        static private: int = 0;
+        pub static public: int = 0;
     }
 }
 
-// issue 8134
-struct Foo;
-impl<T> Foo {
-    pub fn foo(&self) {
-        static X: uint = 1;
-    }
-}
-
-// issue 8134
-pub struct Parser<T>;
-impl<T: std::iter::Iterator<char>> Parser<T> {
-    fn in_doctype(&mut self) {
-        static DOCTYPEPattern: [char, ..6] = ['O', 'C', 'T', 'Y', 'P', 'E'];
-    }
-}
-
-struct Bar;
-impl<T> Foo {
-    pub fn bar(&self) {
-        static X: uint = 1;
-    }
+fn main() {
+    use static_priv_by_default::private; //~ ERROR: unresolved import
+    //~^ ERROR: failed to resolve
+    use static_priv_by_default::public;
+    use child::childs_child::private; //~ ERROR: unresolved import
+    //~^ ERROR: failed to resolve
+    use child::childs_child::public;
 }

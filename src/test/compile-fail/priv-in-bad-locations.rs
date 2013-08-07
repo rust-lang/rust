@@ -8,7 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait E {
-    pub fn foo();               //~ ERROR: obsolete syntax
+pub extern {
+    //~^ ERROR unnecessary visibility
+    pub fn bar();
 }
-trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
+
+trait A {
+    fn foo() {}
+}
+
+struct B;
+
+pub impl B {} //~ ERROR: unnecessary visibility
+
+pub impl A for B { //~ ERROR: unnecessary visibility
+    pub fn foo() {} //~ ERROR: unnecessary visibility
+}
+
+pub fn main() {}

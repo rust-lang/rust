@@ -27,7 +27,8 @@ use syntax::diagnostic::expect;
 pub struct StaticMethodInfo {
     ident: ast::Ident,
     def_id: ast::DefId,
-    purity: ast::purity
+    purity: ast::purity,
+    vis: ast::visibility,
 }
 
 pub fn get_symbol(cstore: @mut cstore::CStore, def: ast::DefId) -> ~str {
@@ -52,7 +53,8 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 /// Iterates over each child of the given item.
 pub fn each_child_of_item(cstore: @mut cstore::CStore,
                           def_id: ast::DefId,
-                          callback: &fn(decoder::DefLike, ast::Ident)) {
+                          callback: &fn(decoder::DefLike, ast::Ident,
+                                        ast::visibility)) {
     let crate_data = cstore::get_crate_data(cstore, def_id.crate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -68,7 +70,8 @@ pub fn each_child_of_item(cstore: @mut cstore::CStore,
 pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
                                     cnum: ast::CrateNum,
                                     callback: &fn(decoder::DefLike,
-                                                  ast::Ident)) {
+                                                  ast::Ident,
+                                                  ast::visibility)) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)

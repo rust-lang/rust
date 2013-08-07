@@ -162,7 +162,7 @@ struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
 #[no_freeze]
-struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
+pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
 
 
 impl<T:Send> Clone for MutexArc<T> {
@@ -343,7 +343,7 @@ struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
 #[no_freeze]
-struct RWArc<T> {
+pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
 }
 
