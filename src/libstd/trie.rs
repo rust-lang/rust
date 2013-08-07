@@ -156,6 +156,53 @@ impl<T> TrieMap<T> {
             remaining_max: self.length
         }
     }
+
+    // If `upper` is true then returns upper_bound else returns lower_bound.
+    #[inline]
+    fn bound_iter<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
+        let mut node: &'a TrieNode<T> = &self.root;
+        let mut idx = 0;
+        let mut it = TrieMapIterator {
+            stack: ~[],
+            remaining_min: 0,
+            remaining_max: self.length
+        };
+        loop {
+            let children = &node.children;
+            let child_id = chunk(key, idx);
+            match children[child_id] {
+                Internal(ref n) => {
+                    node = &**n;
+                    it.stack.push(children.slice_from(child_id + 1).iter());
+                }
+                External(stored, _) => {
+                    if stored < key || (upper && stored == key) {
+                        it.stack.push(children.slice_from(child_id + 1).iter());
+                    } else {
+                        it.stack.push(children.slice_from(child_id).iter());
+                    }
+                    return it;
+                }
+                Nothing => {
+                    it.stack.push(children.slice_from(child_id + 1).iter());
+                    return it
+                }
+            }
+            idx += 1;
+        }
+    }
+
+    /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
+    /// If all keys in the map are less than `key` an empty iterator is returned.
+    pub fn lower_bound_iter<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+        self.bound_iter(key, false)
+    }
+
+    /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
+    /// If all keys in the map are not greater than `key` an empty iterator is returned.
+    pub fn upper_bound_iter<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+        self.bound_iter(key, true)
+    }
 }
 
 impl<T, Iter: Iterator<(uint, T)>> FromIterator<(uint, T), Iter> for TrieMap<T> {
@@ -232,6 +279,18 @@ impl TrieSet {
     #[inline]
     pub fn iter<'a>(&'a self) -> TrieSetIterator<'a> {
         TrieSetIterator{iter: self.map.iter()}
+    }
+
+    /// Get an iterator pointing to the first value that is not less than `val`.
+    /// If all values in the set are less than `val` an empty iterator is returned.
+    pub fn lower_bound_iter<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
+        TrieSetIterator{iter: self.map.lower_bound_iter(val)}
+    }
+
+    /// Get an iterator pointing to the first value that key is greater than `val`.
+    /// If all values in the set are not greater than `val` an empty iterator is returned.
+    pub fn upper_bound_iter<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
+        TrieSetIterator{iter: self.map.upper_bound_iter(val)}
     }
 }
 
@@ -644,6 +703,49 @@ mod test_map {
             i += 1;
         }
         assert_eq!(i, last - first);
+    }
+
+    #[test]
+    fn test_bound_iter() {
+        let empty_map : TrieMap<uint> = TrieMap::new();
+        assert_eq!(empty_map.lower_bound_iter(0).next(), None);
+        assert_eq!(empty_map.upper_bound_iter(0).next(), None);
+
+        let last = 999u;
+        let step = 3u;
+        let value = 42u;
+
+        let mut map : TrieMap<uint> = TrieMap::new();
+        do uint::range_step(0u, last, step as int) |x| {
+            assert!(x % step == 0);
+            map.insert(x, value);
+            true
+        };
+
+        for i in range(0u, last - step) {
+            let mut lb = map.lower_bound_iter(i);
+            let mut ub = map.upper_bound_iter(i);
+            let next_key = i - i % step + step;
+            let next_pair = (next_key, &value);
+            if (i % step == 0) {
+                assert_eq!(lb.next(), Some((i, &value)));
+            } else {
+                assert_eq!(lb.next(), Some(next_pair));
+            }
+            assert_eq!(ub.next(), Some(next_pair));
+        }
+
+        let mut lb = map.lower_bound_iter(last - step);
+        assert_eq!(lb.next(), Some((last - step, &value)));
+        let mut ub = map.upper_bound_iter(last - step);
+        assert_eq!(ub.next(), None);
+
+        for i in range(last - step + 1, last) {
+            let mut lb = map.lower_bound_iter(i);
+            assert_eq!(lb.next(), None);
+            let mut ub = map.upper_bound_iter(i);
+            assert_eq!(ub.next(), None);
+        }
     }
 }
 
