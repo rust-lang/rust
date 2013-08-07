@@ -16,7 +16,6 @@
 #[allow(missing_doc)];
 
 use std::iterator::{Iterator, IteratorUtil, Enumerate, FilterMap, Invert};
-use std::uint;
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
@@ -150,12 +149,13 @@ impl<V> SmallIntMap<V> {
 
     /// Visit all key-value pairs in reverse order
     pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
-        do uint::range_rev(self.v.len(), 0) |i| {
+        for i in range(0, self.v.len()).invert() {
             match self.v[i] {
-              Some(ref elt) => it(i, elt),
-              None => true
+              Some(ref elt) => if !it(i, elt) { return false },
+              None => ()
             }
         }
+        true
     }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {

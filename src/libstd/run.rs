@@ -632,7 +632,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
-    use int;
 
     mod rustrt {
         use libc::c_void;
@@ -665,10 +664,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
-        do int::range_rev(getdtablesize() as int, 3) |fd| {
+        for fd in range(3, getdtablesize()).invert() {
             close(fd as c_int);
-            true
-        };
+        }
 
         do with_dirp(dir) |dirp| {
             if !dirp.is_null() && chdir(dirp) == -1 {
