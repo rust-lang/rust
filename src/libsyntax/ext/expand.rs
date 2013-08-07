@@ -19,6 +19,7 @@ use codemap;
 use codemap::{span, spanned, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
+use opt_vec;
 use parse;
 use parse::{parse_item_from_source_str};
 use parse::token;
@@ -42,13 +43,13 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             match (*mac).node {
                 // Token-tree macros:
                 mac_invoc_tt(ref pth, ref tts) => {
-                    if (pth.idents.len() > 1u) {
+                    if (pth.segments.len() > 1u) {
                         cx.span_fatal(
                             pth.span,
                             fmt!("expected macro name without module \
                                   separators"));
                     }
-                    let extname = &pth.idents[0];
+                    let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
                     // leaving explicit deref here to highlight unbox op:
                     match (*extsbox).find(&extname.name) {
@@ -143,9 +144,13 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                 ast::Path {
                     span: span,
                     global: false,
-                    idents: ~[ident],
-                    rp: None,
-                    types: ~[]
+                    segments: ~[
+                        ast::PathSegment {
+                            identifier: ident,
+                            lifetime: None,
+                            types: opt_vec::Empty,
+                        }
+                    ],
                 }
             }
 
@@ -368,7 +373,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
         _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
 
-    let extname = &pth.idents[0];
+    let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
@@ -459,13 +464,13 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         }
         _ => return orig(s, sp, fld)
     };
-    if (pth.idents.len() > 1u) {
+    if (pth.segments.len() > 1u) {
         cx.span_fatal(
             pth.span,
             fmt!("expected macro name without module \
                   separators"));
     }
-    let extname = &pth.idents[0];
+    let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let (fully_expanded, sp) = match (*extsbox).find(&extname.name) {
         None =>
@@ -534,10 +539,14 @@ impl Visitor<()> for NewNameFinderContext {
                     // a path of length one:
                     &ast::Path {
                         global: false,
-                        idents: [id],
                         span: _,
-                        rp: _,
-                        types: _
+                        segments: [
+                            ast::PathSegment {
+                                identifier: id,
+                                lifetime: _,
+                                types: _
+                            }
+                        ]
                     } => self.ident_accumulator.push(id),
                     // I believe these must be enums...
                     _ => ()

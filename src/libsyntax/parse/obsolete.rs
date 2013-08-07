@@ -54,7 +54,6 @@ pub enum ObsoleteSyntax {
     ObsoleteMode,
     ObsoleteImplicitSelf,
     ObsoleteLifetimeNotation,
-    ObsoleteConstManagedPointer,
     ObsoletePurity,
     ObsoleteStaticMethod,
     ObsoleteConstItem,
@@ -64,6 +63,7 @@ pub enum ObsoleteSyntax {
     ObsoleteMutWithMultipleBindings,
     ObsoleteExternVisibility,
     ObsoleteUnsafeExternFn,
+    ObsoleteConstPointer,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -207,10 +207,6 @@ impl ParserObsoleteMethods for Parser {
                 "instead of `&foo/bar`, write `&'foo bar`; instead of \
                  `bar/&foo`, write `&bar<'foo>"
             ),
-            ObsoleteConstManagedPointer => (
-                "const `@` pointer",
-                "instead of `@const Foo`, write `@Foo`"
-            ),
             ObsoletePurity => (
                 "pure function",
                 "remove `pure`"
@@ -252,6 +248,11 @@ impl ParserObsoleteMethods for Parser {
                 "unsafe external function",
                 "external functions are always unsafe; remove the `unsafe` \
                  keyword"
+            ),
+            ObsoleteConstPointer => (
+                "const pointer",
+                "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
+                 `@Foo`"
             ),
         };
 

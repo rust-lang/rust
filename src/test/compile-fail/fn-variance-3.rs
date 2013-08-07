@@ -23,13 +23,10 @@ fn main() {
 
     // @int <: X
     //
-    // This constraint forces X to be
-    // @const int.
-    r(@3);
+    // Here the type check fails because @const is gone and there is no
+    // supertype.
+    r(@3);  //~ ERROR mismatched types
 
-    // Here the type check succeeds but the
-    // mutability check will fail, because the
-    // type of r has been inferred to be
-    // fn(@const int) -> @const int
-    *r(@mut 3) = 4; //~ ERROR cannot assign to const dereference of @ pointer
+    // Here the type check succeeds.
+    *r(@mut 3) = 4;
 }

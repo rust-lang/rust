@@ -17,6 +17,7 @@ use syntax::attr;
 use syntax::codemap::dummy_sp;
 use syntax::codemap;
 use syntax::fold;
+use syntax::opt_vec;
 
 static STD_VERSION: &'static str = "0.8-pre";
 
@@ -90,12 +91,18 @@ fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
             let prelude_path = ast::Path {
                 span: dummy_sp(),
                 global: false,
-                idents: ~[
-                    sess.ident_of("std"),
-                    sess.ident_of("prelude")
+                segments: ~[
+                    ast::PathSegment {
+                        identifier: sess.ident_of("std"),
+                        lifetime: None,
+                        types: opt_vec::Empty,
+                    },
+                    ast::PathSegment {
+                        identifier: sess.ident_of("prelude"),
+                        lifetime: None,
+                        types: opt_vec::Empty,
+                    },
                 ],
-                rp: None,
-                types: ~[]
             };
 
             let vp = @spanned(ast::view_path_glob(prelude_path, n2));

@@ -12,6 +12,7 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
+use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
 
@@ -39,9 +40,13 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
             ast::Path {
                  span: sp,
                  global: false,
-                 idents: ~[res],
-                 rp: None,
-                 types: ~[],
+                 segments: ~[
+                    ast::PathSegment {
+                        identifier: res,
+                        lifetime: None,
+                        types: opt_vec::Empty,
+                    }
+                ]
             }
         ),
         span: sp,

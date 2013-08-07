@@ -16,7 +16,7 @@ use codemap::{BytePos, mk_sp};
 use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::parser::Parser;
+use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
@@ -429,7 +429,9 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
         _ => p.fatal(~"expected ident, found "
                      + token::to_str(get_ident_interner(), p.token))
       },
-      "path" => token::nt_path(p.parse_path_with_tps(false)),
+      "path" => {
+        token::nt_path(p.parse_path(LifetimeAndTypesWithoutColons).path)
+      }
       "tt" => {
         *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::nt_tt(@p.parse_token_tree());

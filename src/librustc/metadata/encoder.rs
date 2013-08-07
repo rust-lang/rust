@@ -643,15 +643,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
     fn encode_mutability(ebml_w: &writer::Encoder,
                          m: ast::mutability) {
         match m {
-            m_imm => {
-                ebml_w.writer.write(&[ 'i' as u8 ]);
-            }
-            m_mutbl => {
-                ebml_w.writer.write(&[ 'm' as u8 ]);
-            }
-            m_const => {
-                ebml_w.writer.write(&[ 'c' as u8 ]);
-            }
+            m_imm => ebml_w.writer.write(&[ 'i' as u8 ]),
+            m_mutbl => ebml_w.writer.write(&[ 'm' as u8 ]),
         }
     }
 }
@@ -1003,7 +996,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
-            ast::ty_path(ref path, ref bounds, _) if path.idents.len() == 1 => {
+            ast::ty_path(ref path, ref bounds, _) if path.segments
+                                                         .len() == 1 => {
                 assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
