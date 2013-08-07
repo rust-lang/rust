@@ -16,7 +16,6 @@
 #[allow(missing_doc)];
 
 use std::iterator::{Iterator, IteratorUtil, Enumerate, FilterMap, Invert};
-use std::uint;
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
@@ -115,48 +114,6 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
-
-    /// Visit all key-value pairs in order
-    pub fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
-        for i in range(0u, self.v.len()) {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        true
-    }
-
-    /// Visit all keys in order
-    pub fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
-        self.each(|k, _| blk(k))
-    }
-
-    /// Visit all values in order
-    pub fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
-        for i in range(0, self.v.len()) {
-            match self.v[i] {
-              Some(ref mut elt) => if !it(&i, elt) { return false; },
-              None => ()
-            }
-        }
-        true
-    }
-
-    /// Visit all key-value pairs in reverse order
-    pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
-        do uint::range_rev(self.v.len(), 0) |i| {
-            match self.v[i] {
-              Some(ref elt) => it(i, elt),
-              None => true
-            }
-        }
-    }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
