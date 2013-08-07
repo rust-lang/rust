@@ -20,11 +20,11 @@ fn int_range(lo: int,  hi: int, it: &fn(int) -> bool) -> bool {
 }
 
 fn uint_range_rev(hi: uint, lo: uint, it: &fn(uint) -> bool) -> bool {
-    uint::range_rev(hi, lo, it)
+    range(lo, hi).invert().advance(it)
 }
 
 fn int_range_rev(hi: int,  lo: int, it: &fn(int) -> bool) -> bool {
-    int::range_rev(hi, lo, it)
+    range(lo, hi).invert().advance(it)
 }
 
 fn int_range_step(a: int, b: int, step: int, it: &fn(int) -> bool) -> bool {

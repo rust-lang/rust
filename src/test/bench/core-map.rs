@@ -53,24 +53,21 @@ fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
     io::println(" Descending integers:");
 
     do timed("insert") {
-        do uint::range_rev(n_keys, 0) |i| {
+        for i in range(0, n_keys).invert() {
             map.insert(i, i + 1);
-            true
-        };
+        }
     }
 
     do timed("search") {
-        do uint::range_rev(n_keys, 0) |i| {
+        for i in range(0, n_keys).invert() {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
-            true
-        };
+        }
     }
 
     do timed("remove") {
-        do uint::range_rev(n_keys, 0) |i| {
+        for i in range(0, n_keys) {
             assert!(map.remove(&i));
-            true
-        };
+        }
     }
 }
 
