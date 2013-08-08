@@ -63,8 +63,7 @@ Several modules in `core` are clients of `rt`:
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iter::Times;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{Iterator, IteratorUtil, range};
 use option::{Some, None};
 use ptr::RawPtr;
 use rt::local::Local;
@@ -247,11 +246,16 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     let main = Cell::new(main);
 
-    // The shared list of sleeping schedulers. Schedulers wake each other
-    // occassionally to do new work.
+    // The shared list of sleeping schedulers.
     let sleepers = SleeperList::new();
-    // The shared work queue. Temporary until work stealing is implemented.
-    let work_queue = WorkQueue::new();
+
+    // Create a work queue for each scheduler, ntimes. Create an extra
+    // for the main thread if that flag is set. We won't steal from it.
+    let mut work_queues = ~[];
+    for _ in range(0u, nscheds) {
+        let work_queue: WorkQueue<~Task> = WorkQueue::new();
+        work_queues.push(work_queue);
+    }
 
     // The schedulers.
     let mut scheds = ~[];
@@ -259,12 +263,15 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // sent the Shutdown message to terminate the schedulers.
     let mut handles = ~[];
 
-    do nscheds.times {
+    for i in range(0u, nscheds) {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
-        let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
+        let mut sched = ~Scheduler::new(loop_,
+                                        work_queues[i].clone(),
+                                        work_queues.clone(),
+                                        sleepers.clone());
         let handle = sched.make_handle();
 
         scheds.push(sched);
@@ -280,9 +287,14 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         let friend_handle = friend_sched.make_handle();
         scheds.push(friend_sched);
 
+        // This scheduler needs a queue that isn't part of the stealee
+        // set.
+        let work_queue = WorkQueue::new();
+
         let main_loop = ~UvEventLoop::new();
         let mut main_sched = ~Scheduler::new_special(main_loop,
-                                                     work_queue.clone(),
+                                                     work_queue,
+                                                     work_queues.clone(),
                                                      sleepers.clone(),
                                                      false,
                                                      Some(friend_handle));
@@ -371,7 +383,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
         let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool, None,
                                                   home, main.take());
         main_task.death.on_exit = Some(on_exit.take());
-        rtdebug!("boostrapping main_task");
+        rtdebug!("bootstrapping main_task");
 
         main_sched.bootstrap(main_task);
     }
