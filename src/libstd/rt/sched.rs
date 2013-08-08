@@ -13,7 +13,6 @@ use option::{Option, Some, None};
 use cast::{transmute, transmute_mut_region, transmute_mut_unsafe};
 use clone::Clone;
 use unstable::raw;
-
 use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool};
@@ -28,6 +27,9 @@ use rt::rtio::RemoteCallback;
 use rt::metrics::SchedMetrics;
 use borrow::{to_uint};
 use cell::Cell;
+use rand::{XorShiftRng, RngUtil};
+use iterator::{range};
+use vec::{OwnedVector};
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
@@ -37,9 +39,11 @@ use cell::Cell;
 /// XXX: This creates too many callbacks to run_sched_once, resulting
 /// in too much allocation and too many events.
 pub struct Scheduler {
-    /// A queue of available work. Under a work-stealing policy there
-    /// is one per Scheduler.
-    work_queue: WorkQueue<~Task>,
+    /// There are N work queues, one per scheduler.
+    priv work_queue: WorkQueue<~Task>,
+    /// Work queues for the other schedulers. These are created by
+    /// cloning the core work queues.
+    work_queues: ~[WorkQueue<~Task>],
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
@@ -70,7 +74,10 @@ pub struct Scheduler {
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
-    friend_handle: Option<SchedHandle>
+    friend_handle: Option<SchedHandle>,
+    /// A fast XorShift rng for scheduler use
+    rng: XorShiftRng
+
 }
 
 pub struct SchedHandle {
@@ -97,10 +104,13 @@ impl Scheduler {
 
     pub fn new(event_loop: ~EventLoopObject,
                work_queue: WorkQueue<~Task>,
+               work_queues: ~[WorkQueue<~Task>],
                sleeper_list: SleeperList)
         -> Scheduler {
 
-        Scheduler::new_special(event_loop, work_queue, sleeper_list, true, None)
+        Scheduler::new_special(event_loop, work_queue,
+                               work_queues,
+                               sleeper_list, true, None)
 
     }
 
@@ -108,6 +118,7 @@ impl Scheduler {
     // task field is None.
     pub fn new_special(event_loop: ~EventLoopObject,
                        work_queue: WorkQueue<~Task>,
+                       work_queues: ~[WorkQueue<~Task>],
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>)
@@ -120,12 +131,14 @@ impl Scheduler {
             no_sleep: false,
             event_loop: event_loop,
             work_queue: work_queue,
+            work_queues: work_queues,
             stack_pool: StackPool::new(),
             sched_task: None,
             cleanup_job: None,
             metrics: SchedMetrics::new(),
             run_anything: run_anything,
-            friend_handle: friend
+            friend_handle: friend,
+            rng: XorShiftRng::new()
         }
     }
 
@@ -248,7 +261,7 @@ impl Scheduler {
 
         // Second activity is to try resuming a task from the queue.
 
-        let result = sched.resume_task_from_queue();
+        let result = sched.do_work();
         let mut sched = match result {
             Some(sched) => {
                 // Failed to dequeue a task, so we return.
@@ -415,47 +428,98 @@ impl Scheduler {
         }
     }
 
-    // Resume a task from the queue - but also take into account that
-    // it might not belong here.
+    // Workstealing: In this iteration of the runtime each scheduler
+    // thread has a distinct work queue. When no work is available
+    // locally, make a few attempts to steal work from the queues of
+    // other scheduler threads. If a few steals fail we end up in the
+    // old "no work" path which is fine.
 
-    // If we perform a scheduler action we give away the scheduler ~
-    // pointer, if it is still available we return it.
-
-    fn resume_task_from_queue(~self) -> Option<~Scheduler> {
-
-        let mut this = self;
-
-        match this.work_queue.pop() {
+    // First step in the process is to find a task. This function does
+    // that by first checking the local queue, and if there is no work
+    // there, trying to steal from the remote work queues.
+    fn find_work(&mut self) -> Option<~Task> {
+        rtdebug!("scheduler looking for work");
+        match self.work_queue.pop() {
             Some(task) => {
-                let mut task = task;
-                let home = task.take_unwrap_home();
-                match home {
-                    Sched(home_handle) => {
-                        if home_handle.sched_id != this.sched_id() {
-                            task.give_home(Sched(home_handle));
-                            Scheduler::send_task_home(task);
-                            return Some(this);
-                        } else {
-                            this.event_loop.callback(Scheduler::run_sched_once);
-                            task.give_home(Sched(home_handle));
-                            this.resume_task_immediately(task);
-                            return None;
-                        }
-                    }
-                    AnySched if this.run_anything => {
-                        this.event_loop.callback(Scheduler::run_sched_once);
-                        task.give_home(AnySched);
-                        this.resume_task_immediately(task);
-                        return None;
-                    }
-                    AnySched => {
-                        task.give_home(AnySched);
-                        this.send_to_friend(task);
-                        return Some(this);
-                    }
-                }
+                rtdebug!("found a task locally");
+                return Some(task)
             }
             None => {
+                // Our naive stealing, try kinda hard.
+                rtdebug!("scheduler trying to steal");
+                let _len = self.work_queues.len();
+                return self.try_steals(2);
+            }
+        }
+    }
+
+    // With no backoff try stealing n times from the queues the
+    // scheduler knows about. This naive implementation can steal from
+    // our own queue or from other special schedulers.
+    fn try_steals(&mut self, n: uint) -> Option<~Task> {
+        for _ in range(0, n) {
+            let index = self.rng.gen_uint_range(0, self.work_queues.len());
+            let work_queues = &mut self.work_queues;
+            match work_queues[index].steal() {
+                Some(task) => {
+                    rtdebug!("found task by stealing"); return Some(task)
+                }
+                None => ()
+            }
+        };
+        rtdebug!("giving up on stealing");
+        return None;
+    }
+
+    // Given a task, execute it correctly.
+    fn process_task(~self, task: ~Task) -> Option<~Scheduler> {
+        let mut this = self;
+        let mut task = task;
+
+        rtdebug!("processing a task");
+
+        let home = task.take_unwrap_home();
+        match home {
+            Sched(home_handle) => {
+                if home_handle.sched_id != this.sched_id() {
+                    rtdebug!("sending task home");
+                    task.give_home(Sched(home_handle));
+                    Scheduler::send_task_home(task);
+                    return Some(this);
+                } else {
+                    rtdebug!("running task here");
+                    task.give_home(Sched(home_handle));
+                    this.resume_task_immediately(task);
+                    return None;
+                }
+            }
+            AnySched if this.run_anything => {
+                rtdebug!("running anysched task here");
+                task.give_home(AnySched);
+                this.resume_task_immediately(task);
+                return None;
+            }
+            AnySched => {
+                rtdebug!("sending task to friend");
+                task.give_home(AnySched);
+                this.send_to_friend(task);
+                return Some(this);
+            }
+        }
+    }
+
+    // Bundle the helpers together.
+    fn do_work(~self) -> Option<~Scheduler> {
+        let mut this = self;
+
+        rtdebug!("scheduler calling do work");
+        match this.find_work() {
+            Some(task) => {
+                rtdebug!("found some work! processing the task");
+                return this.process_task(task);
+            }
+            None => {
+                rtdebug!("no work was found, returning the scheduler struct");
                 return Some(this);
             }
         }
@@ -711,7 +775,6 @@ impl Scheduler {
             GiveTask(task, f) => f.to_fn()(self, task)
         }
     }
-
 }
 
 // The cases for the below function.
@@ -745,6 +808,8 @@ impl ClosureConverter for UnsafeTaskReceiver {
 
 #[cfg(test)]
 mod test {
+    extern mod extra;
+
     use prelude::*;
     use rt::test::*;
     use unstable::run_in_bare_thread;
@@ -862,12 +927,15 @@ mod test {
         do run_in_bare_thread {
 
             let sleepers = SleeperList::new();
-            let work_queue = WorkQueue::new();
+            let normal_queue = WorkQueue::new();
+            let special_queue = WorkQueue::new();
+            let queues = ~[normal_queue.clone(), special_queue.clone()];
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
                 ~UvEventLoop::new(),
-                work_queue.clone(),
+                normal_queue,
+                queues.clone(),
                 sleepers.clone());
 
             let normal_handle = Cell::new(normal_sched.make_handle());
@@ -877,7 +945,8 @@ mod test {
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
                 ~UvEventLoop::new(),
-                work_queue.clone(),
+                special_queue.clone(),
+                queues.clone(),
                 sleepers.clone(),
                 false,
                 Some(friend_handle));
