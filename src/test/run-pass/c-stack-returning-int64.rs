@@ -20,11 +20,11 @@ mod libc {
 }
 
 fn atol(s: ~str) -> int {
-    s.as_imm_buf(|x, _len| unsafe { libc::atol(x) })
+    s.to_c_str().with_ref(|x| unsafe { libc::atol(x as *u8) })
 }
 
 fn atoll(s: ~str) -> i64 {
-    s.as_imm_buf(|x, _len| unsafe { libc::atoll(x) })
+    s.to_c_str().with_ref(|x| unsafe { libc::atoll(x as *u8) })
 }
 
 pub fn main() {
