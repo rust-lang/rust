@@ -141,7 +141,7 @@ fn parse_path(st: &mut PState) -> @ast::Path {
                 return @ast::Path {
                     span: dummy_sp(),
                     global: false,
-                    segments: idents.consume_iter().transform(|identifier| {
+                    segments: idents.move_iter().map(|identifier| {
                         ast::PathSegment {
                             identifier: identifier,
                             lifetime: None,

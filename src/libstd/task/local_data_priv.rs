@@ -28,7 +28,7 @@ impl Handle {
     pub fn new() -> Handle {
         use rt::local::Local;
         unsafe {
-            let task = Local::unsafe_borrow::<Task>();
+            let task: *mut Task = Local::unsafe_borrow();
             NewHandle(&mut (*task).storage)
         }
     }

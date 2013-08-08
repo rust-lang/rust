@@ -12,7 +12,7 @@ use c_str::ToCStr;
 use cast::transmute;
 use io::{Writer, WriterUtil};
 use io;
-use libc::{c_char, c_void, size_t, STDERR_FILENO};
+use libc::{c_char, size_t, STDERR_FILENO};
 use option::{Option, None, Some};
 use ptr::RawPtr;
 use str::{OwnedStr, StrSlice};

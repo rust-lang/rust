@@ -286,7 +286,7 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     use rt::in_green_task_context;
 
     if in_green_task_context() {
-        let t = Local::unsafe_borrow::<Task>();
+        let t: *mut Task = Local::unsafe_borrow();
         do (|| {
             (*t).death.inhibit_yield();
             f()

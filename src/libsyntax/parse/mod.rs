@@ -399,8 +399,8 @@ mod test {
                                     types: ~[],
                                 }
                             ]
-                        },
-                        span: sp(0, 6))
+                        }),
+                    span: sp(0, 6)
                    })
     }
 

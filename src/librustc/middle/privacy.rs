@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// A pass that checks to make sure private fields and methods aren't used
-// outside their scopes.
-
+//! A pass that checks to make sure private fields and methods aren't used
+//! outside their scopes.
 
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
@@ -37,8 +36,8 @@ use syntax::oldvisit;
 use syntax::parse::token;
 
 pub fn check_crate<'mm>(tcx: ty::ctxt,
-                   method_map: &'mm method_map,
-                   crate: &ast::Crate) {
+                        method_map: &'mm method_map,
+                        crate: &ast::Crate) {
     let privileged_items = @mut ~[];
 
     // Adds an item to its scope.

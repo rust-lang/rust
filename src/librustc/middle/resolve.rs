@@ -58,6 +58,12 @@ pub type BindingMap = HashMap<ident,binding_info>;
 // Trait method resolution
 pub type TraitMap = HashMap<NodeId,@mut ~[def_id]>;
 
+// A summary of the generics on a trait.
+struct TraitGenerics {
+    has_lifetime: bool,
+    type_parameter_count: uint,
+}
+
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap2 = @mut HashMap<NodeId, ~[Export2]>;
@@ -1274,9 +1280,12 @@ impl Resolver {
                                                method.span);
                             let def = match method.explicit_self.node {
                                 sty_static => {
-                                    // Static methods become `def_fn`s.
-                                    def_fn(local_def(method.id),
-                                           method.purity)
+                                    // Static methods become
+                                    // `def_static_method`s.
+                                    def_static_method(local_def(method.id),
+                                                      FromImpl(local_def(
+                                                        item.id)),
+                                                      method.purity)
                                 }
                                 _ => {
                                     // Non-static methods become
@@ -1326,7 +1335,7 @@ impl Resolver {
                         sty_static => {
                             // Static methods become `def_static_method`s.
                             def_static_method(local_def(ty_m.id),
-                                              Some(local_def(item.id)),
+                                              FromTrait(local_def(item.id)),
                                               ty_m.purity)
                         }
                         _ => {
@@ -2069,7 +2078,7 @@ impl Resolver {
     fn path_idents_to_str(@mut self, path: &Path) -> ~str {
         let identifiers: ~[ast::ident] = path.segments
                                              .iter()
-                                             .transform(|seg| seg.identifier)
+                                             .map(|seg| seg.identifier)
                                              .collect();
         self.idents_to_str(identifiers)
     }
@@ -4131,6 +4140,22 @@ impl Resolver {
                         Some(&primitive_type) => {
                             result_def =
                                 Some(def_prim_ty(primitive_type));
+
+                            if path.segments
+                                   .iter()
+                                   .any(|s| s.lifetime.is_some()) {
+                                self.session.span_err(path.span,
+                                                      "lifetime parameters \
+                                                       are not allowed on \
+                                                       this type")
+                            } else if path.segments
+                                          .iter()
+                                          .any(|s| s.types.len() > 0) {
+                                self.session.span_err(path.span,
+                                                      "type parameters are \
+                                                       not allowed on this \
+                                                       type")
+                            }
                         }
                         None => {
                             // Continue.
@@ -4140,12 +4165,17 @@ impl Resolver {
 
                 match result_def {
                     None => {
-                        match self.resolve_path(ty.id, path, TypeNS, true, visitor) {
+                        match self.resolve_path(ty.id,
+                                                path,
+                                                TypeNS,
+                                                true,
+                                                visitor) {
                             Some(def) => {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
-                                       self.session.str_of(
-                                            path.segments.last().identifier),
+                                       self.session.str_of(path.segments
+                                                               .last()
+                                                               .identifier),
                                        def);
                                 result_def = Some(def);
                             }
@@ -4154,9 +4184,7 @@ impl Resolver {
                             }
                         }
                     }
-                    Some(_) => {
-                        // Continue.
-                    }
+                    Some(_) => {}   // Continue.
                 }
 
                 match result_def {
@@ -4334,7 +4362,7 @@ impl Resolver {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map_(|seg| seg.types.iter()) {
+                                  .flat_map(|seg| seg.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4369,7 +4397,7 @@ impl Resolver {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map_(|s| s.types.iter()) {
+                                  .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4402,7 +4430,7 @@ impl Resolver {
                     // Check the types in the path pattern.
                     for ty in path.segments
                                   .iter()
-                                  .flat_map_(|s| s.types.iter()) {
+                                  .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4499,7 +4527,7 @@ impl Resolver {
                         visitor: ResolveVisitor)
                         -> Option<def> {
         // First, resolve the types.
-        for ty in path.segments.iter().flat_map_(|s| s.types.iter()) {
+        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
             self.resolve_type(ty, visitor);
         }
 
@@ -4523,11 +4551,13 @@ impl Resolver {
             match (def, unqualified_def) {
                 (Some(d), Some(ud)) if d == ud => {
                     self.session.add_lint(unnecessary_qualification,
-                                          id, path.span,
+                                          id,
+                                          path.span,
                                           ~"unnecessary qualification");
                 }
                 _ => ()
             }
+
             return def;
         }
 

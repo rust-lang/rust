@@ -829,7 +829,7 @@ fn determine_rp_in_ty(ty: &ast::Ty,
       ast::ty_path(ref path, _, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
-            for tp in path.segments.iter().flat_map_(|s| s.types.iter()) {
+            for tp in path.segments.iter().flat_map(|s| s.types.iter()) {
                 (visitor.visit_ty)(tp, (cx, visitor));
             }
         }

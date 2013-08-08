@@ -344,7 +344,7 @@ fn path_node(ids: ~[ast::ident]) -> ast::Path {
     ast::Path {
         span: dummy_sp(),
         global: false,
-        segments: ids.consume_iter().transform(|identifier| ast::PathSegment {
+        segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetime: None,
             types: opt_vec::Empty,
@@ -356,7 +356,7 @@ fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
     ast::Path {
         span: dummy_sp(),
         global: true,
-        segments: ids.consume_iter().transform(|identifier| ast::PathSegment {
+        segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetime: None,
             types: opt_vec::Empty,
