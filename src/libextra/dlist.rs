@@ -26,6 +26,7 @@ use std::cast;
 use std::ptr;
 use std::util;
 use std::iterator::{FromIterator, Extendable, Invert};
+use std::iterator;
 
 use container::Deque;
 
@@ -589,12 +590,27 @@ impl<A, T: Iterator<A>> Extendable<A, T> for DList<A> {
 impl<A: Eq> Eq for DList<A> {
     fn eq(&self, other: &DList<A>) -> bool {
         self.len() == other.len() &&
-            self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
+            iterator::order::eq(self.iter(), other.iter())
     }
 
-    #[inline]
     fn ne(&self, other: &DList<A>) -> bool {
-        !self.eq(other)
+        self.len() != other.len() &&
+            iterator::order::ne(self.iter(), other.iter())
+    }
+}
+
+impl<A: Eq + Ord> Ord for DList<A> {
+    fn lt(&self, other: &DList<A>) -> bool {
+        iterator::order::lt(self.iter(), other.iter())
+    }
+    fn le(&self, other: &DList<A>) -> bool {
+        iterator::order::le(self.iter(), other.iter())
+    }
+    fn gt(&self, other: &DList<A>) -> bool {
+        iterator::order::gt(self.iter(), other.iter())
+    }
+    fn ge(&self, other: &DList<A>) -> bool {
+        iterator::order::ge(self.iter(), other.iter())
     }
 }
 
@@ -962,6 +978,48 @@ mod tests {
         assert!(n != m);
         m.push_back(1);
         assert_eq!(&n, &m);
+    }
+
+    #[test]
+    fn test_ord() {
+        let n: DList<int> = list_from([]);
+        let m = list_from([1,2,3]);
+        assert!(n < m);
+        assert!(m > n);
+        assert!(n <= n);
+        assert!(n >= n);
+    }
+
+    #[test]
+    fn test_ord_nan() {
+        let nan = 0.0/0.0;
+        let n = list_from([nan]);
+        let m = list_from([nan]);
+        assert!(!(n < m));
+        assert!(!(n > m));
+        assert!(!(n <= m));
+        assert!(!(n >= m));
+
+        let n = list_from([nan]);
+        let one = list_from([1.0]);
+        assert!(!(n < one));
+        assert!(!(n > one));
+        assert!(!(n <= one));
+        assert!(!(n >= one));
+
+        let u = list_from([1.0,2.0,nan]);
+        let v = list_from([1.0,2.0,3.0]);
+        assert!(!(u < v));
+        assert!(!(u > v));
+        assert!(!(u <= v));
+        assert!(!(u >= v));
+
+        let s = list_from([1.0,2.0,4.0,2.0]);
+        let t = list_from([1.0,2.0,3.0,2.0]);
+        assert!(!(s < t));
+        assert!(s > one);
+        assert!(!(s <= one));
+        assert!(s >= one);
     }
 
     #[test]
