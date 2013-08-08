@@ -574,7 +574,7 @@ pub mod traits {
                 order::eq(self.iter(), other.iter())
         }
         fn ne(&self, other: & &'self [T]) -> bool {
-            self.len() != other.len() !=
+            self.len() != other.len() ||
                 order::ne(self.iter(), other.iter())
         }
     }
