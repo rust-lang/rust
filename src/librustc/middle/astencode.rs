@@ -374,9 +374,16 @@ impl tr for ast::def {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def {
         match *self {
           ast::def_fn(did, p) => ast::def_fn(did.tr(xcx), p),
-          ast::def_static_method(did, did2_opt, p) => {
+          ast::def_static_method(did, wrapped_did2, p) => {
             ast::def_static_method(did.tr(xcx),
-                                   did2_opt.map(|did2| did2.tr(xcx)),
+                                   match wrapped_did2 {
+                                    ast::FromTrait(did2) => {
+                                        ast::FromTrait(did2.tr(xcx))
+                                    }
+                                    ast::FromImpl(did2) => {
+                                        ast::FromImpl(did2.tr(xcx))
+                                    }
+                                   },
                                    p)
           }
           ast::def_method(did0, did1) => {

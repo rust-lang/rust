@@ -29,7 +29,7 @@ impl TcpStream {
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
         let stream = unsafe {
             rtdebug!("borrowing io to connect");
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             rtdebug!("about to connect");
             (*io).tcp_connect(addr)
         };
@@ -100,7 +100,7 @@ pub struct TcpListener(~RtioTcpListenerObject);
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
         let listener = unsafe {
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             (*io).tcp_bind(addr)
         };
         match listener {

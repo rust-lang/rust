@@ -25,8 +25,4 @@ fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
     //~^ ERROR cannot infer an appropriate lifetime
 }
 
-fn a_fn4<'a,'b>() {
-    let _: int<'a> = 1; //~ ERROR region parameters are not allowed on this type
-}
-
 fn main() { }

@@ -862,10 +862,17 @@ impl<T> Poly for T {
     }
 }
 
-// n.b. use 'const' to get an implementation for both '*mut' and '*' at the same
-//      time.
-impl<T> Pointer for *const T {
-    fn fmt(t: &*const T, f: &mut Formatter) {
+impl<T> Pointer for *T {
+    fn fmt(t: &*T, f: &mut Formatter) {
+        f.flags |= 1 << (parse::FlagAlternate as uint);
+        do ::uint::to_str_bytes(*t as uint, 16) |buf| {
+            f.pad_integral(buf, "0x", true);
+        }
+    }
+}
+
+impl<T> Pointer for *mut T {
+    fn fmt(t: &*mut T, f: &mut Formatter) {
         f.flags |= 1 << (parse::FlagAlternate as uint);
         do ::uint::to_str_bytes(*t as uint, 16) |buf| {
             f.pad_integral(buf, "0x", true);

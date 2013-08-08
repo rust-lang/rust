@@ -744,7 +744,7 @@ impl<'self> LookupContext<'self> {
                 // Coerce ~/@/&Trait instances to &Trait.
 
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowObj, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoBorrowObj, autoderefs, [m_imm, m_mutbl],
                     |trt_mut, reg| {
                         ty::mk_trait(tcx, trt_did, trt_substs.clone(),
                                      RegionTraitStore(reg), trt_mut, b)
