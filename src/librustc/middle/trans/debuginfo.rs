@@ -271,11 +271,11 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let cx = fcx.ccx;
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, fn_decl, id) = match fnitem {
+    let (ident, fn_decl, id, generics) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
-                ast::item_fn(ref fn_decl, _, _, _, _) => {
-                    (item.ident, fn_decl, item.id)
+                ast::item_fn(ref fn_decl, _, _, ref generics, _) => {
+                    (item.ident, ty, item.id, Some(generics))
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
                                            "create_function_metadata: item bound to non-function")
@@ -286,17 +286,21 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 decl: ref fn_decl,
                 id: id,
                 ident: ident,
+                generics: ref generics,
                 _
             },
             _,
             _) => {
-            (ident, fn_decl, id)
+            (ident, fn_decl, id, Some(generics))
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
                 ast::expr_fn_block(ref fn_decl, _) => {
                     let name = gensym_name("fn");
-                    (name, fn_decl, expr.id)
+                    (name, fn_decl, expr.id,
+                        // This is not quite right. It should actually inherit the generics of the
+                        // enclosing function.
+                        None)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -308,11 +312,12 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                     decl: ref fn_decl,
                     id: id,
                     ident: ident,
+                    generics: ref generics,
                     _
                 }),
             _,
             _) => {
-            (ident, fn_decl, id)
+            (ident, fn_decl, id, Some(generics))
         }
         _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
     };
@@ -336,8 +341,18 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
 
     let return_type_metadata = if cx.sess.opts.extra_debuginfo {
         match fn_decl.output.node {
-          ast::ty_nil => ptr::null(),
-          _ => type_metadata(cx, ty::node_id_to_type(cx.tcx, id), fn_decl.output.span)
+            ast::ty_nil => ptr::null(),
+            _ => {
+                let return_type = ty::node_id_to_type(cx.tcx, id);
+                let return_type = match fcx.param_substs {
+                    None => return_type,
+                    Some(substs) => {
+                        ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, return_type)
+                    }
+                };
+
+                type_metadata(cx, return_type, ret_ty.span)
+            }
         }
     } else {
         ptr::null()
@@ -349,6 +364,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
             file_metadata,
             create_DIArray(DIB(cx), [return_type_metadata]))
     };
+
+    let template_parameters: DIArray = get_template_parameters(cx, fcx, generics, file_metadata, span);
 
     let fn_metadata =
         do cx.sess.str_of(ident).with_c_str |name| {
@@ -368,7 +385,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                     FlagPrototyped as c_uint,
                     cx.sess.opts.optimize != session::No,
                     fcx.llfn,
-                    ptr::null(),
+                    template_parameters,
                     ptr::null())
             }
         }};
@@ -396,6 +413,68 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
 
     dbg_cx(cx).created_functions.insert(id, fn_metadata);
     return fn_metadata;
+
+    fn get_template_parameters(cx: &mut CrateContext,
+                               fcx: &FunctionContext,
+                               generics: Option<&ast::Generics>,
+                               file_metadata: DIFile,
+                               span: span) -> DIArray {
+        // Normalize cases
+        let generics = match generics {
+            Some(generics_ref) if generics_ref.is_type_parameterized() => Some(generics_ref),
+            _ => None
+        };
+
+        match generics {
+            None => {
+                if (fcx.param_substs.is_some()) {
+                    cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
+                        Mismatch between ast::Generics and FunctionContext::param_substs 111");
+                }
+
+                return ptr::null();
+            }
+
+            Some(generics) => {
+                let actual_types = match fcx.param_substs {
+                    Some(@param_substs { tys: ref actual_types, _}) => {
+                        actual_types
+                    }
+                    None => {
+                        cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
+                            Mismatch between ast::Generics and FunctionContext::param_substs 222");
+                    }
+                };
+
+                let template_params: ~[DIDescriptor] = do generics
+                    .ty_params
+                    .iter()
+                    .enumerate()
+                    .transform |(index, &ast::TyParam{ ident: ident, _ })| {
+
+                        let actual_type = actual_types[index];
+                        let actual_type_metadata = type_metadata(cx,
+                                                                 actual_type,
+                                                                 codemap::dummy_sp());
+
+                        do cx.sess.str_of(ident).as_c_str |name| {
+                            unsafe {
+                                llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                                    DIB(cx),
+                                    file_metadata,
+                                    name,
+                                    actual_type_metadata,
+                                    ptr::null(),
+                                    0,
+                                    0)
+                            }
+                        }
+                    }.collect();
+
+                return create_DIArray(DIB(cx), template_params);
+            }
+        }
+    }
 }
 
 

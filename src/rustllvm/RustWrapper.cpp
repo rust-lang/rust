@@ -838,3 +838,21 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
 extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Value, LLVMBool Unnamed) {
     unwrap<GlobalValue>(Value)->setUnnamedAddr(Unnamed);
 }
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateTemplateTypeParameter(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef Ty,
+    LLVMValueRef File = 0,
+    unsigned LineNo = 0,
+    unsigned ColumnNo = 0)
+{
+    return wrap(Builder->createTemplateTypeParameter(
+      unwrapDI<DIDescriptor>(Scope),
+      Name,
+      unwrapDI<DIType>(Ty),
+      unwrapDI<MDNode*>(File),
+      LineNo,
+      ColumnNo));
+}
