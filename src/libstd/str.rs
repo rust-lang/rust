@@ -1050,34 +1050,16 @@ pub mod traits {
     impl<'self> Ord for &'self str {
         #[inline]
         fn lt(&self, other: & &'self str) -> bool { self.cmp(other) == Less }
-        #[inline]
-        fn le(&self, other: & &'self str) -> bool { self.cmp(other) != Greater }
-        #[inline]
-        fn ge(&self, other: & &'self str) -> bool { self.cmp(other) != Less }
-        #[inline]
-        fn gt(&self, other: & &'self str) -> bool { self.cmp(other) == Greater }
     }
 
     impl Ord for ~str {
         #[inline]
         fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
-        #[inline]
-        fn le(&self, other: &~str) -> bool { self.cmp(other) != Greater }
-        #[inline]
-        fn ge(&self, other: &~str) -> bool { self.cmp(other) != Less }
-        #[inline]
-        fn gt(&self, other: &~str) -> bool { self.cmp(other) == Greater }
     }
 
     impl Ord for @str {
         #[inline]
         fn lt(&self, other: &@str) -> bool { self.cmp(other) == Less }
-        #[inline]
-        fn le(&self, other: &@str) -> bool { self.cmp(other) != Greater }
-        #[inline]
-        fn ge(&self, other: &@str) -> bool { self.cmp(other) != Less }
-        #[inline]
-        fn gt(&self, other: &@str) -> bool { self.cmp(other) == Greater }
     }
 
     impl<'self, S: Str> Equiv<S> for &'self str {
