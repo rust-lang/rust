@@ -37,7 +37,7 @@ pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> b
 }
 
 pub fn pkg_parent_workspaces(pkgid: &PkgId) -> ~[Path] {
-    rust_path().consume_iter()
+    rust_path().move_iter()
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
         .collect()
 }

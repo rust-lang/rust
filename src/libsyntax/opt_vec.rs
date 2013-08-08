@@ -57,10 +57,10 @@ impl<T> OptVec<T> {
         }
     }
 
-    fn map_consume<U>(self, op: &fn(T) -> U) -> OptVec<U> {
+    fn map_move<U>(self, op: &fn(T) -> U) -> OptVec<U> {
         match self {
             Empty => Empty,
-            Vec(v) => Vec(v.consume_iter().transform(op).collect())
+            Vec(v) => Vec(v.move_iter().transform(op).collect())
         }
     }
 

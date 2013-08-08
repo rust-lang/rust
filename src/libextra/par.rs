@@ -77,7 +77,7 @@ fn map_slices<A:Clone + Send,B:Clone + Send>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert_eq!(num_tasks, futures.len());
 
-        do futures.consume_iter().transform |ys| {
+        do futures.move_iter().transform |ys| {
             let mut ys = ys;
             ys.get()
         }.collect()

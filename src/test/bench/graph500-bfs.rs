@@ -96,9 +96,9 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         }
     }
 
-    do graph.consume_iter().transform |v| {
+    do graph.move_iter().transform |v| {
         let mut vec = ~[];
-        for i in v.consume() {
+        for i in v.move_iter() {
             vec.push(i);
         }
         vec
@@ -119,7 +119,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
         }
     }
     let mut vec = ~[];
-    for i in keys.consume() {
+    for i in keys.move_iter() {
         vec.push(i);
     }
     return vec;

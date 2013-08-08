@@ -391,7 +391,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     rtdebug!("waiting for threads");
 
     // Wait for schedulers
-    for thread in threads.consume_iter() {
+    for thread in threads.move_iter() {
         thread.join();
     }
 

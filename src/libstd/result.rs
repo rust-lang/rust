@@ -94,7 +94,7 @@ impl<T, E: ToStr> Result<T, E> {
         match *self {
             Ok(ref t) => Some(t),
             Err(*) => None,
-        }.consume()
+        }.move_iter()
     }
 
     /// Call a method based on a previous result
@@ -108,7 +108,7 @@ impl<T, E: ToStr> Result<T, E> {
         match *self {
             Ok(*) => None,
             Err(ref t) => Some(t),
-        }.consume()
+        }.move_iter()
     }
 
     /// Unwraps a result, yielding the content of an `Ok`.

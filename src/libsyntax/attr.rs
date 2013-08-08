@@ -209,7 +209,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
     }
 
     // There doesn't seem to be a more optimal way to do this
-    do v.consume_iter().transform |(_, m)| {
+    do v.move_iter().transform |(_, m)| {
         match m.node {
             MetaList(n, ref mis) => {
                 @spanned {

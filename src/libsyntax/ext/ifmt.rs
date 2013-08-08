@@ -575,8 +575,8 @@ impl Context {
                 Some(self.format_arg(e.span, Right(name), lname));
         }
 
-        let args = names.consume_iter().transform(|a| a.unwrap());
-        let mut args = locals.consume_iter().chain_(args);
+        let args = names.move_iter().transform(|a| a.unwrap());
+        let mut args = locals.move_iter().chain_(args);
 
         // Next, build up the actual call to the sprintf function.
         let result = self.ecx.expr_call_global(self.fmtsp, ~[

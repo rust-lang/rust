@@ -213,13 +213,13 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     }
 
     /// Get a lazy iterator that consumes the treemap.
-    pub fn consume_iter(self) -> TreeMapConsumeIterator<K, V> {
+    pub fn move_iter(self) -> TreeMapMoveIterator<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
             None => ~[],
             Some(~tn) => ~[tn]
         };
-        TreeMapConsumeIterator {
+        TreeMapMoveIterator {
             stack: stk,
             remaining: length
         }
@@ -331,12 +331,12 @@ fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
 }
 
 /// Lazy forward iterator over a map that consumes the map while iterating
-pub struct TreeMapConsumeIterator<K, V> {
+pub struct TreeMapMoveIterator<K, V> {
     priv stack: ~[TreeNode<K, V>],
     priv remaining: uint
 }
 
-impl<K, V> Iterator<(K, V)> for TreeMapConsumeIterator<K,V> {
+impl<K, V> Iterator<(K, V)> for TreeMapMoveIterator<K,V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         while !self.stack.is_empty() {
