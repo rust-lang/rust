@@ -247,7 +247,7 @@ pub fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
 }
 
 pub fn public_methods(ms: ~[@method]) -> ~[@method] {
-    do ms.consume_iter().filter |m| {
+    do ms.move_iter().filter |m| {
         match m.vis {
             public => true,
             _   => false

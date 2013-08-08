@@ -167,7 +167,7 @@ impl Program {
         }
 
         let newvars = util::replace(&mut self.newvars, HashMap::new());
-        for (name, var) in newvars.consume() {
+        for (name, var) in newvars.move_iter() {
             self.local_vars.insert(name, var);
         }
 
@@ -233,7 +233,7 @@ impl Program {
     pub fn consume_cache(&mut self) {
         let map = local_data::pop(tls_key).expect("tls is empty");
         let cons_map = util::replace(map, HashMap::new());
-        for (name, value) in cons_map.consume() {
+        for (name, value) in cons_map.move_iter() {
             match self.local_vars.find_mut(&name) {
                 Some(v) => { v.data = (*value).clone(); }
                 None => { fail!("unknown variable %s", name) }
@@ -345,7 +345,7 @@ impl Program {
 
         // I'm not an @ pointer, so this has to be done outside.
         let cons_newvars = util::replace(newvars, HashMap::new());
-        for (k, v) in cons_newvars.consume() {
+        for (k, v) in cons_newvars.move_iter() {
             self.newvars.insert(k, v);
         }
 

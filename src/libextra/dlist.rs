@@ -63,7 +63,7 @@ pub struct MutDListIterator<'self, T> {
 
 /// DList consuming iterator
 #[deriving(Clone)]
-pub struct ConsumeIterator<T> {
+pub struct MoveIterator<T> {
     priv list: DList<T>
 }
 
@@ -391,14 +391,14 @@ impl<T> DList<T> {
 
     /// Consume the list into an iterator yielding elements by value
     #[inline]
-    pub fn consume_iter(self) -> ConsumeIterator<T> {
-        ConsumeIterator{list: self}
+    pub fn move_iter(self) -> MoveIterator<T> {
+        MoveIterator{list: self}
     }
 
     /// Consume the list into an iterator yielding elements by value, in reverse
     #[inline]
-    pub fn consume_rev_iter(self) -> Invert<ConsumeIterator<T>> {
-        self.consume_iter().invert()
+    pub fn move_rev_iter(self) -> Invert<MoveIterator<T>> {
+        self.move_iter().invert()
     }
 }
 
@@ -557,7 +557,7 @@ impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
     }
 }
 
-impl<A> Iterator<A> for ConsumeIterator<A> {
+impl<A> Iterator<A> for MoveIterator<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
 
@@ -567,7 +567,7 @@ impl<A> Iterator<A> for ConsumeIterator<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for ConsumeIterator<A> {
+impl<A> DoubleEndedIterator<A> for MoveIterator<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
@@ -721,7 +721,7 @@ mod tests {
         check_links(&m);
         let sum = v + u;
         assert_eq!(sum.len(), m.len());
-        for elt in sum.consume_iter() {
+        for elt in sum.move_iter() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -745,7 +745,7 @@ mod tests {
         check_links(&m);
         let sum = u + v;
         assert_eq!(sum.len(), m.len());
-        for elt in sum.consume_iter() {
+        for elt in sum.move_iter() {
             assert_eq!(m.pop_front(), Some(elt))
         }
     }
@@ -770,7 +770,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(~[3,9,5,1,2], m.consume_iter().collect());
+        assert_eq!(~[3,9,5,1,2], m.move_iter().collect());
     }
 
     #[test]
@@ -900,7 +900,7 @@ mod tests {
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.consume_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        assert_eq!(m.move_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -911,7 +911,7 @@ mod tests {
         m.merge(n, |a, b| a <= b);
         assert_eq!(m.len(), len);
         check_links(&m);
-        let res = m.consume_iter().collect::<~[int]>();
+        let res = m.move_iter().collect::<~[int]>();
         assert_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
@@ -927,7 +927,7 @@ mod tests {
         m.push_back(4);
         m.insert_ordered(3);
         check_links(&m);
-        assert_eq!(~[2,3,4], m.consume_iter().collect::<~[int]>());
+        assert_eq!(~[2,3,4], m.move_iter().collect::<~[int]>());
     }
 
     #[test]
@@ -1003,7 +1003,7 @@ mod tests {
         check_links(&m);
 
         let mut i = 0u;
-        for (a, &b) in m.consume_iter().zip(v.iter()) {
+        for (a, &b) in m.move_iter().zip(v.iter()) {
             i += 1;
             assert_eq!(a, b);
         }

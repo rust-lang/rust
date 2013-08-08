@@ -765,7 +765,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 strings
             }
         }
-        do get_list(p).consume_iter().filter |filename| {
+        do get_list(p).move_iter().filter |filename| {
             "." != *filename && ".." != *filename
         }.collect()
     }

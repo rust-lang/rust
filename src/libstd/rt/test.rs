@@ -232,7 +232,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         // Wait for schedulers
-        for thread in threads.consume_iter() {
+        for thread in threads.move_iter() {
             thread.join();
         }
     }

@@ -141,11 +141,11 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
  * Creates and initializes an immutable managed vector by moving all the
  * elements from an owned vector.
  */
-pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
+pub fn to_managed_move<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
-        for x in v.consume_iter() {
+        for x in v.move_iter() {
             raw::push(&mut av, x);
         }
         av
@@ -331,12 +331,12 @@ mod test {
     }
 
     #[test]
-    fn test_to_managed_consume() {
-        assert_eq!(to_managed_consume::<int>(~[]), @[]);
-        assert_eq!(to_managed_consume(~[true]), @[true]);
-        assert_eq!(to_managed_consume(~[1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
-        assert_eq!(to_managed_consume(~[~"abc", ~"123"]), @[~"abc", ~"123"]);
-        assert_eq!(to_managed_consume(~[~[42]]), @[~[42]]);
+    fn test_to_managed_move() {
+        assert_eq!(to_managed_move::<int>(~[]), @[]);
+        assert_eq!(to_managed_move(~[true]), @[true]);
+        assert_eq!(to_managed_move(~[1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
+        assert_eq!(to_managed_move(~[~"abc", ~"123"]), @[~"abc", ~"123"]);
+        assert_eq!(to_managed_move(~[~[42]]), @[~[42]]);
     }
 
     #[test]

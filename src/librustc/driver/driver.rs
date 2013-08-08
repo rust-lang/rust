@@ -120,7 +120,7 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str],
                   demitter: diagnostic::Emitter) -> ast::CrateConfig {
-    do cfgspecs.consume_iter().transform |s| {
+    do cfgspecs.move_iter().transform |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
     }.collect::<ast::CrateConfig>()
@@ -631,7 +631,7 @@ pub fn build_session_options(binary: @str,
         let level_name = lint::level_to_str(*level);
 
         // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-        // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+        // to_ascii_move and to_str_move to not do a unnecessary copy.
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().to_str_ascii();
         let flags = vec::append(getopts::opt_strs(matches, level_short),

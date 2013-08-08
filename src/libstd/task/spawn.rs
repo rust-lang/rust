@@ -79,7 +79,7 @@ use cast;
 use cell::Cell;
 use container::MutableMap;
 use comm::{Chan, GenericChan, oneshot};
-use hashmap::{HashSet, HashSetConsumeIterator};
+use hashmap::{HashSet, HashSetMoveIterator};
 use local_data;
 use task::{Failure, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult};
@@ -141,8 +141,8 @@ impl TaskSet {
         assert!(was_present);
     }
     #[inline]
-    fn consume(self) -> HashSetConsumeIterator<TaskHandle> {
-        (*self).consume()
+    fn move_iter(self) -> HashSetMoveIterator<TaskHandle> {
+        (*self).move_iter()
     }
 }
 
@@ -460,13 +460,13 @@ fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
         if newstate.is_some() {
             let TaskGroupData { members: members, descendants: descendants } =
                 newstate.unwrap();
-            for sibling in members.consume() {
+            for sibling in members.move_iter() {
                 // Skip self - killing ourself won't do much good.
                 if &sibling != me {
                     RuntimeGlue::kill_task(sibling);
                 }
             }
-            for child in descendants.consume() {
+            for child in descendants.move_iter() {
                 assert!(&child != me);
                 RuntimeGlue::kill_task(child);
             }

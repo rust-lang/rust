@@ -159,8 +159,8 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                   vec::from_fn(new_capacity, |_| None));
 
         self.size = 0;
-        // consume_rev_iter is more efficient
-        for bucket in old_buckets.consume_rev_iter() {
+        // move_rev_iter is more efficient
+        for bucket in old_buckets.move_rev_iter() {
             self.insert_opt_bucket(bucket);
         }
     }
@@ -470,9 +470,9 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Creates a consuming iterator, that is, one that moves each key-value
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
-    pub fn consume(self) -> HashMapConsumeIterator<K, V> {
-        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
-        HashMapConsumeIterator {iter: self.buckets.consume_rev_iter()}
+    pub fn move_iter(self) -> HashMapMoveIterator<K, V> {
+        // `move_rev_iter` is more efficient than `move_iter` for vectors
+        HashMapMoveIterator {iter: self.buckets.move_rev_iter()}
     }
 }
 
@@ -524,9 +524,9 @@ pub struct HashMapMutIterator<'self, K, V> {
     priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
 }
 
-/// HashMap consume iterator
-pub struct HashMapConsumeIterator<K, V> {
-    priv iter: vec::ConsumeRevIterator<Option<Bucket<K, V>>>,
+/// HashMap move iterator
+pub struct HashMapMoveIterator<K, V> {
+    priv iter: vec::MoveRevIterator<Option<Bucket<K, V>>>,
 }
 
 /// HashSet iterator
@@ -535,9 +535,9 @@ pub struct HashSetIterator<'self, K> {
     priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
 }
 
-/// HashSet consume iterator
-pub struct HashSetConsumeIterator<K> {
-    priv iter: vec::ConsumeRevIterator<Option<Bucket<K, ()>>>,
+/// HashSet move iterator
+pub struct HashSetMoveIterator<K> {
+    priv iter: vec::MoveRevIterator<Option<Bucket<K, ()>>>,
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
@@ -566,7 +566,7 @@ impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'sel
     }
 }
 
-impl<K, V> Iterator<(K, V)> for HashMapConsumeIterator<K, V> {
+impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         for elt in self.iter {
@@ -592,7 +592,7 @@ impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
     }
 }
 
-impl<K> Iterator<K> for HashSetConsumeIterator<K> {
+impl<K> Iterator<K> for HashSetMoveIterator<K> {
     #[inline]
     fn next(&mut self) -> Option<K> {
         for elt in self.iter {
@@ -707,9 +707,9 @@ impl<T:Hash + Eq> HashSet<T> {
     /// Creates a consuming iterator, that is, one that moves each value out
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
-    pub fn consume(self) -> HashSetConsumeIterator<T> {
-        // `consume_rev_iter` is more efficient than `consume_iter` for vectors
-        HashSetConsumeIterator {iter: self.map.buckets.consume_rev_iter()}
+    pub fn move_iter(self) -> HashSetMoveIterator<T> {
+        // `move_rev_iter` is more efficient than `move_iter` for vectors
+        HashSetMoveIterator {iter: self.map.buckets.move_rev_iter()}
     }
 
     /// Visit the values representing the difference
@@ -881,7 +881,7 @@ mod test_map {
     }
 
     #[test]
-    fn test_consume() {
+    fn test_move_iter() {
         let hm = {
             let mut hm = HashMap::new();
 
@@ -891,7 +891,7 @@ mod test_map {
             hm
         };
 
-        let v = hm.consume().collect::<~[(char, int)]>();
+        let v = hm.move_iter().collect::<~[(char, int)]>();
         assert!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
     }
 
@@ -1177,7 +1177,7 @@ mod test_set {
     }
 
     #[test]
-    fn test_consume() {
+    fn test_move_iter() {
         let hs = {
             let mut hs = HashSet::new();
 
@@ -1187,7 +1187,7 @@ mod test_set {
             hs
         };
 
-        let v = hs.consume().collect::<~[char]>();
+        let v = hs.move_iter().collect::<~[char]>();
         assert!(['a', 'b'] == v || ['b', 'a'] == v);
     }
 }

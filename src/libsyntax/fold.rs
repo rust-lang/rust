@@ -176,7 +176,7 @@ pub fn fold_ty_param(tp: TyParam,
 pub fn fold_ty_params(tps: &OptVec<TyParam>,
                       fld: @ast_fold) -> OptVec<TyParam> {
     let tps = /*bad*/ (*tps).clone();
-    tps.map_consume(|tp| fold_ty_param(tp, fld))
+    tps.map_move(|tp| fold_ty_param(tp, fld))
 }
 
 pub fn fold_lifetime(l: &Lifetime,
