@@ -21,12 +21,12 @@ msgstr ""
 #: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
 #: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
 #: doc/tutorial.md:868 doc/tutorial-ffi.md:143
 msgid "# Destructors"
-msgstr ""
+msgstr "# デストラクタ"
 
 #. type: Plain text
 #: doc/tutorial-ffi.md:2
