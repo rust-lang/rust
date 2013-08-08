@@ -229,20 +229,22 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
             if self.data.is_null() {
                 return; // Happens when destructing an unwrapper's handle.
             }
-            do task::unkillable {
-                let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-                // Must be acquire+release, not just release, to make sure this
-                // doesn't get reordered to after the unwrapper pointer load.
-                let old_count = data.count.fetch_sub(1, SeqCst);
-                assert!(old_count >= 1);
-                if old_count == 1 {
-                    // Were we really last, or should we hand off to an
-                    // unwrapper? It's safe to not xchg because the unwrapper
-                    // will set the unwrap lock *before* dropping his/her
-                    // reference. In effect, being here means we're the only
-                    // *awake* task with the data.
-                    match data.unwrapper.take(Acquire) {
-                        Some(~(message,response)) => {
+            let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+            // Must be acquire+release, not just release, to make sure this
+            // doesn't get reordered to after the unwrapper pointer load.
+            let old_count = data.count.fetch_sub(1, SeqCst);
+            assert!(old_count >= 1);
+            if old_count == 1 {
+                // Were we really last, or should we hand off to an
+                // unwrapper? It's safe to not xchg because the unwrapper
+                // will set the unwrap lock *before* dropping his/her
+                // reference. In effect, being here means we're the only
+                // *awake* task with the data.
+                match data.unwrapper.take(Acquire) {
+                    Some(~(message,response)) => {
+                        let cell = Cell::new((message, response, data));
+                        do task::unkillable {
+                            let (message, response, data) = cell.take();
                             // Send 'ready' and wait for a response.
                             message.send(());
                             // Unkillable wait. Message guaranteed to come.
@@ -253,13 +255,13 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
                                 // Other task was killed. drop glue takes over.
                             }
                         }
-                        None => {
-                            // drop glue takes over.
-                        }
                     }
-                } else {
-                    cast::forget(data);
+                    None => {
+                        // drop glue takes over.
+                    }
                 }
+            } else {
+                cast::forget(data);
             }
         }
     }
