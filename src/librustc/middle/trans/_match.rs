@@ -145,6 +145,51 @@
  * - `store_non_ref_bindings()`
  * - `insert_lllocals()`
  *
+ *
+ * ## Notes on vector pattern matching.
+ *
+ * Vector pattern matching is surprisingly tricky. The problem is that
+ * the structure of the vector isn't fully known, and slice matches
+ * can be done on subparts of it.
+ *
+ * The way that vector pattern matches are dealt with, then, is as
+ * follows. First, we make the actual condition associated with a
+ * vector pattern simply a vector length comparison. So the pattern
+ * [1, .. x] gets the condition "vec len >= 1", and the pattern
+ * [.. x] gets the condition "vec len >= 0". The problem here is that
+ * having the condition "vec len >= 1" hold clearly does not mean that
+ * only a pattern that has exactly that condition will match. This
+ * means that it may well be the case that a condition holds, but none
+ * of the patterns matching that condition match; to deal with this,
+ * when doing vector length matches, we have match failures proceed to
+ * the next condition to check.
+ *
+ * There are a couple more subtleties to deal with. While the "actual"
+ * condition associated with vector length tests is simply a test on
+ * the vector length, the actual vec_len Opt entry contains more
+ * information used to restrict which matches are associated with it.
+ * So that all matches in a submatch are matching against the same
+ * values from inside the vector, they are split up by how many
+ * elements they match at the front and at the back of the vector. In
+ * order to make sure that arms are properly checked in order, even
+ * with the overmatching conditions, each vec_len Opt entry is
+ * associated with a range of matches.
+ * Consider the following:
+ *
+ *   match &[1, 2, 3] {
+ *       [1, 1, .. _] => 0,
+ *       [1, 2, 2, .. _] => 1,
+ *       [1, 2, 3, .. _] => 2,
+ *       [1, 2, .. _] => 3,
+ *       _ => 4
+ *   }
+ * The proper arm to match is arm 2, but arms 0 and 3 both have the
+ * condition "len >= 2". If arm 3 was lumped in with arm 0, then the
+ * wrong branch would be taken. Instead, vec_len Opts are associated
+ * with a contiguous range of matches that have the same "shape".
+ * This is sort of ugly and requires a bunch of special handling of
+ * vec_len options.
+ *
  */
 
 
@@ -189,14 +234,19 @@ enum Lit {
     ConstLit(ast::def_id),              // the def ID of the constant
 }
 
+#[deriving(Eq)]
+pub enum VecLenOpt {
+    vec_len_eq,
+    vec_len_ge(/* length of prefix */uint)
+}
+
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
 enum Opt {
     lit(Lit),
     var(/* disr val */ uint, @adt::Repr),
     range(@ast::expr, @ast::expr),
-    vec_len_eq(uint),
-    vec_len_ge(uint, /* slice */uint)
+    vec_len(/* length */ uint, VecLenOpt, /*range of matches*/(uint, uint))
 }
 
 fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
@@ -247,9 +297,9 @@ fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
             }
         }
         (&var(a, _), &var(b, _)) => a == b,
-            (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
-            (&vec_len_ge(a, _), &vec_len_ge(b, _)) => a == b,
-            _ => false
+        (&vec_len(a1, a2, _), &vec_len(b1, b2, _)) =>
+            a1 == b1 && a2 == b2,
+        _ => false
     }
 }
 
@@ -283,10 +333,10 @@ fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
             return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
                                 rslt(bcx, consts::const_expr(ccx, l2)));
         }
-        vec_len_eq(n) => {
+        vec_len(n, vec_len_eq, _) => {
             return single_result(rslt(bcx, C_int(ccx, n as int)));
         }
-        vec_len_ge(n, _) => {
+        vec_len(n, vec_len_ge(_), _) => {
             return lower_bound(rslt(bcx, C_int(ccx, n as int)));
         }
     }
@@ -523,17 +573,19 @@ fn enter_opt<'r>(bcx: @mut Block,
                      variant_size: uint,
                      val: ValueRef)
                   -> ~[Match<'r>] {
-    debug!("enter_opt(bcx=%s, m=%s, col=%u, val=%s)",
+    debug!("enter_opt(bcx=%s, m=%s, opt=%?, col=%u, val=%s)",
            bcx.to_str(),
            m.repr(bcx.tcx()),
+           *opt,
            col,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
     let tcx = bcx.tcx();
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let mut i = 0;
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
-        match p.node {
+        let answer = match p.node {
             ast::pat_enum(*) |
             ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
                 let const_def = tcx.def_map.get_copy(&p.id);
@@ -599,32 +651,53 @@ fn enter_opt<'r>(bcx: @mut Block,
                 }
             }
             ast::pat_vec(ref before, slice, ref after) => {
+                let (lo, hi) = match *opt {
+                    vec_len(_, _, (lo, hi)) => (lo, hi),
+                    _ => tcx.sess.span_bug(p.span,
+                                           "vec pattern but not vec opt")
+                };
+
                 match slice {
-                    Some(slice) => {
+                    Some(slice) if i >= lo && i <= hi => {
                         let n = before.len() + after.len();
-                        let i = before.len();
-                        if opt_eq(tcx, &vec_len_ge(n, i), opt) {
+                        let this_opt = vec_len(n, vec_len_ge(before.len()),
+                                               (lo, hi));
+                        if opt_eq(tcx, &this_opt, opt) {
                             Some(vec::append_one((*before).clone(), slice) +
                                     *after)
                         } else {
                             None
                         }
                     }
-                    None => {
+                    None if i >= lo && i <= hi => {
                         let n = before.len();
-                        if opt_eq(tcx, &vec_len_eq(n), opt) {
+                        if opt_eq(tcx, &vec_len(n, vec_len_eq, (lo,hi)), opt) {
                             Some((*before).clone())
                         } else {
                             None
                         }
                     }
+                    _ => None
                 }
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
-                Some(vec::from_elem(variant_size, dummy))
+                // In most cases, a binding/wildcard match be
+                // considered to match against any Opt. However, when
+                // doing vector pattern matching, submatches are
+                // considered even if the eventual match might be from
+                // a different submatch. Thus, when a submatch fails
+                // when doing a vector match, we proceed to the next
+                // submatch. Thus, including a default match would
+                // cause the default match to fire spuriously.
+                match *opt {
+                    vec_len(*) => None,
+                    _ => Some(vec::from_elem(variant_size, dummy))
+                }
             }
-        }
+        };
+        i += 1;
+        answer
     }
 }
 
@@ -805,9 +878,25 @@ fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
+    // Vector comparisions are special in that since the actual
+    // conditions over-match, we need to be careful about them. This
+    // means that in order to properly handle things in order, we need
+    // to not always merge conditions.
+    fn add_veclen_to_set(set: &mut ~[Opt], i: uint,
+                         len: uint, vlo: VecLenOpt) {
+        match set.last_opt() {
+            // If the last condition in the list matches the one we want
+            // to add, then extend its range. Otherwise, make a new
+            // vec_len with a range just covering the new entry.
+            Some(&vec_len(len2, vlo2, (start, end)))
+                 if len == len2 && vlo == vlo2 =>
+                 set[set.len() - 1] = vec_len(len, vlo, (start, end+1)),
+            _ => set.push(vec_len(len, vlo, (i, i)))
+        }
+    }
 
     let mut found = ~[];
-    for br in m.iter() {
+    for (i, br) in m.iter().enumerate() {
         let cur = br.pats[col];
         match cur.node {
             ast::pat_lit(l) => {
@@ -852,12 +941,12 @@ fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
                 add_to_set(ccx.tcx, &mut found, range(l1, l2));
             }
             ast::pat_vec(ref before, slice, ref after) => {
-                let opt = match slice {
-                    None => vec_len_eq(before.len()),
-                    Some(_) => vec_len_ge(before.len() + after.len(),
-                                          before.len())
+                let (len, vec_opt) = match slice {
+                    None => (before.len(), vec_len_eq),
+                    Some(_) => (before.len() + after.len(),
+                                vec_len_ge(before.len()))
                 };
-                add_to_set(ccx.tcx, &mut found, opt);
+                add_veclen_to_set(&mut found, i, len, vec_opt);
             }
             _ => {}
         }
@@ -1459,7 +1548,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                 test_val = Load(bcx, val);
                 kind = compare;
             },
-            vec_len_eq(*) | vec_len_ge(*) => {
+            vec_len(*) => {
                 let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
                 let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
                 let (_, len) = tvec::get_base_and_len(
@@ -1492,6 +1581,11 @@ fn compile_submatch_continue(mut bcx: @mut Block,
 
     // Compile subtrees for each option
     for (i, opt) in opts.iter().enumerate() {
+        // In some cases in vector pattern matching, we need to override
+        // the failure case so that instead of failing, it proceeds to
+        // try more matching. branch_chk, then, is the proper failure case
+        // for the current conditional branch.
+        let mut branch_chk = chk;
         let mut opt_cx = else_cx;
         if !exhaustive || i+1 < len {
             opt_cx = sub_block(bcx, "match_case");
@@ -1583,6 +1677,10 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                       }
                   };
                   bcx = sub_block(after_cx, "compare_vec_len_next");
+
+                  // If none of these subcases match, move on to the
+                  // next condition.
+                  branch_chk = Some::<mk_fail>(|| bcx.llbb);
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               _ => ()
@@ -1601,17 +1699,13 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                 unpacked = argvals;
                 opt_cx = new_bcx;
             }
-            vec_len_eq(n) | vec_len_ge(n, _) => {
-                let n = match *opt {
-                    vec_len_ge(*) => n + 1u,
-                    _ => n
+            vec_len(n, vt, _) => {
+                let (n, slice) = match vt {
+                    vec_len_ge(i) => (n + 1u, Some(i)),
+                    vec_len_eq => (n, None)
                 };
-                let slice = match *opt {
-                    vec_len_ge(_, i) => Some(i),
-                    _ => None
-                };
-                let args = extract_vec_elems(opt_cx, pat_span, pat_id, n, slice,
-                                             val, test_val);
+                let args = extract_vec_elems(opt_cx, pat_span, pat_id, n,
+                                             slice, val, test_val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
                 opt_cx = args.bcx;
@@ -1620,7 +1714,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
         }
         let opt_ms = enter_opt(opt_cx, m, opt, col, size, val);
         let opt_vals = vec::append(unpacked, vals_left);
-        compile_submatch(opt_cx, opt_ms, opt_vals, chk);
+        compile_submatch(opt_cx, opt_ms, opt_vals, branch_chk);
     }
 
     // Compile the fall-through case, if any
