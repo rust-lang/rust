@@ -125,13 +125,6 @@ pub fn range_step_inclusive(start: $T, last: $T, step: $T_SIGNED, it: &fn($T) ->
     range_step_core(start, last, step, Closed, it)
 }
 
-#[inline]
-/// Iterate over the range (`hi`..`lo`]
-pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
-    if hi == min_value { return true; }
-    range_step_inclusive(hi-1, lo, -1 as $T_SIGNED, it)
-}
-
 impl Num for $T {}
 
 #[cfg(not(test))]
@@ -654,10 +647,6 @@ mod tests {
     pub fn test_ranges() {
         let mut l = ~[];
 
-        do range_rev(14,11) |i| {
-            l.push(i);
-            true
-        };
         do range_step(20,26,2) |i| {
             l.push(i);
             true
@@ -683,8 +672,7 @@ mod tests {
             true
         };
 
-        assert_eq!(l, ~[13,12,11,
-                        20,22,24,
+        assert_eq!(l, ~[20,22,24,
                         36,34,32,
                         max_value-2,
                         max_value-3,max_value-1,
@@ -692,9 +680,6 @@ mod tests {
                         min_value+3,min_value+1]);
 
         // None of the `fail`s should execute.
-        do range_rev(0,0) |_i| {
-            fail!("unreachable");
-        };
         do range_step(10,0,1) |_i| {
             fail!("unreachable");
         };

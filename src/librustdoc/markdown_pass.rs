@@ -150,8 +150,8 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
         doc::FnTag(_) => {
             ~"Function"
         }
-        doc::ConstTag(_) => {
-            ~"Freeze"
+        doc::StaticTag(_) => {
+            ~"Static"
         }
         doc::EnumTag(_) => {
             ~"Enum"
@@ -321,7 +321,7 @@ fn write_item_(ctxt: &Ctxt, doc: doc::ItemTag, write_header: bool) {
         doc::ModTag(ModDoc) => write_mod(ctxt, ModDoc),
         doc::NmodTag(nModDoc) => write_nmod(ctxt, nModDoc),
         doc::FnTag(FnDoc) => write_fn(ctxt, FnDoc),
-        doc::ConstTag(ConstDoc) => write_const(ctxt, ConstDoc),
+        doc::StaticTag(StaticDoc) => write_static(ctxt, StaticDoc),
         doc::EnumTag(EnumDoc) => write_enum(ctxt, EnumDoc),
         doc::TraitTag(TraitDoc) => write_trait(ctxt, TraitDoc),
         doc::ImplTag(ImplDoc) => write_impl(ctxt, ImplDoc),
@@ -409,9 +409,9 @@ fn code_block(s: ~str) -> ~str {
 ~~~", s)
 }
 
-fn write_const(
+fn write_static(
     ctxt: &Ctxt,
-    doc: doc::ConstDoc
+    doc: doc::StaticDoc
 ) {
     write_sig(ctxt, doc.sig.clone());
     write_common(ctxt, doc.desc(), doc.sections());
@@ -775,13 +775,13 @@ mod test {
     }
 
     #[test]
-    fn should_write_const_header() {
+    fn should_write_static_header() {
         let markdown = render(~"static a: bool = true;");
-        assert!(markdown.contains("## Freeze `a`\n\n"));
+        assert!(markdown.contains("## Static `a`\n\n"));
     }
 
     #[test]
-    fn should_write_const_description() {
+    fn should_write_static_description() {
         let markdown = render(
             ~"#[doc = \"b\"]\
               static a: bool = true;");

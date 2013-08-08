@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {
-    pub struct Foo {
-        x: int
-    }
+// aux-build:xcrate_unit_struct.rs
 
-    impl Foo {
-        fn foo(&self) {}
-    }
-}
+// Make sure that when we have cross-crate unit structs we don't accidentally
+// make values out of cross-crate structs that aren't unit.
+
+extern mod xcrate_unit_struct;
 
 fn main() {
-    let s = a::Foo { x: 1 };
-    s.foo();    //~ ERROR method `foo` is private
+    let _ = xcrate_unit_struct::StructWithFields; //~ ERROR: unresolved name
+    let _ = xcrate_unit_struct::Struct;
 }

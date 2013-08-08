@@ -314,7 +314,7 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod oneshot {
-        priv use std::kinds::Send;
+        use std::kinds::Send;
         use ptr::to_mut_unsafe_ptr;
 
         pub fn init<T: Send>() -> (server::Oneshot<T>, client::Oneshot<T>) {
@@ -341,7 +341,7 @@ mod pipesy {
         #[allow(non_camel_case_types)]
         pub mod client {
 
-            priv use std::kinds::Send;
+            use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_send<T: Send>(pipe: Oneshot<T>, x_0: T) ->
@@ -489,7 +489,7 @@ mod pipesy {
 
     #[allow(non_camel_case_types)]
     pub mod streamp {
-        priv use std::kinds::Send;
+        use std::kinds::Send;
 
         pub fn init<T: Send>() -> (server::Open<T>, client::Open<T>) {
             pub use std::pipes::HasBuffer;
@@ -501,7 +501,7 @@ mod pipesy {
 
         #[allow(non_camel_case_types)]
         pub mod client {
-            priv use std::kinds::Send;
+            use std::kinds::Send;
 
             #[allow(non_camel_case_types)]
             pub fn try_data<T: Send>(pipe: Open<T>, x_0: T) ->
