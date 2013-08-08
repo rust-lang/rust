@@ -95,7 +95,7 @@ fn test_basic() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_take_empty() {
-    let value_cell = Cell::new_empty::<~int>();
+    let value_cell: Cell<~int> = Cell::new_empty();
     value_cell.take();
 }
 

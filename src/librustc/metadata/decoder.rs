@@ -335,15 +335,19 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::CrateNum)
             let purity = if fam == UnsafeStaticMethod { ast::unsafe_fn } else
                 { ast::impure_fn };
             // def_static_method carries an optional field of its enclosing
-            // *trait*, but not an inclosing Impl (if this is an inherent
-            // static method). So we need to detect whether this is in
-            // a trait or not, which we do through the mildly hacky
-            // way of checking whether there is a trait_method_sort.
-            let trait_did_opt = if reader::maybe_get_doc(
+            // trait or enclosing impl (if this is an inherent static method).
+            // So we need to detect whether this is in a trait or not, which
+            // we do through the mildly hacky way of checking whether there is
+            // a trait_method_sort.
+            let provenance = if reader::maybe_get_doc(
                   item, tag_item_trait_method_sort).is_some() {
-                Some(item_reqd_and_translated_parent_item(cnum, item))
-            } else { None };
-            dl_def(ast::def_static_method(did, trait_did_opt, purity))
+                ast::FromTrait(item_reqd_and_translated_parent_item(cnum,
+                                                                    item))
+            } else {
+                ast::FromImpl(item_reqd_and_translated_parent_item(cnum,
+                                                                   item))
+            };
+            dl_def(ast::def_static_method(did, provenance, purity))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),

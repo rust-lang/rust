@@ -869,21 +869,21 @@ mod test_map {
 
     #[test]
     fn test_find_or_insert() {
-        let mut m = HashMap::new::<int, int>();
+        let mut m: HashMap<int,int> = HashMap::new();
         assert_eq!(*m.find_or_insert(1, 2), 2);
         assert_eq!(*m.find_or_insert(1, 3), 2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
-        let mut m = HashMap::new::<int, int>();
+        let mut m: HashMap<int,int> = HashMap::new();
         assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
         assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
     }
 
     #[test]
     fn test_insert_or_update_with() {
-        let mut m = HashMap::new::<int, int>();
+        let mut m: HashMap<int,int> = HashMap::new();
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
         assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }

@@ -483,7 +483,7 @@ mod tests {
     #[bench]
     fn bench_new(b: &mut test::BenchHarness) {
         do b.iter {
-            let _ = RingBuf::new::<u64>();
+            let _: RingBuf<u64> = RingBuf::new();
         }
     }
 
