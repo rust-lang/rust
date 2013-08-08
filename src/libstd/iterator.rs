@@ -221,6 +221,26 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn enumerate(self) -> Enumerate<Self>;
 
+
+    /// Creates an iterator that has a `.peek()` method
+    /// that returns a optional reference to the next element.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [100, 200, 300];
+    /// let mut it = a.consume_iter().peekable();
+    /// assert_eq!(it.peek().unwrap(), &100);
+    /// assert_eq!(it.next().unwrap(), 100);
+    /// assert_eq!(it.next().unwrap(), 200);
+    /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(it.next().unwrap(), 300);
+    /// assert!(it.peek().is_none());
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn peekable(self) -> PeekableIterator<A, Self>;
+
     /// Creates an iterator which invokes the predicate on elements until it
     /// returns false. Once the predicate returns false, all further elements are
     /// yielded.
@@ -518,6 +538,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline]
     fn enumerate(self) -> Enumerate<T> {
         Enumerate{iter: self, count: 0}
+    }
+
+    #[inline]
+    fn peekable(self) -> PeekableIterator<A, T> {
+        PeekableIterator{iter: self, peeked: None}
     }
 
     #[inline]
@@ -1154,6 +1179,38 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
     }
 }
 
+/// An iterator with a `peek()` that returns an optional reference to the next element.
+pub struct PeekableIterator<A, T> {
+    priv iter: T,
+    priv peeked: Option<A>,
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for PeekableIterator<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.peeked.is_some() { self.peeked.take() }
+        else { self.iter.next() }
+    }
+}
+
+impl<'self, A, T: Iterator<A>> PeekableIterator<A, T> {
+    /// Return a reference to the next element of the iterator with out advancing it,
+    /// or None if the iterator is exhausted.
+    #[inline]
+    pub fn peek(&'self mut self) -> Option<&'self A> {
+        match self.peeked {
+            Some(ref value) => Some(value),
+            None => {
+                self.peeked = self.iter.next();
+                match self.peeked {
+                    Some(ref value) => Some(value),
+                    None => None,
+                }
+            },
+        }
+    }
+}
+
 /// An iterator which rejects elements while `predicate` is true
 pub struct SkipWhile<'self, A, T> {
     priv iter: T,
@@ -1643,6 +1700,24 @@ mod tests {
         for (i, &x) in it {
             assert_eq!(i, x);
         }
+    }
+
+    #[test]
+    fn test_iterator_peekable() {
+        let xs = ~[0u, 1, 2, 3, 4, 5];
+        let mut it = xs.consume_iter().peekable();
+        assert_eq!(it.peek().unwrap(), &0);
+        assert_eq!(it.next().unwrap(), 0);
+        assert_eq!(it.next().unwrap(), 1);
+        assert_eq!(it.next().unwrap(), 2);
+        assert_eq!(it.peek().unwrap(), &3);
+        assert_eq!(it.peek().unwrap(), &3);
+        assert_eq!(it.next().unwrap(), 3);
+        assert_eq!(it.next().unwrap(), 4);
+        assert_eq!(it.peek().unwrap(), &5);
+        assert_eq!(it.next().unwrap(), 5);
+        assert!(it.peek().is_none());
+        assert!(it.next().is_none());
     }
 
     #[test]
