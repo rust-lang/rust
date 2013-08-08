@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:xcrate_unit_struct.rs
-
+// xfail-fast
 extern mod xcrate_unit_struct;
 
 use std::util;
