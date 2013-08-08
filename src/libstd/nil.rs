@@ -33,12 +33,6 @@ impl Eq for () {
 impl Ord for () {
     #[inline]
     fn lt(&self, _other: &()) -> bool { false }
-    #[inline]
-    fn le(&self, _other: &()) -> bool { true }
-    #[inline]
-    fn ge(&self, _other: &()) -> bool { true }
-    #[inline]
-    fn gt(&self, _other: &()) -> bool { false }
 }
 
 #[cfg(not(test))]

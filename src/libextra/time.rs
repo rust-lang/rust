@@ -57,9 +57,6 @@ impl Ord for Timespec {
         self.sec < other.sec ||
             (self.sec == other.sec && self.nsec < other.nsec)
     }
-    fn le(&self, other: &Timespec) -> bool { !other.lt(self) }
-    fn ge(&self, other: &Timespec) -> bool { !self.lt(other) }
-    fn gt(&self, other: &Timespec) -> bool { !self.le(other) }
 }
 
 /**
