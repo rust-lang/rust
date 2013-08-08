@@ -816,6 +816,20 @@ pub fn std_macros() -> @str {
         }
     )
 
+    // A assert that is only enabled with --cfg debug, but like with
+    // debug! itself, it still expands to something similar without
+    // that cfg, to stop the asserts bitrotting.
+    #[cfg(debug)]
+    #[macro_escape]
+    mod debug_assert_macro {
+        macro_rules! debug_assert { ($($x:expr),*) => { assert!($($x),*) } }
+    }
+    #[cfg(not(debug))]
+    #[macro_escape]
+    mod debug_assert_macro {
+        macro_rules! debug_assert { ($($x:expr),*) => { if false { assert!($($x),*) } } }
+    }
+
     macro_rules! assert_eq (
         ($given:expr , $expected:expr) => (
             {
