@@ -182,6 +182,7 @@ mod test {
     fn select_stream() {
         use util;
         use comm::GenericChan;
+        use iter::Times;
 
         // Sends 10 buffered packets, and uses select to retrieve them all.
         // Puts the port in a different spot in the vector each time.
@@ -263,6 +264,7 @@ mod test {
 
         fn select_racing_senders_helper(killable: bool, send_on_chans: ~[uint]) {
             use rt::test::spawntask_random;
+            use iter::Times;
 
             do run_in_newsched_task {
                 // A bit of stress, since ordinarily this is just smoke and mirrors.
