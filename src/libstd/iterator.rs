@@ -1699,6 +1699,53 @@ pub mod order {
             }
         }
     }
+
+    #[test]
+    fn test_lt() {
+        use vec::ImmutableVector;
+
+        let empty: [int, ..0] = [];
+        let xs = [1,2,3];
+        let ys = [1,2,0];
+
+        assert!(!lt(xs.iter(), ys.iter()));
+        assert!(!le(xs.iter(), ys.iter()));
+        assert!( gt(xs.iter(), ys.iter()));
+        assert!( ge(xs.iter(), ys.iter()));
+
+        assert!( lt(ys.iter(), xs.iter()));
+        assert!( le(ys.iter(), xs.iter()));
+        assert!(!gt(ys.iter(), xs.iter()));
+        assert!(!ge(ys.iter(), xs.iter()));
+
+        assert!( lt(empty.iter(), xs.iter()));
+        assert!( le(empty.iter(), xs.iter()));
+        assert!(!gt(empty.iter(), xs.iter()));
+        assert!(!ge(empty.iter(), xs.iter()));
+
+        // Sequence with NaN
+        let u = [1.0, 2.0];
+        let v = [0.0/0.0, 3.0];
+
+        assert!(!lt(u.iter(), v.iter()));
+        assert!(!le(u.iter(), v.iter()));
+        assert!(!gt(u.iter(), v.iter()));
+        assert!(!ge(u.iter(), v.iter()));
+
+        let a = [0.0/0.0];
+        let b = [1.0];
+        let c = [2.0];
+
+        assert!(lt(a.iter(), b.iter()) == (a[0] <  b[0]));
+        assert!(le(a.iter(), b.iter()) == (a[0] <= b[0]));
+        assert!(gt(a.iter(), b.iter()) == (a[0] >  b[0]));
+        assert!(ge(a.iter(), b.iter()) == (a[0] >= b[0]));
+
+        assert!(lt(c.iter(), b.iter()) == (c[0] <  b[0]));
+        assert!(le(c.iter(), b.iter()) == (c[0] <= b[0]));
+        assert!(gt(c.iter(), b.iter()) == (c[0] >  b[0]));
+        assert!(ge(c.iter(), b.iter()) == (c[0] >= b[0]));
+    }
 }
 
 #[cfg(test)]
