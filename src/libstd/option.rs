@@ -47,6 +47,7 @@ use ops::Add;
 use util;
 use num::Zero;
 use iterator::Iterator;
+use iterator;
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -58,31 +59,21 @@ pub enum Option<T> {
     Some(T),
 }
 
-impl<T:Ord> Ord for Option<T> {
+impl<T: Eq + Ord> Ord for Option<T> {
     fn lt(&self, other: &Option<T>) -> bool {
-        match (self, other) {
-            (&None, &None) => false,
-            (&None, &Some(_)) => true,
-            (&Some(_), &None) => false,
-            (&Some(ref a), &Some(ref b)) => *a < *b
-        }
+        iterator::order::lt(self.iter(), other.iter())
     }
 
     fn le(&self, other: &Option<T>) -> bool {
-        match (self, other) {
-            (&None, &None) => true,
-            (&None, &Some(_)) => true,
-            (&Some(_), &None) => false,
-            (&Some(ref a), &Some(ref b)) => *a <= *b
-        }
+        iterator::order::le(self.iter(), other.iter())
     }
 
     fn ge(&self, other: &Option<T>) -> bool {
-        !(self < other)
+        iterator::order::ge(self.iter(), other.iter())
     }
 
     fn gt(&self, other: &Option<T>) -> bool {
-        !(self <= other)
+        iterator::order::gt(self.iter(), other.iter())
     }
 }
 
@@ -551,6 +542,18 @@ mod tests {
 
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert!(it.next().is_none());
+    }
+
+    #[test]
+    fn test_ord() {
+        let small = Some(1.0);
+        let big = Some(5.0);
+        let nan = Some(0.0/0.0);
+        assert!(!(nan < big));
+        assert!(!(nan > big));
+        assert!(small < big);
+        assert!(None < big);
+        assert!(big > None);
     }
 
     #[test]
