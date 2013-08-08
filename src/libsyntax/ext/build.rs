@@ -74,6 +74,13 @@ pub trait AstBuilder {
     // statements
     fn stmt_expr(&self, expr: @ast::expr) -> @ast::stmt;
     fn stmt_let(&self, sp: span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt;
+    fn stmt_let_typed(&self,
+                      sp: span,
+                      mutbl: bool,
+                      ident: ast::ident,
+                      typ: ast::Ty,
+                      ex: @ast::expr)
+                      -> @ast::stmt;
 
     // blocks
     fn block(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::Block;
@@ -241,8 +248,8 @@ impl AstBuilder for @ExtCtxt {
                 types: ~[ast::Ty])
                 -> ast::Path {
         let last_identifier = idents.pop();
-        let mut segments: ~[ast::PathSegment] = idents.consume_iter()
-                                                      .transform(|ident| {
+        let mut segments: ~[ast::PathSegment] = idents.move_iter()
+                                                      .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
                 lifetime: None,
@@ -391,6 +398,26 @@ impl AstBuilder for @ExtCtxt {
         let local = @ast::Local {
             is_mutbl: mutbl,
             ty: self.ty_infer(sp),
+            pat: pat,
+            init: Some(ex),
+            id: self.next_id(),
+            span: sp,
+        };
+        let decl = respan(sp, ast::decl_local(local));
+        @respan(sp, ast::stmt_decl(@decl, self.next_id()))
+    }
+
+    fn stmt_let_typed(&self,
+                      sp: span,
+                      mutbl: bool,
+                      ident: ast::ident,
+                      typ: ast::Ty,
+                      ex: @ast::expr)
+                      -> @ast::stmt {
+        let pat = self.pat_ident(sp, ident);
+        let local = @ast::Local {
+            is_mutbl: mutbl,
+            ty: typ,
             pat: pat,
             init: Some(ex),
             id: self.next_id(),

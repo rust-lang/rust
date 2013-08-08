@@ -392,10 +392,12 @@ impl GatherLoanCtxt {
                     }
                     ty::AutoBorrowObj(r, m) => {
                         let cmt_deref = mcx.cat_deref_fn_or_obj(expr, cmt, 0);
+                        let loan_mutability =
+                            LoanMutability::from_ast_mutability(m);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_deref,
-                                             m,
+                                             loan_mutability,
                                              r)
                     }
                     ty::AutoUnsafe(_) => {}

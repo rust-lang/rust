@@ -375,7 +375,7 @@ mod test_remote {
             let mut tube = Tube::new();
             let tube_clone = tube.clone();
             let remote_cell = Cell::new_empty();
-            do Local::borrow::<Scheduler, ()>() |sched| {
+            do Local::borrow |sched: &mut Scheduler| {
                 let tube_clone = tube_clone.clone();
                 let tube_clone_cell = Cell::new(tube_clone);
                 let remote = do sched.event_loop.remote_callback {
@@ -416,7 +416,7 @@ impl IoFactory for UvIoFactory {
 
         // Block this task and take ownership, switch to scheduler context
         do task::unkillable { // FIXME(#8674)
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
 
                 let mut tcp = TcpWatcher::new(self.uv_loop());
@@ -434,7 +434,7 @@ impl IoFactory for UvIoFactory {
                             unsafe { (*result_cell_ptr).put_back(res); }
 
                             // Context switch
-                            let scheduler = Local::take::<Scheduler>();
+                            let scheduler: ~Scheduler = Local::take();
                             scheduler.resume_blocked_task_immediately(task_cell.take());
                         }
                         Some(_) => {
@@ -464,11 +464,11 @@ impl IoFactory for UvIoFactory {
             }
             Err(uverr) => {
                 do task::unkillable { // FIXME(#8674)
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     do scheduler.deschedule_running_task_and_then |_, task| {
                         let task_cell = Cell::new(task);
                         do watcher.as_stream().close {
-                            let scheduler = Local::take::<Scheduler>();
+                            let scheduler: ~Scheduler = Local::take();
                             scheduler.resume_blocked_task_immediately(task_cell.take());
                         }
                     }
@@ -487,11 +487,11 @@ impl IoFactory for UvIoFactory {
             }
             Err(uverr) => {
                 do task::unkillable { // FIXME(#8674)
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     do scheduler.deschedule_running_task_and_then |_, task| {
                         let task_cell = Cell::new(task);
                         do watcher.close {
-                            let scheduler = Local::take::<Scheduler>();
+                            let scheduler: ~Scheduler = Local::take();
                             scheduler.resume_blocked_task_immediately(task_cell.take());
                         }
                     }
@@ -625,7 +625,7 @@ impl Drop for UvTcpListener {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher().as_stream().close {
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -717,7 +717,7 @@ impl Drop for UvTcpStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.as_stream().close {
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -765,7 +765,7 @@ impl RtioTcpStream for UvTcpStream {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take::<Scheduler>();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -793,7 +793,7 @@ impl RtioTcpStream for UvTcpStream {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -876,7 +876,7 @@ impl Drop for UvUdpSocket {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -917,7 +917,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -944,7 +944,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -1094,7 +1094,7 @@ impl Drop for UvTimer {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -1110,7 +1110,7 @@ impl RtioTimer for UvTimer {
                 let task_cell = Cell::new(task);
                 do self_.watcher.start(msecs, 0) |_, status| {
                     assert!(status.is_none());
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -1254,7 +1254,7 @@ impl RtioFileStream for UvFileStream {
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
         unsafe {
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let addr = next_test_ip4();
             let maybe_chan = (*io).tcp_connect(addr);
             assert!(maybe_chan.is_err());
@@ -1266,7 +1266,7 @@ fn test_simple_io_no_connect() {
 fn test_simple_udp_io_bind_only() {
     do run_in_newsched_task {
         unsafe {
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let addr = next_test_ip4();
             let maybe_socket = (*io).udp_bind(addr);
             assert!(maybe_socket.is_ok());
@@ -1430,7 +1430,7 @@ fn test_simple_tcp_server_and_client() {
         // Start the server first so it's listening when we connect
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
                 let mut stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
@@ -1445,7 +1445,7 @@ fn test_simple_tcp_server_and_client() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
@@ -1540,7 +1540,7 @@ fn test_simple_udp_server_and_client() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_socket = (*io).udp_bind(server_addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
@@ -1555,7 +1555,7 @@ fn test_simple_udp_server_and_client() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_socket = (*io).udp_bind(client_addr).unwrap();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
@@ -1569,7 +1569,7 @@ fn test_read_and_block() {
         let addr = next_test_ip4();
 
         do spawntask {
-            let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
+            let io: *mut IoFactoryObject = unsafe { Local::unsafe_borrow() };
             let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
             let mut stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
@@ -1588,7 +1588,7 @@ fn test_read_and_block() {
                 reads += 1;
 
                 do task::unkillable { // FIXME(#8674)
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     // Yield to the other task in hopes that it
                     // will trigger a read callback while we are
                     // not ready for it
@@ -1605,7 +1605,7 @@ fn test_read_and_block() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1625,7 +1625,7 @@ fn test_read_read_read() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
                 let mut stream = listener.accept().unwrap();
                 let buf = [1, .. 2048];
@@ -1639,7 +1639,7 @@ fn test_read_read_read() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
@@ -1665,7 +1665,7 @@ fn test_udp_twice() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client = (*io).udp_bind(client_addr).unwrap();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
@@ -1674,7 +1674,7 @@ fn test_udp_twice() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server = (*io).udp_bind(server_addr).unwrap();
                 let mut buf1 = [0];
                 let mut buf2 = [0];
@@ -1702,7 +1702,7 @@ fn test_udp_many_read() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
                 let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
                 let msg = [1, .. 2048];
@@ -1725,7 +1725,7 @@ fn test_udp_many_read() {
 
         do spawntask {
             unsafe {
-                let io = Local::unsafe_borrow::<IoFactoryObject>();
+                let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
                 let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
                 let mut total_bytes_recv = 0;
@@ -1754,7 +1754,7 @@ fn test_udp_many_read() {
 fn test_timer_sleep_simple() {
     do run_in_newsched_task {
         unsafe {
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let timer = (*io).timer_init();
             do timer.map_move |mut t| { t.sleep(1) };
         }

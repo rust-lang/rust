@@ -175,11 +175,15 @@ impl Generics {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+pub enum MethodProvenance {
+    FromTrait(def_id),
+    FromImpl(def_id),
+}
+
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum def {
     def_fn(def_id, purity),
-    def_static_method(/* method */ def_id,
-                      /* trait */  Option<def_id>,
-                      purity),
+    def_static_method(/* method */ def_id, MethodProvenance, purity),
     def_self(NodeId),
     def_self_ty(/* trait id */ NodeId),
     def_mod(def_id),
@@ -716,7 +720,7 @@ impl ToStr for float_ty {
 }
 
 // NB Eq method appears below.
-#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Ty {
     id: NodeId,
     node: ty_,

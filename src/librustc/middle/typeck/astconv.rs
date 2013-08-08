@@ -178,7 +178,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
 
     // Convert the type parameters supplied by the user.
     let supplied_type_parameter_count =
-        path.segments.iter().flat_map_(|s| s.types.iter()).len_();
+        path.segments.iter().flat_map(|s| s.types.iter()).len();
     if decl_generics.type_param_defs.len() != supplied_type_parameter_count {
         this.tcx().sess.span_fatal(
             path.span,
@@ -188,8 +188,8 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     }
     let tps = path.segments
                   .iter()
-                  .flat_map_(|s| s.types.iter())
-                  .transform(|a_t| ast_ty_to_ty(this, rscope, a_t))
+                  .flat_map(|s| s.types.iter())
+                  .map(|a_t| ast_ty_to_ty(this, rscope, a_t))
                   .collect();
 
     substs {

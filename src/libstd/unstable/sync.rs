@@ -279,7 +279,8 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     use rt::task::{Task, GreenTask, SchedTask};
     use rt::local::Local;
 
-    match Local::try_unsafe_borrow::<Task>() {
+    let task_opt: Option<*mut Task> = Local::try_unsafe_borrow();
+    match task_opt {
         Some(t) => {
             match (*t).task_type {
                 GreenTask(_) => {

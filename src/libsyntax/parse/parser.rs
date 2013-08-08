@@ -1374,7 +1374,7 @@ impl Parser {
             _ => None,
         };
         match found {
-            Some(INTERPOLATED(token::nt_path(path))) => {
+            Some(INTERPOLATED(token::nt_path(~path))) => {
                 return PathAndBounds {
                     path: path,
                     bounds: None,
@@ -1483,7 +1483,7 @@ impl Parser {
         let mut path_segments = ~[];
         let mut bounds = None;
         let last_segment_index = segments.len() - 1;
-        for (i, segment_and_bounds) in segments.consume_iter().enumerate() {
+        for (i, segment_and_bounds) in segments.move_iter().enumerate() {
             let PathSegmentAndBoundSet {
                 segment: segment,
                 bound_set: bound_set
@@ -4840,7 +4840,7 @@ impl Parser {
             let path = ast::Path {
                 span: mk_sp(lo, self.span.hi),
                 global: false,
-                segments: path.consume_iter().transform(|identifier| {
+                segments: path.move_iter().map(|identifier| {
                     ast::PathSegment {
                         identifier: identifier,
                         lifetime: None,
@@ -4876,7 +4876,7 @@ impl Parser {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.consume_iter().transform(|identifier| {
+                        segments: path.move_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetime: None,
@@ -4894,7 +4894,7 @@ impl Parser {
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
                         global: false,
-                        segments: path.consume_iter().transform(|identifier| {
+                        segments: path.move_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetime: None,
@@ -4916,7 +4916,7 @@ impl Parser {
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
-            segments: path.consume_iter().transform(|identifier| {
+            segments: path.move_iter().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,
                     lifetime: None,

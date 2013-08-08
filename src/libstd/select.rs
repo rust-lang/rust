@@ -60,7 +60,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
 
     do (|| {
         let c = Cell::new(c.take());
-        let sched = Local::take::<Scheduler>();
+        let sched: ~Scheduler = Local::take();
         do sched.deschedule_running_task_and_then |sched, task| {
             let task_handles = task.make_selectable(ports.len());
 
