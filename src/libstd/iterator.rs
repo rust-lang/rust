@@ -1591,6 +1591,116 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
 }
 
+/// Functions for lexicographical ordering of sequences.
+///
+/// Lexicographical ordering through `<`, `<=`, `>=`, `>` requires
+/// that the elements implement both `Eq` and `Ord`.
+///
+/// If two sequences are equal up until the point where one ends,
+/// the shorter sequence compares less.
+pub mod order {
+    use cmp;
+    use cmp::{TotalEq, TotalOrd, Ord, Eq};
+    use option::{Some, None};
+    use super::Iterator;
+
+    /// Compare `a` and `b` for equality using `TotalOrd`
+    pub fn equals<A: TotalEq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return true,
+                (None, _) | (_, None) => return false,
+                (Some(x), Some(y)) => if !x.equals(&y) { return false },
+            }
+        }
+    }
+
+    /// Order `a` and `b` lexicographically using `TotalOrd`
+    pub fn cmp<A: TotalOrd, T: Iterator<A>>(mut a: T, mut b: T) -> cmp::Ordering {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return cmp::Equal,
+                (None, _   ) => return cmp::Less,
+                (_   , None) => return cmp::Greater,
+                (Some(x), Some(y)) => match x.cmp(&y) {
+                    cmp::Equal => (),
+                    non_eq => return non_eq,
+                },
+            }
+        }
+    }
+
+    /// Compare `a` and `b` for equality (Using partial equality, `Eq`)
+    pub fn eq<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return true,
+                (None, _) | (_, None) => return false,
+                (Some(x), Some(y)) => if !x.eq(&y) { return false },
+            }
+        }
+    }
+
+    /// Compare `a` and `b` for nonequality (Using partial equality, `Eq`)
+    pub fn ne<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return false,
+                (None, _) | (_, None) => return true,
+                (Some(x), Some(y)) => if x.ne(&y) { return true },
+            }
+        }
+    }
+
+    /// Return `a` < `b` lexicographically (Using partial order, `Ord`)
+    pub fn lt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return false,
+                (None, _   ) => return true,
+                (_   , None) => return false,
+                (Some(x), Some(y)) => if x.ne(&y) { return x.lt(&y) },
+            }
+        }
+    }
+
+    /// Return `a` <= `b` lexicographically (Using partial order, `Ord`)
+    pub fn le<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return true,
+                (None, _   ) => return true,
+                (_   , None) => return false,
+                (Some(x), Some(y)) => if x.ne(&y) { return x.le(&y) },
+            }
+        }
+    }
+
+    /// Return `a` > `b` lexicographically (Using partial order, `Ord`)
+    pub fn gt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return false,
+                (None, _   ) => return false,
+                (_   , None) => return true,
+                (Some(x), Some(y)) => if x.ne(&y) { return x.gt(&y) },
+            }
+        }
+    }
+
+    /// Return `a` >= `b` lexicographically (Using partial order, `Ord`)
+    pub fn ge<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+        loop {
+            match (a.next(), b.next()) {
+                (None, None) => return true,
+                (None, _   ) => return false,
+                (_   , None) => return true,
+                (Some(x), Some(y)) => if x.ne(&y) { return x.ge(&y) },
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
