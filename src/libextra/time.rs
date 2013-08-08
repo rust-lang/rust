@@ -254,7 +254,7 @@ impl Tm {
     }
 }
 
-priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for ch in needle.byte_iter() {
@@ -687,7 +687,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 }
 
-priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
+fn do_strftime(format: &str, tm: &Tm) -> ~str {
     fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || fmt!("strftime: can't understand this format %c ", ch);

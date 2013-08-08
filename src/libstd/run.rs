@@ -632,7 +632,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
-    use int;
 
     mod rustrt {
         use libc::c_void;
@@ -665,10 +664,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
-        do int::range_rev(getdtablesize() as int, 3) |fd| {
+        for fd in range(3, getdtablesize()).invert() {
             close(fd as c_int);
-            true
-        };
+        }
 
         do with_dirp(dir) |dirp| {
             if !dirp.is_null() && chdir(dirp) == -1 {
@@ -763,14 +761,14 @@ fn with_dirp<T>(d: Option<&Path>,
 }
 
 #[cfg(windows)]
-priv fn free_handle(handle: *()) {
+fn free_handle(handle: *()) {
     unsafe {
         libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
     }
 }
 
 #[cfg(unix)]
-priv fn free_handle(_handle: *()) {
+fn free_handle(_handle: *()) {
     // unix has no process handle object, just a pid
 }
 
@@ -825,7 +823,7 @@ pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
  * operate on a none-existant process or, even worse, on a newer process
  * with the same id.
  */
-priv fn waitpid(pid: pid_t) -> int {
+fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]

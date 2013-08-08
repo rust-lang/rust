@@ -59,13 +59,13 @@ pub mod BigDigit {
     pub static bits: uint = 32;
 
     pub static base: uint = 1 << bits;
-    priv static hi_mask: uint = (-1 as uint) << bits;
-    priv static lo_mask: uint = (-1 as uint) >> bits;
+    static hi_mask: uint = (-1 as uint) << bits;
+    static lo_mask: uint = (-1 as uint) >> bits;
 
 
-    priv fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
+    fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
 
-    priv fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
+    fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
 
     /// Split one machine sized unsigned integer into two BigDigits.
 
@@ -613,7 +613,7 @@ impl BigUint {
     }
 
 
-    priv fn shl_unit(&self, n_unit: uint) -> BigUint {
+    fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
         return BigUint::new(vec::from_elem(n_unit, ZERO_BIG_DIGIT)
@@ -621,7 +621,7 @@ impl BigUint {
     }
 
 
-    priv fn shl_bits(&self, n_bits: uint) -> BigUint {
+    fn shl_bits(&self, n_bits: uint) -> BigUint {
         if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
@@ -637,7 +637,7 @@ impl BigUint {
     }
 
 
-    priv fn shr_unit(&self, n_unit: uint) -> BigUint {
+    fn shr_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 { return (*self).clone(); }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
@@ -646,7 +646,7 @@ impl BigUint {
     }
 
 
-    priv fn shr_bits(&self, n_bits: uint) -> BigUint {
+    fn shr_bits(&self, n_bits: uint) -> BigUint {
         if n_bits == 0 || self.data.is_empty() { return (*self).clone(); }
 
         let mut borrow = 0;
@@ -661,7 +661,7 @@ impl BigUint {
 
 #[cfg(target_arch = "x86_64")]
 
-priv fn get_radix_base(radix: uint) -> (uint, uint) {
+fn get_radix_base(radix: uint) -> (uint, uint) {
     assert!(1 < radix && radix <= 16);
     match radix {
         2  => (4294967296, 32),
@@ -687,7 +687,7 @@ priv fn get_radix_base(radix: uint) -> (uint, uint) {
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "mips")]
 
-priv fn get_radix_base(radix: uint) -> (uint, uint) {
+fn get_radix_base(radix: uint) -> (uint, uint) {
     assert!(1 < radix && radix <= 16);
     match radix {
         2  => (65536, 16),

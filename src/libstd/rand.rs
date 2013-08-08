@@ -610,8 +610,23 @@ impl<R: Rng> RngUtil for R {
 }
 
 /// Create a random number generator with a default algorithm and seed.
+///
+/// It returns the cryptographically-safest `Rng` algorithm currently
+/// available in Rust. If you require a specifically seeded `Rng` for
+/// consistency over time you should pick one algorithm and create the
+/// `Rng` yourself.
 pub fn rng() -> IsaacRng {
     IsaacRng::new()
+}
+
+/// Create a weak random number generator with a default algorithm and seed.
+///
+/// It returns the fatest `Rng` algorithm currently available in Rust without
+/// consideration for cryptography or security. If you require a specifically
+/// seeded `Rng` for consistency over time you should pick one algorithm and
+/// create the `Rng` yourself.
+pub fn weak_rng() -> XorShiftRng {
+    XorShiftRng::new()
 }
 
 static RAND_SIZE_LEN: u32 = 8;
@@ -619,6 +634,8 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 
 /// A random number generator that uses the [ISAAC
 /// algorithm](http://en.wikipedia.org/wiki/ISAAC_%28cipher%29).
+///
+/// The ISAAC algorithm is suitable for cryptographic purposes.
 pub struct IsaacRng {
     priv cnt: u32,
     priv rsl: [u32, .. RAND_SIZE],
@@ -794,8 +811,11 @@ impl Rng for IsaacRng {
 }
 
 /// An [Xorshift random number
-/// generator](http://en.wikipedia.org/wiki/Xorshift). Not suitable for
-/// cryptographic purposes.
+/// generator](http://en.wikipedia.org/wiki/Xorshift).
+///
+/// The Xorshift algorithm is not suitable for cryptographic purposes
+/// but is very fast. If you do not know for sure that it fits your
+/// requirements, use a more secure one such as `IsaacRng`.
 pub struct XorShiftRng {
     priv x: u32,
     priv y: u32,

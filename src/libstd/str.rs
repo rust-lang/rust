@@ -738,7 +738,7 @@ pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
 }
 
 // https://tools.ietf.org/html/rfc3629
-priv static UTF8_CHAR_WIDTH: [u8, ..256] = [
+static UTF8_CHAR_WIDTH: [u8, ..256] = [
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -781,15 +781,15 @@ macro_rules! utf8_acc_cont_byte(
 )
 
 // UTF-8 tags and ranges
-priv static TAG_CONT_U8: u8 = 128u8;
-priv static TAG_CONT: uint = 128u;
-priv static MAX_ONE_B: uint = 128u;
-priv static TAG_TWO_B: uint = 192u;
-priv static MAX_TWO_B: uint = 2048u;
-priv static TAG_THREE_B: uint = 224u;
-priv static MAX_THREE_B: uint = 65536u;
-priv static TAG_FOUR_B: uint = 240u;
-priv static MAX_UNICODE: uint = 1114112u;
+static TAG_CONT_U8: u8 = 128u8;
+static TAG_CONT: uint = 128u;
+static MAX_ONE_B: uint = 128u;
+static TAG_TWO_B: uint = 192u;
+static MAX_TWO_B: uint = 2048u;
+static TAG_THREE_B: uint = 224u;
+static MAX_THREE_B: uint = 65536u;
+static TAG_FOUR_B: uint = 240u;
+static MAX_UNICODE: uint = 1114112u;
 
 /// Unsafe operations
 pub mod raw {
