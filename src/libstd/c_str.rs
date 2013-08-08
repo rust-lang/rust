@@ -222,7 +222,7 @@ impl<'self> Iterator<libc::c_char> for CStringIterator<'self> {
         if ch == 0 {
             None
         } else {
-            self.ptr = ptr::offset(self.ptr, 1);
+            self.ptr = unsafe { ptr::offset(self.ptr, 1) };
             Some(ch)
         }
     }
