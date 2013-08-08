@@ -197,17 +197,23 @@ macro_rules! tuple_impls {
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:Ord),+> Ord for ($($T,)+) {
+                impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
                     #[inline]
                     fn lt(&self, other: &($($T,)+)) -> bool {
-                        lexical_lt!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                        lexical_ord!(lt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
                     }
                     #[inline]
-                    fn le(&self, other: &($($T,)+)) -> bool { !(*other).lt(&(*self)) }
+                    fn le(&self, other: &($($T,)+)) -> bool {
+                        lexical_ord!(le, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
                     #[inline]
-                    fn ge(&self, other: &($($T,)+)) -> bool { !(*self).lt(other) }
+                    fn ge(&self, other: &($($T,)+)) -> bool {
+                        lexical_ord!(ge, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
                     #[inline]
-                    fn gt(&self, other: &($($T,)+)) -> bool { (*other).lt(&(*self)) }
+                    fn gt(&self, other: &($($T,)+)) -> bool {
+                        lexical_ord!(gt, $(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
                 }
 
                 #[cfg(not(test))]
@@ -234,17 +240,16 @@ macro_rules! tuple_impls {
     }
 }
 
-// Constructs an expression that performs a lexical less-than
-// ordering.  The values are interleaved, so the macro invocation for
-// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_lt!(a1, b1, a2, b2,
+// Constructs an expression that performs a lexical ordering using method $rel.
+// The values are interleaved, so the macro invocation for
+// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_ord!(lt, a1, b1, a2, b2,
 // a3, b3)` (and similarly for `lexical_cmp`)
-macro_rules! lexical_lt {
-    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
-        if *$a < *$b { true }
-        else if !(*$b < *$a) { lexical_lt!($($rest_a, $rest_b),+) }
-        else { false }
+macro_rules! lexical_ord {
+    ($rel: ident, $a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        if *$a != *$b { lexical_ord!($rel, $a, $b) }
+        else { lexical_ord!($rel, $($rest_a, $rest_b),+) }
     };
-    ($a:expr, $b:expr) => { *$a < *$b };
+    ($rel: ident, $a:expr, $b:expr) => { (*$a) . $rel ($b) };
 }
 
 macro_rules! lexical_cmp {
@@ -436,6 +441,8 @@ mod tests {
     fn test_tuple_cmp() {
         let (small, big) = ((1u, 2u, 3u), (3u, 2u, 1u));
 
+        let nan = 0.0/0.0;
+
         // Eq
         assert_eq!(small, small);
         assert_eq!(big, big);
@@ -455,6 +462,13 @@ mod tests {
         assert!(small >= small);
         assert!(big >= small);
         assert!(big >= big);
+
+        assert!(!((1.0, 2.0) < (nan, 3.0)));
+        assert!(!((1.0, 2.0) <= (nan, 3.0)));
+        assert!(!((1.0, 2.0) > (nan, 3.0)));
+        assert!(!((1.0, 2.0) >= (nan, 3.0)));
+        assert!(((1.0, 2.0) < (2.0, nan)));
+        assert!(!((2.0, 2.0) < (2.0, nan)));
 
         // TotalEq
         assert!(small.equals(&small));
