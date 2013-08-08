@@ -2195,7 +2195,7 @@ use std::float::consts::pi;
 # impl Shape for CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
-let mycircle: Circle = concrete as @Circle;
+let mycircle: @Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
