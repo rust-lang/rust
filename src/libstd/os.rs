@@ -732,6 +732,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 FindNextFileW,
                 FindClose,
             };
+            use libc::types::os::arch::extra::HANDLE;
             use os::win32::{
                 as_utf16_p
             };
