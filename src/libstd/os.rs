@@ -642,7 +642,8 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             use os::win32::as_utf16_p;
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
-                libc::CreateDirectoryW(buf, ptr::null()) != (0 as libc::BOOL)
+                libc::CreateDirectoryW(buf, ptr::null() as LPCWSTR)
+                    != (0 as libc::BOOL)
             }
         }
     }
@@ -1081,7 +1082,7 @@ pub fn last_os_error() -> ~str {
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
 
-        do buf.as_imm_buf |buf, len| {
+        do buf.as_mut_buf |buf, len| {
             unsafe {
                 let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
                                          FORMAT_MESSAGE_IGNORE_INSERTS,
