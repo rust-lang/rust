@@ -148,7 +148,7 @@ macro_rules! tuple_impls {
                     $(fn $get_fn(&self) -> $T;)+
                 }
 
-                impl<$($T:Clone),+> $cloneable_trait<$($T),+> for ($($T),+) {
+                impl<$($T:Clone),+> $cloneable_trait<$($T),+> for ($($T,)+) {
                     $(
                         #[inline]
                         fn $get_fn(&self) -> $T {
@@ -161,7 +161,7 @@ macro_rules! tuple_impls {
                     $(fn $get_ref_fn<'a>(&'a self) -> &'a $T;)+
                 }
 
-                impl<$($T),+> $immutable_trait<$($T),+> for ($($T),+) {
+                impl<$($T),+> $immutable_trait<$($T),+> for ($($T,)+) {
                     $(
                         #[inline]
                         fn $get_ref_fn<'a>(&'a self) -> &'a $T {
@@ -170,59 +170,59 @@ macro_rules! tuple_impls {
                     )+
                 }
 
-                impl<$($T:Clone),+> Clone for ($($T),+) {
-                    fn clone(&self) -> ($($T),+) {
-                        ($(self.$get_ref_fn().clone()),+)
+                impl<$($T:Clone),+> Clone for ($($T,)+) {
+                    fn clone(&self) -> ($($T,)+) {
+                        ($(self.$get_ref_fn().clone(),)+)
                     }
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:Eq),+> Eq for ($($T),+) {
+                impl<$($T:Eq),+> Eq for ($($T,)+) {
                     #[inline]
-                    fn eq(&self, other: &($($T),+)) -> bool {
+                    fn eq(&self, other: &($($T,)+)) -> bool {
                         $(*self.$get_ref_fn() == *other.$get_ref_fn())&&+
                     }
                     #[inline]
-                    fn ne(&self, other: &($($T),+)) -> bool {
+                    fn ne(&self, other: &($($T,)+)) -> bool {
                         !(*self == *other)
                     }
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:TotalEq),+> TotalEq for ($($T),+) {
+                impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {
                     #[inline]
-                    fn equals(&self, other: &($($T),+)) -> bool {
+                    fn equals(&self, other: &($($T,)+)) -> bool {
                         $(self.$get_ref_fn().equals(other.$get_ref_fn()))&&+
                     }
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:Ord),+> Ord for ($($T),+) {
+                impl<$($T:Ord),+> Ord for ($($T,)+) {
                     #[inline]
-                    fn lt(&self, other: &($($T),+)) -> bool {
+                    fn lt(&self, other: &($($T,)+)) -> bool {
                         lexical_lt!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
                     }
                     #[inline]
-                    fn le(&self, other: &($($T),+)) -> bool { !(*other).lt(&(*self)) }
+                    fn le(&self, other: &($($T,)+)) -> bool { !(*other).lt(&(*self)) }
                     #[inline]
-                    fn ge(&self, other: &($($T),+)) -> bool { !(*self).lt(other) }
+                    fn ge(&self, other: &($($T,)+)) -> bool { !(*self).lt(other) }
                     #[inline]
-                    fn gt(&self, other: &($($T),+)) -> bool { (*other).lt(&(*self)) }
+                    fn gt(&self, other: &($($T,)+)) -> bool { (*other).lt(&(*self)) }
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:TotalOrd),+> TotalOrd for ($($T),+) {
+                impl<$($T:TotalOrd),+> TotalOrd for ($($T,)+) {
                     #[inline]
-                    fn cmp(&self, other: &($($T),+)) -> Ordering {
+                    fn cmp(&self, other: &($($T,)+)) -> Ordering {
                         lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
                     }
                 }
 
                 #[cfg(not(test))]
-                impl<$($T:Zero),+> Zero for ($($T),+) {
+                impl<$($T:Zero),+> Zero for ($($T,)+) {
                     #[inline]
-                    fn zero() -> ($($T),+) {
-                        ($(Zero::zero::<$T>()),+)
+                    fn zero() -> ($($T,)+) {
+                        ($(Zero::zero::<$T>(),)+)
                     }
                     #[inline]
                     fn is_zero(&self) -> bool {
@@ -259,6 +259,10 @@ macro_rules! lexical_cmp {
 
 
 tuple_impls! {
+    (CloneableTuple1, ImmutableTuple1) {
+        (n0, n0_ref) -> A { (ref a,) => a }
+    }
+
     (CloneableTuple2, ImmutableTuple2) {
         (n0, n0_ref) -> A { (ref a,_) => a }
         (n1, n1_ref) -> B { (_,ref b) => b }
