@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
 "POT-Creation-Date: 2013-07-30 07:07+0900\n"
-"PO-Revision-Date: 2013-07-30 07:07+0900\n"
+"PO-Revision-Date: 2013-07-28 20:32+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: ja\n"
@@ -21,7 +21,7 @@ msgstr ""
 #: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
 #: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
 #: doc/rust.md:30 doc/rustpkg.md:8

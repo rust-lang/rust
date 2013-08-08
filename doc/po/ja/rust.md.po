@@ -26,7 +26,7 @@ msgstr ""
 #: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
 #: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
 #: doc/rust.md:7
@@ -2510,6 +2510,9 @@ msgid ""
 "values of subtrait-bound type parameters.  Refering to the previous example "
 "of `trait Circle : Shape`:"
 msgstr ""
+"型パラメータを持つ関数では、サブトレイトの境界型パラメータの値によりスーパー"
+"トレイトのメソッドを呼び出すことになります。前の例の `trait Circle : Shape` "
+"を参照してください。"
 
 #. type: Plain text
 #: doc/rust.md:1286 doc/tutorial.md:2185
@@ -2524,11 +2527,21 @@ msgid ""
 "}\n"
 "~~~\n"
 msgstr ""
+"~~~\n"
+"# trait Shape { fn area(&self) -> float; }\n"
+"# trait Circle : Shape { fn radius(&self) -> float; }\n"
+"fn radius_times_area<T: Circle>(c: T) -> float {\n"
+"    // `c` は Circle でもあり、Shape でもある\n"
+"    c.radius() * c.area()\n"
+"}\n"
+"~~~\n"
 
 #. type: Plain text
 #: doc/rust.md:1288 doc/tutorial.md:2187
 msgid "Likewise, supertrait methods may also be called on trait objects."
 msgstr ""
+"同様に、スーパートレイトのメソッドは、トレイトオブジェクトについても呼び出す"
+"ことが可能です。"
 
 #. type: Plain text
 #: doc/rust.md:1295
