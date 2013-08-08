@@ -538,7 +538,8 @@ mod test {
 
     #[test]
     fn option_empty() {
-        assert!(AtomicOption::empty::<()>().is_empty(SeqCst));
+        let mut option: AtomicOption<()> = AtomicOption::empty();
+        assert!(option.is_empty(SeqCst));
     }
 
     #[test]

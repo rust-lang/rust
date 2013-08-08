@@ -449,7 +449,7 @@ impl RuntimeGlue {
     fn kill_task(mut handle: KillHandle) {
         do handle.kill().map_move |killed_task| {
             let killed_task = Cell::new(killed_task);
-            do Local::borrow::<Scheduler, ()> |sched| {
+            do Local::borrow |sched: &mut Scheduler| {
                 sched.enqueue_task(killed_task.take());
             }
         };
@@ -460,7 +460,7 @@ impl RuntimeGlue {
         unsafe {
             // Can't use safe borrow, because the taskgroup destructor needs to
             // access the scheduler again to send kill signals to other tasks.
-            let me = Local::unsafe_borrow::<Task>();
+            let me: *mut Task = Local::unsafe_borrow();
             blk((*me).death.kill_handle.get_ref(), (*me).unwinder.unwinding)
         }
     }
@@ -470,7 +470,7 @@ impl RuntimeGlue {
         unsafe {
             // Can't use safe borrow, because creating new hashmaps for the
             // tasksets requires an rng, which needs to borrow the sched.
-            let me = Local::unsafe_borrow::<Task>();
+            let me: *mut Task = Local::unsafe_borrow();
             blk(match (*me).taskgroup {
                 None => {
                     // First task in its (unlinked/unsupervised) taskgroup.
@@ -574,7 +574,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
         // If child data is 'None', the enlist is vacuously successful.
         let enlist_success = do child_data.take().map_move_default(true) |child_data| {
             let child_data = Cell::new(child_data); // :(
-            do Local::borrow::<Task, bool> |me| {
+            do Local::borrow |me: &mut Task| {
                 let (child_tg, ancestors) = child_data.take();
                 let mut ancestors = ancestors;
                 let handle = me.death.kill_handle.get_ref();
@@ -608,7 +608,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     } else {
         unsafe {
             // Creating a 1:1 task:thread ...
-            let sched = Local::unsafe_borrow::<Scheduler>();
+            let sched: *mut Scheduler = Local::unsafe_borrow();
             let sched_handle = (*sched).make_handle();
 
             // Since this is a 1:1 scheduler we create a queue not in

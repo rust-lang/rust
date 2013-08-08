@@ -526,7 +526,7 @@ pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        do Local::borrow::<Task, U> |task| {
+        do Local::borrow |task: &mut Task| {
             match task.name {
                 Some(ref name) => blk(Some(name.as_slice())),
                 None => blk(None)
@@ -545,7 +545,7 @@ pub fn deschedule() {
 
     // FIXME #6842: What does yield really mean in newsched?
     // FIXME(#7544): Optimize this, since we know we won't block.
-    let sched = Local::take::<Scheduler>();
+    let sched: ~Scheduler = Local::take();
     do sched.deschedule_running_task_and_then |sched, task| {
         sched.enqueue_blocked_task(task);
     }
@@ -556,7 +556,7 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    do Local::borrow::<Task, bool> |local| {
+    do Local::borrow |local: &mut Task| {
         local.unwinder.unwinding
     }
 }
@@ -582,7 +582,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
     unsafe {
         if in_green_task_context() {
             // The inhibits/allows might fail and need to borrow the task.
-            let t = Local::unsafe_borrow::<Task>();
+            let t: *mut Task = Local::unsafe_borrow();
             do (|| {
                 (*t).death.inhibit_kill((*t).unwinder.unwinding);
                 f()
@@ -616,7 +616,7 @@ pub fn rekillable<U>(f: &fn() -> U) -> U {
 
     unsafe {
         if in_green_task_context() {
-            let t = Local::unsafe_borrow::<Task>();
+            let t: *mut Task = Local::unsafe_borrow();
             do (|| {
                 (*t).death.allow_kill((*t).unwinder.unwinding);
                 f()
@@ -1032,7 +1032,7 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    do Local::borrow::<::rt::sched::Scheduler, int> |sched| {
+    do Local::borrow |sched: &mut ::rt::sched::Scheduler| {
         sched.sched_id() as int
     }
 }

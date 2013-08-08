@@ -13,7 +13,7 @@
 use libc;
 use libc::{c_void, uintptr_t, size_t};
 use ops::Drop;
-use option::{Some, None};
+use option::{Option, None, Some};
 use rt::local::Local;
 use rt::task::Task;
 use unstable::raw;
@@ -89,7 +89,8 @@ impl Drop for LocalHeap {
 // A little compatibility function
 pub unsafe fn local_free(ptr: *libc::c_char) {
     // XXX: Unsafe borrow for speed. Lame.
-    match Local::try_unsafe_borrow::<Task>() {
+    let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
+    match task_ptr {
         Some(task) => {
             (*task).heap.free(ptr as *libc::c_void);
         }
@@ -98,7 +99,7 @@ pub unsafe fn local_free(ptr: *libc::c_char) {
 }
 
 pub fn live_allocs() -> *raw::Box<()> {
-    let region = do Local::borrow::<Task, *BoxedRegion> |task| {
+    let region = do Local::borrow |task: &mut Task| {
         task.heap.boxed_region
     };
 
