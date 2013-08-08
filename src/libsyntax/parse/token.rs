@@ -105,6 +105,7 @@ pub enum nonterminal {
     nt_expr(@ast::expr),
     nt_ty(   ast::Ty),
     nt_ident(ast::ident, bool),
+    nt_attr(@ast::Attribute),   // #[foo]
     nt_path( ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
@@ -205,6 +206,7 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
       INTERPOLATED(ref nt) => {
         match nt {
             &nt_expr(e) => ::print::pprust::expr_to_str(e, input),
+            &nt_attr(e) => ::print::pprust::attribute_to_str(e, input),
             _ => {
                 ~"an interpolated " +
                     match (*nt) {
@@ -212,6 +214,7 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
+                      nt_attr(*) => fail!("should have been handled"),
                       nt_expr(*) => fail!("should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
