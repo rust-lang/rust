@@ -12,7 +12,7 @@ use zoo::fly; //~ ERROR failed to resolve import
               //~^ ERROR unresolved import: found `fly` in `zoo` but it is private
 
 mod zoo {
-    priv fn fly() {}
+    fn fly() {}
 }
 
 

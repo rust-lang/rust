@@ -12,7 +12,7 @@
 
 use clone::Clone;
 use container::Container;
-use iterator::{Iterator, range};
+use iterator::Iterator;
 use option::{Option, Some, None};
 use sys;
 use unstable::raw::Repr;
@@ -92,8 +92,8 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
         for x in lhs.iter() {
             push((*x).clone());
         }
-        for i in range(0u, rhs.len()) {
-            push(rhs[i].clone());
+        for elt in rhs.iter() {
+            push(elt.clone());
         }
     }
 }

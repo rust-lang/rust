@@ -12,8 +12,8 @@ use zoo::fly; //~ ERROR failed to resolve import
               //~^ ERROR unresolved import: found `fly` in `zoo` but it is private
 
 mod zoo {
-    priv type fly = ();
-    priv fn fly() {}
+    type fly = ();
+    fn fly() {}
 }
 
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod a {
-    priv fn f() {}
+    fn f() {}
 }
 
 fn main() {

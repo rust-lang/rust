@@ -590,7 +590,8 @@ impl Death {
     #[inline]
     pub fn assert_may_sleep(&self) {
         if self.wont_sleep != 0 {
-            rtabort!("illegal atomic-sleep: can't deschedule inside atomically()");
+            rtabort!("illegal atomic-sleep: attempt to reschedule while \
+                      using an Exclusive or LittleLock");
         }
     }
 }

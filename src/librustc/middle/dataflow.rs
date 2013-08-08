@@ -983,10 +983,10 @@ fn bitwise(out_vec: &mut [uint],
            op: &fn(uint, uint) -> uint) -> bool {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    for i in range(0u, out_vec.len()) {
-        let old_val = out_vec[i];
-        let new_val = op(old_val, in_vec[i]);
-        out_vec[i] = new_val;
+    for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {
+        let old_val = *out_elt;
+        let new_val = op(old_val, *in_elt);
+        *out_elt = new_val;
         changed |= (old_val != new_val);
     }
     changed
