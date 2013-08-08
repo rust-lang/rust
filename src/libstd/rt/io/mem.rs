@@ -26,7 +26,7 @@ pub struct MemWriter {
 }
 
 impl MemWriter {
-    pub fn new() -> MemWriter { MemWriter { buf: ~[] } }
+    pub fn new() -> MemWriter { MemWriter { buf: vec::with_capacity(128) } }
 }
 
 impl Writer for MemWriter {
