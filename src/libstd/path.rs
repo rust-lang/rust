@@ -21,7 +21,7 @@ use c_str;
 use clone::Clone;
 use cmp::Eq;
 use container::Container;
-use iterator::{Iterator, IteratorUtil, range};
+use iterator::{Iterator, range};
 use libc;
 use num;
 use option::{None, Option, Some};

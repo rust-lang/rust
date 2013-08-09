@@ -11,7 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
-use iterator::{IteratorUtil, FromIterator, Extendable};
+use iterator::{FromIterator, Extendable};
 use uint;
 use util::{swap, replace};
 use vec;

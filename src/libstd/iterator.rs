@@ -49,6 +49,496 @@ pub trait Iterator<A> {
     /// The common use case for the estimate is pre-allocating space to store the results.
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
+
+    /// Chain this iterator with another, returning a new iterator which will
+    /// finish iterating over the current iterator, and then it will iterate
+    /// over the other specified iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [0];
+    /// let b = [1];
+    /// let mut it = a.iter().chain_(b.iter());
+    /// assert_eq!(it.next().get(), &0);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn chain_<U: Iterator<A>>(self, other: U) -> Chain<Self, U> {
+        Chain{a: self, b: other, flag: false}
+    }
+
+    /// Creates an iterator which iterates over both this and the specified
+    /// iterators simultaneously, yielding the two elements as pairs. When
+    /// either iterator returns None, all further invocations of next() will
+    /// return None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [0];
+    /// let b = [1];
+    /// let mut it = a.iter().zip(b.iter());
+    /// assert_eq!(it.next().get(), (&0, &1));
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<Self, U> {
+        Zip{a: self, b: other}
+    }
+
+    // FIXME: #5898: should be called map
+    /// Creates a new iterator which will apply the specified function to each
+    /// element returned by the first, yielding the mapped element instead.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().transform(|&x| 2 * x);
+    /// assert_eq!(it.next().get(), 2);
+    /// assert_eq!(it.next().get(), 4);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self> {
+        Map{iter: self, f: f}
+    }
+
+    /// Creates an iterator which applies the predicate to each element returned
+    /// by this iterator. Only elements which have the predicate evaluate to
+    /// `true` will be yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().filter(|&x| *x > 1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> Filter<'r, A, Self> {
+        Filter{iter: self, predicate: predicate}
+    }
+
+    /// Creates an iterator which both filters and maps elements.
+    /// If the specified function returns None, the element is skipped.
+    /// Otherwise the option is unwrapped and the new value is yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2];
+    /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
+    /// assert_eq!(it.next().get(), 4);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMap<'r, A, B, Self> {
+        FilterMap { iter: self, f: f }
+    }
+
+    /// Creates an iterator which yields a pair of the value returned by this
+    /// iterator plus the current index of iteration.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [100, 200];
+    /// let mut it = a.iter().enumerate();
+    /// assert_eq!(it.next().get(), (0, &100));
+    /// assert_eq!(it.next().get(), (1, &200));
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn enumerate(self) -> Enumerate<Self> {
+        Enumerate{iter: self, count: 0}
+    }
+
+    /// Creates an iterator which invokes the predicate on elements until it
+    /// returns false. Once the predicate returns false, all further elements are
+    /// yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 2, 1];
+    /// let mut it = a.iter().skip_while(|&a| *a < 3);
+    /// assert_eq!(it.next().get(), &3);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhile<'r, A, Self> {
+        SkipWhile{iter: self, flag: false, predicate: predicate}
+    }
+
+    /// Creates an iterator which yields elements so long as the predicate
+    /// returns true. After the predicate returns false for the first time, no
+    /// further elements will be yielded.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 2, 1];
+    /// let mut it = a.iter().take_while(|&a| *a < 3);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhile<'r, A, Self> {
+        TakeWhile{iter: self, flag: false, predicate: predicate}
+    }
+
+    /// Creates an iterator which skips the first `n` elements of this iterator,
+    /// and then it yields all further items.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().skip(3);
+    /// assert_eq!(it.next().get(), &4);
+    /// assert_eq!(it.next().get(), &5);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn skip(self, n: uint) -> Skip<Self> {
+        Skip{iter: self, n: n}
+    }
+
+    // FIXME: #5898: should be called take
+    /// Creates an iterator which yields the first `n` elements of this
+    /// iterator, and then it will always return None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().take_(3);
+    /// assert_eq!(it.next().get(), &1);
+    /// assert_eq!(it.next().get(), &2);
+    /// assert_eq!(it.next().get(), &3);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn take_(self, n: uint) -> Take<Self> {
+        Take{iter: self, n: n}
+    }
+
+    /// Creates a new iterator which behaves in a similar fashion to foldl.
+    /// There is a state which is passed between each iteration and can be
+    /// mutated as necessary. The yielded values from the closure are yielded
+    /// from the Scan instance when not None.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().scan(1, |fac, &x| {
+    ///   *fac = *fac * x;
+    ///   Some(*fac)
+    /// });
+    /// assert_eq!(it.next().get(), 1);
+    /// assert_eq!(it.next().get(), 2);
+    /// assert_eq!(it.next().get(), 6);
+    /// assert_eq!(it.next().get(), 24);
+    /// assert_eq!(it.next().get(), 120);
+    /// assert!(it.next().is_none());
+    /// ~~~
+    #[inline]
+    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
+        -> Scan<'r, A, B, Self, St> {
+        Scan{iter: self, f: f, state: initial_state}
+    }
+
+    /// Creates an iterator that maps each element to an iterator,
+    /// and yields the elements of the produced iterators
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let xs = [2u, 3];
+    /// let ys = [0u, 1, 0, 1, 2];
+    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take_(x));
+    /// // Check that `it` has the same elements as `ys`
+    /// let mut i = 0;
+    /// for x: uint in it {
+    ///     assert_eq!(x, ys[i]);
+    ///     i += 1;
+    /// }
+    /// ~~~
+    // FIXME: #5898: should be called `flat_map`
+    #[inline]
+    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+        -> FlatMap<'r, A, Self, U> {
+        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+    }
+
+    /// Creates an iterator that calls a function with a reference to each
+    /// element before yielding it. This is often useful for debugging an
+    /// iterator pipeline.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    ///let xs = [1u, 4, 2, 3, 8, 9, 6];
+    ///let sum = xs.iter()
+    ///            .transform(|&x| x)
+    ///            .peek_(|&x| debug!("filtering %u", x))
+    ///            .filter(|&x| x % 2 == 0)
+    ///            .peek_(|&x| debug!("%u made it through", x))
+    ///            .sum();
+    ///println(sum.to_str());
+    /// ~~~
+    // FIXME: #5898: should be called `peek`
+    #[inline]
+    fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self> {
+        Peek{iter: self, f: f}
+    }
+
+    /// An adaptation of an external iterator to the for-loop protocol of rust.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// use std::iterator::Counter;
+    ///
+    /// for i in count(0, 10) {
+    ///     printfln!("%d", i);
+    /// }
+    /// ~~~
+    #[inline]
+    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
+        loop {
+            match self.next() {
+                Some(x) => {
+                    if !f(x) { return false; }
+                }
+                None => { return true; }
+            }
+        }
+    }
+
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a container implementing `FromIterator`.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
+    /// assert!(a == b);
+    /// ~~~
+    #[inline]
+    fn collect<B: FromIterator<A, Self>>(&mut self) -> B {
+        FromIterator::from_iterator(self)
+    }
+
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a unique vector. This is simply collect() specialized for vectors.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: ~[int] = a.iter().transform(|&x| x).to_owned_vec();
+    /// assert!(a == b);
+    /// ~~~
+    #[inline]
+    fn to_owned_vec(&mut self) -> ~[A] {
+        self.collect()
+    }
+
+    /// Loops through `n` iterations, returning the `n`th element of the
+    /// iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.nth(2).get() == &3);
+    /// assert!(it.nth(2) == None);
+    /// ~~~
+    #[inline]
+    fn nth(&mut self, mut n: uint) -> Option<A> {
+        loop {
+            match self.next() {
+                Some(x) => if n == 0 { return Some(x) },
+                None => return None
+            }
+            n -= 1;
+        }
+    }
+
+    /// Loops through the entire iterator, returning the last element of the
+    /// iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().last().get() == &5);
+    /// ~~~
+    // FIXME: #5898: should be called `last`
+    #[inline]
+    fn last_(&mut self) -> Option<A> {
+        let mut last = None;
+        for x in *self { last = Some(x); }
+        last
+    }
+
+    /// Performs a fold operation over the entire iterator, returning the
+    /// eventual state at the end of the iteration.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
+    /// ~~~
+    #[inline]
+    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
+        let mut accum = init;
+        loop {
+            match self.next() {
+                Some(x) => { accum = f(accum, x); }
+                None    => { break; }
+            }
+        }
+        accum
+    }
+
+    // FIXME: #5898: should be called len
+    /// Counts the number of elements in this iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.len_() == 5);
+    /// assert!(it.len_() == 0);
+    /// ~~~
+    #[inline]
+    fn len_(&mut self) -> uint {
+        self.fold(0, |cnt, _x| cnt + 1)
+    }
+
+    /// Tests whether the predicate holds true for all elements in the iterator.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().all(|&x| *x > 0));
+    /// assert!(!a.iter().all(|&x| *x > 2));
+    /// ~~~
+    #[inline]
+    fn all(&mut self, f: &fn(A) -> bool) -> bool {
+        for x in *self { if !f(x) { return false; } }
+        true
+    }
+
+    /// Tests whether any element of an iterator satisfies the specified
+    /// predicate.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert!(it.any(|&x| *x == 3));
+    /// assert!(!it.any(|&x| *x == 3));
+    /// ~~~
+    #[inline]
+    fn any(&mut self, f: &fn(A) -> bool) -> bool {
+        for x in *self { if f(x) { return true; } }
+        false
+    }
+
+    /// Return the first element satisfying the specified predicate
+    #[inline]
+    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
+        for x in *self {
+            if predicate(&x) { return Some(x) }
+        }
+        None
+    }
+
+    /// Return the index of the first element satisfying the specified predicate
+    #[inline]
+    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+        let mut i = 0;
+        for x in *self {
+            if predicate(x) {
+                return Some(i);
+            }
+            i += 1;
+        }
+        None
+    }
+
+    /// Count the number of elements satisfying the specified predicate
+    #[inline]
+    fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
+        let mut i = 0;
+        for x in *self {
+            if predicate(x) { i += 1 }
+        }
+        i
+    }
+
+    /// Return the element that gives the maximum value from the specfied function
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let xs = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// ~~~
+    #[inline]
+    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+        self.fold(None, |max: Option<(A, B)>, x| {
+            let x_val = f(&x);
+            match max {
+                None             => Some((x, x_val)),
+                Some((y, y_val)) => if x_val > y_val {
+                    Some((x, x_val))
+                } else {
+                    Some((y, y_val))
+                }
+            }
+        }).map_move(|(x, _)| x)
+    }
+
+    /// Return the element that gives the minimum value from the specfied function
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let xs = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// ~~~
+    #[inline]
+    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
+        self.fold(None, |min: Option<(A, B)>, x| {
+            let x_val = f(&x);
+            match min {
+                None             => Some((x, x_val)),
+                Some((y, y_val)) => if x_val < y_val {
+                    Some((x, x_val))
+                } else {
+                    Some((y, y_val))
+                }
+            }
+        }).map_move(|(x, _)| x)
+    }
 }
 
 /// A range iterator able to yield elements from both ends
@@ -111,572 +601,6 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
     #[inline]
     fn idx(&self, index: uint) -> Option<A> {
         self.iter.idx(self.indexable() - index - 1)
-    }
-}
-
-/// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
-/// implementations of the `Iterator` trait.
-///
-/// In the future these will be default methods instead of a utility trait.
-pub trait IteratorUtil<A> {
-    /// Chain this iterator with another, returning a new iterator which will
-    /// finish iterating over the current iterator, and then it will iterate
-    /// over the other specified iterator.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [0];
-    /// let b = [1];
-    /// let mut it = a.iter().chain_(b.iter());
-    /// assert_eq!(it.next().get(), &0);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn chain_<U: Iterator<A>>(self, other: U) -> Chain<Self, U>;
-
-    /// Creates an iterator which iterates over both this and the specified
-    /// iterators simultaneously, yielding the two elements as pairs. When
-    /// either iterator returns None, all further invocations of next() will
-    /// return None.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [0];
-    /// let b = [1];
-    /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().get(), (&0, &1));
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<Self, U>;
-
-    // FIXME: #5898: should be called map
-    /// Creates a new iterator which will apply the specified function to each
-    /// element returned by the first, yielding the mapped element instead.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2];
-    /// let mut it = a.iter().transform(|&x| 2 * x);
-    /// assert_eq!(it.next().get(), 2);
-    /// assert_eq!(it.next().get(), 4);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self>;
-
-    /// Creates an iterator which applies the predicate to each element returned
-    /// by this iterator. Only elements which have the predicate evaluate to
-    /// `true` will be yielded.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2];
-    /// let mut it = a.iter().filter(|&x| *x > 1);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> Filter<'r, A, Self>;
-
-    /// Creates an iterator which both filters and maps elements.
-    /// If the specified function returns None, the element is skipped.
-    /// Otherwise the option is unwrapped and the new value is yielded.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2];
-    /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
-    /// assert_eq!(it.next().get(), 4);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn filter_map<'r,  B>(self, f: &'r fn(A) -> Option<B>) -> FilterMap<'r, A, B, Self>;
-
-    /// Creates an iterator which yields a pair of the value returned by this
-    /// iterator plus the current index of iteration.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [100, 200];
-    /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().get(), (0, &100));
-    /// assert_eq!(it.next().get(), (1, &200));
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn enumerate(self) -> Enumerate<Self>;
-
-    /// Creates an iterator which invokes the predicate on elements until it
-    /// returns false. Once the predicate returns false, all further elements are
-    /// yielded.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 2, 1];
-    /// let mut it = a.iter().skip_while(|&a| *a < 3);
-    /// assert_eq!(it.next().get(), &3);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhile<'r, A, Self>;
-
-    /// Creates an iterator which yields elements so long as the predicate
-    /// returns true. After the predicate returns false for the first time, no
-    /// further elements will be yielded.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 2, 1];
-    /// let mut it = a.iter().take_while(|&a| *a < 3);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhile<'r, A, Self>;
-
-    /// Creates an iterator which skips the first `n` elements of this iterator,
-    /// and then it yields all further items.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().skip(3);
-    /// assert_eq!(it.next().get(), &4);
-    /// assert_eq!(it.next().get(), &5);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn skip(self, n: uint) -> Skip<Self>;
-
-    // FIXME: #5898: should be called take
-    /// Creates an iterator which yields the first `n` elements of this
-    /// iterator, and then it will always return None.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().take_(3);
-    /// assert_eq!(it.next().get(), &1);
-    /// assert_eq!(it.next().get(), &2);
-    /// assert_eq!(it.next().get(), &3);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn take_(self, n: uint) -> Take<Self>;
-
-    /// Creates a new iterator which behaves in a similar fashion to foldl.
-    /// There is a state which is passed between each iteration and can be
-    /// mutated as necessary. The yielded values from the closure are yielded
-    /// from the Scan instance when not None.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().scan(1, |fac, &x| {
-    ///   *fac = *fac * x;
-    ///   Some(*fac)
-    /// });
-    /// assert_eq!(it.next().get(), 1);
-    /// assert_eq!(it.next().get(), 2);
-    /// assert_eq!(it.next().get(), 6);
-    /// assert_eq!(it.next().get(), 24);
-    /// assert_eq!(it.next().get(), 120);
-    /// assert!(it.next().is_none());
-    /// ~~~
-    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
-        -> Scan<'r, A, B, Self, St>;
-
-    /// Creates an iterator that maps each element to an iterator,
-    /// and yields the elements of the produced iterators
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let xs = [2u, 3];
-    /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take_(x));
-    /// // Check that `it` has the same elements as `ys`
-    /// let mut i = 0;
-    /// for x: uint in it {
-    ///     assert_eq!(x, ys[i]);
-    ///     i += 1;
-    /// }
-    /// ~~~
-    // FIXME: #5898: should be called `flat_map`
-    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
-        -> FlatMap<'r, A, Self, U>;
-
-    /// Creates an iterator that calls a function with a reference to each
-    /// element before yielding it. This is often useful for debugging an
-    /// iterator pipeline.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    ///let xs = [1u, 4, 2, 3, 8, 9, 6];
-    ///let sum = xs.iter()
-    ///            .transform(|&x| x)
-    ///            .peek_(|&x| debug!("filtering %u", x))
-    ///            .filter(|&x| x % 2 == 0)
-    ///            .peek_(|&x| debug!("%u made it through", x))
-    ///            .sum();
-    ///println(sum.to_str());
-    /// ~~~
-    // FIXME: #5898: should be called `peek`
-    fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self>;
-
-    /// An adaptation of an external iterator to the for-loop protocol of rust.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// use std::iterator::Counter;
-    ///
-    /// for i in count(0, 10) {
-    ///     printfln!("%d", i);
-    /// }
-    /// ~~~
-    fn advance(&mut self, f: &fn(A) -> bool) -> bool;
-
-    /// Loops through the entire iterator, collecting all of the elements into
-    /// a container implementing `FromIterator`.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
-    /// assert!(a == b);
-    /// ~~~
-    fn collect<B: FromIterator<A, Self>>(&mut self) -> B;
-
-    /// Loops through the entire iterator, collecting all of the elements into
-    /// a unique vector. This is simply collect() specialized for vectors.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().transform(|&x| x).to_owned_vec();
-    /// assert!(a == b);
-    /// ~~~
-    fn to_owned_vec(&mut self) -> ~[A];
-
-    /// Loops through `n` iterations, returning the `n`th element of the
-    /// iterator.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.nth(2).get() == &3);
-    /// assert!(it.nth(2) == None);
-    /// ~~~
-    fn nth(&mut self, n: uint) -> Option<A>;
-
-    /// Loops through the entire iterator, returning the last element of the
-    /// iterator.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().get() == &5);
-    /// ~~~
-    // FIXME: #5898: should be called `last`
-    fn last_(&mut self) -> Option<A>;
-
-    /// Performs a fold operation over the entire iterator, returning the
-    /// eventual state at the end of the iteration.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
-    /// ~~~
-    fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
-
-    // FIXME: #5898: should be called len
-    /// Counts the number of elements in this iterator.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.len_() == 5);
-    /// assert!(it.len_() == 0);
-    /// ~~~
-    fn len_(&mut self) -> uint;
-
-    /// Tests whether the predicate holds true for all elements in the iterator.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().all(|&x| *x > 0));
-    /// assert!(!a.iter().all(|&x| *x > 2));
-    /// ~~~
-    fn all(&mut self, f: &fn(A) -> bool) -> bool;
-
-    /// Tests whether any element of an iterator satisfies the specified
-    /// predicate.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.any(|&x| *x == 3));
-    /// assert!(!it.any(|&x| *x == 3));
-    /// ~~~
-    fn any(&mut self, f: &fn(A) -> bool) -> bool;
-
-    /// Return the first element satisfying the specified predicate
-    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A>;
-
-    /// Return the index of the first element satisfying the specified predicate
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
-
-    /// Count the number of elements satisfying the specified predicate
-    fn count(&mut self, predicate: &fn(A) -> bool) -> uint;
-
-    /// Return the element that gives the maximum value from the specfied function
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let xs = [-3, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
-    /// ~~~
-    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
-
-    /// Return the element that gives the minimum value from the specfied function
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// let xs = [-3, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
-    /// ~~~
-    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A>;
-}
-
-/// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
-/// implementations of the `Iterator` trait.
-///
-/// In the future these will be default methods instead of a utility trait.
-impl<A, T: Iterator<A>> IteratorUtil<A> for T {
-    #[inline]
-    fn chain_<U: Iterator<A>>(self, other: U) -> Chain<T, U> {
-        Chain{a: self, b: other, flag: false}
-    }
-
-    #[inline]
-    fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<T, U> {
-        Zip{a: self, b: other}
-    }
-
-    // FIXME: #5898: should be called map
-    #[inline]
-    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, T> {
-        Map{iter: self, f: f}
-    }
-
-    #[inline]
-    fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> Filter<'r, A, T> {
-        Filter{iter: self, predicate: predicate}
-    }
-
-    #[inline]
-    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMap<'r, A, B, T> {
-        FilterMap { iter: self, f: f }
-    }
-
-    #[inline]
-    fn enumerate(self) -> Enumerate<T> {
-        Enumerate{iter: self, count: 0}
-    }
-
-    #[inline]
-    fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhile<'r, A, T> {
-        SkipWhile{iter: self, flag: false, predicate: predicate}
-    }
-
-    #[inline]
-    fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhile<'r, A, T> {
-        TakeWhile{iter: self, flag: false, predicate: predicate}
-    }
-
-    #[inline]
-    fn skip(self, n: uint) -> Skip<T> {
-        Skip{iter: self, n: n}
-    }
-
-    // FIXME: #5898: should be called take
-    #[inline]
-    fn take_(self, n: uint) -> Take<T> {
-        Take{iter: self, n: n}
-    }
-
-    #[inline]
-    fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
-        -> Scan<'r, A, B, T, St> {
-        Scan{iter: self, f: f, state: initial_state}
-    }
-
-    #[inline]
-    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
-        -> FlatMap<'r, A, T, U> {
-        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
-    }
-
-    // FIXME: #5898: should be called `peek`
-    #[inline]
-    fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, T> {
-        Peek{iter: self, f: f}
-    }
-
-    /// A shim implementing the `for` loop iteration protocol for iterator objects
-    #[inline]
-    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
-        loop {
-            match self.next() {
-                Some(x) => {
-                    if !f(x) { return false; }
-                }
-                None => { return true; }
-            }
-        }
-    }
-
-    #[inline]
-    fn collect<B: FromIterator<A, T>>(&mut self) -> B {
-        FromIterator::from_iterator(self)
-    }
-
-    #[inline]
-    fn to_owned_vec(&mut self) -> ~[A] {
-        self.collect()
-    }
-
-    /// Return the `n`th item yielded by an iterator.
-    #[inline]
-    fn nth(&mut self, mut n: uint) -> Option<A> {
-        loop {
-            match self.next() {
-                Some(x) => if n == 0 { return Some(x) },
-                None => return None
-            }
-            n -= 1;
-        }
-    }
-
-    /// Return the last item yielded by an iterator.
-    #[inline]
-    fn last_(&mut self) -> Option<A> {
-        let mut last = None;
-        for x in *self { last = Some(x); }
-        last
-    }
-
-    /// Reduce an iterator to an accumulated value
-    #[inline]
-    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
-        let mut accum = init;
-        loop {
-            match self.next() {
-                Some(x) => { accum = f(accum, x); }
-                None    => { break; }
-            }
-        }
-        accum
-    }
-
-    /// Count the number of items yielded by an iterator
-    #[inline]
-    fn len_(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
-
-    #[inline]
-    fn all(&mut self, f: &fn(A) -> bool) -> bool {
-        for x in *self { if !f(x) { return false; } }
-        true
-    }
-
-    #[inline]
-    fn any(&mut self, f: &fn(A) -> bool) -> bool {
-        for x in *self { if f(x) { return true; } }
-        false
-    }
-
-    /// Return the first element satisfying the specified predicate
-    #[inline]
-    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
-        for x in *self {
-            if predicate(&x) { return Some(x) }
-        }
-        None
-    }
-
-    /// Return the index of the first element satisfying the specified predicate
-    #[inline]
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
-        let mut i = 0;
-        for x in *self {
-            if predicate(x) {
-                return Some(i);
-            }
-            i += 1;
-        }
-        None
-    }
-
-    #[inline]
-    fn count(&mut self, predicate: &fn(A) -> bool) -> uint {
-        let mut i = 0;
-        for x in *self {
-            if predicate(x) { i += 1 }
-        }
-        i
-    }
-
-    #[inline]
-    fn max_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
-        self.fold(None, |max: Option<(A, B)>, x| {
-            let x_val = f(&x);
-            match max {
-                None             => Some((x, x_val)),
-                Some((y, y_val)) => if x_val > y_val {
-                    Some((x, x_val))
-                } else {
-                    Some((y, y_val))
-                }
-            }
-        }).map_move(|(x, _)| x)
-    }
-
-    #[inline]
-    fn min_by<B: Ord>(&mut self, f: &fn(&A) -> B) -> Option<A> {
-        self.fold(None, |min: Option<(A, B)>, x| {
-            let x_val = f(&x);
-            match min {
-                None             => Some((x, x_val)),
-                Some((y, y_val)) => if x_val < y_val {
-                    Some((x, x_val))
-                } else {
-                    Some((y, y_val))
-                }
-            }
-        }).map_move(|(x, _)| x)
     }
 }
 
@@ -1882,7 +1806,7 @@ mod tests {
 
     #[test]
     fn test_all() {
-        let v = ~&[1, 2, 3, 4, 5];
+        let v: ~&[int] = ~&[1, 2, 3, 4, 5];
         assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x.is_even()));
         assert!(!v.iter().all(|&x| x > 100));
@@ -1891,7 +1815,7 @@ mod tests {
 
     #[test]
     fn test_any() {
-        let v = ~&[1, 2, 3, 4, 5];
+        let v: ~&[int] = ~&[1, 2, 3, 4, 5];
         assert!(v.iter().any(|&x| x < 10));
         assert!(v.iter().any(|&x| x.is_even()));
         assert!(!v.iter().any(|&x| x > 100));
@@ -1900,7 +1824,7 @@ mod tests {
 
     #[test]
     fn test_find() {
-        let v = &[1, 3, 9, 27, 103, 14, 11];
+        let v: &[int] = &[1, 3, 9, 27, 103, 14, 11];
         assert_eq!(*v.iter().find_(|x| *x & 1 == 0).unwrap(), 14);
         assert_eq!(*v.iter().find_(|x| *x % 3 == 0).unwrap(), 3);
         assert!(v.iter().find_(|x| *x % 12 == 0).is_none());
@@ -1924,13 +1848,13 @@ mod tests {
 
     #[test]
     fn test_max_by() {
-        let xs = [-3, 0, 1, 5, -10];
+        let xs: &[int] = &[-3, 0, 1, 5, -10];
         assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     }
 
     #[test]
     fn test_min_by() {
-        let xs = [-3, 0, 1, 5, -10];
+        let xs: &[int] = &[-3, 0, 1, 5, -10];
         assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     }
 

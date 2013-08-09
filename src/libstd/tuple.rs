@@ -15,7 +15,7 @@
 use clone::Clone;
 use vec;
 use vec::ImmutableVector;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 
 pub use self::inner::*;
 

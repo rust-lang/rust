@@ -525,7 +525,6 @@ impl ConsoleTestState {
 }
 
 pub fn fmt_metrics(mm: &MetricMap) -> ~str {
-    use std::iterator::IteratorUtil;
     let v : ~[~str] = mm.iter()
         .transform(|(k,v)| fmt!("%s: %f (+/- %f)",
                                 *k,

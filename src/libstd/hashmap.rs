@@ -19,7 +19,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator, Extendable};
+use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{FilterMap, Chain, Repeat, Zip};
 use num;
 use option::{None, Option, Some};

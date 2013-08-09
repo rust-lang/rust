@@ -63,7 +63,7 @@ Several modules in `core` are clients of `rt`:
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::{Iterator, IteratorUtil, range};
+use iterator::{Iterator, range};
 use option::{Some, None};
 use ptr::RawPtr;
 use rt::local::Local;
