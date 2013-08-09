@@ -99,13 +99,13 @@ pub enum Token {
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),
-    nt_block(ast::Block),
+    nt_block(~ast::Block),
     nt_stmt(@ast::stmt),
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),
-    nt_ty(   ast::Ty),
-    nt_ident(ast::ident, bool),
-    nt_path( ast::Path),
+    nt_ty(  ~ast::Ty),
+    nt_ident(~ast::ident, bool),
+    nt_path(~ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
     nt_matchers(~[ast::matcher])
 }
