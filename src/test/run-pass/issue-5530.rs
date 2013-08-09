@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 enum Enum {
     Foo { foo: uint },
     Bar { bar: uint }
