@@ -472,67 +472,7 @@ extern "rust-intrinsic" {
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
 
-    pub fn sqrtf32(x: f32) -> f32;
-    pub fn sqrtf64(x: f64) -> f64;
-
-    pub fn powif32(a: f32, x: i32) -> f32;
-    pub fn powif64(a: f64, x: i32) -> f64;
-
-    // the following kill the stack canary without
-    // `fixed_stack_segment`. This possibly only affects the f64
-    // variants, but it's hard to be sure since it seems to only
-    // occur with fairly specific arguments.
-    #[fixed_stack_segment]
-    pub fn sinf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn sinf64(x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn cosf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn cosf64(x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn powf32(a: f32, x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn powf64(a: f64, x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn expf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn expf64(x: f64) -> f64;
-
-    pub fn exp2f32(x: f32) -> f32;
-    pub fn exp2f64(x: f64) -> f64;
-
-    pub fn logf32(x: f32) -> f32;
-    pub fn logf64(x: f64) -> f64;
-
-    pub fn log10f32(x: f32) -> f32;
-    pub fn log10f64(x: f64) -> f64;
-
-    pub fn log2f32(x: f32) -> f32;
-    pub fn log2f64(x: f64) -> f64;
-
-    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-
-    pub fn fabsf32(x: f32) -> f32;
-    pub fn fabsf64(x: f64) -> f64;
-
-    pub fn floorf32(x: f32) -> f32;
-    pub fn floorf64(x: f64) -> f64;
-
-    pub fn ceilf32(x: f32) -> f32;
-    pub fn ceilf64(x: f64) -> f64;
-
-    pub fn truncf32(x: f32) -> f32;
-    pub fn truncf64(x: f64) -> f64;
-
-    pub fn ctpop8(x: i8) -> i8;
-    pub fn ctpop16(x: i16) -> i16;
-    pub fn ctpop32(x: i32) -> i32;
-    pub fn ctpop64(x: i64) -> i64;
+    // These are not listed below because they take a second `i1` argument
 
     pub fn ctlz8(x: i8) -> i8;
     pub fn ctlz16(x: i16) -> i16;
@@ -544,9 +484,7 @@ extern "rust-intrinsic" {
     pub fn cttz32(x: i32) -> i32;
     pub fn cttz64(x: i64) -> i64;
 
-    pub fn bswap16(x: i16) -> i16;
-    pub fn bswap32(x: i32) -> i32;
-    pub fn bswap64(x: i64) -> i64;
+    // Sadly these return i1 which rust does not understand
 
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
@@ -577,6 +515,106 @@ extern "rust-intrinsic" {
     pub fn u16_mul_with_overflow(x: u16, y: u16) -> (u16, bool);
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
+}
+
+// Some LLVM intrinsics can be exposed as just calling the corresponding LLVM
+// function directly. The nice part about this is that it's fewer hardcoded
+// things in the compiler, and we should get the same performance
+// characteristics out of it!
+extern {
+    #[link_name = "llvm.sqrt.f32"] #[rust_stack] #[inline]
+    pub fn sqrtf32(x: f32) -> f32;
+    #[link_name = "llvm.sqrt.f64"] #[rust_stack] #[inline]
+    pub fn sqrtf64(x: f64) -> f64;
+
+    #[link_name = "llvm.powi.f32"] #[rust_stack] #[inline]
+    pub fn powif32(a: f32, x: i32) -> f32;
+    #[link_name = "llvm.powi.f64"] #[rust_stack] #[inline]
+    pub fn powif64(a: f64, x: i32) -> f64;
+
+    // the following kill the stack canary without `fast_ffi`. This possibly
+    // only affects the f64 variants, but it's hard to be sure since it seems to
+    // only occur with fairly specific arguments.
+    #[link_name = "llvm.sin.f32"] #[fast_ffi]
+    pub fn sinf32(x: f32) -> f32;
+    #[link_name = "llvm.sin.f64"] #[fast_ffi]
+    pub fn sinf64(x: f64) -> f64;
+
+    #[link_name = "llvm.cos.f32"] #[fast_ffi]
+    pub fn cosf32(x: f32) -> f32;
+    #[link_name = "llvm.cos.f64"] #[fast_ffi]
+    pub fn cosf64(x: f64) -> f64;
+
+    #[link_name = "llvm.pow.f32"] #[fast_ffi]
+    pub fn powf32(a: f32, x: f32) -> f32;
+    #[link_name = "llvm.pow.f64"] #[fast_ffi]
+    pub fn powf64(a: f64, x: f64) -> f64;
+
+    #[link_name = "llvm.exp.f32"] #[fast_ffi]
+    pub fn expf32(x: f32) -> f32;
+    #[link_name = "llvm.exp.f64"] #[fast_ffi]
+    pub fn expf64(x: f64) -> f64;
+
+    #[link_name = "llvm.exp2.f32"] #[rust_stack] #[inline]
+    pub fn exp2f32(x: f32) -> f32;
+    #[link_name = "llvm.exp2.f64"] #[rust_stack] #[inline]
+    pub fn exp2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log.f32"] #[rust_stack] #[inline]
+    pub fn logf32(x: f32) -> f32;
+    #[link_name = "llvm.log.f64"] #[rust_stack] #[inline]
+    pub fn logf64(x: f64) -> f64;
+
+    #[link_name = "llvm.log10.f32"] #[rust_stack] #[inline]
+    pub fn log10f32(x: f32) -> f32;
+    #[link_name = "llvm.log10.f64"] #[rust_stack] #[inline]
+    pub fn log10f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log2.f32"] #[rust_stack] #[inline]
+    pub fn log2f32(x: f32) -> f32;
+    #[link_name = "llvm.log2.f64"] #[rust_stack] #[inline]
+    pub fn log2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.fma.f32"] #[rust_stack] #[inline]
+    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+    #[link_name = "llvm.fma.f64"] #[rust_stack] #[inline]
+    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+
+    #[link_name = "llvm.fabs.f32"] #[rust_stack] #[inline]
+    pub fn fabsf32(x: f32) -> f32;
+    #[link_name = "llvm.fabs.f64"] #[rust_stack] #[inline]
+    pub fn fabsf64(x: f64) -> f64;
+
+    #[link_name = "llvm.floor.f32"] #[rust_stack] #[inline]
+    pub fn floorf32(x: f32) -> f32;
+    #[link_name = "llvm.floor.f64"] #[rust_stack] #[inline]
+    pub fn floorf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ceil.f32"] #[rust_stack] #[inline]
+    pub fn ceilf32(x: f32) -> f32;
+    #[link_name = "llvm.ceil.f64"] #[rust_stack] #[inline]
+    pub fn ceilf64(x: f64) -> f64;
+
+    #[link_name = "llvm.trunc.f32"] #[rust_stack] #[inline]
+    pub fn truncf32(x: f32) -> f32;
+    #[link_name = "llvm.trunc.f64"] #[rust_stack] #[inline]
+    pub fn truncf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ctpop.i8"] #[rust_stack] #[inline]
+    pub fn ctpop8(x: i8) -> i8;
+    #[link_name = "llvm.ctpop.i16"] #[rust_stack] #[inline]
+    pub fn ctpop16(x: i16) -> i16;
+    #[link_name = "llvm.ctpop.i32"] #[rust_stack] #[inline]
+    pub fn ctpop32(x: i32) -> i32;
+    #[link_name = "llvm.ctpop.i64"] #[rust_stack] #[inline]
+    pub fn ctpop64(x: i64) -> i64;
+
+    #[link_name = "llvm.bswap.i16"] #[rust_stack] #[inline]
+    pub fn bswap16(x: i16) -> i16;
+    #[link_name = "llvm.bswap.i32"] #[rust_stack] #[inline]
+    pub fn bswap32(x: i32) -> i32;
+    #[link_name = "llvm.bswap.i64"] #[rust_stack] #[inline]
+    pub fn bswap64(x: i64) -> i64;
 }
 
 #[cfg(target_endian = "little")] pub fn to_le16(x: i16) -> i16 { x }
