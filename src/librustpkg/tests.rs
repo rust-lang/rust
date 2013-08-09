@@ -12,7 +12,7 @@
 
 use context::Ctx;
 use std::hashmap::HashMap;
-use std::{io, libc, os, result, run, str};
+use std::{io, libc, os, run, str};
 use extra::tempfile::mkdtemp;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
