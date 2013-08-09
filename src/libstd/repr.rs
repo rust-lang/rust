@@ -199,7 +199,7 @@ impl<'self> ReprVisitor<'self> {
                 self.writer.write(", ".as_bytes());
             }
             self.visit_ptr_inner(p as *c_void, inner);
-            p = align(ptr::offset(p, sz as int) as uint, al) as *u8;
+            p = align(unsafe { ptr::offset(p, sz as int) as uint }, al) as *u8;
             left -= dec;
         }
         self.writer.write([']' as u8]);
