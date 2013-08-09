@@ -561,7 +561,7 @@ impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
 
 #[cfg(not(test))]
 pub mod traits {
-    use super::Vector;
+    use super::*;
 
     use clone::Clone;
     use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equal, Equiv};
@@ -686,17 +686,17 @@ pub mod traits {
     impl<'self,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
-            let mut res = self.to_owned();
+            let mut res = with_capacity(self.len() + rhs.as_slice().len());
+            res.push_all(*self);
             res.push_all(rhs.as_slice());
             res
         }
     }
+
     impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
-            let mut res = self.to_owned();
-            res.push_all(rhs.as_slice());
-            res
+            self.as_slice() + rhs.as_slice()
         }
     }
 }
@@ -3660,6 +3660,15 @@ mod bench {
                 *x = i;
                 i += 1;
             }
+        }
+    }
+
+    #[bench]
+    fn add(b: &mut BenchHarness) {
+        let xs: &[int] = [5, ..10];
+        let ys: &[int] = [5, ..10];
+        do b.iter() {
+            xs + ys;
         }
     }
 }
