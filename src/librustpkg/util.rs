@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::{os, result};
-use std::c_str::ToCStr;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
@@ -373,7 +372,9 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    use std::c_str::ToCStr;
     use std::libc;
+
     unsafe {
         do src.to_c_str().with_ref |src_buf| {
             do dest.to_c_str().with_ref |dest_buf| {
