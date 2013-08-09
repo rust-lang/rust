@@ -153,6 +153,7 @@ pub struct options {
     linker_args: ~[~str],
     maybe_sysroot: Option<@Path>,
     target_triple: ~str,
+    target_cpu: ~str,
     target_feature: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
@@ -340,6 +341,7 @@ pub fn basic_options() -> @options {
         linker_args: ~[],
         maybe_sysroot: None,
         target_triple: host_triple(),
+        target_cpu: ~"generic",
         target_feature: ~"",
         cfg: ~[],
         binary: @"rustc",

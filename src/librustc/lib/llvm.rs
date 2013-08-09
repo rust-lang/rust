@@ -1811,6 +1811,7 @@ pub mod llvm {
         pub fn LLVMRustWriteOutputFile(PM: PassManagerRef,
                                        M: ModuleRef,
                                        Triple: *c_char,
+                                       Cpu: *c_char,
                                        Feature: *c_char,
                                        Output: *c_char,
                                        // FIXME: When #2334 is fixed,

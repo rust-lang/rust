@@ -372,6 +372,7 @@ extern "C" bool
 LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         LLVMModuleRef M,
                         const char *triple,
+                        const char *cpu,
                         const char *feature,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType,
@@ -401,7 +402,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   std::string Err;
   std::string Trip(Triple::normalize(triple));
   std::string FeaturesStr(feature);
-  std::string CPUStr("generic");
+  std::string CPUStr(cpu);
   const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
