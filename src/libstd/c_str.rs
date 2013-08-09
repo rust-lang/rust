@@ -179,7 +179,7 @@ impl<'self> ToCStr for &'self [u8] {
         do cs.with_mut_ref |buf| {
             for i in range(0, self.len()) {
                 unsafe {
-                    let p = buf.offset_inbounds(i as int);
+                    let p = buf.offset(i as int);
                     if *p == 0 {
                         match null_byte::cond.raise(self.to_owned()) {
                             Truncate => break,
@@ -222,7 +222,7 @@ impl<'self> Iterator<libc::c_char> for CStringIterator<'self> {
         if ch == 0 {
             None
         } else {
-            self.ptr = ptr::offset(self.ptr, 1);
+            self.ptr = unsafe { ptr::offset(self.ptr, 1) };
             Some(ch)
         }
     }
