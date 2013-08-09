@@ -114,7 +114,9 @@ impl<T> ChanOne<T> {
     // 'do_resched' configures whether the scheduler immediately switches to
     // the receiving task, or leaves the sending task still running.
     fn try_send_inner(self, val: T, do_resched: bool) -> bool {
-        rtassert!(!rt::in_sched_context());
+        if do_resched {
+            rtassert!(!rt::in_sched_context());
+        }
 
         let mut this = self;
         let mut recvr_active = true;
