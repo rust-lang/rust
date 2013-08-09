@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: env! takes 1 argument
-
-fn main() { env!(); }
+fn main() { env!(); } //~ ERROR: env! takes 1 or 2 arguments

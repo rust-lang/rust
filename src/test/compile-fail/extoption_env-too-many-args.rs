@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { env!(10, "two"); } //~ ERROR: expected string literal
+fn main() { option_env!("one", "two"); } //~ ERROR: option_env! takes 1 argument

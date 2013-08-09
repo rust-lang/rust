@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: env! takes 1 argument
-
-fn main() { env!("one", "two"); }
+fn main() { env!("one", "two", "three"); } //~ ERROR: env! takes 1 or 2 arguments
