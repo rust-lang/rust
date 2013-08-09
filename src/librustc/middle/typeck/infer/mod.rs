@@ -765,7 +765,7 @@ impl InferCtxt {
             _ => {
                 // if I leave out : ~str, it infers &str and complains
                 |actual: ~str| {
-                    fmt!("mismatched types: expected `%s` but found `%s`",
+                    fmt!("mismatched types: expected `%s`, found `%s`",
                          self.ty_to_str(resolved_expected), actual)
                 }
             }
