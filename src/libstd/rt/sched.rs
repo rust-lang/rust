@@ -819,6 +819,7 @@ mod test {
     use cell::Cell;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
+    use rt::util;
     use option::{Some};
 
     #[test]
@@ -1040,6 +1041,7 @@ mod test {
 
     #[test]
     fn test_stress_schedule_task_states() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         let n = stress_factor() * 120;
         for _ in range(0, n as int) {
             test_schedule_home_states();
