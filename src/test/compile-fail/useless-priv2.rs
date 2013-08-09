@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Z debug-info
-
-pub trait TraitWithDefaultMethod {
-    fn method(self) {
-        ()
-    }
+pub trait E {
+    pub fn foo();               //~ ERROR: obsolete syntax
 }
+trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
 
-struct MyStruct;
-
-impl TraitWithDefaultMethod for MyStruct { }
-
-fn main() {
-    MyStruct.method();
+struct B;
+impl E for B {
+    priv fn foo() {}             //~ ERROR: obsolete syntax
 }

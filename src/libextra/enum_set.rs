@@ -21,9 +21,9 @@ pub struct EnumSet<E> {
 /// An iterface for casting C-like enum to uint and back.
 pub trait CLike {
     /// Converts C-like enum to uint.
-    pub fn to_uint(&self) -> uint;
+    fn to_uint(&self) -> uint;
     /// Converts uint to C-like enum.
-    pub fn from_uint(uint) -> Self;
+    fn from_uint(uint) -> Self;
 }
 
 fn bit<E:CLike>(e: E) -> uint {
@@ -142,11 +142,11 @@ mod test {
     }
 
     impl CLike for Foo {
-        pub fn to_uint(&self) -> uint {
+        fn to_uint(&self) -> uint {
             *self as uint
         }
 
-        pub fn from_uint(v: uint) -> Foo {
+        fn from_uint(v: uint) -> Foo {
             unsafe { cast::transmute(v) }
         }
     }
