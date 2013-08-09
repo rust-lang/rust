@@ -43,7 +43,7 @@ impl ToStr for IpAddr {
             }
 
             // Ipv4-Mapped address
-            Ipv6Addr(0, 0, 0, 0, 0, 1, g, h) => {
+            Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, g, h) => {
                 let a = fmt!("%04x", g as uint);
                 let b = FromStrRadix::from_str_radix(a.slice(2, 4), 16).unwrap();
                 let a = FromStrRadix::from_str_radix(a.slice(0, 2), 16).unwrap();
@@ -437,4 +437,11 @@ mod test {
         // port out of range
         assert_eq!(None, FromStr::from_str::<SocketAddr>("127.0.0.1:123456"));
     }
+
+    #[test]
+    fn ipv6_addr_to_str() {
+        let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
+        assert!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
+    }
+
 }
