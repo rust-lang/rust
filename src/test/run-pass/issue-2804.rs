@@ -47,7 +47,7 @@ fn add_interface(store: int, managed_ip: ~str, data: extra::json::Json) -> (~str
             (label, bool_value(false))
         }
         _ => {
-            error!("Expected dict for %s interfaces but found %?", managed_ip, data);
+            error!("Expected dict for %s interfaces, found %?", managed_ip, data);
             (~"gnos:missing-interface", bool_value(true))
         }
     }
@@ -65,7 +65,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::jso
         }
         _ =>
         {
-            error!("Expected list for %s interfaces but found %?", managed_ip,
+            error!("Expected list for %s interfaces, found %?", managed_ip,
                    device.get(&~"interfaces"));
             ~[]
         }

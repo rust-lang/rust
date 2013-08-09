@@ -173,7 +173,7 @@ impl ErrorReporting for InferCtxt {
 
     fn values_str(@mut self, values: &ValuePairs) -> Option<~str> {
         /*!
-         * Returns a string of the form "expected `%s` but found `%s`",
+         * Returns a string of the form "expected `%s`, found `%s`",
          * or None if this is a derived error.
          */
         match *values {
@@ -201,7 +201,7 @@ impl ErrorReporting for InferCtxt {
             return None;
         }
 
-        Some(fmt!("expected `%s` but found `%s`",
+        Some(fmt!("expected `%s`, found `%s`",
                   expected.user_string(self.tcx),
                   found.user_string(self.tcx)))
     }
