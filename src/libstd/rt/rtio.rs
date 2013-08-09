@@ -22,7 +22,7 @@ pub type RemoteCallbackObject = uvio::UvRemoteCallback;
 pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
-pub type RtioUdpSocketObject = uvio::HomedUvUdpSocket; //uvio::UvUdpSocket;
+pub type RtioUdpSocketObject = uvio::UvUdpSocket;
 pub type RtioTimerObject = uvio::UvTimer;
 
 pub trait EventLoop {
@@ -88,5 +88,5 @@ pub trait RtioUdpSocket : RtioSocket {
 }
 
 pub trait RtioTimer {
-    fn sleep(&self, msecs: u64);
+    fn sleep(&mut self, msecs: u64);
 }
