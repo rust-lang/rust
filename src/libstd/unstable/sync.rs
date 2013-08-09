@@ -282,7 +282,7 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
     use task::rt;
     use rt::local::Local;
-    use rt::{context, OldTaskContext, TaskContext};
+    use rt::{context, OldTaskContext};
 
     match context() {
         OldTaskContext => {
@@ -296,17 +296,23 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
                 rt::rust_task_allow_kill(t);
             }
         }
-        TaskContext => {
-            let t = Local::unsafe_borrow::<Task>();
-            do (|| {
-                (*t).death.inhibit_yield();
-                f()
-            }).finally {
-                (*t).death.allow_yield();
+        _ => {
+            let t = Local::try_unsafe_borrow::<Task>();
+            match t {
+                Some(t) => {
+                    do (|| {
+                        (*t).death.inhibit_yield();
+                        f()
+                    }).finally {
+                        (*t).death.allow_yield();
+                    }
+                }
+                None => {
+                    // FIXME(#3095): As in unkillable().
+                    f()
+                }
             }
         }
-        // FIXME(#3095): As in unkillable().
-        _ => f()
     }
 }
 

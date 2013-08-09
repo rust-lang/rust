@@ -42,7 +42,7 @@ use cmp::Eq;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use result::Result;
 use result;
-use rt::{context, OldTaskContext, TaskContext};
+use rt::{context, OldTaskContext, in_green_task_context};
 use rt::local::Local;
 use unstable::finally::Finally;
 use util;
@@ -527,14 +527,15 @@ pub fn try<T:Send>(f: ~fn() -> T) -> Result<T,()> {
 pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
     use rt::task::Task;
 
-    match context() {
-        TaskContext => do Local::borrow::<Task, U> |task| {
+    if in_green_task_context() {
+        do Local::borrow::<Task, U> |task| {
             match task.name {
                 Some(ref name) => blk(Some(name.as_slice())),
                 None => blk(None)
             }
-        },
-        _ => fail!("no task name exists in %?", context()),
+        }
+    } else {
+        fail!("no task name exists in %?", context())
     }
 }
 
@@ -614,7 +615,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
                     rt::rust_task_allow_kill(t);
                 }
             }
-            TaskContext => {
+            _ if in_green_task_context() => {
                 // The inhibits/allows might fail and need to borrow the task.
                 let t = Local::unsafe_borrow::<Task>();
                 do (|| {
@@ -645,7 +646,7 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
                 rt::rust_task_inhibit_kill(t);
             }
         }
-        TaskContext => {
+        _ if in_green_task_context() => {
             let t = Local::unsafe_borrow::<Task>();
             do (|| {
                 (*t).death.allow_kill((*t).unwinder.unwinding);

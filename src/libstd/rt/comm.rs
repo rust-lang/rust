@@ -15,6 +15,7 @@ use cast;
 use ops::Drop;
 use rt::kill::BlockedTask;
 use kinds::Send;
+use rt;
 use rt::sched::Scheduler;
 use rt::local::Local;
 use rt::select::{Select, SelectPort};
@@ -24,7 +25,6 @@ use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
 use clone::Clone;
-use rt::{context, SchedulerContext};
 use tuple::ImmutableTuple;
 
 /// A combined refcount / BlockedTask-as-uint pointer.
@@ -113,7 +113,7 @@ impl<T> ChanOne<T> {
     // 'do_resched' configures whether the scheduler immediately switches to
     // the receiving task, or leaves the sending task still running.
     fn try_send_inner(self, val: T, do_resched: bool) -> bool {
-        rtassert!(context() != SchedulerContext);
+        rtassert!(!rt::in_sched_context());
 
         let mut this = self;
         let mut recvr_active = true;
