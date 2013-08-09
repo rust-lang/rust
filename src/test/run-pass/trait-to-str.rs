@@ -16,7 +16,7 @@ extern mod std;
 
 use std::str::StrVector;
 use std::vec::ImmutableVector;
-use std::iterator::IteratorUtil;
+use std::iterator::Iterator;
 use std::int;
 
 trait to_str {

@@ -23,7 +23,7 @@ use char::Char;
 use clone::Clone;
 use container::{Container, Mutable};
 use iter::Times;
-use iterator::{Iterator, FromIterator, Extendable, IteratorUtil};
+use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
 use iterator::{Invert, DoubleEndedIterator};
 use libc;
@@ -2546,7 +2546,6 @@ impl Zero for @str {
 
 #[cfg(test)]
 mod tests {
-    use iterator::IteratorUtil;
     use container::Container;
     use option::Some;
     use libc::c_char;

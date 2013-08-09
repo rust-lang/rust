@@ -12,7 +12,6 @@
 
 use std::{char, vec, util};
 use std::num::strconv::{SignNone,SignNeg,SignAll,int_to_str_bytes_common};
-use std::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 enum States {

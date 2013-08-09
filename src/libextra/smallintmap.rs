@@ -15,7 +15,7 @@
 
 #[allow(missing_doc)];
 
-use std::iterator::{Iterator, IteratorUtil, Enumerate, FilterMap, Invert};
+use std::iterator::{Iterator, Enumerate, FilterMap, Invert};
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
