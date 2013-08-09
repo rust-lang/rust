@@ -55,32 +55,7 @@ pub trait Iterator<A> {
 pub trait DoubleEndedIterator<A>: Iterator<A> {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
     fn next_back(&mut self) -> Option<A>;
-}
 
-/// An object implementing random access indexing by `uint`
-///
-/// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
-pub trait RandomAccessIterator<A>: Iterator<A> {
-    /// Return the number of indexable elements. At most `std::uint::max_value`
-    /// elements are indexable, even if the iterator represents a longer range.
-    fn indexable(&self) -> uint;
-
-    /// Return an element at an index
-    fn idx(&self, index: uint) -> Option<A>;
-}
-
-/// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
-///
-/// In the future these will be default methods instead of a utility trait.
-pub trait DoubleEndedIteratorUtil {
-    /// Flip the direction of the iterator
-    fn invert(self) -> Invert<Self>;
-}
-
-/// Iterator adaptors provided for every `DoubleEndedIterator` implementation.
-///
-/// In the future these will be default methods instead of a utility trait.
-impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil for T {
     /// Flip the direction of the iterator
     ///
     /// The inverted iterator flips the ends on an iterator that can already
@@ -94,9 +69,21 @@ impl<A, T: DoubleEndedIterator<A>> DoubleEndedIteratorUtil for T {
     /// Note: Random access with inverted indices still only applies to the first
     /// `uint::max_value` elements of the original iterator.
     #[inline]
-    fn invert(self) -> Invert<T> {
+    fn invert(self) -> Invert<Self> {
         Invert{iter: self}
     }
+}
+
+/// An object implementing random access indexing by `uint`
+///
+/// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
+pub trait RandomAccessIterator<A>: Iterator<A> {
+    /// Return the number of indexable elements. At most `std::uint::max_value`
+    /// elements are indexable, even if the iterator represents a longer range.
+    fn indexable(&self) -> uint;
+
+    /// Return an element at an index
+    fn idx(&self, index: uint) -> Option<A>;
 }
 
 /// An double-ended iterator with the direction inverted
