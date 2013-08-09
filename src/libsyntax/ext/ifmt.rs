@@ -685,7 +685,7 @@ pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
     };
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
-                          ~"first argument to ifmt! must be a string literal.");
+                          "first argument to ifmt! must be a string literal.");
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {
