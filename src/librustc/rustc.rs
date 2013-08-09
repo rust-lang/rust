@@ -312,7 +312,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
 
     // XXX: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack!
-    static STACK_SIZE: uint = 4000000;
+    static STACK_SIZE: uint = 6000000;
 
     let (p, ch) = stream();
     let ch = SharedChan::new(ch);
