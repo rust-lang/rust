@@ -374,8 +374,8 @@ impl RegionVarBindings {
     pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
                                        -> ~[RegionVid] {
         do vec::build |push| {
-            for i in range(snapshot, self.undo_log.len()) {
-                match self.undo_log[i] {
+            for &elt in self.undo_log.slice_from(snapshot).iter() {
+                match elt {
                     AddVar(vid) => push(vid),
                     _ => ()
                 }

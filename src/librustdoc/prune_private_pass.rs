@@ -202,7 +202,7 @@ mod test {
         let doc = mk_doc(
             ~"impl Foo {\
               pub fn bar() { }\
-              priv fn baz() { }\
+              fn baz() { }\
               }");
         assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
@@ -212,7 +212,7 @@ mod test {
         let doc = mk_doc(
             ~"impl Foo {\
               pub fn bar() { }\
-              priv fn baz() { }\
+              fn baz() { }\
               }");
         assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
@@ -232,7 +232,7 @@ mod test {
         let doc = mk_doc(
             ~"impl Foo {\
               pub fn bar() { }\
-              priv fn baz() { }\
+              fn baz() { }\
               }");
         assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }

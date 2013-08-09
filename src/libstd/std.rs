@@ -178,6 +178,7 @@ pub mod rand;
 pub mod run;
 pub mod sys;
 pub mod cast;
+pub mod fmt;
 pub mod repr;
 pub mod cleanup;
 pub mod reflect;
@@ -217,4 +218,6 @@ mod std {
     pub use unstable;
     pub use str;
     pub use os;
+    pub use fmt;
+    pub use to_bytes;
 }

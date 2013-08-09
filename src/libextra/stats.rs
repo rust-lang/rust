@@ -10,6 +10,7 @@
 
 use sort;
 use std::cmp;
+use std::hashmap;
 use std::io;
 use std::num;
 
@@ -222,7 +223,7 @@ impl<'self> Stats for &'self [f64] {
 
 // Helper function: extract a value representing the `pct` percentile of a sorted sample-set, using
 // linear interpolation. If samples are not sorted, return nonsensical value.
-priv fn percentile_of_sorted(sorted_samples: &[f64],
+fn percentile_of_sorted(sorted_samples: &[f64],
                              pct: f64) -> f64 {
     assert!(sorted_samples.len() != 0);
     if sorted_samples.len() == 1 {
@@ -350,6 +351,16 @@ pub fn write_boxplot(w: @io::Writer, s: &Summary, width_hint: uint) {
     w.write_char('|');
     w.write_char(' ');
     w.write_str(histr);
+}
+
+/// Returns a HashMap with the number of occurences of every element in the
+/// sequence that the iterator exposes.
+pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U, uint> {
+    let mut map = hashmap::HashMap::new::<U, uint>();
+    for elem in iter {
+        map.insert_or_update_with(elem, 1, |_, count| *count += 1);
+    }
+    map
 }
 
 // Test vectors generated from R, using the script src/etc/stat-test-vectors.r.

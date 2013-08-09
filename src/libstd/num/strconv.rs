@@ -422,9 +422,9 @@ pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+Round+
 
 // Some constants for from_str_bytes_common's input validation,
 // they define minimum radix values for which the character is a valid digit.
-priv static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
-priv static DIGIT_I_RADIX: uint = ('i' as uint) - ('a' as uint) + 11u;
-priv static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
+static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
+static DIGIT_I_RADIX: uint = ('i' as uint) - ('a' as uint) + 11u;
+static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
 
 /**
  * Parses a byte slice as a number. This is meant to

@@ -228,6 +228,48 @@ unsafe fn kaboom(ptr: *int) -> int { *ptr }
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
 
+# Accessing foreign globals
+
+Foreign APIs often export a global variable which could do something like track
+global state. In order to access these variables, you declare them in `extern`
+blocks with the `static` keyword:
+
+~~~{.xfail-test}
+use std::libc;
+
+#[link_args = "-lreadline"]
+extern {
+    static rl_readline_version: libc::c_int;
+}
+
+fn main() {
+    println(fmt!("You have readline version %d installed.",
+                 rl_readline_version as int));
+}
+~~~
+
+Alternatively, you may need to alter global state provided by a foreign
+interface. To do this, statics can be declared with `mut` so rust can mutate
+them.
+
+~~~{.xfail-test}
+use std::libc;
+use std::ptr;
+
+#[link_args = "-lreadline"]
+extern {
+    static mut rl_prompt: *libc::c_char;
+}
+
+fn main() {
+    do "[my-awesome-shell] $".as_c_str |buf| {
+        unsafe { rl_prompt = buf; }
+        // get a line, process it
+        unsafe { rl_prompt = ptr::null(); }
+    }
+}
+~~~
+
 # Foreign calling conventions
 
 Most foreign code exposes a C ABI, and Rust uses the platform's C calling convention by default when

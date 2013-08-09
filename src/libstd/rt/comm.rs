@@ -159,7 +159,7 @@ impl<T> ChanOne<T> {
                     // Port is blocked. Wake it up.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     if do_resched {
-                        do recvr.wake().map_consume |woken_task| {
+                        do recvr.wake().map_move |woken_task| {
                             Scheduler::run_task(woken_task);
                         };
                     } else {
@@ -225,9 +225,10 @@ impl<T> Select for PortOne<T> {
     fn optimistic_check(&mut self) -> bool {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
-        use rand::{Rand, rng};
-        let mut rng = rng();
-        let actually_check = Rand::rand(&mut rng);
+        use rand::{Rand};
+        let actually_check = do Local::borrow::<Scheduler, bool> |sched| {
+            Rand::rand(&mut sched.rng)
+        };
         if actually_check {
             unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
         } else {
@@ -381,7 +382,7 @@ impl<T> Drop for ChanOne<T> {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     assert!((*this.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
-                    do recvr.wake().map_consume |woken_task| {
+                    do recvr.wake().map_move |woken_task| {
                         Scheduler::run_task(woken_task);
                     };
                 }
@@ -508,7 +509,11 @@ impl<T> Peekable<T> for Port<T> {
     }
 }
 
-impl<T> Select for Port<T> {
+// XXX: Kind of gross. A Port<T> should be selectable so you can make an array
+// of them, but a &Port<T> should also be selectable so you can select2 on it
+// alongside a PortOne<U> without passing the port by value in recv_ready.
+
+impl<'self, T> Select for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         do self.next.with_mut_ref |pone| { pone.optimistic_check() }
@@ -526,12 +531,29 @@ impl<T> Select for Port<T> {
     }
 }
 
-impl<T> SelectPort<(T, Port<T>)> for Port<T> {
-    fn recv_ready(self) -> Option<(T, Port<T>)> {
+impl<T> Select for Port<T> {
+    #[inline]
+    fn optimistic_check(&mut self) -> bool {
+        (&*self).optimistic_check()
+    }
+
+    #[inline]
+    fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
+        (&*self).block_on(sched, task)
+    }
+
+    #[inline]
+    fn unblock_from(&mut self) -> bool {
+        (&*self).unblock_from()
+    }
+}
+
+impl<'self, T> SelectPort<T> for &'self Port<T> {
+    fn recv_ready(self) -> Option<T> {
         match self.next.take().recv_ready() {
             Some(StreamPayload { val, next }) => {
                 self.next.put_back(next);
-                Some((val, self))
+                Some(val)
             }
             None => None
         }

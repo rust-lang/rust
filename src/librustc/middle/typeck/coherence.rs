@@ -554,8 +554,8 @@ impl CoherenceChecker {
 
         let mut provided_names = HashSet::new();
         // Implemented methods
-        for i in range(0u, all_methods.len()) {
-            provided_names.insert(all_methods[i].ident);
+        for elt in all_methods.iter() {
+            provided_names.insert(elt.ident);
         }
 
         let r = ty::trait_methods(tcx, trait_did);

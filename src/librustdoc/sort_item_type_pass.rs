@@ -18,7 +18,7 @@ pub fn mk_pass() -> Pass {
     fn by_score(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         fn score(item: &doc::ItemTag) -> int {
             match *item {
-              doc::ConstTag(_) => 0,
+              doc::StaticTag(_) => 0,
               doc::TyTag(_) => 1,
               doc::EnumTag(_) => 2,
               doc::StructTag(_) => 3,
@@ -43,7 +43,7 @@ fn test() {
 
     let source =
         ~"mod imod { } \
-         static iconst: int = 0; \
+         static istatic: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
          trait itrait { fn a(); } \
@@ -54,7 +54,7 @@ fn test() {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
         // hidden __std_macros module at the start.
-        assert_eq!(doc.cratemod().items[0].name_(), ~"iconst");
+        assert_eq!(doc.cratemod().items[0].name_(), ~"istatic");
         assert_eq!(doc.cratemod().items[1].name_(), ~"itype");
         assert_eq!(doc.cratemod().items[2].name_(), ~"ienum");
         assert_eq!(doc.cratemod().items[3].name_(), ~"istruct");

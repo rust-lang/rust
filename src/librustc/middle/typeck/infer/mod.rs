@@ -716,12 +716,13 @@ impl InferCtxt {
                                                 err: Option<&ty::type_err>) {
         debug!("hi! expected_ty = %?, actual_ty = %s", expected_ty, actual_ty);
 
-        let error_str = err.map_default(~"", |t_err|
-                         fmt!(" (%s)",
-                              ty::type_err_to_str(self.tcx, *t_err)));
-        let resolved_expected = expected_ty.map(|&e_ty|
-                                                { self.resolve_type_vars_if_possible(e_ty) });
-        if !resolved_expected.map_default(false, |&e| { ty::type_is_error(e) }) {
+        let error_str = do err.map_move_default(~"") |t_err| {
+            fmt!(" (%s)", ty::type_err_to_str(self.tcx, t_err))
+        };
+        let resolved_expected = do expected_ty.map_move |e_ty| {
+            self.resolve_type_vars_if_possible(e_ty)
+        };
+        if !resolved_expected.map_move_default(false, |e| { ty::type_is_error(e) }) {
             match resolved_expected {
                 None => self.tcx.sess.span_err(sp,
                             fmt!("%s%s", mk_msg(None, actual_ty), error_str)),

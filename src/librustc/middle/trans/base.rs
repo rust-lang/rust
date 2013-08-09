@@ -93,7 +93,7 @@ pub use middle::trans::context::task_llcx;
 static task_local_insn_key: local_data::Key<@~[&'static str]> = &local_data::Key;
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
-    let opt = local_data::get(task_local_insn_key, |k| k.map(|&k| *k));
+    let opt = local_data::get(task_local_insn_key, |k| k.map_move(|k| *k));
     if opt.is_some() {
         blk(*opt.unwrap());
     }
@@ -109,7 +109,7 @@ pub struct _InsnCtxt { _x: () }
 impl Drop for _InsnCtxt {
     fn drop(&self) {
         do local_data::modify(task_local_insn_key) |c| {
-            do c.map_consume |ctx| {
+            do c.map_move |ctx| {
                 let mut ctx = (*ctx).clone();
                 ctx.pop();
                 @ctx
@@ -121,7 +121,7 @@ impl Drop for _InsnCtxt {
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: %s", s);
     do local_data::modify(task_local_insn_key) |c| {
-        do c.map_consume |ctx| {
+        do c.map_move |ctx| {
             let mut ctx = (*ctx).clone();
             ctx.push(s);
             @ctx
@@ -1743,8 +1743,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         _ => {}
     }
 
-    for arg_n in range(0u, arg_tys.len()) {
-        let arg_ty = arg_tys[arg_n];
+    for (arg_n, &arg_ty) in arg_tys.iter().enumerate() {
         let raw_llarg = raw_llargs[arg_n];
 
         // For certain mode/type combinations, the raw llarg values are passed

@@ -591,7 +591,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn expr_if(&self, span: span,
                cond: @ast::expr, then: @ast::expr, els: Option<@ast::expr>) -> @ast::expr {
-        let els = els.map(|x| self.expr_block(self.block_expr(*x)));
+        let els = els.map_move(|x| self.expr_block(self.block_expr(x)));
         self.expr(span, ast::expr_if(cond, self.block_expr(then), els))
     }
 

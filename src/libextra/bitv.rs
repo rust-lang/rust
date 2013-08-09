@@ -145,14 +145,16 @@ impl BigBitv {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
         let mut changed = false;
-        for i in range(0, len) {
+        for (i, (a, b)) in self.storage.mut_iter()
+                               .zip(b.storage.iter())
+                               .enumerate() {
             let mask = big_mask(nbits, i);
-            let w0 = self.storage[i] & mask;
-            let w1 = b.storage[i] & mask;
+            let w0 = *a & mask;
+            let w1 = *b & mask;
             let w = op(w0, w1) & mask;
             if w0 != w {
                 changed = true;
-                self.storage[i] = w;
+                *a = w;
             }
         }
         changed
@@ -160,7 +162,7 @@ impl BigBitv {
 
     #[inline]
     pub fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
-        range(0u, self.storage.len()).advance(|i| op(&mut self.storage[i]))
+        self.storage.mut_iter().advance(|elt| op(elt))
     }
 
     #[inline]
@@ -205,10 +207,9 @@ impl BigBitv {
 
     #[inline]
     pub fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
-        let len = b.storage.len();
-        for i in range(0, len) {
+        for (i, elt) in b.storage.iter().enumerate() {
             let mask = big_mask(nbits, i);
-            if mask & self.storage[i] != mask & b.storage[i] {
+            if mask & self.storage[i] != mask & *elt {
                 return false;
             }
         }

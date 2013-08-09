@@ -182,6 +182,7 @@ mod test {
     fn select_stream() {
         use util;
         use comm::GenericChan;
+        use iter::Times;
 
         // Sends 10 buffered packets, and uses select to retrieve them all.
         // Puts the port in a different spot in the vector each time.
@@ -199,9 +200,7 @@ mod test {
                 // get it back out
                 util::swap(port.get_mut_ref(), &mut ports[index]);
                 // NB. Not recv(), because optimistic_check randomly fails.
-                let (data, new_port) = port.take_unwrap().recv_ready().unwrap();
-                assert!(data == 31337);
-                port = Some(new_port);
+                assert!(port.get_ref().recv_ready().unwrap() == 31337);
             }
         }
     }
@@ -265,6 +264,7 @@ mod test {
 
         fn select_racing_senders_helper(killable: bool, send_on_chans: ~[uint]) {
             use rt::test::spawntask_random;
+            use iter::Times;
 
             do run_in_newsched_task {
                 // A bit of stress, since ordinarily this is just smoke and mirrors.

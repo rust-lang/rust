@@ -271,8 +271,8 @@ impl<T> TrieNode<T> {
 
 impl<T> TrieNode<T> {
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        for idx in range(0u, self.children.len()) {
-            match self.children[idx] {
+        for elt in self.children.iter() {
+            match *elt {
                 Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
                 Nothing => ()
@@ -282,13 +282,14 @@ impl<T> TrieNode<T> {
     }
 
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
-        do uint::range_rev(self.children.len(), 0) |idx| {
-            match self.children[idx] {
-                Internal(ref x) => x.each_reverse(|i,t| f(i,t)),
-                External(k, ref v) => f(&k, v),
-                Nothing => true
+        for elt in self.children.rev_iter() {
+            match *elt {
+                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
+                External(k, ref v) => if !f(&k, v) { return false },
+                Nothing => ()
             }
         }
+        true
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
@@ -539,10 +540,9 @@ mod test_map {
     fn test_each_break() {
         let mut m = TrieMap::new();
 
-        do uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+        for x in range(uint::max_value - 10000, uint::max_value).invert() {
             m.insert(x, x / 2);
-            true
-        };
+        }
 
         let mut n = uint::max_value - 10000;
         do m.each |k, v| {
@@ -580,10 +580,9 @@ mod test_map {
     fn test_each_reverse_break() {
         let mut m = TrieMap::new();
 
-        do uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+        for x in range(uint::max_value - 10000, uint::max_value).invert() {
             m.insert(x, x / 2);
-            true
-        };
+        }
 
         let mut n = uint::max_value - 1;
         do m.each_reverse |k, v| {
@@ -634,10 +633,9 @@ mod test_map {
         let last = uint::max_value;
 
         let mut map = TrieMap::new();
-        do uint::range_rev(last, first) |x| {
+        for x in range(first, last).invert() {
             map.insert(x, x / 2);
-            true
-        };
+        }
 
         let mut i = 0;
         for (k, &v) in map.iter() {

@@ -139,6 +139,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::tt::macro_rules::add_new_extension));
     syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
+    syntax_expanders.insert(intern(&"ifmt"),
+                            builtin_normal_tt(ext::ifmt::expand_syntax_ext));
     syntax_expanders.insert(
         intern(&"auto_encode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
@@ -479,7 +481,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
             ConsMapChain(ref map,_) => map
         };
         // strip one layer of indirection off the pointer.
-        map.find(key).map(|r| {**r})
+        map.find(key).map_move(|r| {*r})
     }
 
     // insert the binding into the top-level map

@@ -2288,8 +2288,8 @@ pub mod farm {
     }
 
     impl Farm {
-        priv fn feed_chickens(&self) { ... }
-        priv fn feed_cows(&self) { ... }
+        fn feed_chickens(&self) { ... }
+        fn feed_cows(&self) { ... }
         pub fn add_chicken(&self, c: Chicken) { ... }
     }
 

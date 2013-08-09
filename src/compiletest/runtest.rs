@@ -162,9 +162,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         round += 1;
     }
 
-    let mut expected =
-        match props.pp_exact {
-          Some(ref file) => {
+    let mut expected = match props.pp_exact {
+        Some(ref file) => {
             let filepath = testfile.dir_path().push_rel(file);
             io::read_whole_file_str(&filepath).unwrap()
           }
@@ -413,8 +412,8 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
     }
 
-    for i in range(0u, found_flags.len()) {
-        if !found_flags[i] {
+    for (i, &flag) in found_flags.iter().enumerate() {
+        if !flag {
             let ee = &expected_errors[i];
             fatal_ProcRes(fmt!("expected %s on line %u not found: %s",
                                ee.kind, ee.line, ee.msg), ProcRes);
