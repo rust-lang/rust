@@ -429,7 +429,12 @@ impl Context {
             let st = ast::item_static(ty, ast::m_imm, method);
             let static_name = self.ecx.ident_of(fmt!("__static_method_%u",
                                                      self.method_statics.len()));
-            let item = self.ecx.item(sp, static_name, ~[], st);
+            // Flag these statics as `address_insignificant` so LLVM can
+            // merge duplicate globals as much as possible (which we're
+            // generating a whole lot of).
+            let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
+            let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
+            let item = self.ecx.item(sp, static_name, ~[unnamed], st);
             self.method_statics.push(item);
             self.ecx.expr_ident(sp, static_name)
         };
@@ -550,7 +555,10 @@ impl Context {
         let ty = self.ecx.ty(self.fmtsp, ty);
         let st = ast::item_static(ty, ast::m_imm, fmt);
         let static_name = self.ecx.ident_of("__static_fmtstr");
-        let item = self.ecx.item(self.fmtsp, static_name, ~[], st);
+        // see above comment for `address_insignificant` and why we do it
+        let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
+        let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
+        let item = self.ecx.item(self.fmtsp, static_name, ~[unnamed], st);
         let decl = respan(self.fmtsp, ast::decl_item(item));
         lets.push(@respan(self.fmtsp, ast::stmt_decl(@decl, self.ecx.next_id())));
 
@@ -613,6 +621,7 @@ impl Context {
         if ty == Unknown {
             ty = Known(@"?");
         }
+
         let argptr = self.ecx.expr_addr_of(sp, self.ecx.expr_ident(sp, ident));
         match ty {
             Known(tyname) => {
@@ -685,7 +694,7 @@ pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
     };
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
-                          ~"first argument to ifmt! must be a string literal.");
+                          "first argument to ifmt! must be a string literal.");
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {
