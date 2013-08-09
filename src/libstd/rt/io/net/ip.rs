@@ -9,7 +9,11 @@
 // except according to those terms.
 
 use num::FromStrRadix;
+use vec::MutableCloneableVector;
 use to_str::ToStr;
+use from_str::FromStr;
+use option::{Option, None, Some};
+
 
 type Port = u16;
 
@@ -71,5 +75,366 @@ impl ToStr for SocketAddr {
             Ipv4Addr(*) => fmt!("%s:%u", self.ip.to_str(), self.port as uint),
             Ipv6Addr(*) => fmt!("[%s]:%u", self.ip.to_str(), self.port as uint),
         }
+    }
+}
+
+struct Parser<'self> {
+    // parsing as ASCII, so can use byte array
+    s: &'self [u8],
+    pos: uint,
+}
+
+impl<'self> Parser<'self> {
+    fn new(s: &'self str) -> Parser<'self> {
+        Parser {
+            s: s.as_bytes(),
+            pos: 0,
+        }
+    }
+
+    fn is_eof(&self) -> bool {
+        self.pos == self.s.len()
+    }
+
+    // Commit only if parser returns Some
+    fn read_atomically<T>(&mut self, cb: &fn(&mut Parser) -> Option<T>) -> Option<T> {
+        let pos = self.pos;
+        let r = cb(self);
+        if r.is_none() {
+            self.pos = pos;
+        }
+        r
+    }
+
+    // Commit only if parser read till EOF
+    fn read_till_eof<T>(&mut self, cb: &fn(&mut Parser) -> Option<T>) -> Option<T> {
+        do self.read_atomically |p| {
+            cb(p).filtered(|_| p.is_eof())
+        }
+    }
+
+    // Return result of first successful parser
+    fn read_or<T>(&mut self, parsers: &[&fn(&mut Parser) -> Option<T>]) -> Option<T> {
+        for pf in parsers.iter() {
+            match self.read_atomically(|p: &mut Parser| (*pf)(p)) {
+                Some(r) => return Some(r),
+                None => {}
+            }
+        }
+        None
+    }
+
+    // Apply 3 parsers sequentially
+    fn read_seq_3<A, B, C>(&mut self,
+            pa: &fn(&mut Parser) -> Option<A>,
+            pb: &fn(&mut Parser) -> Option<B>,
+            pc: &fn(&mut Parser) -> Option<C>
+        ) -> Option<(A, B, C)>
+    {
+        do self.read_atomically |p| {
+            let a = pa(p);
+            let b = if a.is_some() { pb(p) } else { None };
+            let c = if b.is_some() { pc(p) } else { None };
+            match (a, b, c) {
+                (Some(a), Some(b), Some(c)) => Some((a, b, c)),
+                _ => None
+            }
+        }
+    }
+
+    // Read next char
+    fn read_char(&mut self) -> Option<char> {
+        if self.is_eof() {
+            None
+        } else {
+            let r = self.s[self.pos] as char;
+            self.pos += 1;
+            Some(r)
+        }
+    }
+
+    // Return char and advance iff next char is equal to requested
+    fn read_given_char(&mut self, c: char) -> Option<char> {
+        do self.read_atomically |p| {
+            p.read_char().filtered(|&next| next == c)
+        }
+    }
+
+    // Read digit
+    fn read_digit(&mut self, radix: u8) -> Option<u8> {
+        fn parse_digit(c: char, radix: u8) -> Option<u8> {
+            // assuming radix is either 10 or 16
+            if c >= '0' && c <= '9' {
+                Some((c - '0') as u8)
+            } else if radix > 10 && c >= 'a' && c < 'a' + (radix - 10) as char {
+                Some((c - 'a' + (10 as char)) as u8)
+            } else if radix > 10 && c >= 'A' && c < 'A' + (radix - 10) as char {
+                Some((c - 'A' + (10 as char)) as u8)
+            } else {
+                None
+            }
+        }
+
+        do self.read_atomically |p| {
+            p.read_char().chain(|c| parse_digit(c, radix))
+        }
+    }
+
+    fn read_number_impl(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
+        let mut r = 0u32;
+        let mut digit_count = 0;
+        loop {
+            match self.read_digit(radix) {
+                Some(d) => {
+                    r = r * (radix as u32) + (d as u32);
+                    digit_count += 1;
+                    if digit_count > max_digits || r >= upto {
+                        return None
+                    }
+                }
+                None => {
+                    if digit_count == 0 {
+                        return None
+                    } else {
+                        return Some(r)
+                    }
+                }
+            };
+        }
+    }
+
+    // Read number, failing if max_digits of number value exceeded
+    fn read_number(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
+        do self.read_atomically |p| {
+            p.read_number_impl(radix, max_digits, upto)
+        }
+    }
+
+    fn read_ipv4_addr_impl(&mut self) -> Option<IpAddr> {
+        let mut bs = [0u8, ..4];
+        let mut i = 0;
+        while i < 4 {
+            if i != 0 && self.read_given_char('.').is_none() {
+                return None;
+            }
+
+            let octet = self.read_number(10, 3, 0x100).map(|&n| n as u8);
+            match octet {
+                Some(d) => bs[i] = d,
+                None => return None,
+            };
+            i += 1;
+        }
+        Some(Ipv4Addr(bs[0], bs[1], bs[2], bs[3]))
+    }
+
+    // Read IPv4 address
+    fn read_ipv4_addr(&mut self) -> Option<IpAddr> {
+        do self.read_atomically |p| {
+            p.read_ipv4_addr_impl()
+        }
+    }
+
+    fn read_ipv6_addr_impl(&mut self) -> Option<IpAddr> {
+        fn ipv6_addr_from_head_tail(head: &[u16], tail: &[u16]) -> IpAddr {
+            assert!(head.len() + tail.len() <= 8);
+            let mut gs = [0u16, ..8];
+            gs.copy_from(head);
+            gs.mut_slice(8 - tail.len(), 8).copy_from(tail);
+            Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
+        }
+
+        fn read_groups(p: &mut Parser, groups: &mut [u16, ..8], limit: uint) -> (uint, bool) {
+            let mut i = 0;
+            while i < limit {
+                if i < limit - 1 {
+                    let ipv4 = do p.read_atomically |p| {
+                        if i == 0 || p.read_given_char(':').is_some() {
+                            p.read_ipv4_addr()
+                        } else {
+                            None
+                        }
+                    };
+                    match ipv4 {
+                        Some(Ipv4Addr(a, b, c, d)) => {
+                            groups[i + 0] = (a as u16 << 8) | (b as u16);
+                            groups[i + 1] = (c as u16 << 8) | (d as u16);
+                            return (i + 2, true);
+                        }
+                        _ => {}
+                    }
+                }
+
+                let group = do p.read_atomically |p| {
+                    if i == 0 || p.read_given_char(':').is_some() {
+                        p.read_number(16, 4, 0x10000).map(|&n| n as u16)
+                    } else {
+                        None
+                    }
+                };
+                match group {
+                    Some(g) => groups[i] = g,
+                    None => return (i, false)
+                }
+                i += 1;
+            }
+            (i, false)
+        }
+
+        let mut head = [0u16, ..8];
+        let (head_size, head_ipv4) = read_groups(self, &mut head, 8);
+
+        if head_size == 8 {
+            return Some(Ipv6Addr(
+                head[0], head[1], head[2], head[3],
+                head[4], head[5], head[6], head[7]))
+        }
+
+        // IPv4 part is not allowed before `::`
+        if head_ipv4 {
+            return None
+        }
+
+        // read `::` if previous code parsed less than 8 groups
+        if !self.read_given_char(':').is_some() || !self.read_given_char(':').is_some() {
+            return None;
+        }
+
+        let mut tail = [0u16, ..8];
+        let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
+        Some(ipv6_addr_from_head_tail(head.slice(0, head_size), tail.slice(0, tail_size)))
+    }
+
+    fn read_ipv6_addr(&mut self) -> Option<IpAddr> {
+        do self.read_atomically |p| {
+            p.read_ipv6_addr_impl()
+        }
+    }
+
+    fn read_ip_addr(&mut self) -> Option<IpAddr> {
+        let ipv4_addr = |p: &mut Parser| p.read_ipv4_addr();
+        let ipv6_addr = |p: &mut Parser| p.read_ipv6_addr();
+        self.read_or([ipv4_addr, ipv6_addr])
+    }
+
+    fn read_socket_addr(&mut self) -> Option<SocketAddr> {
+        let ip_addr = |p: &mut Parser| {
+            let ipv4_p = |p: &mut Parser| p.read_ip_addr();
+            let ipv6_p = |p: &mut Parser| {
+                let open_br = |p: &mut Parser| p.read_given_char('[');
+                let ip_addr = |p: &mut Parser| p.read_ipv6_addr();
+                let clos_br = |p: &mut Parser| p.read_given_char(']');
+                p.read_seq_3::<char, IpAddr, char>(open_br, ip_addr, clos_br)
+                        .map(|&t| match t { (_, ip, _) => ip })
+            };
+            p.read_or([ipv4_p, ipv6_p])
+        };
+        let colon = |p: &mut Parser| p.read_given_char(':');
+        let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|&n| n as u16);
+
+        // host, colon, port
+        self.read_seq_3::<IpAddr, char, u16>(ip_addr, colon, port)
+                .map(|&t| match t { (ip, _, port) => SocketAddr { ip: ip, port: port } })
+    }
+}
+
+impl FromStr for IpAddr {
+    fn from_str(s: &str) -> Option<IpAddr> {
+        do Parser::new(s).read_till_eof |p| {
+            p.read_ip_addr()
+        }
+    }
+}
+
+impl FromStr for SocketAddr {
+    fn from_str(s: &str) -> Option<SocketAddr> {
+        do Parser::new(s).read_till_eof |p| {
+            p.read_socket_addr()
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use from_str::FromStr;
+    use option::{Some, None};
+
+    #[test]
+    fn test_from_str_ipv4() {
+        assert_eq!(Some(Ipv4Addr(127, 0, 0, 1)), FromStr::from_str("127.0.0.1"));
+        assert_eq!(Some(Ipv4Addr(255, 255, 255, 255)), FromStr::from_str("255.255.255.255"));
+        assert_eq!(Some(Ipv4Addr(0, 0, 0, 0)), FromStr::from_str("0.0.0.0"));
+
+        // out of range
+        assert_eq!(None, FromStr::from_str::<IpAddr>("256.0.0.1"));
+        // too short
+        assert_eq!(None, FromStr::from_str::<IpAddr>("255.0.0"));
+        // too long
+        assert_eq!(None, FromStr::from_str::<IpAddr>("255.0.0.1.2"));
+        // no number between dots
+        assert_eq!(None, FromStr::from_str::<IpAddr>("255.0..1"));
+    }
+
+    #[test]
+    fn test_from_str_ipv6() {
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("0:0:0:0:0:0:0:0"));
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("0:0:0:0:0:0:0:1"));
+
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("::1"));
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("::"));
+
+        assert_eq!(Some(Ipv6Addr(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
+                FromStr::from_str("2a02:6b8::11:11"));
+
+        // too long group
+        assert_eq!(None, FromStr::from_str::<IpAddr>("::00000"));
+        // too short
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1:2:3:4:5:6:7"));
+        // too long
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1:2:3:4:5:6:7:8:9"));
+        // triple colon
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1:2:::6:7:8"));
+        // two double colons
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1:2::6::8"));
+    }
+
+    #[test]
+    fn test_from_str_ipv4_in_ipv6() {
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 49152, 545)),
+                FromStr::from_str("::192.0.2.33"));
+        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
+                FromStr::from_str("::FFFF:192.0.2.33"));
+        assert_eq!(Some(Ipv6Addr(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
+                FromStr::from_str("64:ff9b::192.0.2.33"));
+        assert_eq!(Some(Ipv6Addr(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
+                FromStr::from_str("2001:db8:122:c000:2:2100:192.0.2.33"));
+
+        // colon after v4
+        assert_eq!(None, FromStr::from_str::<IpAddr>("::127.0.0.1:"));
+        // not enought groups
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1.2.3.4.5:127.0.0.1"));
+        // too many groups
+        assert_eq!(None, FromStr::from_str::<IpAddr>("1.2.3.4.5:6:7:127.0.0.1"));
+    }
+
+    #[test]
+    fn test_from_str_socket_addr() {
+        assert_eq!(Some(SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 80 }),
+                FromStr::from_str("77.88.21.11:80"));
+        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 }),
+                FromStr::from_str("[2a02:6b8:0:1::1]:53"));
+        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0x7F00, 1), port: 22 }),
+                FromStr::from_str("[::127.0.0.1]:22"));
+
+        // without port
+        assert_eq!(None, FromStr::from_str::<SocketAddr>("127.0.0.1"));
+        // without port
+        assert_eq!(None, FromStr::from_str::<SocketAddr>("127.0.0.1:"));
+        // wrong brackets around v4
+        assert_eq!(None, FromStr::from_str::<SocketAddr>("[127.0.0.1]:22"));
+        // port out of range
+        assert_eq!(None, FromStr::from_str::<SocketAddr>("127.0.0.1:123456"));
     }
 }
