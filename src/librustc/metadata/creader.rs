@@ -18,6 +18,7 @@ use metadata::loader;
 
 use std::hashmap::HashMap;
 use syntax::ast;
+use std::vec;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{span, dummy_sp};
@@ -137,18 +138,33 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 
 fn visit_view_item(e: @mut Env, i: &ast::view_item) {
     match i.node {
-      ast::view_item_extern_mod(ident, ref meta_items, id) => {
-        debug!("resolving extern mod stmt. ident: %?, meta: %?",
-               ident, *meta_items);
-        let cnum = resolve_crate(e,
-                                 ident,
-                                 (*meta_items).clone(),
-                                 @"",
-                                 i.span);
-        cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
+      ast::view_item_extern_mod(ident, path_opt, ref meta_items, id) => {
+          let ident = token::ident_to_str(&ident);
+          let meta_items = match path_opt {
+              None => meta_items.clone(),
+              Some(p) => {
+                  let p_path = Path(p);
+                  match p_path.filestem() {
+                      Some(s) =>
+                          vec::append(
+                              ~[attr::mk_name_value_item_str(@"package_id", p),
+                               attr::mk_name_value_item_str(@"name", s.to_managed())],
+                              *meta_items),
+                      None => e.diag.span_bug(i.span, "Bad package path in `extern mod` item")
+                  }
+            }
+          };
+          debug!("resolving extern mod stmt. ident: %?, meta: %?",
+                 ident, meta_items);
+          let cnum = resolve_crate(e,
+                                   ident,
+                                   meta_items,
+                                   @"",
+                                   i.span);
+          cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
       }
       _ => ()
-    }
+  }
 }
 
 fn visit_item(e: &Env, i: @ast::item) {
@@ -233,12 +249,12 @@ fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
 }
 
 fn resolve_crate(e: @mut Env,
-                 ident: ast::ident,
+                 ident: @str,
                  metas: ~[@ast::MetaItem],
                  hash: @str,
                  span: span)
               -> ast::CrateNum {
-    let metas = metas_with_ident(token::ident_to_str(&ident), metas);
+    let metas = metas_with_ident(ident, metas);
 
     match existing_match(e, metas, hash) {
       None => {
@@ -279,7 +295,7 @@ fn resolve_crate(e: @mut Env,
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
                                                          "name") {
                 Some(v) => v,
-                None => token::ident_to_str(&ident),
+                None => ident
             };
         let cmeta = @cstore::crate_metadata {
             name: cname,
@@ -308,7 +324,6 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     let r = decoder::get_crate_deps(cdata);
     for dep in r.iter() {
         let extrn_cnum = dep.cnum;
-        let cname = dep.name;
         let cname_str = token::ident_to_str(&dep.name);
         let cmetas = metas_with(dep.vers, @"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
@@ -327,7 +342,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.
             let fake_span = dummy_sp();
-            let local_cnum = resolve_crate(e, cname, cmetas, dep.hash,
+            let local_cnum = resolve_crate(e, cname_str, cmetas, dep.hash,
                                            fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
           }

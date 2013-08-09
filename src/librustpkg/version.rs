@@ -15,8 +15,8 @@ extern mod std;
 
 use extra::semver;
 use std::{char, os, result, run, str};
-use package_path::RemotePath;
 use extra::tempfile::mkdtemp;
+use path_util::rust_path;
 
 #[deriving(Clone)]
 pub enum Version {
@@ -92,19 +92,22 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
     }
 }
 
-/// If `local_path` is a git repo, and the most recent tag in that repo denotes a version,
-/// return it; otherwise, `None`
+/// If `local_path` is a git repo in the RUST_PATH, and the most recent tag
+/// in that repo denotes a version, return it; otherwise, `None`
 pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
-    debug!("in try_getting_local_version");
-    let outp = run::process_output("git",
+    let rustpath = rust_path();
+    for rp in rustpath.iter() {
+        let local_path = rp.push_rel(local_path);
+        debug!("in try_getting_local_version");
+        let outp = run::process_output("git",
                                    [fmt!("--git-dir=%s", local_path.push(".git").to_str()),
                                     ~"tag", ~"-l"]);
 
-    debug!("git --git-dir=%s tag -l ~~~> %?", local_path.push(".git").to_str(), outp.status);
+        debug!("git --git-dir=%s tag -l ~~~> %?", local_path.push(".git").to_str(), outp.status);
 
-    if outp.status != 0 {
-        return None;
-    }
+        if outp.status != 0 {
+            loop;
+        }
 
     let mut output = None;
     let output_text = str::from_bytes(outp.output);
@@ -112,14 +115,19 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         if !l.is_whitespace() {
             output = Some(l);
         }
+        match output.chain(try_parsing_version) {
+            Some(v) => return Some(v),
+            None    => ()
+        }
     }
-    output.chain(try_parsing_version)
+  }
+  None
 }
 
 /// If `remote_path` refers to a git repo that can be downloaded,
 /// and the most recent tag in that repo denotes a version, return it;
 /// otherwise, `None`
-pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
+pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
     debug!("try_getting_version: %s", remote_path.to_str());
     if is_url_like(remote_path) {
         debug!("Trying to fetch its sources..");
@@ -190,7 +198,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
 }
 
 /// Just an approximation
-fn is_url_like(p: &RemotePath) -> bool {
+fn is_url_like(p: &Path) -> bool {
     let str = p.to_str();
     str.split_iter('/').len_() > 2
 }

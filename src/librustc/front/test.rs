@@ -282,7 +282,7 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
                                             cx.sess.next_node_id()))])
     } else {
         let mi = attr::mk_name_value_item_str(@"vers", @"0.8-pre");
-        ast::view_item_extern_mod(id_extra, ~[mi], cx.sess.next_node_id())
+        ast::view_item_extern_mod(id_extra, None, ~[mi], cx.sess.next_node_id())
     };
     ast::view_item {
         node: vi,

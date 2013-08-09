@@ -47,7 +47,7 @@ fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
             let n1 = sess.next_node_id();
             let vi1 = ast::view_item {
                 node: ast::view_item_extern_mod(
-                        sess.ident_of("std"), ~[], n1),
+                        sess.ident_of("std"), None, ~[], n1),
                 attrs: ~[
                     attr::mk_attr(
                         attr::mk_name_value_item_str(@"vers", STD_VERSION.to_managed()))

@@ -744,7 +744,7 @@ There are several kinds of view item:
 ##### Extern mod declarations
 
 ~~~~~~~~ {.ebnf .gram}
-extern_mod_decl : "extern" "mod" ident [ '(' link_attrs ')' ] ? ;
+extern_mod_decl : "extern" "mod" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
@@ -755,13 +755,25 @@ as the `ident` provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time,
 and a runtime linkage requirement to that `soname` is passed to the linker for
-loading at runtime. The `soname` is resolved at compile time by scanning the
-compiler's library path and matching the `link_attrs` provided in the
-`use_decl` against any `#link` attributes that were declared on the external
-crate when it was compiled. If no `link_attrs` are provided, a default `name`
-attribute is assumed, equal to the `ident` given in the `use_decl`.
+loading at runtime.
+The `soname` is resolved at compile time by scanning the compiler's library path
+and matching the `link_attrs` provided in the `use_decl` against any `#link` attributes that
+were declared on the external crate when it was compiled.
+If no `link_attrs` are provided,
+a default `name` attribute is assumed,
+equal to the `ident` given in the `use_decl`.
 
-Three examples of `extern mod` declarations:
+Optionally, an identifier in an `extern mod` declaration may be followed by an equals sign,
+then a string literal denoting a relative path on the filesystem.
+This path should exist in one of the directories in the Rust path,
+which by default contains the `.rust` subdirectory of the current directory and each of its parents,
+as well as any directories in the colon-separated (or semicolon-separated on Windows)
+list of paths that is the `RUST_PATH` environment variable.
+The meaning of `extern mod a = "b/c/d";`, supposing that `/a` is in the RUST_PATH,
+is that the name `a` should be taken as a reference to the crate whose absolute location is
+`/a/b/c/d`.
+
+Four examples of `extern mod` declarations:
 
 ~~~~~~~~{.xfail-test}
 extern mod pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
@@ -769,6 +781,8 @@ extern mod pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
 extern mod extra; // equivalent to: extern mod extra ( name = "extra" );
 
 extern mod rustextra (name = "extra"); // linking to 'extra' under another name
+
+extern mod complicated_mod = "some-file/in/the-rust/path";
 ~~~~~~~~
 
 ##### Use declarations

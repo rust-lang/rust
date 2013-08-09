@@ -8,33 +8,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use package_path::{RemotePath, LocalPath, normalize, hash};
 use version::{try_getting_version, try_getting_local_version,
               Version, NoVersion, split_version};
+use std::rt::io::Writer;
+use std::hash::Streaming;
+use std::hash;
 
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
 /// path with >=1 component.
 #[deriving(Clone)]
 pub struct PkgId {
-    /// Remote path: for example, github.com/mozilla/quux-whatever
-    remote_path: RemotePath,
-    /// Local path: for example, /home/quux/github.com/mozilla/quux_whatever
-    /// Note that '-' normalizes to '_' when mapping a remote path
-    /// onto a local path
-    /// Also, this will change when we implement #6407, though we'll still
-    /// need to keep track of separate local and remote paths
-    local_path: LocalPath,
-    /// Short name. This is the local path's filestem, but we store it
+    /// This is a path, on the local filesystem, referring to where the
+    /// files for this package live. For example:
+    /// github.com/mozilla/quux-whatever (it's assumed that if we're
+    /// working with a package ID of this form, rustpkg has already cloned
+    /// the sources into a local directory in the RUST_PATH).
+    path: Path,
+    /// Short name. This is the path's filestem, but we store it
     /// redundantly so as to not call get() everywhere (filestem() returns an
     /// option)
+    /// The short name does not need to be a valid Rust identifier.
+    /// Users can write: `extern mod foo = "...";` to get around the issue
+    /// of package IDs whose short names aren't valid Rust identifiers.
     short_name: ~str,
+    /// The requested package version.
     version: Version
 }
 
 impl Eq for PkgId {
     fn eq(&self, p: &PkgId) -> bool {
-        *p.local_path == *self.local_path && p.version == self.version
+        p.path == self.path && p.version == self.version
     }
     fn ne(&self, p: &PkgId) -> bool {
         !(self.eq(p))
@@ -42,10 +46,7 @@ impl Eq for PkgId {
 }
 
 impl PkgId {
-    // The PkgId constructor takes a Path argument so as
-    // to be able to infer the version if the path refers
-    // to a local git repository
-    pub fn new(s: &str, work_dir: &Path) -> PkgId {
+    pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
         let mut given_version = None;
@@ -63,51 +64,64 @@ impl PkgId {
             }
         };
 
-        let p = Path(s);
-        if p.is_absolute {
-            return cond.raise((p, ~"absolute pkgid"));
+        let path = Path(s);
+        if path.is_absolute {
+            return cond.raise((path, ~"absolute pkgid"));
         }
-        if p.components.len() < 1 {
-            return cond.raise((p, ~"0-length pkgid"));
+        if path.components.len() < 1 {
+            return cond.raise((path, ~"0-length pkgid"));
         }
-        let remote_path = RemotePath(p);
-        let local_path = normalize(remote_path.clone());
-        let short_name = local_path.clone().filestem().expect(fmt!("Strange path! %s", s));
+        let short_name = path.clone().filestem().expect(fmt!("Strange path! %s", s));
 
         let version = match given_version {
             Some(v) => v,
-            None => match try_getting_local_version(&work_dir.push_rel(&*local_path)) {
+            None => match try_getting_local_version(&path) {
                 Some(v) => v,
-                None => match try_getting_version(&remote_path) {
+                None => match try_getting_version(&path) {
                     Some(v) => v,
                     None => NoVersion
                 }
             }
         };
 
-        debug!("local_path = %s, remote_path = %s", local_path.to_str(), remote_path.to_str());
+        debug!("path = %s", path.to_str());
         PkgId {
-            local_path: local_path,
-            remote_path: remote_path,
+            path: path,
             short_name: short_name,
             version: version
         }
     }
 
     pub fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.remote_path.to_str(),
-             hash(self.remote_path.to_str() + self.version.to_str()),
+        fmt!("%s-%s-%s", self.path.to_str(),
+             hash(self.path.to_str() + self.version.to_str()),
              self.version.to_str())
     }
 
     pub fn short_name_with_version(&self) -> ~str {
         fmt!("%s%s", self.short_name, self.version.to_str())
     }
+
+    /// True if the ID has multiple components
+    pub fn is_complex(&self) -> bool {
+        self.short_name != self.path.to_str()
+     }
 }
 
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
+        fmt!("%s-%s", self.path.to_str(), self.version.to_str())
     }
+}
+
+
+pub fn write<W: Writer>(writer: &mut W, string: &str) {
+    writer.write(string.as_bytes());
+}
+
+pub fn hash(data: ~str) -> ~str {
+    let hasher = &mut hash::default_state();
+    write(hasher, data);
+    hasher.result_str()
 }
