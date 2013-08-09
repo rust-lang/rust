@@ -613,3 +613,4 @@ LLVMDIBuilderInsertDeclareBefore
 LLVMDIBuilderCreateEnumerator
 LLVMDIBuilderCreateEnumerationType
 LLVMDIBuilderCreateUnionType
+LLVMSetUnnamedAddr
