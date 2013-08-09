@@ -183,7 +183,7 @@ use syntax::codemap::{span, dummy_sp};
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
-pub enum Lit {
+enum Lit {
     UnitLikeStructLit(ast::NodeId),    // the node ID of the pattern
     ExprLit(@ast::expr),
     ConstLit(ast::def_id),              // the def ID of the constant
@@ -191,7 +191,7 @@ pub enum Lit {
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
-pub enum Opt {
+enum Opt {
     lit(Lit),
     var(/* disr val */ uint, @adt::Repr),
     range(@ast::expr, @ast::expr),
@@ -199,7 +199,7 @@ pub enum Opt {
     vec_len_ge(uint, /* slice */uint)
 }
 
-pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
+fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
         (&lit(a), &lit(b)) => {
             match (a, b) {
@@ -258,7 +258,7 @@ pub enum opt_result {
     lower_bound(Result),
     range_result(Result, Result),
 }
-pub fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
+fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
     let _icx = push_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
     let bcx = bcx;
@@ -292,7 +292,7 @@ pub fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
     }
 }
 
-pub fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
+fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
     -> Opt {
     let ccx = bcx.ccx();
     match ccx.tcx.def_map.get_copy(&pat_id) {
@@ -317,7 +317,7 @@ pub fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
 }
 
 #[deriving(Clone)]
-pub enum TransBindingMode {
+enum TransBindingMode {
     TrByValue(/*llbinding:*/ ValueRef),
     TrByRef,
 }
@@ -331,24 +331,24 @@ pub enum TransBindingMode {
  * - `id` is the node id of the binding
  * - `ty` is the Rust type of the binding */
  #[deriving(Clone)]
-pub struct BindingInfo {
+struct BindingInfo {
     llmatch: ValueRef,
     trmode: TransBindingMode,
     id: ast::NodeId,
     ty: ty::t,
 }
 
-pub type BindingsMap = HashMap<ident, BindingInfo>;
+type BindingsMap = HashMap<ident, BindingInfo>;
 
 #[deriving(Clone)]
-pub struct ArmData<'self> {
+struct ArmData<'self> {
     bodycx: @mut Block,
     arm: &'self ast::arm,
     bindings_map: @BindingsMap
 }
 
 #[deriving(Clone)]
-pub struct Match<'self> {
+struct Match<'self> {
     pats: ~[@ast::pat],
     data: ArmData<'self>
 }
@@ -364,7 +364,7 @@ impl<'self> Repr for Match<'self> {
     }
 }
 
-pub fn has_nested_bindings(m: &[Match], col: uint) -> bool {
+fn has_nested_bindings(m: &[Match], col: uint) -> bool {
     for br in m.iter() {
         match br.pats[col].node {
           ast::pat_ident(_, _, Some(_)) => return true,
@@ -374,7 +374,7 @@ pub fn has_nested_bindings(m: &[Match], col: uint) -> bool {
     return false;
 }
 
-pub fn expand_nested_bindings<'r>(bcx: @mut Block,
+fn expand_nested_bindings<'r>(bcx: @mut Block,
                                   m: &[Match<'r>],
                                   col: uint,
                                   val: ValueRef)
@@ -409,7 +409,7 @@ pub fn expand_nested_bindings<'r>(bcx: @mut Block,
     }
 }
 
-pub fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::pat) {
+fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
@@ -418,9 +418,9 @@ pub fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::pat) {
     }
 }
 
-pub type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
+type enter_pat<'self> = &'self fn(@ast::pat) -> Option<~[@ast::pat]>;
 
-pub fn enter_match<'r>(bcx: @mut Block,
+fn enter_match<'r>(bcx: @mut Block,
                        dm: DefMap,
                        m: &[Match<'r>],
                        col: uint,
@@ -470,7 +470,7 @@ pub fn enter_match<'r>(bcx: @mut Block,
     return result;
 }
 
-pub fn enter_default<'r>(bcx: @mut Block,
+fn enter_default<'r>(bcx: @mut Block,
                          dm: DefMap,
                          m: &[Match<'r>],
                          col: uint,
@@ -485,7 +485,7 @@ pub fn enter_default<'r>(bcx: @mut Block,
 
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::pat_wild | ast::pat_tup(_) | ast::pat_struct(*) => Some(~[]),
+          ast::pat_wild | ast::pat_tup(_) => Some(~[]),
           ast::pat_ident(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
@@ -516,7 +516,7 @@ pub fn enter_default<'r>(bcx: @mut Block,
 // <nmatsakis> so all patterns must either be records (resp. tuples) or
 //             wildcards
 
-pub fn enter_opt<'r>(bcx: @mut Block,
+fn enter_opt<'r>(bcx: @mut Block,
                      m: &[Match<'r>],
                      opt: &Opt,
                      col: uint,
@@ -628,7 +628,7 @@ pub fn enter_opt<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_rec_or_struct<'r>(bcx: @mut Block,
+fn enter_rec_or_struct<'r>(bcx: @mut Block,
                                dm: DefMap,
                                m: &[Match<'r>],
                                col: uint,
@@ -663,7 +663,7 @@ pub fn enter_rec_or_struct<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_tup<'r>(bcx: @mut Block,
+fn enter_tup<'r>(bcx: @mut Block,
                      dm: DefMap,
                      m: &[Match<'r>],
                      col: uint,
@@ -689,7 +689,7 @@ pub fn enter_tup<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_tuple_struct<'r>(bcx: @mut Block,
+fn enter_tuple_struct<'r>(bcx: @mut Block,
                               dm: DefMap,
                               m: &[Match<'r>],
                               col: uint,
@@ -715,7 +715,7 @@ pub fn enter_tuple_struct<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_box<'r>(bcx: @mut Block,
+fn enter_box<'r>(bcx: @mut Block,
                      dm: DefMap,
                      m: &[Match<'r>],
                      col: uint,
@@ -742,7 +742,7 @@ pub fn enter_box<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_uniq<'r>(bcx: @mut Block,
+fn enter_uniq<'r>(bcx: @mut Block,
                       dm: DefMap,
                       m: &[Match<'r>],
                       col: uint,
@@ -769,7 +769,7 @@ pub fn enter_uniq<'r>(bcx: @mut Block,
     }
 }
 
-pub fn enter_region<'r>(bcx: @mut Block,
+fn enter_region<'r>(bcx: @mut Block,
                         dm: DefMap,
                         m: &[Match<'r>],
                         col: uint,
@@ -799,7 +799,7 @@ pub fn enter_region<'r>(bcx: @mut Block,
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-pub fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
+fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
@@ -865,12 +865,12 @@ pub fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
     return found;
 }
 
-pub struct ExtractedBlock {
+struct ExtractedBlock {
     vals: ~[ValueRef],
     bcx: @mut Block
 }
 
-pub fn extract_variant_args(bcx: @mut Block,
+fn extract_variant_args(bcx: @mut Block,
                             repr: &adt::Repr,
                             disr_val: uint,
                             val: ValueRef)
@@ -893,7 +893,7 @@ fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
 }
 
 
-pub fn extract_vec_elems(bcx: @mut Block,
+fn extract_vec_elems(bcx: @mut Block,
                          pat_span: span,
                          pat_id: ast::NodeId,
                          elem_count: uint,
@@ -947,24 +947,37 @@ pub fn extract_vec_elems(bcx: @mut Block,
     ExtractedBlock { vals: elems, bcx: bcx }
 }
 
-// NB: This function does not collect fields from struct-like enum variants.
-pub fn collect_record_or_struct_fields(bcx: @mut Block,
+/// Checks every pattern in `m` at `col` column.
+/// If there are a struct pattern among them function
+/// returns list of all fields that are matched in these patterns.
+/// Function returns None if there is no struct pattern.
+/// Function doesn't collect fields from struct-like enum variants.
+/// Function can return empty list if there is only wildcard struct pattern.
+fn collect_record_or_struct_fields(bcx: @mut Block,
                                        m: &[Match],
                                        col: uint)
-                                    -> ~[ast::ident] {
+                                    -> Option<~[ast::ident]> {
     let mut fields: ~[ast::ident] = ~[];
+    let mut found = false;
     for br in m.iter() {
         match br.pats[col].node {
           ast::pat_struct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
-              ty::ty_struct(*) => extend(&mut fields, *fs),
+              ty::ty_struct(*) => {
+                   extend(&mut fields, *fs);
+                   found = true;
+              }
               _ => ()
             }
           }
           _ => ()
         }
     }
-    return fields;
+    if found {
+        return Some(fields);
+    } else {
+        return None;
+    }
 
     fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
         for field_pat in field_pats.iter() {
@@ -976,7 +989,7 @@ pub fn collect_record_or_struct_fields(bcx: @mut Block,
     }
 }
 
-pub fn pats_require_rooting(bcx: @mut Block,
+fn pats_require_rooting(bcx: @mut Block,
                             m: &[Match],
                             col: uint)
                          -> bool {
@@ -987,7 +1000,7 @@ pub fn pats_require_rooting(bcx: @mut Block,
     }
 }
 
-pub fn root_pats_as_necessary(mut bcx: @mut Block,
+fn root_pats_as_necessary(mut bcx: @mut Block,
                               m: &[Match],
                               col: uint,
                               val: ValueRef)
@@ -1018,23 +1031,23 @@ macro_rules! any_pat (
     )
 )
 
-pub fn any_box_pat(m: &[Match], col: uint) -> bool {
+fn any_box_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_box(_))
 }
 
-pub fn any_uniq_pat(m: &[Match], col: uint) -> bool {
+fn any_uniq_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_uniq(_))
 }
 
-pub fn any_region_pat(m: &[Match], col: uint) -> bool {
+fn any_region_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_region(_))
 }
 
-pub fn any_tup_pat(m: &[Match], col: uint) -> bool {
+fn any_tup_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::pat_tup(_))
 }
 
-pub fn any_tuple_struct_pat(bcx: @mut Block, m: &[Match], col: uint) -> bool {
+fn any_tuple_struct_pat(bcx: @mut Block, m: &[Match], col: uint) -> bool {
     do m.iter().any |br| {
         let pat = br.pats[col];
         match pat.node {
@@ -1050,9 +1063,9 @@ pub fn any_tuple_struct_pat(bcx: @mut Block, m: &[Match], col: uint) -> bool {
     }
 }
 
-pub type mk_fail = @fn() -> BasicBlockRef;
+type mk_fail = @fn() -> BasicBlockRef;
 
-pub fn pick_col(m: &[Match]) -> uint {
+fn pick_col(m: &[Match]) -> uint {
     fn score(p: &ast::pat) -> uint {
         match p.node {
           ast::pat_lit(_) | ast::pat_enum(_, _) | ast::pat_range(_, _) => 1u,
@@ -1088,7 +1101,7 @@ pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 // Compiles a comparison between two things.
 //
 // NB: This must produce an i1, not a Rust bool (i8).
-pub fn compare_values(cx: @mut Block,
+fn compare_values(cx: @mut Block,
                       lhs: ValueRef,
                       rhs: ValueRef,
                       rhs_t: ty::t)
@@ -1204,7 +1217,7 @@ fn insert_lllocals(bcx: @mut Block,
     return bcx;
 }
 
-pub fn compile_guard(bcx: @mut Block,
+fn compile_guard(bcx: @mut Block,
                      guard_expr: @ast::expr,
                      data: &ArmData,
                      m: &[Match],
@@ -1261,7 +1274,7 @@ pub fn compile_guard(bcx: @mut Block,
     }
 }
 
-pub fn compile_submatch(bcx: @mut Block,
+fn compile_submatch(bcx: @mut Block,
                         m: &[Match],
                         vals: &[ValueRef],
                         chk: Option<mk_fail>) {
@@ -1336,22 +1349,24 @@ fn compile_submatch_continue(mut bcx: @mut Block,
     // required to root any values.
     assert!(any_box_pat(m, col) || !pats_require_rooting(bcx, m, col));
 
-    let rec_fields = collect_record_or_struct_fields(bcx, m, col);
-    if rec_fields.len() > 0 {
-        let pat_ty = node_id_type(bcx, pat_id);
-        let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-        do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
-            let rec_vals = rec_fields.map(|field_name| {
-                let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
-                adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
-            });
-            compile_submatch(
-                bcx,
-                enter_rec_or_struct(bcx, dm, m, col, rec_fields, val),
-                vec::append(rec_vals, vals_left),
-                chk);
+    match collect_record_or_struct_fields(bcx, m, col) {
+        Some(ref rec_fields) => {
+            let pat_ty = node_id_type(bcx, pat_id);
+            let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+            do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
+                let rec_vals = rec_fields.map(|field_name| {
+                        let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
+                        adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
+                        });
+                compile_submatch(
+                        bcx,
+                        enter_rec_or_struct(bcx, dm, m, col, *rec_fields, val),
+                        vec::append(rec_vals, vals_left),
+                        chk);
+            }
+            return;
         }
-        return;
+        None => {}
     }
 
     if any_tup_pat(m, col) {
@@ -1670,7 +1685,7 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::pat) -> BindingsMap {
     return bindings_map;
 }
 
-pub fn trans_match_inner(scope_cx: @mut Block,
+fn trans_match_inner(scope_cx: @mut Block,
                          discr_expr: @ast::expr,
                          arms: &[ast::arm],
                          dest: Dest) -> @mut Block {
@@ -1752,7 +1767,7 @@ pub fn trans_match_inner(scope_cx: @mut Block,
     }
 }
 
-pub enum IrrefutablePatternBindingMode {
+enum IrrefutablePatternBindingMode {
     // Stores the association between node ID and LLVM value in `lllocals`.
     BindLocal,
     // Stores the association between node ID and LLVM value in `llargs`.

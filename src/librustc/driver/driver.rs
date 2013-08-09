@@ -821,7 +821,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optmulti("", "cfg", "Configure the compilation
                           environment", "SPEC"),
   optflag("",  "emit-llvm",
-                        "Produce an LLVM bitcode file"),
+                        "Produce an LLVM assembly file if used with -S option;
+                         produce an LLVM bitcode file otherwise"),
   optflag("h", "help","Display this message"),
   optmulti("L", "",   "Add a directory to the library search path",
                               "PATH"),
