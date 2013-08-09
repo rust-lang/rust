@@ -1142,9 +1142,9 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
     use rt;
-    use rt::TaskContext;
+    use rt::NewRtContext;
 
-    if rt::context() == TaskContext {
+    if rt::context() == NewRtContext {
         match rt::args::clone() {
             Some(args) => args,
             None => fail!("process arguments not initialized")

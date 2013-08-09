@@ -91,7 +91,7 @@ use to_bytes::IterBytes;
 use uint;
 use util;
 use unstable::sync::Exclusive;
-use rt::{OldTaskContext, TaskContext, SchedulerContext, GlobalContext, context};
+use rt::{OldTaskContext, NewRtContext, context, in_green_task_context};
 use rt::local::Local;
 use rt::task::{Task, Sched};
 use rt::kill::KillHandle;
@@ -526,7 +526,7 @@ impl RuntimeGlue {
                 let me = rt::rust_get_task();
                 blk(OldTask(me), rt::rust_task_is_unwinding(me))
             },
-            TaskContext => unsafe {
+            NewRtContext if in_green_task_context() => unsafe {
                 // Can't use safe borrow, because the taskgroup destructor needs to
                 // access the scheduler again to send kill signals to other tasks.
                 let me = Local::unsafe_borrow::<Task>();
@@ -535,7 +535,7 @@ impl RuntimeGlue {
                 blk(NewTask((*me).death.kill_handle.get_ref().clone()),
                     (*me).unwinder.unwinding)
             },
-            SchedulerContext | GlobalContext => rtabort!("task dying in bad context"),
+            NewRtContext => rtabort!("task dying in bad context"),
         }
     }
 
@@ -563,7 +563,7 @@ impl RuntimeGlue {
                     }
                 }
             },
-            TaskContext => unsafe {
+            NewRtContext if in_green_task_context() => unsafe {
                 // Can't use safe borrow, because creating new hashmaps for the
                 // tasksets requires an rng, which needs to borrow the sched.
                 let me = Local::unsafe_borrow::<Task>();
@@ -588,7 +588,7 @@ impl RuntimeGlue {
                     Some(ref group) => group,
                 })
             },
-            SchedulerContext | GlobalContext => rtabort!("spawning in bad context"),
+            NewRtContext => rtabort!("spawning in bad context"),
         }
     }
 }
@@ -666,10 +666,9 @@ fn enlist_many(child: TaskHandle, child_arc: &TaskGroupArc,
 
 pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     match context() {
-        OldTaskContext   => spawn_raw_oldsched(opts, f),
-        TaskContext      => spawn_raw_newsched(opts, f),
-        SchedulerContext => fail!("can't spawn from scheduler context"),
-        GlobalContext    => fail!("can't spawn from global context"),
+        OldTaskContext => spawn_raw_oldsched(opts, f),
+        _ if in_green_task_context() => spawn_raw_newsched(opts, f),
+        _ => fail!("can't spawn from this context")
     }
 }
 

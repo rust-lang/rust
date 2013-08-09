@@ -136,7 +136,7 @@ impl FailWithCause for &'static str {
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use either::Left;
     use option::{Some, None};
-    use rt::{context, OldTaskContext, TaskContext};
+    use rt::{context, OldTaskContext, in_green_task_context};
     use rt::task::Task;
     use rt::local::Local;
     use rt::logging::Logger;
@@ -158,7 +158,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 
                 // XXX: Logging doesn't work correctly in non-task context because it
                 // invokes the local heap
-                if context == TaskContext {
+                if in_green_task_context() {
                     // XXX: Logging doesn't work here - the check to call the log
                     // function never passes - so calling the log function directly.
                     do Local::borrow::<Task, ()> |task| {
