@@ -684,8 +684,9 @@ pub fn build_session_options(binary: @str,
             link::output_type_bitcode
         } else { link::output_type_exe };
     let sysroot_opt = getopts::opt_maybe_str(matches, "sysroot").map_move(|m| @Path(m));
-    let target_opt = getopts::opt_maybe_str(matches, "target");
-    let target_feature_opt = getopts::opt_maybe_str(matches, "target-feature");
+    let target = getopts::opt_maybe_str(matches, "target").unwrap_or_default(host_triple());
+    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu").unwrap_or_default(~"generic");
+    let target_feature = getopts::opt_maybe_str(matches, "target-feature").unwrap_or_default(~"");
     let save_temps = getopts::opt_present(matches, "save-temps");
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
@@ -713,15 +714,6 @@ pub fn build_session_options(binary: @str,
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
     let statik = debugging_opts & session::statik != 0;
-    let target =
-        match target_opt {
-            None => host_triple(),
-            Some(s) => s
-        };
-    let target_feature = match target_feature_opt {
-        None => ~"",
-        Some(s) => s
-    };
 
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
     let linker = getopts::opt_maybe_str(matches, "linker");
@@ -760,6 +752,7 @@ pub fn build_session_options(binary: @str,
         linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
+        target_cpu: target_cpu,
         target_feature: target_feature,
         cfg: cfg,
         binary: binary,
@@ -876,10 +869,13 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optopt("", "target",
                         "Target triple cpu-manufacturer-kernel[-os]
                           to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                          for detail)", "TRIPLE"),
+                          for details)", "TRIPLE"),
+  optopt("", "target-cpu",
+                        "Select target processor (llc -mcpu=help
+                          for details)", "CPU"),
   optopt("", "target-feature",
                         "Target specific attributes (llc -mattr=help
-                          for detail)", "FEATURE"),
+                          for details)", "FEATURE"),
   optopt("", "android-cross-path",
          "The path to the Android NDK", "PATH"),
   optflagopt("W", "warn",
