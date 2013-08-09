@@ -12,6 +12,7 @@
 
 
 use std::hashmap::HashMap;
+use std::os;
 
 pub struct Ctx {
     // Sysroot -- if this is None, uses rustc filesearch's
@@ -22,4 +23,27 @@ pub struct Ctx {
     // Cache of hashes of things already installed
     // though I'm not sure why the value is a bool
     dep_cache: @mut HashMap<~str, bool>,
+}
+
+impl Ctx {
+    /// Debugging
+    pub fn sysroot_opt_str(&self) -> ~str {
+        match self.sysroot_opt {
+            None => ~"[none]",
+            Some(p) => p.to_str()
+        }
+    }
+}
+
+/// We assume that if ../../rustc exists, then we're running
+/// rustpkg from a Rust target directory. This is part of a
+/// kludgy hack used to adjust the sysroot.
+pub fn in_target(sysroot_opt: Option<@Path>) -> bool {
+    match sysroot_opt {
+        None => false,
+        Some(p) => {
+            debug!("Checking whether %s is in target", p.to_str());
+            os::path_is_dir(&p.pop().pop().push("rustc"))
+        }
+    }
 }

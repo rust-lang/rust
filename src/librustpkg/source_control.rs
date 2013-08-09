@@ -10,7 +10,7 @@
 
 // Utils for working with version control repositories. Just git right now.
 
-use std::{os, run, str};
+use std::{io, os, run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
 use version::*;
 
@@ -19,14 +19,37 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
     assert!(os::path_is_dir(source));
     assert!(is_git_dir(source));
     if !os::path_exists(target) {
-        debug!("Running: git clone %s %s", source.to_str(),
-               target.to_str());
-        assert!(git_clone_general(source.to_str(), target, v));
+        debug!("Running: git clone %s %s", source.to_str(), target.to_str());
+        let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
+        if outp.status != 0 {
+            io::println(str::from_bytes_owned(outp.output.clone()));
+            io::println(str::from_bytes_owned(outp.error));
+            fail!("Couldn't `git clone` %s", source.to_str());
+        }
+        else {
+            match v {
+                &ExactRevision(ref s) => {
+                    debug!("`Running: git --work-tree=%s --git-dir=%s checkout %s",
+                           *s, target.to_str(), target.push(".git").to_str());
+                    let outp = run::process_output("git",
+                                   [fmt!("--work-tree=%s", target.to_str()),
+                                    fmt!("--git-dir=%s", target.push(".git").to_str()),
+                                    ~"checkout", fmt!("%s", *s)]);
+                    if outp.status != 0 {
+                        io::println(str::from_bytes_owned(outp.output.clone()));
+                        io::println(str::from_bytes_owned(outp.error));
+                        fail!("Couldn't `git checkout %s` in %s",
+                              *s, target.to_str());
+                    }
+                }
+                _ => ()
+            }
+        }
     }
     else {
-        // Pull changes
-        // Note that this ignores tags, which is probably wrong. There are no tests for
-        // it, though.
+        // Check that no version was specified. There's no reason to not handle the
+        // case where a version was requested, but I haven't implemented it.
+        assert!(*v == NoVersion);
         debug!("Running: git --work-tree=%s --git-dir=%s pull --no-edit %s",
                target.to_str(), target.push(".git").to_str(), source.to_str());
         let outp = run::process_output("git", [fmt!("--work-tree=%s", target.to_str()),

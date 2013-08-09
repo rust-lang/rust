@@ -185,5 +185,7 @@ pub static tag_item_impl_vtables: uint = 0x82;
 pub struct LinkMeta {
     name: @str,
     vers: @str,
+    // Optional package ID
+    package_id: Option<@str>, // non-None if this was a URL-like package ID
     extras_hash: @str
 }
