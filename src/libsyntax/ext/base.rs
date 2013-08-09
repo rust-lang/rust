@@ -148,7 +148,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
         intern(&"auto_decode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_decode)));
     syntax_expanders.insert(intern(&"env"),
-                            builtin_normal_tt(ext::env::expand_syntax_ext));
+                            builtin_normal_tt(ext::env::expand_env));
+    syntax_expanders.insert(intern(&"option_env"),
+                            builtin_normal_tt(ext::env::expand_option_env));
     syntax_expanders.insert(intern("bytes"),
                             builtin_normal_tt(ext::bytes::expand_syntax_ext));
     syntax_expanders.insert(intern("concat_idents"),
@@ -313,7 +315,7 @@ impl ExtCtxt {
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: ~str) -> @str {
+pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: &str) -> @str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => s,
@@ -538,8 +540,8 @@ mod test {
         a.insert (@"abc",@15);
         let m = MapChain::new(~a);
         m.insert (@"def",@16);
-        // FIXME: #4492 (ICE)  assert_eq!(m.find(&@"abc"),Some(@15));
-        //  ....               assert_eq!(m.find(&@"def"),Some(@16));
+        assert_eq!(m.find(&@"abc"),Some(@15));
+        assert_eq!(m.find(&@"def"),Some(@16));
         assert_eq!(*(m.find(&@"abc").unwrap()),15);
         assert_eq!(*(m.find(&@"def").unwrap()),16);
         let n = m.push_frame();
@@ -551,8 +553,8 @@ mod test {
         assert_eq!(*(n.find(&@"abc").unwrap()),15);
         assert_eq!(*(n.find(&@"def").unwrap()),17);
         // ... but m still has the old ones
-        // FIXME: #4492: assert_eq!(m.find(&@"abc"),Some(@15));
-        // FIXME: #4492: assert_eq!(m.find(&@"def"),Some(@16));
+        assert_eq!(m.find(&@"abc"),Some(@15));
+        assert_eq!(m.find(&@"def"),Some(@16));
         assert_eq!(*(m.find(&@"abc").unwrap()),15);
         assert_eq!(*(m.find(&@"def").unwrap()),16);
     }

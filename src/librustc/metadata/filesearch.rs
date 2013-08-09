@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -186,10 +186,16 @@ fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
 
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
+#[cfg(stage0)]
 pub fn libdir() -> ~str {
    let libdir = env!("CFG_LIBDIR");
    if libdir.is_empty() {
       fail!("rustc compiled without CFG_LIBDIR environment variable");
    }
    libdir.to_owned()
+}
+
+#[cfg(not(stage0))]
+pub fn libdir() -> ~str {
+    (env!("CFG_LIBDIR")).to_owned()
 }

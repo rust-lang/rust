@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -4994,7 +4994,9 @@ impl Resolver {
                             if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
-                    _ => {
+                    result => {
+                        debug!("(resolving expression) didn't find struct \
+                                def: %?", result);
                         self.session.span_err(
                             path.span,
                             fmt!("`%s` does not name a structure",
