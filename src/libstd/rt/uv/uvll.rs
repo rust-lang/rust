@@ -172,6 +172,7 @@ fn request_sanity_check() {
     }
 }
 
+// XXX Event loops ignore SIGPIPE by default.
 pub unsafe fn loop_new() -> *c_void {
     #[fixed_stack_segment]; #[inline(never)];
 
