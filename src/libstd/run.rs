@@ -923,6 +923,7 @@ mod tests {
     use path::Path;
     use run;
     use str;
+    use unstable::running_on_valgrind;
 
     #[test]
     #[cfg(windows)]
@@ -1330,13 +1331,5 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"));
-    }
-
-    fn running_on_valgrind() -> bool {
-        unsafe { rust_running_on_valgrind() != 0 }
-    }
-
-    extern {
-        fn rust_running_on_valgrind() -> uintptr_t;
     }
 }
