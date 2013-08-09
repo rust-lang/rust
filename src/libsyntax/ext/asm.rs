@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -59,7 +59,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
         match state {
             Asm => {
                 asm = expr_to_str(cx, p.parse_expr(),
-                                  ~"inline assembly must be a string literal.");
+                                  "inline assembly must be a string literal.");
             }
             Outputs => {
                 while *p.token != token::EOF &&
