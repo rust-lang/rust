@@ -15,8 +15,8 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iterator::{Iterator, range};
-use vec::{OwnedVector, MutableVector};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use vec::{OwnedVector, MutableVector, ImmutableVector};
 use rt::sched::Scheduler;
 use unstable::run_in_bare_thread;
 use rt::thread::Thread;
@@ -29,8 +29,12 @@ use result::{Result, Ok, Err};
 
 pub fn new_test_uv_sched() -> Scheduler {
 
+    let queue = WorkQueue::new();
+    let queues = ~[queue.clone()];
+
     let mut sched = Scheduler::new(~UvEventLoop::new(),
-                                   WorkQueue::new(),
+                                   queue,
+                                   queues,
                                    SleeperList::new());
 
     // Don't wait for the Shutdown message
@@ -57,7 +61,7 @@ pub fn run_in_newsched_task_core(f: ~fn()) {
         exit_handle.take().send(Shutdown);
         rtassert!(exit_status);
     };
-    let mut task = ~Task::new_root(&mut sched.stack_pool, f);
+    let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
     task.death.on_exit = Some(on_exit);
 
     sched.bootstrap(task);
@@ -164,15 +168,21 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         };
 
         let sleepers = SleeperList::new();
-        let work_queue = WorkQueue::new();
 
         let mut handles = ~[];
         let mut scheds = ~[];
+        let mut work_queues = ~[];
 
         for _ in range(0u, nthreads) {
+            let work_queue = WorkQueue::new();
+            work_queues.push(work_queue);
+        }
+
+        for i in range(0u, nthreads) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_,
-                                            work_queue.clone(),
+                                            work_queues[i].clone(),
+                                            work_queues.clone(),
                                             sleepers.clone());
             let handle = sched.make_handle();
 
@@ -190,8 +200,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
             rtassert!(exit_status);
         };
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
-                                        f.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take());
         main_task.death.on_exit = Some(on_exit);
 
         let mut threads = ~[];
@@ -209,7 +218,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         while !scheds.is_empty() {
             let mut sched = scheds.pop();
-            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool) || {
+            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("bootstrapping non-primary scheduler");
             };
             let bootstrap_task_cell = Cell::new(bootstrap_task);
@@ -232,12 +241,12 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
 /// Test tasks will abort on failure instead of unwinding
 pub fn spawntask(f: ~fn()) {
-    Scheduler::run_task(Task::build_child(f));
+    Scheduler::run_task(Task::build_child(None, f));
 }
 
 /// Create a new task and run it right now. Aborts on failure
 pub fn spawntask_later(f: ~fn()) {
-    Scheduler::run_task_later(Task::build_child(f));
+    Scheduler::run_task_later(Task::build_child(None, f));
 }
 
 pub fn spawntask_random(f: ~fn()) {
@@ -259,7 +268,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
     let chan = Cell::new(chan);
     let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
 
-    let mut new_task = Task::build_root(f);
+    let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
 
     Scheduler::run_task(new_task);
@@ -285,7 +294,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 pub fn with_test_task(blk: ~fn(~Task) -> ~Task) {
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
-        let task = blk(~Task::new_root(&mut sched.stack_pool, ||{}));
+        let task = blk(~Task::new_root(&mut sched.stack_pool, None, ||{}));
         cleanup_task(task);
     }
 }

@@ -19,7 +19,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use hash::Hash;
-use iterator::{Iterator, IteratorUtil, FromIterator, Extendable, range};
+use iterator::{Iterator, IteratorUtil, FromIterator, Extendable};
 use iterator::{FilterMap, Chain, Repeat, Zip};
 use num;
 use option::{None, Option, Some};
@@ -238,7 +238,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let len_buckets = self.buckets.len();
         let bucket = self.buckets[idx].take();
 
-        let value = do bucket.map_consume |bucket| {
+        let value = do bucket.map_move |bucket| {
             bucket.value
         };
 
@@ -265,8 +265,8 @@ impl<K:Hash + Eq,V> Container for HashMap<K, V> {
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
-        for idx in range(0u, self.buckets.len()) {
-            self.buckets[idx] = None;
+        for bkt in self.buckets.mut_iter() {
+            *bkt = None;
         }
         self.size = 0;
     }
@@ -479,7 +479,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
     /// Like `find`, but returns a copy of the value.
     pub fn find_copy(&self, k: &K) -> Option<V> {
-        self.find(k).map_consume(|v| (*v).clone())
+        self.find(k).map_move(|v| (*v).clone())
     }
 
     /// Like `get`, but returns a copy of the value.

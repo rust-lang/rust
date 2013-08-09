@@ -21,7 +21,7 @@ pub struct Fold<T> {
     fold_mod: FoldMod<T>,
     fold_nmod: FoldNmod<T>,
     fold_fn: FoldFn<T>,
-    fold_const: FoldConst<T>,
+    fold_static: FoldStatic<T>,
     fold_enum: FoldEnum<T>,
     fold_trait: FoldTrait<T>,
     fold_impl: FoldImpl<T>,
@@ -39,7 +39,7 @@ impl<T:Clone> Clone for Fold<T> {
             fold_mod: self.fold_mod,
             fold_nmod: self.fold_nmod,
             fold_fn: self.fold_fn,
-            fold_const: self.fold_const,
+            fold_static: self.fold_static,
             fold_enum: self.fold_enum,
             fold_trait: self.fold_trait,
             fold_impl: self.fold_impl,
@@ -55,7 +55,7 @@ type FoldItem<T> = @fn(fold: &Fold<T>, doc: doc::ItemDoc) -> doc::ItemDoc;
 type FoldMod<T> = @fn(fold: &Fold<T>, doc: doc::ModDoc) -> doc::ModDoc;
 type FoldNmod<T> = @fn(fold: &Fold<T>, doc: doc::NmodDoc) -> doc::NmodDoc;
 type FoldFn<T> = @fn(fold: &Fold<T>, doc: doc::FnDoc) -> doc::FnDoc;
-type FoldConst<T> = @fn(fold: &Fold<T>, doc: doc::ConstDoc) -> doc::ConstDoc;
+type FoldStatic<T> = @fn(fold: &Fold<T>, doc: doc::StaticDoc) -> doc::StaticDoc;
 type FoldEnum<T> = @fn(fold: &Fold<T>, doc: doc::EnumDoc) -> doc::EnumDoc;
 type FoldTrait<T> = @fn(fold: &Fold<T>, doc: doc::TraitDoc) -> doc::TraitDoc;
 type FoldImpl<T> = @fn(fold: &Fold<T>, doc: doc::ImplDoc) -> doc::ImplDoc;
@@ -73,7 +73,7 @@ fn mk_fold<T>(
     fold_mod: FoldMod<T>,
     fold_nmod: FoldNmod<T>,
     fold_fn: FoldFn<T>,
-    fold_const: FoldConst<T>,
+    fold_static: FoldStatic<T>,
     fold_enum: FoldEnum<T>,
     fold_trait: FoldTrait<T>,
     fold_impl: FoldImpl<T>,
@@ -88,7 +88,7 @@ fn mk_fold<T>(
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
         fold_fn: fold_fn,
-        fold_const: fold_const,
+        fold_static: fold_static,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
@@ -106,7 +106,7 @@ pub fn default_any_fold<T:Clone>(ctxt: T) -> Fold<T> {
         |f, d| default_any_fold_mod(f, d),
         |f, d| default_any_fold_nmod(f, d),
         |f, d| default_seq_fold_fn(f, d),
-        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_static(f, d),
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
@@ -124,7 +124,7 @@ pub fn default_seq_fold<T:Clone>(ctxt: T) -> Fold<T> {
         |f, d| default_seq_fold_mod(f, d),
         |f, d| default_seq_fold_nmod(f, d),
         |f, d| default_seq_fold_fn(f, d),
-        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_static(f, d),
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
@@ -142,7 +142,7 @@ pub fn default_par_fold<T:Clone>(ctxt: T) -> Fold<T> {
         |f, d| default_par_fold_mod(f, d),
         |f, d| default_par_fold_nmod(f, d),
         |f, d| default_seq_fold_fn(f, d),
-        |f, d| default_seq_fold_const(f, d),
+        |f, d| default_seq_fold_static(f, d),
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
@@ -272,8 +272,8 @@ pub fn fold_ItemTag<T>(fold: &Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
       doc::FnTag(FnDoc) => {
         doc::FnTag((fold.fold_fn)(fold, FnDoc))
       }
-      doc::ConstTag(ConstDoc) => {
-        doc::ConstTag((fold.fold_const)(fold, ConstDoc))
+      doc::StaticTag(StaticDoc) => {
+        doc::StaticTag((fold.fold_static)(fold, StaticDoc))
       }
       doc::EnumTag(EnumDoc) => {
         doc::EnumTag((fold.fold_enum)(fold, EnumDoc))
@@ -303,10 +303,10 @@ pub fn default_seq_fold_fn<T>(
     }
 }
 
-pub fn default_seq_fold_const<T>(
+pub fn default_seq_fold_static<T>(
     fold: &Fold<T>,
-    doc: doc::ConstDoc
-) -> doc::ConstDoc {
+    doc: doc::StaticDoc
+) -> doc::StaticDoc {
     doc::SimpleItemDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
         .. doc
@@ -374,7 +374,7 @@ fn default_fold_should_produce_same_doc() {
 }
 
 #[test]
-fn default_fold_should_produce_same_consts() {
+fn default_fold_should_produce_same_statics() {
     let source = @"static a: int = 0;";
     let ast = parse::from_str(source);
     let doc = extract::extract(ast, ~"");

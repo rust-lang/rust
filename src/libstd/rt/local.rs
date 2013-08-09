@@ -126,6 +126,7 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
+    use option::None;
     use unstable::run_in_bare_thread;
     use rt::test::*;
     use super::*;
@@ -137,7 +138,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -149,11 +150,11 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -166,7 +167,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
 
             unsafe {
@@ -182,7 +183,7 @@ mod test {
         do run_in_bare_thread {
             local_ptr::init_tls_key();
             let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, || {});
+            let task = ~Task::new_root(&mut sched.stack_pool, None, || {});
             Local::put(task);
 
             let res = do Local::borrow::<Task,bool> |_task| {

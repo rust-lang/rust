@@ -286,13 +286,15 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
         }
 
         mc::cat_deref(cmt_base, _, _) => {
-            opt_loan_path(cmt_base).map(
-                |&lp| @LpExtend(lp, cmt.mutbl, LpDeref))
+            do opt_loan_path(cmt_base).map_move |lp| {
+                @LpExtend(lp, cmt.mutbl, LpDeref)
+            }
         }
 
         mc::cat_interior(cmt_base, ik) => {
-            opt_loan_path(cmt_base).map(
-                |&lp| @LpExtend(lp, cmt.mutbl, LpInterior(ik)))
+            do opt_loan_path(cmt_base).map_move |lp| {
+                @LpExtend(lp, cmt.mutbl, LpInterior(ik))
+            }
         }
 
         mc::cat_downcast(cmt_base) |

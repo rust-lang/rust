@@ -430,7 +430,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
 }
 
 #[deriving(Eq)]
-priv struct Flags {
+struct Flags {
     width: uint,
     precision: uint,
     alternate: bool,
@@ -440,13 +440,13 @@ priv struct Flags {
 }
 
 impl Flags {
-    priv fn new() -> Flags {
+    fn new() -> Flags {
         Flags{ width: 0, precision: 0, alternate: false,
                left: false, sign: false, space: false }
     }
 }
 
-priv enum FormatOp {
+enum FormatOp {
     FormatDigit,
     FormatOctal,
     FormatHex,
@@ -455,7 +455,7 @@ priv enum FormatOp {
 }
 
 impl FormatOp {
-    priv fn from_char(c: char) -> FormatOp {
+    fn from_char(c: char) -> FormatOp {
         match c {
             'd' => FormatDigit,
             'o' => FormatOctal,
@@ -465,7 +465,7 @@ impl FormatOp {
             _ => fail!("bad FormatOp char")
         }
     }
-    priv fn to_char(self) -> char {
+    fn to_char(self) -> char {
         match self {
             FormatDigit => 'd',
             FormatOctal => 'o',
@@ -477,7 +477,7 @@ impl FormatOp {
 }
 
 #[cfg(stage0)]
-priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
+fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
     let mut s = match val {
         Number(d) => {
             match op {
@@ -573,7 +573,7 @@ priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
 }
 
 #[cfg(not(stage0))]
-priv fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
+fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
     let mut s = match val {
         Number(d) => {
             match op {

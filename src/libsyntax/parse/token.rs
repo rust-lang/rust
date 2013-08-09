@@ -486,7 +486,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 pub fn get_ident_interner() -> @ident_interner {
     static key: local_data::Key<@@::parse::token::ident_interner> =
         &local_data::Key;
-    match local_data::get(key, |k| k.map(|&k| *k)) {
+    match local_data::get(key, |k| k.map_move(|k| *k)) {
         Some(interner) => *interner,
         None => {
             let interner = mk_fresh_ident_interner();

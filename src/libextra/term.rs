@@ -75,7 +75,7 @@ pub mod attr {
 }
 
 #[cfg(not(target_os = "win32"))]
-priv fn cap_for_attr(attr: attr::Attr) -> &'static str {
+fn cap_for_attr(attr: attr::Attr) -> &'static str {
     match attr {
         attr::Bold               => "bold",
         attr::Dim                => "dim",
@@ -127,7 +127,7 @@ impl Terminal {
         let inf = ti.unwrap();
         let nc = if inf.strings.find_equiv(&("setaf")).is_some()
                  && inf.strings.find_equiv(&("setab")).is_some() {
-                     inf.numbers.find_equiv(&("colors")).map_consume_default(0, |&n| n)
+                     inf.numbers.find_equiv(&("colors")).map_move_default(0, |&n| n)
                  } else { 0 };
 
         return Ok(Terminal {out: out, ti: inf, num_colors: nc});
@@ -220,7 +220,7 @@ impl Terminal {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = do cap.map_consume_default(Err(~"can't find terminfo capability `sgr0`")) |op| {
+        let s = do cap.map_move_default(Err(~"can't find terminfo capability `sgr0`")) |op| {
             expand(*op, [], &mut Variables::new())
         };
         if s.is_ok() {
@@ -234,7 +234,7 @@ impl Terminal {
         }
     }
 
-    priv fn dim_if_necessary(&self, color: color::Color) -> color::Color {
+    fn dim_if_necessary(&self, color: color::Color) -> color::Color {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
         } else { color }

@@ -98,6 +98,7 @@ use rt::kill::KillHandle;
 use rt::sched::Scheduler;
 use rt::uv::uvio::UvEventLoop;
 use rt::thread::Thread;
+use rt::work_queue::WorkQueue;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -500,7 +501,7 @@ impl RuntimeGlue {
             OldTask(ptr) => rt::rust_task_kill_other(ptr),
             NewTask(handle) => {
                 let mut handle = handle;
-                do handle.kill().map_consume |killed_task| {
+                do handle.kill().map_move |killed_task| {
                     let killed_task = Cell::new(killed_task);
                     do Local::borrow::<Scheduler, ()> |sched| {
                         sched.enqueue_task(killed_task.take());
@@ -682,7 +683,7 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
-        let enlist_success = do child_data.take().map_consume_default(true) |child_data| {
+        let enlist_success = do child_data.take().map_move_default(true) |child_data| {
             let child_data = Cell::new(child_data); // :(
             do Local::borrow::<Task, bool> |me| {
                 let (child_tg, ancestors, is_main) = child_data.take();
@@ -713,19 +714,25 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     let mut task = unsafe {
         if opts.sched.mode != SingleThreaded {
             if opts.watched {
-                Task::build_child(child_wrapper)
+                Task::build_child(opts.stack_size, child_wrapper)
             } else {
-                Task::build_root(child_wrapper)
+                Task::build_root(opts.stack_size, child_wrapper)
             }
         } else {
             // Creating a 1:1 task:thread ...
             let sched = Local::unsafe_borrow::<Scheduler>();
             let sched_handle = (*sched).make_handle();
 
+            // Since this is a 1:1 scheduler we create a queue not in
+            // the stealee set. The run_anything flag is set false
+            // which will disable stealing.
+            let work_queue = WorkQueue::new();
+
             // Create a new scheduler to hold the new task
             let new_loop = ~UvEventLoop::new();
             let mut new_sched = ~Scheduler::new_special(new_loop,
-                                                        (*sched).work_queue.clone(),
+                                                        work_queue,
+                                                        (*sched).work_queues.clone(),
                                                         (*sched).sleeper_list.clone(),
                                                         false,
                                                         Some(sched_handle));
@@ -736,16 +743,16 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
 
             // Pin the new task to the new scheduler
             let new_task = if opts.watched {
-                Task::build_homed_child(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_child(opts.stack_size, child_wrapper, Sched(new_sched_handle))
             } else {
-                Task::build_homed_root(child_wrapper, Sched(new_sched_handle))
+                Task::build_homed_root(opts.stack_size, child_wrapper, Sched(new_sched_handle))
             };
 
             // Create a task that will later be used to join with the new scheduler
             // thread when it is ready to terminate
             let (thread_port, thread_chan) = oneshot();
             let thread_port_cell = Cell::new(thread_port);
-            let join_task = do Task::build_child() {
+            let join_task = do Task::build_child(None) {
                 rtdebug!("running join task");
                 let thread_port = thread_port_cell.take();
                 let thread: Thread = thread_port.recv();
@@ -762,8 +769,8 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
                 let mut orig_sched_handle = orig_sched_handle_cell.take();
                 let join_task = join_task_cell.take();
 
-                let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool) || {
-                    rtdebug!("bootstrapping a 1:1 scheduler");
+                let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
+                    rtdebug!("boostrapping a 1:1 scheduler");
                 };
                 new_sched.bootstrap(bootstrap_task);
 
@@ -854,7 +861,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             // Even if the below code fails to kick the child off, we must
             // send Something on the notify channel.
 
-            let notifier = notify_chan.map_consume(|c| AutoNotify(c));
+            let notifier = notify_chan.map_move(|c| AutoNotify(c));
 
             if enlist_many(OldTask(child), &child_arc, &mut ancestors) {
                 let group = @@mut Taskgroup(child_arc, ancestors, is_main, notifier);

@@ -131,9 +131,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     // ty is the value supplied for the type parameter A...
     let mut param_result = ~[];
 
-    do ty::each_bound_trait_and_supertraits(
-        tcx, type_param_bounds.trait_bounds) |trait_ref|
-    {
+    do ty::each_bound_trait_and_supertraits(tcx, type_param_bounds.trait_bounds) |trait_ref| {
         // ...and here trait_ref is each bound that was declared on A,
         // expressed in terms of the type parameters.
 
