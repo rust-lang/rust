@@ -184,7 +184,7 @@ macro_rules! tuple_impls {
                     }
                     #[inline]
                     fn ne(&self, other: &($($T,)+)) -> bool {
-                        !(*self == *other)
+                        $(*self.$get_ref_fn() != *other.$get_ref_fn())||+
                     }
                 }
 
