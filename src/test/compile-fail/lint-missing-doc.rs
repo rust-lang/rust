@@ -15,19 +15,17 @@
 struct Foo {
     a: int,
     priv b: int,
-    pub c: int, // doesn't matter, Foo is private
 }
 
 pub struct PubFoo { //~ ERROR: missing documentation
     a: int,      //~ ERROR: missing documentation
     priv b: int,
-    pub c: int,  //~ ERROR: missing documentation
 }
 
 #[allow(missing_doc)]
 pub struct PubFoo2 {
     a: int,
-    pub c: int,
+    c: int,
 }
 
 /// dox
@@ -44,9 +42,9 @@ pub trait C {} //~ ERROR: missing documentation
 
 trait Bar {
     /// dox
-    pub fn foo();
+    fn foo();
     fn foo2(); //~ ERROR: missing documentation
-    pub fn foo3(); //~ ERROR: missing documentation
+    fn foo3(); //~ ERROR: missing documentation
 }
 
 impl Foo {
@@ -59,13 +57,13 @@ impl Foo {
 
 #[allow(missing_doc)]
 trait F {
-    pub fn a();
+    fn a();
     fn b(&self);
 }
 
 // should need to redefine documentation for implementations of traits
 impl F for Foo {
-    pub fn a() {}
+    fn a() {}
     fn b(&self) {}
 }
 

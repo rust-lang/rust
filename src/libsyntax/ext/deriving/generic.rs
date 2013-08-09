@@ -542,7 +542,7 @@ impl<'self> MethodDef<'self> {
             id: cx.next_id(),
             span: span,
             self_id: cx.next_id(),
-            vis: ast::public
+            vis: ast::inherited,
         }
     }
 

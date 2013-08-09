@@ -175,14 +175,14 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
 
 #[allow(missing_doc)]
 pub trait StrVector {
-    pub fn concat(&self) -> ~str;
-    pub fn connect(&self, sep: &str) -> ~str;
+    fn concat(&self) -> ~str;
+    fn connect(&self, sep: &str) -> ~str;
 }
 
 impl<'self, S: Str> StrVector for &'self [S] {
     /// Concatenate a vector of strings.
     #[cfg(stage0)]
-    pub fn concat(&self) -> ~str {
+    fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
         let len = self.iter().transform(|s| s.as_slice().len()).sum();
@@ -207,7 +207,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
     /// Concatenate a vector of strings.
     #[cfg(not(stage0))]
-    pub fn concat(&self) -> ~str {
+    fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
         let len = self.iter().transform(|s| s.as_slice().len()).sum();
@@ -231,7 +231,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
     /// Concatenate a vector of strings, placing a given separator between each.
     #[cfg(stage0)]
-    pub fn connect(&self, sep: &str) -> ~str {
+    fn connect(&self, sep: &str) -> ~str {
         if self.is_empty() { return ~""; }
 
         // concat is faster
@@ -1783,7 +1783,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// # Return value
     ///
     /// The original string with all occurances of `from` replaced with `to`
-    pub fn replace(&self, from: &str, to: &str) -> ~str {
+    fn replace(&self, from: &str, to: &str) -> ~str {
         let mut result = ~"";
         let mut last_end = 0;
         for (start, end) in self.matches_index_iter(from) {
@@ -2380,7 +2380,7 @@ impl OwnedStr for ~str {
     /// * n - The number of bytes to reserve space for
     #[cfg(stage0)]
     #[inline]
-    pub fn reserve(&mut self, n: uint) {
+    fn reserve(&mut self, n: uint) {
         unsafe {
             let v: *mut ~[u8] = cast::transmute(self);
             (*v).reserve(n + 1);

@@ -40,11 +40,11 @@ pub mod rt {
     pub use codemap::{BytePos, span, dummy_spanned};
 
     pub trait ToTokens {
-        pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree];
+        fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree];
     }
 
     impl ToTokens for ~[token_tree] {
-        pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree] {
+        fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree] {
             (*self).clone()
         }
     }
@@ -65,7 +65,7 @@ pub mod rt {
 
     pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source(&self) -> @str;
+        fn to_source(&self) -> @str;
     }
 
     impl ToSource for ast::ident {

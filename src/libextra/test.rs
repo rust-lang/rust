@@ -104,7 +104,7 @@ pub struct Metric {
 pub struct MetricMap(TreeMap<~str,Metric>);
 
 impl Clone for MetricMap {
-    pub fn clone(&self) -> MetricMap {
+    fn clone(&self) -> MetricMap {
         MetricMap((**self).clone())
     }
 }

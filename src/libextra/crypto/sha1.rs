@@ -159,7 +159,7 @@ impl Sha1 {
 }
 
 impl Digest for Sha1 {
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.length_bits = 0;
         self.h[0] = 0x67452301u32;
         self.h[1] = 0xEFCDAB89u32;
@@ -169,9 +169,9 @@ impl Digest for Sha1 {
         self.buffer.reset();
         self.computed = false;
     }
-    pub fn input(&mut self, msg: &[u8]) { add_input(self, msg); }
-    pub fn result(&mut self, out: &mut [u8]) { return mk_result(self, out); }
-    pub fn output_bits(&self) -> uint { 160 }
+    fn input(&mut self, msg: &[u8]) { add_input(self, msg); }
+    fn result(&mut self, out: &mut [u8]) { return mk_result(self, out); }
+    fn output_bits(&self) -> uint { 160 }
 }
 
 #[cfg(test)]
