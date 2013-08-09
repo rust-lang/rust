@@ -25,7 +25,6 @@ use prelude::*;
 use ptr;
 use task;
 use vec::ImmutableVector;
-use vec;
 
 /**
  * A value representing a child process.
@@ -691,6 +690,8 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
 #[cfg(unix)]
 fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
+    use vec;
+
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
     // a reference to the intermediary byte buffers. So first build an array to
     // hold all the ~[u8] byte strings.
@@ -717,6 +718,8 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
 
 #[cfg(unix)]
 fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
+    use vec;
+
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\n" strings. Like `with_argv`, we have to
     // have a temporary buffer to hold the intermediary `~[u8]` byte strings.
