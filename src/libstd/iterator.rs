@@ -223,7 +223,8 @@ pub trait IteratorUtil<A> {
 
 
     /// Creates an iterator that has a `.peek()` method
-    /// that returns a optional reference to the next element.
+    /// that returns a optional reference to the next element,
+    /// and a `.peek_clone()` method that returns an optional copy.
     ///
     /// # Example
     ///
@@ -235,11 +236,12 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().unwrap(), 200);
     /// assert_eq!(it.peek().unwrap(), &300);
     /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(it.peek_clone().unwrap(), 300);
     /// assert_eq!(it.next().unwrap(), 300);
     /// assert!(it.peek().is_none());
     /// assert!(it.next().is_none());
     /// ~~~
-    fn peekable(self) -> PeekableIterator<A, Self>;
+    fn peekable(self) -> Peekable<A, Self>;
 
     /// Creates an iterator which invokes the predicate on elements until it
     /// returns false. Once the predicate returns false, all further elements are
@@ -541,8 +543,8 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline]
-    fn peekable(self) -> PeekableIterator<A, T> {
-        PeekableIterator{iter: self, peeked: None}
+    fn peekable(self) -> Peekable<A, T> {
+        Peekable{iter: self, peeked: None}
     }
 
     #[inline]
@@ -1180,12 +1182,12 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
 }
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
-pub struct PeekableIterator<A, T> {
+pub struct Peekable<A, T> {
     priv iter: T,
     priv peeked: Option<A>,
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for PeekableIterator<A, T> {
+impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.peeked.is_some() { self.peeked.take() }
@@ -1193,7 +1195,7 @@ impl<A, T: Iterator<A>> Iterator<A> for PeekableIterator<A, T> {
     }
 }
 
-impl<'self, A, T: Iterator<A>> PeekableIterator<A, T> {
+impl<'self, A, T: Iterator<A>> Peekable<A, T> {
     /// Return a reference to the next element of the iterator with out advancing it,
     /// or None if the iterator is exhausted.
     #[inline]
@@ -1204,6 +1206,24 @@ impl<'self, A, T: Iterator<A>> PeekableIterator<A, T> {
                 self.peeked = self.iter.next();
                 match self.peeked {
                     Some(ref value) => Some(value),
+                    None => None,
+                }
+            },
+        }
+    }
+}
+
+impl<A: Clone, T: Iterator<A>> Peekable<A, T> {
+    /// Return a copy of the next element of the iterator with out advancing it,
+    /// or None if the iterator is exhausted.
+    #[inline]
+    pub fn peek_clone(&mut self) -> Option<A> {
+        match self.peeked {
+            Some(ref value) => Some(value.clone()),
+            None => {
+                self.peeked = self.iter.next();
+                match self.peeked {
+                    Some(ref value) => Some(value.clone()),
                     None => None,
                 }
             },
@@ -1715,6 +1735,7 @@ mod tests {
         assert_eq!(it.next().unwrap(), 3);
         assert_eq!(it.next().unwrap(), 4);
         assert_eq!(it.peek().unwrap(), &5);
+        assert_eq!(it.peek_clone().unwrap(), 5);
         assert_eq!(it.next().unwrap(), 5);
         assert!(it.peek().is_none());
         assert!(it.next().is_none());
