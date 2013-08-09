@@ -130,12 +130,6 @@ impl Num for $T {}
 impl Ord for $T {
     #[inline]
     fn lt(&self, other: &$T) -> bool { return (*self) < (*other); }
-    #[inline]
-    fn le(&self, other: &$T) -> bool { return (*self) <= (*other); }
-    #[inline]
-    fn ge(&self, other: &$T) -> bool { return (*self) >= (*other); }
-    #[inline]
-    fn gt(&self, other: &$T) -> bool { return (*self) > (*other); }
 }
 
 #[cfg(not(test))]
