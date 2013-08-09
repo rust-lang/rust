@@ -407,14 +407,10 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 /// or the old scheduler.
 #[deriving(Eq)]
 pub enum RuntimeContext {
-    // Only the exchange heap is available
-    GlobalContext,
-    // The scheduler may be accessed
-    SchedulerContext,
-    // Full task services, e.g. local heap, unwinding
-    TaskContext,
     // Running in an old-style task
-    OldTaskContext
+    OldTaskContext,
+    // Not old task context
+    NewRtContext
 }
 
 /// Determine the current RuntimeContext
@@ -424,23 +420,40 @@ pub fn context() -> RuntimeContext {
 
     if unsafe { rust_try_get_task().is_not_null() } {
         return OldTaskContext;
-    } else if Local::exists::<Task>() {
-        // In this case we know it is a new runtime context, but we
-        // need to check which one. Going to try borrowing task to
-        // check. Task should always be in TLS, so hopefully this
-        // doesn't conflict with other ops that borrow.
-        return do Local::borrow::<Task,RuntimeContext> |task| {
-            match task.task_type {
-                SchedTask => SchedulerContext,
-                GreenTask(_) => TaskContext
-            }
-        };
     } else {
-        return GlobalContext;
+        return NewRtContext;
     }
 
     extern {
         #[rust_stack]
         pub fn rust_try_get_task() -> *rust_task;
+    }
+}
+
+pub fn in_sched_context() -> bool {
+    unsafe {
+        match Local::try_unsafe_borrow::<Task>() {
+            Some(task) => {
+                match (*task).task_type {
+                    SchedTask => true,
+                    _ => false
+                }
+            }
+            None => false
+        }
+    }
+}
+
+pub fn in_green_task_context() -> bool {
+    unsafe {
+        match Local::try_unsafe_borrow::<Task>() {
+            Some(task) => {
+                match (*task).task_type {
+                    GreenTask(_) => true,
+                    _ => false
+                }
+            }
+            None => false
+        }
     }
 }
