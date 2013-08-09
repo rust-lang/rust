@@ -387,12 +387,6 @@ extern "rust-intrinsic" {
     /// elements.
     pub fn size_of<T>() -> uint;
 
-    /// Move a value to a memory location containing a value.
-    ///
-    /// Drop glue is run on the destination, which must contain a
-    /// valid Rust value.
-    pub fn move_val<T>(dst: &mut T, src: T);
-
     /// Move a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.
@@ -431,11 +425,6 @@ extern "rust-intrinsic" {
     pub fn visit_tydesc(td: *TyDesc, tv: &TyVisitor);
     #[cfg(not(stage0))]
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
-
-    pub fn frame_address(f: &once fn(*u8));
-
-    /// Get the address of the `__morestack` stack growth function.
-    pub fn morestack_addr() -> *();
 
     /// Calculates the offset from a pointer.
     ///

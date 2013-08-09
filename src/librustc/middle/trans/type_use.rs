@@ -140,13 +140,12 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
             } else {
                 match name {
                     "size_of"  | "pref_align_of" | "min_align_of" |
-                    "uninit"   | "init" | "transmute" | "move_val" |
+                    "uninit"   | "init" | "transmute" |
                     "move_val_init" => use_repr,
 
                     "get_tydesc" | "needs_drop" | "contains_managed" => use_tydesc,
 
-                    "visit_tydesc"  | "forget" | "frame_address" |
-                    "morestack_addr" => 0,
+                    "visit_tydesc"  | "forget" => 0,
 
                     "offset" | "offset_inbounds" |
                     "memcpy32" | "memcpy64" | "memmove32" | "memmove64" |

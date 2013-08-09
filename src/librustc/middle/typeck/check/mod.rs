@@ -3401,7 +3401,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "uninit" => (1u, ~[], param(ccx, 0u)),
             "forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
             "transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-            "move_val" | "move_val_init" => {
+            "move_val_init" => {
                 (1u,
                  ~[
                     ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
@@ -3449,24 +3449,6 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   mutbl: ast::m_imm
               });
               (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
-            }
-            "frame_address" => {
-              let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
-                  purity: ast::impure_fn,
-                  sigil: ast::BorrowedSigil,
-                  onceness: ast::Once,
-                  region: ty::re_bound(ty::br_anon(0)),
-                  bounds: ty::EmptyBuiltinBounds(),
-                  sig: ty::FnSig {
-                      bound_lifetime_names: opt_vec::Empty,
-                      inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
-                      output: ty::mk_nil()
-                  }
-              });
-              (0u, ~[fty], ty::mk_nil())
-            }
-            "morestack_addr" => {
-              (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
             }
             "offset" => {
               (1,

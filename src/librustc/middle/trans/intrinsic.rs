@@ -207,20 +207,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             Ret(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)));
         }
-        "move_val" => {
-            // Create a datum reflecting the value being moved.
-            // Use `appropriate_mode` so that the datum is by ref
-            // if the value is non-immediate. Note that, with
-            // intrinsics, there are no argument cleanups to
-            // concern ourselves with.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx.tcx, tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, DROP_EXISTING,
-                              get_param(decl, first_real_arg));
-            RetVoid(bcx);
-        }
         "move_val_init" => {
             // See comments for `"move_val"`.
             let tp_ty = substs.tys[0];
@@ -351,33 +337,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
             glue::call_tydesc_glue_full(bcx, visitor, td,
                                         abi::tydesc_field_visit_glue, None);
-            RetVoid(bcx);
-        }
-        "frame_address" => {
-            let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
-            let star_u8 = ty::mk_imm_ptr(
-                bcx.tcx(),
-                ty::mk_mach_uint(ast::ty_u8));
-            let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
-                purity: ast::impure_fn,
-                sigil: ast::BorrowedSigil,
-                onceness: ast::Many,
-                region: ty::re_bound(ty::br_anon(0)),
-                bounds: ty::EmptyBuiltinBounds(),
-                sig: FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
-                    inputs: ~[ star_u8 ],
-                    output: ty::mk_nil()
-                }
-            });
-            let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef(ZeroMem), ty: fty};
-            let arg_vals = ~[frameaddress_val];
-            bcx = trans_call_inner(
-                bcx, None, fty, ty::mk_nil(),
-                |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(arg_vals), Some(Ignore), DontAutorefArg).bcx;
             RetVoid(bcx);
         }
         "offset" => {
