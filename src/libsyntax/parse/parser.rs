@@ -4181,8 +4181,16 @@ impl Parser {
                                  self.this_token_to_str()));
         }
 
-        let (sort, ident) = match *self.token {
-            token::IDENT(*) => (ast::named, self.parse_ident()),
+        let (sort, maybe_path, ident) = match *self.token {
+            token::IDENT(*) => {
+                let the_ident = self.parse_ident();
+                let path = if *self.token == token::EQ {
+                    self.bump();
+                    Some(self.parse_str())
+                }
+                else { None };
+                (ast::named, path, the_ident)
+            }
             _ => {
                 if must_be_named_mod {
                     self.span_fatal(*self.span,
@@ -4191,7 +4199,7 @@ impl Parser {
                                          self.this_token_to_str()));
                 }
 
-                (ast::anonymous,
+                (ast::anonymous, None,
                  special_idents::clownshoes_foreign_mod)
             }
         };
@@ -4230,7 +4238,7 @@ impl Parser {
         let metadata = self.parse_optional_meta();
         self.expect(&token::SEMI);
         iovi_view_item(ast::view_item {
-            node: view_item_extern_mod(ident, metadata, self.get_id()),
+            node: view_item_extern_mod(ident, maybe_path, metadata, self.get_id()),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)
@@ -4812,8 +4820,13 @@ impl Parser {
         } else if self.eat_keyword(keywords::Extern) {
             self.expect_keyword(keywords::Mod);
             let ident = self.parse_ident();
+            let path = if *self.token == token::EQ {
+                self.bump();
+                Some(self.parse_str())
+            }
+            else { None };
             let metadata = self.parse_optional_meta();
-            view_item_extern_mod(ident, metadata, self.get_id())
+            view_item_extern_mod(ident, path, metadata, self.get_id())
         } else {
             self.bug("expected view item");
         };

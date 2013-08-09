@@ -14,10 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use std::hashmap::HashSet;
-use std::num;
-use std::os;
-use std::util;
-use std::vec;
+use std::{num, os, path, uint, util, vec};
 
 fn not_win32(os: session::os) -> bool {
   os != session::os_win32
@@ -122,42 +119,7 @@ pub fn get_rpath_relative_to_output(os: session::os,
         session::os_win32 => util::unreachable()
     };
 
-    Path(prefix).push_rel(&get_relative_to(&os::make_absolute(output),
-                                           &os::make_absolute(lib)))
-}
-
-// Find the relative path from one file to another
-pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
-    assert!(abs1.is_absolute);
-    assert!(abs2.is_absolute);
-    let abs1 = abs1.normalize();
-    let abs2 = abs2.normalize();
-    debug!("finding relative path from %s to %s",
-           abs1.to_str(), abs2.to_str());
-    let split1: &[~str] = abs1.components;
-    let split2: &[~str] = abs2.components;
-    let len1 = split1.len();
-    let len2 = split2.len();
-    assert!(len1 > 0);
-    assert!(len2 > 0);
-
-    let max_common_path = num::min(len1, len2) - 1;
-    let mut start_idx = 0;
-    while start_idx < max_common_path
-        && split1[start_idx] == split2[start_idx] {
-        start_idx += 1;
-    }
-
-    let mut path = ~[];
-    for _ in range(start_idx, len1 - 1) { path.push(~".."); };
-
-    path.push_all(split2.slice(start_idx, len2 - 1));
-
-    return if !path.is_empty() {
-        Path("").push_many(path)
-    } else {
-        Path(".")
-    }
+    Path(prefix).push_rel(&os::make_absolute(output).get_relative_to(&os::make_absolute(lib)))
 }
 
 fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
@@ -208,8 +170,7 @@ mod test {
     #[cfg(test)]
     #[cfg(test)]
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
-    use back::rpath::{get_relative_to, get_rpath_relative_to_output};
-    use back::rpath::{minimize_rpaths, rpaths_to_flags};
+    use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use driver::session;
 
     #[test]
@@ -254,77 +215,8 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to1() {
-        let p1 = Path("/usr/bin/rustc");
-        let p2 = Path("/usr/lib/mylib");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("../lib"));
-    }
-
-    #[test]
-    fn test_relative_to2() {
-        let p1 = Path("/usr/bin/rustc");
-        let p2 = Path("/usr/bin/../lib/mylib");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("../lib"));
-    }
-
-    #[test]
-    fn test_relative_to3() {
-        let p1 = Path("/usr/bin/whatever/rustc");
-        let p2 = Path("/usr/lib/whatever/mylib");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("../../lib/whatever"));
-    }
-
-    #[test]
-    fn test_relative_to4() {
-        let p1 = Path("/usr/bin/whatever/../rustc");
-        let p2 = Path("/usr/lib/whatever/mylib");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("../lib/whatever"));
-    }
-
-    #[test]
-    fn test_relative_to5() {
-        let p1 = Path("/usr/bin/whatever/../rustc");
-        let p2 = Path("/usr/lib/whatever/../mylib");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("../lib"));
-    }
-
-    #[test]
-    fn test_relative_to6() {
-        let p1 = Path("/1");
-        let p2 = Path("/2/3");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path("2"));
-    }
-
-    #[test]
-    fn test_relative_to7() {
-        let p1 = Path("/1/2");
-        let p2 = Path("/3");
-        let res = get_relative_to(&p1, &p2);
-        assert_eq!(res, Path(".."));
-    }
-
-    #[test]
-    fn test_relative_to8() {
-        let p1 = Path("/home/brian/Dev/rust/build/").push_rel(
-            &Path("stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so"));
-        let p2 = Path("/home/brian/Dev/rust/build/stage2/bin/..").push_rel(
-            &Path("lib/rustc/i686-unknown-linux-gnu/lib/libstd.so"));
-        let res = get_relative_to(&p1, &p2);
-        debug!("test_relative_tu8: %s vs. %s",
-               res.to_str(),
-               Path(".").to_str());
-        assert_eq!(res, Path("."));
-    }
-
-    #[test]
     #[cfg(target_os = "linux")]
-    #[cfg(target_os = "andorid")]
+    #[cfg(target_os = "android")]
     fn test_rpath_relative() {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,
@@ -344,7 +236,6 @@ mod test {
     #[test]
     #[cfg(target_os = "macos")]
     fn test_rpath_relative() {
-        // this is why refinements would be nice
         let o = session::os_macos;
         let res = get_rpath_relative_to_output(o,
                                                &Path("bin/rustc"),

@@ -16,7 +16,7 @@ use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{encoder, csearch, cstore};
+use metadata::{encoder, csearch, cstore, filesearch};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
@@ -497,6 +497,7 @@ pub fn build_link_meta(sess: Session,
     struct ProvidedMetas {
         name: Option<@str>,
         vers: Option<@str>,
+        pkg_id: Option<@str>,
         cmh_items: ~[@ast::MetaItem]
     }
 
@@ -504,6 +505,7 @@ pub fn build_link_meta(sess: Session,
        ProvidedMetas {
         let mut name = None;
         let mut vers = None;
+        let mut pkg_id = None;
         let mut cmh_items = ~[];
         let linkage_metas = attr::find_linkage_metas(c.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
@@ -511,6 +513,7 @@ pub fn build_link_meta(sess: Session,
             match meta.name_str_pair() {
                 Some((n, value)) if "name" == n => name = Some(value),
                 Some((n, value)) if "vers" == n => vers = Some(value),
+                Some((n, value)) if "package_id" == n => pkg_id = Some(value),
                 _ => cmh_items.push(*meta)
             }
         }
@@ -518,6 +521,7 @@ pub fn build_link_meta(sess: Session,
         ProvidedMetas {
             name: name,
             vers: vers,
+            pkg_id: pkg_id,
             cmh_items: cmh_items
         }
     }
@@ -525,7 +529,8 @@ pub fn build_link_meta(sess: Session,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
                               cmh_items: ~[@ast::MetaItem],
-                              dep_hashes: ~[@str]) -> @str {
+                              dep_hashes: ~[@str],
+                              pkg_id: Option<@str>) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
         }
@@ -563,7 +568,10 @@ pub fn build_link_meta(sess: Session,
             write_string(symbol_hasher, len_and_str(*dh));
         }
 
-    // tjc: allocation is unfortunate; need to change std::hash
+        for p in pkg_id.iter() {
+            write_string(symbol_hasher, len_and_str(*p));
+        }
+
         return truncated_hash_result(symbol_hasher).to_managed();
     }
 
@@ -605,6 +613,7 @@ pub fn build_link_meta(sess: Session,
     let ProvidedMetas {
         name: opt_name,
         vers: opt_vers,
+        pkg_id: opt_pkg_id,
         cmh_items: cmh_items
     } = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, output, opt_name);
@@ -612,11 +621,12 @@ pub fn build_link_meta(sess: Session,
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
         crate_meta_extras_hash(symbol_hasher, cmh_items,
-                               dep_hashes);
+                               dep_hashes, opt_pkg_id);
 
     LinkMeta {
         name: name,
         vers: vers,
+        package_id: opt_pkg_id,
         extras_hash: extras_hash
     }
 }
@@ -936,6 +946,11 @@ pub fn link_args(sess: Session,
     // forces to make sure that library can be found at runtime.
 
     for path in sess.opts.addl_lib_search_paths.iter() {
+        args.push(~"-L" + path.to_str());
+    }
+
+    let rustpath = filesearch::rust_path();
+    for path in rustpath.iter() {
         args.push(~"-L" + path.to_str());
     }
 
