@@ -1309,11 +1309,11 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         let r = os::env();
-        for &(k, v) in r.iter() {
+        for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
-            if k != ~"RANDOM" {
-                assert!(output.contains(fmt!("%s=%s", k, v)) ||
-                        output.contains(fmt!("%s=\'%s\'", k, v)));
+            if *k != ~"RANDOM" {
+                assert!(output.contains(fmt!("%s=%s", *k, *v)) ||
+                        output.contains(fmt!("%s=\'%s\'", *k, *v)));
             }
         }
     }
