@@ -51,20 +51,20 @@ type cmd = @crate_metadata;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
-fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: uint) ->
+fn lookup_hash(d: ebml::Doc, eq_fn: &fn(x:&[u8]) -> bool, hash: u64) ->
    Option<ebml::Doc> {
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
-    let hash_pos = table.start + hash % 256u * 4u;
-    let pos = io::u64_from_be_bytes(*d.data, hash_pos, 4u) as uint;
+    let hash_pos = table.start + (hash % 256 * 4) as uint;
+    let pos = io::u64_from_be_bytes(*d.data, hash_pos, 4) as uint;
     let tagged_doc = reader::doc_at(d.data, pos);
 
     let belt = tag_index_buckets_bucket_elt;
 
     let mut ret = None;
     do reader::tagged_docs(tagged_doc.doc, belt) |elt| {
-        let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(elt.data.slice(elt.start + 4u, elt.end)) {
+        let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4) as uint;
+        if eq_fn(elt.data.slice(elt.start + 4, elt.end)) {
             ret = Some(reader::doc_at(d.data, pos).doc);
             false
         } else {
@@ -84,7 +84,7 @@ pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),
-                item_id.hash() as uint)
+                (item_id as i64).hash())
 }
 
 fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
