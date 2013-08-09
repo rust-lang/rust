@@ -124,7 +124,7 @@ impl<T:Clone> OptVec<T> {
 }
 
 impl<A:Eq> Eq for OptVec<A> {
-    pub fn eq(&self, other: &OptVec<A>) -> bool {
+    fn eq(&self, other: &OptVec<A>) -> bool {
         // Note: cannot use #[deriving(Eq)] here because
         // (Empty, Vec(~[])) ought to be equal.
         match (self, other) {
@@ -135,7 +135,7 @@ impl<A:Eq> Eq for OptVec<A> {
         }
     }
 
-    pub fn ne(&self, other: &OptVec<A>) -> bool {
+    fn ne(&self, other: &OptVec<A>) -> bool {
         !self.eq(other)
     }
 }

@@ -22,18 +22,18 @@ use extra::getopts;
 #[deriving(Clone, Eq)]
 pub enum OutputFormat {
     /// Markdown
-    pub Markdown,
+    Markdown,
     /// HTML, via markdown and pandoc
-    pub PandocHtml
+    PandocHtml
 }
 
 /// How to organize the output
 #[deriving(Clone, Eq)]
 pub enum OutputStyle {
     /// All in a single document
-    pub DocPerCrate,
+    DocPerCrate,
     /// Each module in its own document
-    pub DocPerMod
+    DocPerMod
 }
 
 /// The configuration for a rustdoc session

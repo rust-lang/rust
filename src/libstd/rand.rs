@@ -260,7 +260,7 @@ pub mod rustrt {
 /// A random number generator
 pub trait Rng {
     /// Return the next random integer
-    pub fn next(&mut self) -> u32;
+    fn next(&mut self) -> u32;
 }
 
 /// A value with a particular weight compared to other values
@@ -825,7 +825,7 @@ pub struct XorShiftRng {
 
 impl Rng for XorShiftRng {
     #[inline]
-    pub fn next(&mut self) -> u32 {
+    fn next(&mut self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);
         self.x = self.y;

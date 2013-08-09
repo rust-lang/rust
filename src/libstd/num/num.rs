@@ -414,11 +414,11 @@ impl_num_cast!(f64,   to_f64)
 impl_num_cast!(float, to_float)
 
 pub trait ToStrRadix {
-    pub fn to_str_radix(&self, radix: uint) -> ~str;
+    fn to_str_radix(&self, radix: uint) -> ~str;
 }
 
 pub trait FromStrRadix {
-    pub fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 /// Calculates a power to a given radix, optimized for uint `pow` and `radix`.

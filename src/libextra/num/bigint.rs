@@ -537,7 +537,7 @@ impl ToStrRadix for BigUint {
 impl FromStrRadix for BigUint {
     /// Creates and initializes an BigUint.
 
-    pub fn from_str_radix(s: &str, radix: uint)
+    fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
         BigUint::parse_bytes(s.as_bytes(), radix)
     }
