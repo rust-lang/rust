@@ -5366,7 +5366,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.consume_rev_iter().collect::<~[ast::ident]>());
+        return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::ident]>());
     }
 
     pub fn dump_module(@mut self, module_: @mut Module) {

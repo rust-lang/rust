@@ -526,7 +526,7 @@ pub mod rt {
               TyHexLower => uint_to_str_prec(u, 16, prec),
 
               // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-              // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+              // to_ascii_move and to_str_move to not do a unnecessary copy.
               TyHexUpper => {
                 let s = uint_to_str_prec(u, 16, prec);
                 s.to_ascii().to_upper().to_str_ascii()

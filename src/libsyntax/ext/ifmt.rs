@@ -353,9 +353,9 @@ impl Context {
         let trans_method = |method: &parse::Method| {
             let method = match *method {
                 parse::Select(ref arms, ref default) => {
-                    let arms = arms.iter().transform(|arm| {
+                    let arms = arms.iter().map(|arm| {
                         let p = self.ecx.path_global(sp, rtpath("SelectArm"));
-                        let result = arm.result.iter().transform(|p| {
+                        let result = arm.result.iter().map(|p| {
                             self.trans_piece(p)
                         }).collect();
                         let s = arm.selector.to_managed();
@@ -368,7 +368,7 @@ impl Context {
                                                self.ecx.expr_vec_slice(sp, result)),
                         ])
                     }).collect();
-                    let default = default.iter().transform(|p| {
+                    let default = default.iter().map(|p| {
                         self.trans_piece(p)
                     }).collect();
                     self.ecx.expr_call_global(sp, rtpath("Select"), ~[
@@ -381,9 +381,9 @@ impl Context {
                         Some(i) => { some(self.ecx.expr_uint(sp, i)) }
                         None => { none() }
                     };
-                    let arms = arms.iter().transform(|arm| {
+                    let arms = arms.iter().map(|arm| {
                         let p = self.ecx.path_global(sp, rtpath("PluralArm"));
-                        let result = arm.result.iter().transform(|p| {
+                        let result = arm.result.iter().map(|p| {
                             self.trans_piece(p)
                         }).collect();
                         let (lr, selarg) = match arm.selector {
@@ -408,7 +408,7 @@ impl Context {
                                                self.ecx.expr_vec_slice(sp, result)),
                         ])
                     }).collect();
-                    let default = default.iter().transform(|p| {
+                    let default = default.iter().map(|p| {
                         self.trans_piece(p)
                     }).collect();
                     self.ecx.expr_call_global(sp, rtpath("Plural"), ~[
@@ -575,8 +575,8 @@ impl Context {
                 Some(self.format_arg(e.span, Right(name), lname));
         }
 
-        let args = names.consume_iter().transform(|a| a.unwrap());
-        let mut args = locals.consume_iter().chain_(args);
+        let args = names.move_iter().map(|a| a.unwrap());
+        let mut args = locals.move_iter().chain(args);
 
         // Next, build up the actual call to the sprintf function.
         let result = self.ecx.expr_call_global(self.fmtsp, ~[
@@ -685,7 +685,7 @@ pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
     };
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
-                          ~"first argument to ifmt! must be a string literal.");
+                          "first argument to ifmt! must be a string literal.");
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {

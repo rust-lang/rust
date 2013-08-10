@@ -63,7 +63,7 @@ Several modules in `core` are clients of `rt`:
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::{Iterator, IteratorUtil, range};
+use iterator::{Iterator, range};
 use option::{Some, None};
 use ptr::RawPtr;
 use rt::local::Local;
@@ -391,7 +391,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     rtdebug!("waiting for threads");
 
     // Wait for schedulers
-    for thread in threads.consume_iter() {
+    for thread in threads.move_iter() {
         thread.join();
     }
 

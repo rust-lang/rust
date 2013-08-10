@@ -11,7 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
-use iterator::{IteratorUtil, FromIterator, Extendable};
+use iterator::{FromIterator, Extendable};
 use uint;
 use util::{swap, replace};
 use vec;
@@ -617,7 +617,7 @@ mod test_map {
     fn test_from_iter() {
         let xs = ~[(1u, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-        let map: TrieMap<int> = xs.iter().transform(|&x| x).collect();
+        let map: TrieMap<int> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
@@ -680,7 +680,7 @@ mod test_set {
     fn test_from_iter() {
         let xs = ~[9u, 8, 7, 6, 5, 4, 3, 2, 1];
 
-        let set: TrieSet = xs.iter().transform(|&x| x).collect();
+        let set: TrieSet = xs.iter().map(|&x| x).collect();
 
         for x in xs.iter() {
             assert!(set.contains(x));

@@ -54,7 +54,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
         let task_handles = task.make_selectable(ports.len());
 
         for (index, (port, task_handle)) in
-                ports.mut_iter().zip(task_handles.consume_iter()).enumerate() {
+                ports.mut_iter().zip(task_handles.move_iter()).enumerate() {
             // If one of the ports has data by now, it will wake the handle.
             if port.block_on(sched, task_handle) {
                 ready_index = index;
@@ -128,7 +128,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| oneshot::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        for (i, chan) in chans.consume_iter().enumerate() {
+        for (i, chan) in chans.move_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {
@@ -145,7 +145,7 @@ mod test {
         let (ports, chans) = unzip(from_fn(num_ports, |_| stream::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
-        for (i, chan) in chans.consume_iter().enumerate() {
+        for (i, chan) in chans.move_iter().enumerate() {
             if send_on_chans.contains(&i) {
                 chan.send(());
             } else {

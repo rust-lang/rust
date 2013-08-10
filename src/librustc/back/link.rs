@@ -935,7 +935,7 @@ pub fn link_args(sess: Session,
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {
         let link_args = csearch::get_link_args_for_crate(cstore, crate_num);
-        for link_arg in link_args.consume_iter() {
+        for link_arg in link_args.move_iter() {
             args.push(link_arg);
         }
     }

@@ -521,7 +521,7 @@ impl Builder {
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = do ixs.iter().transform |i| { C_i32(*i as i32) }.collect::<~[ValueRef]>();
+            let v = do ixs.iter().map |i| { C_i32(*i as i32) }.collect::<~[ValueRef]>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v)
         }

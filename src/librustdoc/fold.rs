@@ -153,7 +153,7 @@ pub fn default_par_fold<T:Clone>(ctxt: T) -> Fold<T> {
 
 pub fn default_seq_fold_doc<T>(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc {
     doc::Doc {
-        pages: do doc.pages.iter().transform |page| {
+        pages: do doc.pages.iter().map |page| {
             match (*page).clone() {
               doc::CratePage(doc) => {
                 doc::CratePage((fold.fold_crate)(fold, doc))
@@ -189,7 +189,7 @@ pub fn default_any_fold_mod<T:Clone>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        items: doc.items.iter().transform(|ItemTag| {
+        items: doc.items.iter().map(|ItemTag| {
             fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
@@ -202,7 +202,7 @@ pub fn default_seq_fold_mod<T>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        items: doc.items.iter().transform(|ItemTag| {
+        items: doc.items.iter().map(|ItemTag| {
             fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
@@ -215,7 +215,7 @@ pub fn default_par_fold_mod<T:Clone>(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        items: doc.items.iter().transform(|ItemTag| {
+        items: doc.items.iter().map(|ItemTag| {
             fold_ItemTag(fold, (*ItemTag).clone())
         }).collect(),
         .. doc
@@ -228,7 +228,7 @@ pub fn default_any_fold_nmod<T:Clone>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        fns: doc.fns.iter().transform(|FnDoc| {
+        fns: doc.fns.iter().map(|FnDoc| {
             (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc
@@ -241,7 +241,7 @@ pub fn default_seq_fold_nmod<T>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        fns: doc.fns.iter().transform(|FnDoc| {
+        fns: doc.fns.iter().map(|FnDoc| {
             (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc
@@ -254,7 +254,7 @@ pub fn default_par_fold_nmod<T:Clone>(
 ) -> doc::NmodDoc {
     doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item.clone()),
-        fns: doc.fns.iter().transform(|FnDoc| {
+        fns: doc.fns.iter().map(|FnDoc| {
             (fold.fold_fn)(fold, (*FnDoc).clone())
         }).collect(),
         .. doc

@@ -350,13 +350,13 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         fatal(~"process did not return an error status");
     }
 
-    let prefixes = expected_errors.iter().transform(|ee| {
+    let prefixes = expected_errors.iter().map(|ee| {
         fmt!("%s:%u:", testfile.to_str(), ee.line)
     }).collect::<~[~str]>();
 
     fn to_lower( s : &str ) -> ~str {
         let i = s.iter();
-        let c : ~[char] = i.transform( |c| {
+        let c : ~[char] = i.map( |c| {
             if c.is_ascii() {
                 c.to_ascii().to_lower().to_char()
             } else {
@@ -760,7 +760,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let mut tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
+    let mut tvec: ~[~str] = args.prog.split_iter('/').map(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target
@@ -938,7 +938,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = io::read_whole_file_str(&p.with_filetype("ll")).unwrap();
-    x.line_iter().len_()
+    x.line_iter().len()
 }
 
 

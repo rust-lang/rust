@@ -23,9 +23,9 @@ use char::Char;
 use clone::Clone;
 use container::{Container, Mutable};
 use iter::Times;
-use iterator::{Iterator, FromIterator, Extendable, IteratorUtil};
+use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
-use iterator::{Invert, DoubleEndedIterator, DoubleEndedIteratorUtil};
+use iterator::{Invert, DoubleEndedIterator};
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
@@ -59,7 +59,7 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
+        let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
@@ -76,7 +76,7 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
     use str::not_utf8::cond;
 
     if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find_(|&b| !is_utf8([*b])).unwrap();
+        let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
@@ -185,7 +185,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut s = with_capacity(len);
 
@@ -210,7 +210,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut s = with_capacity(len);
 
@@ -239,7 +239,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         // this is wrong without the guarantee that `self` is non-empty
         let len = sep.len() * (self.len() - 1)
-            + self.iter().transform(|s| s.as_slice().len()).sum();
+            + self.iter().map(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -280,7 +280,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         // this is wrong without the guarantee that `self` is non-empty
         let len = sep.len() * (self.len() - 1)
-            + self.iter().transform(|s| s.as_slice().len()).sum();
+            + self.iter().map(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -1051,7 +1051,7 @@ pub mod raw {
     /// If end is greater than the length of the string.
     #[cfg(not(stage0))]
     #[inline]
-    pub unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> &str {
+    pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         do s.as_imm_buf |sbuf, n| {
              assert!((begin <= end));
              assert!((end <= n));
@@ -1445,7 +1445,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~
     #[inline]
     fn iter(&self) -> CharIterator<'self> {
-        self.char_offset_iter().transform(|(_, c)| c)
+        self.char_offset_iter().map(|(_, c)| c)
     }
 
     /// An iterator over the characters of `self`, in reverse order.
@@ -1457,7 +1457,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the bytes of `self`
     #[inline]
     fn byte_iter(&self) -> ByteIterator<'self> {
-        self.as_bytes().iter().transform(|&b| b)
+        self.as_bytes().iter().map(|&b| b)
     }
 
     /// An iterator over the bytes of `self`, in reverse order
@@ -1565,7 +1565,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the lines of a string, separated by either
     /// `\n` or (`\r\n`).
     fn any_line_iter(&self) -> AnyLineIterator<'self> {
-        do self.line_iter().transform |line| {
+        do self.line_iter().map |line| {
             let l = line.len();
             if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
             else { line }
@@ -1593,7 +1593,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Returns the number of characters that a string holds
     #[inline]
-    fn char_len(&self) -> uint { self.iter().len_() }
+    fn char_len(&self) -> uint { self.iter().len() }
 
     /// Returns a slice of the given string from the byte range
     /// [`begin`..`end`)
@@ -2546,7 +2546,6 @@ impl Zero for @str {
 
 #[cfg(test)]
 mod tests {
-    use iterator::IteratorUtil;
     use container::Container;
     use option::Some;
     use libc::c_char;
@@ -3687,7 +3686,7 @@ mod tests {
     #[test]
     fn test_str_container() {
         fn sum_len<S: Container>(v: &[S]) -> uint {
-            v.iter().transform(|x| x.len()).sum()
+            v.iter().map(|x| x.len()).sum()
         }
 
         let s = ~"01234";

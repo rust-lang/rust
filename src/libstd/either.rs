@@ -150,7 +150,7 @@ pub fn rights<L, R: Clone>(eithers: &[Either<L, R>]) -> ~[R] {
 pub fn partition<L, R>(eithers: ~[Either<L, R>]) -> (~[L], ~[R]) {
     let mut lefts: ~[L] = ~[];
     let mut rights: ~[R] = ~[];
-    for elt in eithers.consume_iter() {
+    for elt in eithers.move_iter() {
         match elt {
             Left(l) => lefts.push(l),
             Right(r) => rights.push(r)

@@ -156,8 +156,8 @@ Available lint options:
 ");
 
     let lint_dict = lint::get_lint_dict();
-    let mut lint_dict = lint_dict.consume()
-                                 .transform(|(k, v)| (v, k))
+    let mut lint_dict = lint_dict.move_iter()
+                                 .map(|(k, v)| (v, k))
                                  .collect::<~[(lint::LintSpec, &'static str)]>();
     lint_dict.qsort();
 
@@ -173,7 +173,7 @@ Available lint options:
               padded(max_key, "name"), "default", "meaning");
     printfln!("    %s  %7.7s  %s\n",
               padded(max_key, "----"), "-------", "-------");
-    for (spec, name) in lint_dict.consume_iter() {
+    for (spec, name) in lint_dict.move_iter() {
         let name = name.replace("_", "-");
         printfln!("    %s  %7.7s  %s",
                   padded(max_key, name),

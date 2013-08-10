@@ -158,7 +158,7 @@ impl<'self> PkgScript<'self> {
             let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
             // Run the configs() function to get the configs
             let cfgs = str::from_bytes_slice(output.output).word_iter()
-                .transform(|w| w.to_owned()).collect();
+                .map(|w| w.to_owned()).collect();
             (cfgs, output.status)
         }
     }

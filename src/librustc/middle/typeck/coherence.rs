@@ -182,7 +182,7 @@ impl CoherenceChecker {
                     item_impl(_, ref opt_trait, _, _) => {
                         let opt_trait : ~[trait_ref] =
                             opt_trait.iter()
-                                     .transform(|x| (*x).clone())
+                                     .map(|x| (*x).clone())
                                      .collect();
                         self.check_implementation(item, opt_trait);
                     }

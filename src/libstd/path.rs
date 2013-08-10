@@ -21,7 +21,7 @@ use c_str;
 use clone::Clone;
 use cmp::Eq;
 use container::Container;
-use iterator::{Iterator, IteratorUtil, range};
+use iterator::{Iterator, range};
 use libc;
 use num;
 use option::{None, Option, Some};
@@ -961,7 +961,7 @@ impl GenericPath for WindowsPath {
         match self.filestem() {
             Some(stem) => {
                 // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                // to_ascii_move and to_str_move to not do a unnecessary copy.
                 match stem.to_ascii().to_lower().to_str_ascii() {
                     ~"con" | ~"aux" | ~"com1" | ~"com2" | ~"com3" | ~"com4" |
                     ~"lpt1" | ~"lpt2" | ~"lpt3" | ~"prn" | ~"nul" => true,
@@ -1020,7 +1020,7 @@ impl GenericPath for WindowsPath {
                 None => None,
 
                 // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-                // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+                // to_ascii_move and to_str_move to not do a unnecessary copy.
                 Some(ref device) => Some(device.to_ascii().to_upper().to_str_ascii())
             },
             is_absolute: self.is_absolute,

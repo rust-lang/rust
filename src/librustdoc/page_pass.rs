@@ -123,7 +123,7 @@ fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
               doc::ModTag(_) | doc::NmodTag(_) => false,
               _ => true
             }
-        }.transform(|x| (*x).clone()).collect::<~[doc::ItemTag]>(),
+        }.map(|x| (*x).clone()).collect::<~[doc::ItemTag]>(),
         .. doc.clone()
     }
 }

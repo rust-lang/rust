@@ -288,7 +288,7 @@ pub fn method_with_name(ccx: &mut CrateContext,
 
     let imp = ccx.tcx.impls.find(&impl_id)
         .expect("could not find impl while translating");
-    let meth = imp.methods.iter().find_(|m| m.ident == name)
+    let meth = imp.methods.iter().find(|m| m.ident == name)
         .expect("could not find method while translating");
 
     ccx.impl_method_cache.insert((impl_id, name), meth.def_id);
