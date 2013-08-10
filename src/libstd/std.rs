@@ -148,7 +148,7 @@ pub mod clone;
 pub mod io;
 pub mod hash;
 pub mod container;
-
+pub mod default;
 
 /* Common data structures */
 

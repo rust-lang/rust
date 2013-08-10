@@ -52,3 +52,8 @@ impl Zero for () {
     #[inline]
     fn is_zero(&self) -> bool { true }
 }
+
+#[cfg(not(test))]
+impl Default for () {
+    fn default() -> () { () }
+}
