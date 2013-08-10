@@ -714,6 +714,7 @@ mod test {
     use rt::test::*;
     use cell::Cell;
     use iter::Times;
+    use rt::util;
 
     #[test]
     fn oneshot_single_thread_close_port_first() {
@@ -862,6 +863,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
@@ -877,6 +879,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
@@ -897,6 +900,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
@@ -923,6 +927,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<~int>();
@@ -942,6 +947,7 @@ mod test {
 
     #[test]
     fn stream_send_recv_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do stress_factor().times {
             do run_in_mt_newsched_task {
                 let (port, chan) = stream::<~int>();
@@ -986,6 +992,7 @@ mod test {
 
     #[test]
     fn shared_chan_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do run_in_mt_newsched_task {
             let (port, chan) = stream();
             let chan = SharedChan::new(chan);
@@ -1005,6 +1012,7 @@ mod test {
 
     #[test]
     fn shared_port_stress() {
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         do run_in_mt_newsched_task {
             // XXX: Removing these type annotations causes an ICE
             let (end_port, end_chan) = stream::<()>();
@@ -1084,6 +1092,8 @@ mod test {
     fn megapipe_stress() {
         use rand;
         use rand::RngUtil;
+
+        if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
 
         do run_in_mt_newsched_task {
             let (end_port, end_chan) = stream::<()>();
