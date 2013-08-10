@@ -1294,7 +1294,6 @@ fn store_non_ref_bindings(bcx: @mut Block,
 
 fn insert_lllocals(bcx: @mut Block,
                    bindings_map: &BindingsMap,
-                   binding_mode: IrrefutablePatternBindingMode,
                    add_cleans: bool) -> @mut Block {
     /*!
      * For each binding in `data.bindings_map`, adds an appropriate entry into
@@ -1302,10 +1301,7 @@ fn insert_lllocals(bcx: @mut Block,
      * the bindings.
      */
 
-    let llmap = match binding_mode {
-        BindLocal => bcx.fcx.lllocals,
-        BindArgument => bcx.fcx.llargs
-    };
+    let llmap = bcx.fcx.lllocals;
 
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
@@ -1358,7 +1354,7 @@ fn compile_guard(bcx: @mut Block,
     bcx = store_non_ref_bindings(bcx,
                                  data.bindings_map,
                                  Some(&mut temp_cleanups));
-    bcx = insert_lllocals(bcx, data.bindings_map, BindLocal, false);
+    bcx = insert_lllocals(bcx, data.bindings_map, false);
 
     let val = unpack_result!(bcx, {
         do with_scope_result(bcx, guard_expr.info(),
@@ -1875,7 +1871,7 @@ fn trans_match_inner(scope_cx: @mut Block,
         }
 
         // insert bindings into the lllocals map and add cleanups
-        bcx = insert_lllocals(bcx, arm_data.bindings_map, BindLocal, true);
+        bcx = insert_lllocals(bcx, arm_data.bindings_map, true);
 
         bcx = controlflow::trans_block(bcx, &arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
