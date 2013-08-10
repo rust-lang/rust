@@ -72,6 +72,12 @@ impl WaitQueue {
         }
         count
     }
+
+    fn wait_end(&self) -> WaitEnd {
+        let (wait_end, signal_end) = comm::oneshot();
+        self.tail.send_deferred(signal_end);
+        wait_end
+    }
 }
 
 // The building-block used to make semaphores, mutexes, and rwlocks.
@@ -100,12 +106,9 @@ impl<Q:Send> Sem<Q> {
             do (**self).with |state| {
                 state.count -= 1;
                 if state.count < 0 {
-                    // Create waiter nobe.
-                    let (WaitEnd, SignalEnd) = comm::oneshot();
-                    // Tell outer scope we need to block.
-                    waiter_nobe = Some(WaitEnd);
-                    // Enqueue ourself.
-                    state.waiters.tail.send_deferred(SignalEnd);
+                    // Create waiter nobe, enqueue ourself, and tell
+                    // outer scope we need to block.
+                    waiter_nobe = Some(state.waiters.wait_end());
                 }
             }
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
@@ -201,10 +204,7 @@ impl<'self> Condvar<'self> {
      * wait() is equivalent to wait_on(0).
      */
     pub fn wait_on(&self, condvar_id: uint) {
-        // Create waiter nobe.
-        let (WaitEnd, SignalEnd) = comm::oneshot();
-        let mut WaitEnd   = Some(WaitEnd);
-        let mut SignalEnd = Some(SignalEnd);
+        let mut WaitEnd = None;
         let mut out_of_bounds = None;
         do task::unkillable {
             // Release lock, 'atomically' enqueuing ourselves in so doing.
@@ -216,9 +216,9 @@ impl<'self> Condvar<'self> {
                         if state.count <= 0 {
                             state.waiters.signal();
                         }
-                        // Enqueue ourself to be woken up by a signaller.
-                        let SignalEnd = SignalEnd.take_unwrap();
-                        state.blocked[condvar_id].tail.send_deferred(SignalEnd);
+                        // Create waiter nobe, and enqueue ourself to
+                        // be woken up by a signaller.
+                        WaitEnd = Some(state.blocked[condvar_id].wait_end());
                     } else {
                         out_of_bounds = Some(state.blocked.len());
                     }
