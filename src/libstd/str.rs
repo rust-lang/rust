@@ -959,6 +959,14 @@ pub mod raw {
         ::cast::transmute(v)
     }
 
+    #[lang="strdup_uniq"]
+    #[cfg(not(test))]
+    #[allow(missing_doc)]
+    #[inline]
+    pub unsafe fn strdup_uniq(ptr: *u8, len: uint) -> ~str {
+        from_buf_len(ptr, len)
+    }
+
     /// Create a Rust string from a null-terminated C string
     pub unsafe fn from_c_str(buf: *libc::c_char) -> ~str {
         let mut curr = buf;
