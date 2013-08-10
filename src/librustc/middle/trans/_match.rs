@@ -588,7 +588,7 @@ fn enter_opt<'r>(bcx: @mut Block,
                     let mut reordered_patterns = ~[];
                     let r = ty::lookup_struct_fields(tcx, struct_id);
                     for field in r.iter() {
-                            match field_pats.iter().find_(|p| p.ident == field.ident) {
+                            match field_pats.iter().find(|p| p.ident == field.ident) {
                                 None => reordered_patterns.push(dummy),
                                 Some(fp) => reordered_patterns.push(fp.pat)
                             }
@@ -648,7 +648,7 @@ fn enter_rec_or_struct<'r>(bcx: @mut Block,
             ast::pat_struct(_, ref fpats, _) => {
                 let mut pats = ~[];
                 for fname in fields.iter() {
-                    match fpats.iter().find_(|p| p.ident == *fname) {
+                    match fpats.iter().find(|p| p.ident == *fname) {
                         None => pats.push(dummy),
                         Some(pat) => pats.push(pat.pat)
                     }

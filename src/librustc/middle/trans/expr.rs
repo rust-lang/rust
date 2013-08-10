@@ -582,7 +582,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: @ast::expr,
         ast::expr_tup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
             let numbered_fields: ~[(uint, @ast::expr)] =
-                args.iter().enumerate().transform(|(i, arg)| (i, *arg)).collect();
+                args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
         ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {

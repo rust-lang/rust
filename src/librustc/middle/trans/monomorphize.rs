@@ -245,7 +245,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       }
       ast_map::node_variant(ref v, enum_item, _) => {
         let tvs = ty::enum_variants(ccx.tcx, local_def(enum_item.id));
-        let this_tv = *tvs.iter().find_(|tv| { tv.id.node == fn_id.node}).unwrap();
+        let this_tv = *tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
         let d = mk_lldecl();
         set_inline_hint(d);
         match v.node.kind {
@@ -366,18 +366,18 @@ pub fn make_mono_id(ccx: @mut CrateContext,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
-    let substs_iter = substs.self_ty.iter().chain_(substs.tys.iter());
+    let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
     let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables=%s substs=%s",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
-        let vts_iter = substs.self_vtables.iter().chain_(vts.iter());
-        vts_iter.zip(substs_iter).transform(|(vtable, subst)| {
+        let vts_iter = substs.self_vtables.iter().chain(vts.iter());
+        vts_iter.zip(substs_iter).map(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }
-      None => substs_iter.transform(|subst| (*subst, None::<@~[mono_id]>)).collect()
+      None => substs_iter.map(|subst| (*subst, None::<@~[mono_id]>)).collect()
     };
 
 
@@ -387,9 +387,9 @@ pub fn make_mono_id(ccx: @mut CrateContext,
         // We just say it is fully used.
         let self_use =
             substs.self_ty.map(|_| type_use::use_repr|type_use::use_tydesc);
-        let uses_iter = self_use.iter().chain_(uses.iter());
+        let uses_iter = self_use.iter().chain(uses.iter());
 
-        precise_param_ids.iter().zip(uses_iter).transform(|(id, uses)| {
+        precise_param_ids.iter().zip(uses_iter).map(|(id, uses)| {
             if ccx.sess.no_monomorphic_collapse() {
                 match *id {
                     (a, b) => mono_precise(a, b)
@@ -429,7 +429,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
         }).collect()
       }
       None => {
-          precise_param_ids.iter().transform(|x| {
+          precise_param_ids.iter().map(|x| {
               let (a, b) = *x;
               mono_precise(a, b)
           }).collect()

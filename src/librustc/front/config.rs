@@ -102,12 +102,12 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_,
     let item = match *item {
         ast::item_impl(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
-                .transform(|x| *x).collect();
+                .map(|x| *x).collect();
             ast::item_impl((*a).clone(), (*b).clone(), (*c).clone(), methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.iter().filter(|m| trait_method_in_cfg(cx, *m) )
-                .transform(|x| (*x).clone()).collect();
+                .map(|x| (*x).clone()).collect();
             ast::item_trait((*a).clone(), (*b).clone(), methods)
         }
         ref item => (*item).clone(),
@@ -180,5 +180,5 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 // Determine if an item should be translated in the current crate
 // configuration based on the item's attributes
 fn in_cfg(cfg: &[@ast::MetaItem], attrs: &[ast::Attribute]) -> bool {
-    attr::test_cfg(cfg, attrs.iter().transform(|x| *x))
+    attr::test_cfg(cfg, attrs.iter().map(|x| *x))
 }

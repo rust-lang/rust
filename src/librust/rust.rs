@@ -128,7 +128,7 @@ fn rustc_help() {
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
-    do COMMANDS.iter().find_ |command| {
+    do COMMANDS.iter().find |command| {
         command.cmd == command_string
     }.map_move(|x| *x)
 }

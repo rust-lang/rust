@@ -37,7 +37,7 @@ pub struct FnType {
 
 impl FnType {
     pub fn decl_fn(&self, decl: &fn(fnty: Type) -> ValueRef) -> ValueRef {
-        let atys = self.arg_tys.iter().transform(|t| t.ty).collect::<~[Type]>();
+        let atys = self.arg_tys.iter().map(|t| t.ty).collect::<~[Type]>();
         let rty = self.ret_ty.ty;
         let fnty = Type::func(atys, &rty);
         let llfn = decl(fnty);

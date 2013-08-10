@@ -759,7 +759,7 @@ impl<'self> LookupContext<'self> {
                                -> Option<method_map_entry> {
         // XXX(pcwalton): Do we need to clone here?
         let relevant_candidates: ~[Candidate] =
-            candidates.iter().transform(|c| (*c).clone()).
+            candidates.iter().map(|c| (*c).clone()).
                 filter(|c| self.is_relevant(rcvr_ty, c)).collect();
 
         let relevant_candidates = self.merge_candidates(relevant_candidates);

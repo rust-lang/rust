@@ -221,7 +221,7 @@ pub fn maybe_find_pandoc(
       }
     };
 
-    let pandoc = do possible_pandocs.iter().find_ |&pandoc| {
+    let pandoc = do possible_pandocs.iter().find |&pandoc| {
         let output = process_output(*pandoc, [~"--version"]);
         debug!("testing pandoc cmd %s: %?", *pandoc, output);
         output.status == 0

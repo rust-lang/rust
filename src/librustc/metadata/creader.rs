@@ -83,7 +83,7 @@ fn warn_if_multiple_versions(e: @mut Env,
             *crate_cache[crate_cache.len() - 1].metas
         );
 
-        let vec: ~[Either<cache_entry, cache_entry>] = crate_cache.iter().transform(|&entry| {
+        let vec: ~[Either<cache_entry, cache_entry>] = crate_cache.iter().map(|&entry| {
             let othername = loader::crate_name_from_metas(*entry.metas);
             if name == othername {
                 Left(entry)
@@ -183,7 +183,7 @@ fn visit_item(e: &Env, i: @ast::item) {
         match fm.sort {
             ast::named => {
                 let link_name = i.attrs.iter()
-                    .find_(|at| "link_name" == at.name())
+                    .find(|at| "link_name" == at.name())
                     .chain(|at| at.value_str());
 
                 let foreign_name = match link_name {

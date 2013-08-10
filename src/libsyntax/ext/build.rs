@@ -702,7 +702,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn variant(&self, span: span, name: ident, tys: ~[ast::Ty]) -> ast::variant {
-        let args = tys.consume_iter().transform(|ty| {
+        let args = tys.move_iter().map(|ty| {
             ast::variant_arg { ty: ty, id: self.next_id() }
         }).collect();
 

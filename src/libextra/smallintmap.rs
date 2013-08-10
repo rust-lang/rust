@@ -15,7 +15,7 @@
 
 #[allow(missing_doc)];
 
-use std::iterator::{Iterator, IteratorUtil, Enumerate, FilterMap, Invert};
+use std::iterator::{Iterator, Enumerate, FilterMap, Invert};
 use std::util::replace;
 use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
@@ -152,12 +152,12 @@ impl<V> SmallIntMap<V> {
     }
 
     /// Empties the hash map, moving all values into the specified closure
-    pub fn consume(&mut self)
+    pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::ConsumeIterator<Option<V>>>>
+                Enumerate<vec::MoveIterator<Option<V>>>>
     {
         let values = replace(&mut self.v, ~[]);
-        values.consume_iter().enumerate().filter_map(|(i, v)| {
+        values.move_iter().enumerate().filter_map(|(i, v)| {
             v.map_move(|v| (i, v))
         })
     }
@@ -452,11 +452,11 @@ mod test_map {
     }
 
     #[test]
-    fn test_consume() {
+    fn test_move_iter() {
         let mut m = SmallIntMap::new();
         m.insert(1, ~2);
         let mut called = false;
-        for (k, v) in m.consume() {
+        for (k, v) in m.move_iter() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);

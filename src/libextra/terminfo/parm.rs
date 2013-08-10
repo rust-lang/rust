@@ -12,7 +12,6 @@
 
 use std::{char, vec, util};
 use std::num::strconv::{SignNone,SignNeg,SignAll,int_to_str_bytes_common};
-use std::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 enum States {
@@ -106,7 +105,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         *dst = (*src).clone();
     }
 
-    for c in cap.iter().transform(|&x| x) {
+    for c in cap.iter().map(|&x| x) {
         let cur = c as char;
         let mut old_state = state;
         match state {

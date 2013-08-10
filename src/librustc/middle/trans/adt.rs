@@ -508,7 +508,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: uint,
         }
         General(ref cases) => {
             let case = &cases[discr];
-            let max_sz = cases.iter().transform(|x| x.size).max().unwrap();
+            let max_sz = cases.iter().map(|x| x.size).max().unwrap();
             let discr_ty = C_uint(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
@@ -519,7 +519,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: uint,
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
-                let vals = do nonnull.fields.iter().enumerate().transform |(i, &ty)| {
+                let vals = do nonnull.fields.iter().enumerate().map |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
                 }.collect::<~[ValueRef]>();

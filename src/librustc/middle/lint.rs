@@ -994,7 +994,7 @@ fn lint_session(cx: @mut Context) -> @visit::Visitor<()> {
         match cx.tcx.sess.lints.pop(&id) {
             None => {},
             Some(l) => {
-                for (lint, span, msg) in l.consume_iter() {
+                for (lint, span, msg) in l.move_iter() {
                     cx.span_lint(lint, span, msg)
                 }
             }

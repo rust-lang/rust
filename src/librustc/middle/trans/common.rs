@@ -316,7 +316,7 @@ pub struct cleanup_path {
 pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
     scope_info.landing_pad = None;
     scope_info.cleanup_paths = scope_info.cleanup_paths.iter()
-            .take_while(|&cu| cu.size <= size).transform(|&x|x).collect();
+            .take_while(|&cu| cu.size <= size).map(|&x|x).collect();
 }
 
 pub fn grow_scope_clean(scope_info: &mut ScopeInfo) {
@@ -1000,7 +1000,7 @@ pub fn node_id_type_params(bcx: @mut Block, id: ast::NodeId) -> ~[ty::t] {
 
     match bcx.fcx.param_substs {
       Some(substs) => {
-        do params.iter().transform |t| {
+        do params.iter().map |t| {
             ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
         }.collect()
       }
@@ -1025,7 +1025,7 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
                                           param_substs: Option<@param_substs>,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
-    @vts.iter().transform(|ds|
+    @vts.iter().map(|ds|
       resolve_param_vtables_under_param_substs(tcx,
                                                param_substs,
                                                *ds))
@@ -1037,7 +1037,7 @@ pub fn resolve_param_vtables_under_param_substs(
     param_substs: Option<@param_substs>,
     ds: typeck::vtable_param_res)
     -> typeck::vtable_param_res {
-    @ds.iter().transform(
+    @ds.iter().map(
         |d| resolve_vtable_under_param_substs(tcx,
                                               param_substs,
                                               d))
@@ -1063,7 +1063,7 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
         typeck::vtable_static(trait_id, ref tys, sub) => {
             let tys = match param_substs {
                 Some(substs) => {
-                    do tys.iter().transform |t| {
+                    do tys.iter().map |t| {
                         ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
                     }.collect()
                 }

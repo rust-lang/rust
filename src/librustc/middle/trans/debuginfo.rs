@@ -662,7 +662,7 @@ fn enum_metadata(cx: &mut CrateContext,
 
     let enumerators_metadata: ~[DIDescriptor] = variants
         .iter()
-        .transform(|v| {
+        .map(|v| {
             let name: &str = cx.sess.str_of(v.name);
             let discriminant_value = v.disr_val as c_ulonglong;
 
@@ -709,7 +709,7 @@ fn enum_metadata(cx: &mut CrateContext,
             let variants_member_metadata: ~[DIDescriptor] = do struct_defs
                 .iter()
                 .enumerate()
-                .transform |(i, struct_def)| {
+                .map |(i, struct_def)| {
                     let variant_type_metadata = adt_struct_metadata(
                         cx,
                         struct_def,
@@ -766,7 +766,7 @@ fn enum_metadata(cx: &mut CrateContext,
     {
         let arg_llvm_types: ~[Type] = do struct_def.fields.map |&ty| { type_of::type_of(cx, ty) };
         let arg_metadata: ~[DIType] = do struct_def.fields.iter().enumerate()
-            .transform |(i, &ty)| {
+            .map |(i, &ty)| {
                 match discriminant_type_metadata {
                     Some(metadata) if i == 0 => metadata,
                     _                        => type_metadata(cx, ty, span)
@@ -816,7 +816,7 @@ fn composite_type_metadata(cx: &mut CrateContext,
     let member_metadata: ~[DIDescriptor] = member_llvm_types
         .iter()
         .enumerate()
-        .transform(|(i, &member_llvm_type)| {
+        .map(|(i, &member_llvm_type)| {
             let (member_size, member_align) = size_and_align_of(cx, member_llvm_type);
             let member_offset = machine::llelement_offset(cx, composite_llvm_type, i);
             let member_name: &str = member_names[i];

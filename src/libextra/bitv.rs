@@ -869,7 +869,7 @@ impl BitvSet {
         let min = num::min(self.bitv.storage.len(), other.bitv.storage.len());
         self.bitv.storage.slice(0, min).iter().enumerate()
             .zip(Repeat::new(&other.bitv.storage))
-            .transform(|((i, &w), o_store)| (i * uint::bits, w, o_store[i]))
+            .map(|((i, &w), o_store)| (i * uint::bits, w, o_store[i]))
     }
 
     /// Visits each word in self or other that extends beyond the other. This
@@ -888,11 +888,11 @@ impl BitvSet {
         if olen < slen {
             self.bitv.storage.slice_from(olen).iter().enumerate()
                 .zip(Repeat::new(olen))
-                .transform(|((i, &w), min)| (true, (i + min) * uint::bits, w))
+                .map(|((i, &w), min)| (true, (i + min) * uint::bits, w))
         } else {
             other.bitv.storage.slice_from(slen).iter().enumerate()
                 .zip(Repeat::new(slen))
-                .transform(|((i, &w), min)| (false, (i + min) * uint::bits, w))
+                .map(|((i, &w), min)| (false, (i + min) * uint::bits, w))
         }
     }
 }

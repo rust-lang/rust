@@ -32,7 +32,7 @@ use c_str::ToCStr;
 use clone::Clone;
 use container::Container;
 use io;
-use iterator::{IteratorUtil, range};
+use iterator::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::FILE;
@@ -765,7 +765,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 strings
             }
         }
-        do get_list(p).consume_iter().filter |filename| {
+        do get_list(p).move_iter().filter |filename| {
             "." != *filename && ".." != *filename
         }.collect()
     }

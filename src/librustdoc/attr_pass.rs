@@ -123,7 +123,7 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     doc::EnumDoc {
-        variants: do doc.variants.iter().transform |variant| {
+        variants: do doc.variants.iter().map |variant| {
             let variant = (*variant).clone();
             let desc = {
                 let variant = variant.clone();
@@ -133,7 +133,7 @@ fn fold_enum(
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                (*enum_definition.variants.iter().find_(|v| {
+                                (*enum_definition.variants.iter().find(|v| {
                                     to_str(v.node.name) == variant.name
                                 }).unwrap()).clone();
 
@@ -182,7 +182,7 @@ fn merge_method_attrs(
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
-                methods.iter().transform(|method| {
+                methods.iter().map(|method| {
                     match (*method).clone() {
                         ast::required(ty_m) => {
                             (to_str(ty_m.ident),
@@ -197,7 +197,7 @@ fn merge_method_attrs(
             ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref methods), _
             }, _) => {
-                methods.iter().transform(|method| {
+                methods.iter().map(|method| {
                     (to_str(method.ident),
                      attr_parser::parse_desc(method.attrs.clone()))
                 }).collect()
@@ -206,7 +206,7 @@ fn merge_method_attrs(
         }
     };
 
-    do docs.iter().zip(attrs.iter()).transform |(doc, attrs)| {
+    do docs.iter().zip(attrs.iter()).map |(doc, attrs)| {
         assert!(doc.name == attrs.first());
         let desc = attrs.second();
 

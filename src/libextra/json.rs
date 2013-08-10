@@ -948,7 +948,7 @@ impl serialize::Decoder for Decoder {
         let name = match self.stack.pop() {
             String(s) => s,
             List(list) => {
-                for v in list.consume_rev_iter() {
+                for v in list.move_rev_iter() {
                     self.stack.push(v);
                 }
                 match self.stack.pop() {
@@ -1066,7 +1066,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             List(list) => {
                 let len = list.len();
-                for v in list.consume_rev_iter() {
+                for v in list.move_rev_iter() {
                     self.stack.push(v);
                 }
                 len
@@ -1086,7 +1086,7 @@ impl serialize::Decoder for Decoder {
         let len = match self.stack.pop() {
             Object(obj) => {
                 let len = obj.len();
-                for (key, value) in obj.consume_iter() {
+                for (key, value) in obj.move_iter() {
                     self.stack.push(value);
                     self.stack.push(String(key));
                 }

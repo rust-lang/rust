@@ -17,7 +17,7 @@ The `ToBytes` and `IterBytes` traits
 use cast;
 use io;
 use io::Writer;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 use option::{None, Option, Some};
 use str::StrSlice;
 use vec::ImmutableVector;

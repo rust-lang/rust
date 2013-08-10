@@ -120,7 +120,7 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str],
                   demitter: diagnostic::Emitter) -> ast::CrateConfig {
-    do cfgspecs.consume_iter().transform |s| {
+    do cfgspecs.move_iter().map |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
     }.collect::<ast::CrateConfig>()
@@ -631,7 +631,7 @@ pub fn build_session_options(binary: @str,
         let level_name = lint::level_to_str(*level);
 
         // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-        // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+        // to_ascii_move and to_str_move to not do a unnecessary copy.
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().to_str_ascii();
         let flags = vec::append(getopts::opt_strs(matches, level_short),
@@ -726,7 +726,7 @@ pub fn build_session_options(binary: @str,
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
     let linker = getopts::opt_maybe_str(matches, "linker");
     let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
-        a.split_iter(' ').transform(|arg| arg.to_owned()).collect()
+        a.split_iter(' ').map(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
@@ -737,7 +737,7 @@ pub fn build_session_options(binary: @str,
     let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').transform(|s| {
+            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }
@@ -946,7 +946,7 @@ pub fn build_output_filenames(input: &input,
           let linkage_metas = attr::find_linkage_metas(attrs);
           if !linkage_metas.is_empty() {
               // But if a linkage meta is present, that overrides
-              let maybe_name = linkage_metas.iter().find_(|m| "name" == m.name());
+              let maybe_name = linkage_metas.iter().find(|m| "name" == m.name());
               match maybe_name.chain(|m| m.value_str()) {
                   Some(s) => stem = s,
                   _ => ()

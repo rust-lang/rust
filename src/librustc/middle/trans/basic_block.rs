@@ -29,7 +29,7 @@ impl BasicBlock {
     pub fn pred_iter(self) -> PredIterator {
         self.as_value().user_iter()
             .filter(|user| user.is_a_terminator_inst())
-            .transform(|user| user.get_parent().unwrap())
+            .map(|user| user.get_parent().unwrap())
     }
 
     pub fn get_single_predecessor(self) -> Option<BasicBlock> {

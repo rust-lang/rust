@@ -382,7 +382,7 @@ pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[];
     let mut us = ~[];
-    for p in v.consume_iter() {
+    for p in v.move_iter() {
         let (t, u) = p;
         ts.push(t);
         us.push(u);
@@ -1068,10 +1068,10 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     /// Deprecated, use iterators where possible
-    /// (`self.iter().transform(f)`). Apply a function to each element
+    /// (`self.iter().map(f)`). Apply a function to each element
     /// of a vector and return the results.
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
-        self.iter().transform(f).collect()
+        self.iter().map(f).collect()
     }
 
     /**
@@ -1174,8 +1174,8 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
 
 #[allow(missing_doc)]
 pub trait OwnedVector<T> {
-    fn consume_iter(self) -> ConsumeIterator<T>;
-    fn consume_rev_iter(self) -> ConsumeRevIterator<T>;
+    fn move_iter(self) -> MoveIterator<T>;
+    fn move_rev_iter(self) -> MoveRevIterator<T>;
 
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
@@ -1204,26 +1204,26 @@ impl<T> OwnedVector<T> for ~[T] {
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
     ///
-    /// Note that this performs O(n) swaps, and so `consume_rev_iter`
+    /// Note that this performs O(n) swaps, and so `move_rev_iter`
     /// (which just calls `pop` repeatedly) is more efficient.
     ///
     /// # Examples
     ///
     /// ~~~ {.rust}
     /// let v = ~[~"a", ~"b"];
-    /// for s in v.consume_iter() {
+    /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println(s);
     /// }
     /// ~~~
-    fn consume_iter(self) -> ConsumeIterator<T> {
-        ConsumeIterator { v: self, idx: 0 }
+    fn move_iter(self) -> MoveIterator<T> {
+        MoveIterator { v: self, idx: 0 }
     }
     /// Creates a consuming iterator that moves out of the vector in
-    /// reverse order. Also see `consume_iter`, however note that this
+    /// reverse order. Also see `move_iter`, however note that this
     /// is more efficient.
-    fn consume_rev_iter(self) -> ConsumeRevIterator<T> {
-        ConsumeRevIterator { v: self }
+    fn move_rev_iter(self) -> MoveRevIterator<T> {
+        MoveRevIterator { v: self }
     }
 
     /**
@@ -1540,7 +1540,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let mut lefts  = ~[];
         let mut rights = ~[];
 
-        for elt in self.consume_iter() {
+        for elt in self.move_iter() {
             if f(&elt) {
                 lefts.push(elt);
             } else {
@@ -2148,7 +2148,7 @@ pub mod bytes {
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.iter().transform(|item| item.clone()).collect()
+        self.iter().map(|item| item.clone()).collect()
     }
 }
 
@@ -2281,12 +2281,12 @@ pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
 
 /// An iterator that moves out of a vector.
 #[deriving(Clone)]
-pub struct ConsumeIterator<T> {
+pub struct MoveIterator<T> {
     priv v: ~[T],
     priv idx: uint,
 }
 
-impl<T> Iterator<T> for ConsumeIterator<T> {
+impl<T> Iterator<T> for MoveIterator<T> {
     fn next(&mut self) -> Option<T> {
         // this is peculiar, but is required for safety with respect
         // to dtors. It traverses the first half of the vec, and
@@ -2308,11 +2308,11 @@ impl<T> Iterator<T> for ConsumeIterator<T> {
 
 /// An iterator that moves out of a vector in reverse order.
 #[deriving(Clone)]
-pub struct ConsumeRevIterator<T> {
+pub struct MoveRevIterator<T> {
     priv v: ~[T]
 }
 
-impl<T> Iterator<T> for ConsumeRevIterator<T> {
+impl<T> Iterator<T> for MoveRevIterator<T> {
     fn next(&mut self) -> Option<T> {
         self.v.pop_opt()
     }
@@ -3323,17 +3323,17 @@ mod tests {
     }
 
     #[test]
-    fn test_consume_iterator() {
+    fn test_move_iterator() {
         use iterator::*;
         let xs = ~[1u,2,3,4,5];
-        assert_eq!(xs.consume_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
+        assert_eq!(xs.move_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
     }
 
     #[test]
-    fn test_consume_rev_iterator() {
+    fn test_move_rev_iterator() {
         use iterator::*;
         let xs = ~[1u,2,3,4,5];
-        assert_eq!(xs.consume_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
+        assert_eq!(xs.move_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
     #[test]
@@ -3608,7 +3608,7 @@ mod tests {
         }
         assert_eq!(cnt, 8);
 
-        for f in v.consume_iter() {
+        for f in v.move_iter() {
             assert!(f == Foo);
             cnt += 1;
         }

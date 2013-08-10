@@ -1278,7 +1278,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
                         let mut skip = 0;
                         let mut dest = None;
                         {
-                            let r = (*inf).cleanup_paths.rev_iter().find_(|cp| cp.target == leave);
+                            let r = (*inf).cleanup_paths.rev_iter().find(|cp| cp.target == leave);
                             for cp in r.iter() {
                                 if cp.size == inf.cleanups.len() {
                                     Br(bcx, cp.dest);

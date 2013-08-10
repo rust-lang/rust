@@ -4310,7 +4310,7 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_ty(false)
                 );
-                for ty in arg_tys.consume_iter() {
+                for ty in arg_tys.move_iter() {
                     args.push(ast::variant_arg {
                         ty: ty,
                         id: self.get_id(),

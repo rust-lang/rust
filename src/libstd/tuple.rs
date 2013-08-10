@@ -15,7 +15,7 @@
 use clone::Clone;
 use vec;
 use vec::ImmutableVector;
-use iterator::IteratorUtil;
+use iterator::Iterator;
 
 pub use self::inner::*;
 
@@ -102,7 +102,7 @@ impl<'self,
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
-                a.iter().zip(b.iter()).transform(|(aa, bb)| f(aa, bb)).collect()
+                a.iter().zip(b.iter()).map(|(aa, bb)| f(aa, bb)).collect()
             }
         }
     }
@@ -122,7 +122,7 @@ impl<A:Clone, B:Clone> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
         match *self {
             (ref a, ref b) => {
-                a.iter().zip(b.iter()).transform(|(aa, bb)| f(aa, bb)).collect()
+                a.iter().zip(b.iter()).map(|(aa, bb)| f(aa, bb)).collect()
             }
         }
     }
