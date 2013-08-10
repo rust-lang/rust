@@ -186,13 +186,13 @@ pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
                                  -> Option<@str> {
     attrs.iter()
-        .find_(|at| name == at.name())
+        .find(|at| name == at.name())
         .chain(|at| at.value_str())
 }
 
 pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
                                      -> Option<@str> {
-    items.rev_iter().find_(|mi| name == mi.name()).chain(|i| i.value_str())
+    items.rev_iter().find(|mi| name == mi.name()).chain(|i| i.value_str())
 }
 
 /* Higher-level applications */

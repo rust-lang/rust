@@ -183,7 +183,7 @@ fn visit_item(e: &Env, i: @ast::item) {
         match fm.sort {
             ast::named => {
                 let link_name = i.attrs.iter()
-                    .find_(|at| "link_name" == at.name())
+                    .find(|at| "link_name" == at.name())
                     .chain(|at| at.value_str());
 
                 let foreign_name = match link_name {

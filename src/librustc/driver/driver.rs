@@ -946,7 +946,7 @@ pub fn build_output_filenames(input: &input,
           let linkage_metas = attr::find_linkage_metas(attrs);
           if !linkage_metas.is_empty() {
               // But if a linkage meta is present, that overrides
-              let maybe_name = linkage_metas.iter().find_(|m| "name" == m.name());
+              let maybe_name = linkage_metas.iter().find(|m| "name" == m.name());
               match maybe_name.chain(|m| m.value_str()) {
                   Some(s) => stem = s,
                   _ => ()

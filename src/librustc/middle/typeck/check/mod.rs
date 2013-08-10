@@ -1122,7 +1122,7 @@ pub fn lookup_field_ty(tcx: ty::ctxt,
                        fieldname: ast::ident,
                        substs: &ty::substs) -> Option<ty::t> {
 
-    let o_field = items.iter().find_(|f| f.ident == fieldname);
+    let o_field = items.iter().find(|f| f.ident == fieldname);
     do o_field.map() |f| {
         ty::lookup_field_type(tcx, class_id, f.id, substs)
     }

@@ -500,7 +500,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                   |discr, field_tys| {
                   let cs: ~[ValueRef] = field_tys.iter().enumerate()
                       .map(|(ix, &field_ty)| {
-                      match fs.iter().find_(|f| field_ty.ident == f.ident) {
+                      match fs.iter().find(|f| field_ty.ident == f.ident) {
                           Some(f) => const_expr(cx, (*f).expr),
                           None => {
                               match base_val {
