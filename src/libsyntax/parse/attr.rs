@@ -9,21 +9,17 @@
 // except according to those terms.
 
 use ast;
-use codemap::spanned;
+use codemap::{spanned, mk_sp};
 use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;
 use parse::parser::Parser;
+use parse::token::INTERPOLATED;
 
 // a parser that can parse attributes.
 pub trait parser_attr {
     fn parse_outer_attributes(&self) -> ~[ast::Attribute];
-    fn parse_attribute(&self, style: ast::AttrStyle) -> ast::Attribute;
-    fn parse_attribute_naked(
-        &self,
-        style: ast::AttrStyle,
-        lo: BytePos
-    ) -> ast::Attribute;
+    fn parse_attribute(&self, permit_inner: bool) -> ast::Attribute;
     fn parse_inner_attrs_and_next(&self) ->
         (~[ast::Attribute], ~[ast::Attribute]);
     fn parse_meta_item(&self) -> @ast::MetaItem;
@@ -37,12 +33,17 @@ impl parser_attr for Parser {
     fn parse_outer_attributes(&self) -> ~[ast::Attribute] {
         let mut attrs: ~[ast::Attribute] = ~[];
         loop {
+            debug!("parse_outer_attributes: self.token=%?",
+                   self.token);
             match *self.token {
+              token::INTERPOLATED(token::nt_attr(*)) => {
+                attrs.push(self.parse_attribute(false));
+              }
               token::POUND => {
                 if self.look_ahead(1, |t| *t != token::LBRACKET) {
                     break;
                 }
-                attrs.push(self.parse_attribute(ast::AttrOuter));
+                attrs.push(self.parse_attribute(false));
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
@@ -62,22 +63,48 @@ impl parser_attr for Parser {
         return attrs;
     }
 
-    // matches attribute = # attribute_naked
-    fn parse_attribute(&self, style: ast::AttrStyle) -> ast::Attribute {
-        let lo = self.span.lo;
-        self.expect(&token::POUND);
-        return self.parse_attribute_naked(style, lo);
+    // matches attribute = # [ meta_item ]
+    //
+    // if permit_inner is true, then a trailing `;` indicates an inner
+    // attribute
+    fn parse_attribute(&self, permit_inner: bool) -> ast::Attribute {
+        debug!("parse_attributes: permit_inner=%? self.token=%?",
+               permit_inner, self.token);
+        let (span, value) = match *self.token {
+            INTERPOLATED(token::nt_attr(attr)) => {
+                assert!(attr.node.style == ast::AttrOuter);
+                self.bump();
+                (attr.span, attr.node.value)
+            }
+            token::POUND => {
+                let lo = self.span.lo;
+                self.bump();
+                self.expect(&token::LBRACKET);
+                let meta_item = self.parse_meta_item();
+                self.expect(&token::RBRACKET);
+                let hi = self.span.hi;
+                (mk_sp(lo, hi), meta_item)
+            }
+            _ => {
+                self.fatal(fmt!("expected `#` but found `%s`",
+                                self.this_token_to_str()));
+            }
+        };
+        let style = if permit_inner && *self.token == token::SEMI {
+            self.bump();
+            ast::AttrInner
+        } else {
+            ast::AttrOuter
+        };
+        return spanned {
+            span: span,
+            node: ast::Attribute_ {
+                style: style,
+                value: value,
+                is_sugared_doc: false
+            }
+        };
     }
-
-    // matches attribute_naked = [ meta_item ]
-    fn parse_attribute_naked(&self, style: ast::AttrStyle, lo: BytePos) ->
-        ast::Attribute {
-        self.expect(&token::LBRACKET);
-        let meta_item = self.parse_meta_item();
-        self.expect(&token::RBRACKET);
-        let hi = self.span.hi;
-        return spanned(lo, hi, ast::Attribute_ { style: style,
-                                                 value: meta_item, is_sugared_doc: false }); }
 
     // Parse attributes that appear after the opening of an item, each
     // terminated by a semicolon. In addition to a vector of inner attributes,
@@ -89,47 +116,37 @@ impl parser_attr for Parser {
     // matches inner_attrs* outer_attr?
     // you can make the 'next' field an Option, but the result is going to be
     // more useful as a vector.
-    fn parse_inner_attrs_and_next(&self) ->
-        (~[ast::Attribute], ~[ast::Attribute]) {
+    fn parse_inner_attrs_and_next(&self)
+                                  -> (~[ast::Attribute], ~[ast::Attribute]) {
         let mut inner_attrs: ~[ast::Attribute] = ~[];
         let mut next_outer_attrs: ~[ast::Attribute] = ~[];
         loop {
-            match *self.token {
-              token::POUND => {
-                if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                    // This is an extension
-                    break;
+            let attr = match *self.token {
+                token::INTERPOLATED(token::nt_attr(*)) => {
+                    self.parse_attribute(true)
                 }
-                let attr = self.parse_attribute(ast::AttrInner);
-                if *self.token == token::SEMI {
+                token::POUND => {
+                    if self.look_ahead(1, |t| *t != token::LBRACKET) {
+                        // This is an extension
+                        break;
+                    }
+                    self.parse_attribute(true)
+                }
+                token::DOC_COMMENT(s) => {
                     self.bump();
-                    inner_attrs.push(attr);
-                } else {
-                    // It's not really an inner attribute
-                    let outer_attr =
-                        spanned(attr.span.lo, attr.span.hi,
-                            ast::Attribute_ { style: ast::AttrOuter,
-                                              value: attr.node.value,
-                                              is_sugared_doc: false });
-                    next_outer_attrs.push(outer_attr);
+                    ::attr::mk_sugared_doc_attr(self.id_to_str(s),
+                                                self.span.lo,
+                                                self.span.hi)
+                }
+                _ => {
                     break;
                 }
-              }
-              token::DOC_COMMENT(s) => {
-                let attr = ::attr::mk_sugared_doc_attr(
-                    self.id_to_str(s),
-                    self.span.lo,
-                    self.span.hi
-                );
-                self.bump();
-                if attr.node.style == ast::AttrInner {
-                  inner_attrs.push(attr);
-                } else {
-                  next_outer_attrs.push(attr);
-                  break;
-                }
-              }
-              _ => break
+            };
+            if attr.node.style == ast::AttrInner {
+                inner_attrs.push(attr);
+            } else {
+                next_outer_attrs.push(attr);
+                break;
             }
         }
         (inner_attrs, next_outer_attrs)

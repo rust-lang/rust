@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 enum side { mayo, catsup, vinegar }
 enum order { hamburger, fries(side), shake }
 enum meal { to_go(order), for_here(order) }
