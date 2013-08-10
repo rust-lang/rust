@@ -91,6 +91,70 @@ pub fn main() {
     t!(ifmt!("{:-#s}", "a"), "a");
     t!(ifmt!("{:+#s}", "a"), "a");
 
+    // Formatting integers should select the right implementation based off the
+    // type of the argument. Also, hex/octal/binary should be defined for
+    // integers, but they shouldn't emit the negative sign.
+    t!(ifmt!("{:d}", -1i), "-1");
+    t!(ifmt!("{:d}", -1i8), "1");
+    t!(ifmt!("{:d}", -1i16), "1");
+    t!(ifmt!("{:d}", -1i32), "1");
+    t!(ifmt!("{:d}", -1i64), "1");
+    t!(ifmt!("{:t}", -1i), "1");
+    t!(ifmt!("{:t}", -1i8), "1");
+    t!(ifmt!("{:t}", -1i16), "1");
+    t!(ifmt!("{:t}", -1i32), "1");
+    t!(ifmt!("{:t}", -1i64), "1");
+    t!(ifmt!("{:x}", -1i), "1");
+    t!(ifmt!("{:x}", -1i8), "1");
+    t!(ifmt!("{:x}", -1i16), "1");
+    t!(ifmt!("{:x}", -1i32), "1");
+    t!(ifmt!("{:x}", -1i64), "1");
+    t!(ifmt!("{:X}", -1i), "1");
+    t!(ifmt!("{:X}", -1i8), "1");
+    t!(ifmt!("{:X}", -1i16), "1");
+    t!(ifmt!("{:X}", -1i32), "1");
+    t!(ifmt!("{:X}", -1i64), "1");
+    t!(ifmt!("{:o}", -1i), "1");
+    t!(ifmt!("{:o}", -1i8), "1");
+    t!(ifmt!("{:o}", -1i16), "1");
+    t!(ifmt!("{:o}", -1i32), "1");
+    t!(ifmt!("{:o}", -1i64), "1");
+
+    t!(ifmt!("{:d}", 1u), "1");
+    t!(ifmt!("{:d}", 1u8), "1");
+    t!(ifmt!("{:d}", 1u16), "1");
+    t!(ifmt!("{:d}", 1u32), "1");
+    t!(ifmt!("{:d}", 1u64), "1");
+    t!(ifmt!("{:t}", 1u), "1");
+    t!(ifmt!("{:t}", 1u8), "1");
+    t!(ifmt!("{:t}", 1u16), "1");
+    t!(ifmt!("{:t}", 1u32), "1");
+    t!(ifmt!("{:t}", 1u64), "1");
+    t!(ifmt!("{:x}", 1u), "1");
+    t!(ifmt!("{:x}", 1u8), "1");
+    t!(ifmt!("{:x}", 1u16), "1");
+    t!(ifmt!("{:x}", 1u32), "1");
+    t!(ifmt!("{:x}", 1u64), "1");
+    t!(ifmt!("{:X}", 1u), "1");
+    t!(ifmt!("{:X}", 1u8), "1");
+    t!(ifmt!("{:X}", 1u16), "1");
+    t!(ifmt!("{:X}", 1u32), "1");
+    t!(ifmt!("{:X}", 1u64), "1");
+    t!(ifmt!("{:o}", 1u), "1");
+    t!(ifmt!("{:o}", 1u8), "1");
+    t!(ifmt!("{:o}", 1u16), "1");
+    t!(ifmt!("{:o}", 1u32), "1");
+    t!(ifmt!("{:o}", 1u64), "1");
+
+    // Test the flags for formatting integers
+    t!(ifmt!("{:3d}", 1), "1  ");
+    t!(ifmt!("{:>3d}", 1), "  1");
+    t!(ifmt!("{:#d}", 1), "1");
+    t!(ifmt!("{:#x}", 10u), "0xa");
+    t!(ifmt!("{:#X}", 10u), "0xA");
+    t!(ifmt!("{:#5x}", 10u), "0xa  ");
+    t!(ifmt!("{:#o}", 10u), "0o12");
+
     // Precision overrides 0-padding
     // FIXME #2481: Recent gcc's report some of these as warnings
     /*t!(ifmt!("{:0>6.5d}", 0), ~" 00000");*/

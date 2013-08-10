@@ -638,6 +638,7 @@ impl Context {
                     "X" => "UpperHex",
                     "s" => "String",
                     "p" => "Pointer",
+                    "t" => "Binary",
                     _ => {
                         self.ecx.span_err(sp, fmt!("unknown format trait \
                                                     `%s`", tyname));
