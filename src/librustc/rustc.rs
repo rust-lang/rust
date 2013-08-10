@@ -319,7 +319,13 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
     let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.supervised();
-    task_builder.opts.stack_size = Some(STACK_SIZE);
+
+    // XXX: Hacks on hacks. If the env is trying to override the stack size
+    // then *don't* set it explicitly.
+    if os::getenv("RUST_MIN_STACK").is_none() {
+        task_builder.opts.stack_size = Some(STACK_SIZE);
+    }
+
     match do task_builder.try {
         let ch = ch_capture.clone();
         let ch_capture = ch.clone();
