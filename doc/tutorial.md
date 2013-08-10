@@ -1305,7 +1305,7 @@ match crayons[0] {
 A vector can be destructured using pattern matching:
 
 ~~~~
-let numbers: [int, ..3] = [1, 2, 3];
+let numbers: &[int] = &[1, 2, 3];
 let score = match numbers {
     [] => 0,
     [a] => a * 10,
