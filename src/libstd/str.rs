@@ -26,7 +26,7 @@ use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
 use iterator::{Invert, DoubleEndedIterator};
 use libc;
-use num::{Saturating, Zero};
+use num::{Saturating};
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
@@ -35,6 +35,7 @@ use uint;
 use unstable::raw::{Repr, Slice};
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
+use default::Default;
 
 /*
 Section: Conditions
@@ -2467,19 +2468,16 @@ impl Extendable<char> for ~str {
 }
 
 // This works because every lifetime is a sub-lifetime of 'static
-impl<'self> Zero for &'self str {
-    fn zero() -> &'self str { "" }
-    fn is_zero(&self) -> bool { self.is_empty() }
+impl<'self> Default for &'self str {
+    fn default() -> &'self str { "" }
 }
 
-impl Zero for ~str {
-    fn zero() -> ~str { ~"" }
-    fn is_zero(&self) -> bool { self.len() == 0 }
+impl Default for ~str {
+    fn default() -> ~str { ~"" }
 }
 
-impl Zero for @str {
-    fn zero() -> @str { @"" }
-    fn is_zero(&self) -> bool { self.len() == 0 }
+impl Default for @str {
+    fn default() -> @str { @"" }
 }
 
 #[cfg(test)]
@@ -3660,12 +3658,11 @@ mod tests {
     }
 
     #[test]
-    fn test_str_zero() {
-        use num::Zero;
-        fn t<S: Zero + Str>() {
-            let s: S = Zero::zero();
+    fn test_str_default() {
+        use default::Default;
+        fn t<S: Default + Str>() {
+            let s: S = Default::default();
             assert_eq!(s.as_slice(), "");
-            assert!(s.is_zero());
         }
 
         t::<&str>();
