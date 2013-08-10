@@ -351,6 +351,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
             if !attr::contains_name(item.attrs, "!resolve_unexported") {
+                check_sane_privacy(tcx, item);
                 oldvisit::visit_item(item, (method_map, visitor));
             }
         },
@@ -539,4 +540,82 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         .. *oldvisit::default_visitor()
     });
     oldvisit::visit_crate(crate, (method_map, visitor));
+}
+
+/// Validates all of the visibility qualifers placed on the item given. This
+/// ensures that there are no extraneous qualifiers that don't actually do
+/// anything. In theory these qualifiers wouldn't parse, but that may happen
+/// later on down the road...
+fn check_sane_privacy(tcx: ty::ctxt, item: @ast::item) {
+    match item.node {
+        // implementations of traits don't need visibility qualifiers because
+        // that's controlled by having the trait in scope.
+        ast::item_impl(_, Some(*), _, ref methods) => {
+            for m in methods.iter() {
+                match m.vis {
+                    ast::private | ast::public => {
+                        tcx.sess.span_err(m.span, "unnecessary visibility")
+                    }
+                    ast::inherited => {}
+                }
+            }
+        }
+
+        ast::item_enum(ref def, _) => {
+            for v in def.variants.iter() {
+                match v.node.vis {
+                    ast::public => {
+                        if item.vis == ast::public {
+                            tcx.sess.span_err(v.span, "unnecessary `pub` \
+                                                       visibility");
+                        }
+                    }
+                    ast::private => {
+                        if item.vis != ast::public {
+                            tcx.sess.span_err(v.span, "unnecessary `priv` \
+                                                       visibility");
+                        }
+                    }
+                    ast::inherited => {}
+                }
+            }
+        }
+
+        ast::item_struct(ref def, _) => {
+            for f in def.fields.iter() {
+                match f.node.kind {
+                    ast::named_field(_, ast::public) => {
+                        tcx.sess.span_err(f.span, "unnecessary `pub` \
+                                                   visibility");
+                    }
+                    ast::named_field(_, ast::private) => {
+                        // Fields should really be private by default...
+                    }
+                    ast::named_field(*) | ast::unnamed_field => {}
+                }
+            }
+        }
+
+        ast::item_trait(_, _, ref methods) => {
+            for m in methods.iter() {
+                match *m {
+                    ast::provided(ref m) => {
+                        match m.vis {
+                            ast::private | ast::public => {
+                                tcx.sess.span_err(m.span, "unnecessary \
+                                                           visibility");
+                            }
+                            ast::inherited => {}
+                        }
+                    }
+                    // this is warned about in the parser
+                    ast::required(*) => {}
+                }
+            }
+        }
+
+        ast::item_impl(*) | ast::item_static(*) | ast::item_foreign_mod(*) |
+        ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
+        ast::item_mac(*) => {}
+    }
 }

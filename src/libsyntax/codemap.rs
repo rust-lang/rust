@@ -194,10 +194,10 @@ pub struct FileLines
 // represents the origin of a file:
 pub enum FileSubstr {
     // indicates that this is a normal standalone file:
-    pub FssNone,
+    FssNone,
     // indicates that this "file" is actually a substring
     // of another file that appears earlier in the codemap
-    pub FssInternal(span),
+    FssInternal(span),
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap

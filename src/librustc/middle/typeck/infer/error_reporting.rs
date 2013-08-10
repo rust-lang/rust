@@ -76,12 +76,12 @@ use util::ppaux::UserString;
 use util::ppaux::note_and_explain_region;
 
 pub trait ErrorReporting {
-    pub fn report_region_errors(@mut self,
-                                errors: &OptVec<RegionResolutionError>);
+    fn report_region_errors(@mut self,
+                            errors: &OptVec<RegionResolutionError>);
 
-    pub fn report_and_explain_type_error(@mut self,
-                                         trace: TypeTrace,
-                                         terr: &ty::type_err);
+    fn report_and_explain_type_error(@mut self,
+                                     trace: TypeTrace,
+                                     terr: &ty::type_err);
 
     fn values_str(@mut self, values: &ValuePairs) -> Option<~str>;
 
@@ -112,8 +112,8 @@ pub trait ErrorReporting {
 
 
 impl ErrorReporting for InferCtxt {
-    pub fn report_region_errors(@mut self,
-                                errors: &OptVec<RegionResolutionError>) {
+    fn report_region_errors(@mut self,
+                            errors: &OptVec<RegionResolutionError>) {
         for error in errors.iter() {
             match *error {
                 ConcreteFailure(origin, sub, sup) => {
@@ -139,7 +139,7 @@ impl ErrorReporting for InferCtxt {
         }
     }
 
-    pub fn report_and_explain_type_error(@mut self,
+    fn report_and_explain_type_error(@mut self,
                                      trace: TypeTrace,
                                      terr: &ty::type_err) {
         let tcx = self.tcx;

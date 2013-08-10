@@ -416,7 +416,7 @@ impl<T, I: Int> Add<I, *T> for *T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *T {
+    fn add(&self, rhs: &I) -> *T {
         self.offset(rhs.to_int() as int)
     }
 }
@@ -426,7 +426,7 @@ impl<T, I: Int> Sub<I, *T> for *T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *T {
+    fn sub(&self, rhs: &I) -> *T {
         self.offset(-rhs.to_int() as int)
     }
 }
@@ -436,7 +436,7 @@ impl<T, I: Int> Add<I, *mut T> for *mut T {
     /// Add an integer value to a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn add(&self, rhs: &I) -> *mut T {
+    fn add(&self, rhs: &I) -> *mut T {
         self.offset(rhs.to_int() as int)
     }
 }
@@ -446,7 +446,7 @@ impl<T, I: Int> Sub<I, *mut T> for *mut T {
     /// Subtract an integer value from a pointer to get an offset pointer.
     /// Is calculated according to the size of the type pointed to.
     #[inline]
-    pub fn sub(&self, rhs: &I) -> *mut T {
+    fn sub(&self, rhs: &I) -> *mut T {
         self.offset(-rhs.to_int() as int)
     }
 }

@@ -287,11 +287,11 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 }
 
 impl ExprTyProvider for FnCtxt {
-    pub fn expr_ty(&self, ex: &ast::expr) -> ty::t {
+    fn expr_ty(&self, ex: &ast::expr) -> ty::t {
         self.expr_ty(ex)
     }
 
-    pub fn ty_ctxt(&self) -> ty::ctxt {
+    fn ty_ctxt(&self) -> ty::ctxt {
         self.ccx.tcx
     }
 }

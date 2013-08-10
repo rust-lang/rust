@@ -672,7 +672,7 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    pub fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
+    fn each_view_item(&self, f: @fn(&ast::view_item) -> bool) -> bool;
 }
 
 struct EachViewItemData {

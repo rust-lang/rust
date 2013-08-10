@@ -10,17 +10,17 @@
 
 mod a {
     pub trait Foo {
-        pub fn foo() -> Self;
+        fn foo() -> Self;
     }
 
     impl Foo for int {
-        pub fn foo() -> int {
+        fn foo() -> int {
             3
         }
     }
 
     impl Foo for uint {
-        pub fn foo() -> uint {
+        fn foo() -> uint {
             5u
         }
     }

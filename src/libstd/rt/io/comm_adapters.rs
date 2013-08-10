@@ -31,9 +31,9 @@ impl<C: GenericChan<~[u8]>> ChanWriter<C> {
 }
 
 impl<C: GenericChan<~[u8]>> Writer for ChanWriter<C> {
-    pub fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail!() }
 
-    pub fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail!() }
 }
 
 struct ReaderPort<R>;

@@ -165,7 +165,7 @@ impl<'self> StatRecorder<'self> {
 
 #[unsafe_destructor]
 impl<'self> Drop for StatRecorder<'self> {
-    pub fn drop(&self) {
+    fn drop(&self) {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
