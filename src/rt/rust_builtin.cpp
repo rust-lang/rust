@@ -681,6 +681,16 @@ rust_drop_env_lock() {
     env_lock.unlock();
 }
 
+extern "C" CDECL unsigned int
+rust_valgrind_stack_register(void *start, void *end) {
+  return VALGRIND_STACK_REGISTER(start, end);
+}
+
+extern "C" CDECL void
+rust_valgrind_stack_deregister(unsigned int id) {
+  VALGRIND_STACK_DEREGISTER(id);
+}
+
 //
 // Local Variables:
 // mode: C++
