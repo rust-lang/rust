@@ -146,7 +146,7 @@ macro_rules! maybe_whole_expr (
                     Some($p.mk_expr(
                         ($p).span.lo,
                         ($p).span.hi,
-                        expr_path(/* bad */ (*pt).clone())))
+                        expr_path(/* bad */ (**pt).clone())))
                 }
                 _ => None
             };
@@ -235,8 +235,8 @@ macro_rules! maybe_whole (
                 _ => None
             };
             match __found__ {
-                Some(INTERPOLATED(token::$constructor(x))) => {
-                    return (~[], x.clone())
+                Some(INTERPOLATED(token::$constructor(ref x))) => {
+                    return (~[], (**x).clone())
                 }
                 _ => {}
             }
@@ -939,7 +939,7 @@ impl Parser {
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
     pub fn parse_ty(&self, _: bool) -> Ty {
-        maybe_whole!(self, nt_ty);
+        maybe_whole!(deref self, nt_ty);
 
         let lo = self.span.lo;
 
@@ -1293,7 +1293,7 @@ impl Parser {
 
     // parse a path that doesn't have type parameters attached
     pub fn parse_path_without_tps(&self) -> ast::Path {
-        maybe_whole!(self, nt_path);
+        maybe_whole!(deref self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
         ast::Path { span: sp,
                      global: is_global,
@@ -1306,7 +1306,7 @@ impl Parser {
                                         before_tps: Option<&fn()>) -> ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
-        maybe_whole!(self, nt_path);
+        maybe_whole!(deref self, nt_path);
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
         if colons && !self.eat(&token::MOD_SEP) {
@@ -3100,7 +3100,7 @@ impl Parser {
 
     // parse a block. No inner attrs are allowed.
     pub fn parse_block(&self) -> Block {
-        maybe_whole!(self, nt_block);
+        maybe_whole!(deref self, nt_block);
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
