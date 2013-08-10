@@ -322,12 +322,6 @@ impl Eq for char {
 impl Ord for char {
     #[inline]
     fn lt(&self, other: &char) -> bool { *self < *other }
-    #[inline]
-    fn le(&self, other: &char) -> bool { *self <= *other }
-    #[inline]
-    fn gt(&self, other: &char) -> bool { *self > *other }
-    #[inline]
-    fn ge(&self, other: &char) -> bool { *self >= *other }
 }
 
 #[cfg(not(test))]

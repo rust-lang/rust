@@ -284,12 +284,6 @@ impl Not<bool> for bool {
 impl Ord for bool {
     #[inline]
     fn lt(&self, other: &bool) -> bool { to_bit(*self) < to_bit(*other) }
-    #[inline]
-    fn le(&self, other: &bool) -> bool { to_bit(*self) <= to_bit(*other) }
-    #[inline]
-    fn gt(&self, other: &bool) -> bool { to_bit(*self) > to_bit(*other) }
-    #[inline]
-    fn ge(&self, other: &bool) -> bool { to_bit(*self) >= to_bit(*other) }
 }
 
 #[cfg(not(test))]

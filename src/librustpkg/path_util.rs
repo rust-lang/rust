@@ -10,64 +10,16 @@
 
 // rustpkg utilities having to do with paths and directories
 
-pub use package_path::{RemotePath, LocalPath, normalize};
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general};
+pub use rustc::metadata::filesearch::rust_path;
+
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
 use std::os;
-use std::iterator::IteratorUtil;
 use messages::*;
 use package_id::*;
-
-fn push_if_exists(vec: &mut ~[Path], p: &Path) {
-    let maybe_dir = p.push(".rust");
-    if os::path_exists(&maybe_dir) {
-        vec.push(maybe_dir);
-    }
-}
-
-#[cfg(windows)]
-static PATH_ENTRY_SEPARATOR: &'static str = ";";
-#[cfg(not(windows))]
-static PATH_ENTRY_SEPARATOR: &'static str = ":";
-
-/// Returns RUST_PATH as a string, without default paths added
-pub fn get_rust_path() -> Option<~str> {
-    os::getenv("RUST_PATH")
-}
-
-/// Returns the value of RUST_PATH, as a list
-/// of Paths. Includes default entries for, if they exist:
-/// $HOME/.rust
-/// DIR/.rust for any DIR that's the current working directory
-/// or an ancestor of it
-pub fn rust_path() -> ~[Path] {
-    let mut env_rust_path: ~[Path] = match get_rust_path() {
-        Some(env_path) => {
-            let env_path_components: ~[&str] =
-                env_path.split_str_iter(PATH_ENTRY_SEPARATOR).collect();
-            env_path_components.map(|&s| Path(s))
-        }
-        None => ~[]
-    };
-    debug!("RUST_PATH entries from environment: %?", env_rust_path);
-    let cwd = os::getcwd();
-    // now add in default entries
-    env_rust_path.push(cwd.clone());
-    do cwd.each_parent() |p| { push_if_exists(&mut env_rust_path, p) };
-    let h = os::homedir();
-    // Avoid adding duplicates
-    // could still add dups if someone puts one of these in the RUST_PATH
-    // manually, though...
-    for hdir in h.iter() {
-        if !(cwd.is_ancestor_of(hdir) || hdir.is_ancestor_of(&cwd)) {
-            push_if_exists(&mut env_rust_path, hdir);
-        }
-    }
-    env_rust_path
-}
 
 pub fn default_workspace() -> Path {
     let p = rust_path();
@@ -99,39 +51,39 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
-    let dirs = os::list_dir(&src_dir);
-    for p in dirs.iter() {
-        let p = Path((*p).clone());
+    let mut found = false;
+    do os::walk_dir(&src_dir) |p| {
         debug!("=> p = %s", p.to_str());
-        if !os::path_is_dir(&src_dir.push_rel(&p)) {
-            loop;
-        }
-        debug!("p = %s, remote_path = %s", p.to_str(), pkgid.remote_path.to_str());
+        if os::path_is_dir(p) {
+            debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
+            src_dir.push_rel(&pkgid.path).to_str());
 
-        if p == *pkgid.remote_path {
-            return true;
-        }
-        else {
-            let pf = p.filename();
-            for pf in pf.iter() {
-                let f_ = (*pf).clone();
-                let g = f_.to_str();
-                match split_version_general(g, '-') {
-                    Some((ref might_match, ref vers)) => {
-                        debug!("might_match = %s, vers = %s", *might_match,
+            if *p == src_dir.push_rel(&pkgid.path) {
+                found = true;
+            }
+            else {
+                let pf = p.filename();
+                for pf in pf.iter() {
+                    let f_ = (*pf).clone();
+                    let g = f_.to_str();
+                    match split_version_general(g, '-') {
+                        Some((ref might_match, ref vers)) => {
+                            debug!("might_match = %s, vers = %s", *might_match,
                                vers.to_str());
-                        if *might_match == pkgid.short_name
-                            && (*vers == pkgid.version || pkgid.version == NoVersion)
-                        {
-                            return true;
+                            if *might_match == pkgid.short_name
+                                 && (*vers == pkgid.version || pkgid.version == NoVersion)
+                            {
+                                  found = true;
+                            }
                         }
-                    }
-                    None => ()
+                        None => ()
+                     }
                 }
             }
         }
-    }
-    false
+        true
+    };
+    found
 }
 
 /// Returns a list of possible directories
@@ -141,9 +93,9 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
 pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
     let mut results = ~[];
     let result = workspace.push("src").push(fmt!("%s-%s",
-                     pkgid.local_path.to_str(), pkgid.version.to_str()));
+                     pkgid.path.to_str(), pkgid.version.to_str()));
     results.push(result);
-    results.push(workspace.push("src").push_rel(&*pkgid.remote_path));
+    results.push(workspace.push("src").push_rel(&pkgid.path));
     results
 }
 
@@ -163,7 +115,7 @@ pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<P
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = workspace.push("build");
     // should use a target-specific subdirectory
-    result = mk_output_path(Main, Build, pkgid, &result);
+    result = mk_output_path(Main, Build, pkgid, result);
     debug!("built_executable_in_workspace: checking whether %s exists",
            result.to_str());
     if os::path_exists(&result) {
@@ -191,7 +143,7 @@ pub fn built_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path>
 fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
     let mut result = workspace.push("build");
     // should use a target-specific subdirectory
-    result = mk_output_path(what, Build, pkgid, &result);
+    result = mk_output_path(what, Build, pkgid, result);
     debug!("output_in_workspace: checking whether %s exists",
            result.to_str());
     if os::path_exists(&result) {
@@ -206,14 +158,12 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
 /// Figure out what the library name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
 pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&pkgid.local_path, pkgid.short_name,
-                         Build, workspace, "build")
+    library_in_workspace(&pkgid.path, pkgid.short_name, Build, workspace, "build")
 }
 
 /// Does the actual searching stuff
 pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&normalize(RemotePath(Path(short_name))),
-                         short_name, Install, workspace, "lib")
+    library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib")
 }
 
 
@@ -221,7 +171,7 @@ pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Opt
 /// don't know the entire package ID.
 /// `workspace` is used to figure out the directory to search.
 /// `short_name` is taken as the link name of the library.
-pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
+pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                         workspace: &Path, prefix: &str) -> Option<Path> {
     debug!("library_in_workspace: checking whether a library named %s exists",
            short_name);
@@ -233,7 +183,7 @@ pub fn library_in_workspace(path: &LocalPath, short_name: &str, where: Target,
             prefix = %s", short_name, where, workspace.to_str(), prefix);
 
     let dir_to_search = match where {
-        Build => workspace.push(prefix).push_rel(&**path),
+        Build => workspace.push(prefix).push_rel(path),
         Install => workspace.push(prefix)
     };
     debug!("Listing directory %s", dir_to_search.to_str());
@@ -349,7 +299,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match where {
-                Build => workspace.push(subdir).push_rel(&*pkgid.local_path),
+                Build => workspace.push(subdir).push_rel(&pkgid.path),
                 _     => workspace.push(subdir)
     };
     if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
@@ -357,7 +307,7 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
             create the %s dir (pkgid=%s, workspace=%s, what=%?, where=%?",
             subdir, pkgid.to_str(), workspace.to_str(), what, where)));
     }
-    mk_output_path(what, where, pkgid, &result)
+    mk_output_path(what, where, pkgid, result)
 }
 
 /// Return the directory for <pkgid>'s build artifacts in <workspace>.
@@ -368,7 +318,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     let mut result = workspace.push("build");
     // n.b. Should actually use a target-specific
     // subdirectory of build/
-    result = result.push_rel(&*pkgid.local_path);
+    result = result.push_rel(&pkgid.path);
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }
@@ -380,19 +330,16 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
-                      pkg_id: &PkgId, workspace: &Path) -> Path {
+                      pkg_id: &PkgId, workspace: Path) -> Path {
     let short_name_with_version = fmt!("%s-%s", pkg_id.short_name,
                                        pkg_id.version.to_str());
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
-        Install => {
-            // bad copy, but I just couldn't make the borrow checker happy
-            (*workspace).clone()
-        }
+        Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
-        Build => workspace.push_rel(&*pkg_id.local_path)
+        Build => workspace.push_rel(&pkg_id.path)
     };
     debug!("[%?:%?] mk_output_path: short_name = %s, path = %s", what, where,
            if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },

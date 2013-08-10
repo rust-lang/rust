@@ -11,7 +11,7 @@
 use target::*;
 use package_id::PkgId;
 use std::path::Path;
-use std::{os, str};
+use std::os;
 use context::*;
 use crate::Crate;
 use messages::*;
@@ -23,7 +23,6 @@ use util::compile_crate;
 // This contains a list of files found in the source workspace.
 pub struct PkgSrc {
     root: Path, // root of where the package source code lives
-    dst_dir: Path, // directory where we will put the compiled output
     id: PkgId,
     libs: ~[Crate],
     mains: ~[Crate],
@@ -37,11 +36,9 @@ condition! {
 
 impl PkgSrc {
 
-    pub fn new(src_dir: &Path, dst_dir: &Path,
-                  id: &PkgId) -> PkgSrc {
+    pub fn new(src_dir: &Path, id: &PkgId) -> PkgSrc {
         PkgSrc {
             root: (*src_dir).clone(),
-            dst_dir: (*dst_dir).clone(),
             id: (*id).clone(),
             libs: ~[],
             mains: ~[],
@@ -54,8 +51,7 @@ impl PkgSrc {
     fn check_dir(&self) -> Path {
         use conditions::nonexistent_package::cond;
 
-        debug!("Pushing onto root: %s | %s", self.id.remote_path.to_str(),
-               self.root.to_str());
+        debug!("Pushing onto root: %s | %s", self.id.path.to_str(), self.root.to_str());
         let dir;
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
@@ -89,18 +85,18 @@ impl PkgSrc {
         os::remove_dir_recursive(&local);
 
         debug!("Checking whether %s exists locally. Cwd = %s, does it? %?",
-               self.id.local_path.to_str(),
+               self.id.path.to_str(),
                os::getcwd().to_str(),
-               os::path_exists(&*self.id.local_path));
+               os::path_exists(&self.id.path));
 
-        if os::path_exists(&*self.id.local_path) {
+        if os::path_exists(&self.id.path) {
             debug!("%s exists locally! Cloning it into %s",
-                   self.id.local_path.to_str(), local.to_str());
-            git_clone(&*self.id.local_path, &local, &self.id.version);
+                   self.id.path.to_str(), local.to_str());
+            git_clone(&self.id.path, &local, &self.id.version);
             return Some(local);
         }
 
-        let url = fmt!("https://%s", self.id.remote_path.to_str());
+        let url = fmt!("https://%s", self.id.path.to_str());
         note(fmt!("Fetching package: git clone %s %s [version=%s]",
                   url, local.to_str(), self.id.version.to_str()));
         if git_clone_general(url, &local, &self.id.version) {
@@ -125,25 +121,8 @@ impl PkgSrc {
     }
 
     /// True if the given path's stem is self's pkg ID's stem
-    /// or if the pkg ID's stem is <rust-foo> and the given path's
-    /// stem is foo
-    /// Requires that dashes in p have already been normalized to
-    /// underscores
     fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = self.id.local_path.filestem();
-        if self_id == p.filestem() {
-            return true;
-        }
-        else {
-            for pth in self_id.iter() {
-                if pth.starts_with("rust_") // because p is already normalized
-                    && match p.filestem() {
-                           Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
-                           None => false
-                       } { return true; }
-            }
-        }
-        false
+        p.filestem().map_default(false, |p| { p == &self.id.short_name })
     }
 
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
@@ -164,7 +143,7 @@ impl PkgSrc {
         let dir = self.check_dir();
         debug!("Called check_dir, I'm in %s", dir.to_str());
         let prefix = dir.components.len();
-        debug!("Matching against %?", self.id.local_path.filestem());
+        debug!("Matching against %?", self.id.short_name);
         do os::walk_dir(&dir) |pth| {
             match pth.filename() {
                 Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
@@ -202,7 +181,6 @@ impl PkgSrc {
 
     fn build_crates(&self,
                     ctx: &Ctx,
-                    dst_dir: &Path,
                     src_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
@@ -210,12 +188,13 @@ impl PkgSrc {
         for crate in crates.iter() {
             let path = &src_dir.push_rel(&crate.file).normalize();
             note(fmt!("build_crates: compiling %s", path.to_str()));
-            note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
+            note(fmt!("build_crates: using as workspace %s", self.root.to_str()));
 
             let result = compile_crate(ctx,
                                        &self.id,
                                        path,
-                                       dst_dir,
+                                       // compile_crate wants the workspace
+                                       &self.root,
                                        crate.flags,
                                        crate.cfgs + cfgs,
                                        false,
@@ -229,15 +208,15 @@ impl PkgSrc {
         }
     }
 
-    pub fn build(&self, ctx: &Ctx, dst_dir: Path, cfgs: ~[~str]) {
+    pub fn build(&self, ctx: &Ctx, cfgs: ~[~str]) {
         let dir = self.check_dir();
         debug!("Building libs in %s", dir.to_str());
-        self.build_crates(ctx, &dst_dir, &dir, self.libs, cfgs, Lib);
+        self.build_crates(ctx, &dir, self.libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(ctx, &dst_dir, &dir, self.mains, cfgs, Main);
+        self.build_crates(ctx, &dir, self.mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(ctx, &dst_dir, &dir, self.tests, cfgs, Test);
+        self.build_crates(ctx, &dir, self.tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(ctx, &dst_dir, &dir, self.benchs, cfgs, Bench);
+        self.build_crates(ctx, &dir, self.benchs, cfgs, Bench);
     }
 }
