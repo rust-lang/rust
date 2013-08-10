@@ -81,17 +81,6 @@ fn test_ptr() {
     }
 }
 
-mod test {
-    use std::libc;
-
-    #[abi = "cdecl"]
-    #[nolink]
-    extern {
-        pub fn rust_get_sched_id() -> libc::intptr_t;
-        pub fn get_task_id() -> libc::intptr_t;
-    }
-}
-
 #[deriving(Eq)]
 struct p {
   x: int,

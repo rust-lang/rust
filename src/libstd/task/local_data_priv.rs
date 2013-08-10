@@ -15,32 +15,21 @@ use libc;
 use local_data;
 use prelude::*;
 use ptr;
-use task::rt;
 use unstable::raw;
 use util;
 
-use super::rt::rust_task;
 use rt::task::{Task, LocalStorage};
 
 pub enum Handle {
-    OldHandle(*rust_task),
     NewHandle(*mut LocalStorage)
 }
 
 impl Handle {
     pub fn new() -> Handle {
-        use rt::{context, OldTaskContext};
         use rt::local::Local;
         unsafe {
-            match context() {
-                OldTaskContext => {
-                    OldHandle(rt::rust_get_task())
-                }
-                _ => {
-                    let task = Local::unsafe_borrow::<Task>();
-                    NewHandle(&mut (*task).storage)
-                }
-            }
+            let task = Local::unsafe_borrow::<Task>();
+            NewHandle(&mut (*task).storage)
         }
     }
 }
@@ -109,26 +98,6 @@ fn cleanup_task_local_map(map_ptr: *libc::c_void) {
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
 
-    unsafe fn oldsched_map(task: *rust_task) -> &mut TaskLocalMap {
-        extern fn cleanup_extern_cb(map_ptr: *libc::c_void) {
-            cleanup_task_local_map(map_ptr);
-        }
-
-        // Relies on the runtime initialising the pointer to null.
-        // Note: the map is an owned pointer and is "owned" by TLS. It is moved
-        // into the tls slot for this task, and then mutable loans are taken
-        // from this slot to modify the map.
-        let map_ptr = rt::rust_get_task_local_data(task);
-        if (*map_ptr).is_null() {
-            // First time TLS is used, create a new map and set up the necessary
-            // TLS information for its safe destruction
-            let map: TaskLocalMap = ~[];
-            *map_ptr = cast::transmute(map);
-            rt::rust_task_local_data_atexit(task, cleanup_extern_cb);
-        }
-        return cast::transmute(map_ptr);
-    }
-
     unsafe fn newsched_map(local: *mut LocalStorage) -> &mut TaskLocalMap {
         // This is based on the same idea as the oldsched code above.
         match &mut *local {
@@ -152,7 +121,6 @@ unsafe fn get_local_map(handle: Handle) -> &mut TaskLocalMap {
     }
 
     match handle {
-        OldHandle(task) => oldsched_map(task),
         NewHandle(local_storage) => newsched_map(local_storage)
     }
 }

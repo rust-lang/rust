@@ -12,7 +12,8 @@
 #define RUST_UTIL_H
 
 #include <limits.h>
-#include "rust_task.h"
+#include "rust_exchange_alloc.h"
+#include "rust_type.h"
 #include "rust_env.h"
 
 extern struct type_desc str_body_tydesc;
