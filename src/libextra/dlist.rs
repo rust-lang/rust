@@ -1077,7 +1077,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
-            assert!(m.iter().len_() == 128);
+            assert!(m.iter().len() == 128);
         }
     }
     #[bench]
@@ -1085,7 +1085,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
-            assert!(m.mut_iter().len_() == 128);
+            assert!(m.mut_iter().len() == 128);
         }
     }
     #[bench]
@@ -1093,7 +1093,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
-            assert!(m.rev_iter().len_() == 128);
+            assert!(m.rev_iter().len() == 128);
         }
     }
     #[bench]
@@ -1101,7 +1101,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
-            assert!(m.mut_rev_iter().len_() == 128);
+            assert!(m.mut_rev_iter().len() == 128);
         }
     }
 }
