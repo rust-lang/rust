@@ -81,7 +81,7 @@ fn strip_priv_methods(
     item_vis: ast::visibility
 ) -> doc::ImplDoc {
     let methods = do doc.methods.iter().filter |method| {
-        let ast_method = do methods.iter().find_ |m| {
+        let ast_method = do methods.iter().find |m| {
             extract::to_str(m.ident) == method.name
         };
         assert!(ast_method.is_some());
@@ -91,7 +91,7 @@ fn strip_priv_methods(
             ast::private => false,
             ast::inherited => item_vis == ast::public
         }
-    }.transform(|x| (*x).clone()).collect();
+    }.map(|x| (*x).clone()).collect();
 
     doc::ImplDoc {
         methods: methods,
@@ -126,7 +126,7 @@ fn fold_mod(
                     is_visible(fold.ctxt.clone(), item_tag.item())
                 }
             }
-        }).transform(|x| (*x).clone()).collect(),
+        }).map(|x| (*x).clone()).collect(),
         .. doc
     }
 }

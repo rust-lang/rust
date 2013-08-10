@@ -43,7 +43,7 @@ fn fold_mod(
     doc::ModDoc {
         items: do doc.items.iter().filter |item_tag| {
             !is_hidden(fold.ctxt.clone(), item_tag.item())
-        }.transform(|x| (*x).clone()).collect(),
+        }.map(|x| (*x).clone()).collect(),
         .. doc
     }
 }

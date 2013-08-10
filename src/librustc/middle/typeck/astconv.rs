@@ -724,7 +724,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Clone + 'static>(
         in_binding_rscope(rscope,
                           RegionParamNames(bound_lifetime_names.clone()));
 
-    let input_tys = do decl.inputs.iter().enumerate().transform |(i, a)| {
+    let input_tys = do decl.inputs.iter().enumerate().map |(i, a)| {
         let expected_arg_ty = do expected_sig.chain_ref |e| {
             // no guarantee that the correct number of expected args
             // were supplied

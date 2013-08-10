@@ -14,7 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use std::hashmap::HashSet;
-use std::{num, os, path, uint, util, vec};
+use std::{os, util, vec};
 
 fn not_win32(os: session::os) -> bool {
   os != session::os_win32
@@ -49,7 +49,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
 }
 
 pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
-    rpaths.iter().transform(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
+    rpaths.iter().map(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
 }
 
 fn get_rpaths(os: session::os,
@@ -100,7 +100,7 @@ fn get_rpaths(os: session::os,
 fn get_rpaths_relative_to_output(os: session::os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[Path] {
-    libs.iter().transform(|a| get_rpath_relative_to_output(os, output, a)).collect()
+    libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
 pub fn get_rpath_relative_to_output(os: session::os,
@@ -123,7 +123,7 @@ pub fn get_rpath_relative_to_output(os: session::os,
 }
 
 fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
-    libs.iter().transform(|a| get_absolute_rpath(a)).collect()
+    libs.iter().map(|a| get_absolute_rpath(a)).collect()
 }
 
 pub fn get_absolute_rpath(lib: &Path) -> Path {

@@ -27,7 +27,7 @@ pub struct CrateAttrs {
 fn doc_metas(attrs: ~[ast::Attribute]) -> ~[@ast::MetaItem] {
     attrs.iter()
         .filter(|at| "doc" == at.name())
-        .transform(|at| at.desugar_doc().meta())
+        .map(|at| at.desugar_doc().meta())
         .collect()
 }
 
@@ -41,7 +41,7 @@ pub fn parse_crate(attrs: ~[ast::Attribute]) -> CrateAttrs {
 }
 
 pub fn parse_desc(attrs: ~[ast::Attribute]) -> Option<~str> {
-    let doc_strs = do doc_metas(attrs).consume_iter().filter_map |meta| {
+    let doc_strs = do doc_metas(attrs).move_iter().filter_map |meta| {
         meta.value_str()
     }.collect::<~[@str]>();
     if doc_strs.is_empty() {

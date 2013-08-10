@@ -590,7 +590,7 @@ impl<'self> MethodDef<'self> {
         // transpose raw_fields
         let fields = match raw_fields {
             [ref self_arg, .. rest] => {
-                do self_arg.iter().enumerate().transform |(i, &(opt_id, field))| {
+                do self_arg.iter().enumerate().map |(i, &(opt_id, field))| {
                     let other_fields = do rest.map |l| {
                         match &l[i] {
                             &(_, ex) => ex
@@ -750,7 +750,7 @@ impl<'self> MethodDef<'self> {
                     let field_tuples =
                         do self_vec.iter()
                            .zip(enum_matching_fields.iter())
-                           .transform |(&(id, self_f), other)| {
+                           .map |(&(id, self_f), other)| {
                         (id, self_f, (*other).clone())
                     }.collect();
                     substructure = EnumMatching(variant_index, variant, field_tuples);

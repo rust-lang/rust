@@ -150,7 +150,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // these channels will allow us to talk to each creature by 'name'/index
     let to_creature: ~[Chan<Option<CreatureInfo>>] =
-        set.iter().enumerate().transform(|(ii, col)| {
+        set.iter().enumerate().map(|(ii, col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
             let ii = ii;

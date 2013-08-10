@@ -96,9 +96,9 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         }
     }
 
-    do graph.consume_iter().transform |v| {
+    do graph.move_iter().map |v| {
         let mut vec = ~[];
-        for i in v.consume() {
+        for i in v.move_iter() {
             vec.push(i);
         }
         vec
@@ -119,7 +119,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
         }
     }
     let mut vec = ~[];
-    for i in keys.consume() {
+    for i in keys.move_iter() {
         vec.push(i);
     }
     return vec;
@@ -193,7 +193,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         // Do the BFS.
         info!("PBFS iteration %?", i);
         i += 1;
-        colors = do colors.iter().enumerate().transform |(i, c)| {
+        colors = do colors.iter().enumerate().map |(i, c)| {
             let c : color = *c;
             match c {
               white => {
@@ -220,7 +220,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     }
 
     // Convert the results.
-    do colors.iter().transform |c| {
+    do colors.iter().map |c| {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }

@@ -10,7 +10,6 @@
 
 use container::Container;
 use from_str::FromStr;
-use iterator::IteratorUtil;
 use libc;
 use option::{Some, None};
 use os;

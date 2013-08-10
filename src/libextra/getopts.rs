@@ -647,7 +647,7 @@ pub mod groups {
 
         let desc_sep = "\n" + " ".repeat(24);
 
-        let mut rows = opts.iter().transform(|optref| {
+        let mut rows = opts.iter().map(|optref| {
             let OptGroup{short_name: short_name,
                          long_name: long_name,
                          hint: hint,

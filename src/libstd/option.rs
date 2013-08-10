@@ -134,7 +134,7 @@ impl<T> Option<T> {
 
     /// Return a consuming iterator over the possibly contained value
     #[inline]
-    pub fn consume(self) -> OptionIterator<T> {
+    pub fn move_iter(self) -> OptionIterator<T> {
         OptionIterator{opt: self}
     }
 

@@ -315,7 +315,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         // file, skip compilation and return None.
         let mut should_compile = true;
         let dir = os::list_dir_path(&Path(outputs.out_filename.dirname()));
-        let maybe_lib_path = do dir.iter().find_ |file| {
+        let maybe_lib_path = do dir.iter().find |file| {
             // The actual file's name has a hash value and version
             // number in it which is unknown at this time, so looking
             // for a file that matches out_filename won't work,
@@ -453,7 +453,7 @@ pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~st
     if line.starts_with(":") {
         // drop the : and the \n (one byte each)
         let full = line.slice(1, line.len());
-        let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
+        let split: ~[~str] = full.word_iter().map(|s| s.to_owned()).collect();
         let len = split.len();
 
         if len > 0 {

@@ -17,7 +17,7 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use ptr;
-use iterator::{Iterator, IteratorUtil};
+use iterator::Iterator;
 use vec::{CopyableVector, ImmutableVector};
 #[cfg(stage0)]
 use vec::OwnedVector;

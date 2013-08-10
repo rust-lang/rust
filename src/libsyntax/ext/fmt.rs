@@ -269,7 +269,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
        corresponding function in std::unstable::extfmt. Each function takes a
        buffer to insert data into along with the data being formatted. */
     let npieces = pieces.len();
-    for (i, pc) in pieces.consume_iter().enumerate() {
+    for (i, pc) in pieces.move_iter().enumerate() {
         match pc {
             /* Raw strings get appended via str::push_str */
             PieceString(s) => {

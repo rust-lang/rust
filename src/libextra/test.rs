@@ -525,12 +525,11 @@ impl ConsoleTestState {
 }
 
 pub fn fmt_metrics(mm: &MetricMap) -> ~str {
-    use std::iterator::IteratorUtil;
     let v : ~[~str] = mm.iter()
-        .transform(|(k,v)| fmt!("%s: %f (+/- %f)",
-                                *k,
-                                v.value as float,
-                                v.noise as float))
+        .map(|(k,v)| fmt!("%s: %f (+/- %f)",
+                          *k,
+                          v.value as float,
+                          v.noise as float))
         .collect();
     v.connect(", ")
 }
@@ -698,7 +697,7 @@ fn run_tests(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
-    for b in filtered_benchs_and_metrics.consume_iter() {
+    for b in filtered_benchs_and_metrics.move_iter() {
         callback(TeWait(b.desc.clone()));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
@@ -744,7 +743,7 @@ pub fn filter_tests(
             }
         }
 
-        filtered.consume_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
+        filtered.move_iter().filter_map(|x| filter_fn(x, filter_str)).collect()
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -762,7 +761,7 @@ pub fn filter_tests(
                 None
             }
         };
-        filtered.consume_iter().filter_map(|x| filter(x)).collect()
+        filtered.move_iter().filter_map(|x| filter(x)).collect()
     };
 
     // Sort the tests alphabetically

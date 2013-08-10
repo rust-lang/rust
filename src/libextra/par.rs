@@ -77,7 +77,7 @@ fn map_slices<A:Clone + Send,B:Clone + Send>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert_eq!(num_tasks, futures.len());
 
-        do futures.consume_iter().transform |ys| {
+        do futures.move_iter().map |ys| {
             let mut ys = ys;
             ys.get()
         }.collect()
@@ -90,7 +90,7 @@ pub fn map<A:Clone + Send,B:Clone + Send>(
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
         let result: ~fn(uint, &[A]) -> ~[B] =
-            |_, slice| slice.iter().transform(|x| f(x)).collect();
+            |_, slice| slice.iter().map(|x| f(x)).collect();
         result
     }))
 }
@@ -102,7 +102,7 @@ pub fn mapi<A:Clone + Send,B:Clone + Send>(
     let slices = map_slices(xs, || {
         let f = fn_factory();
         let result: ~fn(uint, &[A]) -> ~[B] = |base, slice| {
-            slice.iter().enumerate().transform(|(i, x)| {
+            slice.iter().enumerate().map(|(i, x)| {
                 f(i + base, x)
             }).collect()
         };

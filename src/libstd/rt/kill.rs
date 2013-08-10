@@ -239,7 +239,7 @@ impl BlockedTask {
         };
         // Even if the task was unkillable before, we use 'Killable' because
         // multiple pipes will have handles. It does not really mean killable.
-        handles.consume_iter().transform(|x| Killable(x)).collect()
+        handles.move_iter().map(|x| Killable(x)).collect()
     }
 
     // This assertion has two flavours because the wake involves an atomic op.

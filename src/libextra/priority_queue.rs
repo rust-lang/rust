@@ -367,7 +367,7 @@ mod tests {
     fn test_from_iter() {
         let xs = ~[9u, 8, 7, 6, 5, 4, 3, 2, 1];
 
-        let mut q: PriorityQueue<uint> = xs.rev_iter().transform(|&x| x).collect();
+        let mut q: PriorityQueue<uint> = xs.rev_iter().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop(), x);

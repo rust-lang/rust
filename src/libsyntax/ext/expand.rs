@@ -1075,7 +1075,6 @@ mod test {
     use parse::token::{intern, get_ident_interner};
     use print::pprust;
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
-    use oldvisit::{mk_vt};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {

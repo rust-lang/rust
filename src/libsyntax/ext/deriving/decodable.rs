@@ -90,7 +90,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                     }
                 }
                 Right(ref fields) => {
-                    let fields = do fields.iter().enumerate().transform |(i, f)| {
+                    let fields = do fields.iter().enumerate().map |(i, f)| {
                         cx.field_imm(span, *f, getarg(cx.str_of(*f), i))
                     }.collect();
                     cx.expr_struct_ident(span, substr.type_ident, fields)
@@ -132,7 +132,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                         }
                     }
                     Right(ref fields) => {
-                        let fields = do fields.iter().enumerate().transform |(i, f)| {
+                        let fields = do fields.iter().enumerate().map |(i, f)| {
                             cx.field_imm(span, *f, getarg(i))
                         }.collect();
                         cx.expr_struct_ident(span, name, fields)

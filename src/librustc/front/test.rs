@@ -126,7 +126,7 @@ fn fold_mod(cx: @mut TestCtxt,
 
     let mod_nomain = ast::_mod {
         view_items: m.view_items.clone(),
-        items: m.items.iter().transform(|i| nomain(cx, *i)).collect(),
+        items: m.items.iter().map(|i| nomain(cx, *i)).collect(),
     };
 
     fold::noop_fold_mod(&mod_nomain, fld)
@@ -236,7 +236,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     do i.attrs.iter().any |attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
-            Some(ref cfgs) => attr::test_cfg(cx.crate.config, cfgs.iter().transform(|x| *x)),
+            Some(ref cfgs) => attr::test_cfg(cx.crate.config, cfgs.iter().map(|x| *x)),
             None => true
         }
     }

@@ -169,7 +169,7 @@ pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: span, pats: ~[@pat]) {
                     };
                     let variants = ty::enum_variants(cx.tcx, id);
 
-                    match variants.iter().find_(|v| v.id == vid) {
+                    match variants.iter().find(|v| v.id == vid) {
                         Some(v) => Some(cx.tcx.sess.str_of(v.name)),
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
@@ -222,7 +222,7 @@ pub enum ctor {
 pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
-    let real_pat = match m.iter().find_(|r| r[0].id != 0) {
+    let real_pat = match m.iter().find(|r| r[0].id != 0) {
       Some(r) => r[0], None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
@@ -470,7 +470,7 @@ pub fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
           _ => fail!("impossible case") };
-        match ty::enum_variants(cx.tcx, eid).iter().find_(|v| v.id == id ) {
+        match ty::enum_variants(cx.tcx, eid).iter().find(|v| v.id == id ) {
             Some(v) => v.args.len(),
             None => fail!("impossible case")
         }
@@ -627,7 +627,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                         if variant(variant_id) == *ctor_id {
                             // FIXME #4731: Is this right? --pcw
                             let args = flds.map(|ty_field| {
-                                match flds.iter().find_(|f|
+                                match flds.iter().find(|f|
                                                 f.ident == ty_field.ident) {
                                     Some(f) => f.pat,
                                     _ => wild()
@@ -657,8 +657,8 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                          ty_to_str(cx.tcx, left_ty)));
                             }
                         }
-                        let args = class_fields.iter().transform(|class_field| {
-                            match flds.iter().find_(|f|
+                        let args = class_fields.iter().map(|class_field| {
+                            match flds.iter().find(|f|
                                             f.ident == class_field.ident) {
                                 Some(f) => f.pat,
                                 _ => wild()

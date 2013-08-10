@@ -75,7 +75,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
        unsafe {
            let b = str::raw::from_bytes(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-           // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+           // to_ascii_move and to_str_move to not do a unnecessary copy.
            buffer.push_str(fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
        }
    }
@@ -86,7 +86,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
-   // to_ascii_consume and to_str_consume to not do a unnecessary copy.
+   // to_ascii_move and to_str_move to not do a unnecessary copy.
    let key = key.to_ascii().to_lower().to_str_ascii();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
@@ -172,7 +172,7 @@ fn main() {
     let sizes = ~[1u,2,3,4,6,12,18];
     let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
     let mut from_child = ~[];
-    let to_child   = do sizes.iter().zip(streams.mut_iter()).transform |(sz, stream_ref)| {
+    let to_child   = do sizes.iter().zip(streams.mut_iter()).map |(sz, stream_ref)| {
         let sz = *sz;
         let stream = util::replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
