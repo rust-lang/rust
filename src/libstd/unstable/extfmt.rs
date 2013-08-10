@@ -582,8 +582,15 @@ pub mod rt {
         pad(cv, s, None, PadNozero, buf);
     }
     pub fn conv_poly<T>(cv: Conv, v: &T, buf: &mut ~str) {
-        let s = sys::log_str(v);
-        conv_str(cv, s, buf);
+        #[cfg(no_rt)]
+        #[inline] fn inner<T>(cv: Conv, v: &T, buf: &mut ~str) {
+        }
+        #[cfg(not(no_rt))]
+        #[inline] fn inner<T>(cv: Conv, v: &T, buf: &mut ~str) {
+            let s = sys::log_str(v);
+            conv_str(cv, s, buf);
+        }
+        inner(cv, v, buf);
     }
 
     // Convert a uint to string with a minimum number of digits.  If precision

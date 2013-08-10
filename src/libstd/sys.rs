@@ -14,9 +14,11 @@
 
 use c_str::ToCStr;
 use cast;
+#[cfg(not(no_rt))]
 use io;
 use libc;
 use libc::{c_char, size_t};
+#[cfg(not(no_rt))]
 use repr;
 use str;
 use unstable::intrinsics;
@@ -91,6 +93,7 @@ pub fn refcount<T>(t: @T) -> uint {
     }
 }
 
+#[cfg(not(no_rt))]
 pub fn log_str<T>(t: &T) -> ~str {
     do io::with_str_writer |wr| {
         repr::write_repr(wr, t)
@@ -103,6 +106,7 @@ pub trait FailWithCause {
     fn fail_with(cause: Self, file: &'static str, line: uint) -> !;
 }
 
+#[cfg(not(no_rt))]
 impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
         do cause.to_c_str().with_ref |msg_buf| {
@@ -113,6 +117,14 @@ impl FailWithCause for ~str {
     }
 }
 
+#[cfg(no_rt)]
+impl FailWithCause for ~str {
+    fn fail_with(_cause: ~str, _file: &'static str, _line: uint) -> ! {
+        unsafe { libc::abort() }
+    }
+}
+
+#[cfg(not(no_rt))]
 impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
         do cause.to_c_str().with_ref |msg_buf| {
@@ -123,7 +135,15 @@ impl FailWithCause for &'static str {
     }
 }
 
+#[cfg(no_rt)]
+impl FailWithCause for &'static str {
+    fn fail_with(_cause: &'static str, _file: &'static str, _line: uint) -> ! {
+        unsafe { libc::abort() }
+    }
+}
+
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
+#[cfg(not(no_rt))]
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use either::Left;
     use option::{Some, None};

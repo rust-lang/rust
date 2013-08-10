@@ -31,11 +31,13 @@
 use c_str::ToCStr;
 use clone::Clone;
 use container::Container;
+#[cfg(not(no_rt))]
 use io;
 use iterator::{IteratorUtil, range};
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::FILE;
+#[cfg(not(no_rt))]
 use local_data;
 use option::{Some, None};
 use os;
@@ -338,7 +340,7 @@ pub fn fdopen(fd: c_int) -> *FILE {
 
 // fsync related
 
-#[cfg(windows)]
+#[cfg(windows, not(no_rt))]
 pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
     unsafe {
         use libc::funcs::extra::msvcrt::*;
@@ -346,8 +348,8 @@ pub fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
     }
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
+#[cfg(target_os = "linux", not(no_rt))]
+#[cfg(target_os = "android", not(no_rt))]
 pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     unsafe {
         use libc::funcs::posix01::unistd::*;
@@ -359,7 +361,7 @@ pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "macos", not(no_rt))]
 pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     unsafe {
         use libc::consts::os::extra::*;
@@ -379,7 +381,7 @@ pub fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     }
 }
 
-#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "freebsd", not(no_rt))]
 pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     unsafe {
         use libc::funcs::posix01::unistd::*;
@@ -1109,6 +1111,7 @@ pub fn last_os_error() -> ~str {
  * and is supervised by the scheduler then any user-specified exit status is
  * ignored and the process exits with the default failure status
  */
+#[cfg(not(no_rt))]
 pub fn set_exit_status(code: int) {
     use rt;
     rt::util::set_exit_status(code);
@@ -1127,7 +1130,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
  *
  * Returns a list of the command line arguments.
  */
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "macos", not(no_rt))]
 pub fn real_args() -> ~[~str] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as c_int,
@@ -1136,9 +1139,9 @@ pub fn real_args() -> ~[~str] {
     }
 }
 
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "linux", not(no_rt))]
+#[cfg(target_os = "android", not(no_rt))]
+#[cfg(target_os = "freebsd", not(no_rt))]
 pub fn real_args() -> ~[~str] {
     use rt;
 
@@ -1148,7 +1151,7 @@ pub fn real_args() -> ~[~str] {
     }
 }
 
-#[cfg(windows)]
+#[cfg(windows, not(no_rt))]
 pub fn real_args() -> ~[~str] {
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;
@@ -1197,6 +1200,7 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
+#[cfg(not(no_rt))]
 static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 
 /// Returns the arguments which this program was started with (normally passed
@@ -1204,6 +1208,7 @@ static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
 ///
 /// The return value of the function can be changed by invoking the
 /// `os::set_args` function.
+#[cfg(not(no_rt))]
 pub fn args() -> ~[~str] {
     match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
         None => real_args(),
@@ -1214,6 +1219,7 @@ pub fn args() -> ~[~str] {
 /// For the current task, overrides the task-local cache of the arguments this
 /// program had when it started. These new arguments are only available to the
 /// current task via the `os::args` method.
+#[cfg(not(no_rt))]
 pub fn set_args(new_args: ~[~str]) {
     let overridden_args = @OverriddenArgs {
         val: new_args.clone()

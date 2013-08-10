@@ -15,7 +15,9 @@
 use c_str::ToCStr;
 use cast;
 use clone::Clone;
+#[cfg(not(no_rt))]
 use comm::{stream, SharedChan, GenericChan, GenericPort};
+#[cfg(not(no_rt))]
 use io;
 use libc::{pid_t, c_void, c_int};
 use libc;
@@ -23,6 +25,7 @@ use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
+#[cfg(not(no_rt))]
 use task;
 use vec::ImmutableVector;
 
@@ -255,6 +258,7 @@ impl Process {
      *
      * Fails if this Process's stdin was redirected to an existing file descriptor.
      */
+    #[cfg(not(no_rt))]
     pub fn input(&mut self) -> @io::Writer {
         // FIXME: the Writer can still be used after self is destroyed: #2625
        io::fd_writer(self.input_fd(), false)
@@ -265,6 +269,7 @@ impl Process {
      *
      * Fails if this Process's stdout was redirected to an existing file descriptor.
      */
+    #[cfg(not(no_rt))]
     pub fn output(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
         io::FILE_reader(self.output_file(), false)
@@ -275,6 +280,7 @@ impl Process {
      *
      * Fails if this Process's stderr was redirected to an existing file descriptor.
      */
+    #[cfg(not(no_rt))]
     pub fn error(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
         io::FILE_reader(self.error_file(), false)
@@ -341,6 +347,7 @@ impl Process {
      * This method will fail if the child process's stdout or stderr streams were
      * redirected to existing file descriptors.
      */
+    #[cfg(not(no_rt))]
     pub fn finish_with_output(&mut self) -> ProcessOutput {
         let output_file = self.output_file();
         let error_file = self.error_file();

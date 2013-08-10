@@ -39,6 +39,7 @@ pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 // Reexported functions
+#[cfg(not(no_rt))]
 pub use io::{print, println};
 pub use iterator::range;
 
@@ -48,6 +49,7 @@ pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
+#[cfg(not(no_rt))]
 pub use hash::Hash;
 pub use iter::Times;
 pub use iterator::Extendable;
@@ -79,8 +81,11 @@ pub use tuple::{ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
 pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
+#[cfg(not(no_rt))]
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
 // Reexported runtime types
+#[cfg(not(no_rt))]
 pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
+#[cfg(not(no_rt))]
 pub use task::spawn;

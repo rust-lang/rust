@@ -49,6 +49,7 @@ use cmp;
 use container::Container;
 use int;
 use iterator::{Iterator, range};
+#[cfg(not(no_rt))]
 use local_data;
 use num;
 use prelude::*;
@@ -875,6 +876,7 @@ pub fn seed() -> ~[u8] {
 }
 
 // used to make space in TLS for a random number generator
+#[cfg(not(no_rt))]
 static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
 
 /**
@@ -883,6 +885,7 @@ static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
  * `task_rng().gen::<int>()`.
  */
 #[inline]
+#[cfg(not(no_rt))]
 pub fn task_rng() -> @mut IsaacRng {
     let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
     match r {
@@ -908,8 +911,17 @@ impl<R: Rng> Rng for @mut R {
  * generator.
  */
 #[inline]
+#[cfg(not(no_rt))]
 pub fn random<T: Rand>() -> T {
     task_rng().gen()
+}
+
+#[cfg(no_rt)]
+/// Returns a random value of the `Rand` type, using a XorShiftRng seeded with
+/// a constant.
+pub fn random<T: Rand>() -> T {
+    // XXX: always seeded with a constant! bad!
+    XorShiftRng::new().gen()
 }
 
 #[cfg(test)]

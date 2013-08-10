@@ -264,6 +264,7 @@ macro_rules! compress (
 )
 
 
+#[cfg(not(no_rt))]
 impl Writer for SipState {
     // Methods for io::writer
     #[inline]

@@ -66,14 +66,23 @@ use container::Container;
 use iterator::{Iterator, IteratorUtil, range};
 use option::{Some, None};
 use ptr::RawPtr;
+#[cfg(not(no_rt))]
 use rt::local::Local;
+#[cfg(not(no_rt))]
 use rt::sched::{Scheduler, Shutdown};
+#[cfg(not(no_rt))]
 use rt::sleeper_list::SleeperList;
+#[cfg(not(no_rt))]
 use rt::task::{Task, SchedTask, GreenTask, Sched};
+#[cfg(not(no_rt))]
 use rt::thread::Thread;
+#[cfg(not(no_rt))]
 use rt::work_queue::WorkQueue;
+#[cfg(not(no_rt))]
 use rt::uv::uvio::UvEventLoop;
+#[cfg(not(no_rt))]
 use unstable::atomics::{AtomicInt, SeqCst};
+#[cfg(not(no_rt))]
 use unstable::sync::UnsafeAtomicRcBox;
 use vec::{OwnedVector, MutableVector};
 
@@ -81,88 +90,115 @@ use vec::{OwnedVector, MutableVector};
 pub mod global_heap;
 
 /// Implementations of language-critical runtime features like @.
+#[cfg(not(no_rt))]
 pub mod task;
 
 /// Facilities related to task failure, killing, and death.
+#[cfg(not(no_rt))]
 mod kill;
 
 /// The coroutine task scheduler, built on the `io` event loop.
+#[cfg(not(no_rt))]
 mod sched;
 
 /// Synchronous I/O.
+#[cfg(not(no_rt))]
 pub mod io;
 
 /// The EventLoop and internal synchronous I/O interface.
+#[cfg(not(no_rt))]
 mod rtio;
 
 /// libuv and default rtio implementation.
+#[cfg(not(no_rt))]
 pub mod uv;
 
 /// The Local trait for types that are accessible via thread-local
 /// or task-local storage.
+#[cfg(not(no_rt))]
 pub mod local;
 
 /// A parallel work-stealing deque.
+#[cfg(not(no_rt))]
 mod work_queue;
 
 /// A parallel queue.
+#[cfg(not(no_rt))]
 mod message_queue;
 
 /// A parallel data structure for tracking sleeping schedulers.
+#[cfg(not(no_rt))]
 mod sleeper_list;
 
 /// Stack segments and caching.
+#[cfg(not(no_rt))]
 mod stack;
 
 /// CPU context swapping.
+#[cfg(not(no_rt))]
 mod context;
 
 /// Bindings to system threading libraries.
+#[cfg(not(no_rt))]
 mod thread;
 
 /// The runtime configuration, read from environment variables.
+#[cfg(not(no_rt))]
 pub mod env;
 
 /// The local, managed heap
+#[cfg(not(no_rt))]
 pub mod local_heap;
 
 /// The Logger trait and implementations
+#[cfg(not(no_rt))]
 pub mod logging;
 
 /// Tools for testing the runtime
+#[cfg(not(no_rt))]
 pub mod test;
 
 /// Reference counting
+#[cfg(not(no_rt))]
 pub mod rc;
 
 /// A simple single-threaded channel type for passing buffered data between
 /// scheduler and task context
+#[cfg(not(no_rt))]
 pub mod tube;
 
 /// Simple reimplementation of core::comm
+#[cfg(not(no_rt))]
 pub mod comm;
 
 /// Routines for select()ing on pipes.
+#[cfg(not(no_rt))]
 pub mod select;
 
 // FIXME #5248 shouldn't be pub
 /// The runtime needs to be able to put a pointer into thread-local storage.
+#[cfg(not(no_rt))]
 pub mod local_ptr;
 
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 /// Bindings to pthread/windows thread-local storage.
+#[cfg(not(no_rt))]
 pub mod thread_local_storage;
 
+#[cfg(not(no_rt))]
 pub mod metrics;
 
 // FIXME #5248 shouldn't be pub
 /// Just stuff
+#[cfg(not(no_rt))]
 pub mod util;
 
 // Global command line argument storage
+#[cfg(not(no_rt))]
 pub mod args;
 
 // Support for dynamic borrowck
+#[cfg(not(no_rt))]
 pub mod borrowck;
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
@@ -179,6 +215,7 @@ pub mod borrowck;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
+#[cfg(not(no_rt))]
 pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     init(argc, argv, crate_map);
@@ -193,6 +230,7 @@ pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 ///
 /// This is appropriate for running code that must execute on the main thread,
 /// such as the platform event loop and GUI.
+#[cfg(not(no_rt))]
 pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     init(argc, argv, crate_map);
     let exit_code = run_on_main_thread(main);
@@ -206,6 +244,7 @@ pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) 
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
+#[cfg(not(no_rt))]
 pub fn init(argc: int, argv: **u8, crate_map: *u8) {
     // XXX: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
@@ -222,6 +261,7 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
 }
 
 /// One-time runtime cleanup.
+#[cfg(not(no_rt))]
 pub fn cleanup() {
     args::cleanup();
 }
@@ -231,14 +271,17 @@ pub fn cleanup() {
 /// Configures the runtime according to the environment, by default
 /// using a task scheduler with the same number of threads as cores.
 /// Returns a process exit code.
+#[cfg(not(no_rt))]
 pub fn run(main: ~fn()) -> int {
     run_(main, false)
 }
 
+#[cfg(not(no_rt))]
 pub fn run_on_main_thread(main: ~fn()) -> int {
     run_(main, true)
 }
 
+#[cfg(not(no_rt))]
 fn run_(main: ~fn(), use_main_sched: bool) -> int {
     static DEFAULT_ERROR_CODE: int = 101;
 
@@ -401,6 +444,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     }
 }
 
+#[cfg(not(no_rt))]
 pub fn in_sched_context() -> bool {
     unsafe {
         match Local::try_unsafe_borrow::<Task>() {
@@ -415,6 +459,7 @@ pub fn in_sched_context() -> bool {
     }
 }
 
+#[cfg(not(no_rt))]
 pub fn in_green_task_context() -> bool {
     unsafe {
         match Local::try_unsafe_borrow::<Task>() {

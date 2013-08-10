@@ -15,7 +15,9 @@ The `ToBytes` and `IterBytes` traits
 */
 
 use cast;
+#[cfg(not(no_rt))]
 use io;
+#[cfg(not(no_rt))]
 use io::Writer;
 use iterator::IteratorUtil;
 use option::{None, Option, Some};
@@ -350,6 +352,7 @@ pub trait ToBytes {
     fn to_bytes(&self, lsb0: bool) -> ~[u8];
 }
 
+#[cfg(not(no_rt))]
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
         do io::with_bytes_writer |wr| {
