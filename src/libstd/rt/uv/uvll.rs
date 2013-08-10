@@ -448,13 +448,6 @@ pub unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
 pub unsafe fn get_len_from_buf(buf: uv_buf_t) -> size_t {
     return rust_uv_get_len_from_buf(buf);
 }
-pub unsafe fn malloc_buf_base_of(suggested_size: size_t) -> *u8 {
-    return rust_uv_malloc_buf_base_of(suggested_size);
-}
-pub unsafe fn free_base_of_buf(buf: uv_buf_t) {
-    rust_uv_free_base_of_buf(buf);
-}
-
 pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::to_unsafe_ptr(&err);
@@ -558,8 +551,6 @@ extern {
                            repeat: libc::uint64_t) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
-    fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;
-    fn rust_uv_free_base_of_buf(buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(connect_req: *uv_connect_t) -> *uv_stream_t;
     fn rust_uv_get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t;
     fn rust_uv_get_loop_for_uv_handle(handle: *c_void) -> *c_void;

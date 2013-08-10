@@ -120,7 +120,7 @@ mod context;
 /// Bindings to system threading libraries.
 mod thread;
 
-/// The runtime configuration, read from environment variables
+/// The runtime configuration, read from environment variables.
 pub mod env;
 
 /// The local, managed heap
@@ -398,35 +398,6 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // Return the exit code
     unsafe {
         (*exit_code.get()).load(SeqCst)
-    }
-}
-
-/// Possible contexts in which Rust code may be executing.
-/// Different runtime services are available depending on context.
-/// Mostly used for determining if we're using the new scheduler
-/// or the old scheduler.
-#[deriving(Eq)]
-pub enum RuntimeContext {
-    // Running in an old-style task
-    OldTaskContext,
-    // Not old task context
-    NewRtContext
-}
-
-/// Determine the current RuntimeContext
-pub fn context() -> RuntimeContext {
-
-    use task::rt::rust_task;
-
-    if unsafe { rust_try_get_task().is_not_null() } {
-        return OldTaskContext;
-    } else {
-        return NewRtContext;
-    }
-
-    extern {
-        #[rust_stack]
-        pub fn rust_try_get_task() -> *rust_task;
     }
 }
 

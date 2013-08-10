@@ -29,7 +29,7 @@ use time::precise_time_ns;
 use treemap::TreeMap;
 
 use std::clone::Clone;
-use std::comm::{stream, SharedChan};
+use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::libc;
 use std::either;
 use std::io;

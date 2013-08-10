@@ -18,7 +18,7 @@ use arc::{Arc,RWArc};
 use treemap::TreeMap;
 
 use std::cell::Cell;
-use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::comm::{PortOne, oneshot};
 use std::either::{Either, Left, Right};
 use std::io;
 use std::run;
@@ -331,7 +331,7 @@ impl<'self> Prep<'self> {
                     };
                     let chan = chan.take();
                     let v = blk(&exe);
-                    send_one(chan, (exe, v));
+                    chan.send((exe, v));
                 }
                 Right(port)
             }
@@ -355,7 +355,7 @@ impl<'self, T:Send +
             None => fail!(),
             Some(Left(v)) => v,
             Some(Right(port)) => {
-                let (exe, v) = recv_one(port);
+                let (exe, v) = port.recv();
                 let s = json_encode(&v);
                 do prep.ctxt.db.write |db| {
                     db.cache(prep.fn_name,

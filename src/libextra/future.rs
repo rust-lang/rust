@@ -28,7 +28,7 @@
 
 use std::cast;
 use std::cell::Cell;
-use std::comm::{PortOne, oneshot, send_one, recv_one};
+use std::comm::{PortOne, oneshot};
 use std::task;
 use std::util::replace;
 
@@ -123,7 +123,7 @@ pub fn from_port<A:Send>(port: PortOne<A>) -> Future<A> {
 
     let port = Cell::new(port);
     do from_fn {
-        recv_one(port.take())
+        port.take().recv()
     }
 }
 
@@ -152,7 +152,7 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
     let chan = Cell::new(chan);
     do task::spawn {
         let chan = chan.take();
-        send_one(chan, blk());
+        chan.send(blk());
     }
 
     return from_port(port);
@@ -163,7 +163,7 @@ mod test {
     use future::*;
 
     use std::cell::Cell;
-    use std::comm::{oneshot, send_one};
+    use std::comm::oneshot;
     use std::task;
 
     #[test]
@@ -175,7 +175,7 @@ mod test {
     #[test]
     fn test_from_port() {
         let (po, ch) = oneshot();
-        send_one(ch, ~"whale");
+        ch.send(~"whale");
         let mut f = from_port(po);
         assert_eq!(f.get(), ~"whale");
     }

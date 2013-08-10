@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#include "memory_region.h"
 #include "boxed_region.h"
 #include "rust_globals.h"
-#include "rust_task.h"
 #include "rust_env.h"
 #include "rust_util.h"
 

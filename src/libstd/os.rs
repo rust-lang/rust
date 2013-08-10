@@ -61,11 +61,8 @@ pub mod rustrt {
     use libc;
 
     extern {
-        pub fn rust_get_argc() -> c_int;
-        pub fn rust_get_argv() -> **c_char;
         pub fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         pub fn rust_path_exists(path: *libc::c_char) -> c_int;
-        pub fn rust_set_exit_status(code: libc::intptr_t);
     }
 }
 
@@ -1104,15 +1101,7 @@ pub fn last_os_error() -> ~str {
  */
 pub fn set_exit_status(code: int) {
     use rt;
-    use rt::OldTaskContext;
-
-    if rt::context() == OldTaskContext {
-        unsafe {
-            rustrt::rust_set_exit_status(code as libc::intptr_t);
-        }
-    } else {
-        rt::util::set_exit_status(code);
-    }
+    rt::util::set_exit_status(code);
 }
 
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
@@ -1142,19 +1131,10 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "freebsd")]
 pub fn real_args() -> ~[~str] {
     use rt;
-    use rt::NewRtContext;
 
-    if rt::context() == NewRtContext {
-        match rt::args::clone() {
-            Some(args) => args,
-            None => fail!("process arguments not initialized")
-        }
-    } else {
-        unsafe {
-            let argc = rustrt::rust_get_argc();
-            let argv = rustrt::rust_get_argv();
-            load_argc_and_argv(argc, argv)
-        }
+    match rt::args::clone() {
+        Some(args) => args,
+        None => fail!("process arguments not initialized")
     }
 }
 
