@@ -11,7 +11,6 @@
 #include "memory_region.h"
 #include "boxed_region.h"
 #include "rust_globals.h"
-#include "rust_env.h"
 #include "rust_util.h"
 
 // #define DUMP_BOXED_REGION
