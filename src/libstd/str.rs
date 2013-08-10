@@ -33,6 +33,7 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
+use unstable::raw::{Repr, Slice};
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 
@@ -758,15 +759,7 @@ macro_rules! utf8_acc_cont_byte(
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as uint)
 )
 
-// UTF-8 tags and ranges
 static TAG_CONT_U8: u8 = 128u8;
-static TAG_CONT: uint = 128u;
-static MAX_ONE_B: uint = 128u;
-static TAG_TWO_B: uint = 192u;
-static MAX_TWO_B: uint = 2048u;
-static TAG_THREE_B: uint = 224u;
-static MAX_THREE_B: uint = 65536u;
-static TAG_FOUR_B: uint = 240u;
 static MAX_UNICODE: uint = 1114112u;
 
 /// Unsafe operations
@@ -1988,40 +1981,18 @@ impl OwnedStr for ~str {
     #[inline]
     fn push_char(&mut self, c: char) {
         assert!((c as uint) < MAX_UNICODE); // FIXME: #7609: should be enforced on all `char`
+        let cur_len = self.len();
+        self.reserve_at_least(cur_len + 4); // may use up to 4 bytes
+
+        // Attempt to not use an intermediate buffer by just pushing bytes
+        // directly onto this string.
         unsafe {
-            let code = c as uint;
-            let nb = if code < MAX_ONE_B { 1u }
-            else if code < MAX_TWO_B { 2u }
-            else if code < MAX_THREE_B { 3u }
-            else { 4u };
-            let len = self.len();
-            let new_len = len + nb;
-            self.reserve_at_least(new_len);
-            let off = len as int;
-            do self.as_mut_buf |buf, _len| {
-                match nb {
-                    1u => {
-                        *ptr::mut_offset(buf, off) = code as u8;
-                    }
-                    2u => {
-                        *ptr::mut_offset(buf, off) = (code >> 6u & 31u | TAG_TWO_B) as u8;
-                        *ptr::mut_offset(buf, off + 1) = (code & 63u | TAG_CONT) as u8;
-                    }
-                    3u => {
-                        *ptr::mut_offset(buf, off) = (code >> 12u & 15u | TAG_THREE_B) as u8;
-                        *ptr::mut_offset(buf, off + 1) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2) = (code & 63u | TAG_CONT) as u8;
-                    }
-                    4u => {
-                        *ptr::mut_offset(buf, off) = (code >> 18u & 7u | TAG_FOUR_B) as u8;
-                        *ptr::mut_offset(buf, off + 1) = (code >> 12u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 2) = (code >> 6u & 63u | TAG_CONT) as u8;
-                        *ptr::mut_offset(buf, off + 3) = (code & 63u | TAG_CONT) as u8;
-                    }
-                    _ => {}
-                }
-            }
-            raw::set_len(self, new_len);
+            let v = self.repr();
+            let len = c.encode_utf8(cast::transmute(Slice {
+                data: ((&(*v).data) as *u8).offset(cur_len as int),
+                len: 4,
+            }));
+            raw::set_len(self, cur_len + len);
         }
     }
 
