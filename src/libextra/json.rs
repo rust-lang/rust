@@ -136,7 +136,7 @@ impl serialize::Encoder for Encoder {
                          f: &fn(&mut Encoder)) {
         // enums are encoded as strings or objects
         // Bunny => "Bunny"
-        // Kangaroo(34,"William") => {"type": "Kangaroo", "fields": [34,"William"]}
+        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
 
         if cnt == 0 {
             self.wr.write_str(escape_str(name));
@@ -1533,7 +1533,7 @@ mod tests {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
             },
-            ~"{\"type\":\"Frog\",\"fields\":[\"Henry\",349]}"
+            ~"{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
             do io::with_str_writer |wr| {
@@ -1937,14 +1937,14 @@ mod tests {
         assert_eq!(value, Dog);
 
         let mut decoder =
-            Decoder(from_str("{\"type\":\"Frog\",\"fields\":[\"Henry\",349]}").unwrap());
+            Decoder(from_str("{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}").unwrap());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
 
     #[test]
     fn test_decode_map() {
-        let s = ~"{\"a\": \"Dog\", \"b\": {\"type\":\"Frog\",\"fields\":[\"Henry\", 349]}}";
+        let s = ~"{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\"fields\":[\"Henry\", 349]}}";
         let mut decoder = Decoder(from_str(s).unwrap());
         let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
 
