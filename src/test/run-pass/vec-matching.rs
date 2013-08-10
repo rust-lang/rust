@@ -1,5 +1,5 @@
 fn a() {
-    let x = [1];
+    let x = ~[1];
     match x {
         [_, _, _, _, _, .._] => ::std::util::unreachable(),
         [.._, _, _, _, _] => ::std::util::unreachable(),
@@ -13,7 +13,7 @@ fn a() {
 }
 
 fn b() {
-    let x = [1, 2, 3];
+    let x = ~[1, 2, 3];
     match x {
         [a, b, ..c] => {
             assert_eq!(a, 1);
