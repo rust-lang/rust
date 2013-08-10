@@ -129,7 +129,11 @@ impl reader for StringReader {
 
 impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
-    fn next_token(@mut self) -> TokenAndSpan { tt_next_token(self) }
+    fn next_token(@mut self) -> TokenAndSpan {
+        let r = tt_next_token(self);
+        debug!("TtReader: r=%?", r);
+        return r;
+    }
     fn fatal(@mut self, m: ~str) -> ! {
         self.sp_diag.span_fatal(self.cur_span, m);
     }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_escape];
+
 use abi;
 use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
@@ -4460,7 +4462,17 @@ impl Parser {
                                attrs: ~[Attribute],
                                macros_allowed: bool)
                                -> item_or_view_item {
-        maybe_whole!(iovi self, nt_item);
+        match *self.token {
+            INTERPOLATED(token::nt_item(item)) => {
+                self.bump();
+                let new_attrs = vec::append(attrs, item.attrs);
+                return iovi_item(@ast::item {
+                        attrs: new_attrs,
+                        ..(*item).clone()});
+            }
+            _ => {}
+        }
+
         let lo = self.span.lo;
 
         let visibility = self.parse_non_priv_visibility();
