@@ -526,10 +526,10 @@ impl ConsoleTestState {
 
 pub fn fmt_metrics(mm: &MetricMap) -> ~str {
     let v : ~[~str] = mm.iter()
-        .transform(|(k,v)| fmt!("%s: %f (+/- %f)",
-                                *k,
-                                v.value as float,
-                                v.noise as float))
+        .map(|(k,v)| fmt!("%s: %f (+/- %f)",
+                          *k,
+                          v.value as float,
+                          v.noise as float))
         .collect();
     v.connect(", ")
 }

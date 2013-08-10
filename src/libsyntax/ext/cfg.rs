@@ -39,7 +39,7 @@ pub fn expand_cfg(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> base::MacR
     // test_cfg searches for meta items looking like `cfg(foo, ...)`
     let in_cfg = &[cx.meta_list(sp, @"cfg", cfgs)];
 
-    let matches_cfg = attr::test_cfg(cx.cfg(), in_cfg.iter().transform(|&x| x));
+    let matches_cfg = attr::test_cfg(cx.cfg(), in_cfg.iter().map(|&x| x));
     let e = cx.expr_bool(sp, matches_cfg);
     MRExpr(e)
 }

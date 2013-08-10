@@ -112,23 +112,23 @@ impl CFGBuilder {
             ast::pat_enum(_, Some(ref subpats)) |
             ast::pat_tup(ref subpats) => {
                 let pats_exit =
-                    self.pats_all(subpats.iter().transform(|p| *p), pred);
+                    self.pats_all(subpats.iter().map(|p| *p), pred);
                 self.add_node(pat.id, [pats_exit])
             }
 
             ast::pat_struct(_, ref subpats, _) => {
                 let pats_exit =
-                    self.pats_all(subpats.iter().transform(|f| f.pat), pred);
+                    self.pats_all(subpats.iter().map(|f| f.pat), pred);
                 self.add_node(pat.id, [pats_exit])
             }
 
             ast::pat_vec(ref pre, ref vec, ref post) => {
                 let pre_exit =
-                    self.pats_all(pre.iter().transform(|p| *p), pred);
+                    self.pats_all(pre.iter().map(|p| *p), pred);
                 let vec_exit =
-                    self.pats_all(vec.iter().transform(|p| *p), pre_exit);
+                    self.pats_all(vec.iter().map(|p| *p), pre_exit);
                 let post_exit =
-                    self.pats_all(post.iter().transform(|p| *p), vec_exit);
+                    self.pats_all(post.iter().map(|p| *p), vec_exit);
                 self.add_node(pat.id, [post_exit])
             }
         }
@@ -376,7 +376,7 @@ impl CFGBuilder {
             ast::expr_struct(_, ref fields, base) => {
                 let base_exit = self.opt_expr(base, pred);
                 let field_exprs: ~[@ast::expr] =
-                    fields.iter().transform(|f| f.expr).collect();
+                    fields.iter().map(|f| f.expr).collect();
                 self.straightline(expr, base_exit, field_exprs)
             }
 

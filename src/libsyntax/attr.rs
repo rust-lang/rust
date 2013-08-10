@@ -201,7 +201,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
     // This is sort of stupid here, but we need to sort by
     // human-readable strings.
     let mut v = items.iter()
-        .transform(|&mi| (mi.name(), mi))
+        .map(|&mi| (mi.name(), mi))
         .collect::<~[(@str, @MetaItem)]>();
 
     do extra::sort::quick_sort(v) |&(a, _), &(b, _)| {
@@ -209,7 +209,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
     }
 
     // There doesn't seem to be a more optimal way to do this
-    do v.move_iter().transform |(_, m)| {
+    do v.move_iter().map |(_, m)| {
         match m.node {
             MetaList(n, ref mis) => {
                 @spanned {

@@ -27,7 +27,7 @@ pub struct CrateAttrs {
 fn doc_metas(attrs: ~[ast::Attribute]) -> ~[@ast::MetaItem] {
     attrs.iter()
         .filter(|at| "doc" == at.name())
-        .transform(|at| at.desugar_doc().meta())
+        .map(|at| at.desugar_doc().meta())
         .collect()
 }
 

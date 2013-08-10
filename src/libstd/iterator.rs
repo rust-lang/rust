@@ -88,7 +88,6 @@ pub trait Iterator<A> {
         Zip{a: self, b: other}
     }
 
-    // FIXME: #5898: should be called map
     /// Creates a new iterator which will apply the specified function to each
     /// element returned by the first, yielding the mapped element instead.
     ///
@@ -96,13 +95,13 @@ pub trait Iterator<A> {
     ///
     /// ~~~ {.rust}
     /// let a = [1, 2];
-    /// let mut it = a.iter().transform(|&x| 2 * x);
+    /// let mut it = a.iter().map(|&x| 2 * x);
     /// assert_eq!(it.next().get(), 2);
     /// assert_eq!(it.next().get(), 4);
     /// assert!(it.next().is_none());
     /// ~~~
     #[inline]
-    fn transform<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self> {
+    fn map<'r, B>(self, f: &'r fn(A) -> B) -> Map<'r, A, B, Self> {
         Map{iter: self, f: f}
     }
 
@@ -288,7 +287,7 @@ pub trait Iterator<A> {
     /// ~~~ {.rust}
     ///let xs = [1u, 4, 2, 3, 8, 9, 6];
     ///let sum = xs.iter()
-    ///            .transform(|&x| x)
+    ///            .map(|&x| x)
     ///            .peek_(|&x| debug!("filtering %u", x))
     ///            .filter(|&x| x % 2 == 0)
     ///            .peek_(|&x| debug!("%u made it through", x))
@@ -331,7 +330,7 @@ pub trait Iterator<A> {
     ///
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
+    /// let b: ~[int] = a.iter().map(|&x| x).collect();
     /// assert!(a == b);
     /// ~~~
     #[inline]
@@ -346,7 +345,7 @@ pub trait Iterator<A> {
     ///
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().transform(|&x| x).to_owned_vec();
+    /// let b: ~[int] = a.iter().map(|&x| x).to_owned_vec();
     /// assert!(a == b);
     /// ~~~
     #[inline]
@@ -612,7 +611,7 @@ pub trait AdditiveIterator<A> {
     ///
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().transform(|&x| x);
+    /// let mut it = a.iter().map(|&x| x);
     /// assert!(it.sum() == 15);
     /// ~~~
     fn sum(&mut self) -> A;
@@ -1547,7 +1546,7 @@ mod tests {
         assert_eq!(i, expected.len());
 
         let ys = count(30u, 10).take_(4);
-        let mut it = xs.iter().transform(|&x| x).chain_(ys);
+        let mut it = xs.iter().map(|&x| x).chain_(ys);
         let mut i = 0;
         for x in it {
             assert_eq!(x, expected[i]);
@@ -1662,7 +1661,7 @@ mod tests {
         let mut n = 0;
 
         let ys = xs.iter()
-                   .transform(|&x| x)
+                   .map(|&x| x)
                    .peek_(|_| n += 1)
                    .collect::<~[uint]>();
 
@@ -1731,33 +1730,33 @@ mod tests {
     #[test]
     fn test_iterator_sum() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).sum(), 6);
-        assert_eq!(v.iter().transform(|&x| x).sum(), 55);
-        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).sum(), 0);
+        assert_eq!(v.slice(0, 4).iter().map(|&x| x).sum(), 6);
+        assert_eq!(v.iter().map(|&x| x).sum(), 55);
+        assert_eq!(v.slice(0, 0).iter().map(|&x| x).sum(), 0);
     }
 
     #[test]
     fn test_iterator_product() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).product(), 0);
-        assert_eq!(v.slice(1, 5).iter().transform(|&x| x).product(), 24);
-        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).product(), 1);
+        assert_eq!(v.slice(0, 4).iter().map(|&x| x).product(), 0);
+        assert_eq!(v.slice(1, 5).iter().map(|&x| x).product(), 24);
+        assert_eq!(v.slice(0, 0).iter().map(|&x| x).product(), 1);
     }
 
     #[test]
     fn test_iterator_max() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).max(), Some(3));
-        assert_eq!(v.iter().transform(|&x| x).max(), Some(10));
-        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).max(), None);
+        assert_eq!(v.slice(0, 4).iter().map(|&x| x).max(), Some(3));
+        assert_eq!(v.iter().map(|&x| x).max(), Some(10));
+        assert_eq!(v.slice(0, 0).iter().map(|&x| x).max(), None);
     }
 
     #[test]
     fn test_iterator_min() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
-        assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
-        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+        assert_eq!(v.slice(0, 4).iter().map(|&x| x).min(), Some(0));
+        assert_eq!(v.iter().map(|&x| x).min(), Some(0));
+        assert_eq!(v.slice(0, 0).iter().map(|&x| x).min(), None);
     }
 
     #[test]
@@ -1775,11 +1774,11 @@ mod tests {
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.enumerate().size_hint(), (uint::max_value, None));
-        assert_eq!(c.chain_(vi.transform(|&i| i)).size_hint(), (uint::max_value, None));
+        assert_eq!(c.chain_(vi.map(|&i| i)).size_hint(), (uint::max_value, None));
         assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
         assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
         assert_eq!(c.filter(|_| false).size_hint(), (0, None));
-        assert_eq!(c.transform(|_| 0).size_hint(), (uint::max_value, None));
+        assert_eq!(c.map(|_| 0).size_hint(), (uint::max_value, None));
         assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
         assert_eq!(vi.take_(5).size_hint(), (5, Some(5)));
@@ -1793,14 +1792,14 @@ mod tests {
         assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
         assert_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
         assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
-        assert_eq!(vi.transform(|i| i+1).size_hint(), (10, Some(10)));
+        assert_eq!(vi.map(|i| i+1).size_hint(), (10, Some(10)));
         assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
     }
 
     #[test]
     fn test_collect() {
         let a = ~[1, 2, 3, 4, 5];
-        let b: ~[int] = a.iter().transform(|&x| x).collect();
+        let b: ~[int] = a.iter().map(|&x| x).collect();
         assert_eq!(a, b);
     }
 
@@ -1864,13 +1863,13 @@ mod tests {
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.invert().transform(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+        assert_eq!(it.invert().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
     fn test_double_ended_map() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut it = xs.iter().transform(|&x| x * -1);
+        let mut it = xs.iter().map(|&x| x * -1);
         assert_eq!(it.next(), Some(-1));
         assert_eq!(it.next(), Some(-2));
         assert_eq!(it.next_back(), Some(-6));
@@ -2020,7 +2019,7 @@ mod tests {
     fn test_random_access_peek() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .transform and .peek_ that don't implement Clone
+        // test .map and .peek_ that don't implement Clone
         let it = xs.iter().peek_(|_| {});
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
@@ -2030,11 +2029,11 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_transform() {
+    fn test_random_access_map() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .transform and .peek_ that don't implement Clone
-        let it = xs.iter().transform(|x| *x);
+        // test .map and .peek_ that don't implement Clone
+        let it = xs.iter().map(|x| *x);
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(*elt), it.idx(i));

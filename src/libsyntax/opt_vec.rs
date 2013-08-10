@@ -60,7 +60,7 @@ impl<T> OptVec<T> {
     fn map_move<U>(self, op: &fn(T) -> U) -> OptVec<U> {
         match self {
             Empty => Empty,
-            Vec(v) => Vec(v.move_iter().transform(op).collect())
+            Vec(v) => Vec(v.move_iter().map(op).collect())
         }
     }
 
@@ -92,7 +92,7 @@ impl<T> OptVec<T> {
 
     #[inline]
     fn map_to_vec<B>(&self, op: &fn(&T) -> B) -> ~[B] {
-        self.iter().transform(op).collect()
+        self.iter().map(op).collect()
     }
 
     fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {

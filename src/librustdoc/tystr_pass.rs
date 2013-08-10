@@ -124,7 +124,7 @@ fn fold_enum(
     let srv = fold.ctxt.clone();
 
     doc::EnumDoc {
-        variants: do doc.variants.iter().transform |variant| {
+        variants: do doc.variants.iter().map |variant| {
             let sig = {
                 let variant = (*variant).clone();
                 do astsrv::exec(srv.clone()) |ctxt| {
@@ -169,7 +169,7 @@ fn merge_methods(
     item_id: doc::AstId,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do docs.iter().transform |doc| {
+    do docs.iter().map |doc| {
         doc::MethodDoc {
             sig: get_method_sig(srv.clone(), item_id, doc.name.clone()),
             .. (*doc).clone()

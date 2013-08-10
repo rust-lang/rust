@@ -115,7 +115,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     if comment.starts_with("/*") {
         let lines = comment.slice(3u, comment.len() - 2u)
             .any_line_iter()
-            .transform(|s| s.to_owned())
+            .map(|s| s.to_owned())
             .collect::<~[~str]>();
 
         let lines = vertical_trim(lines);

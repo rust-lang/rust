@@ -120,7 +120,7 @@ pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 fn parse_cfgspecs(cfgspecs: ~[~str],
                   demitter: diagnostic::Emitter) -> ast::CrateConfig {
-    do cfgspecs.move_iter().transform |s| {
+    do cfgspecs.move_iter().map |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
     }.collect::<ast::CrateConfig>()
@@ -726,7 +726,7 @@ pub fn build_session_options(binary: @str,
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
     let linker = getopts::opt_maybe_str(matches, "linker");
     let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
-        a.split_iter(' ').transform(|arg| arg.to_owned()).collect()
+        a.split_iter(' ').map(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
@@ -737,7 +737,7 @@ pub fn build_session_options(binary: @str,
     let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
         None => ~[],
         Some(s) => {
-            s.split_iter(|c: char| c == ' ' || c == ',').transform(|s| {
+            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
                 s.trim().to_owned()
             }).collect()
         }

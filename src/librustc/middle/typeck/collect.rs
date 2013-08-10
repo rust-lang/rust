@@ -731,7 +731,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
                     -> ~[ConvertedMethod]
 {
     let tcx = ccx.tcx;
-    return ms.iter().transform(|m| {
+    return ms.iter().map(|m| {
         let num_rcvr_ty_params = rcvr_ty_generics.type_param_defs.len();
         let m_ty_generics =
             ty_generics(ccx, rcvr_ty_generics.region_param, &m.generics,
