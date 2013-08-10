@@ -225,4 +225,19 @@ The initializer is `DEFAULT-TAB-WIDTH'.")
 
 (provide 'rust-mode)
 
+;; Issue #6887: Rather than inheriting the 'gnu compilation error
+;; regexp (which is broken on a few edge cases), add our own 'rust
+;; compilation error regexp and use it instead.
+(defvar rustc-compilation-regexps
+  (let ((re (concat "^\\([^ \n]+\\):\\([0-9]+\\):\\([0-9]+\\): "
+                    "\\([0-9]+\\):\\([0-9]+\\) "
+                    "\\(?:[Ee]rror\\|\\([Ww]arning\\)\\):")))
+    (cons re '(1 (2 . 4) (3 . 5) (6))))
+  "Specifications for matching errors in rustc invocations.
+See `compilation-error-regexp-alist for help on their format.")
+
+(add-to-list 'compilation-error-regexp-alist-alist
+             (cons 'rustc rustc-compilation-regexps))
+(add-to-list 'compilation-error-regexp-alist 'rustc)
+
 ;;; rust-mode.el ends here
