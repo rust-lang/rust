@@ -62,8 +62,6 @@ struct type_desc {
     size_t borrow_offset;
 };
 
-extern "C" type_desc *rust_clone_type_desc(type_desc*);
-
 #endif
 
 //
