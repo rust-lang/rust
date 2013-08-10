@@ -4117,7 +4117,7 @@ pub fn lookup_struct_field(cx: ctxt,
                            field_id: ast::def_id)
                         -> field_ty {
     let r = lookup_struct_fields(cx, parent);
-    match r.iter().find_(
+    match r.iter().find(
                  |f| f.id.node == field_id.node) {
         Some(t) => *t,
         None => cx.sess.bug("struct ID not found in parent's fields")

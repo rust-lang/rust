@@ -133,7 +133,7 @@ fn fold_enum(
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                (*enum_definition.variants.iter().find_(|v| {
+                                (*enum_definition.variants.iter().find(|v| {
                                     to_str(v.node.name) == variant.name
                                 }).unwrap()).clone();
 

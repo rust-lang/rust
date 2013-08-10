@@ -55,7 +55,7 @@ impl PkgSrc {
         let dir;
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
-        let path = dirs.iter().find_(|&d| os::path_exists(d));
+        let path = dirs.iter().find(|&d| os::path_exists(d));
         match path {
             Some(d) => dir = (*d).clone(),
             None => dir = match self.fetch_git() {

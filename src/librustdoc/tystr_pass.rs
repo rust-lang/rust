@@ -133,7 +133,7 @@ fn fold_enum(
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
                             let ast_variant =
-                                (*do enum_definition.variants.iter().find_ |v| {
+                                (*do enum_definition.variants.iter().find |v| {
                                 to_str(v.node.name) == variant.name
                             }.unwrap()).clone();
 
@@ -187,7 +187,7 @@ fn get_method_sig(
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
-                match methods.iter().find_(|&method| {
+                match methods.iter().find(|&method| {
                     match (*method).clone() {
                         ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                         ast::provided(m) => to_str(m.ident) == method_name,
@@ -223,7 +223,7 @@ fn get_method_sig(
             ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref methods), _
             }, _) => {
-                match methods.iter().find_(|method| {
+                match methods.iter().find(|method| {
                     to_str(method.ident) == method_name
                 }) {
                     Some(method) => {

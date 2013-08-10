@@ -458,7 +458,7 @@ pub trait Iterator<A> {
 
     /// Return the first element satisfying the specified predicate
     #[inline]
-    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
+    fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
         for x in *self {
             if predicate(&x) { return Some(x) }
         }
@@ -1819,9 +1819,9 @@ mod tests {
     #[test]
     fn test_find() {
         let v: &[int] = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(*v.iter().find_(|x| *x & 1 == 0).unwrap(), 14);
-        assert_eq!(*v.iter().find_(|x| *x % 3 == 0).unwrap(), 3);
-        assert!(v.iter().find_(|x| *x % 12 == 0).is_none());
+        assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
+        assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
+        assert!(v.iter().find(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
