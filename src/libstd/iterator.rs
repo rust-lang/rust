@@ -210,7 +210,6 @@ pub trait Iterator<A> {
         Skip{iter: self, n: n}
     }
 
-    // FIXME: #5898: should be called take
     /// Creates an iterator which yields the first `n` elements of this
     /// iterator, and then it will always return None.
     ///
@@ -218,14 +217,14 @@ pub trait Iterator<A> {
     ///
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().take_(3);
+    /// let mut it = a.iter().take(3);
     /// assert_eq!(it.next().get(), &1);
     /// assert_eq!(it.next().get(), &2);
     /// assert_eq!(it.next().get(), &3);
     /// assert!(it.next().is_none());
     /// ~~~
     #[inline]
-    fn take_(self, n: uint) -> Take<Self> {
+    fn take(self, n: uint) -> Take<Self> {
         Take{iter: self, n: n}
     }
 
@@ -263,7 +262,7 @@ pub trait Iterator<A> {
     /// ~~~ {.rust}
     /// let xs = [2u, 3];
     /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take_(x));
+    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take(x));
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
     /// for x: uint in it {
@@ -288,15 +287,14 @@ pub trait Iterator<A> {
     ///let xs = [1u, 4, 2, 3, 8, 9, 6];
     ///let sum = xs.iter()
     ///            .map(|&x| x)
-    ///            .peek_(|&x| debug!("filtering %u", x))
+    ///            .peek(|&x| debug!("filtering %u", x))
     ///            .filter(|&x| x % 2 == 0)
-    ///            .peek_(|&x| debug!("%u made it through", x))
+    ///            .peek(|&x| debug!("%u made it through", x))
     ///            .sum();
     ///println(sum.to_str());
     /// ~~~
-    // FIXME: #5898: should be called `peek`
     #[inline]
-    fn peek_<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self> {
+    fn peek<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self> {
         Peek{iter: self, f: f}
     }
 
@@ -700,7 +698,7 @@ pub trait ClonableIterator {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// let a = count(1,1).take_(1);
+    /// let a = count(1,1).take(1);
     /// let mut cy = a.cycle();
     /// assert_eq!(cy.next(), Some(1));
     /// assert_eq!(cy.next(), Some(1));
@@ -1527,7 +1525,7 @@ mod tests {
 
     #[test]
     fn test_counter_from_iter() {
-        let mut it = count(0, 5).take_(10);
+        let mut it = count(0, 5).take(10);
         let xs: ~[int] = FromIterator::from_iterator(&mut it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
@@ -1545,7 +1543,7 @@ mod tests {
         }
         assert_eq!(i, expected.len());
 
-        let ys = count(30u, 10).take_(4);
+        let ys = count(30u, 10).take(4);
         let mut it = xs.iter().map(|&x| x).chain_(ys);
         let mut i = 0;
         for x in it {
@@ -1557,7 +1555,7 @@ mod tests {
 
     #[test]
     fn test_filter_map() {
-        let mut it = count(0u, 1u).take_(10)
+        let mut it = count(0u, 1u).take(10)
             .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
         assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
@@ -1614,7 +1612,7 @@ mod tests {
     fn test_iterator_take() {
         let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
         let ys = [0u, 1, 2, 3, 5];
-        let mut it = xs.iter().take_(5);
+        let mut it = xs.iter().take(5);
         let mut i = 0;
         for &x in it {
             assert_eq!(x, ys[i]);
@@ -1646,7 +1644,7 @@ mod tests {
     fn test_iterator_flat_map() {
         let xs = [0u, 3, 6];
         let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
-        let mut it = xs.iter().flat_map_(|&x| count(x, 1).take_(3));
+        let mut it = xs.iter().flat_map_(|&x| count(x, 1).take(3));
         let mut i = 0;
         for x in it {
             assert_eq!(x, ys[i]);
@@ -1662,7 +1660,7 @@ mod tests {
 
         let ys = xs.iter()
                    .map(|&x| x)
-                   .peek_(|_| n += 1)
+                   .peek(|_| n += 1)
                    .collect::<~[uint]>();
 
         assert_eq!(n, xs.len());
@@ -1693,13 +1691,13 @@ mod tests {
     #[test]
     fn test_cycle() {
         let cycle_len = 3;
-        let it = count(0u, 1).take_(cycle_len).cycle();
+        let it = count(0u, 1).take(cycle_len).cycle();
         assert_eq!(it.size_hint(), (uint::max_value, None));
-        for (i, x) in it.take_(100).enumerate() {
+        for (i, x) in it.take(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
 
-        let mut it = count(0u, 1).take_(0).cycle();
+        let mut it = count(0u, 1).take(0).cycle();
         assert_eq!(it.size_hint(), (0, Some(0)));
         assert_eq!(it.next(), None);
     }
@@ -1769,7 +1767,7 @@ mod tests {
         assert_eq!(c.size_hint(), (uint::max_value, None));
         assert_eq!(vi.size_hint(), (10, Some(10)));
 
-        assert_eq!(c.take_(5).size_hint(), (5, Some(5)));
+        assert_eq!(c.take(5).size_hint(), (5, Some(5)));
         assert_eq!(c.skip(5).size_hint().second(), None);
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
@@ -1781,8 +1779,8 @@ mod tests {
         assert_eq!(c.map(|_| 0).size_hint(), (uint::max_value, None));
         assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
-        assert_eq!(vi.take_(5).size_hint(), (5, Some(5)));
-        assert_eq!(vi.take_(12).size_hint(), (10, Some(10)));
+        assert_eq!(vi.take(5).size_hint(), (5, Some(5)));
+        assert_eq!(vi.take(12).size_hint(), (10, Some(10)));
         assert_eq!(vi.skip(3).size_hint(), (7, Some(7)));
         assert_eq!(vi.skip(12).size_hint(), (0, Some(0)));
         assert_eq!(vi.take_while(|_| false).size_hint(), (0, Some(10)));
@@ -2001,10 +1999,10 @@ mod tests {
     fn test_random_access_take() {
         let xs = [1, 2, 3, 4, 5];
         let empty: &[int] = [];
-        check_randacc_iter(xs.iter().take_(3), 3);
-        check_randacc_iter(xs.iter().take_(20), xs.len());
-        check_randacc_iter(xs.iter().take_(0), 0);
-        check_randacc_iter(empty.iter().take_(2), 0);
+        check_randacc_iter(xs.iter().take(3), 3);
+        check_randacc_iter(xs.iter().take(20), xs.len());
+        check_randacc_iter(xs.iter().take(0), 0);
+        check_randacc_iter(empty.iter().take(2), 0);
     }
 
     #[test]
@@ -2019,8 +2017,8 @@ mod tests {
     fn test_random_access_peek() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .map and .peek_ that don't implement Clone
-        let it = xs.iter().peek_(|_| {});
+        // test .map and .peek that don't implement Clone
+        let it = xs.iter().peek(|_| {});
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(elt), it.idx(i));
@@ -2032,7 +2030,7 @@ mod tests {
     fn test_random_access_map() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .map and .peek_ that don't implement Clone
+        // test .map and .peek that don't implement Clone
         let it = xs.iter().map(|x| *x);
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
@@ -2044,7 +2042,7 @@ mod tests {
     fn test_random_access_cycle() {
         let xs = [1, 2, 3, 4, 5];
         let empty: &[int] = [];
-        check_randacc_iter(xs.iter().cycle().take_(27), 27);
+        check_randacc_iter(xs.iter().cycle().take(27), 27);
         check_randacc_iter(empty.iter().cycle(), 0);
     }
 
