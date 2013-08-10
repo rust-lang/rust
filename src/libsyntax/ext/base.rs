@@ -421,12 +421,12 @@ pub enum MapChain<K,V> {
 // get the map from an env frame
 impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // Constructor. I don't think we need a zero-arg one.
-    fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
+    pub fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
         @mut BaseMapChain(init)
     }
 
     // add a new frame to the environment (functionally)
-    fn push_frame (@mut self) -> @mut MapChain<K,V> {
+    pub fn push_frame (@mut self) -> @mut MapChain<K,V> {
         @mut ConsMapChain(~HashMap::new() ,self)
     }
 
@@ -436,7 +436,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 
     // ugh: can't get this to compile with mut because of the
     // lack of flow sensitivity.
-    fn get_map<'a>(&'a self) -> &'a HashMap<K,@V> {
+    pub fn get_map<'a>(&'a self) -> &'a HashMap<K,@V> {
         match *self {
             BaseMapChain (~ref map) => map,
             ConsMapChain (~ref map,_) => map
@@ -446,7 +446,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 // traits just don't work anywhere...?
 //impl Map<Name,SyntaxExtension> for MapChain {
 
-    fn contains_key (&self, key: &K) -> bool {
+    pub fn contains_key (&self, key: &K) -> bool {
         match *self {
             BaseMapChain (ref map) => map.contains_key(key),
             ConsMapChain (ref map,ref rest) =>
@@ -457,17 +457,17 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // should each_key and each_value operate on shadowed
     // names? I think not.
     // delaying implementing this....
-    fn each_key (&self, _f: &fn (&K)->bool) {
+    pub fn each_key (&self, _f: &fn (&K)->bool) {
         fail!("unimplemented 2013-02-15T10:01");
     }
 
-    fn each_value (&self, _f: &fn (&V) -> bool) {
+    pub fn each_value (&self, _f: &fn (&V) -> bool) {
         fail!("unimplemented 2013-02-15T10:02");
     }
 
     // Returns a copy of the value that the name maps to.
     // Goes down the chain 'til it finds one (or bottom out).
-    fn find (&self, key: &K) -> Option<@V> {
+    pub fn find (&self, key: &K) -> Option<@V> {
         match self.get_map().find (key) {
             Some(ref v) => Some(**v),
             None => match *self {
@@ -477,7 +477,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
         }
     }
 
-    fn find_in_topmost_frame(&self, key: &K) -> Option<@V> {
+    pub fn find_in_topmost_frame(&self, key: &K) -> Option<@V> {
         let map = match *self {
             BaseMapChain(ref map) => map,
             ConsMapChain(ref map,_) => map
@@ -487,7 +487,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     }
 
     // insert the binding into the top-level map
-    fn insert (&mut self, key: K, ext: @V) -> bool {
+    pub fn insert (&mut self, key: K, ext: @V) -> bool {
         // can't abstract over get_map because of flow sensitivity...
         match *self {
             BaseMapChain (~ref mut map) => map.insert(key, ext),
@@ -499,7 +499,7 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // ... there are definitely some opportunities for abstraction
     // here that I'm ignoring. (e.g., manufacturing a predicate on
     // the maps in the chain, and using an abstract "find".
-    fn insert_into_frame(&mut self, key: K, ext: @V, n: K, pred: &fn(&@V)->bool) {
+    pub fn insert_into_frame(&mut self, key: K, ext: @V, n: K, pred: &fn(&@V)->bool) {
         match *self {
             BaseMapChain (~ref mut map) => {
                 if satisfies_pred(map,&n,pred) {
