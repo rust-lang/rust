@@ -255,6 +255,9 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                 }
                 not_useful
               }
+              ty::ty_evec(_, ty::vstore_fixed(n)) => {
+                is_useful_specialized(cx, m, v, vec(n), n, left_ty)
+              }
               ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                 let max_len = do m.rev_iter().fold(0) |max_len, r| {
                   match r[0].node {
@@ -408,6 +411,29 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
         if true_found && false_found { None }
         else if true_found { Some(val(const_bool(false))) }
         else { Some(val(const_bool(true))) }
+      }
+      ty::ty_evec(_, ty::vstore_fixed(n)) => {
+        let mut missing = true;
+        let mut wrong = false;
+        for r in m.iter() {
+          match r[0].node {
+            pat_vec(ref before, ref slice, ref after) => {
+              let count = before.len() + after.len();
+              if (count < n && slice.is_none()) || count > n {
+                wrong = true;
+              }
+              if count == n || (count < n && slice.is_some()) {
+                missing = false;
+              }
+            }
+            _ => {}
+          }
+        }
+        match (wrong, missing) {
+          (true, _) => Some(vec(n)), // should be compile-time error
+          (_, true) => Some(vec(n)),
+          _         => None
+        }
       }
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 

@@ -1305,7 +1305,7 @@ match crayons[0] {
 A vector can be destructured using pattern matching:
 
 ~~~~
-let numbers: [int, ..3] = [1, 2, 3];
+let numbers: &[int] = &[1, 2, 3];
 let score = match numbers {
     [] => 0,
     [a] => a * 10,
@@ -2195,7 +2195,7 @@ use std::float::consts::pi;
 # impl Shape for CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
-let mycircle: Circle = concrete as @Circle;
+let mycircle: @Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
