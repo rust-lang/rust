@@ -381,9 +381,8 @@ pub trait Iterator<A> {
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().get() == &5);
     /// ~~~
-    // FIXME: #5898: should be called `last`
     #[inline]
-    fn last_(&mut self) -> Option<A> {
+    fn last(&mut self) -> Option<A> {
         let mut last = None;
         for x in *self { last = Some(x); }
         last
@@ -1712,8 +1711,8 @@ mod tests {
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last_().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last_().unwrap(), &0);
+        assert_eq!(v.iter().last().unwrap(), &4);
+        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
     }
 
     #[test]
