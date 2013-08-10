@@ -22,50 +22,105 @@ impl fmt::Signed for B {
 }
 
 pub fn main() {
-    fn t(a: ~str, b: &str) { assert_eq!(a, b.to_owned()); }
+    macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
 
     // Make sure there's a poly formatter that takes anything
-    t(ifmt!("{}", 1), "1");
-    t(ifmt!("{}", A), "{}");
-    t(ifmt!("{}", ()), "()");
-    t(ifmt!("{}", @(~1, "foo")), "@(~1, \"foo\")");
+    t!(ifmt!("{}", 1), "1");
+    t!(ifmt!("{}", A), "{}");
+    t!(ifmt!("{}", ()), "()");
+    t!(ifmt!("{}", @(~1, "foo")), "@(~1, \"foo\")");
 
     // Various edge cases without formats
-    t(ifmt!(""), "");
-    t(ifmt!("hello"), "hello");
-    t(ifmt!("hello \\{"), "hello {");
+    t!(ifmt!(""), "");
+    t!(ifmt!("hello"), "hello");
+    t!(ifmt!("hello \\{"), "hello {");
 
     // At least exercise all the formats
-    t(ifmt!("{:b}", true), "true");
-    t(ifmt!("{:c}", '☃'), "☃");
-    t(ifmt!("{:d}", 10), "10");
-    t(ifmt!("{:i}", 10), "10");
-    t(ifmt!("{:u}", 10u), "10");
-    t(ifmt!("{:o}", 10u), "12");
-    t(ifmt!("{:x}", 10u), "a");
-    t(ifmt!("{:X}", 10u), "A");
-    t(ifmt!("{:s}", "foo"), "foo");
-    t(ifmt!("{:p}", 0x1234 as *int), "0x1234");
-    t(ifmt!("{:p}", 0x1234 as *mut int), "0x1234");
-    t(ifmt!("{:d}", A), "aloha");
-    t(ifmt!("{:d}", B), "adios");
-    t(ifmt!("foo {:s} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
-    t(ifmt!("{1} {0}", 0, 1), "1 0");
-    t(ifmt!("{foo} {bar}", foo=0, bar=1), "0 1");
-    t(ifmt!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
-    t(ifmt!("{} {0:s}", "a"), "a a");
-    t(ifmt!("{} {0}", "a"), "\"a\" \"a\"");
+    t!(ifmt!("{:b}", true), "true");
+    t!(ifmt!("{:c}", '☃'), "☃");
+    t!(ifmt!("{:d}", 10), "10");
+    t!(ifmt!("{:i}", 10), "10");
+    t!(ifmt!("{:u}", 10u), "10");
+    t!(ifmt!("{:o}", 10u), "12");
+    t!(ifmt!("{:x}", 10u), "a");
+    t!(ifmt!("{:X}", 10u), "A");
+    t!(ifmt!("{:s}", "foo"), "foo");
+    t!(ifmt!("{:p}", 0x1234 as *int), "0x1234");
+    t!(ifmt!("{:p}", 0x1234 as *mut int), "0x1234");
+    t!(ifmt!("{:d}", A), "aloha");
+    t!(ifmt!("{:d}", B), "adios");
+    t!(ifmt!("foo {:s} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
+    t!(ifmt!("{1} {0}", 0, 1), "1 0");
+    t!(ifmt!("{foo} {bar}", foo=0, bar=1), "0 1");
+    t!(ifmt!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
+    t!(ifmt!("{} {0:s}", "a"), "a a");
+    t!(ifmt!("{} {0}", "a"), "\"a\" \"a\"");
 
     // Methods should probably work
-    t(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");
-    t(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 1u), "a1");
-    t(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 2u), "b2");
-    t(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 3u), "d3");
-    t(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "a"), "aa");
-    t(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "b"), "bb");
-    t(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "c"), "cc");
-    t(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "d"), "dd");
-    t(ifmt!("{1, select, a{#{0:s}} other{#{1}}}", "b", "a"), "ab");
-    t(ifmt!("{1, select, a{#{0}} other{#{1}}}", "c", "b"), "bb");
+    t!(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");
+    t!(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 1u), "a1");
+    t!(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 2u), "b2");
+    t!(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 3u), "d3");
+    t!(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "a"), "aa");
+    t!(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "b"), "bb");
+    t!(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "c"), "cc");
+    t!(ifmt!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "d"), "dd");
+    t!(ifmt!("{1, select, a{#{0:s}} other{#{1}}}", "b", "a"), "ab");
+    t!(ifmt!("{1, select, a{#{0}} other{#{1}}}", "c", "b"), "bb");
+
+    // Formatting strings and their arguments
+    t!(ifmt!("{:s}", "a"), "a");
+    t!(ifmt!("{:4s}", "a"), "a   ");
+    t!(ifmt!("{:>4s}", "a"), "   a");
+    t!(ifmt!("{:<4s}", "a"), "a   ");
+    t!(ifmt!("{:.4s}", "a"), "a");
+    t!(ifmt!("{:4.4s}", "a"), "a   ");
+    t!(ifmt!("{:4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(ifmt!("{:<4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(ifmt!("{:>4.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(ifmt!("{:>10.4s}", "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(ifmt!("{:2.4s}", "aaaaa"), "aaaa");
+    t!(ifmt!("{:2.4s}", "aaaa"), "aaaa");
+    t!(ifmt!("{:2.4s}", "aaa"), "aaa");
+    t!(ifmt!("{:2.4s}", "aa"), "aa");
+    t!(ifmt!("{:2.4s}", "a"), "a ");
+    t!(ifmt!("{:0>2s}", "a"), "0a");
+    t!(ifmt!("{:.*s}", 4, "aaaaaaaaaaaaaaaaaa"), "aaaa");
+    t!(ifmt!("{:.1$s}", "aaaaaaaaaaaaaaaaaa", 4), "aaaa");
+    t!(ifmt!("{:1$s}", "a", 4), "a   ");
+    t!(ifmt!("{:-#s}", "a"), "a");
+    t!(ifmt!("{:+#s}", "a"), "a");
+
+    // Precision overrides 0-padding
+    // FIXME #2481: Recent gcc's report some of these as warnings
+    /*t!(ifmt!("{:0>6.5d}", 0), ~" 00000");*/
+    /*t!(ifmt!("{:0>6.5u}", 0u), ~" 00000");*/
+    /*t!(ifmt!("{:0>6.5x}", 0u), ~" 00000");*/
+    /*t!(ifmt!("{:0>6.5d}", 10), ~" 00010");*/
+    /*t!(ifmt!("{:0>6.5d}", -10), ~"-00010");*/
+    /*t!(ifmt!("{:0>6.5u}", 10u), ~" 00010");*/
+    /*t!(ifmt!("{:0>6.5s}", ~"t!"), ~"  t!");*/
+    /*t!(ifmt!("{:0>6.5c}", 'A'), ~"     A");*/
+    /*t!(ifmt!("{:0>6.5x}", 127u), ~" 0007f");*/
+    /*t!(ifmt!("{:0>6.5X}", 127u), ~" 0007F");*/
+    /*t!(ifmt!("{:0>6.5o}", 10u), ~" 00012");*/
+
+    // Signed combinations
+    /*t!(ifmt!("{:5d}", 1), ~"    1");*/
+    /*t!(ifmt!("{: >5d}", -1), ~"   -1");*/
+    /*t!(ifmt!("{:+5d}", 1), ~"   +1");*/
+    /*t!(ifmt!("{:+5d}", -1), ~"   -1");*/
+    /*t!(ifmt!("{:0>5d}", 1), ~" 0001");*/
+    /*t!(ifmt!("{:0>5d}", -1), ~"-0001");*/
+    /*t!(ifmt!("{:0>+5d}", 1), ~"+0001");*/
+    /*t!(ifmt!("{:0>+5d}", -1), ~"-0001");*/
+    /*t!(ifmt!("%- 5d", 1), ~" 1   ");*/
+    /*t!(ifmt!("%- 5d", -1), ~"-1   ");*/
+    /*t!(ifmt!("%-+5d", 1), ~"+1   ");*/
+    /*t!(ifmt!("%-+5d", -1), ~"-1   ");*/
+    /*t!(ifmt!("%- 05d", 1), ~" 1   ");*/
+    /*t!(ifmt!("%- 05d", -1), ~"-1   ");*/
+    /*t!(ifmt!("%-+05d", 1), ~"+1   ");*/
+    /*t!(ifmt!("%-+05d", -1), ~"-1   ");*/
 }
 

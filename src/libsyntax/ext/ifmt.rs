@@ -127,7 +127,13 @@ impl Context {
                 }
             }
             parse::Argument(ref arg) => {
-                // argument first (it's first in the format string)
+                // width/precision first, if they have implicit positional
+                // parameters it makes more sense to consume them first.
+                self.verify_count(arg.format.width);
+                self.verify_count(arg.format.precision);
+
+                // argument second, if it's an implicit positional parameter
+                // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
                     parse::ArgumentNext => {
                         let i = self.next_arg;
@@ -143,10 +149,6 @@ impl Context {
                     Unknown
                 } else { Known(arg.format.ty.to_managed()) };
                 self.verify_arg_type(pos, ty);
-
-                // width/precision next
-                self.verify_count(arg.format.width);
-                self.verify_count(arg.format.precision);
 
                 // and finally the method being applied
                 match arg.method {
