@@ -142,7 +142,7 @@ impl serialize::Encoder for Encoder {
             self.wr.write_str(escape_str(name));
         } else {
             self.wr.write_char('{');
-            self.wr.write_str("\"type\"");
+            self.wr.write_str("\"variant\"");
             self.wr.write_char(':');
             self.wr.write_str(escape_str(name));
             self.wr.write_char(',');
@@ -952,11 +952,11 @@ impl serialize::Decoder for Decoder {
         let name = match self.stack.pop() {
             String(s) => s,
             Object(o) => {
-                let n = match o.find(&~"type").unwrap() {
+                let n = match o.find(&~"variant").expect("invalidly encoded json") {
                     &String(ref s) => s.clone(),
                     _ => fail!("invalidly encoded json"),
                 };
-                match o.find(&~"fields").unwrap() {
+                match o.find(&~"fields").expect("invalidly encoded json") {
                     &List(ref l) => {
                         for field in l.iter() {
                             self.stack.push(field.clone());
