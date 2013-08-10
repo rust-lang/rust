@@ -27,7 +27,7 @@ pub fn expand_option_env(ext_cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let var = get_single_str_from_tts(ext_cx, sp, tts, "option_env!");
 
     let e = match os::getenv(var) {
-      None => quote_expr!(::std::option::None),
+      None => quote_expr!(::std::option::None::<&'static str>),
       Some(s) => quote_expr!(::std::option::Some($s))
     };
     MRExpr(e)
