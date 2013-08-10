@@ -170,6 +170,7 @@ pub mod local_data;
 /* Runtime and platform support */
 
 pub mod libc;
+pub mod c_str;
 pub mod os;
 pub mod path;
 pub mod rand;

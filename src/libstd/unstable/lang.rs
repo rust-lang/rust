@@ -10,6 +10,7 @@
 
 //! Runtime calls emitted by the compiler.
 
+use c_str::ToCStr;
 use cast::transmute;
 use libc::{c_char, c_uchar, c_void, size_t, uintptr_t};
 use str;
@@ -28,7 +29,7 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
                          index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
-    do msg.as_c_str |buf| {
+    do msg.to_c_str().with_ref |buf| {
         fail_(buf, file, line);
     }
 }

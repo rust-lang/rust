@@ -394,10 +394,12 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    use std::c_str::ToCStr;
     use std::libc;
+
     unsafe {
-        do src.to_str().as_c_str |src_buf| {
-            do dest.to_str().as_c_str |dest_buf| {
+        do src.to_c_str().with_ref |src_buf| {
+            do dest.to_c_str().with_ref |dest_buf| {
                 libc::link(src_buf, dest_buf) == 0 as libc::c_int &&
                     libc::chmod(dest_buf, 755) == 0 as libc::c_int
             }
