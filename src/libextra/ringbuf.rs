@@ -692,8 +692,8 @@ mod tests {
     fn test_from_iterator() {
         use std::iterator;
         let v = ~[1,2,3,4,5,6,7];
-        let deq: RingBuf<int> = v.iter().transform(|&x| x).collect();
-        let u: ~[int] = deq.iter().transform(|&x| x).collect();
+        let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
+        let u: ~[int] = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
         let mut seq = iterator::count(0u, 2).take_(256);

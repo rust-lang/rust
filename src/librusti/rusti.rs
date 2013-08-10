@@ -453,7 +453,7 @@ pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~st
     if line.starts_with(":") {
         // drop the : and the \n (one byte each)
         let full = line.slice(1, line.len());
-        let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
+        let split: ~[~str] = full.word_iter().map(|s| s.to_owned()).collect();
         let len = split.len();
 
         if len > 0 {

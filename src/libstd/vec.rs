@@ -1068,10 +1068,10 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     /// Deprecated, use iterators where possible
-    /// (`self.iter().transform(f)`). Apply a function to each element
+    /// (`self.iter().map(f)`). Apply a function to each element
     /// of a vector and return the results.
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] {
-        self.iter().transform(f).collect()
+        self.iter().map(f).collect()
     }
 
     /**
@@ -2148,7 +2148,7 @@ pub mod bytes {
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.iter().transform(|item| item.clone()).collect()
+        self.iter().map(|item| item.clone()).collect()
     }
 }
 

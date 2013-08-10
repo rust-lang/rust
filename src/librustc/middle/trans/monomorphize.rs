@@ -372,12 +372,12 @@ pub fn make_mono_id(ccx: @mut CrateContext,
         debug!("make_mono_id vtables=%s substs=%s",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
         let vts_iter = substs.self_vtables.iter().chain_(vts.iter());
-        vts_iter.zip(substs_iter).transform(|(vtable, subst)| {
+        vts_iter.zip(substs_iter).map(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }
-      None => substs_iter.transform(|subst| (*subst, None::<@~[mono_id]>)).collect()
+      None => substs_iter.map(|subst| (*subst, None::<@~[mono_id]>)).collect()
     };
 
 
@@ -389,7 +389,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
             substs.self_ty.map(|_| type_use::use_repr|type_use::use_tydesc);
         let uses_iter = self_use.iter().chain_(uses.iter());
 
-        precise_param_ids.iter().zip(uses_iter).transform(|(id, uses)| {
+        precise_param_ids.iter().zip(uses_iter).map(|(id, uses)| {
             if ccx.sess.no_monomorphic_collapse() {
                 match *id {
                     (a, b) => mono_precise(a, b)
@@ -429,7 +429,7 @@ pub fn make_mono_id(ccx: @mut CrateContext,
         }).collect()
       }
       None => {
-          precise_param_ids.iter().transform(|x| {
+          precise_param_ids.iter().map(|x| {
               let (a, b) = *x;
               mono_precise(a, b)
           }).collect()

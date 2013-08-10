@@ -29,7 +29,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_str(&self) -> ~str {
-        fmt!("[%s]", self.iter().transform(|e| e.to_str()).collect::<~[~str]>().connect(", "))
+        fmt!("[%s]", self.iter().map(|e| e.to_str()).collect::<~[~str]>().connect(", "))
     }
 }
 

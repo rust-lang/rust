@@ -157,7 +157,7 @@ Available lint options:
 
     let lint_dict = lint::get_lint_dict();
     let mut lint_dict = lint_dict.move_iter()
-                                 .transform(|(k, v)| (v, k))
+                                 .map(|(k, v)| (v, k))
                                  .collect::<~[(lint::LintSpec, &'static str)]>();
     lint_dict.qsort();
 

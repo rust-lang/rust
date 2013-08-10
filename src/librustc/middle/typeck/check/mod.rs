@@ -1818,7 +1818,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             _ => ()
         }
 
-        let tps : ~[ty::t] = tys.iter().transform(|ty| fcx.to_ty(ty)).collect();
+        let tps : ~[ty::t] = tys.iter().map(|ty| fcx.to_ty(ty)).collect();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2644,7 +2644,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut bot_field = false;
         let mut err_field = false;
 
-        let elt_ts = do elts.iter().enumerate().transform |(i, e)| {
+        let elt_ts = do elts.iter().enumerate().map |(i, e)| {
             let opt_hint = match flds {
                 Some(ref fs) if i < fs.len() => Some(fs[i]),
                 _ => None

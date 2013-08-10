@@ -185,7 +185,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut s = with_capacity(len);
 
@@ -210,7 +210,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_slice().len()).sum();
 
         let mut s = with_capacity(len);
 
@@ -239,7 +239,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         // this is wrong without the guarantee that `self` is non-empty
         let len = sep.len() * (self.len() - 1)
-            + self.iter().transform(|s| s.as_slice().len()).sum();
+            + self.iter().map(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -280,7 +280,7 @@ impl<'self, S: Str> StrVector for &'self [S] {
 
         // this is wrong without the guarantee that `self` is non-empty
         let len = sep.len() * (self.len() - 1)
-            + self.iter().transform(|s| s.as_slice().len()).sum();
+            + self.iter().map(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -1445,7 +1445,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~
     #[inline]
     fn iter(&self) -> CharIterator<'self> {
-        self.char_offset_iter().transform(|(_, c)| c)
+        self.char_offset_iter().map(|(_, c)| c)
     }
 
     /// An iterator over the characters of `self`, in reverse order.
@@ -1457,7 +1457,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the bytes of `self`
     #[inline]
     fn byte_iter(&self) -> ByteIterator<'self> {
-        self.as_bytes().iter().transform(|&b| b)
+        self.as_bytes().iter().map(|&b| b)
     }
 
     /// An iterator over the bytes of `self`, in reverse order
@@ -1565,7 +1565,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the lines of a string, separated by either
     /// `\n` or (`\r\n`).
     fn any_line_iter(&self) -> AnyLineIterator<'self> {
-        do self.line_iter().transform |line| {
+        do self.line_iter().map |line| {
             let l = line.len();
             if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
             else { line }
@@ -3686,7 +3686,7 @@ mod tests {
     #[test]
     fn test_str_container() {
         fn sum_len<S: Container>(v: &[S]) -> uint {
-            v.iter().transform(|x| x.len()).sum()
+            v.iter().map(|x| x.len()).sum()
         }
 
         let s = ~"01234";

@@ -100,7 +100,7 @@ fn lookup_vtables(vcx: &VtableContext,
     let mut result =
         substs.tps.rev_iter()
         .zip(type_param_defs.rev_iter())
-        .transform(|(ty, def)|
+        .map(|(ty, def)|
                    lookup_vtables_for_param(vcx, location_info, Some(substs),
                                             &*def.bounds, *ty, is_early))
         .to_owned_vec();

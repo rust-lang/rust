@@ -600,7 +600,7 @@ impl<A: Eq> Eq for DList<A> {
 
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
-        self.iter().transform(|x| x.clone()).collect()
+        self.iter().map(|x| x.clone()).collect()
     }
 }
 
@@ -690,7 +690,7 @@ mod tests {
 
     #[cfg(test)]
     fn list_from<T: Clone>(v: &[T]) -> DList<T> {
-        v.iter().transform(|x| (*x).clone()).collect()
+        v.iter().map(|x| (*x).clone()).collect()
     }
 
     #[test]
@@ -1014,7 +1014,7 @@ mod tests {
     fn bench_collect_into(b: &mut test::BenchHarness) {
         let v = &[0, ..64];
         do b.iter {
-            let _: DList<int> = v.iter().transform(|x| *x).collect();
+            let _: DList<int> = v.iter().map(|x| *x).collect();
         }
     }
 
@@ -1075,7 +1075,7 @@ mod tests {
     #[bench]
     fn bench_iter(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let m: DList<int> = v.iter().transform(|&x|x).collect();
+        let m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
             assert!(m.iter().len_() == 128);
         }
@@ -1083,7 +1083,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let mut m: DList<int> = v.iter().transform(|&x|x).collect();
+        let mut m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
             assert!(m.mut_iter().len_() == 128);
         }
@@ -1091,7 +1091,7 @@ mod tests {
     #[bench]
     fn bench_iter_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let m: DList<int> = v.iter().transform(|&x|x).collect();
+        let m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
             assert!(m.rev_iter().len_() == 128);
         }
@@ -1099,7 +1099,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut_rev(b: &mut test::BenchHarness) {
         let v = &[0, ..128];
-        let mut m: DList<int> = v.iter().transform(|&x|x).collect();
+        let mut m: DList<int> = v.iter().map(|&x|x).collect();
         do b.iter {
             assert!(m.mut_rev_iter().len_() == 128);
         }

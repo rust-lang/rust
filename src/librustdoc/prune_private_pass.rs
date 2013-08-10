@@ -91,7 +91,7 @@ fn strip_priv_methods(
             ast::private => false,
             ast::inherited => item_vis == ast::public
         }
-    }.transform(|x| (*x).clone()).collect();
+    }.map(|x| (*x).clone()).collect();
 
     doc::ImplDoc {
         methods: methods,
@@ -126,7 +126,7 @@ fn fold_mod(
                     is_visible(fold.ctxt.clone(), item_tag.item())
                 }
             }
-        }).transform(|x| (*x).clone()).collect(),
+        }).map(|x| (*x).clone()).collect(),
         .. doc
     }
 }

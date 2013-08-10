@@ -214,7 +214,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
     }
 
     let names_str = str::from_bytes(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
-    let term_names: ~[~str] = names_str.split_iter('|').transform(|s| s.to_owned()).collect();
+    let term_names: ~[~str] = names_str.split_iter('|').map(|s| s.to_owned()).collect();
 
     file.read_byte(); // consume NUL
 

@@ -105,7 +105,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
         *dst = (*src).clone();
     }
 
-    for c in cap.iter().transform(|&x| x) {
+    for c in cap.iter().map(|&x| x) {
         let cur = c as char;
         let mut old_state = state;
         match state {

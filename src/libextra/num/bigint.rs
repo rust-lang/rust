@@ -287,7 +287,7 @@ impl Mul<BigUint, BigUint> for BigUint {
             if n == 1 { return (*a).clone(); }
 
             let mut carry = 0;
-            let mut prod = do a.data.iter().transform |ai| {
+            let mut prod = do a.data.iter().map |ai| {
                 let (hi, lo) = BigDigit::from_uint(
                     (*ai as uint) * (n as uint) + (carry as uint)
                 );
@@ -625,7 +625,7 @@ impl BigUint {
         if n_bits == 0 || self.is_zero() { return (*self).clone(); }
 
         let mut carry = 0;
-        let mut shifted = do self.data.iter().transform |elem| {
+        let mut shifted = do self.data.iter().map |elem| {
             let (hi, lo) = BigDigit::from_uint(
                 (*elem as uint) << n_bits | (carry as uint)
             );

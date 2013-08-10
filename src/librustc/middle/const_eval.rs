@@ -102,7 +102,7 @@ pub fn classify(e: &expr,
 
               ast::expr_tup(ref es) |
               ast::expr_vec(ref es, ast::m_imm) => {
-                join_all(es.iter().transform(|e| classify(*e, tcx)))
+                join_all(es.iter().map(|e| classify(*e, tcx)))
               }
 
               ast::expr_vstore(e, vstore) => {
@@ -116,7 +116,7 @@ pub fn classify(e: &expr,
               }
 
               ast::expr_struct(_, ref fs, None) => {
-                let cs = do fs.iter().transform |f| {
+                let cs = do fs.iter().map |f| {
                     classify(f.expr, tcx)
                 };
                 join_all(cs)

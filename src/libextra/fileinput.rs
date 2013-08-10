@@ -353,7 +353,7 @@ a literal `-`.
 */
 // XXX: stupid, unclear name
 pub fn pathify(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>] {
-    vec.iter().transform(|str| {
+    vec.iter().map(|str| {
         if stdin_hyphen && "-" == *str {
             None
         } else {
