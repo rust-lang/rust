@@ -6,13 +6,13 @@ fn main() {
         _ => ()
     }
 
-    match [~"foo", ~"bar", ~"baz"] {
+    match ~[~"foo", ~"bar", ~"baz"] {
         [a, _, _, .._] => { println(a); }
         [~"foo", ~"bar", ~"baz", ~"foo", ~"bar"] => { } //~ ERROR unreachable pattern
         _ => { }
     }
 
-    match ['a', 'b', 'c'] {
+    match ~['a', 'b', 'c'] {
         ['a', 'b', 'c', .._tail] => {}
         ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern
         _ => {}

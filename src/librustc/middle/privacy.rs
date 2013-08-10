@@ -403,6 +403,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                     // Ditto
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
+                        ty_enum(id, _) |
                         ty_struct(id, _)
                         if id.crate != LOCAL_CRATE ||
                            !privileged_items.iter().any(|x| x == &(id.node)) => {
