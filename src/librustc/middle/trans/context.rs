@@ -26,6 +26,7 @@ use middle::ty;
 
 use middle::trans::type_::Type;
 
+use std::c_str::ToCStr;
 use std::hash;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
@@ -124,11 +125,17 @@ impl CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
             set_task_llcx(llcx);
-            let llmod = name.as_c_str(|buf| llvm::LLVMModuleCreateWithNameInContext(buf, llcx));
+            let llmod = do name.to_c_str().with_ref |buf| {
+                llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
+            };
             let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
             let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
-            data_layout.as_c_str(|buf| llvm::LLVMSetDataLayout(llmod, buf));
-            targ_triple.as_c_str(|buf| llvm::LLVMSetTarget(llmod, buf));
+            do data_layout.to_c_str().with_ref |buf| {
+                llvm::LLVMSetDataLayout(llmod, buf)
+            };
+            do targ_triple.to_c_str().with_ref |buf| {
+                llvm::LLVMSetTarget(llmod, buf)
+            };
             let targ_cfg = sess.targ_cfg;
 
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);

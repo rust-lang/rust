@@ -37,6 +37,7 @@ use util::ppaux::ty_to_short_str;
 
 use middle::trans::type_::Type;
 
+use std::c_str::ToCStr;
 use std::libc::c_uint;
 use syntax::ast;
 
@@ -659,7 +660,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
     note_unique_llvm_symbol(ccx, name);
     debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
-    let gvar = do name.as_c_str |buf| {
+    let gvar = do name.to_c_str().with_ref |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }

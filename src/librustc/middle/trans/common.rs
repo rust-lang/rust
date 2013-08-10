@@ -31,6 +31,7 @@ use util::ppaux::{Repr};
 
 use middle::trans::type_::Type;
 
+use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
 use std::hashmap::{HashMap};
@@ -707,7 +708,7 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
 
 pub fn C_floating(s: &str, t: Type) -> ValueRef {
     unsafe {
-        do s.as_c_str |buf| {
+        do s.to_c_str().with_ref |buf| {
             llvm::LLVMConstRealOfString(t.to_ref(), buf)
         }
     }
@@ -755,12 +756,12 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
             None => ()
         }
 
-        let sc = do s.as_c_str |buf| {
+        let sc = do s.to_c_str().with_ref |buf| {
             llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint, False)
         };
 
         let gsym = token::gensym("str");
-        let g = do fmt!("str%u", gsym).as_c_str |buf| {
+        let g = do fmt!("str%u", gsym).to_c_str().with_ref |buf| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(sc).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(g, sc);
@@ -779,7 +780,7 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
-        C_struct([cs, C_uint(cx, len + 1u /* +1 for null */)])
+        C_struct([cs, C_uint(cx, len)])
     }
 }
 

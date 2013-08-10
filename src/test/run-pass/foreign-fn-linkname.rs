@@ -26,8 +26,9 @@ mod libc {
 fn strlen(str: ~str) -> uint {
     unsafe {
         // C string is terminated with a zero
-        let bytes = str.to_bytes_with_null();
-        return libc::my_strlen(vec::raw::to_ptr(bytes));
+        do str.to_c_str().with_ref |buf| {
+            libc::my_strlen(buf as *u8)
+        }
     }
 }
 

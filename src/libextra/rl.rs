@@ -11,7 +11,7 @@
 // FIXME #3921. This is unsafe because linenoise uses global mutable
 // state without mutexes.
 
-
+use std::c_str::ToCStr;
 use std::libc::{c_char, c_int};
 use std::local_data;
 use std::str;
@@ -32,7 +32,7 @@ pub mod rustrt {
 
 /// Add a line to history
 pub unsafe fn add_history(line: &str) -> bool {
-    do line.as_c_str |buf| {
+    do line.to_c_str().with_ref |buf| {
         rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
     }
 }
@@ -44,21 +44,21 @@ pub unsafe fn set_history_max_len(len: int) -> bool {
 
 /// Save line history to a file
 pub unsafe fn save_history(file: &str) -> bool {
-    do file.as_c_str |buf| {
+    do file.to_c_str().with_ref |buf| {
         rustrt::linenoiseHistorySave(buf) == 1 as c_int
     }
 }
 
 /// Load line history from a file
 pub unsafe fn load_history(file: &str) -> bool {
-    do file.as_c_str |buf| {
+    do file.to_c_str().with_ref |buf| {
         rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
     }
 }
 
 /// Print out a prompt and then wait for input and return it
 pub unsafe fn read(prompt: &str) -> Option<~str> {
-    do prompt.as_c_str |buf| {
+    do prompt.to_c_str().with_ref |buf| {
         let line = rustrt::linenoise(buf);
 
         if line.is_null() { None }
@@ -80,7 +80,7 @@ pub unsafe fn complete(cb: CompletionCb) {
 
             unsafe {
                 do cb(str::raw::from_c_str(line)) |suggestion| {
-                    do suggestion.as_c_str |buf| {
+                    do suggestion.to_c_str().with_ref |buf| {
                         rustrt::linenoiseAddCompletion(completions, buf);
                     }
                 }

@@ -8,26 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::*;
-use result::*;
-use ops::Drop;
-use cell::Cell;
-use cast;
+use c_str::ToCStr;
 use cast::transmute;
+use cast;
+use cell::Cell;
 use clone::Clone;
 use libc::{c_int, c_uint, c_void};
+use ops::Drop;
+use option::*;
 use ptr;
+use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
+use rt::io::{standard_error, OtherIoError};
+use rt::local::Local;
+use rt::rtio::*;
+use rt::sched::Scheduler;
+use rt::tube::Tube;
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
-use rt::rtio::*;
-use rt::sched::Scheduler;
-use rt::io::{standard_error, OtherIoError};
-use rt::tube::Tube;
-use rt::local::Local;
-use str::StrSlice;
 use unstable::sync::Exclusive;
 
 #[cfg(test)] use container::Container;
@@ -654,7 +654,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let r = unsafe {
-            do multi.to_str().as_c_str |m_addr| {
+            do multi.to_str().to_c_str().with_ref |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_JOIN_GROUP)
             }
@@ -668,7 +668,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let r = unsafe {
-            do multi.to_str().as_c_str |m_addr| {
+            do multi.to_str().to_c_str().with_ref |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_LEAVE_GROUP)
             }

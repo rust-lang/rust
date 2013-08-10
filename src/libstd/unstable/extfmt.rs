@@ -549,12 +549,14 @@ pub mod rt {
         // For strings, precision is the maximum characters
         // displayed
         let unpadded = match cv.precision {
-          CountImplied => s,
-          CountIs(max) => if (max as uint) < s.char_len() {
-            s.slice(0, max as uint)
-          } else {
-            s
-          }
+            CountImplied => s,
+            CountIs(max) => {
+                if (max as uint) < s.char_len() {
+                    s.slice(0, max as uint)
+                } else {
+                    s
+                }
+            }
         };
         pad(cv, unpadded, None, PadNozero, buf);
     }
