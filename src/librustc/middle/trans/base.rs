@@ -2740,6 +2740,60 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!("llvm.bswap.i32",[Type::i32()], Type::i32());
     ifn!("llvm.bswap.i64",[Type::i64()], Type::i64());
 
+    ifn!("llvm.sadd.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.uadd.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.ssub.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.usub.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.smul.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.umul.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
     return intrinsics;
 }
 
