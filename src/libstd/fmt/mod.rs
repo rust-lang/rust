@@ -17,7 +17,6 @@ use rt::io::mem::MemWriter;
 use rt::io;
 use str;
 use sys;
-use uint;
 use util;
 use vec;
 
@@ -238,7 +237,7 @@ impl<'self> Formatter<'self> {
     }
 
     fn runplural(&mut self, value: uint, pieces: &[rt::Piece]) {
-        do uint::to_str_bytes(value, 10) |buf| {
+        do ::uint::to_str_bytes(value, 10) |buf| {
             let valuestr = str::from_bytes_slice(buf);
             for piece in pieces.iter() {
                 self.run(piece, Some(valuestr));
@@ -314,7 +313,7 @@ impl<'self> Formatter<'self> {
                 // case where the maximum length will matter.
                 let char_len = s.char_len();
                 if char_len >= max {
-                    let nchars = uint::min(max, char_len);
+                    let nchars = ::uint::min(max, char_len);
                     self.buf.write(s.slice_chars(0, nchars).as_bytes());
                     return
                 }
@@ -409,52 +408,72 @@ impl Char for char {
     }
 }
 
-impl Signed for int {
-    fn fmt(c: &int, f: &mut Formatter) {
-        do uint::to_str_bytes(c.abs() as uint, 10) |buf| {
-            f.pad_integral(buf, "", *c >= 0);
-        }
-    }
-}
-
-impl Unsigned for uint {
-    fn fmt(c: &uint, f: &mut Formatter) {
-        do uint::to_str_bytes(*c, 10) |buf| {
-            f.pad_integral(buf, "", true);
-        }
-    }
-}
-
-impl Octal for uint {
-    fn fmt(c: &uint, f: &mut Formatter) {
-        do uint::to_str_bytes(*c, 8) |buf| {
-            f.pad_integral(buf, "0o", true);
-        }
-    }
-}
-
-impl LowerHex for uint {
-    fn fmt(c: &uint, f: &mut Formatter) {
-        do uint::to_str_bytes(*c, 16) |buf| {
-            f.pad_integral(buf, "0x", true);
-        }
-    }
-}
-
-impl UpperHex for uint {
-    fn fmt(c: &uint, f: &mut Formatter) {
-        do uint::to_str_bytes(*c, 16) |buf| {
-            let mut local = [0u8, ..16];
-            for (l, &b) in local.mut_iter().zip(buf.iter()) {
-                *l = match b as char {
-                    'a' .. 'f' => (b - 'a' as u8) + 'A' as u8,
-                    _ => b,
-                };
+macro_rules! int_base(($ty:ident, $into:ident, $base:expr,
+                       $name:ident, $prefix:expr) => {
+    impl $name for $ty {
+        fn fmt(c: &$ty, f: &mut Formatter) {
+            do ::$into::to_str_bytes(*c as $into, $base) |buf| {
+                f.pad_integral(buf, $prefix, true);
             }
-            f.pad_integral(local.slice_to(buf.len()), "0x", true);
         }
     }
+})
+macro_rules! upper_hex(($ty:ident, $into:ident) => {
+    impl UpperHex for $ty {
+        fn fmt(c: &$ty, f: &mut Formatter) {
+            do ::$into::to_str_bytes(*c as $into, 16) |buf| {
+                upperhex(buf, f);
+            }
+        }
+    }
+})
+
+// Not sure why, but this causes an "unresolved enum variant, struct or const"
+// when inlined into the above macro...
+#[doc(hidden)]
+pub fn upperhex(buf: &[u8], f: &mut Formatter) {
+    let mut local = [0u8, ..16];
+    for i in ::iterator::range(0, buf.len()) {
+        local[i] = match buf[i] as char {
+            'a' .. 'f' => (buf[i] - 'a' as u8) + 'A' as u8,
+            c => c as u8,
+        }
+    }
+    f.pad_integral(local.slice_to(buf.len()), "0x", true);
 }
+
+// FIXME(#4375) shouldn't need an inner module
+macro_rules! integer(($signed:ident, $unsigned:ident) => {
+    mod $signed {
+        use super::*;
+
+        // Signed is special because it actuall emits the negative sign,
+        // nothing else should do that, however.
+        impl Signed for $signed {
+            fn fmt(c: &$signed, f: &mut Formatter) {
+                do ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10) |buf| {
+                    f.pad_integral(buf, "", *c >= 0);
+                }
+            }
+        }
+        int_base!($signed, $unsigned, 2, Binary, "0b")
+        int_base!($signed, $unsigned, 8, Octal, "0o")
+        int_base!($signed, $unsigned, 16, LowerHex, "0x")
+        upper_hex!($signed, $unsigned)
+
+        int_base!($unsigned, $unsigned, 2, Binary, "0b")
+        int_base!($unsigned, $unsigned, 8, Octal, "0o")
+        int_base!($unsigned, $unsigned, 10, Unsigned, "")
+        int_base!($unsigned, $unsigned, 16, LowerHex, "0x")
+        upper_hex!($unsigned, $unsigned)
+    }
+})
+
+integer!(int, uint)
+integer!(i8, u8)
+integer!(i16, u16)
+integer!(i32, u32)
+integer!(i64, u64)
 
 impl<T> Poly for T {
     fn fmt(t: &T, f: &mut Formatter) {
