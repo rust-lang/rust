@@ -36,7 +36,7 @@ pub fn from<T>(t: ~[T]) -> OptVec<T> {
 }
 
 impl<T> OptVec<T> {
-    fn push(&mut self, t: T) {
+    pub fn push(&mut self, t: T) {
         match *self {
             Vec(ref mut v) => {
                 v.push(t);
@@ -50,32 +50,32 @@ impl<T> OptVec<T> {
         *self = Vec(~[t]);
     }
 
-    fn map<U>(&self, op: &fn(&T) -> U) -> OptVec<U> {
+    pub fn map<U>(&self, op: &fn(&T) -> U) -> OptVec<U> {
         match *self {
             Empty => Empty,
             Vec(ref v) => Vec(v.map(op))
         }
     }
 
-    fn map_move<U>(self, op: &fn(T) -> U) -> OptVec<U> {
+    pub fn map_move<U>(self, op: &fn(T) -> U) -> OptVec<U> {
         match self {
             Empty => Empty,
             Vec(v) => Vec(v.move_iter().map(op).collect())
         }
     }
 
-    fn get<'a>(&'a self, i: uint) -> &'a T {
+    pub fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
             Empty => fail!("Invalid index %u", i),
             Vec(ref v) => &v[i]
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    fn len(&self) -> uint {
+    pub fn len(&self) -> uint {
         match *self {
             Empty => 0,
             Vec(ref v) => v.len()
@@ -83,7 +83,7 @@ impl<T> OptVec<T> {
     }
 
     #[inline]
-    fn iter<'r>(&'r self) -> OptVecIterator<'r, T> {
+    pub fn iter<'r>(&'r self) -> OptVecIterator<'r, T> {
         match *self {
             Empty => OptVecIterator{iter: None},
             Vec(ref v) => OptVecIterator{iter: Some(v.iter())}
@@ -91,11 +91,11 @@ impl<T> OptVec<T> {
     }
 
     #[inline]
-    fn map_to_vec<B>(&self, op: &fn(&T) -> B) -> ~[B] {
+    pub fn map_to_vec<B>(&self, op: &fn(&T) -> B) -> ~[B] {
         self.iter().map(op).collect()
     }
 
-    fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
+    pub fn mapi_to_vec<B>(&self, op: &fn(uint, &T) -> B) -> ~[B] {
         let mut index = 0;
         self.map_to_vec(|a| {
             let i = index;
@@ -113,7 +113,7 @@ pub fn take_vec<T>(v: OptVec<T>) -> ~[T] {
 }
 
 impl<T:Clone> OptVec<T> {
-    fn prepend(&self, t: T) -> OptVec<T> {
+    pub fn prepend(&self, t: T) -> OptVec<T> {
         let mut v0 = ~[t];
         match *self {
             Empty => {}
@@ -124,7 +124,7 @@ impl<T:Clone> OptVec<T> {
 }
 
 impl<A:Eq> Eq for OptVec<A> {
-    fn eq(&self, other: &OptVec<A>) -> bool {
+    pub fn eq(&self, other: &OptVec<A>) -> bool {
         // Note: cannot use #[deriving(Eq)] here because
         // (Empty, Vec(~[])) ought to be equal.
         match (self, other) {
@@ -135,7 +135,7 @@ impl<A:Eq> Eq for OptVec<A> {
         }
     }
 
-    fn ne(&self, other: &OptVec<A>) -> bool {
+    pub fn ne(&self, other: &OptVec<A>) -> bool {
         !self.eq(other)
     }
 }
