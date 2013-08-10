@@ -262,7 +262,7 @@ pub trait Iterator<A> {
     /// ~~~ {.rust}
     /// let xs = [2u, 3];
     /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map_(|&x| count(0u, 1).take(x));
+    /// let mut it = xs.iter().flat_map(|&x| count(0u, 1).take(x));
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
     /// for x: uint in it {
@@ -270,9 +270,8 @@ pub trait Iterator<A> {
     ///     i += 1;
     /// }
     /// ~~~
-    // FIXME: #5898: should be called `flat_map`
     #[inline]
-    fn flat_map_<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
+    fn flat_map<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMap<'r, A, Self, U> {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
@@ -1644,7 +1643,7 @@ mod tests {
     fn test_iterator_flat_map() {
         let xs = [0u, 3, 6];
         let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
-        let mut it = xs.iter().flat_map_(|&x| count(x, 1).take(3));
+        let mut it = xs.iter().flat_map(|&x| count(x, 1).take(3));
         let mut i = 0;
         for x in it {
             assert_eq!(x, ys[i]);
@@ -1937,7 +1936,7 @@ mod tests {
     fn test_double_ended_flat_map() {
         let u = [0u,1];
         let v = [5,6,7,8];
-        let mut it = u.iter().flat_map_(|x| v.slice(*x, v.len()).iter());
+        let mut it = u.iter().flat_map(|x| v.slice(*x, v.len()).iter());
         assert_eq!(it.next_back().unwrap(), &8);
         assert_eq!(it.next().unwrap(),      &5);
         assert_eq!(it.next_back().unwrap(), &7);
