@@ -724,7 +724,7 @@ impl<T:Hash + Eq> HashSet<T> {
     /// Visit the values representing the symmetric difference
     pub fn symmetric_difference_iter<'a>(&'a self, other: &'a HashSet<T>)
         -> Chain<SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
-        self.difference_iter(other).chain_(other.difference_iter(self))
+        self.difference_iter(other).chain(other.difference_iter(self))
     }
 
     /// Visit the values representing the intersection
@@ -740,7 +740,7 @@ impl<T:Hash + Eq> HashSet<T> {
     /// Visit the values representing the union
     pub fn union_iter<'a>(&'a self, other: &'a HashSet<T>)
         -> Chain<HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
-        self.iter().chain_(other.difference_iter(self))
+        self.iter().chain(other.difference_iter(self))
     }
 
 }

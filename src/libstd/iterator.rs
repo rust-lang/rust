@@ -59,13 +59,13 @@ pub trait Iterator<A> {
     /// ~~~ {.rust}
     /// let a = [0];
     /// let b = [1];
-    /// let mut it = a.iter().chain_(b.iter());
+    /// let mut it = a.iter().chain(b.iter());
     /// assert_eq!(it.next().get(), &0);
     /// assert_eq!(it.next().get(), &1);
     /// assert!(it.next().is_none());
     /// ~~~
     #[inline]
-    fn chain_<U: Iterator<A>>(self, other: U) -> Chain<Self, U> {
+    fn chain<U: Iterator<A>>(self, other: U) -> Chain<Self, U> {
         Chain{a: self, b: other, flag: false}
     }
 
@@ -1534,7 +1534,7 @@ mod tests {
         let xs = [0u, 1, 2, 3, 4, 5];
         let ys = [30u, 40, 50, 60];
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
-        let mut it = xs.iter().chain_(ys.iter());
+        let mut it = xs.iter().chain(ys.iter());
         let mut i = 0;
         for &x in it {
             assert_eq!(x, expected[i]);
@@ -1543,7 +1543,7 @@ mod tests {
         assert_eq!(i, expected.len());
 
         let ys = count(30u, 10).take(4);
-        let mut it = xs.iter().map(|&x| x).chain_(ys);
+        let mut it = xs.iter().map(|&x| x).chain(ys);
         let mut i = 0;
         for x in it {
             assert_eq!(x, expected[i]);
@@ -1771,7 +1771,7 @@ mod tests {
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.enumerate().size_hint(), (uint::max_value, None));
-        assert_eq!(c.chain_(vi.map(|&i| i)).size_hint(), (uint::max_value, None));
+        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::max_value, None));
         assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
         assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
         assert_eq!(c.filter(|_| false).size_hint(), (0, None));
@@ -1785,7 +1785,7 @@ mod tests {
         assert_eq!(vi.take_while(|_| false).size_hint(), (0, Some(10)));
         assert_eq!(vi.skip_while(|_| false).size_hint(), (0, Some(10)));
         assert_eq!(vi.enumerate().size_hint(), (10, Some(10)));
-        assert_eq!(vi.chain_(v2.iter()).size_hint(), (13, Some(13)));
+        assert_eq!(vi.chain(v2.iter()).size_hint(), (13, Some(13)));
         assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
         assert_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
         assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
@@ -1900,7 +1900,7 @@ mod tests {
     fn test_double_ended_chain() {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
-        let mut it = xs.iter().chain_(ys.iter()).invert();
+        let mut it = xs.iter().chain(ys.iter()).invert();
         assert_eq!(it.next().unwrap(), &11)
         assert_eq!(it.next().unwrap(), &9)
         assert_eq!(it.next_back().unwrap(), &1)
@@ -1953,7 +1953,7 @@ mod tests {
     fn test_random_access_chain() {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
-        let mut it = xs.iter().chain_(ys.iter());
+        let mut it = xs.iter().chain(ys.iter());
         assert_eq!(it.idx(0).unwrap(), &1);
         assert_eq!(it.idx(5).unwrap(), &7);
         assert_eq!(it.idx(7).unwrap(), &11);
