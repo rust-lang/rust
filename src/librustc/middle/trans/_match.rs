@@ -521,10 +521,11 @@ fn enter_match<'r>(bcx: @mut Block,
 }
 
 fn enter_default<'r>(bcx: @mut Block,
-                         dm: DefMap,
-                         m: &[Match<'r>],
-                         col: uint,
-                         val: ValueRef)
+                     dm: DefMap,
+                     m: &[Match<'r>],
+                     col: uint,
+                     val: ValueRef,
+                     chk: Option<mk_fail>)
                       -> ~[Match<'r>] {
     debug!("enter_default(bcx=%s, m=%s, col=%u, val=%s)",
            bcx.to_str(),
@@ -533,13 +534,36 @@ fn enter_default<'r>(bcx: @mut Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    do enter_match(bcx, dm, m, col, val) |p| {
+    // Collect all of the matches that can match against anything.
+    let matches = do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
           ast::pat_wild | ast::pat_tup(_) => Some(~[]),
           ast::pat_ident(_, _, None) if pat_is_binding(dm, p) => Some(~[]),
           _ => None
         }
-    }
+    };
+
+    // Ok, now, this is pretty subtle. A "default" match is a match
+    // that needs to be considered if none of the actual checks on the
+    // value being considered succeed. The subtlety lies in that sometimes
+    // identifier/wildcard matches are *not* default matches. Consider:
+    // "match x { _ if something => foo, true => bar, false => baz }".
+    // There is a wildcard match, but it is *not* a default case. The boolean
+    // case on the value being considered is exhaustive. If the case is
+    // exhaustive, then there are no defaults.
+    //
+    // We detect whether the case is exhaustive in the following
+    // somewhat kludgy way: if the last wildcard/binding match has a
+    // guard, then by non-redundancy, we know that there aren't any
+    // non guarded matches, and thus by exhaustiveness, we know that
+    // we don't need any default cases. If the check *isn't* nonexhaustive
+    // (because chk is Some), then we need the defaults anyways.
+    let is_exhaustive = match matches.last_opt() {
+        Some(m) if m.data.arm.guard.is_some() && chk.is_none() => true,
+        _ => false
+    };
+
+    if is_exhaustive { ~[] } else { matches }
 }
 
 // <pcwalton> nmatsakis: what does enter_opt do?
@@ -1575,7 +1599,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
         C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
-    let defaults = enter_default(else_cx, dm, m, col, val);
+    let defaults = enter_default(else_cx, dm, m, col, val, chk);
     let exhaustive = chk.is_none() && defaults.len() == 0u;
     let len = opts.len();
 
