@@ -66,30 +66,21 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
-              rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
               rt/rust_env.cpp \
               rt/rust_rng.cpp \
-              rt/rust_sched_loop.cpp \
-              rt/rust_sched_launcher.cpp \
-              rt/rust_sched_driver.cpp \
-              rt/rust_scheduler.cpp \
-              rt/rust_sched_reaper.cpp \
-              rt/rust_task.cpp \
               rt/rust_stack.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_crate_map.cpp \
-              rt/rust_log.cpp \
               rt/rust_gc_metadata.cpp \
               rt/rust_util.cpp \
+              rt/rust_log.cpp \
               rt/rust_exchange_alloc.cpp \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
-              rt/rust_kernel.cpp \
               rt/rust_abi.cpp \
-              rt/rust_debug.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp \

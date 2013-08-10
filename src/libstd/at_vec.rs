@@ -275,24 +275,11 @@ pub mod raw {
         }
 
         fn local_realloc(ptr: *(), size: uint) -> *() {
-            use rt;
-            use rt::OldTaskContext;
             use rt::local::Local;
             use rt::task::Task;
 
-            if rt::context() == OldTaskContext {
-                unsafe {
-                    return rust_local_realloc(ptr, size as libc::size_t);
-                }
-
-                extern {
-                    #[fast_ffi]
-                    fn rust_local_realloc(ptr: *(), size: libc::size_t) -> *();
-                }
-            } else {
-                do Local::borrow::<Task, *()> |task| {
-                    task.heap.realloc(ptr as *libc::c_void, size) as *()
-                }
+            do Local::borrow::<Task, *()> |task| {
+                task.heap.realloc(ptr as *libc::c_void, size) as *()
             }
         }
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#include "rust_kernel.h"
+#include "rust_globals.h"
 
 #ifdef __APPLE__
 #include <crt_externs.h>

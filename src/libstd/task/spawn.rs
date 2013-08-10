@@ -81,9 +81,6 @@ use container::MutableMap;
 use comm::{Chan, GenericChan, oneshot};
 use hashmap::{HashSet, HashSetConsumeIterator};
 use local_data;
-use task::local_data_priv::{local_get, local_set, OldHandle};
-use task::rt::rust_task;
-use task::rt;
 use task::{Failure, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult};
 use task::unkillable;
@@ -91,7 +88,7 @@ use to_bytes::IterBytes;
 use uint;
 use util;
 use unstable::sync::Exclusive;
-use rt::{OldTaskContext, NewRtContext, context, in_green_task_context};
+use rt::in_green_task_context;
 use rt::local::Local;
 use rt::task::{Task, Sched};
 use rt::kill::KillHandle;
@@ -107,14 +104,12 @@ use rt::work_queue::WorkQueue;
 // Transitionary.
 #[deriving(Eq)]
 enum TaskHandle {
-    OldTask(*rust_task),
     NewTask(KillHandle),
 }
 
 impl Clone for TaskHandle {
     fn clone(&self) -> TaskHandle {
         match *self {
-            OldTask(x) => OldTask(x),
             NewTask(ref x) => NewTask(x.clone()),
         }
     }
@@ -123,7 +118,6 @@ impl Clone for TaskHandle {
 impl IterBytes for TaskHandle {
     fn iter_bytes(&self, lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
         match *self {
-            OldTask(ref x) => x.iter_bytes(lsb0, f),
             NewTask(ref x) => x.iter_bytes(lsb0, f),
         }
     }
@@ -498,7 +492,6 @@ struct RuntimeGlue;
 impl RuntimeGlue {
     unsafe fn kill_task(task: TaskHandle) {
         match task {
-            OldTask(ptr) => rt::rust_task_kill_other(ptr),
             NewTask(handle) => {
                 let mut handle = handle;
                 do handle.kill().map_move |killed_task| {
@@ -513,7 +506,6 @@ impl RuntimeGlue {
 
     unsafe fn kill_all_tasks(task: &TaskHandle) {
         match *task {
-            OldTask(ptr) => rt::rust_task_kill_all(ptr),
             // FIXME(#7544): Remove the kill_all feature entirely once the
             // oldsched goes away.
             NewTask(ref _handle) => rtabort!("can't kill_all in newsched"),
@@ -521,12 +513,8 @@ impl RuntimeGlue {
     }
 
     fn with_task_handle_and_failing(blk: &fn(TaskHandle, bool)) {
-        match context() {
-            OldTaskContext => unsafe {
-                let me = rt::rust_get_task();
-                blk(OldTask(me), rt::rust_task_is_unwinding(me))
-            },
-            NewRtContext if in_green_task_context() => unsafe {
+        if in_green_task_context() {
+            unsafe {
                 // Can't use safe borrow, because the taskgroup destructor needs to
                 // access the scheduler again to send kill signals to other tasks.
                 let me = Local::unsafe_borrow::<Task>();
@@ -534,36 +522,15 @@ impl RuntimeGlue {
                 // Will probably have to wait until the old rt is gone.
                 blk(NewTask((*me).death.kill_handle.get_ref().clone()),
                     (*me).unwinder.unwinding)
-            },
-            NewRtContext => rtabort!("task dying in bad context"),
+            }
+        } else {
+            rtabort!("task dying in bad context")
         }
     }
 
     fn with_my_taskgroup<U>(blk: &fn(&Taskgroup) -> U) -> U {
-        match context() {
-            OldTaskContext => unsafe {
-                let me = rt::rust_get_task();
-                do local_get(OldHandle(me), taskgroup_key()) |g| {
-                    match g {
-                        None => {
-                            // Main task, doing first spawn ever. Lazily initialise here.
-                            let mut members = TaskSet::new();
-                            members.insert(OldTask(me));
-                            let tasks = Exclusive::new(Some(TaskGroupData {
-                                members: members,
-                                descendants: TaskSet::new(),
-                            }));
-                            // Main task/group has no ancestors, no notifier, etc.
-                            let group = @@mut Taskgroup(tasks, AncestorList(None),
-                                                        true, None);
-                            local_set(OldHandle(me), taskgroup_key(), group);
-                            blk(&**group)
-                        }
-                        Some(&group) => blk(&**group)
-                    }
-                }
-            },
-            NewRtContext if in_green_task_context() => unsafe {
+        if in_green_task_context() {
+            unsafe {
                 // Can't use safe borrow, because creating new hashmaps for the
                 // tasksets requires an rng, which needs to borrow the sched.
                 let me = Local::unsafe_borrow::<Task>();
@@ -587,8 +554,9 @@ impl RuntimeGlue {
                     }
                     Some(ref group) => group,
                 })
-            },
-            NewRtContext => rtabort!("spawning in bad context"),
+            }
+        } else {
+            rtabort!("spawning in bad context")
         }
     }
 }
@@ -598,7 +566,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     -> Option<(TaskGroupArc, AncestorList, bool)> {
     // FIXME(#7544): Not safe to lazily initialize in the old runtime. Remove
     // this context check once 'spawn_raw_oldsched' is gone.
-    if context() == OldTaskContext || linked || supervised {
+    if linked || supervised {
         // with_my_taskgroup will lazily initialize the parent's taskgroup if
         // it doesn't yet exist. We don't want to call it in the unlinked case.
         do RuntimeGlue::with_my_taskgroup |spawner_group| {
@@ -665,10 +633,10 @@ fn enlist_many(child: TaskHandle, child_arc: &TaskGroupArc,
 }
 
 pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
-    match context() {
-        OldTaskContext => spawn_raw_oldsched(opts, f),
-        _ if in_green_task_context() => spawn_raw_newsched(opts, f),
-        _ => fail!("can't spawn from this context")
+    if in_green_task_context() {
+        spawn_raw_newsched(opts, f)
+    } else {
+        fail!("can't spawn from this context")
     }
 }
 
@@ -808,85 +776,6 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
     rtdebug!("spawn calling run_task");
     Scheduler::run_task(task);
 
-}
-
-fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
-
-    let (child_tg, ancestors, is_main) =
-        gen_child_taskgroup(opts.linked, opts.supervised).expect("old runtime needs TG");
-
-    unsafe {
-        let child_data = Cell::new((child_tg, ancestors, f));
-        // Being killed with the unsafe task/closure pointers would leak them.
-        do unkillable {
-            let (child_tg, ancestors, f) = child_data.take(); // :(
-            // Create child task.
-            let new_task = match opts.sched.mode {
-                DefaultScheduler => rt::new_task(),
-                _ => new_task_in_sched()
-            };
-            assert!(!new_task.is_null());
-            // Getting killed after here would leak the task.
-            let child_wrapper = make_child_wrapper(new_task, child_tg,
-                  ancestors, is_main, opts.notify_chan.take(), f);
-
-            let closure = cast::transmute(&child_wrapper);
-
-            // Getting killed between these two calls would free the child's
-            // closure. (Reordering them wouldn't help - then getting killed
-            // between them would leak.)
-            rt::start_task(new_task, closure);
-            cast::forget(child_wrapper);
-        }
-    }
-
-    // This function returns a closure-wrapper that we pass to the child task.
-    // (1) It sets up the notification channel.
-    // (2) It attempts to enlist in the child's group and all ancestor groups.
-    // (3a) If any of those fails, it leaves all groups, and does nothing.
-    // (3b) Otherwise it builds a task control structure and puts it in TLS,
-    // (4) ...and runs the provided body function.
-    fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
-                          ancestors: AncestorList, is_main: bool,
-                          notify_chan: Option<Chan<TaskResult>>,
-                          f: ~fn())
-                       -> ~fn() {
-        let child_data = Cell::new((notify_chan, child_arc, ancestors));
-        let result: ~fn() = || {
-            let (notify_chan, child_arc, ancestors) = child_data.take(); // :(
-            let mut ancestors = ancestors;
-            // Child task runs this code.
-
-            // Even if the below code fails to kick the child off, we must
-            // send Something on the notify channel.
-
-            let notifier = notify_chan.map_move(|c| AutoNotify(c));
-
-            if enlist_many(OldTask(child), &child_arc, &mut ancestors) {
-                let group = @@mut Taskgroup(child_arc, ancestors, is_main, notifier);
-                unsafe {
-                    local_set(OldHandle(child), taskgroup_key(), group);
-                }
-
-                // Run the child's body.
-                f();
-
-                // TLS cleanup code will exit the taskgroup.
-            }
-
-            // Run the box annihilator.
-            // FIXME #4428: Crashy.
-            // unsafe { cleanup::annihilate(); }
-        };
-        return result;
-    }
-
-    fn new_task_in_sched() -> *rust_task {
-        unsafe {
-            let sched_id = rt::rust_new_sched(1);
-            rt::rust_new_task_in_sched(sched_id)
-        }
-    }
 }
 
 #[test]

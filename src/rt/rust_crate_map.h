@@ -11,7 +11,7 @@
 #ifndef RUST_CRATE_MAP_H
 #define RUST_CRATE_MAP_H
 
-#include "rust_log.h"
+#include "rust_globals.h"
 #include <stdint.h>
 
 struct mod_entry {

@@ -164,7 +164,6 @@ pub mod trie;
 
 pub mod task;
 pub mod comm;
-pub mod pipes;
 pub mod local_data;
 
 
@@ -213,7 +212,6 @@ mod std {
     pub use kinds;
     pub use local_data;
     pub use sys;
-    pub use pipes;
     pub use unstable;
     pub use str;
     pub use os;
