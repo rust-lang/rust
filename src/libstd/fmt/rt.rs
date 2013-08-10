@@ -36,7 +36,7 @@ pub struct Argument<'self> {
 
 pub struct FormatSpec {
     fill: char,
-    alignleft: bool,
+    align: parse::Alignment,
     flags: uint,
     precision: parse::Count,
     width: parse::Count,

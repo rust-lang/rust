@@ -32,7 +32,7 @@ pub struct Formatter<'self> {
     /// Character used as 'fill' whenever there is alignment
     fill: char,
     /// Boolean indication of whether the output should be left-aligned
-    alignleft: bool,
+    align: parse::Alignment,
     /// Optionally specified integer width that the output should be
     width: Option<uint>,
     /// Optionally specified precision for numeric types
@@ -108,7 +108,7 @@ pub unsafe fn sprintf(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
             precision: None,
             // FIXME(#8248): shouldn't need a transmute
             buf: cast::transmute(&output as &io::Writer),
-            alignleft: false,
+            align: parse::AlignUnknown,
             fill: ' ',
             args: args,
             curarg: args.iter(),
@@ -148,7 +148,7 @@ impl<'self> Formatter<'self> {
             rt::Argument(ref arg) => {
                 // Fill in the format parameters into the formatter
                 self.fill = arg.format.fill;
-                self.alignleft = arg.format.alignleft;
+                self.align = arg.format.align;
                 self.flags = arg.format.flags;
                 setcount(&mut self.width, &arg.format.width);
                 setcount(&mut self.precision, &arg.format.precision);
@@ -251,7 +251,7 @@ impl<'self> Formatter<'self> {
     /// TODO: dox
     pub fn pad_integral(&mut self, s: &[u8], alternate_prefix: &str,
                         positive: bool) {
-        use fmt::parse::{FlagAlternate, FlagSignPlus};
+        use fmt::parse::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
 
         let mut actual_len = s.len();
         if self.flags & 1 << (FlagAlternate as uint) != 0 {
@@ -259,20 +259,27 @@ impl<'self> Formatter<'self> {
         }
         if self.flags & 1 << (FlagSignPlus as uint) != 0 {
             actual_len += 1;
-        }
-        if !positive {
+        } else if !positive {
             actual_len += 1;
         }
 
+        let mut signprinted = false;
+        let sign = |this: &mut Formatter| {
+            if !signprinted {
+                if this.flags & 1 << (FlagSignPlus as uint) != 0 && positive {
+                    this.buf.write(['+' as u8]);
+                } else if !positive {
+                    this.buf.write(['-' as u8]);
+                }
+                if this.flags & 1 << (FlagAlternate as uint) != 0 {
+                    this.buf.write(alternate_prefix.as_bytes());
+                }
+                signprinted = true;
+            }
+        };
+
         let emit = |this: &mut Formatter| {
-            if this.flags & 1 << (FlagSignPlus as uint) != 0 && positive {
-                this.buf.write(['+' as u8]);
-            } else if !positive {
-                this.buf.write(['-' as u8]);
-            }
-            if this.flags & 1 << (FlagAlternate as uint) != 0 {
-                this.buf.write(alternate_prefix.as_bytes());
-            }
+            sign(this);
             this.buf.write(s);
         };
 
@@ -280,7 +287,11 @@ impl<'self> Formatter<'self> {
             None => { emit(self) }
             Some(min) if actual_len >= min => { emit(self) }
             Some(min) => {
-                do self.with_padding(min - actual_len) |me| {
+                if self.flags & 1 << (FlagSignAwareZeroPad as uint) != 0 {
+                    self.fill = '0';
+                    sign(self);
+                }
+                do self.with_padding(min - actual_len, parse::AlignRight) |me| {
                     emit(me);
                 }
             }
@@ -292,8 +303,8 @@ impl<'self> Formatter<'self> {
     /// recognized for generic strings are:
     ///
     /// * width - the minimum width of what to emit
-    /// * fill/alignleft - what to emit and where to emit it if the string
-    ///                    provided needs to be padded
+    /// * fill/align - what to emit and where to emit it if the string
+    ///                provided needs to be padded
     /// * precision - the maximum length to emit, the string is truncated if it
     ///               is longer than this length
     ///
@@ -336,15 +347,20 @@ impl<'self> Formatter<'self> {
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                do self.with_padding(width - s.len()) |me| {
+                do self.with_padding(width - s.len(), parse::AlignLeft) |me| {
                     me.buf.write(s.as_bytes());
                 }
             }
         }
     }
 
-    fn with_padding(&mut self, padding: uint, f: &fn(&mut Formatter)) {
-        if self.alignleft {
+    fn with_padding(&mut self, padding: uint,
+                    default: parse::Alignment, f: &fn(&mut Formatter)) {
+        let align = match self.align {
+            parse::AlignUnknown => default,
+            parse::AlignLeft | parse::AlignRight => self.align
+        };
+        if align == parse::AlignLeft {
             f(self);
         }
         let mut fill = [0u8, ..4];
@@ -352,7 +368,7 @@ impl<'self> Formatter<'self> {
         for _ in range(0, padding) {
             self.buf.write(fill.slice_to(len));
         }
-        if !self.alignleft {
+        if align == parse::AlignRight {
             f(self);
         }
     }
@@ -427,7 +443,6 @@ macro_rules! upper_hex(($ty:ident, $into:ident) => {
         }
     }
 })
-
 // Not sure why, but this causes an "unresolved enum variant, struct or const"
 // when inlined into the above macro...
 #[doc(hidden)]
@@ -500,9 +515,10 @@ impl<T> Poly for T {
 //      time.
 impl<T> Pointer for *const T {
     fn fmt(t: &*const T, f: &mut Formatter) {
-        // XXX: formatting args
-        f.buf.write("0x".as_bytes());
-        LowerHex::fmt(&(*t as uint), f);
+        f.flags |= 1 << (parse::FlagAlternate as uint);
+        do ::uint::to_str_bytes(*t as uint, 16) |buf| {
+            f.pad_integral(buf, "0x", true);
+        }
     }
 }
 
