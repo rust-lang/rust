@@ -17,7 +17,6 @@
  */
 
 #include "rust_globals.h"
-#include "rust_upcall.h"
 #include "rust_util.h"
 
 //Unwinding ABI declarations.
