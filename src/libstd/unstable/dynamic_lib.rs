@@ -15,6 +15,7 @@ Dynamic library facilities.
 A simple wrapper over the platforms dynamic library facilities
 
 */
+use c_str::ToCStr;
 use cast;
 use path;
 use libc;
@@ -65,7 +66,7 @@ impl DynamicLibrary {
         // T but that feature is still unimplemented
 
         let maybe_symbol_value = do dl::check_for_errors_in {
-            do symbol.as_c_str |raw_string| {
+            do symbol.to_c_str().with_ref |raw_string| {
                 dl::symbol(self.handle, raw_string)
             }
         };
@@ -135,6 +136,7 @@ mod test {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 mod dl {
+    use c_str::ToCStr;
     use libc;
     use path;
     use ptr;
@@ -143,7 +145,7 @@ mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        do filename.to_str().as_c_str |raw_name| {
+        do filename.to_c_str().with_ref |raw_name| {
             dlopen(raw_name, Lazy as libc::c_int)
         }
     }

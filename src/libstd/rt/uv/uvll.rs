@@ -29,6 +29,7 @@
 
 #[allow(non_camel_case_types)]; // C types
 
+use c_str::ToCStr;
 use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
 use libc::{malloc, free};
 use libc;
@@ -372,12 +373,12 @@ pub unsafe fn is_ip6_addr(addr: *sockaddr) -> bool {
 }
 
 pub unsafe fn malloc_ip4_addr(ip: &str, port: int) -> *sockaddr_in {
-    do ip.as_c_str |ip_buf| {
+    do ip.to_c_str().with_ref |ip_buf| {
         rust_uv_ip4_addrp(ip_buf as *u8, port as libc::c_int)
     }
 }
 pub unsafe fn malloc_ip6_addr(ip: &str, port: int) -> *sockaddr_in6 {
-    do ip.as_c_str |ip_buf| {
+    do ip.to_c_str().with_ref |ip_buf| {
         rust_uv_ip6_addrp(ip_buf as *u8, port as libc::c_int)
     }
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::c_str::ToCStr;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort};
 use std::option;
@@ -2259,7 +2259,7 @@ pub struct TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd = do string_rep.as_c_str |buf| {
+    let lltd = do string_rep.to_c_str().with_ref |buf| {
         unsafe { llvm::LLVMCreateTargetData(buf) }
     };
 

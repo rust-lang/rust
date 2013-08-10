@@ -849,7 +849,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
 
         let _icx = push_ctxt("trans_index");
         let ccx = bcx.ccx();
-        let base_ty = expr_ty(bcx, base);
         let mut bcx = bcx;
 
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
@@ -879,12 +878,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
         let (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
                                             index_expr.id, 0);
-        let mut len = len;
-
-        if ty::type_is_str(base_ty) {
-            // acccount for null terminator in the case of string
-            len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
-        }
 
         debug!("trans_index: base %s", bcx.val_to_str(base));
         debug!("trans_index: len %s", bcx.val_to_str(len));
@@ -943,7 +936,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
-                            let llval = do symbol.as_c_str |buf| {
+                            let llval = do symbol.to_c_str().with_ref |buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
                                                     llty.to_ref(),
                                                     buf)

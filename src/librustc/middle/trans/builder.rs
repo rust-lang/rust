@@ -423,7 +423,7 @@ impl Builder {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                do name.as_c_str |c| {
+                do name.to_c_str().with_ref |c| {
                     llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c)
                 }
             }
@@ -739,7 +739,7 @@ impl Builder {
             let sanitized = text.replace("$", "");
             let comment_text = fmt!("# %s", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = do comment_text.as_c_str |c| {
+            let asm = do comment_text.to_c_str().with_ref |c| {
                 unsafe {
                     llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
                                              c, noname(), False, False)
@@ -895,7 +895,7 @@ impl Builder {
             let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
             let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
             let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-            let T: ValueRef = do "llvm.trap".as_c_str |buf| {
+            let T: ValueRef = do "llvm.trap".to_c_str().with_ref |buf| {
                 llvm::LLVMGetNamedFunction(M, buf)
             };
             assert!((T as int != 0));

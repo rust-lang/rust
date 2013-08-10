@@ -48,6 +48,7 @@ implement `Reader` and `Writer`, where appropriate.
 
 use cast;
 use clone::Clone;
+use c_str::ToCStr;
 use container::Container;
 use int;
 use iterator::Iterator;
@@ -1040,8 +1041,8 @@ pub fn stdin() -> @Reader {
 }
 
 pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
-    let f = do path.to_str().as_c_str |pathbuf| {
-        do "rb".as_c_str |modebuf| {
+    let f = do path.to_c_str().with_ref |pathbuf| {
+        do "rb".to_c_str().with_ref |modebuf| {
             unsafe { libc::fopen(pathbuf, modebuf as *libc::c_char) }
         }
     };
@@ -1290,9 +1291,8 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
         }
     }
     let fd = unsafe {
-        do path.to_str().as_c_str |pathbuf| {
-            libc::open(pathbuf, fflags,
-                       (S_IRUSR | S_IWUSR) as c_int)
+        do path.to_c_str().with_ref |pathbuf| {
+            libc::open(pathbuf, fflags, (S_IRUSR | S_IWUSR) as c_int)
         }
     };
     if fd < (0 as c_int) {
@@ -1574,8 +1574,8 @@ pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
 // FIXME: fileflags // #2004
 pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
     unsafe {
-        let f = do path.to_str().as_c_str |pathbuf| {
-            do "w".as_c_str |modebuf| {
+        let f = do path.to_c_str().with_ref |pathbuf| {
+            do "w".to_c_str().with_ref |modebuf| {
                 libc::fopen(pathbuf, modebuf)
             }
         };
@@ -1707,6 +1707,7 @@ pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     (*bytes).clone()
 }
 
+#[cfg(stage0)]
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     let mut v = with_bytes_writer(f);
 
@@ -1717,6 +1718,11 @@ pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     unsafe {
         ::cast::transmute(v)
     }
+}
+
+#[cfg(not(stage0))]
+pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
+    str::from_bytes(with_bytes_writer(f))
 }
 
 // Utility functions

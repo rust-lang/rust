@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::c_str::ToCStr;
 
 use back::link;
 use lib;
@@ -240,7 +241,7 @@ pub fn trans_log(log_ex: &ast::expr,
             ccx, modpath, "loglevel");
         let global;
         unsafe {
-            global = do s.as_c_str |buf| {
+            global = do s.to_c_str().with_ref |buf| {
                 llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
             };
             llvm::LLVMSetGlobalConstant(global, False);

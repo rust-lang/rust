@@ -2652,7 +2652,7 @@ pub mod funcs {
                 pub fn execvpe(c: *c_char, argv: **c_char, envp: **c_char)
                                -> c_int;
                 #[link_name = "_getcwd"]
-                pub fn getcwd(buf: *c_char, size: size_t) -> *c_char;
+                pub fn getcwd(buf: *mut c_char, size: size_t) -> *c_char;
                 #[link_name = "_getpid"]
                 pub fn getpid() -> c_int;
                 #[link_name = "_isatty"]
@@ -2804,7 +2804,7 @@ pub mod funcs {
                 pub fn execvp(c: *c_char, argv: **c_char) -> c_int;
                 pub fn fork() -> pid_t;
                 pub fn fpathconf(filedes: c_int, name: c_int) -> c_long;
-                pub fn getcwd(buf: *c_char, size: size_t) -> *c_char;
+                pub fn getcwd(buf: *mut c_char, size: size_t) -> *c_char;
                 pub fn getegid() -> gid_t;
                 pub fn geteuid() -> uid_t;
                 pub fn getgid() -> gid_t ;
