@@ -29,6 +29,11 @@
 
     table))
 
+(defcustom rust-indent-offset default-tab-width
+  "*Indent Rust code by this number of spaces.
+
+The initializer is `DEFAULT-TAB-WIDTH'.")
+
 (defun rust-paren-level () (nth 0 (syntax-ppss)))
 (defun rust-in-str-or-cmnt () (nth 8 (syntax-ppss)))
 (defun rust-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
@@ -49,10 +54,10 @@
            (let ((level (rust-paren-level)))
              (cond
               ;; A function return type is 1 level indented
-              ((looking-at "->") (* default-tab-width (+ level 1)))
+              ((looking-at "->") (* rust-indent-offset (+ level 1)))
 
               ;; A closing brace is 1 level unindended
-              ((looking-at "}") (* default-tab-width (- level 1)))
+              ((looking-at "}") (* rust-indent-offset (- level 1)))
 
               ;; If we're in any other token-tree / sexp, then:
               ;;  - [ or ( means line up with the opening token
@@ -70,18 +75,18 @@
                      (goto-char pt)
                      (back-to-indentation)
                      (if (looking-at "\\<else\\>")
-                         (* default-tab-width (+ 1 level))
+                         (* rust-indent-offset (+ 1 level))
                        (progn
                          (goto-char pt)
                          (beginning-of-line)
                          (rust-rewind-irrelevant)
                          (end-of-line)
                          (if (looking-back "[{};,]")
-                             (* default-tab-width level)
+                             (* rust-indent-offset level)
                            (back-to-indentation)
                            (if (looking-at "#")
-                               (* default-tab-width level)
-                             (* default-tab-width (+ 1 level))))))))))
+                               (* rust-indent-offset level)
+                             (* rust-indent-offset (+ 1 level))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
