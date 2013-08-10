@@ -409,7 +409,6 @@ pub trait Iterator<A> {
         accum
     }
 
-    // FIXME: #5898: should be called len
     /// Counts the number of elements in this iterator.
     ///
     /// # Example
@@ -417,11 +416,11 @@ pub trait Iterator<A> {
     /// ~~~ {.rust}
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.len_() == 5);
-    /// assert!(it.len_() == 0);
+    /// assert!(it.len() == 5);
+    /// assert!(it.len() == 0);
     /// ~~~
     #[inline]
-    fn len_(&mut self) -> uint {
+    fn len(&mut self) -> uint {
         self.fold(0, |cnt, _x| cnt + 1)
     }
 
@@ -1718,9 +1717,9 @@ mod tests {
     #[test]
     fn test_iterator_len() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().len_(), 4);
-        assert_eq!(v.slice(0, 10).iter().len_(), 10);
-        assert_eq!(v.slice(0, 0).iter().len_(), 0);
+        assert_eq!(v.slice(0, 4).iter().len(), 4);
+        assert_eq!(v.slice(0, 10).iter().len(), 10);
+        assert_eq!(v.slice(0, 0).iter().len(), 0);
     }
 
     #[test]

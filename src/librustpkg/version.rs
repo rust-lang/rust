@@ -200,7 +200,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
 /// Just an approximation
 fn is_url_like(p: &Path) -> bool {
     let str = p.to_str();
-    str.split_iter('/').len_() > 2
+    str.split_iter('/').len() > 2
 }
 
 /// If s is of the form foo#bar, where bar is a valid version
@@ -215,7 +215,7 @@ pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Vers
     for st in s.split_iter(sep) {
         debug!("whole = %s part = %s", s, st);
     }
-    if s.split_iter(sep).len_() > 2 {
+    if s.split_iter(sep).len() > 2 {
         return None;
     }
     match s.rfind(sep) {

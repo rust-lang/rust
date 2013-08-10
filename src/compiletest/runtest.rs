@@ -938,7 +938,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = io::read_whole_file_str(&p.with_filetype("ll")).unwrap();
-    x.line_iter().len_()
+    x.line_iter().len()
 }
 
 
