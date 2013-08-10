@@ -807,11 +807,22 @@ pub fn from_utf16(v: &[u16]) -> ~str {
 
 /// Allocates a new string with the specified capacity. The string returned is
 /// the empty string, but has capacity for much more.
+#[cfg(stage0)]
 #[inline]
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
     buf.reserve(capacity);
     buf
+}
+
+/// Allocates a new string with the specified capacity. The string returned is
+/// the empty string, but has capacity for much more.
+#[cfg(not(stage0))]
+#[inline]
+pub fn with_capacity(capacity: uint) -> ~str {
+    unsafe {
+        cast::transmute(vec::with_capacity::<~[u8]>(capacity))
+    }
 }
 
 /// As char_len but for a slice of a string
@@ -3700,7 +3711,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use str;
+    use super::*;
 
     #[bench]
     fn is_utf8_100_ascii(bh: &mut BenchHarness) {
@@ -3710,7 +3721,7 @@ mod bench {
 
         assert_eq!(100, s.len());
         do bh.iter {
-            str::is_utf8(s);
+            is_utf8(s);
         }
     }
 
@@ -3719,7 +3730,7 @@ mod bench {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
         do bh.iter {
-            str::is_utf8(s);
+            is_utf8(s);
         }
     }
 
@@ -3740,6 +3751,13 @@ mod bench {
                  𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑";
         do bh.iter {
             s.map_chars(|c| ((c as uint) + 1) as char);
+        }
+    }
+
+    #[bench]
+    fn bench_with_capacity(bh: &mut BenchHarness) {
+        do bh.iter {
+            with_capacity(100);
         }
     }
 }
