@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,4 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { env!(10, "two"); } //~ ERROR: expected string literal
+enum E {
+    Foo{f : int},
+    Bar
+}
+
+pub fn main() {
+    let e = Foo{f: 1};
+    match e {
+        Foo{_} => (),
+        _ => fail!(),
+    }
+    match e {
+        Foo{f: _f} => (),
+        _ => fail!(),
+    }
+}

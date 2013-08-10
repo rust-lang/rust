@@ -123,7 +123,7 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
     $(if $(findstring adb,$(CFG_ADB)), \
-      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+      $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info check: $(target) test enabled \
           $(info check: android device attached) \
           $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
@@ -348,7 +348,9 @@ $(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2)) \
+		$$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$$(X_$(2)) \
+		$$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 

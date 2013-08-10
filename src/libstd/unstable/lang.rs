@@ -13,9 +13,9 @@
 use c_str::ToCStr;
 use cast::transmute;
 use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int};
+use option::{Some, None};
 use str;
 use sys;
-use rt::{context, OldTaskContext};
 use rt::task::Task;
 use rt::local::Local;
 use rt::borrowck;
@@ -57,16 +57,13 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
 
 #[lang="malloc"]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    match context() {
-        OldTaskContext => {
-            return rustrt::rust_upcall_malloc_noswitch(td, size);
+    // XXX: Unsafe borrow for speed. Lame.
+    match Local::try_unsafe_borrow::<Task>() {
+        Some(task) => {
+            (*task).heap.alloc(td as *c_void, size as uint) as *c_char
         }
-        _ => {
-            let mut alloc = ::ptr::null();
-            do Local::borrow::<Task,()> |task| {
-                alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
-            }
-            return alloc;
+        None => {
+            rustrt::rust_upcall_malloc_noswitch(td, size)
         }
     }
 }

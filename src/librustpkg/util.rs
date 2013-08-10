@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{os, result};
+use std::os;
 use rustc::driver::{driver, session};
-use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned};
@@ -19,10 +18,10 @@ use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, bin_crate};
-use context::Ctx;
+use context::{Ctx, in_target};
 use package_id::PkgId;
 use search::find_library_in_search_path;
-use path_util::target_library_in_workspace;
+use path_util::{target_library_in_workspace, U_RWX};
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
 // It would be nice to have the list of commands in just one place -- for example,
@@ -44,13 +43,6 @@ pub struct Pkg {
 impl ToStr for Pkg {
     fn to_str(&self) -> ~str {
         self.id.to_str()
-    }
-}
-
-pub fn root() -> Path {
-    match filesearch::get_rustpkg_root() {
-        result::Ok(path) => path,
-        result::Err(err) => fail!(err)
     }
 }
 
@@ -162,13 +154,11 @@ pub fn ready_crate(sess: session::Session,
 pub fn compile_input(ctxt: &Ctx,
                      pkg_id: &PkgId,
                      in_file: &Path,
-                     out_dir: &Path,
+                     workspace: &Path,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
                      what: OutputType) -> bool {
-
-    let workspace = out_dir.pop().pop();
 
     assert!(in_file.components.len() > 1);
     let input = driver::file_input((*in_file).clone());
@@ -176,11 +166,13 @@ pub fn compile_input(ctxt: &Ctx,
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
+    let out_dir = workspace.push("build").push_rel(&pkg_id.path);
+
     let binary = os::args()[0].to_managed();
 
     debug!("flags: %s", flags.connect(" "));
     debug!("cfgs: %s", cfgs.connect(" "));
-    debug!("compile_input's sysroot = %?", ctxt.sysroot_opt);
+    debug!("out_dir = %s", out_dir.to_str());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -196,12 +188,22 @@ pub fn compile_input(ctxt: &Ctx,
                           + flags
                           + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).unwrap();
+    // Hack so that rustpkg can run either out of a rustc target dir,
+    // or the host dir
+    let sysroot_to_use = if !in_target(ctxt.sysroot_opt) {
+        ctxt.sysroot_opt
+    }
+    else {
+        ctxt.sysroot_opt.map(|p| { @p.pop().pop().pop() })
+    };
+    debug!("compile_input's sysroot = %?", ctxt.sysroot_opt_str());
+    debug!("sysroot_to_use = %?", sysroot_to_use);
     let options = @session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
-        maybe_sysroot: ctxt.sysroot_opt,
-        addl_lib_search_paths: @mut (~[(*out_dir).clone()]),
+        maybe_sysroot: sysroot_to_use,
+        addl_lib_search_paths: @mut (~[out_dir.clone()]),
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
         .. (*driver::build_session_options(binary, &matches, diagnostic::emit)).clone()
@@ -211,7 +213,12 @@ pub fn compile_input(ctxt: &Ctx,
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
     for p in addl_lib_search_paths.iter() {
-        assert!(os::path_is_dir(p));
+        if os::path_exists(p) {
+            assert!(os::path_is_dir(p));
+        }
+        else {
+            assert!(os::mkdir_recursive(p, U_RWX));
+        }
     }
 
     let sess = driver::build_session(options, diagnostic::emit);
@@ -224,35 +231,44 @@ pub fn compile_input(ctxt: &Ctx,
 
     // Not really right. Should search other workspaces too, and the installed
     // database (which doesn't exist yet)
-    find_and_install_dependencies(ctxt, sess, &workspace, crate,
+    find_and_install_dependencies(ctxt, sess, workspace, crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
                                       // as an additional lib search path
-                                      addl_lib_search_paths.push(p);
+                                      if !addl_lib_search_paths.contains(&p) {
+                                          // Might be inefficient, but this set probably
+                                          // won't get too large -- tjc
+                                          addl_lib_search_paths.push(p);
+                                      }
                                   });
 
     // Inject the link attributes so we get the right package name and version
     if attr::find_linkage_metas(crate.attrs).is_empty() {
-        let short_name_to_use = match what {
-            Test  => fmt!("%stest", pkg_id.short_name),
-            Bench => fmt!("%sbench", pkg_id.short_name),
-            _     => pkg_id.short_name.clone()
+        let name_to_use = match what {
+            Test  => fmt!("%stest", pkg_id.short_name).to_managed(),
+            Bench => fmt!("%sbench", pkg_id.short_name).to_managed(),
+            _     => pkg_id.short_name.to_managed()
         };
-        debug!("Injecting link name: %s", short_name_to_use);
+        debug!("Injecting link name: %s", name_to_use);
         let link_options =
-            ~[attr::mk_name_value_item_str(@"name", short_name_to_use.to_managed()),
-              attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())];
+            ~[attr::mk_name_value_item_str(@"name", name_to_use),
+              attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())] +
+                        if pkg_id.is_complex() {
+                        ~[attr::mk_name_value_item_str(@"package_id",
+                                                       pkg_id.path.to_str().to_managed())]
+                } else { ~[] };
 
+        debug!("link options: %?", link_options);
         crate = @ast::Crate {
             attrs: ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))],
             .. (*crate).clone()
-        };
+        }
     }
 
-    debug!("calling compile_crate_from_input, out_dir = %s,
+    debug!("calling compile_crate_from_input, workspace = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, out_dir, sess, crate);
+    compile_crate_from_input(&input, &out_dir, sess, crate);
     true
 }
 
@@ -262,17 +278,22 @@ pub fn compile_input(ctxt: &Ctx,
 // call compile_upto and return the crate
 // also, too many arguments
 pub fn compile_crate_from_input(input: &driver::input,
-                                build_dir: &Path,
+ // should be of the form <workspace>/build/<pkg id's path>
+                                out_dir: &Path,
                                 sess: session::Session,
                                 crate: @ast::Crate) {
     debug!("Calling build_output_filenames with %s, building library? %?",
-           build_dir.to_str(), sess.building_library);
+           out_dir.to_str(), sess.building_library);
 
     // bad copy
-    let outputs = driver::build_output_filenames(input, &Some((*build_dir).clone()), &None,
+    debug!("out_dir = %s", out_dir.to_str());
+    let outputs = driver::build_output_filenames(input, &Some(out_dir.clone()), &None,
                                                  crate.attrs, sess);
 
-    debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
+    debug!("Outputs are out_filename: %s and obj_filename: %s and output type = %?",
+           outputs.out_filename.to_str(),
+           outputs.obj_filename.to_str(),
+           sess.opts.output_type);
     debug!("additional libraries:");
     for lib in sess.opts.addl_lib_search_paths.iter() {
         debug!("an additional library: %s", lib.to_str());
@@ -298,15 +319,15 @@ pub fn exe_suffix() -> ~str { ~"" }
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
-                     crate: &Path, dir: &Path,
+                     crate: &Path, workspace: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
                      what: OutputType) -> bool {
-    debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
+    debug!("compile_crate: crate=%s, workspace=%s", crate.to_str(), workspace.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
         debug!("+++ %s", *fl);
     }
-    compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
+    compile_input(ctxt, pkg_id, crate, workspace, flags, cfgs, opt, what)
 }
 
 
@@ -327,19 +348,20 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
         debug!("A view item!");
         match vi.node {
             // ignore metadata, I guess
-            ast::view_item_extern_mod(lib_ident, _, _) => {
+            ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
                 match my_ctxt.sysroot_opt {
-                    Some(ref x) => debug!("sysroot: %s", x.to_str()),
+                    Some(ref x) => debug!("*** sysroot: %s", x.to_str()),
                     None => debug!("No sysroot given")
                 };
-                let lib_name = sess.str_of(lib_ident);
+                let lib_name = match path_opt { // ???
+                    Some(p) => p, None => sess.str_of(lib_ident) };
                 match find_library_in_search_path(my_ctxt.sysroot_opt, lib_name) {
                     Some(installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                     }
                     None => {
                         // Try to install it
-                        let pkg_id = PkgId::new(lib_name, &os::getcwd());
+                        let pkg_id = PkgId::new(lib_name);
                         my_ctxt.install(&my_workspace, &pkg_id);
                         // Also, add an additional search path
                         debug!("let installed_path...")

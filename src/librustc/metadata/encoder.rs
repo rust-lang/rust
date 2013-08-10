@@ -319,7 +319,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             id: NodeId,
                             variants: &[variant],
                             path: &[ast_map::path_elt],
-                            index: @mut ~[entry<int>],
+                            index: @mut ~[entry<i64>],
                             generics: &ast::Generics) {
     debug!("encode_enum_variant_info(id=%?)", id);
 
@@ -329,7 +329,8 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                                ast::def_id { crate: LOCAL_CRATE, node: id });
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
-        index.push(entry {val: variant.node.id, pos: ebml_w.writer.tell()});
+        index.push(entry {val: variant.node.id as i64,
+                          pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'v');
@@ -677,8 +678,8 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           path: &[ast_map::path_elt],
                           fields: &[@struct_field],
-                          global_index: @mut ~[entry<int>])
-                          -> ~[entry<int>] {
+                          global_index: @mut ~[entry<i64>])
+                          -> ~[entry<i64>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
     let mut index = ~[];
@@ -692,8 +693,8 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         };
 
         let id = field.node.id;
-        index.push(entry {val: id, pos: ebml_w.writer.tell()});
-        global_index.push(entry {val: id, pos: ebml_w.writer.tell()});
+        index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
+        global_index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing %s %d",
                tcx.sess.str_of(nm), id);
@@ -712,8 +713,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                path: &[ast_map::path_elt],
                                name: ast::ident,
                                ctor_id: NodeId,
-                               index: @mut ~[entry<int>]) {
-    index.push(entry { val: ctor_id, pos: ebml_w.writer.tell() });
+                               index: @mut ~[entry<i64>]) {
+    index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
@@ -815,13 +816,13 @@ fn should_inline(attrs: &[Attribute]) -> bool {
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
-                        index: @mut ~[entry<int>],
+                        index: @mut ~[entry<i64>],
                         path: &[ast_map::path_elt]) {
     let tcx = ecx.tcx;
 
     fn add_to_index_(item: @item, ebml_w: &writer::Encoder,
-                     index: @mut ~[entry<int>]) {
-        index.push(entry { val: item.id, pos: ebml_w.writer.tell() });
+                     index: @mut ~[entry<i64>]) {
+        index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
     }
     let add_to_index: &fn() = || add_to_index_(item, ebml_w, index);
 
@@ -969,7 +970,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx);
-        encode_index(ebml_w, bkts, write_int);
+        encode_index(ebml_w, bkts, write_i64);
         ebml_w.end_tag();
 
         // If this is a tuple- or enum-like struct, encode the type of the
@@ -1040,7 +1041,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 Some(ast_methods[i])
             } else { None };
 
-            index.push(entry {val: m.def_id.node, pos: ebml_w.writer.tell()});
+            index.push(entry {val: m.def_id.node as i64,
+                              pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx,
                                    ebml_w,
                                    *m,
@@ -1086,7 +1088,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             let method_ty = ty::method(tcx, method_def_id);
 
-            index.push(entry {val: method_def_id.node, pos: ebml_w.writer.tell()});
+            index.push(entry {val: method_def_id.node as i64,
+                              pos: ebml_w.writer.tell()});
 
             ebml_w.start_tag(tag_items_data_item);
 
@@ -1145,10 +1148,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: @foreign_item,
-                                index: @mut ~[entry<int>],
+                                index: @mut ~[entry<i64>],
                                 path: &ast_map::path,
                                 abi: AbiSet) {
-    index.push(entry { val: nitem.id, pos: ebml_w.writer.tell() });
+    index.push(entry { val: nitem.id as i64, pos: ebml_w.writer.tell() });
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
@@ -1184,10 +1187,10 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
                          crate: &Crate)
-                         -> ~[entry<int>] {
+                         -> ~[entry<i64>] {
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
-    index.push(entry { val: CRATE_NODE_ID, pos: ebml_w.writer.tell() });
+    index.push(entry { val: CRATE_NODE_ID as i64, pos: ebml_w.writer.tell() });
     encode_info_for_mod(ecx,
                         ebml_w,
                         &crate.module,
@@ -1304,7 +1307,7 @@ fn write_str(writer: @io::Writer, s: ~str) {
     writer.write_str(s);
 }
 
-fn write_int(writer: @io::Writer, &n: &int) {
+fn write_i64(writer: @io::Writer, &n: &i64) {
     assert!(n < 0x7fff_ffff);
     writer.write_be_u32(n as u32);
 }
@@ -1623,7 +1626,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
 
     i = *wr.pos;
     let items_buckets = create_index(items_index);
-    encode_index(&mut ebml_w, items_buckets, write_int);
+    encode_index(&mut ebml_w, items_buckets, write_i64);
     ecx.stats.index_bytes = *wr.pos - i;
     ebml_w.end_tag();
 

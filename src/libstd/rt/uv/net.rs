@@ -20,7 +20,6 @@ use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
-use num;
 
 pub enum UvSocketAddr {
     UvIpv4SocketAddr(*sockaddr_in),
@@ -85,77 +84,10 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
         port as u16
     };
     let ip_str = str::from_bytes_slice(ip_name).trim_right_chars(&'\x00');
-    let ip = match addr {
-        UvIpv4SocketAddr(*) => {
-            let ip: ~[u8] =
-                ip_str.split_iter('.')
-                      .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
-                      .collect();
-            assert_eq!(ip.len(), 4);
-            SocketAddr {
-                ip: Ipv4Addr(ip[0], ip[1], ip[2], ip[3]),
-                port: ip_port
-            }
-        },
-        UvIpv6SocketAddr(*) => {
-            let ip: ~[u16] = {
-                let expand_shorthand_and_convert = |s: &str| -> ~[~[u16]] {
-                    let convert_each_segment = |s: &str| -> ~[u16] {
-                        let read_hex_segment = |s: &str| -> u16 {
-                            num::FromStrRadix::from_str_radix(s, 16u).unwrap()
-                        };
-                        match s {
-                            "" => ~[],
-                            // IPv4-Mapped/Compatible IPv6 Address?
-                            s if s.find('.').is_some() => {
-                                let i = s.rfind(':').unwrap_or_default(-1);
-
-                                let b = s.slice(i + 1, s.len()); // the ipv4 part
-
-                                let h = b.split_iter('.')
-                                   .transform(|s: &str| -> u8 { FromStr::from_str(s).unwrap() })
-                                   .transform(|s: u8| -> ~str { fmt!("%02x", s as uint) })
-                                   .collect::<~[~str]>();
-
-                                if i == -1 {
-                                    // Ipv4 Compatible Address (::x.x.x.x)
-                                    // first 96 bits are zero leaving 32 bits
-                                    // for the ipv4 part
-                                    // (i.e ::127.0.0.1 == ::7F00:1)
-                                    ~[num::FromStrRadix::from_str_radix(h[0] + h[1], 16).unwrap(),
-                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).unwrap()]
-                                } else {
-                                    // Ipv4-Mapped Address (::FFFF:x.x.x.x)
-                                    // first 80 bits are zero, followed by all ones
-                                    // for the next 16 bits, leaving 32 bits for
-                                    // the ipv4 part
-                                    // (i.e ::FFFF:127.0.0.1 == ::FFFF:7F00:1)
-                                    ~[1,
-                                      num::FromStrRadix::from_str_radix(h[0] + h[1], 16).unwrap(),
-                                      num::FromStrRadix::from_str_radix(h[2] + h[3], 16).unwrap()]
-                                }
-                            },
-                            s => s.split_iter(':').transform(read_hex_segment).collect()
-                        }
-                    };
-                    s.split_str_iter("::").transform(convert_each_segment).collect()
-                };
-                match expand_shorthand_and_convert(ip_str) {
-                    [x] => x, // no shorthand found
-                    [l, r] => l + vec::from_elem(8 - l.len() - r.len(), 0u16) + r, // fill the gap
-                    _ => fail!(), // impossible. only one shorthand allowed.
-                }
-            };
-            assert_eq!(ip.len(), 8);
-            SocketAddr {
-                ip: Ipv6Addr(ip[0], ip[1], ip[2], ip[3], ip[4], ip[5], ip[6], ip[7]),
-                port: ip_port
-            }
-        },
-    };
+    let ip_addr = FromStr::from_str(ip_str).unwrap();
 
     // finally run the closure
-    f(ip)
+    f(SocketAddr { ip: ip_addr, port: ip_port })
 }
 
 pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {

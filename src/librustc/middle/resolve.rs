@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1487,9 +1487,10 @@ impl Resolver {
                 }
             }
 
-            view_item_extern_mod(name, _, node_id) => {
+            view_item_extern_mod(name, _, _, node_id) => {
+                // n.b. we don't need to look at the path option here, because cstore already did
                 match find_extern_mod_stmt_cnum(self.session.cstore,
-                                                node_id) {
+                                                        node_id) {
                     Some(crate_id) => {
                         let def_id = def_id { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
@@ -4994,7 +4995,9 @@ impl Resolver {
                             if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
-                    _ => {
+                    result => {
+                        debug!("(resolving expression) didn't find struct \
+                                def: %?", result);
                         self.session.span_err(
                             path.span,
                             fmt!("`%s` does not name a structure",
