@@ -11,7 +11,6 @@
 
 use std::option;
 use std::os;
-use std::{result, str};
 use std::hashmap::HashSet;
 
 // A module for searching for libraries

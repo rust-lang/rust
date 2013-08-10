@@ -14,7 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use std::hashmap::HashSet;
-use std::{num, os, path, uint, util, vec};
+use std::{os, util, vec};
 
 fn not_win32(os: session::os) -> bool {
   os != session::os_win32
