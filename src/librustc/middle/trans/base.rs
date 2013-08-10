@@ -59,6 +59,7 @@ use middle::trans::monomorphize;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::type_of::*;
+use middle::trans::value::Value;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
@@ -1792,11 +1793,30 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @mut Block) {
 // Builds the return block for a function.
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: @mut Block) {
     // Return the value if this function immediate; otherwise, return void.
-    if fcx.llretptr.is_some() && fcx.has_immediate_return_value {
-        Ret(ret_cx, Load(ret_cx, fcx.llretptr.unwrap()))
-    } else {
-        RetVoid(ret_cx)
+    if fcx.llretptr.is_none() || !fcx.has_immediate_return_value {
+        return RetVoid(ret_cx);
     }
+
+    let retptr = Value(fcx.llretptr.unwrap());
+    let retval = match retptr.get_dominating_store(ret_cx) {
+        // If there's only a single store to the ret slot, we can directly return
+        // the value that was stored and omit the store and the alloca
+        Some(s) => {
+            let retval = *s.get_operand(0).unwrap();
+            s.erase_from_parent();
+
+            if retptr.has_no_uses() {
+                retptr.erase_from_parent();
+            }
+
+            retval
+        }
+        // Otherwise, load the return value from the ret slot
+        None => Load(ret_cx, fcx.llretptr.unwrap())
+    };
+
+
+    Ret(ret_cx, retval);
 }
 
 pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }

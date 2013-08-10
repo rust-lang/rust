@@ -42,3 +42,5 @@ pub mod machine;
 pub mod adt;
 pub mod asm;
 pub mod type_;
+pub mod value;
+pub mod basic_block;
