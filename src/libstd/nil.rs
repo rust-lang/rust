@@ -49,7 +49,9 @@ impl TotalEq for () {
 
 #[cfg(not(test))]
 impl Zero for () {
+    #[inline]
     fn zero() -> () { () }
+    #[inline]
     fn is_zero(&self) -> bool { true }
 }
 
