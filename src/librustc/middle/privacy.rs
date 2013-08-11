@@ -290,7 +290,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                  method_num: method_num,
                  _
             }) |
-            method_trait(trait_id, method_num, _) => {
+            method_trait(trait_id, method_num) => {
                 if trait_id.crate == LOCAL_CRATE {
                     match tcx.items.find(&trait_id.node) {
                         Some(&node_item(item, _)) => {

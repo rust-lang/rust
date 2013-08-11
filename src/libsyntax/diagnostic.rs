@@ -50,7 +50,7 @@ pub trait span_handler {
     fn span_note(@mut self, sp: span, msg: &str);
     fn span_bug(@mut self, sp: span, msg: &str) -> !;
     fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
-    fn handler(@mut self) -> @handler;
+    fn handler(@mut self) -> @mut handler;
 }
 
 struct HandlerT {
@@ -59,7 +59,7 @@ struct HandlerT {
 }
 
 struct CodemapT {
-    handler: @handler,
+    handler: @mut handler,
     cm: @codemap::CodeMap,
 }
 
@@ -84,7 +84,7 @@ impl span_handler for CodemapT {
     fn span_unimpl(@mut self, sp: span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler(@mut self) -> @handler {
+    fn handler(@mut self) -> @mut handler {
         self.handler
     }
 }
@@ -143,12 +143,12 @@ pub fn ice_msg(msg: &str) -> ~str {
     fmt!("internal compiler error: %s", msg)
 }
 
-pub fn mk_span_handler(handler: @handler, cm: @codemap::CodeMap)
-                    -> @span_handler {
-    @mut CodemapT { handler: handler, cm: cm } as @span_handler
+pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
+                    -> @mut span_handler {
+    @mut CodemapT { handler: handler, cm: cm } as @mut span_handler
 }
 
-pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
+pub fn mk_handler(emitter: Option<Emitter>) -> @mut handler {
     let emit: Emitter = match emitter {
         Some(e) => e,
         None => {
@@ -157,7 +157,7 @@ pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
         }
     };
 
-    @mut HandlerT { err_count: 0, emit: emit } as @handler
+    @mut HandlerT { err_count: 0, emit: emit } as @mut handler
 }
 
 #[deriving(Eq)]
@@ -341,7 +341,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     }
 }
 
-pub fn expect<T:Clone>(diag: @span_handler,
+pub fn expect<T:Clone>(diag: @mut span_handler,
                        opt: Option<T>,
                        msg: &fn() -> ~str) -> T {
     match opt {

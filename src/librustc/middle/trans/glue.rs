@@ -348,7 +348,8 @@ pub fn make_visit_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     let _icx = push_ctxt("make_visit_glue");
     do with_scope(bcx, None, "visitor cleanup") |bcx| {
         let mut bcx = bcx;
-        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx()){
+        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
+                                                                     ty::re_static) {
             Ok(pair) => pair,
             Err(s) => {
                 bcx.tcx().sess.fatal(s);
@@ -655,6 +656,18 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
                   ppaux::ty_to_str(ccx.tcx, t));
     }
 
+    let has_header = match ty::get(t).sty {
+        ty::ty_box(*) => true,
+        ty::ty_uniq(*) => ty::type_contents(ccx.tcx, t).contains_managed(),
+        _ => false
+    };
+
+    let borrow_offset = if has_header {
+        ccx.offsetof_gep(llty, [0u, abi::box_field_body])
+    } else {
+        C_uint(ccx, 0)
+    };
+
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
@@ -670,6 +683,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
         tydesc: gvar,
         size: llsize,
         align: llalign,
+        borrow_offset: borrow_offset,
         take_glue: None,
         drop_glue: None,
         free_glue: None,
@@ -785,13 +799,17 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               }
             };
 
+        debug!("ti.borrow_offset: %s",
+               ccx.tn.val_to_str(ti.borrow_offset));
+
         let tydesc = C_named_struct(ccx.tydesc_type,
                                     [ti.size, // size
-                                    ti.align, // align
-                                    take_glue, // take_glue
-                                    drop_glue, // drop_glue
-                                    free_glue, // free_glue
-                                    visit_glue]); // visit_glue
+                                     ti.align, // align
+                                     take_glue, // take_glue
+                                     drop_glue, // drop_glue
+                                     free_glue, // free_glue
+                                     visit_glue, // visit_glue
+                                     ti.borrow_offset]); // borrow_offset
 
         unsafe {
             let gvar = ti.tydesc;

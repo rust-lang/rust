@@ -60,7 +60,6 @@ pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
     temp_cleanup: Option<ValueRef>,
-    self_ty: ty::t,
     self_mode: ty::SelfMode,
 }
 

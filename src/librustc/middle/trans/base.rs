@@ -2405,12 +2405,7 @@ pub fn fill_fn_pair(bcx: @mut Block, pair: ValueRef, llfn: ValueRef,
 }
 
 pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
-    match ccx.tcx.items.get_copy(id) {
-        ast_map::node_item(i, p) =>
-            vec::append((*p).clone(), [path_name(i.ident)]),
-        // separate map for paths?
-        _ => fail!("item_path")
-    }
+    ty::item_path(ccx.tcx, ast_util::local_def(*id))
 }
 
 fn exported_name(ccx: @mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {

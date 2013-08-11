@@ -267,7 +267,7 @@ fn read_block_comment(rdr: @mut StringReader,
         while level > 0 {
             debug!("=== block comment level %d", level);
             if is_eof(rdr) {
-                (rdr as @reader).fatal(~"unterminated block comment");
+                (rdr as @mut reader).fatal(~"unterminated block comment");
             }
             if rdr.curr == '\n' {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line,
@@ -334,7 +334,7 @@ pub struct lit {
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
-                                    @diagnostic::span_handler,
+                                    @mut diagnostic::span_handler,
                                     path: @str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {

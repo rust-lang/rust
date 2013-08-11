@@ -265,7 +265,7 @@ struct ParsedItemsAndViewItems {
 
 pub fn Parser(sess: @mut ParseSess,
               cfg: ast::CrateConfig,
-              rdr: @reader)
+              rdr: @mut reader)
            -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
@@ -315,7 +315,7 @@ pub struct Parser {
     tokens_consumed: @mut uint,
     restriction: @mut restriction,
     quote_depth: @mut uint, // not (yet) related to the quasiquoter
-    reader: @reader,
+    reader: @mut reader,
     interner: @token::ident_interner,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice

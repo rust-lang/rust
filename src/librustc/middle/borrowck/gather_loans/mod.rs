@@ -352,11 +352,19 @@ impl GatherLoanCtxt {
                                              r)
                     }
                     ty::AutoBorrowFn(r) => {
-                        let cmt_deref = mcx.cat_deref_fn(expr, cmt, 0);
+                        let cmt_deref = mcx.cat_deref_fn_or_obj(expr, cmt, 0);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_deref,
                                              m_imm,
+                                             r)
+                    }
+                    ty::AutoBorrowObj(r, m) => {
+                        let cmt_deref = mcx.cat_deref_fn_or_obj(expr, cmt, 0);
+                        self.guarantee_valid(expr.id,
+                                             expr.span,
+                                             cmt_deref,
+                                             m,
                                              r)
                     }
                     ty::AutoUnsafe(_) => {}
