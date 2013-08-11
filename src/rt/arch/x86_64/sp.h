@@ -43,6 +43,10 @@ extern "C" CDECL ALWAYS_INLINE uintptr_t get_sp_limit() {
     asm volatile (
         "movq %%fs:24, %0"
         : "=r"(limit));
+#elif defined(_WIN64)
+    asm volatile (
+        "movq %%gs:0x28, %0"
+        : "=r"(limit));
 #endif
 
     return limit;
@@ -64,6 +68,10 @@ extern "C" CDECL ALWAYS_INLINE void record_sp_limit(void *limit) {
 #elif defined(__FreeBSD__)
     asm volatile (
         "movq %0, %%fs:24"
+        :: "r"(limit));
+#elif defined(_WIN64)
+    asm volatile (
+        "movq %0, %%gs:0x28"
         :: "r"(limit));
 #endif
 }
