@@ -476,7 +476,7 @@ RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
-BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
+BENCH_RS := $(wildcard $(S)src/test/bench/rt/*.rs $(S)src/test/bench/shootout/*.rs $(S)src/test/bench/std/*.rs $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
 CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
@@ -484,7 +484,7 @@ CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
-PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
+PERF_RS := $(BENCH_RS)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RPASS_FULL_TESTS := $(RPASS_FULL_RC) $(RPASS_FULL_RS)
