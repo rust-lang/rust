@@ -11,7 +11,7 @@
 // compile-flags:-Z debug-info
 
 pub trait TraitWithDefaultMethod {
-    pub fn method(self) {
+    fn method(self) {
         ()
     }
 }

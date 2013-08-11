@@ -313,18 +313,18 @@ pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep)
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
-    pub fn concat_vec(&self) -> ~[T];
-    pub fn connect_vec(&self, sep: &T) -> ~[T];
+    fn concat_vec(&self) -> ~[T];
+    fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
 impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
     /// Flattens a vector of slices of T into a single vector of T.
-    pub fn concat_vec(&self) -> ~[T] {
+    fn concat_vec(&self) -> ~[T] {
         self.flat_map(|inner| (*inner).clone())
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
-    pub fn connect_vec(&self, sep: &T) -> ~[T] {
+    fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
         for inner in self.iter() {
@@ -337,12 +337,12 @@ impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
 
 impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
     /// Flattens a vector of slices of T into a single vector of T.
-    pub fn concat_vec(&self) -> ~[T] {
+    fn concat_vec(&self) -> ~[T] {
         self.flat_map(|&inner| inner.to_owned())
     }
 
     /// Concatenate a vector of slices, placing a given separator between each.
-    pub fn connect_vec(&self, sep: &T) -> ~[T] {
+    fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
         for &inner in self.iter() {
@@ -561,7 +561,7 @@ impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
 
 #[cfg(not(test))]
 pub mod traits {
-    use super::Vector;
+    use super::*;
 
     use clone::Clone;
     use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equal, Equiv};
@@ -686,17 +686,17 @@ pub mod traits {
     impl<'self,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
-            let mut res = self.to_owned();
+            let mut res = with_capacity(self.len() + rhs.as_slice().len());
+            res.push_all(*self);
             res.push_all(rhs.as_slice());
             res
         }
     }
+
     impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
-            let mut res = self.to_owned();
-            res.push_all(rhs.as_slice());
-            res
+            self.as_slice() + rhs.as_slice()
         }
     }
 }
@@ -1651,7 +1651,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     * Remove consecutive repeated elements from a vector; if the vector is
     * sorted, this removes all duplicates.
     */
-    pub fn dedup(&mut self) {
+    fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
             // *arbitrary* changes. There exists the possibility that this
@@ -2081,7 +2081,7 @@ pub mod bytes {
     /// A trait for operations on mutable operations on `[u8]`
     pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
-        pub fn set_memory(self, value: u8);
+        fn set_memory(self, value: u8);
     }
 
     impl<'self> MutableByteVector for &'self mut [u8] {
@@ -3660,6 +3660,15 @@ mod bench {
                 *x = i;
                 i += 1;
             }
+        }
+    }
+
+    #[bench]
+    fn add(b: &mut BenchHarness) {
+        let xs: &[int] = [5, ..10];
+        let ys: &[int] = [5, ..10];
+        do b.iter() {
+            xs + ys;
         }
     }
 }

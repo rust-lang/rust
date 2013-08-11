@@ -701,7 +701,7 @@ pub fn to_str(url: &Url) -> ~str {
 }
 
 impl ToStr for Url {
-    pub fn to_str(&self) -> ~str {
+    fn to_str(&self) -> ~str {
         to_str(self)
     }
 }

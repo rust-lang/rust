@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x) { //~ ERROR expected `:` but found `)`
+fn foo(x) { //~ ERROR expected `:`, found `)`
 }

@@ -165,7 +165,7 @@ impl<'self> StatRecorder<'self> {
 
 #[unsafe_destructor]
 impl<'self> Drop for StatRecorder<'self> {
-    pub fn drop(&self) {
+    fn drop(&self) {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
@@ -2180,19 +2180,18 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
       }
       ast::item_static(_, m, expr) => {
           consts::trans_const(ccx, m, item.id);
-          // Do static_assert checking. It can't really be done much earlier because we need to get
-          // the value of the bool out of LLVM
-          for attr in item.attrs.iter() {
-              if "static_assert" == attr.name() {
-                  if m == ast::m_mutbl {
-                      ccx.sess.span_fatal(expr.span,
-                                          "cannot have static_assert on a mutable static");
-                  }
-                  let v = ccx.const_values.get_copy(&item.id);
-                  unsafe {
-                      if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
-                          ccx.sess.span_fatal(expr.span, "static assertion failed");
-                      }
+          // Do static_assert checking. It can't really be done much earlier
+          // because we need to get the value of the bool out of LLVM
+          if attr::contains_name(item.attrs, "static_assert") {
+              if m == ast::m_mutbl {
+                  ccx.sess.span_fatal(expr.span,
+                                      "cannot have static_assert on a mutable \
+                                       static");
+              }
+              let v = ccx.const_values.get_copy(&item.id);
+              unsafe {
+                  if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
+                      ccx.sess.span_fatal(expr.span, "static assertion failed");
                   }
               }
           }
@@ -2451,6 +2450,15 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                 let g = do sym.to_c_str().with_ref |buf| {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 };
+
+                                // Apply the `unnamed_addr` attribute if
+                                // requested
+                                if attr::contains_name(i.attrs,
+                                                       "address_insignificant"){
+                                    lib::llvm::SetUnnamedAddr(g, true);
+                                    lib::llvm::SetLinkage(g,
+                                        lib::llvm::InternalLinkage);
+                                }
 
                                 ccx.item_symbols.insert(i.id, sym);
                                 g
@@ -2739,6 +2747,60 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!("llvm.bswap.i16",[Type::i16()], Type::i16());
     ifn!("llvm.bswap.i32",[Type::i32()], Type::i32());
     ifn!("llvm.bswap.i64",[Type::i64()], Type::i64());
+
+    ifn!("llvm.sadd.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.sadd.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.uadd.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.uadd.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.ssub.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.ssub.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.usub.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.usub.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.smul.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.smul.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+
+    ifn!("llvm.umul.with.overflow.i8",
+        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i16",
+        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i32",
+        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+    ifn!("llvm.umul.with.overflow.i64",
+        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
 
     return intrinsics;
 }

@@ -714,9 +714,11 @@ pub fn ExtractValue(cx: @mut Block, AggVal: ValueRef, Index: uint) -> ValueRef {
     }
 }
 
-pub fn InsertValue(cx: @mut Block, AggVal: ValueRef, EltVal: ValueRef, Index: uint) {
-    if cx.unreachable { return; }
-    B(cx).insert_value(AggVal, EltVal, Index)
+pub fn InsertValue(cx: @mut Block, AggVal: ValueRef, EltVal: ValueRef, Index: uint) -> ValueRef {
+    unsafe {
+        if cx.unreachable { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        B(cx).insert_value(AggVal, EltVal, Index)
+    }
 }
 
 pub fn IsNull(cx: @mut Block, Val: ValueRef) -> ValueRef {

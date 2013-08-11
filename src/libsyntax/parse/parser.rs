@@ -70,24 +70,7 @@ use parse::common::{SeqSep, seq_sep_none};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
 use parse::lexer::TokenAndSpan;
-use parse::obsolete::{ObsoleteClassTraits};
-use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
-use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
-use parse::obsolete::ObsoleteSyntax;
-use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
-use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoletePostFnTySigil};
-use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
-use parse::obsolete::ObsoleteMode;
-use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
-use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
-use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
-use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::obsolete::{ObsoleteMutWithMultipleBindings};
-use parse::obsolete::{ObsoleteExternVisibility, ObsoleteUnsafeExternFn};
-use parse::obsolete::{ParserObsoleteMethods, ObsoletePrivVisibility};
+use parse::obsolete::*;
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -146,7 +129,7 @@ macro_rules! maybe_whole_expr (
                     Some($p.mk_expr(
                         ($p).span.lo,
                         ($p).span.hi,
-                        expr_path(/* bad */ (*pt).clone())))
+                        expr_path(/* bad */ (**pt).clone())))
                 }
                 _ => None
             };
@@ -235,8 +218,8 @@ macro_rules! maybe_whole (
                 _ => None
             };
             match __found__ {
-                Some(INTERPOLATED(token::$constructor(x))) => {
-                    return (~[], x.clone())
+                Some(INTERPOLATED(token::$constructor(ref x))) => {
+                    return (~[], (**x).clone())
                 }
                 _ => {}
             }
@@ -368,7 +351,7 @@ impl Parser {
         } else {
             self.fatal(
                 fmt!(
-                    "expected `%s` but found `%s`",
+                    "expected `%s`, found `%s`",
                     self.token_to_str(t),
                     self.this_token_to_str()
                 )
@@ -840,6 +823,10 @@ impl Parser {
                 debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
+                if vis != ast::inherited {
+                    self.obsolete(*self.last_span,
+                                  ObsoleteTraitFuncVisibility);
+                }
                 required(TypeMethod {
                     ident: ident,
                     attrs: attrs,
@@ -874,7 +861,7 @@ impl Parser {
               _ => {
                     p.fatal(
                         fmt!(
-                            "expected `;` or `}` but found `%s`",
+                            "expected `;` or `}`, found `%s`",
                             self.this_token_to_str()
                         )
                     );
@@ -939,7 +926,7 @@ impl Parser {
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
     pub fn parse_ty(&self, _: bool) -> Ty {
-        maybe_whole!(self, nt_ty);
+        maybe_whole!(deref self, nt_ty);
 
         let lo = self.span.lo;
 
@@ -1293,7 +1280,7 @@ impl Parser {
 
     // parse a path that doesn't have type parameters attached
     pub fn parse_path_without_tps(&self) -> ast::Path {
-        maybe_whole!(self, nt_path);
+        maybe_whole!(deref self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
         ast::Path { span: sp,
                      global: is_global,
@@ -1306,7 +1293,7 @@ impl Parser {
                                         before_tps: Option<&fn()>) -> ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
-        maybe_whole!(self, nt_path);
+        maybe_whole!(deref self, nt_path);
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
         if colons && !self.eat(&token::MOD_SEP) {
@@ -3100,7 +3087,7 @@ impl Parser {
 
     // parse a block. No inner attrs are allowed.
     pub fn parse_block(&self) -> Block {
-        maybe_whole!(self, nt_block);
+        maybe_whole!(deref self, nt_block);
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
@@ -3194,7 +3181,7 @@ impl Parser {
                                         self.fatal(
                                             fmt!(
                                                 "expected `;` or `}` after \
-                                                 expression but found `%s`",
+                                                 expression, found `%s`",
                                                 self.token_to_str(t)
                                             )
                                         );
@@ -3393,7 +3380,7 @@ impl Parser {
         if !self.is_self_ident() {
             self.fatal(
                 fmt!(
-                    "expected `self` but found `%s`",
+                    "expected `self`, found `%s`",
                     self.this_token_to_str()
                 )
             );
@@ -3791,7 +3778,7 @@ impl Parser {
             self.fatal(
                 fmt!(
                     "expected `{`, `(`, or `;` after struct name \
-                    but found `%s`",
+                   , found `%s`",
                     self.this_token_to_str()
                 )
             );
@@ -3835,7 +3822,7 @@ impl Parser {
             token::RBRACE => {}
             _ => {
                 self.span_fatal(*self.span,
-                                fmt!("expected `,`, or '}' but found `%s`",
+                                fmt!("expected `,`, or '}', found `%s`",
                                      self.this_token_to_str()));
             }
         }
@@ -3931,7 +3918,7 @@ impl Parser {
                                  the module");
               }
               _ => {
-                self.fatal(fmt!("expected item but found `%s`",
+                self.fatal(fmt!("expected item, found `%s`",
                                 self.this_token_to_str()));
               }
             }
@@ -4179,7 +4166,7 @@ impl Parser {
             self.expect_keyword(keywords::Mod);
         } else if *self.token != token::LBRACE {
             self.span_fatal(*self.span,
-                            fmt!("expected `{` or `mod` but found `%s`",
+                            fmt!("expected `{` or `mod`, found `%s`",
                                  self.this_token_to_str()));
         }
 

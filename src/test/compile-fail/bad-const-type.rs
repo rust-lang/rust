@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected `~str` but found `int`
+// error-pattern:expected `~str`, found `int`
 
 static i: ~str = 10i;
 fn main() { info!(i); }

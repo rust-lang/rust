@@ -10,5 +10,5 @@
 
 fn main() {
     let x = if true { 10i } else { 10u };
-    //~^ ERROR if and else have incompatible types: expected `int` but found `uint`
+    //~^ ERROR if and else have incompatible types: expected `int`, found `uint`
 }

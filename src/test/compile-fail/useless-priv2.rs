@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    ifmt!("{0, plural, other{}}", "a");
-    //~^ ERROR: expected uint, found
+pub trait E {
+    pub fn foo();               //~ ERROR: obsolete syntax
+}
+trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
+
+struct B;
+impl E for B {
+    priv fn foo() {}             //~ ERROR: obsolete syntax
 }

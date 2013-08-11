@@ -12,5 +12,5 @@
 
 static A: (int,int) = (4,2);
 fn main() {
-    match 42 { A => () } //~ ERROR mismatched types: expected `<VI0>` but found `(int,int)` (expected integral variable but found tuple)
+    match 42 { A => () } //~ ERROR mismatched types: expected `<VI0>`, found `(int,int)` (expected integral variable, found tuple)
 }

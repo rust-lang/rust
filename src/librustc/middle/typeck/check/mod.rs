@@ -287,11 +287,11 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 }
 
 impl ExprTyProvider for FnCtxt {
-    pub fn expr_ty(&self, ex: &ast::expr) -> ty::t {
+    fn expr_ty(&self, ex: &ast::expr) -> ty::t {
         self.expr_ty(ex)
     }
 
-    pub fn ty_ctxt(&self) -> ty::ctxt {
+    fn ty_ctxt(&self) -> ty::ctxt {
         self.ccx.tcx
     }
 }
@@ -1310,7 +1310,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     ty::ty_bool => {}
                     _ => fcx.type_error_message(call_expr.span, |actual| {
                             fmt!("expected `for` closure to return `bool`, \
-                                  but found `%s`", actual) },
+                                 found `%s`", actual) },
                             output, None)
                 }
                 ty::mk_nil()
@@ -1358,7 +1358,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
-                    fmt!("expected function but \
+                    fmt!("expected function, \
                           found `%s`", actual) }, fn_ty, None);
                 &error_fn_sig
             }
@@ -2750,7 +2750,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 pub fn require_integral(fcx: @mut FnCtxt, sp: span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
         fcx.type_error_message(sp, |actual| {
-            fmt!("mismatched types: expected integral type but found `%s`",
+            fmt!("mismatched types: expected integral type, found `%s`",
                  actual)
         }, t, None);
     }
@@ -3130,28 +3130,28 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_ty(_) |
       ast::def_prim_ty(_) |
       ast::def_ty_param(*)=> {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found module");
       }
       ast::def_use(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found use");
       }
       ast::def_region(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found region");
       }
       ast::def_typaram_binder(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type parameter");
       }
       ast::def_label(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found label");
       }
       ast::def_self_ty(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found self ty");
       }
       ast::def_method(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found method");
       }
     }
 }
@@ -3647,6 +3647,39 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "bswap16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
             "bswap32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
             "bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+
+            "i8_add_with_overflow" | "i8_sub_with_overflow" | "i8_mul_with_overflow" =>
+                (0, ~[ty::mk_i8(), ty::mk_i8()],
+                ty::mk_tup(tcx, ~[ty::mk_i8(), ty::mk_bool()])),
+
+            "i16_add_with_overflow" | "i16_sub_with_overflow" | "i16_mul_with_overflow" =>
+                (0, ~[ty::mk_i16(), ty::mk_i16()],
+                ty::mk_tup(tcx, ~[ty::mk_i16(), ty::mk_bool()])),
+
+            "i32_add_with_overflow" | "i32_sub_with_overflow" | "i32_mul_with_overflow" =>
+                (0, ~[ty::mk_i32(), ty::mk_i32()],
+                ty::mk_tup(tcx, ~[ty::mk_i32(), ty::mk_bool()])),
+
+            "i64_add_with_overflow" | "i64_sub_with_overflow" | "i64_mul_with_overflow" =>
+                (0, ~[ty::mk_i64(), ty::mk_i64()],
+                ty::mk_tup(tcx, ~[ty::mk_i64(), ty::mk_bool()])),
+
+            "u8_add_with_overflow" | "u8_sub_with_overflow" | "u8_mul_with_overflow" =>
+                (0, ~[ty::mk_u8(), ty::mk_u8()],
+                ty::mk_tup(tcx, ~[ty::mk_u8(), ty::mk_bool()])),
+
+            "u16_add_with_overflow" | "u16_sub_with_overflow" | "u16_mul_with_overflow" =>
+                (0, ~[ty::mk_u16(), ty::mk_u16()],
+                ty::mk_tup(tcx, ~[ty::mk_u16(), ty::mk_bool()])),
+
+            "u32_add_with_overflow" | "u32_sub_with_overflow" | "u32_mul_with_overflow"=>
+                (0, ~[ty::mk_u32(), ty::mk_u32()],
+                ty::mk_tup(tcx, ~[ty::mk_u32(), ty::mk_bool()])),
+
+            "u64_add_with_overflow" | "u64_sub_with_overflow"  | "u64_mul_with_overflow" =>
+                (0, ~[ty::mk_u64(), ty::mk_u64()],
+                ty::mk_tup(tcx, ~[ty::mk_u64(), ty::mk_bool()])),
+
             ref other => {
                 tcx.sess.span_err(it.span,
                                   fmt!("unrecognized intrinsic function: `%s`",

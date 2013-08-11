@@ -65,6 +65,7 @@ pub enum ObsoleteSyntax {
     ObsoleteExternVisibility,
     ObsoleteUnsafeExternFn,
     ObsoletePrivVisibility,
+    ObsoleteTraitFuncVisibility,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -95,7 +96,7 @@ pub trait ParserObsoleteMethods {
 
 impl ParserObsoleteMethods for Parser {
     /// Reports an obsolete syntax non-fatal error.
-    pub fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
+    fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
             ObsoleteLet => (
                 "`let` in field declaration",
@@ -258,6 +259,10 @@ impl ParserObsoleteMethods for Parser {
                 "`priv` not necessary",
                 "an item without a visibility qualifier is private by default"
             ),
+            ObsoleteTraitFuncVisibility => (
+                "visibility not necessary",
+                "trait functions inherit the visibility of the trait itself"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -265,7 +270,7 @@ impl ParserObsoleteMethods for Parser {
 
     // Reports an obsolete syntax non-fatal error, and returns
     // a placeholder expression
-    pub fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr {
+    fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr {
         self.obsolete(sp, kind);
         self.mk_expr(sp.lo, sp.hi, expr_lit(@respan(sp, lit_nil)))
     }
@@ -283,7 +288,7 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn token_is_obsolete_ident(&self, ident: &str, token: &Token)
+    fn token_is_obsolete_ident(&self, ident: &str, token: &Token)
                                    -> bool {
         match *token {
             token::IDENT(sid, _) => {
@@ -293,11 +298,11 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn is_obsolete_ident(&self, ident: &str) -> bool {
+    fn is_obsolete_ident(&self, ident: &str) -> bool {
         self.token_is_obsolete_ident(ident, self.token)
     }
 
-    pub fn eat_obsolete_ident(&self, ident: &str) -> bool {
+    fn eat_obsolete_ident(&self, ident: &str) -> bool {
         if self.is_obsolete_ident(ident) {
             self.bump();
             true
@@ -306,7 +311,7 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn try_parse_obsolete_struct_ctor(&self) -> bool {
+    fn try_parse_obsolete_struct_ctor(&self) -> bool {
         if self.eat_obsolete_ident("new") {
             self.obsolete(*self.last_span, ObsoleteStructCtor);
             self.parse_fn_decl();
@@ -317,7 +322,7 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn try_parse_obsolete_with(&self) -> bool {
+    fn try_parse_obsolete_with(&self) -> bool {
         if *self.token == token::COMMA
             && self.look_ahead(1,
                                |t| self.token_is_obsolete_ident("with", t)) {
@@ -332,7 +337,7 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    pub fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute])
+    fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute])
                                            -> bool {
         if self.is_keyword(keywords::Priv) &&
                 self.look_ahead(1, |t| *t == token::LBRACE) {
