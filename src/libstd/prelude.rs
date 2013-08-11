@@ -53,7 +53,7 @@ pub use iter::Times;
 pub use iterator::Extendable;
 pub use iterator::{Iterator, DoubleEndedIterator};
 pub use iterator::{ClonableIterator, OrdIterator};
-pub use num::{Num, NumCast};
+pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
 pub use num::{Integer, Fractional, Real, RealExt};

@@ -18,7 +18,9 @@
 use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::Option;
+use option::{Option, Some, None};
+#[cfg(not(stage0))]
+use unstable::intrinsics;
 
 pub mod strconv;
 
@@ -516,6 +518,416 @@ impl Saturating for u16 {}
 impl Saturating for u32 {}
 impl Saturating for u64 {}
 
+pub trait CheckedAdd: Add<Self, Self> {
+    fn checked_add(&self, v: &Self) -> Option<Self>;
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for i8 {
+    #[inline]
+    fn checked_add(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for i16 {
+    #[inline]
+    fn checked_add(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for i32 {
+    #[inline]
+    fn checked_add(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for i64 {
+    #[inline]
+    fn checked_add(&self, v: &i64) -> Option<i64> {
+        unsafe {
+            let (x, y) = intrinsics::i64_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedAdd for int {
+    #[inline]
+    fn checked_add(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_add_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedAdd for int {
+    #[inline]
+    fn checked_add(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_add_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for u8 {
+    #[inline]
+    fn checked_add(&self, v: &u8) -> Option<u8> {
+        unsafe {
+            let (x, y) = intrinsics::u8_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for u16 {
+    #[inline]
+    fn checked_add(&self, v: &u16) -> Option<u16> {
+        unsafe {
+            let (x, y) = intrinsics::u16_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for u32 {
+    #[inline]
+    fn checked_add(&self, v: &u32) -> Option<u32> {
+        unsafe {
+            let (x, y) = intrinsics::u32_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedAdd for u64 {
+    #[inline]
+    fn checked_add(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedAdd for uint {
+    #[inline]
+    fn checked_add(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u32_add_with_overflow(*self as u32, *v as u32);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedAdd for uint {
+    #[inline]
+    fn checked_add(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u64_add_with_overflow(*self as u64, *v as u64);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
+pub trait CheckedSub: Sub<Self, Self> {
+    fn checked_sub(&self, v: &Self) -> Option<Self>;
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for i8 {
+    #[inline]
+    fn checked_sub(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for i16 {
+    #[inline]
+    fn checked_sub(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for i32 {
+    #[inline]
+    fn checked_sub(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for i64 {
+    #[inline]
+    fn checked_sub(&self, v: &i64) -> Option<i64> {
+        unsafe {
+            let (x, y) = intrinsics::i64_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedSub for int {
+    #[inline]
+    fn checked_sub(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_sub_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedSub for int {
+    #[inline]
+    fn checked_sub(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_sub_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for u8 {
+    #[inline]
+    fn checked_sub(&self, v: &u8) -> Option<u8> {
+        unsafe {
+            let (x, y) = intrinsics::u8_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for u16 {
+    #[inline]
+    fn checked_sub(&self, v: &u16) -> Option<u16> {
+        unsafe {
+            let (x, y) = intrinsics::u16_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for u32 {
+    #[inline]
+    fn checked_sub(&self, v: &u32) -> Option<u32> {
+        unsafe {
+            let (x, y) = intrinsics::u32_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedSub for u64 {
+    #[inline]
+    fn checked_sub(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedSub for uint {
+    #[inline]
+    fn checked_sub(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u32_sub_with_overflow(*self as u32, *v as u32);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedSub for uint {
+    #[inline]
+    fn checked_sub(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u64_sub_with_overflow(*self as u64, *v as u64);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
+pub trait CheckedMul: Mul<Self, Self> {
+    fn checked_mul(&self, v: &Self) -> Option<Self>;
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for i8 {
+    #[inline]
+    fn checked_mul(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for i16 {
+    #[inline]
+    fn checked_mul(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for i32 {
+    #[inline]
+    fn checked_mul(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+// FIXME: #8449: should not be disabled on 32-bit
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedMul for i64 {
+    #[inline]
+    fn checked_mul(&self, v: &i64) -> Option<i64> {
+        unsafe {
+            let (x, y) = intrinsics::i64_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedMul for int {
+    #[inline]
+    fn checked_mul(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_mul_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedMul for int {
+    #[inline]
+    fn checked_mul(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_mul_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for u8 {
+    #[inline]
+    fn checked_mul(&self, v: &u8) -> Option<u8> {
+        unsafe {
+            let (x, y) = intrinsics::u8_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for u16 {
+    #[inline]
+    fn checked_mul(&self, v: &u16) -> Option<u16> {
+        unsafe {
+            let (x, y) = intrinsics::u16_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl CheckedMul for u32 {
+    #[inline]
+    fn checked_mul(&self, v: &u32) -> Option<u32> {
+        unsafe {
+            let (x, y) = intrinsics::u32_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+// FIXME: #8449: should not be disabled on 32-bit
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedMul for u64 {
+    #[inline]
+    fn checked_mul(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "32")]
+impl CheckedMul for uint {
+    #[inline]
+    fn checked_mul(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u32_mul_with_overflow(*self as u32, *v as u32);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
+#[cfg(not(stage0), target_word_size = "64")]
+impl CheckedMul for uint {
+    #[inline]
+    fn checked_mul(&self, v: &uint) -> Option<uint> {
+        unsafe {
+            let (x, y) = intrinsics::u64_mul_with_overflow(*self as u64, *v as u64);
+            if y { None } else { Some(x as uint) }
+        }
+    }
+}
+
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
@@ -534,6 +946,8 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
+    use uint;
     use super::*;
 
     macro_rules! test_cast_20(
@@ -638,5 +1052,40 @@ mod tests {
         assert_eq!(3i.saturating_sub(-(max_value-1)), max_value);
         assert_eq!(max_value.saturating_sub(-max_value), max_value);
         assert_eq!((max_value-2).saturating_sub(-1), max_value-1);
+    }
+
+    #[test]
+    fn test_checked_add() {
+        let five_less = uint::max_value - 5;
+        assert_eq!(five_less.checked_add(&0), Some(uint::max_value - 5));
+        assert_eq!(five_less.checked_add(&1), Some(uint::max_value - 4));
+        assert_eq!(five_less.checked_add(&2), Some(uint::max_value - 3));
+        assert_eq!(five_less.checked_add(&3), Some(uint::max_value - 2));
+        assert_eq!(five_less.checked_add(&4), Some(uint::max_value - 1));
+        assert_eq!(five_less.checked_add(&5), Some(uint::max_value));
+        assert_eq!(five_less.checked_add(&6), None);
+        assert_eq!(five_less.checked_add(&7), None);
+    }
+
+    #[test]
+    fn test_checked_sub() {
+        assert_eq!(5u.checked_sub(&0), Some(5));
+        assert_eq!(5u.checked_sub(&1), Some(4));
+        assert_eq!(5u.checked_sub(&2), Some(3));
+        assert_eq!(5u.checked_sub(&3), Some(2));
+        assert_eq!(5u.checked_sub(&4), Some(1));
+        assert_eq!(5u.checked_sub(&5), Some(0));
+        assert_eq!(5u.checked_sub(&6), None);
+        assert_eq!(5u.checked_sub(&7), None);
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        let third = uint::max_value / 3;
+        assert_eq!(third.checked_mul(&0), Some(0));
+        assert_eq!(third.checked_mul(&1), Some(third));
+        assert_eq!(third.checked_mul(&2), Some(third * 2));
+        assert_eq!(third.checked_mul(&3), Some(third * 3));
+        assert_eq!(third.checked_mul(&4), None);
     }
 }
