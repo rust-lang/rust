@@ -246,7 +246,7 @@ impl CrateContext {
         debug!("const_inbounds_gepi: pointer=%s indices=%?",
                self.tn.val_to_str(pointer), indices);
         let v: ~[ValueRef] =
-            indices.iter().transform(|i| C_i32(*i as i32)).collect();
+            indices.iter().map(|i| C_i32(*i as i32)).collect();
         unsafe {
             llvm::LLVMConstInBoundsGEP(pointer,
                                        vec::raw::to_ptr(v),
