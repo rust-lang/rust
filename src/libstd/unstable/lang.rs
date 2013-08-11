@@ -12,8 +12,7 @@
 
 use c_str::ToCStr;
 use cast::transmute;
-use libc::{c_char, c_uchar, c_void, size_t, uintptr_t};
-use str;
+use libc::{c_char, c_void, size_t, uintptr_t};
 use sys;
 use rt::task::Task;
 use rt::local::Local;
@@ -91,12 +90,6 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  file: *c_char,
                                  line: size_t) {
     borrowck::check_not_borrowed(a, file, line)
-}
-
-#[lang="strdup_uniq"]
-#[inline]
-pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
-    str::raw::from_buf_len(ptr, len)
 }
 
 #[lang="annihilate"]
