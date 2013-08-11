@@ -226,13 +226,16 @@ pub enum AutoRef {
     AutoBorrowFn(Region),
 
     /// Convert from T to *T
-    AutoUnsafe(ast::mutability)
+    AutoUnsafe(ast::mutability),
+
+    /// Convert from @Trait/~Trait/&Trait to &Trait
+    AutoBorrowObj(Region, ast::mutability),
 }
 
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
-    diag: @syntax::diagnostic::span_handler,
+    diag: @mut syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
     cstore: @mut metadata::cstore::CStore,
@@ -1004,7 +1007,13 @@ fn mk_t(cx: ctxt, st: sty) -> t {
       &ty_self(_) => flags |= has_self as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
       &ty_trait(_, ref substs, _, _, _) => {
-        flags |= sflags(substs);
+          flags |= sflags(substs);
+          match st {
+              ty_trait(_, _, RegionTraitStore(r), _, _) => {
+                    flags |= rflags(r);
+                }
+              _ => {}
+          }
       }
       &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
       &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
@@ -3009,6 +3018,10 @@ pub fn adjust_ty(cx: ctxt,
                         AutoUnsafe(m) => {
                             mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
                         }
+
+                        AutoBorrowObj(r, m) => {
+                            borrow_obj(cx, span, r, m, adjusted_ty)
+                        }
                     }
                 }
             }
@@ -3054,6 +3067,22 @@ pub fn adjust_ty(cx: ctxt,
             }
         }
     }
+
+    fn borrow_obj(cx: ctxt, span: span, r: Region,
+                  m: ast::mutability, ty: ty::t) -> ty::t {
+        match get(ty).sty {
+            ty_trait(trt_did, ref trt_substs, _, _, b) => {
+                ty::mk_trait(cx, trt_did, trt_substs.clone(),
+                             RegionTraitStore(r), m, b)
+            }
+            ref s => {
+                cx.sess.span_bug(
+                    span,
+                    fmt!("borrow-trait-obj associated with bad sty: %?",
+                         s));
+            }
+        }
+    }
 }
 
 impl AutoRef {
@@ -3064,6 +3093,7 @@ impl AutoRef {
             ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(f(r), m),
             ty::AutoBorrowFn(r) => ty::AutoBorrowFn(f(r)),
             ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
+            ty::AutoBorrowObj(r, m) => ty::AutoBorrowObj(f(r), m),
         }
     }
 }
@@ -3101,7 +3131,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
               method_num: n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth, _) => {
+          typeck::method_trait(trt_id, n_mth) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -4457,7 +4487,8 @@ pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
     }
 }
 
-pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
+pub fn visitor_object_ty(tcx: ctxt,
+                         region: ty::Region) -> Result<(@TraitRef, t), ~str> {
     let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
         Ok(id) => id,
         Err(s) => { return Err(s); }
@@ -4468,13 +4499,11 @@ pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
         tps: ~[]
     };
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
-    let mut static_trait_bound = EmptyBuiltinBounds();
-    static_trait_bound.add(BoundStatic);
     Ok((trait_ref,
         mk_trait(tcx,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
-                 BoxTraitStore,
+                 RegionTraitStore(region),
                  ast::m_imm,
-                 static_trait_bound)))
+                 EmptyBuiltinBounds())))
 }

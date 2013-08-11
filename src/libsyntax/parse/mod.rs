@@ -43,7 +43,7 @@ pub mod obsolete;
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: NodeId,
-    span_diagnostic: @span_handler, // better be the same as the one in the reader!
+    span_diagnostic: @mut span_handler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: ~[Path],
 }
@@ -58,7 +58,7 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
     }
 }
 
-pub fn new_parse_sess_special_handler(sh: @span_handler,
+pub fn new_parse_sess_special_handler(sh: @mut span_handler,
                                       cm: @codemap::CodeMap)
                                    -> @mut ParseSess {
     @mut ParseSess {
@@ -306,7 +306,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
-    let p1 = Parser(sess, cfg, srdr as @reader);
+    let p1 = Parser(sess, cfg, srdr as @mut reader);
     p1.parse_all_token_trees()
 }
 
@@ -315,7 +315,7 @@ pub fn tts_to_parser(sess: @mut ParseSess,
                      tts: ~[ast::token_tree],
                      cfg: ast::CrateConfig) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
-    Parser(sess, cfg, trdr as @reader)
+    Parser(sess, cfg, trdr as @mut reader)
 }
 
 // abort if necessary

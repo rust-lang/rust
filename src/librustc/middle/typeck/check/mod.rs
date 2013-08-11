@@ -3437,7 +3437,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                   Ok(t) => t,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };
-              let visitor_object_ty = match ty::visitor_object_ty(tcx) {
+              let region = ty::re_bound(ty::br_anon(0));
+              let visitor_object_ty = match ty::visitor_object_ty(tcx, region) {
                   Ok((_, vot)) => vot,
                   Err(s) => { tcx.sess.span_fatal(it.span, s); }
               };

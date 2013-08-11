@@ -863,7 +863,8 @@ pub mod guarantor {
 
             ty::AutoBorrowVec(r, _) |
             ty::AutoBorrowVecRef(r, _) |
-            ty::AutoBorrowFn(r) => {
+            ty::AutoBorrowFn(r) |
+            ty::AutoBorrowObj(r, _) => {
                 // In each of these cases, what is being borrowed is
                 // not the (autoderef'd) expr itself but rather the
                 // contents of the autoderef'd expression (i.e., what
@@ -1072,7 +1073,8 @@ pub mod guarantor {
                     Some(ty::AutoPtr(r, _)) |
                     Some(ty::AutoBorrowVec(r, _)) |
                     Some(ty::AutoBorrowVecRef(r, _)) |
-                    Some(ty::AutoBorrowFn(r)) => {
+                    Some(ty::AutoBorrowFn(r)) |
+                    Some(ty::AutoBorrowObj(r, _)) => {
                         // If there is an autoref, then the result of this
                         // expression will be some sort of borrowed pointer.
                         expr_ct.cat.guarantor = None;

@@ -21,6 +21,7 @@ struct type_desc str_body_tydesc = {
     NULL, // drop_glue
     NULL, // free_glue
     NULL, // visit_glue
+    0, // borrow_offset
 };
 
 //

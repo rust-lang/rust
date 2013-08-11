@@ -313,7 +313,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
     no_cfgs || some_cfg_matches
 }
 
-pub fn require_unique_names(diagnostic: @span_handler,
+pub fn require_unique_names(diagnostic: @mut span_handler,
                             metas: &[@MetaItem]) {
     let mut set = HashSet::new();
     for meta in metas.iter() {

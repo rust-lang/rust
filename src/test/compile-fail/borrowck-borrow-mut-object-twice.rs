@@ -8,22 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that `&mut` objects cannot be borrowed twice, just like
+// other `&mut` pointers.
+
 trait Foo {
-    fn f(&self) -> int;
+    fn f1<'a>(&'a mut self) -> &'a ();
+    fn f2(&mut self);
 }
 
-struct Bar {
-    x: int
+fn test(x: &mut Foo) {
+    let _y = x.f1();
+    x.f2(); //~ ERROR cannot borrow `*x` as mutable more than once at a time
 }
 
-impl Foo for Bar {
-    fn f(&self) -> int {
-        self.x
-    }
-}
-
-pub fn main() {
-    let x = ~Bar { x: 10 };
-    let y = x as ~Foo;
-    assert_eq!(y.f(), 10);
-}
+fn main() {}
