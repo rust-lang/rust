@@ -833,3 +833,7 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
         unwrapDI<DIArray>(Elements),
         RunTimeLang));
 }
+
+extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Value, LLVMBool Unnamed) {
+    unwrap<GlobalValue>(Value)->setUnnamedAddr(Unnamed);
+}
