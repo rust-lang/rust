@@ -226,10 +226,7 @@ pub enum AutoRef {
     AutoBorrowFn(Region),
 
     /// Convert from T to *T
-    AutoUnsafe(ast::mutability),
-
-    /// Convert from @Trait/~Trait/&Trait to &Trait
-    AutoBorrowObj(Region, ast::mutability),
+    AutoUnsafe(ast::mutability)
 }
 
 pub type ctxt = @ctxt_;
