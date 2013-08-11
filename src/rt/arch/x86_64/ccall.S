@@ -18,10 +18,13 @@
 
         .text
 
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__)
 .globl ___morestack
 .private_extern MORESTACK
 ___morestack:
+#elif defined(_WIN32)
+.globl __morestack
+__morestack:
 #else
 .globl __morestack
 .hidden __morestack
