@@ -348,7 +348,8 @@ pub fn make_visit_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     let _icx = push_ctxt("make_visit_glue");
     do with_scope(bcx, None, "visitor cleanup") |bcx| {
         let mut bcx = bcx;
-        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx()){
+        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
+                                                                     ty::re_static) {
             Ok(pair) => pair,
             Err(s) => {
                 bcx.tcx().sess.fatal(s);

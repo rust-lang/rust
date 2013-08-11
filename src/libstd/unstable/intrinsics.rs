@@ -328,7 +328,11 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn contains_managed<T>() -> bool;
 
+    #[cfg(stage0)]
     pub fn visit_tydesc(td: *TyDesc, tv: @TyVisitor);
+
+    #[cfg(not(stage0))]
+    pub fn visit_tydesc(td: *TyDesc, tv: &TyVisitor);
 
     pub fn frame_address(f: &once fn(*u8));
 
