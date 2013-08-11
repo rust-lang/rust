@@ -79,7 +79,7 @@ impl TyVisitor for MyVisitor {
     fn visit_evec_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.types.push(~"[");
         unsafe {
-            visit_tydesc(inner, (@*self) as @TyVisitor);
+            visit_tydesc(inner, (&*self) as &TyVisitor);
         }
         self.types.push(~"]");
         true
@@ -87,7 +87,7 @@ impl TyVisitor for MyVisitor {
     fn visit_evec_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.types.push(~"[");
         unsafe {
-            visit_tydesc(inner, (@*self) as @TyVisitor);
+            visit_tydesc(inner, (&*self) as &TyVisitor);
         }
         self.types.push(~"]");
         true
@@ -154,7 +154,7 @@ impl TyVisitor for MyVisitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-fn visit_ty<T>(v: @TyVisitor) {
+fn visit_ty<T>(v: &TyVisitor) {
     unsafe {
         visit_tydesc(get_tydesc::<T>(), v);
     }

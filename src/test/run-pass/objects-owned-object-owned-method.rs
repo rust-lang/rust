@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test invoked `&self` methods on owned objects where the values
+// closed over contain managed values. This implies that the ~ boxes
+// will have headers that must be skipped over.
+
 trait FooTrait {
-    fn foo(&self) -> uint;
+    fn foo(~self) -> uint;
 }
 
 struct BarStruct {
@@ -17,19 +21,12 @@ struct BarStruct {
 }
 
 impl FooTrait for BarStruct {
-    fn foo(&self) -> uint {
+    fn foo(~self) -> uint {
         self.x
     }
 }
 
 pub fn main() {
-    let foos: ~[ ~FooTrait ] = ~[
-        ~BarStruct{ x: 0 } as ~FooTrait,
-        ~BarStruct{ x: 1 } as ~FooTrait,
-        ~BarStruct{ x: 2 } as ~FooTrait
-    ];
-
-    for i in range(0u, foos.len()) {
-        assert_eq!(i, foos[i].foo());
-    }
+    let foo = ~BarStruct{ x: 22 } as ~FooTrait;
+    assert_eq!(22, foo.foo());
 }
