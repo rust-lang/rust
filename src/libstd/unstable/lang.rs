@@ -12,8 +12,7 @@
 
 use c_str::ToCStr;
 use cast::transmute;
-use libc::{c_char, c_uchar, c_void, size_t, uintptr_t};
-use str;
+use libc::{c_char, c_void, size_t, uintptr_t};
 use sys;
 use rt::task::Task;
 use rt::local::Local;
