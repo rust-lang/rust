@@ -31,5 +31,4 @@ fn main() {
     //~^ ERROR dereference of reference outside its lifetime
     //~^^ ERROR automatically borrowed pointer is not valid at the time of borrow
     //~^^^ ERROR lifetime of return value does not outlive the function call
-    //~^^^^ ERROR cannot infer an appropriate lifetime
 }

@@ -13,7 +13,7 @@ trait add {
 }
 
 fn do_add(x: @add, y: @add) -> @add {
-    x.plus(y) //~ ERROR cannot call a method whose type contains a self-type through a boxed trait
+    x.plus(y) //~ ERROR cannot call a method whose type contains a self-type through an object
 }
 
 fn main() {}
