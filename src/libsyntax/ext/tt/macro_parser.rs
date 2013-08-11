@@ -419,18 +419,18 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
         Some(i) => token::nt_item(i),
         None => p.fatal("expected an item keyword")
       },
-      "block" => token::nt_block(p.parse_block()),
+      "block" => token::nt_block(~p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),
       "pat" => token::nt_pat(p.parse_pat()),
       "expr" => token::nt_expr(p.parse_expr()),
-      "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
+      "ty" => token::nt_ty(~p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
       "ident" => match *p.token {
-        token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
+        token::IDENT(sn,b) => { p.bump(); token::nt_ident(~sn,b) }
         _ => p.fatal(~"expected ident, found "
                      + token::to_str(get_ident_interner(), p.token))
       },
-      "path" => token::nt_path(p.parse_path_with_tps(false)),
+      "path" => token::nt_path(~p.parse_path_with_tps(false)),
       "attr" => token::nt_attr(@p.parse_attribute(false)),
       "tt" => {
         *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
