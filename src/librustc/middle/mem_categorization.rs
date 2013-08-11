@@ -84,10 +84,10 @@ pub struct CopiedUpvar {
 // different kinds of pointers:
 #[deriving(Eq)]
 pub enum ptr_kind {
-    uniq_ptr(ast::mutability),
+    uniq_ptr,
     gc_ptr(ast::mutability),
     region_ptr(ast::mutability, ty::Region),
-    unsafe_ptr
+    unsafe_ptr(ast::mutability)
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -156,19 +156,21 @@ pub enum deref_kind {
 // pointer adjustment).
 pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
-        ty::ty_uniq(mt) => {
-            Some(deref_ptr(uniq_ptr(mt.mutbl)))
-        }
-
+        ty::ty_uniq(_) |
+        ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
         ty::ty_evec(_, ty::vstore_uniq) |
         ty::ty_estr(ty::vstore_uniq) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
-            Some(deref_ptr(uniq_ptr(m_imm)))
+            Some(deref_ptr(uniq_ptr))
         }
 
         ty::ty_rptr(r, mt) |
         ty::ty_evec(mt, ty::vstore_slice(r)) => {
             Some(deref_ptr(region_ptr(mt.mutbl, r)))
+        }
+
+        ty::ty_trait(_, _, ty::RegionTraitStore(r), m, _) => {
+            Some(deref_ptr(region_ptr(m, r)))
         }
 
         ty::ty_estr(ty::vstore_slice(r)) |
@@ -177,9 +179,13 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(region_ptr(ast::m_imm, r)))
         }
 
-        ty::ty_box(mt) |
-        ty::ty_evec(mt, ty::vstore_box) => {
+        ty::ty_box(ref mt) |
+        ty::ty_evec(ref mt, ty::vstore_box) => {
             Some(deref_ptr(gc_ptr(mt.mutbl)))
+        }
+
+        ty::ty_trait(_, _, ty::BoxTraitStore, m, _) => {
+            Some(deref_ptr(gc_ptr(m)))
         }
 
         ty::ty_estr(ty::vstore_box) |
@@ -187,8 +193,8 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(gc_ptr(ast::m_imm)))
         }
 
-        ty::ty_ptr(*) => {
-            Some(deref_ptr(unsafe_ptr))
+        ty::ty_ptr(ref mt) => {
+            Some(deref_ptr(unsafe_ptr(mt.mutbl)))
         }
 
         ty::ty_enum(*) |
@@ -631,20 +637,19 @@ impl mem_categorization_ctxt {
         }
     }
 
-    pub fn cat_deref_fn<N:ast_node>(&self,
-                                    node: N,
-                                    base_cmt: cmt,
-                                    deref_cnt: uint)
-                                    -> cmt {
+    pub fn cat_deref_fn_or_obj<N:ast_node>(&self,
+                                           node: N,
+                                           base_cmt: cmt,
+                                           deref_cnt: uint)
+                                           -> cmt {
         // Bit of a hack: the "dereference" of a function pointer like
         // `@fn()` is a mere logical concept. We interpret it as
         // dereferencing the environment pointer; of course, we don't
         // know what type lies at the other end, so we just call it
         // `()` (the empty tuple).
 
-        let mt = ty::mt {ty: ty::mk_tup(self.tcx, ~[]),
-                         mutbl: m_imm};
-        return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
+        let opaque_ty = ty::mk_tup(self.tcx, ~[]);
+        return self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty);
     }
 
     pub fn cat_deref<N:ast_node>(&self,
@@ -662,25 +667,25 @@ impl mem_categorization_ctxt {
             }
         };
 
-        return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
+        return self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty);
     }
 
     pub fn cat_deref_common<N:ast_node>(&self,
                                         node: N,
                                         base_cmt: cmt,
                                         deref_cnt: uint,
-                                        mt: ty::mt)
+                                        deref_ty: ty::t)
                                         -> cmt {
         match deref_kind(self.tcx, base_cmt.ty) {
             deref_ptr(ptr) => {
                 // for unique ptrs, we inherit mutability from the
                 // owning reference.
                 let m = match ptr {
-                    uniq_ptr(*) => {
-                        self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+                    uniq_ptr => {
+                        base_cmt.mutbl.inherit()
                     }
-                    gc_ptr(*) | region_ptr(_, _) | unsafe_ptr => {
-                        MutabilityCategory::from_mutbl(mt.mutbl)
+                    gc_ptr(m) | region_ptr(m, _) | unsafe_ptr(m) => {
+                        MutabilityCategory::from_mutbl(m)
                     }
                 };
 
@@ -689,18 +694,18 @@ impl mem_categorization_ctxt {
                     span:node.span(),
                     cat:cat_deref(base_cmt, deref_cnt, ptr),
                     mutbl:m,
-                    ty:mt.ty
+                    ty:deref_ty
                 }
             }
 
             deref_interior(interior) => {
-                let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
+                let m = base_cmt.mutbl.inherit();
                 @cmt_ {
                     id:node.id(),
                     span:node.span(),
                     cat:cat_interior(base_cmt, interior),
                     mutbl:m,
-                    ty:mt.ty
+                    ty:deref_ty
                 }
             }
         }
@@ -742,8 +747,8 @@ impl mem_categorization_ctxt {
         //! - `derefs`: the deref number to be used for
         //!   the implicit index deref, if any (see above)
 
-        let mt = match ty::index(base_cmt.ty) {
-          Some(mt) => mt,
+        let element_ty = match ty::index(base_cmt.ty) {
+          Some(ref mt) => mt.ty,
           None => {
             self.tcx.sess.span_bug(
                 elt.span(),
@@ -757,11 +762,11 @@ impl mem_categorization_ctxt {
             // for unique ptrs, we inherit mutability from the
             // owning reference.
             let m = match ptr {
-              uniq_ptr(*) => {
-                self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+              uniq_ptr => {
+                base_cmt.mutbl.inherit()
               }
-              gc_ptr(_) | region_ptr(_, _) | unsafe_ptr => {
-                MutabilityCategory::from_mutbl(mt.mutbl)
+              gc_ptr(m) | region_ptr(m, _) | unsafe_ptr(m) => {
+                MutabilityCategory::from_mutbl(m)
               }
             };
 
@@ -771,16 +776,16 @@ impl mem_categorization_ctxt {
                 span:elt.span(),
                 cat:cat_deref(base_cmt, derefs, ptr),
                 mutbl:m,
-                ty:mt.ty
+                ty:element_ty
             };
 
-            interior(elt, deref_cmt, base_cmt.ty, m, mt)
+            interior(elt, deref_cmt, base_cmt.ty, m, element_ty)
           }
 
           deref_interior(_) => {
             // fixed-length vectors have no deref
-            let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
-            interior(elt, base_cmt, base_cmt.ty, m, mt)
+            let m = base_cmt.mutbl.inherit();
+            interior(elt, base_cmt, base_cmt.ty, m, element_ty)
           }
         };
 
@@ -788,14 +793,14 @@ impl mem_categorization_ctxt {
                                  of_cmt: cmt,
                                  vec_ty: ty::t,
                                  mutbl: MutabilityCategory,
-                                 mt: ty::mt) -> cmt
+                                 element_ty: ty::t) -> cmt
         {
             @cmt_ {
                 id:elt.id(),
                 span:elt.span(),
                 cat:cat_interior(of_cmt, InteriorElement(element_kind(vec_ty))),
                 mutbl:mutbl,
-                ty:mt.ty
+                ty:element_ty
             }
         }
     }
@@ -1130,7 +1135,7 @@ impl cmt_ {
             cat_stack_upvar(b) |
             cat_discr(b, _) |
             cat_interior(b, _) |
-            cat_deref(b, _, uniq_ptr(*)) => {
+            cat_deref(b, _, uniq_ptr) => {
                 b.guarantor()
             }
         }
@@ -1177,7 +1182,7 @@ impl cmt_ {
 
             cat_downcast(b) |
             cat_stack_upvar(b) |
-            cat_deref(b, _, uniq_ptr(*)) |
+            cat_deref(b, _, uniq_ptr) |
             cat_interior(b, _) |
             cat_discr(b, _) => {
                 b.freely_aliasable()
@@ -1230,10 +1235,10 @@ impl Repr for categorization {
 
 pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
     match ptr {
-        uniq_ptr(_) => ~"~",
+        uniq_ptr => ~"~",
         gc_ptr(_) => ~"@",
         region_ptr(_, _) => ~"&",
-        unsafe_ptr => ~"*"
+        unsafe_ptr(_) => ~"*"
     }
 }
 

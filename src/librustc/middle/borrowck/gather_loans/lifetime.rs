@@ -74,7 +74,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_arg(*) |                           // L-Local
             mc::cat_self(*) |                          // L-Local
             mc::cat_deref(_, _, mc::region_ptr(*)) |   // L-Deref-Borrowed
-            mc::cat_deref(_, _, mc::unsafe_ptr) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
                 let scope = self.scope(cmt);
                 self.check_scope(scope)
             }
@@ -108,7 +108,7 @@ impl GuaranteeLifetimeContext {
             }
 
             mc::cat_downcast(base) |
-            mc::cat_deref(base, _, mc::uniq_ptr(*)) |  // L-Deref-Send
+            mc::cat_deref(base, _, mc::uniq_ptr) |     // L-Deref-Send
             mc::cat_interior(base, _) => {             // L-Field
                 self.check(base, discr_scope)
             }
@@ -347,7 +347,7 @@ impl GuaranteeLifetimeContext {
                 r
             }
             mc::cat_downcast(cmt) |
-            mc::cat_deref(cmt, _, mc::uniq_ptr(*)) |
+            mc::cat_deref(cmt, _, mc::uniq_ptr) |
             mc::cat_deref(cmt, _, mc::gc_ptr(*)) |
             mc::cat_interior(cmt, _) |
             mc::cat_stack_upvar(cmt) |
