@@ -4487,7 +4487,8 @@ pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
     }
 }
 
-pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
+pub fn visitor_object_ty(tcx: ctxt,
+                         region: ty::Region) -> Result<(@TraitRef, t), ~str> {
     let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
         Ok(id) => id,
         Err(s) => { return Err(s); }
@@ -4498,13 +4499,11 @@ pub fn visitor_object_ty(tcx: ctxt) -> Result<(@TraitRef, t), ~str> {
         tps: ~[]
     };
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
-    let mut static_trait_bound = EmptyBuiltinBounds();
-    static_trait_bound.add(BoundStatic);
     Ok((trait_ref,
         mk_trait(tcx,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
-                 BoxTraitStore,
+                 RegionTraitStore(region),
                  ast::m_imm,
-                 static_trait_bound)))
+                 EmptyBuiltinBounds())))
 }

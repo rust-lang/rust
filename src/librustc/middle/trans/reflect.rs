@@ -100,17 +100,13 @@ impl Reflector {
             debug!("arg %u: %s", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
-        // XXX: Should not be BoxTraitStore!
         let result = unpack_result!(bcx, callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
             |bcx| meth::trans_trait_callee_from_llval(bcx,
                                                       mth_ty,
                                                       mth_idx,
                                                       v,
-                                                      ty::BoxTraitStore,
-                                                      ast::sty_region(
-                                                        None,
-                                                        ast::m_imm)),
+                                                      None),
             ArgVals(args), None, DontAutorefArg));
         let result = bool_to_i1(bcx, result);
         let next_bcx = sub_block(bcx, "next");
