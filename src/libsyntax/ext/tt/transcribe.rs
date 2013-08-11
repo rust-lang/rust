@@ -279,7 +279,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               /* sidestep the interpolation tricks for ident because
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
-              matched_nonterminal(nt_ident(sn,b)) => {
+              matched_nonterminal(nt_ident(~sn,b)) => {
                 r.cur_span = sp; r.cur_tok = IDENT(sn,b);
                 r.stack.idx += 1u;
                 return ret_val;
