@@ -291,10 +291,22 @@ pub fn write_boxplot(w: @io::Writer, s: &Summary, width_hint: uint) {
 
     let (q1,q2,q3) = s.quartiles;
 
-    let lomag = (10.0_f64).pow(&s.min.log10().floor());
-    let himag = (10.0_f64).pow(&(s.max.log10().floor()));
-    let lo = (s.min / lomag).floor() * lomag;
-    let hi = (s.max / himag).ceil() * himag;
+    // the .abs() handles the case where numbers are negative
+    let lomag = (10.0_f64).pow(&(s.min.abs().log10().floor()));
+    let himag = (10.0_f64).pow(&(s.max.abs().log10().floor()));
+
+    // need to consider when the limit is zero
+    let lo = if lomag == 0.0 {
+        0.0
+    } else {
+        (s.min / lomag).floor() * lomag
+    };
+
+    let hi = if himag == 0.0 {
+        0.0
+    } else {
+        (s.max / himag).ceil() * himag
+    };
 
     let range = hi - lo;
 
@@ -920,4 +932,21 @@ mod tests {
         };
         check(val, summ);
     }
+
+    #[test]
+    fn test_boxplot_nonpositive() {
+        fn t(s: &Summary, expected: ~str) {
+            let out = do io::with_str_writer |w|  {
+                write_boxplot(w, s, 30)
+            };
+
+            assert_eq!(out, expected);
+        }
+
+        t(&Summary::new([-2.0, -1.0]), ~"-2 |[------******#*****---]| -1");
+        t(&Summary::new([0.0, 2.0]), ~"0 |[-------*****#*******---]| 2");
+        t(&Summary::new([-2.0, 0.0]), ~"-2 |[------******#******---]| 0");
+
+    }
+
 }
