@@ -298,7 +298,7 @@ pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
 pub trait inlined_item_utils {
     fn ident(&self) -> ident;
     fn id(&self) -> ast::NodeId;
-    fn accept<E: Clone>(&self, e: E, v: @Visitor<E>);
+    fn accept<E: Clone>(&self, e: E, v: @mut Visitor<E>);
 }
 
 impl inlined_item_utils for inlined_item {
@@ -318,7 +318,7 @@ impl inlined_item_utils for inlined_item {
         }
     }
 
-    fn accept<E: Clone>(&self, e: E, v: @Visitor<E>) {
+    fn accept<E: Clone>(&self, e: E, v: @mut Visitor<E>) {
         match *self {
             ii_item(i) => v.visit_item(i, e),
             ii_foreign(i) => v.visit_foreign_item(i, e),
@@ -414,7 +414,7 @@ impl Visitor<()> for IdVisitor {
                  node_id: NodeId,
                  env: ()) {
         (self.visit_callback)(node_id);
-        visit::visit_mod(self as @Visitor<()>, module, env)
+        visit::visit_mod(self as @mut Visitor<()>, module, env)
     }
 
     fn visit_view_item(@mut self, view_item: &view_item, env: ()) {
@@ -439,12 +439,12 @@ impl Visitor<()> for IdVisitor {
                 }
             }
         }
-        visit::visit_view_item(self as @Visitor<()>, view_item, env)
+        visit::visit_view_item(self as @mut Visitor<()>, view_item, env)
     }
 
     fn visit_foreign_item(@mut self, foreign_item: @foreign_item, env: ()) {
         (self.visit_callback)(foreign_item.id);
-        visit::visit_foreign_item(self as @Visitor<()>, foreign_item, env)
+        visit::visit_foreign_item(self as @mut Visitor<()>, foreign_item, env)
     }
 
     fn visit_item(@mut self, item: @item, env: ()) {
@@ -466,39 +466,39 @@ impl Visitor<()> for IdVisitor {
             _ => {}
         }
 
-        visit::visit_item(self as @Visitor<()>, item, env);
+        visit::visit_item(self as @mut Visitor<()>, item, env);
 
         self.visited_outermost = false
     }
 
     fn visit_local(@mut self, local: @Local, env: ()) {
         (self.visit_callback)(local.id);
-        visit::visit_local(self as @Visitor<()>, local, env)
+        visit::visit_local(self as @mut Visitor<()>, local, env)
     }
 
     fn visit_block(@mut self, block: &Block, env: ()) {
         (self.visit_callback)(block.id);
-        visit::visit_block(self as @Visitor<()>, block, env)
+        visit::visit_block(self as @mut Visitor<()>, block, env)
     }
 
     fn visit_stmt(@mut self, statement: @stmt, env: ()) {
         (self.visit_callback)(ast_util::stmt_id(statement));
-        visit::visit_stmt(self as @Visitor<()>, statement, env)
+        visit::visit_stmt(self as @mut Visitor<()>, statement, env)
     }
 
     // XXX: Default
     fn visit_arm(@mut self, arm: &arm, env: ()) {
-        visit::visit_arm(self as @Visitor<()>, arm, env)
+        visit::visit_arm(self as @mut Visitor<()>, arm, env)
     }
 
     fn visit_pat(@mut self, pattern: @pat, env: ()) {
         (self.visit_callback)(pattern.id);
-        visit::visit_pat(self as @Visitor<()>, pattern, env)
+        visit::visit_pat(self as @mut Visitor<()>, pattern, env)
     }
 
     // XXX: Default
     fn visit_decl(@mut self, declaration: @decl, env: ()) {
-        visit::visit_decl(self as @Visitor<()>, declaration, env)
+        visit::visit_decl(self as @mut Visitor<()>, declaration, env)
     }
 
     fn visit_expr(@mut self, expression: @expr, env: ()) {
@@ -509,7 +509,7 @@ impl Visitor<()> for IdVisitor {
             }
         }
         (self.visit_callback)(expression.id);
-        visit::visit_expr(self as @Visitor<()>, expression, env)
+        visit::visit_expr(self as @mut Visitor<()>, expression, env)
     }
 
     // XXX: Default
@@ -523,12 +523,12 @@ impl Visitor<()> for IdVisitor {
             ty_path(_, _, id) => (self.visit_callback)(id),
             _ => {}
         }
-        visit::visit_ty(self as @Visitor<()>, typ, env)
+        visit::visit_ty(self as @mut Visitor<()>, typ, env)
     }
 
     fn visit_generics(@mut self, generics: &Generics, env: ()) {
         self.visit_generics_helper(generics);
-        visit::visit_generics(self as @Visitor<()>, generics, env)
+        visit::visit_generics(self as @mut Visitor<()>, generics, env)
     }
 
     fn visit_fn(@mut self,
@@ -563,7 +563,7 @@ impl Visitor<()> for IdVisitor {
             (self.visit_callback)(argument.id)
         }
 
-        visit::visit_fn(self as @Visitor<()>,
+        visit::visit_fn(self as @mut Visitor<()>,
                         function_kind,
                         function_declaration,
                         block,
@@ -581,12 +581,12 @@ impl Visitor<()> for IdVisitor {
 
     // XXX: Default
     fn visit_ty_method(@mut self, type_method: &TypeMethod, env: ()) {
-        visit::visit_ty_method(self as @Visitor<()>, type_method, env)
+        visit::visit_ty_method(self as @mut Visitor<()>, type_method, env)
     }
 
     // XXX: Default
     fn visit_trait_method(@mut self, trait_method: &trait_method, env: ()) {
-        visit::visit_trait_method(self as @Visitor<()>, trait_method, env)
+        visit::visit_trait_method(self as @mut Visitor<()>, trait_method, env)
     }
 
     // XXX: Default
@@ -596,7 +596,7 @@ impl Visitor<()> for IdVisitor {
                         generics: &Generics,
                         node_id: NodeId,
                         env: ()) {
-        visit::visit_struct_def(self as @Visitor<()>,
+        visit::visit_struct_def(self as @mut Visitor<()>,
                                 struct_definition,
                                 identifier,
                                 generics,
@@ -606,18 +606,18 @@ impl Visitor<()> for IdVisitor {
 
     fn visit_struct_field(@mut self, struct_field: @struct_field, env: ()) {
         (self.visit_callback)(struct_field.node.id);
-        visit::visit_struct_field(self as @Visitor<()>, struct_field, env)
+        visit::visit_struct_field(self as @mut Visitor<()>, struct_field, env)
     }
 }
 
 pub fn id_visitor(vfn: @fn(NodeId), pass_through_items: bool)
-                  -> @Visitor<()> {
-    let visitor = @IdVisitor {
+                  -> @mut Visitor<()> {
+    let visitor = @mut IdVisitor {
         visit_callback: vfn,
         pass_through_items: pass_through_items,
         visited_outermost: false,
     };
-    visitor as @Visitor<()>
+    visitor as @mut Visitor<()>
 }
 
 pub fn visit_ids_for_inlined_item(item: &inlined_item, vfn: @fn(NodeId)) {
@@ -757,9 +757,9 @@ impl EachViewItem for ast::Crate {
             callback: f,
         };
         let visitor = @mut SimpleVisitorVisitor {
-            simple_visitor: data as @SimpleVisitor,
+            simple_visitor: data as @mut SimpleVisitor,
         };
-        visit::visit_crate(visitor as @Visitor<()>, self, ());
+        visit::visit_crate(visitor as @mut Visitor<()>, self, ());
         true
     }
 }

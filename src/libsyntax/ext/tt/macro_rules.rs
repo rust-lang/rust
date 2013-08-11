@@ -59,7 +59,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                                    arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
-                                     arg_reader as @reader,
+                                     arg_reader as @mut reader,
                                      argument_gram);
 
     // Extract the arguments:
@@ -101,7 +101,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                     s_d,
                     None,
                     arg.to_owned()
-                ) as @reader;
+                ) as @mut reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
                   success(named_matches) => {
                     let rhs = match rhses[i] {
@@ -123,7 +123,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                                                rhs);
                     let p = @Parser(cx.parse_sess(),
                                     cx.cfg(),
-                                    trncbr as @reader);
+                                    trncbr as @mut reader);
 
                     // Let the context choose how to interpret the result.
                     // Weird, but useful for X-macros.

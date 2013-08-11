@@ -30,7 +30,7 @@ struct TtFrame {
 }
 
 pub struct TtReader {
-    sp_diag: @span_handler,
+    sp_diag: @mut span_handler,
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
@@ -45,7 +45,7 @@ pub struct TtReader {
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-pub fn new_tt_reader(sp_diag: @span_handler,
+pub fn new_tt_reader(sp_diag: @mut span_handler,
                      interp: Option<HashMap<ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> @mut TtReader {
