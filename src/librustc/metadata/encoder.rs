@@ -55,7 +55,7 @@ pub type encode_inlined_item<'self> = &'self fn(ecx: &EncodeContext,
                                    ii: ast::inlined_item);
 
 pub struct EncodeParams<'self> {
-    diag: @span_handler,
+    diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
@@ -82,7 +82,7 @@ struct Stats {
 }
 
 pub struct EncodeContext<'self> {
-    diag: @span_handler,
+    diag: @mut span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,

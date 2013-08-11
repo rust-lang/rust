@@ -226,13 +226,16 @@ pub enum AutoRef {
     AutoBorrowFn(Region),
 
     /// Convert from T to *T
-    AutoUnsafe(ast::mutability)
+    AutoUnsafe(ast::mutability),
+
+    /// Convert from @Trait/~Trait/&Trait to &Trait
+    AutoBorrowObj(Region, ast::mutability),
 }
 
 pub type ctxt = @ctxt_;
 
 struct ctxt_ {
-    diag: @syntax::diagnostic::span_handler,
+    diag: @mut syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
     cstore: @mut metadata::cstore::CStore,
