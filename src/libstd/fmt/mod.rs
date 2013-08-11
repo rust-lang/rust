@@ -122,6 +122,7 @@ The current mapping of types to traits is:
 * `s` => String
 * `p` => Pointer
 * `t` => Binary
+* `f` => Float
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
@@ -377,6 +378,8 @@ pub trait String { fn fmt(&Self, &mut Formatter); }
 pub trait Poly { fn fmt(&Self, &mut Formatter); }
 #[allow(missing_doc)]
 pub trait Pointer { fn fmt(&Self, &mut Formatter); }
+#[allow(missing_doc)]
+pub trait Float { fn fmt(&Self, &mut Formatter); }
 
 /// The sprintf function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
@@ -549,7 +552,20 @@ impl<'self> Formatter<'self> {
     // Helper methods used for padding and processing formatting arguments that
     // all formatting traits can use.
 
-    /// TODO: dox
+    /// Performs the correct padding for an integer which has already been
+    /// emitted into a byte-array. The byte-array should *not* contain the sign
+    /// for the integer, that will be added by this method.
+    ///
+    /// # Arguments
+    ///
+    ///     * s - the byte array that the number has been formatted into
+    ///     * alternate_prefix - if the '#' character (FlagAlternate) is
+    ///       provided, this is the prefix to put in front of the number.
+    ///       Currently this is 0x/0o/0b/etc.
+    ///     * positive - whether the original integer was positive or not.
+    ///
+    /// This function will correctly account for the flags provided as well as
+    /// the minimum width. It will not take precision into account.
     pub fn pad_integral(&mut self, s: &[u8], alternate_prefix: &str,
                         positive: bool) {
         use fmt::parse::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
@@ -790,6 +806,22 @@ integer!(i8, u8)
 integer!(i16, u16)
 integer!(i32, u32)
 integer!(i64, u64)
+
+macro_rules! floating(($ty:ident) => {
+    impl Float for $ty {
+        fn fmt(f: &$ty, fmt: &mut Formatter) {
+            // XXX: this shouldn't perform an allocation
+            let s = match fmt.precision {
+                Some(i) => ::$ty::to_str_exact(f.abs(), i),
+                None => ::$ty::to_str_digits(f.abs(), 6)
+            };
+            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
+        }
+    }
+})
+floating!(float)
+floating!(f32)
+floating!(f64)
 
 impl<T> Poly for T {
     fn fmt(t: &T, f: &mut Formatter) {
