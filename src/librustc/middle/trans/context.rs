@@ -236,6 +236,36 @@ impl CrateContext {
     pub fn builder(@mut self) -> Builder {
         Builder::new(self)
     }
+
+    pub fn const_inbounds_gepi(&self,
+                               pointer: ValueRef,
+                               indices: &[uint]) -> ValueRef {
+        debug!("const_inbounds_gepi: pointer=%s indices=%?",
+               self.tn.val_to_str(pointer), indices);
+        let v: ~[ValueRef] =
+            indices.iter().transform(|i| C_i32(*i as i32)).collect();
+        unsafe {
+            llvm::LLVMConstInBoundsGEP(pointer,
+                                       vec::raw::to_ptr(v),
+                                       indices.len() as c_uint)
+        }
+    }
+
+    pub fn offsetof_gep(&self,
+                        llptr_ty: Type,
+                        indices: &[uint]) -> ValueRef {
+        /*!
+         * Returns the offset of applying the given GEP indices
+         * to an instance of `llptr_ty`. Similar to `offsetof` in C,
+         * except that `llptr_ty` must be a pointer type.
+         */
+
+        unsafe {
+            let null = C_null(llptr_ty);
+            llvm::LLVMConstPtrToInt(self.const_inbounds_gepi(null, indices),
+                                    self.int_type.to_ref())
+        }
+    }
 }
 
 #[unsafe_destructor]

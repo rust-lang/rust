@@ -58,6 +58,7 @@ struct type_desc {
     glue_fn *drop_glue;
     glue_fn *free_glue;
     glue_fn *visit_glue;
+    size_t borrow_offset;
 };
 
 extern "C" type_desc *rust_clone_type_desc(type_desc*);

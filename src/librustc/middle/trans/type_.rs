@@ -205,10 +205,18 @@ impl Type {
 
         let int_ty = Type::int(arch);
 
-        let elems = [
-            int_ty, int_ty,
-            glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty
-        ];
+        // Must mirror:
+        //
+        // std::unstable::intrinsics::TyDesc
+        // type_desc in rt
+
+        let elems = [int_ty,     // size
+                     int_ty,     // align
+                     glue_fn_ty, // take
+                     glue_fn_ty, // drop
+                     glue_fn_ty, // free
+                     glue_fn_ty, // visit
+                     int_ty];    // borrow_offset
 
         tydesc.set_struct_body(elems, false);
 
@@ -249,8 +257,12 @@ impl Type {
         Type::struct_(Type::box_header_fields(ctx) + &[*ty], false)
     }
 
+    pub fn opaque() -> Type {
+        Type::i8()
+    }
+
     pub fn opaque_box(ctx: &CrateContext) -> Type {
-        Type::box(ctx, &Type::i8())
+        Type::box(ctx, &Type::opaque())
     }
 
     pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
