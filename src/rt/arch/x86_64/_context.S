@@ -54,7 +54,7 @@ First four arguments:
         anyhow.
 */
 
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__)
 #define SWAP_REGISTERS _swap_registers
 #else
 #define SWAP_REGISTERS swap_registers

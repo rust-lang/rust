@@ -11,7 +11,7 @@
 
 .text
 
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__)
 #define UPCALL_NEW_STACK        _upcall_new_stack
 #define UPCALL_DEL_STACK        _upcall_del_stack
 #define MORESTACK               ___morestack
