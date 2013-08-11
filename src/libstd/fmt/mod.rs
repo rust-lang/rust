@@ -8,6 +8,307 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/**!
+
+# The Formatting Module
+
+This module contains the runtime support for the `ifmt!` syntax extension. This
+macro is implemented in the compiler to emit calls to this module in order to
+format arguments at runtime into strings and streams.
+
+The functions contained in this module should not normally be used in everyday
+use cases of `ifmt!`. The assumptions made by these functions are unsafe for all
+inputs, and the compiler performs a large amount of validation on the arguments
+to `ifmt!` in order to ensure safety at runtime. While it is possible to call
+these functions directly, it is not recommended to do so in the general case.
+
+## Usage
+
+The `ifmt!` macro is intended to be familiar to those coming from C's
+printf/sprintf functions or Python's `str.format` function. In its current
+revision, the `ifmt!` macro returns a `~str` type which is the result of the
+formatting. In the future it will also be able to pass in a stream to format
+arguments directly while performing minimal allocations.
+
+Some examples of the `ifmt!` extension are:
+
+~~~{.rust}
+ifmt!("Hello")                  // => ~"Hello"
+ifmt!("Hello, {:s}!", "world")  // => ~"Hello, world!"
+ifmt!("The number is {:d}", 1)  // => ~"The number is 1"
+ifmt!("{}", ~[3, 4])            // => ~"~[3, 4]"
+ifmt!("{value}", value=4)       // => ~"4"
+ifmt!("{} {}", 1, 2)            // => ~"1 2"
+~~~
+
+From these, you can see that the first argument is a format string. It is
+required by the compiler for this to be a string literal; it cannot be a
+variable passed in (in order to perform validity checking). The compiler will
+then parse the format string and determine if the list of arguments provided is
+suitable to pass to this format string.
+
+### Positional parameters
+
+Each formatting argument is allowed to specify which value argument it's
+referencing, and if omitted it is assumed to be "the next argument". For
+example, the format string `{} {} {}` would take three parameters, and they
+would be formatted in the same order as they're given. The format string
+`{2} {1} {0}`, however, would format arguments in reverse order.
+
+A format string is required to use all of its arguments, otherwise it is a
+compile-time error. You may refer to the same argument more than once in the
+format string, although it must always be referred to with the same type.
+
+### Named parameters
+
+Rust itself does not have a Python-like equivalent of named parameters to a
+function, but the `ifmt!` macro is a syntax extension which allows it to
+leverage named parameters. Named parameters are listed at the end of the
+argument list and have the syntax:
+
+~~~
+identifier '=' expression
+~~~
+
+It is illegal to put positional parameters (those without names) after arguments
+which have names. Like positional parameters, it is illegal to provided named
+parameters that are unused by the format string.
+
+### Argument types
+
+Each argument's type is dictated by the format string. It is a requirement that
+every argument is only ever referred to by one type. When specifying the format
+of an argument, however, a string like `{}` indicates no type. This is allowed,
+and if all references to one argument do not provide a type, then the format `?`
+is used (the type's rust-representation is printed). For example, this is an
+invalid format string:
+
+~~~
+{0:d} {0:s}
+~~~
+
+Because the first argument is both referred to as an integer as well as a
+string.
+
+Because formatting is done via traits, there is no requirement that the
+`d` format actually takes an `int`, but rather it simply requires a type which
+ascribes to the `Signed` formatting trait. There are various parameters which do
+require a particular type, however. Namely if the sytnax `{:.*s}` is used, then
+the number of characters to print from the string precedes the actual string and
+must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
+illegal to reference an argument as such. For example, this is another invalid
+format string:
+
+~~~
+{:.*s} {0:u}
+~~~
+
+### Formatting traits
+
+When requesting that an argument be formatted with a particular type, you are
+actually requesting that an argument ascribes to a particular trait. This allows
+multiple actual types to be formatted via `{:d}` (like `i8` as well as `int`).
+The current mapping of types to traits is:
+
+* `?` => Poly
+* `d` => Signed
+* `i` => Signed
+* `u` => Unsigned
+* `b` => Bool
+* `c` => Char
+* `o` => Octal
+* `x` => LowerHex
+* `X` => UpperHex
+* `s` => String
+* `p` => Pointer
+* `t` => Binary
+
+What this means is that any type of argument which implements the
+`std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
+provided for these traits for a number of primitive types by the standard
+library as well. Again, the default formatting type (if no other is specified)
+is `?` which is defined for all types by default.
+
+When implementing a format trait for your own time, you will have to implement a
+method of the signature:
+
+~~~
+fn fmt(value: &T, f: &mut std::fmt::Formatter);
+~~~
+
+Your type will be passed by-reference in `value`, and then the function should
+emit output into the `f.buf` stream. It is up to each format trait
+implementation to correctly adhere to the requested formatting parameters. The
+values of these parameters will be listed in the fields of the `Formatter`
+struct. In order to help with this, the `Formatter` struct also provides some
+helper methods.
+
+## Internationalization
+
+The formatting syntax supported by the `ifmt!` extension supports
+internationalization by providing "methods" which execute various differnet
+outputs depending on the input. The syntax and methods provided are similar to
+other internationalization systems, so again nothing should seem alien.
+Currently two methods are supported by this extension: "select" and "plural".
+
+Each method will execute one of a number of clauses, and then the value of the
+clause will become what's the result of the argument's format. Inside of the
+cases, nested argument strings may be provided, but all formatting arguments
+must not be done through implicit positional means. All arguments inside of each
+case of a method must be explicitly selected by their name or their integer
+position.
+
+Furthermore, whenever a case is running, the special character `#` can be used
+to reference the string value of the argument which was selected upon. As an
+example:
+
+~~~
+ifmt!("{0, select, other{#}}", "hello") // => ~"hello"
+~~~
+
+This example is the equivalent of `{0:s}` essentially.
+
+### Select
+
+The select method is a switch over a `&str` parameter, and the parameter *must*
+be of the type `&str`. An example of the syntax is:
+
+~~~
+{0, select, male{...} female{...} other{...}}
+~~~
+
+Breaking this down, the `0`-th argument is selected upon with the `select`
+method, and then a number of cases follow. Each case is preceded by an
+identifier which is the match-clause to execute the given arm. In this case,
+there are two explicit cases, `male` and `female`. The case will be executed if
+the string argument provided is an exact match to the case selected.
+
+The `other` case is also a required case for all `select` methods. This arm will
+be executed if none of the other arms matched the word being selected over.
+
+### Plural
+
+The plural method is a switch statement over a `uint` parameter, and the
+parameter *must* be a `uint`. A plural method in its full glory can be specified
+as:
+
+~~~
+{0, plural, offset=1 =1{...} two{...} many{...} other{...}}
+~~~
+
+To break this down, the first `0` indicates that this method is selecting over
+the value of the first positional parameter to the format string. Next, the
+`plural` method is being executed. An optionally-supplied `offset` is then given
+which indicates a number to subtract from argument `0` when matching. This is
+then followed by a list of cases.
+
+Each case is allowed to supply a specific value to match upon with the syntax
+`=N`. This case is executed if the value at argument `0` matches N exactly,
+without taking the offset into account. A case may also be specified by one of
+five keywords: `zero`, `one`, `two`, `few`, and `many`. These cases are matched
+on after argument `0` has the offset taken into account. Currently the
+definitions of `many` and `few` are hardcoded, but they are in theory defined by
+the current locale.
+
+Finally, all `plural` methods must have an `other` case supplied which will be
+executed if none of the other cases match.
+
+## Syntax
+
+The syntax for the formatting language used is drawn from other languages, so it
+should not be too alien. Arguments are formatted with python-like syntax,
+meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
+actual grammar for the formatting syntax is:
+
+~~~
+format_string := <text> [ format <text> ] *
+format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
+argument := integer | identifier
+
+format_spec := [[fill]align][sign]['#'][0][width]['.' precision][type]
+fill := character
+align := '<' | '>'
+sign := '+' | '-'
+width := count
+precision := count | '*'
+type := identifier | ''
+count := parameter | integer
+parameter := integer '$'
+
+function_spec := plural | select
+select := 'select' ',' ( identifier arm ) *
+plural := 'plural' ',' [ 'offset:' integer ] ( selector arm ) *
+selector := '=' integer | keyword
+keyword := 'zero' | 'one' | 'two' | 'few' | 'many' | 'other'
+arm := '{' format_string '}'
+~~~
+
+## Formatting Parameters
+
+Each argument being formatted can be transformed by a number of formatting
+parameters (corresponding to `format_spec` in the syntax above). These
+parameters affect the string representation of what's being formatted. This
+syntax draws heavily from Python's, so it may seem a bit familiar.
+
+### Fill/Alignment
+
+The fill character is provided normally in conjunction with the `width`
+parameter. This indicates that if the value being formatted is smaller than
+`width` some extra characters will be printed around it. The extra characters
+are specified by `fill`, and the alignment can be one of two options:
+
+* `<` - the argument is left-aligned in `width` columns
+* `>` - the argument is right-aligned in `width` columns
+
+### Sign/#/0
+
+These can all be interpreted as flags for a particular formatter.
+
+* '+' - This is intended for numeric types and indicates that the sign should
+        always be printed. Positive signs are never printed by default, and the
+        negative sign is only printed by default for the `Signed` trait. This
+        flag indicates that the correct sign (+ or -) should always be printed.
+* '-' - Currently not used
+* '#' - This flag is indicates that the "alternate" form of printing should be
+        used. By default, this only applies to the integer formatting traits and
+        performs like:
+    * `x` - precedes the argument with a "0x"
+    * `X` - precedes the argument with a "0x"
+    * `t` - precedes the argument with a "0b"
+    * `o` - precedes the argument with a "0o"
+* '0' - This is used to indicate for integer formats that the padding should
+        both be done with a `0` character as well as be sign-aware. A format
+        like `{:08d}` would yield `00000001` for the integer `1`, while the same
+        format would yield `-0000001` for the integer `-1`. Notice that the
+        negative version has one fewer zero than the positive version.
+
+### Width
+
+This is a parameter for the "minimum width" that the format should take up. If
+the value's string does not fill up this many characters, then the padding
+specified by fill/alignment will be used to take up the required space.
+
+The default fill/alignment for non-numerics is a space and left-aligned. The
+defaults for numeric formatters is also a space but with right-alignment. If the
+'0' flag is specified for numerics, then the implicit fill character is '0'.
+
+The value for the width can also be provided as a `uint` in the list of
+parameters by using the `2$` syntax indicating that the second argument is a
+`uint` specifying the width.
+
+### Precision
+
+For non-numeric types, this can be considered a "maximum width". If the
+resulting string is longer than this width, then it is truncated down to this
+many characters and only those are emitted.
+
+For integral types, this has no meaning currently.
+
+For floating-point types, this indicates how many digits after the decimal point
+should be printed.
+
+*/
+
 use prelude::*;
 
 use cast;
