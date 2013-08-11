@@ -3131,7 +3131,7 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
               method_num: n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth, _) => {
+          typeck::method_trait(trt_id, n_mth) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
