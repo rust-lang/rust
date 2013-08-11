@@ -827,7 +827,8 @@ impl CheckedMul for i32 {
     }
 }
 
-#[cfg(not(stage0))]
+// FIXME: #8449: should not be disabled on 32-bit
+#[cfg(not(stage0), target_word_size = "64")]
 impl CheckedMul for i64 {
     #[inline]
     fn checked_mul(&self, v: &i64) -> Option<i64> {
@@ -893,7 +894,8 @@ impl CheckedMul for u32 {
     }
 }
 
-#[cfg(not(stage0))]
+// FIXME: #8449: should not be disabled on 32-bit
+#[cfg(not(stage0), target_word_size = "64")]
 impl CheckedMul for u64 {
     #[inline]
     fn checked_mul(&self, v: &u64) -> Option<u64> {
