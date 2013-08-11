@@ -362,7 +362,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     }
 
                     mc::cat_discr(b, _) |
-                    mc::cat_deref(b, _, mc::uniq_ptr(*)) => {
+                    mc::cat_deref(b, _, mc::uniq_ptr) => {
                         assert_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
                     }
