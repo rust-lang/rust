@@ -85,7 +85,7 @@ pub type map = @mut HashMap<NodeId, ast_node>;
 pub struct Ctx {
     map: map,
     path: path,
-    diag: @span_handler,
+    diag: @mut span_handler,
 }
 
 impl Ctx {
@@ -141,7 +141,7 @@ impl Ctx {
             }
         }
 
-        visit::visit_expr(self as @Visitor<()>, ex, ());
+        visit::visit_expr(self as @mut Visitor<()>, ex, ());
     }
 
     fn map_fn(@mut self,
@@ -153,18 +153,18 @@ impl Ctx {
         for a in decl.inputs.iter() {
             self.map.insert(a.id, node_arg);
         }
-        visit::visit_fn(self as @Visitor<()>, fk, decl, body, sp, id, ());
+        visit::visit_fn(self as @mut Visitor<()>, fk, decl, body, sp, id, ());
     }
 
     fn map_stmt(@mut self, stmt: @stmt) {
         self.map.insert(stmt_id(stmt), node_stmt(stmt));
-        visit::visit_stmt(self as @Visitor<()>, stmt, ());
+        visit::visit_stmt(self as @mut Visitor<()>, stmt, ());
     }
 
     fn map_block(@mut self, b: &Block) {
         // clone is FIXME #2543
         self.map.insert(b.id, node_block((*b).clone()));
-        visit::visit_block(self as @Visitor<()>, b, ());
+        visit::visit_block(self as @mut Visitor<()>, b, ());
     }
 
     fn map_pat(@mut self, pat: @pat) {
@@ -177,7 +177,7 @@ impl Ctx {
             _ => ()
         }
 
-        visit::visit_pat(self as @Visitor<()>, pat, ());
+        visit::visit_pat(self as @mut Visitor<()>, pat, ());
     }
 }
 
@@ -254,13 +254,13 @@ impl Visitor<()> for Ctx {
             }
             _ => self.path.push(path_name(i.ident))
         }
-        visit::visit_item(self as @Visitor<()>, i, ());
+        visit::visit_item(self as @mut Visitor<()>, i, ());
         self.path.pop();
     }
 
     fn visit_pat(@mut self, pat: @pat, _: ()) {
         self.map_pat(pat);
-        visit::visit_pat(self as @Visitor<()>, pat, ())
+        visit::visit_pat(self as @mut Visitor<()>, pat, ())
     }
 
     fn visit_expr(@mut self, expr: @expr, _: ()) {
@@ -288,27 +288,27 @@ impl Visitor<()> for Ctx {
     // XXX: Methods below can become default methods.
 
     fn visit_mod(@mut self, module: &_mod, _: span, _: NodeId, _: ()) {
-        visit::visit_mod(self as @Visitor<()>, module, ())
+        visit::visit_mod(self as @mut Visitor<()>, module, ())
     }
 
     fn visit_view_item(@mut self, view_item: &view_item, _: ()) {
-        visit::visit_view_item(self as @Visitor<()>, view_item, ())
+        visit::visit_view_item(self as @mut Visitor<()>, view_item, ())
     }
 
     fn visit_foreign_item(@mut self, foreign_item: @foreign_item, _: ()) {
-        visit::visit_foreign_item(self as @Visitor<()>, foreign_item, ())
+        visit::visit_foreign_item(self as @mut Visitor<()>, foreign_item, ())
     }
 
     fn visit_local(@mut self, local: @Local, _: ()) {
-        visit::visit_local(self as @Visitor<()>, local, ())
+        visit::visit_local(self as @mut Visitor<()>, local, ())
     }
 
     fn visit_arm(@mut self, arm: &arm, _: ()) {
-        visit::visit_arm(self as @Visitor<()>, arm, ())
+        visit::visit_arm(self as @mut Visitor<()>, arm, ())
     }
 
     fn visit_decl(@mut self, decl: @decl, _: ()) {
-        visit::visit_decl(self as @Visitor<()>, decl, ())
+        visit::visit_decl(self as @mut Visitor<()>, decl, ())
     }
 
     fn visit_expr_post(@mut self, _: @expr, _: ()) {
@@ -316,11 +316,11 @@ impl Visitor<()> for Ctx {
     }
 
     fn visit_ty(@mut self, typ: &Ty, _: ()) {
-        visit::visit_ty(self as @Visitor<()>, typ, ())
+        visit::visit_ty(self as @mut Visitor<()>, typ, ())
     }
 
     fn visit_generics(@mut self, generics: &Generics, _: ()) {
-        visit::visit_generics(self as @Visitor<()>, generics, ())
+        visit::visit_generics(self as @mut Visitor<()>, generics, ())
     }
 
     fn visit_fn(@mut self,
@@ -330,7 +330,7 @@ impl Visitor<()> for Ctx {
                 span: span,
                 node_id: NodeId,
                 _: ()) {
-        visit::visit_fn(self as @Visitor<()>,
+        visit::visit_fn(self as @mut Visitor<()>,
                         function_kind,
                         function_declaration,
                         block,
@@ -340,11 +340,11 @@ impl Visitor<()> for Ctx {
     }
 
     fn visit_ty_method(@mut self, ty_method: &TypeMethod, _: ()) {
-        visit::visit_ty_method(self as @Visitor<()>, ty_method, ())
+        visit::visit_ty_method(self as @mut Visitor<()>, ty_method, ())
     }
 
     fn visit_trait_method(@mut self, trait_method: &trait_method, _: ()) {
-        visit::visit_trait_method(self as @Visitor<()>, trait_method, ())
+        visit::visit_trait_method(self as @mut Visitor<()>, trait_method, ())
     }
 
     fn visit_struct_def(@mut self,
@@ -353,7 +353,7 @@ impl Visitor<()> for Ctx {
                         generics: &Generics,
                         node_id: NodeId,
                         _: ()) {
-        visit::visit_struct_def(self as @Visitor<()>,
+        visit::visit_struct_def(self as @mut Visitor<()>,
                                 struct_def,
                                 ident,
                                 generics,
@@ -362,24 +362,24 @@ impl Visitor<()> for Ctx {
     }
 
     fn visit_struct_field(@mut self, struct_field: @struct_field, _: ()) {
-        visit::visit_struct_field(self as @Visitor<()>, struct_field, ())
+        visit::visit_struct_field(self as @mut Visitor<()>, struct_field, ())
     }
 }
 
-pub fn map_crate(diag: @span_handler, c: &Crate) -> map {
+pub fn map_crate(diag: @mut span_handler, c: &Crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
         diag: diag,
     };
-    visit::visit_crate(cx as @Visitor<()>, c, ());
+    visit::visit_crate(cx as @mut Visitor<()>, c, ());
     cx.map
 }
 
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-pub fn map_decoded_item(diag: @span_handler,
+pub fn map_decoded_item(diag: @mut span_handler,
                         map: map,
                         path: path,
                         ii: &inlined_item) {
@@ -409,7 +409,7 @@ pub fn map_decoded_item(diag: @span_handler,
     }
 
     // visit the item / method contents and add those to the map:
-    ii.accept((), cx as @Visitor<()>);
+    ii.accept((), cx as @mut Visitor<()>);
 }
 
 pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {

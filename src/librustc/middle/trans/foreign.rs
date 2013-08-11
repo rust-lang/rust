@@ -857,8 +857,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
-            //let llvisitorptr = alloca(bcx, val_ty(visitor));
-            //Store(bcx, visitor, llvisitorptr);
             let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
             glue::call_tydesc_glue_full(bcx, visitor, td,
                                         abi::tydesc_field_visit_glue, None);

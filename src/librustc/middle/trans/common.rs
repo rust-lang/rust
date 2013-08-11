@@ -54,6 +54,7 @@ pub struct tydesc_info {
     tydesc: ValueRef,
     size: ValueRef,
     align: ValueRef,
+    borrow_offset: ValueRef,
     take_glue: Option<ValueRef>,
     drop_glue: Option<ValueRef>,
     free_glue: Option<ValueRef>,
@@ -685,7 +686,6 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
                          ptr, ptr,
                          t]);
 }
-
 
 // LLVM constant constructors.
 pub fn C_null(t: Type) -> ValueRef {

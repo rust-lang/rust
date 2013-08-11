@@ -101,7 +101,7 @@ impl RestrictionsContext {
                 self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
             }
 
-            mc::cat_deref(cmt_base, _, mc::uniq_ptr(*)) => {
+            mc::cat_deref(cmt_base, _, mc::uniq_ptr) => {
                 // R-Deref-Send-Pointer
                 //
                 // When we borrow the interior of an owned pointer, we
@@ -194,7 +194,7 @@ impl RestrictionsContext {
                 }
             }
 
-            mc::cat_deref(_, _, mc::unsafe_ptr) => {
+            mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {
                 // We are very trusting when working with unsafe pointers.
                 Safe
             }

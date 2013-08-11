@@ -137,9 +137,8 @@ use middle::trans::meth;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
-use middle::ty::{AutoDerefRef, AutoAddEnv};
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
-                 AutoUnsafe};
+use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoUnsafe};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
@@ -223,6 +222,10 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                                                     datum.ty, Some(adjustment));
                     unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
                 }
+                Some(AutoBorrowObj(*)) => {
+                    unpack_datum!(bcx, auto_borrow_obj(
+                        bcx, adj.autoderefs, expr, datum))
+                }
             };
         }
     }
@@ -297,6 +300,98 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                           datum: Datum) -> DatumBlock {
         let DatumBlock { bcx, datum } = auto_slice(bcx, autoderefs, expr, datum);
         auto_ref(bcx, datum)
+    }
+
+    fn auto_borrow_obj(mut bcx: @mut Block,
+                       autoderefs: uint,
+                       expr: @ast::expr,
+                       source_datum: Datum) -> DatumBlock {
+        let tcx = bcx.tcx();
+        let target_obj_ty = expr_ty_adjusted(bcx, expr);
+        debug!("auto_borrow_obj(target=%s)",
+               target_obj_ty.repr(tcx));
+        let scratch = scratch_datum(bcx, target_obj_ty,
+                                    "__auto_borrow_obj", false);
+
+        // Convert a @Object, ~Object, or &Object pair into an &Object pair.
+
+        // Get a pointer to the source object, which is represented as
+        // a (vtable, data) pair.
+        let source_llval = source_datum.to_ref_llval(bcx);
+
+        // Set the vtable field of the new pair
+        let vtable_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_vtable]);
+        let vtable = Load(bcx, vtable_ptr);
+        Store(bcx, vtable, GEPi(bcx, scratch.val, [0u, abi::trt_field_vtable]));
+
+        // Load the data for the source, which is either an @T,
+        // ~T, or &T, depending on source_obj_ty.
+        let source_data_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_box]);
+        let source_data = Load(bcx, source_data_ptr); // always a ptr
+        let (source_store, source_mutbl) = match ty::get(source_datum.ty).sty {
+            ty::ty_trait(_, _, s, m, _) => (s, m),
+            _ => {
+                bcx.sess().span_bug(
+                    expr.span,
+                    fmt!("auto_borrow_trait_obj expected a trait, found %s",
+                         source_datum.ty.repr(bcx.tcx())));
+            }
+        };
+        let target_data = match source_store {
+            ty::BoxTraitStore(*) => {
+                // For deref of @T or @mut T, create a dummy datum and
+                // use the datum's deref method. This is more work
+                // than just calling GEPi ourselves, but it ensures
+                // that any write guards will be appropriate
+                // processed.  Note that we don't know the type T, so
+                // just substitute `i8`-- it doesn't really matter for
+                // our purposes right now.
+                let source_ty =
+                    ty::mk_box(tcx,
+                               ty::mt {
+                                   ty: ty::mk_i8(),
+                                   mutbl: source_mutbl});
+                let source_datum =
+                    Datum {val: source_data,
+                           ty: source_ty,
+                           mode: ByValue};
+                let derefd_datum =
+                    unpack_datum!(bcx,
+                                  source_datum.deref(bcx,
+                                                     expr,
+                                                     autoderefs));
+                derefd_datum.to_rptr(bcx).to_value_llval(bcx)
+            }
+            ty::UniqTraitStore(*) => {
+                // For a ~T box, there may or may not be a header,
+                // depending on whether the type T references managed
+                // boxes. However, since we do not *know* the type T
+                // for objects, this presents a hurdle. Our solution is
+                // to load the "borrow offset" from the type descriptor;
+                // this value will either be 0 or sizeof(BoxHeader), depending
+                // on the type T.
+                let llopaque =
+                    PointerCast(bcx, source_data, Type::opaque().ptr_to());
+                let lltydesc_ptr_ptr =
+                    PointerCast(bcx, vtable,
+                                bcx.ccx().tydesc_type.ptr_to().ptr_to());
+                let lltydesc_ptr =
+                    Load(bcx, lltydesc_ptr_ptr);
+                let borrow_offset_ptr =
+                    GEPi(bcx, lltydesc_ptr,
+                         [0, abi::tydesc_field_borrow_offset]);
+                let borrow_offset =
+                    Load(bcx, borrow_offset_ptr);
+                InBoundsGEP(bcx, llopaque, [borrow_offset])
+            }
+            ty::RegionTraitStore(*) => {
+                source_data
+            }
+        };
+        Store(bcx, target_data,
+              GEPi(bcx, scratch.val, [0u, abi::trt_field_box]));
+
+        DatumBlock { bcx: bcx, datum: scratch }
     }
 }
 

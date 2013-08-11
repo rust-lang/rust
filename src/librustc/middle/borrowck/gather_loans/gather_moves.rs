@@ -173,7 +173,7 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
             }
         }
 
-        mc::cat_deref(b, _, mc::uniq_ptr(*)) |
+        mc::cat_deref(b, _, mc::uniq_ptr) |
         mc::cat_discr(b, _) => {
             check_is_legal_to_move_from(bccx, cmt0, b)
         }

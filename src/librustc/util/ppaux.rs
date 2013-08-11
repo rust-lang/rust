@@ -747,9 +747,8 @@ impl Repr for typeck::method_origin {
             &typeck::method_param(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::method_trait(def_id, n, st) => {
-                fmt!("method_trait(%s, %?, %s)", def_id.repr(tcx), n,
-                     st.repr(tcx))
+            &typeck::method_trait(def_id, n) => {
+                fmt!("method_trait(%s, %?)", def_id.repr(tcx), n)
             }
         }
     }
