@@ -13,7 +13,7 @@ use back::{upcall};
 use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
-use lib::llvm::{mk_target_data};
+use lib::llvm::{mk_target_data, False};
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;
@@ -22,6 +22,7 @@ use middle::trans::base;
 use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
 use middle::trans::type_use;
+use middle::trans::common::{C_i32, C_null};
 use middle::ty;
 
 use middle::trans::type_::Type;
@@ -30,6 +31,8 @@ use std::c_str::ToCStr;
 use std::hash;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
+use std::vec;
+use std::libc::c_uint;
 use syntax::ast;
 
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
