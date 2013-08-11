@@ -687,7 +687,6 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
                          t]);
 }
 
-
 // LLVM constant constructors.
 pub fn C_null(t: Type) -> ValueRef {
     unsafe {
