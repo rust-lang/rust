@@ -637,16 +637,17 @@ impl Context {
             Known(tyname) => {
                 let fmt_trait = match tyname.as_slice() {
                     "?" => "Poly",
-                    "d" | "i" => "Signed",
-                    "u" => "Unsigned",
                     "b" => "Bool",
                     "c" => "Char",
+                    "d" | "i" => "Signed",
+                    "f" => "Float",
                     "o" => "Octal",
+                    "p" => "Pointer",
+                    "s" => "String",
+                    "t" => "Binary",
+                    "u" => "Unsigned",
                     "x" => "LowerHex",
                     "X" => "UpperHex",
-                    "s" => "String",
-                    "p" => "Pointer",
-                    "t" => "Binary",
                     _ => {
                         self.ecx.span_err(sp, fmt!("unknown format trait \
                                                     `%s`", tyname));
