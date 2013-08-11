@@ -18,7 +18,7 @@ macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
 
 use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
-use num::{Zero, One, strconv};
+use num::{CheckedDiv, Zero, One, strconv};
 use prelude::*;
 use str;
 
@@ -29,6 +29,17 @@ pub static bytes : uint = ($bits / 8);
 
 pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
+
+impl CheckedDiv for $T {
+    #[inline]
+    fn checked_div(&self, v: &$T) -> Option<$T> {
+        if *v == 0 {
+            None
+        } else {
+            Some(self / *v)
+        }
+    }
+}
 
 enum Range { Closed, HalfOpen }
 
@@ -693,6 +704,12 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_range_step_zero_step_down() {
         do range_step(0,-10,0) |_i| { true };
+    }
+
+    #[test]
+    fn test_unsigned_checked_div() {
+        assert_eq!(10u.checked_div(&2), Some(5));
+        assert_eq!(5u.checked_div(&0), None);
     }
 }
 
