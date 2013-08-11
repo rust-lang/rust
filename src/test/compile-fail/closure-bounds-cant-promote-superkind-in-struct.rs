@@ -13,7 +13,7 @@ struct X {
 }
 
 fn foo(blk: @fn:()) -> X {
-    return X { field: blk }; //~ ERROR expected bounds `Send` but found no bounds
+    return X { field: blk }; //~ ERROR expected bounds `Send`, found no bounds
 }
 
 fn main() {

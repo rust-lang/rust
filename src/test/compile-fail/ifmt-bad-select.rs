@@ -10,5 +10,5 @@
 
 fn main() {
     ifmt!("{0, select, other{}}", 2);
-    //~^ ERROR: expected &str but found integral
+    //~^ ERROR: expected &str, found integral
 }

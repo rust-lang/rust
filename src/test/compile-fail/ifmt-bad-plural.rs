@@ -10,5 +10,5 @@
 
 fn main() {
     ifmt!("{0, plural, other{}}", "a");
-    //~^ ERROR: expected uint but found
+    //~^ ERROR: expected uint, found
 }
