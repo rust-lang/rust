@@ -2370,7 +2370,12 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             decl_cdecl_fn(ccx.llmod, "amain", llfty)
         } else {
             let main_name = match ccx.sess.targ_cfg.os {
-                session::os_win32 => ~"WinMain@16",
+                session::os_win32 => {
+                    match ccx.sess.targ_cfg.arch {
+                        X86 => ~"WinMain@16",
+                        _ => ~"WinMain",
+                    }
+                },
                 _ => ~"main",
             };
             decl_cdecl_fn(ccx.llmod, main_name, llfty)
