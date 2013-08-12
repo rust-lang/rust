@@ -427,7 +427,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
         }
 
         ast::expr_fn_block(*) => {
-            check_expr_fn_block(rcx, expr, v, false);
+            check_expr_fn_block(rcx, expr, v);
         }
 
         ast::expr_loop(ref body, _) => {
@@ -454,8 +454,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
 
 fn check_expr_fn_block(rcx: @mut Rcx,
                        expr: @ast::expr,
-                       v: rvt,
-                       is_loop_body: bool) {
+                       v: rvt) {
     let tcx = rcx.fcx.tcx();
     match expr.node {
         ast::expr_fn_block(_, ref body) => {
@@ -464,7 +463,7 @@ fn check_expr_fn_block(rcx: @mut Rcx,
                 ty::ty_closure(
                     ty::ClosureTy {
                         sigil: ast::BorrowedSigil, region: region, _}) => {
-                    if get_freevars(tcx, expr.id).is_empty() && !is_loop_body {
+                    if get_freevars(tcx, expr.id).is_empty() {
                         // No free variables means that the environment
                         // will be NULL at runtime and hence the closure
                         // has static lifetime.
