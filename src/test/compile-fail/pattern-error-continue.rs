@@ -29,7 +29,8 @@ fn main() {
         _ => ()
     }
     match 'c' {
-        S { _ } => (),   //~ ERROR mismatched types: expected `char` but found struct
+        S { _ } => (),   //~ ERROR mismatched types: expected `char` but found a structure pattern
+
         _ => ()
     }
     f(true);            //~ ERROR mismatched types: expected `char` but found `bool`
