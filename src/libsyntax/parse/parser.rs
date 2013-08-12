@@ -3445,7 +3445,7 @@ impl Parser {
                 |p| p.parse_arg()
             );
 
-        let inputs = either::lefts(args_or_capture_items);
+        let inputs = either::lefts(args_or_capture_items.move_iter()).collect();
 
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ast::fn_decl {
@@ -3608,7 +3608,7 @@ impl Parser {
 
         let hi = self.span.hi;
 
-        let inputs = either::lefts(args_or_capture_items);
+        let inputs = either::lefts(args_or_capture_items.move_iter()).collect();
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
         let fn_decl = ast::fn_decl {
@@ -3641,7 +3641,7 @@ impl Parser {
         };
 
         ast::fn_decl {
-            inputs: either::lefts(inputs_captures),
+            inputs: either::lefts(inputs_captures.move_iter()).collect(),
             output: output,
             cf: return_val,
         }
