@@ -16,14 +16,12 @@ use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT, ByRef, ZeroMem};
+use middle::trans::datum::{Datum, INIT};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
-
-use middle::trans::type_::Type;
 
 use std::vec;
 use syntax::ast;
@@ -259,8 +257,7 @@ pub fn store_environment(bcx: @mut Block,
 // collects the upvars and packages them up for store_environment.
 pub fn build_closure(bcx0: @mut Block,
                      cap_vars: &[moves::CaptureVar],
-                     sigil: ast::Sigil,
-                     include_ret_handle: Option<ValueRef>) -> ClosureResult {
+                     sigil: ast::Sigil) -> ClosureResult {
     let _icx = push_ctxt("closure::build_closure");
 
     // If we need to, package up the iterator body to call
@@ -288,30 +285,6 @@ pub fn build_closure(bcx0: @mut Block,
         }
     }
 
-    // If this is a `for` loop body, add two special environment
-    // variables:
-    for flagptr in include_ret_handle.iter() {
-        // Flag indicating we have returned (a by-ref bool):
-        let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
-                                mode: ByRef(ZeroMem)};
-        env_vals.push(EnvValue {action: EnvRef,
-                                datum: flag_datum});
-
-        // Return value (we just pass a by-ref () and cast it later to
-        // the right thing):
-        let ret_true = match bcx.fcx.loop_ret {
-            Some((_, retptr)) => retptr,
-            None => match bcx.fcx.llretptr {
-                None => C_null(Type::nil().ptr_to()),
-                Some(retptr) => PointerCast(bcx, retptr, Type::nil().ptr_to()),
-            }
-        };
-        let ret_datum = Datum {val: ret_true, ty: ty::mk_nil(),
-                               mode: ByRef(ZeroMem)};
-        env_vals.push(EnvValue {action: EnvRef,
-                                datum: ret_datum});
-    }
-
     return store_environment(bcx, env_vals, sigil);
 }
 
@@ -321,12 +294,11 @@ pub fn build_closure(bcx0: @mut Block,
 pub fn load_environment(fcx: @mut FunctionContext,
                         cdata_ty: ty::t,
                         cap_vars: &[moves::CaptureVar],
-                        load_ret_handle: bool,
                         sigil: ast::Sigil) {
     let _icx = push_ctxt("closure::load_environment");
 
     // Don't bother to create the block if there's nothing to load
-    if cap_vars.len() == 0 && !load_ret_handle {
+    if cap_vars.len() == 0 {
         return;
     }
 
@@ -347,12 +319,6 @@ pub fn load_environment(fcx: @mut FunctionContext,
         fcx.llupvars.insert(def_id.node, upvarptr);
         i += 1u;
     }
-    if load_ret_handle {
-        let flagptr = Load(bcx, GEPi(bcx, llcdata, [0u, i]));
-        let retptr = Load(bcx,
-                          GEPi(bcx, llcdata, [0u, i+1u]));
-        fcx.loop_ret = Some((flagptr, retptr));
-    }
 }
 
 pub fn trans_expr_fn(bcx: @mut Block,
@@ -361,7 +327,6 @@ pub fn trans_expr_fn(bcx: @mut Block,
                      body: &ast::Block,
                      outer_id: ast::NodeId,
                      user_id: ast::NodeId,
-                     is_loop_body: Option<Option<ValueRef>>,
                      dest: expr::Dest) -> @mut Block {
     /*!
      *
@@ -378,7 +343,6 @@ pub fn trans_expr_fn(bcx: @mut Block,
      * - `user_id`: The id of the closure as the user expressed it.
          Generally the same as `outer_id`
      * - `cap_clause`: information about captured variables, if any.
-     * - `is_loop_body`: `Some()` if this is part of a `for` loop.
      * - `dest`: where to write the closure value, which must be a
          (fn ptr, env) pair
      */
@@ -405,28 +369,14 @@ pub fn trans_expr_fn(bcx: @mut Block,
                                                  "expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    // Always mark inline if this is a loop body. This is important for
-    // performance on many programs with tight loops.
-    if is_loop_body.is_some() {
-        set_always_inline(llfn);
-    } else {
-        // Can't hurt.
-        set_inline_hint(llfn);
-    }
-
-    let real_return_type = if is_loop_body.is_some() {
-        ty::mk_bool()
-    } else {
-        ty::ty_fn_ret(fty)
-    };
+    // set an inline hint for all closures
+    set_inline_hint(llfn);
 
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
             let cap_vars = ccx.maps.capture_map.get_copy(&user_id);
-            let ret_handle = match is_loop_body {Some(x) => x,
-                                                 None => None};
             let ClosureResult {llbox, cdata_ty, bcx}
-                = build_closure(bcx, cap_vars, sigil, ret_handle);
+                = build_closure(bcx, cap_vars, sigil);
             trans_closure(ccx,
                           sub_path,
                           decl,
@@ -436,16 +386,8 @@ pub fn trans_expr_fn(bcx: @mut Block,
                           bcx.fcx.param_substs,
                           user_id,
                           [],
-                          real_return_type,
-                          |fcx| load_environment(fcx, cdata_ty, cap_vars,
-                                                 ret_handle.is_some(), sigil),
-                          |bcx| {
-                              if is_loop_body.is_some() {
-                                  Store(bcx,
-                                        C_bool(true),
-                                        bcx.fcx.llretptr.unwrap());
-                              }
-                          });
+                          ty::ty_fn_ret(fty),
+                          |fcx| load_environment(fcx, cdata_ty, cap_vars, sigil));
             rslt(bcx, llbox)
         }
     };
