@@ -105,7 +105,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
         Path(getopts::opt_str(m, nm))
     }
-    
+
     let src_base = getopts::opt_strs(matches, "src-base");
 
     config {
