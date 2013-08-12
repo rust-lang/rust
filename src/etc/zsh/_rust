@@ -27,7 +27,8 @@ _rustc_opts_switches=(
     --sysroot'[Override the system root]'
     --test'[Build a test harness]'
     --target'[Target triple cpu-manufacturer-kernel\[-os\] to compile]'
-    --target-feature'[Target specific attributes (llc -mattr=help for detail)]'
+    --target-cpu'[Select target processor (llc -mcpu=help for details)]'
+    --target-feature'[Target specific attributes (llc -mattr=help for details)]'
     --android-cross-path'[The path to the Android NDK]'
     {-v,--version}'[Print version info and exit]'
 )

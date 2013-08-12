@@ -69,6 +69,7 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
 pub fn WriteOutputFile(sess: Session,
         PM: lib::llvm::PassManagerRef, M: ModuleRef,
         Triple: &str,
+        Cpu: &str,
         Feature: &str,
         Output: &str,
         // FIXME: When #2334 is fixed, change
@@ -78,19 +79,22 @@ pub fn WriteOutputFile(sess: Session,
         EnableSegmentedStacks: bool) {
     unsafe {
         do Triple.to_c_str().with_ref |Triple| {
-            do Feature.to_c_str().with_ref |Feature| {
-                do Output.to_c_str().with_ref |Output| {
-                    let result = llvm::LLVMRustWriteOutputFile(
-                            PM,
-                            M,
-                            Triple,
-                            Feature,
-                            Output,
-                            FileType,
-                            OptLevel,
-                            EnableSegmentedStacks);
-                    if (!result) {
-                        llvm_err(sess, ~"Could not write output");
+            do Cpu.to_c_str().with_ref |Cpu| {
+                do Feature.to_c_str().with_ref |Feature| {
+                    do Output.to_c_str().with_ref |Output| {
+                        let result = llvm::LLVMRustWriteOutputFile(
+                                PM,
+                                M,
+                                Triple,
+                                Cpu,
+                                Feature,
+                                Output,
+                                FileType,
+                                OptLevel,
+                                EnableSegmentedStacks);
+                        if (!result) {
+                            llvm_err(sess, ~"Could not write output");
+                        }
                     }
                 }
             }
@@ -346,6 +350,7 @@ pub mod write {
                             pm.llpm,
                             llmod,
                             sess.targ_cfg.target_strs.target_triple,
+                            opts.target_cpu,
                             opts.target_feature,
                             output.to_str(),
                             lib::llvm::AssemblyFile as c_uint,
@@ -362,6 +367,7 @@ pub mod write {
                             pm.llpm,
                             llmod,
                             sess.targ_cfg.target_strs.target_triple,
+                            opts.target_cpu,
                             opts.target_feature,
                             output.to_str(),
                             lib::llvm::ObjectFile as c_uint,
@@ -376,6 +382,7 @@ pub mod write {
                         pm.llpm,
                         llmod,
                         sess.targ_cfg.target_strs.target_triple,
+                        opts.target_cpu,
                         opts.target_feature,
                         output.to_str(),
                         FileType as c_uint,
