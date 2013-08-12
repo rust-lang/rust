@@ -53,7 +53,7 @@ use container::Container;
 use int;
 use iterator::Iterator;
 use libc::consts::os::posix88::*;
-use libc::{c_int, c_long, c_void, size_t, ssize_t};
+use libc::{c_int, c_void, size_t};
 use libc;
 use num;
 use ops::Drop;
@@ -970,7 +970,7 @@ impl Reader for *libc::FILE {
 
         unsafe {
             assert!(libc::fseek(*self,
-                                     offset as c_long,
+                                     offset as libc::c_long,
                                      convert_whence(whence)) == 0 as c_int);
         }
     }
@@ -1199,7 +1199,7 @@ impl Writer for *libc::FILE {
 
         unsafe {
             assert!(libc::fseek(*self,
-                                     offset as c_long,
+                                     offset as libc::c_long,
                                      convert_whence(whence)) == 0 as c_int);
         }
     }
@@ -1240,13 +1240,23 @@ impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
         #[fixed_stack_segment]; #[inline(never)];
 
+        #[cfg(windows)]
+        type IoSize = libc::c_uint;
+        #[cfg(windows)]
+        type IoRet = c_int;
+
+        #[cfg(unix)]
+        type IoSize = size_t;
+        #[cfg(unix)]
+        type IoRet = libc::ssize_t;
+
         unsafe {
             let mut count = 0u;
             do v.as_imm_buf |vbuf, len| {
                 while count < len {
                     let vb = ptr::offset(vbuf, count as int) as *c_void;
-                    let nout = libc::write(*self, vb, len as size_t);
-                    if nout < 0 as ssize_t {
+                    let nout = libc::write(*self, vb, len as IoSize);
+                    if nout < 0 as IoRet {
                         error!("error writing buffer");
                         error!("%s", os::last_os_error());
                         fail!();
