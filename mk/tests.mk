@@ -516,7 +516,7 @@ CTEST_BUILD_BASE_cfail = compile-fail
 CTEST_MODE_cfail = compile-fail
 CTEST_RUNTOOL_cfail = $(CTEST_RUNTOOL)
 
-CTEST_SRC_BASE_bench = bench
+CTEST_SRC_BASE_bench = bench bench/rt bench/shootout bench/std
 CTEST_BUILD_BASE_bench = bench
 CTEST_MODE_bench = run-pass
 CTEST_RUNTOOL_bench = $(CTEST_RUNTOOL)
@@ -610,7 +610,8 @@ define DEF_RUN_COMPILETEST
 
 CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
-        --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
+        $(foreach base,$$(CTEST_SRC_BASE_$(4)), \
+        --src-base $$(S)src/test/$$(base))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
         --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
         --mode $$(CTEST_MODE_$(4)) \
