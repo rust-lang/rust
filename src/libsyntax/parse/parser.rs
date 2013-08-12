@@ -399,9 +399,9 @@ impl Parser {
             let actual = self.this_token_to_str();
             self.fatal(
                 if expected.len() != 1 {
-                    fmt!("expected one of `%s` but found `%s`", expect, actual)
+                    fmt!("expected one of `%s`, found `%s`", expect, actual)
                 } else {
-                    fmt!("expected `%s` but found `%s`", expect, actual)
+                    fmt!("expected `%s`, found `%s`", expect, actual)
                 }
             )
         }
@@ -416,7 +416,7 @@ impl Parser {
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
             self.span_err(*self.span,
-                          "Unit-like struct construction is written with no trailing `{ }`");
+                          "unit-like struct construction is written with no trailing `{ }`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
             true
@@ -450,7 +450,7 @@ impl Parser {
     // for recoverable input errors, discarding erroneous characters.
     pub fn commit_stmt(&self, s: @stmt, edible: &[token::Token], inedible: &[token::Token]) {
         debug!("commit_stmt %?", s);
-        let _s = s; // unused, but future checks might want to inspect `s`.
+        let _ = s; // unused, but future checks might want to inspect `s`.
         if self.last_token.map_default(false, |t|is_ident_or_path(*t)) {
             let expected = vec::append(edible.to_owned(), inedible);
             self.check_for_erroneous_unit_struct_expecting(expected);
@@ -1428,7 +1428,7 @@ impl Parser {
                         })
                     }
                     _ => {
-                        self.fatal(fmt!("Expected a lifetime name"));
+                        self.fatal(fmt!("expected a lifetime name"));
                     }
                 }
             } else {
@@ -1448,7 +1448,7 @@ impl Parser {
                 } else if v.len() == 1 {
                     Some(*v.get(0))
                 } else {
-                    self.fatal(fmt!("Expected at most one \
+                    self.fatal(fmt!("expected at most one \
                                      lifetime name (for now)"));
                 }
             }
@@ -1532,7 +1532,7 @@ impl Parser {
             }
 
             _ => {
-                self.fatal(fmt!("Expected a lifetime name"));
+                self.fatal(fmt!("expected a lifetime name"));
             }
         }
     }
@@ -3843,7 +3843,7 @@ impl Parser {
                 }
             }
             if fields.len() == 0 {
-                self.fatal(fmt!("Unit-like struct definition should be written as `struct %s;`",
+                self.fatal(fmt!("unit-like struct definition should be written as `struct %s;`",
                                 get_ident_interner().get(class_name.name)));
             }
             self.bump();
