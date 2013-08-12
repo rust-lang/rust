@@ -283,6 +283,7 @@ pub fn Parser(sess: @mut ParseSess,
         token: @mut tok0.tok,
         span: @mut span,
         last_span: @mut span,
+        last_token: @mut None,
         buffer: @mut ([
             placeholder.clone(),
             placeholder.clone(),
@@ -309,6 +310,8 @@ pub struct Parser {
     span: @mut span,
     // the span of the prior token:
     last_span: @mut span,
+    // the previous token or None (only stashed sometimes).
+    last_token: @mut Option<~token::Token>,
     buffer: @mut [TokenAndSpan, ..4],
     buffer_start: @mut int,
     buffer_end: @mut int,
@@ -374,6 +377,89 @@ impl Parser {
                 )
             )
         }
+    }
+
+    // Expect next token to be edible or inedible token.  If edible,
+    // then consume it; if inedible, then return without consuming
+    // anything.  Signal a fatal error if next token is unexpected.
+    pub fn expect_one_of(&self, edible: &[token::Token], inedible: &[token::Token]) {
+        fn tokens_to_str(p:&Parser, tokens: &[token::Token]) -> ~str {
+            let mut i = tokens.iter();
+            // This might be a sign we need a connect method on Iterator.
+            let b = i.next().map_default(~"", |t| p.token_to_str(*t));
+            i.fold(b, |b,a| b + " " + p.token_to_str(a))
+        }
+        if edible.contains(self.token) {
+            self.bump();
+        } else if inedible.contains(self.token) {
+            // leave it in the input
+        } else {
+            let expected = vec::append(edible.to_owned(), inedible);
+            let expect = tokens_to_str(self, expected);
+            let actual = self.this_token_to_str();
+            self.fatal(
+                if expected.len() != 1 {
+                    fmt!("expected one of `%s` but found `%s`", expect, actual)
+                } else {
+                    fmt!("expected `%s` but found `%s`", expect, actual)
+                }
+            )
+        }
+    }
+
+    // Check for erroneous `ident { }`; if matches, signal error and
+    // recover (without consuming any expected input token).  Returns
+    // true if and only if input was consumed for recovery.
+    pub fn check_for_erroneous_unit_struct_expecting(&self, expected: &[token::Token]) -> bool {
+        if *self.token == token::LBRACE
+            && expected.iter().all(|t| *t != token::LBRACE)
+            && self.look_ahead(1, |t| *t == token::RBRACE) {
+            // matched; signal non-fatal error and recover.
+            self.span_err(*self.span,
+                          "Unit-like struct construction is written with no trailing `{ }`");
+            self.eat(&token::LBRACE);
+            self.eat(&token::RBRACE);
+            true
+        } else {
+            false
+        }
+    }
+
+    // Commit to parsing a complete expression `e` expected to be
+    // followed by some token from the set edible + inedible.  Recover
+    // from anticipated input errors, discarding erroneous characters.
+    pub fn commit_expr(&self, e: @expr, edible: &[token::Token], inedible: &[token::Token]) {
+        debug!("commit_expr %?", e);
+        match e.node {
+            expr_path(*) => {
+                // might be unit-struct construction; check for recoverableinput error.
+                let expected = vec::append(edible.to_owned(), inedible);
+                self.check_for_erroneous_unit_struct_expecting(expected);
+            }
+            _ => {}
+        }
+        self.expect_one_of(edible, inedible)
+    }
+
+    pub fn commit_expr_expecting(&self, e: @expr, edible: token::Token) {
+        self.commit_expr(e, &[edible], &[])
+    }
+
+    // Commit to parsing a complete statement `s`, which expects to be
+    // followed by some token from the set edible + inedible.  Check
+    // for recoverable input errors, discarding erroneous characters.
+    pub fn commit_stmt(&self, s: @stmt, edible: &[token::Token], inedible: &[token::Token]) {
+        debug!("commit_stmt %?", s);
+        let _s = s; // unused, but future checks might want to inspect `s`.
+        if self.last_token.map_default(false, |t|is_ident_or_path(*t)) {
+            let expected = vec::append(edible.to_owned(), inedible);
+            self.check_for_erroneous_unit_struct_expecting(expected);
+        }
+        self.expect_one_of(edible, inedible)
+    }
+
+    pub fn commit_stmt_expecting(&self, s: @stmt, edible: token::Token) {
+        self.commit_stmt(s, &[edible], &[])
     }
 
     pub fn parse_ident(&self) -> ast::ident {
@@ -578,6 +664,12 @@ impl Parser {
     // advance the parser by one token
     pub fn bump(&self) {
         *self.last_span = *self.span;
+        // Stash token for error recovery (sometimes; clone is not necessarily cheap).
+        *self.last_token = if is_ident_or_path(self.token) {
+            Some(~(*self.token).clone())
+        } else {
+            None
+        };
         let next = if *self.buffer_start == *self.buffer_end {
             self.reader.next_token()
         } else {
@@ -1595,17 +1687,19 @@ impl Parser {
                 return self.mk_expr(lo, hi, expr_lit(lit));
             }
             let mut es = ~[self.parse_expr()];
+            self.commit_expr(*es.last(), &[], &[token::COMMA, token::RPAREN]);
             while *self.token == token::COMMA {
                 self.bump();
                 if *self.token != token::RPAREN {
                     es.push(self.parse_expr());
+                    self.commit_expr(*es.last(), &[], &[token::COMMA, token::RPAREN]);
                 }
                 else {
                     trailing_comma = true;
                 }
             }
             hi = self.span.hi;
-            self.expect(&token::RPAREN);
+            self.commit_expr_expecting(*es.last(), token::RPAREN);
 
             return if es.len() == 1 && !trailing_comma {
                 self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
@@ -1745,7 +1839,7 @@ impl Parser {
                             break;
                         }
 
-                        self.expect(&token::COMMA);
+                        self.commit_expr(fields.last().expr, &[token::COMMA], &[token::RBRACE]);
 
                         if self.eat(&token::DOTDOT) {
                             base = Some(self.parse_expr());
@@ -1760,7 +1854,7 @@ impl Parser {
                     }
 
                     hi = pth.span.hi;
-                    self.expect(&token::RBRACE);
+                    self.commit_expr_expecting(fields.last().expr, token::RBRACE);
                     ex = expr_struct(pth, fields, base);
                     return self.mk_expr(lo, hi, ex);
                 }
@@ -1854,7 +1948,7 @@ impl Parser {
                 self.bump();
                 let ix = self.parse_expr();
                 hi = ix.span.hi;
-                self.expect(&token::RBRACKET);
+                self.commit_expr_expecting(ix, token::RBRACKET);
                 e = self.mk_expr(lo, hi, self.mk_index(e, ix));
               }
 
@@ -2463,7 +2557,7 @@ impl Parser {
     fn parse_match_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr();
-        self.expect(&token::LBRACE);
+        self.commit_expr_expecting(discriminant, token::LBRACE);
         let mut arms: ~[arm] = ~[];
         while *self.token != token::RBRACE {
             let pats = self.parse_pats();
@@ -2479,7 +2573,7 @@ impl Parser {
                 && *self.token != token::RBRACE;
 
             if require_comma {
-                self.expect(&token::COMMA);
+                self.commit_expr(expr, &[token::COMMA], &[token::RBRACE]);
             } else {
                 self.eat(&token::COMMA);
             }
@@ -3179,36 +3273,25 @@ impl Parser {
                     match stmt.node {
                         stmt_expr(e, stmt_id) => {
                             // expression without semicolon
-                            let has_semi;
-                            match *self.token {
-                                token::SEMI => {
-                                    has_semi = true;
-                                }
-                                token::RBRACE => {
-                                    has_semi = false;
-                                    expr = Some(e);
-                                }
-                                ref t => {
-                                    has_semi = false;
-                                    if classify::stmt_ends_with_semi(stmt) {
-                                        self.fatal(
-                                            fmt!(
-                                                "expected `;` or `}` after \
-                                                 expression but found `%s`",
-                                                self.token_to_str(t)
-                                            )
-                                        );
-                                    }
-                                    stmts.push(stmt);
-                                }
+                            if classify::stmt_ends_with_semi(stmt) {
+                                // Just check for errors and recover; do not eat semicolon yet.
+                                self.commit_stmt(stmt, &[], &[token::SEMI, token::RBRACE]);
                             }
 
-                            if has_semi {
-                                self.bump();
-                                stmts.push(@codemap::spanned {
-                                    node: stmt_semi(e, stmt_id),
-                                    span: stmt.span,
-                                });
+                            match *self.token {
+                                token::SEMI => {
+                                    self.bump();
+                                    stmts.push(@codemap::spanned {
+                                        node: stmt_semi(e, stmt_id),
+                                        span: stmt.span,
+                                    });
+                                }
+                                token::RBRACE => {
+                                    expr = Some(e);
+                                }
+                                _ => {
+                                    stmts.push(stmt);
+                                }
                             }
                         }
                         stmt_mac(ref m, _) => {
@@ -3245,7 +3328,7 @@ impl Parser {
                             stmts.push(stmt);
 
                             if classify::stmt_ends_with_semi(stmt) {
-                                self.expect(&token::SEMI);
+                                self.commit_stmt_expecting(stmt, token::SEMI);
                             }
                         }
                     }
@@ -3760,7 +3843,7 @@ impl Parser {
                 }
             }
             if fields.len() == 0 {
-                self.fatal(fmt!("Unit-like struct should be written as `struct %s;`",
+                self.fatal(fmt!("Unit-like struct definition should be written as `struct %s;`",
                                 get_ident_interner().get(class_name.name)));
             }
             self.bump();
@@ -3952,7 +4035,7 @@ impl Parser {
         let ty = self.parse_ty(false);
         self.expect(&token::EQ);
         let e = self.parse_expr();
-        self.expect(&token::SEMI);
+        self.commit_expr_expecting(e, token::SEMI);
         (id, item_static(ty, m, e), None)
     }
 
