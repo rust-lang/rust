@@ -117,16 +117,6 @@ mod std {
 }
 */
 
-#[cfg(stage0)]
-pub fn version(argv0: &str) {
-    let mut vers = ~"unknown version";
-    let env_vers = env!("CFG_VERSION");
-    if env_vers.len() != 0 { vers = env_vers.to_owned(); }
-    printfln!("%s %s", argv0, vers);
-    printfln!("host: %s", host_triple());
-}
-
-#[cfg(not(stage0))]
 pub fn version(argv0: &str) {
     let vers = match option_env!("CFG_VERSION") {
         Some(vers) => vers,

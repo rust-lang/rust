@@ -165,20 +165,10 @@ mod tests {
         }
     }
 
-    #[cfg(stage0)]
-    #[test]
-    fn test_transmute2() {
-        unsafe {
-            assert_eq!(~[76u8, 0u8], transmute(~"L"));
-        }
-    }
-
-    #[cfg(not(stage0))]
     #[test]
     fn test_transmute2() {
         unsafe {
             assert_eq!(~[76u8], transmute(~"L"));
         }
     }
-
 }

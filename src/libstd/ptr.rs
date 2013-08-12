@@ -309,15 +309,6 @@ impl<T> RawPtr<T> for *T {
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end.
     #[inline]
-    #[cfg(stage0)]
-    unsafe fn offset_inbounds(self, count: int) -> *T {
-        intrinsics::offset(self, count)
-    }
-
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end.
-    #[inline]
-    #[cfg(not(stage0))]
     unsafe fn offset_inbounds(self, count: int) -> *T {
         intrinsics::offset_inbounds(self, count)
     }
@@ -361,19 +352,6 @@ impl<T> RawPtr<T> for *mut T {
     /// This method should be preferred over `offset` when the guarantee can be
     /// satisfied, to enable better optimization.
     #[inline]
-    #[cfg(stage0)]
-    unsafe fn offset_inbounds(self, count: int) -> *mut T {
-        intrinsics::offset(self as *T, count) as *mut T
-    }
-
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
-    /// undefined behaviour.
-    ///
-    /// This method should be preferred over `offset` when the guarantee can be
-    /// satisfied, to enable better optimization.
-    #[inline]
-    #[cfg(not(stage0))]
     unsafe fn offset_inbounds(self, count: int) -> *mut T {
         intrinsics::offset_inbounds(self as *T, count) as *mut T
     }

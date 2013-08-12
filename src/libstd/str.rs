@@ -33,8 +33,6 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
-#[cfg(stage0)]
-use unstable::raw::Repr;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 
@@ -92,25 +90,6 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
-#[cfg(stage0)]
-pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
-    unsafe {
-        assert!(is_utf8(vector));
-        let mut s = vector.repr();
-        s.len += 1;
-        cast::transmute(s)
-    }
-}
-
-/// Converts a vector to a string slice without performing any allocations.
-///
-/// Once the slice has been validated as utf-8, it is transmuted in-place and
-/// returned as a '&str' instead of a '&[u8]'
-///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-#[cfg(not(stage0))]
 pub fn from_bytes_slice<'a>(v: &'a [u8]) -> &'a str {
     assert!(is_utf8(v));
     unsafe { cast::transmute(v) }
@@ -134,18 +113,6 @@ impl ToStr for @str {
 /// # Failure
 ///
 /// Fails if invalid UTF-8
-#[cfg(stage0)]
-pub fn from_byte(b: u8) -> ~str {
-    assert!(b < 128u8);
-    unsafe { cast::transmute(~[b, 0u8]) }
-}
-
-/// Convert a byte to a UTF-8 string
-///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-#[cfg(not(stage0))]
 pub fn from_byte(b: u8) -> ~str {
     assert!(b < 128u8);
     unsafe { ::cast::transmute(~[b]) }
@@ -181,32 +148,6 @@ pub trait StrVector {
 
 impl<'self, S: Str> StrVector for &'self [S] {
     /// Concatenate a vector of strings.
-    #[cfg(stage0)]
-    pub fn concat(&self) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        let len = self.iter().map(|s| s.as_slice().len()).sum();
-
-        let mut s = with_capacity(len);
-
-        unsafe {
-            do s.as_mut_buf |buf, _| {
-                let mut buf = buf;
-                for ss in self.iter() {
-                    do ss.as_slice().as_imm_buf |ssbuf, sslen| {
-                        let sslen = sslen - 1;
-                        ptr::copy_memory(buf, ssbuf, sslen);
-                        buf = buf.offset(sslen as int);
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-
-    /// Concatenate a vector of strings.
-    #[cfg(not(stage0))]
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
@@ -230,48 +171,6 @@ impl<'self, S: Str> StrVector for &'self [S] {
     }
 
     /// Concatenate a vector of strings, placing a given separator between each.
-    #[cfg(stage0)]
-    pub fn connect(&self, sep: &str) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        // concat is faster
-        if sep.is_empty() { return self.concat(); }
-
-        // this is wrong without the guarantee that `self` is non-empty
-        let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_slice().len()).sum();
-        let mut s = ~"";
-        let mut first = true;
-
-        s.reserve(len);
-
-        unsafe {
-            do s.as_mut_buf |buf, _| {
-                do sep.as_imm_buf |sepbuf, seplen| {
-                    let seplen = seplen - 1;
-                    let mut buf = cast::transmute_mut_unsafe(buf);
-                    for ss in self.iter() {
-                        do ss.as_slice().as_imm_buf |ssbuf, sslen| {
-                            let sslen = sslen - 1;
-                            if first {
-                                first = false;
-                            } else {
-                                ptr::copy_memory(buf, sepbuf, seplen);
-                                buf = buf.offset(seplen as int);
-                            }
-                            ptr::copy_memory(buf, ssbuf, sslen);
-                            buf = buf.offset(sslen as int);
-                        }
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-
-    /// Concatenate a vector of strings, placing a given separator between each.
-    #[cfg(not(stage0))]
     pub fn connect(&self, sep: &str) -> ~str {
         if self.is_empty() { return ~""; }
 
@@ -578,26 +477,7 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
-#[cfg(not(test), stage0)]
-#[lang="str_eq"]
-#[inline]
-pub fn eq_slice(a: &str, b: &str) -> bool {
-    do a.as_imm_buf |ap, alen| {
-        do b.as_imm_buf |bp, blen| {
-            if (alen != blen) { false }
-            else {
-                unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
-                                 (alen - 1) as libc::size_t) == 0
-                }
-            }
-        }
-    }
-}
-
-/// Bytewise slice equality
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[lang="str_eq"]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
@@ -616,26 +496,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise slice equality
-#[cfg(test, stage0)]
-#[lang="str_eq"]
-#[inline]
-pub fn eq_slice(a: &str, b: &str) -> bool {
-    do a.as_imm_buf |ap, alen| {
-        do b.as_imm_buf |bp, blen| {
-            if (alen != blen) { false }
-            else {
-                unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
-                                 (alen - 1) as libc::size_t) == 0
-                }
-            }
-        }
-    }
-}
-
-/// Bytewise slice equality
-#[cfg(test, not(stage0))]
+#[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do a.as_imm_buf |ap, alen| {
@@ -807,17 +668,6 @@ pub fn from_utf16(v: &[u16]) -> ~str {
 
 /// Allocates a new string with the specified capacity. The string returned is
 /// the empty string, but has capacity for much more.
-#[cfg(stage0)]
-#[inline]
-pub fn with_capacity(capacity: uint) -> ~str {
-    let mut buf = ~"";
-    buf.reserve(capacity);
-    buf
-}
-
-/// Allocates a new string with the specified capacity. The string returned is
-/// the empty string, but has capacity for much more.
-#[cfg(not(stage0))]
 #[inline]
 pub fn with_capacity(capacity: uint) -> ~str {
     unsafe {
@@ -929,25 +779,8 @@ pub mod raw {
     use vec;
     use vec::MutableVector;
     use unstable::raw::Slice;
-    #[cfg(stage0)]
-    use unstable::raw::String;
 
     /// Create a Rust string from a *u8 buffer of the given length
-    #[cfg(stage0)]
-    pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
-        let mut v: ~[u8] = vec::with_capacity(len + 1);
-        v.as_mut_buf(|vbuf, _len| {
-            ptr::copy_memory(vbuf, buf as *u8, len)
-        });
-        vec::raw::set_len(&mut v, len);
-        v.push(0u8);
-
-        assert!(is_utf8(v));
-        cast::transmute(v)
-    }
-
-    /// Create a Rust string from a *u8 buffer of the given length
-    #[cfg(not(stage0))]
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
         do v.as_mut_buf |vbuf, _len| {
@@ -987,15 +820,6 @@ pub mod raw {
 
     /// Converts an owned vector of bytes to a new owned string. This assumes
     /// that the utf-8-ness of the vector has already been validated
-    #[cfg(stage0)]
-    pub unsafe fn from_bytes_owned(mut v: ~[u8]) -> ~str {
-        v.push(0u8);
-        cast::transmute(v)
-    }
-
-    /// Converts an owned vector of bytes to a new owned string. This assumes
-    /// that the utf-8-ness of the vector has already been validated
-    #[cfg(not(stage0))]
     #[inline]
     pub unsafe fn from_bytes_owned(v: ~[u8]) -> ~str {
         cast::transmute(v)
@@ -1007,24 +831,6 @@ pub mod raw {
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
     /// invalidated later.
-    #[cfg(stage0)]
-    pub unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
-        let s = s as *u8;
-        let mut curr = s;
-        let mut len = 0u;
-        while *curr != 0u8 {
-            len += 1u;
-            curr = ptr::offset(s, len as int);
-        }
-        let v = Slice { data: s, len: len + 1 };
-        assert!(is_utf8(cast::transmute(v)));
-        cast::transmute(v)
-    }
-
-    /// Form a slice from a C string. Unsafe because the caller must ensure the
-    /// C string has the static lifetime, or else the return value may be
-    /// invalidated later.
-    #[cfg(not(stage0))]
     pub unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
         let s = s as *u8;
         let mut curr = s;
@@ -1046,29 +852,6 @@ pub mod raw {
     ///
     /// If begin is greater than end.
     /// If end is greater than the length of the string.
-    #[cfg(stage0)]
-    #[inline]
-    pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        do s.as_imm_buf |sbuf, n| {
-             assert!((begin <= end));
-             assert!((end <= n));
-
-             cast::transmute(Slice {
-                 data: ptr::offset(sbuf, begin as int),
-                 len: end - begin + 1,
-             })
-        }
-    }
-
-    /// Takes a bytewise (not UTF-8) slice from a string.
-    ///
-    /// Returns the substring from [`begin`..`end`).
-    ///
-    /// # Failure
-    ///
-    /// If begin is greater than end.
-    /// If end is greater than the length of the string.
-    #[cfg(not(stage0))]
     #[inline]
     pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         do s.as_imm_buf |sbuf, n| {
@@ -1083,18 +866,6 @@ pub mod raw {
     }
 
     /// Appends a byte to a string. (Not UTF-8 safe).
-    #[cfg(stage0)]
-    pub unsafe fn push_byte(s: &mut ~str, b: u8) {
-        let new_len = s.len() + 1;
-        s.reserve_at_least(new_len);
-        do s.as_mut_buf |buf, len| {
-            *ptr::mut_offset(buf, len as int) = b;
-        }
-        set_len(&mut *s, new_len);
-    }
-
-    /// Appends a byte to a string. (Not UTF-8 safe).
-    #[cfg(not(stage0))]
     #[inline]
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
         let v: &mut ~[u8] = cast::transmute(s);
@@ -1126,23 +897,11 @@ pub mod raw {
         return b;
     }
 
-    /// Sets the length of the string and adds the null terminator
-    #[cfg(stage0)]
-    #[inline]
-    pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
-        let v: **mut String = cast::transmute(v);
-        let repr = *v;
-        (*repr).fill = new_len + 1u;
-        let null = ptr::mut_offset(&mut ((*repr).data), new_len as int);
-        *null = 0u8;
-    }
-
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
     /// modifing its buffers, so it is up to the caller to ensure that
     /// the string is actually the specified size.
-    #[cfg(not(stage0))]
     #[inline]
     pub unsafe fn set_len(s: &mut ~str, new_len: uint) {
         let v: &mut ~[u8] = cast::transmute(s);
@@ -1331,13 +1090,6 @@ impl<'self> Str for @str {
 }
 
 impl<'self> Container for &'self str {
-    #[cfg(stage0)]
-    #[inline]
-    fn len(&self) -> uint {
-        do self.as_imm_buf |_p, n| { n - 1u }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn len(&self) -> uint {
         do self.as_imm_buf |_p, n| { n }
@@ -1815,26 +1567,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /// Copy a slice into a new unique str
-    #[cfg(stage0)]
-    #[inline]
-    fn to_owned(&self) -> ~str {
-        do self.as_imm_buf |src, len| {
-            assert!(len > 0);
-            unsafe {
-                let mut v = vec::with_capacity(len);
-
-                do v.as_mut_buf |dst, _| {
-                    ptr::copy_memory(dst, src, len - 1);
-                }
-                vec::raw::set_len(&mut v, len - 1);
-                v.push(0u8);
-                ::cast::transmute(v)
-            }
-        }
-    }
-
-    /// Copy a slice into a new unique str
-    #[cfg(not(stage0))]
     #[inline]
     fn to_owned(&self) -> ~str {
         do self.as_imm_buf |src, len| {
@@ -1850,16 +1582,6 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
-    #[cfg(stage0)]
-    #[inline]
-    fn to_managed(&self) -> @str {
-        let v = at_vec::from_fn(self.len() + 1, |i| {
-            if i == self.len() { 0 } else { self[i] }
-        });
-        unsafe { cast::transmute(v) }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn to_managed(&self) -> @str {
         unsafe {
@@ -2008,19 +1730,6 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Work with the byte buffer of a string as a byte slice.
     ///
     /// The byte slice does not include the null terminator.
-    #[cfg(stage0)]
-    fn as_bytes(&self) -> &'self [u8] {
-        unsafe {
-            let mut slice = self.repr();
-            slice.len -= 1;
-            cast::transmute(slice)
-        }
-    }
-
-    /// Work with the byte buffer of a string as a byte slice.
-    ///
-    /// The byte slice does not include the null terminator.
-    #[cfg(not(stage0))]
     fn as_bytes(&self) -> &'self [u8] {
         unsafe { cast::transmute(*self) }
     }
@@ -2091,30 +1800,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /// Given a string, make a new string with repeated copies of it.
-    #[cfg(stage0)]
-    fn repeat(&self, nn: uint) -> ~str {
-        do self.as_imm_buf |buf, len| {
-            // ignore the NULL terminator
-            let len = len - 1;
-            let mut ret = with_capacity(nn * len);
-
-            unsafe {
-                do ret.as_mut_buf |rbuf, _len| {
-                    let mut rbuf = rbuf;
-
-                    do nn.times {
-                        ptr::copy_memory(rbuf, buf, len);
-                        rbuf = rbuf.offset(len as int);
-                    }
-                }
-                raw::set_len(&mut ret, nn * len);
-            }
-            ret
-        }
-    }
-
-    /// Given a string, make a new string with repeated copies of it.
-    #[cfg(not(stage0))]
     fn repeat(&self, nn: uint) -> ~str {
         do self.as_imm_buf |buf, len| {
             let mut ret = with_capacity(nn * len);
@@ -2250,8 +1935,6 @@ pub trait OwnedStr {
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
-    #[cfg(stage0)]
-    fn to_bytes_with_null(self) -> ~[u8];
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
@@ -2397,60 +2080,12 @@ impl OwnedStr for ~str {
     ///
     /// * s - A string
     /// * n - The number of bytes to reserve space for
-    #[cfg(stage0)]
-    #[inline]
-    pub fn reserve(&mut self, n: uint) {
-        unsafe {
-            let v: *mut ~[u8] = cast::transmute(self);
-            (*v).reserve(n + 1);
-        }
-    }
-
-    /// Reserves capacity for exactly `n` bytes in the given string, not including
-    /// the null terminator.
-    ///
-    /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
-    ///
-    /// If the capacity for `s` is already equal to or greater than the requested
-    /// capacity, then no action is taken.
-    ///
-    /// # Arguments
-    ///
-    /// * s - A string
-    /// * n - The number of bytes to reserve space for
-    #[cfg(not(stage0))]
     #[inline]
     pub fn reserve(&mut self, n: uint) {
         unsafe {
             let v: &mut ~[u8] = cast::transmute(self);
             (*v).reserve(n);
         }
-    }
-
-    /// Reserves capacity for at least `n` bytes in the given string, not including
-    /// the null terminator.
-    ///
-    /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
-    ///
-    /// This function will over-allocate in order to amortize the allocation costs
-    /// in scenarios where the caller may need to repeatedly reserve additional
-    /// space.
-    ///
-    /// If the capacity for `s` is already equal to or greater than the requested
-    /// capacity, then no action is taken.
-    ///
-    /// # Arguments
-    ///
-    /// * s - A string
-    /// * n - The number of bytes to reserve space for
-    #[cfg(stage0)]
-    #[inline]
-    fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two(n + 1u) - 1u)
     }
 
     /// Reserves capacity for at least `n` bytes in the given string.
@@ -2470,7 +2105,6 @@ impl OwnedStr for ~str {
     ///
     /// * s - A string
     /// * n - The number of bytes to reserve space for
-    #[cfg(not(stage0))]
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n))
@@ -2478,30 +2112,11 @@ impl OwnedStr for ~str {
 
     /// Returns the number of single-byte characters the string can hold without
     /// reallocating
-    #[cfg(stage0)]
-    fn capacity(&self) -> uint {
-        let buf: &~[u8] = unsafe { cast::transmute(self) };
-        let vcap = buf.capacity();
-        assert!(vcap > 0u);
-        vcap - 1u
-    }
-
-    /// Returns the number of single-byte characters the string can hold without
-    /// reallocating
-    #[cfg(not(stage0))]
     fn capacity(&self) -> uint {
         unsafe {
             let buf: &~[u8] = cast::transmute(self);
             buf.capacity()
         }
-    }
-
-    /// Convert to a vector of bytes. This does not allocate a new
-    /// string, and includes the null terminator.
-    #[cfg(stage0)]
-    #[inline]
-    fn to_bytes_with_null(self) -> ~[u8] {
-        unsafe { cast::transmute(self) }
     }
 
     #[inline]
@@ -3206,45 +2821,6 @@ mod tests {
         assert_eq!("".as_bytes(), &[]);
         assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
         assert_eq!("ศไทย中华Việt Nam".as_bytes(), v);
-    }
-
-    #[cfg(stage0)]
-    #[test]
-    #[ignore(cfg(windows))]
-    #[should_fail]
-    fn test_as_bytes_fail() {
-        // Don't double free. (I'm not sure if this exercises the
-        // original problem code path anymore.)
-        let s = ~"";
-        let _bytes = s.as_bytes();
-        fail!();
-    }
-
-    #[cfg(stage0)]
-    #[test]
-    #[ignore(cfg(windows))]
-    #[should_fail]
-    fn test_as_bytes_fail() {
-        // Don't double free. (I'm not sure if this exercises the
-        // original problem code path anymore.)
-        let s = ~"";
-        let _bytes = s.as_bytes_with_null();
-        fail!();
-    }
-
-    #[cfg(stage0)]
-    #[test]
-    fn test_to_bytes_with_null() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~[
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109, 0
-        ];
-        assert_eq!((~"").to_bytes_with_null(), ~[0]);
-        assert_eq!((~"abc").to_bytes_with_null(),
-                   ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!(s.to_bytes_with_null(), v);
     }
 
     #[test]
