@@ -16,20 +16,12 @@ macro_rules! rterrln (
     } )
 )
 
-// Some basic logging
-macro_rules! rtdebug_ (
-    ($( $arg:expr),+) => ( {
-        rterrln!( $($arg),+ )
-    } )
-)
-
-// An alternate version with no output, for turning off logging. An
-// earlier attempt that did not call the fmt! macro was insufficient,
-// as a case of the "let bind each variable" approach eventually
-// failed without an error message describing the invocation site.
+// Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
 macro_rules! rtdebug (
     ($( $arg:expr),+) => ( {
-        let _x = fmt!( $($arg),+ );
+        if cfg!(rtdebug) {
+            rterrln!( $($arg),+ )
+        }
     })
 )
 
