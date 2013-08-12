@@ -57,6 +57,7 @@ pub fn read_crates(diag: @mut span_handler,
     warn_if_multiple_versions(e, diag, *e.crate_cache);
 }
 
+#[deriving(Clone)]
 struct cache_entry {
     cnum: int,
     span: span,
@@ -76,22 +77,13 @@ fn dump_crates(crate_cache: &[cache_entry]) {
 fn warn_if_multiple_versions(e: @mut Env,
                              diag: @mut span_handler,
                              crate_cache: &[cache_entry]) {
-    use std::either::*;
-
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(
             *crate_cache[crate_cache.len() - 1].metas
         );
 
-        let vec: ~[Either<cache_entry, cache_entry>] = crate_cache.iter().map(|&entry| {
-            let othername = loader::crate_name_from_metas(*entry.metas);
-            if name == othername {
-                Left(entry)
-            } else {
-                Right(entry)
-            }
-        }).collect();
-        let (matches, non_matches) = partition(vec);
+        let (matches, non_matches) = crate_cache.partitioned(|entry|
+            name == loader::crate_name_from_metas(*entry.metas));
 
         assert!(!matches.is_empty());
 
