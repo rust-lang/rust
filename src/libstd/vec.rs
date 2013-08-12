@@ -564,17 +564,19 @@ pub mod traits {
     use super::*;
 
     use clone::Clone;
-    use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equal, Equiv};
+    use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equiv};
+    use iterator::order;
     use ops::Add;
-    use option::{Some, None};
 
     impl<'self,T:Eq> Eq for &'self [T] {
         fn eq(&self, other: & &'self [T]) -> bool {
             self.len() == other.len() &&
-                self.iter().zip(other.iter()).all(|(s,o)| *s == *o)
+                order::eq(self.iter(), other.iter())
         }
-        #[inline]
-        fn ne(&self, other: & &'self [T]) -> bool { !self.eq(other) }
+        fn ne(&self, other: & &'self [T]) -> bool {
+            self.len() != other.len() ||
+                order::ne(self.iter(), other.iter())
+        }
     }
 
     impl<T:Eq> Eq for ~[T] {
@@ -594,7 +596,7 @@ pub mod traits {
     impl<'self,T:TotalEq> TotalEq for &'self [T] {
         fn equals(&self, other: & &'self [T]) -> bool {
             self.len() == other.len() &&
-                self.iter().zip(other.iter()).all(|(s,o)| s.equals(o))
+                order::equals(self.iter(), other.iter())
         }
     }
 
@@ -625,13 +627,7 @@ pub mod traits {
 
     impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
         fn cmp(&self, other: & &'self [T]) -> Ordering {
-            for (s,o) in self.iter().zip(other.iter()) {
-                match s.cmp(o) {
-                    Equal => {},
-                    non_eq => { return non_eq; }
-                }
-            }
-            self.len().cmp(&other.len())
+            order::cmp(self.iter(), other.iter())
         }
     }
 
@@ -645,23 +641,25 @@ pub mod traits {
         fn cmp(&self, other: &@[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
-    impl<'self,T:Ord> Ord for &'self [T] {
+    impl<'self, T: Eq + Ord> Ord for &'self [T] {
         fn lt(&self, other: & &'self [T]) -> bool {
-            for (s,o) in self.iter().zip(other.iter()) {
-                if *s < *o { return true; }
-                if *s > *o { return false; }
-            }
-            self.len() < other.len()
+            order::lt(self.iter(), other.iter())
         }
         #[inline]
-        fn le(&self, other: & &'self [T]) -> bool { !(*other < *self) }
+        fn le(&self, other: & &'self [T]) -> bool {
+            order::le(self.iter(), other.iter())
+        }
         #[inline]
-        fn ge(&self, other: & &'self [T]) -> bool { !(*self < *other) }
+        fn ge(&self, other: & &'self [T]) -> bool {
+            order::ge(self.iter(), other.iter())
+        }
         #[inline]
-        fn gt(&self, other: & &'self [T]) -> bool { *other < *self }
+        fn gt(&self, other: & &'self [T]) -> bool {
+            order::gt(self.iter(), other.iter())
+        }
     }
 
-    impl<T:Ord> Ord for ~[T] {
+    impl<T: Eq + Ord> Ord for ~[T] {
         #[inline]
         fn lt(&self, other: &~[T]) -> bool { self.as_slice() < other.as_slice() }
         #[inline]
@@ -672,7 +670,7 @@ pub mod traits {
         fn gt(&self, other: &~[T]) -> bool { self.as_slice() > other.as_slice() }
     }
 
-    impl<T:Ord> Ord for @[T] {
+    impl<T: Eq + Ord> Ord for @[T] {
         #[inline]
         fn lt(&self, other: &@[T]) -> bool { self.as_slice() < other.as_slice() }
         #[inline]
