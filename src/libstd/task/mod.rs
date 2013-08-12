@@ -38,7 +38,6 @@
 use prelude::*;
 
 use cell::Cell;
-use cmp::Eq;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use result::Result;
 use result;
