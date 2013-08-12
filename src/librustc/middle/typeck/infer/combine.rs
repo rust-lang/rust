@@ -68,7 +68,7 @@ use middle::typeck::infer::{InferCtxt, cres, ures};
 use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
 
-use std::result::{iter_vec2, map_vec2};
+use std::result;
 use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
@@ -275,9 +275,9 @@ pub fn super_tps<C:Combine>(
     // variance.
 
     if vec::same_length(as_, bs) {
-        iter_vec2(as_, bs, |a, b| {
-            eq_tys(this, *a, *b)
-        }).then(|| Ok(as_.to_owned()) )
+        result::fold_(as_.iter().zip(bs.iter())
+                      .map(|(a, b)| eq_tys(this, *a, *b)))
+            .then(|| Ok(as_.to_owned()))
     } else {
         Err(ty::terr_ty_param_size(
             expected_found(this, as_.len(), bs.len())))
@@ -427,7 +427,8 @@ pub fn super_fn_sigs<C:Combine>(
 {
     fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<~[ty::t]> {
         if vec::same_length(a_args, b_args) {
-            map_vec2(a_args, b_args, |a, b| this.args(*a, *b))
+            result::collect(a_args.iter().zip(b_args.iter())
+                            .map(|(a, b)| this.args(*a, *b)))
         } else {
             Err(ty::terr_arg_count)
         }
@@ -586,8 +587,9 @@ pub fn super_tys<C:Combine>(
 
       (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
         if as_.len() == bs.len() {
-            map_vec2(*as_, *bs, |a, b| this.tys(*a, *b) )
-                .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
+            result::collect(as_.iter().zip(bs.iter())
+                            .map(|(a, b)| this.tys(*a, *b)))
+                    .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
         } else {
             Err(ty::terr_tuple_size(
                 expected_found(this, as_.len(), bs.len())))
