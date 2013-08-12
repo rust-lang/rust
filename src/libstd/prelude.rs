@@ -70,6 +70,7 @@ pub use from_str::FromStr;
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use tuple::{CloneableTuple1, ImmutableTuple1};
 pub use tuple::{CloneableTuple2, CloneableTuple3, CloneableTuple4, CloneableTuple5};
 pub use tuple::{CloneableTuple6, CloneableTuple7, CloneableTuple8, CloneableTuple9};
 pub use tuple::{CloneableTuple10, CloneableTuple11, CloneableTuple12};
