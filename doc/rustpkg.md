@@ -103,6 +103,11 @@ When building a package that is in a `git` repository,
 When building a package that is not under version control,
 or that has no tags, `rustpkg` assumes the intended version is 0.1.
 
+> **Note:** A future version of rustpkg will support semantic versions.
+> Also, a future version will add the option to specify a version with a metadata
+> attribute like `#[link(vers = "3.1415")]` inside the crate module,
+> though this attribute will never be mandatory.
+
 # Dependencies
 
 rustpkg infers dependencies from `extern mod` directives.
