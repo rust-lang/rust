@@ -14,7 +14,8 @@
 
 
 use std::util::{swap, replace};
-use std::iterator::{FromIterator, Extendable};
+use std::iterator::{FromIterator, Extendable, Peekable};
+use std::cmp::Ordering;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -529,24 +530,24 @@ impl<T: TotalOrd> TreeSet<T> {
 
     /// Visit the values (in-order) representing the difference
     pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> Difference<'a, T> {
-        Difference{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
+        Difference{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the symmetric difference
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeSet<T>)
         -> SymDifference<'a, T> {
-        SymDifference{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
+        SymDifference{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the intersection
     pub fn intersection<'a>(&'a self, other: &'a TreeSet<T>)
         -> Intersection<'a, T> {
-        Intersection{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
+        Intersection{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the union
     pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> Union<'a, T> {
-        Union{a: Focus::new(self.iter()), b: Focus::new(other.iter())}
+        Union{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 }
 
@@ -560,61 +561,47 @@ pub struct TreeSetRevIterator<'self, T> {
     priv iter: TreeMapRevIterator<'self, T, ()>
 }
 
-// Encapsulate an iterator and hold its latest value until stepped forward
-struct Focus<A, T> {
-    priv iter: T,
-    priv focus: Option<A>,
-}
-
-impl<A, T: Iterator<A>> Focus<A, T> {
-    fn new(mut it: T) -> Focus<A, T> {
-        Focus{focus: it.next(), iter: it}
-    }
-    fn step(&mut self) {
-        self.focus = self.iter.next()
-    }
-}
-
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct Difference<'self, T> {
-    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set symmetric difference (in-order)
 pub struct SymDifference<'self, T> {
-    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct Intersection<'self, T> {
-    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct Union<'self, T> {
-    priv a: Focus<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Focus<&'self T, TreeSetIterator<'self, T>>,
+    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
+    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
+}
+
+/// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
+fn cmp_opt<T: TotalOrd>(x: Option<&T>, y: Option<&T>,
+                        short: Ordering, long: Ordering) -> Ordering {
+    match (x, y) {
+        (None    , _       ) => short,
+        (_       , None    ) => long,
+        (Some(x1), Some(y1)) => x1.cmp(y1),
+    }
 }
 
 impl<'self, T: TotalOrd> Iterator<&'self T> for Difference<'self, T> {
     fn next(&mut self) -> Option<&'self T> {
         loop {
-            match (self.a.focus, self.b.focus) {
-                (None    , _       ) => return None,
-                (ret     , None    ) => { self.a.step(); return ret },
-                (Some(a1), Some(b1)) => {
-                    let cmp = a1.cmp(b1);
-                    if cmp == Less {
-                        self.a.step();
-                        return Some(a1);
-                    } else {
-                        if cmp == Equal { self.a.step() }
-                        self.b.step();
-                    }
-                }
+            match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
+                Less    => return self.a.next(),
+                Equal   => { self.a.next(); self.b.next(); }
+                Greater => { self.b.next(); }
             }
         }
     }
@@ -623,23 +610,10 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for Difference<'self, T> {
 impl<'self, T: TotalOrd> Iterator<&'self T> for SymDifference<'self, T> {
     fn next(&mut self) -> Option<&'self T> {
         loop {
-            match (self.a.focus, self.b.focus) {
-                (ret     , None    ) => { self.a.step(); return ret },
-                (None    , ret     ) => { self.b.step(); return ret },
-                (Some(a1), Some(b1)) => {
-                    let cmp = a1.cmp(b1);
-                    if cmp == Less {
-                        self.a.step();
-                        return Some(a1);
-                    } else {
-                        self.b.step();
-                        if cmp == Greater {
-                            return Some(b1);
-                        } else {
-                            self.a.step();
-                        }
-                    }
-                }
+            match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+                Less    => return self.a.next(),
+                Equal   => { self.a.next(); self.b.next(); }
+                Greater => return self.b.next(),
             }
         }
     }
@@ -648,20 +622,16 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for SymDifference<'self, T> {
 impl<'self, T: TotalOrd> Iterator<&'self T> for Intersection<'self, T> {
     fn next(&mut self) -> Option<&'self T> {
         loop {
-            match (self.a.focus, self.b.focus) {
-                (None    , _       ) => return None,
-                (_       , None    ) => return None,
-                (Some(a1), Some(b1)) => {
-                    let cmp = a1.cmp(b1);
-                    if cmp == Less {
-                        self.a.step();
-                    } else {
-                        self.b.step();
-                        if cmp == Equal {
-                            return Some(a1);
-                        }
-                    }
-                },
+            let o_cmp = match (self.a.peek(), self.b.peek()) {
+                (None    , _       ) => None,
+                (_       , None    ) => None,
+                (Some(a1), Some(b1)) => Some(a1.cmp(b1)),
+            };
+            match o_cmp {
+                None          => return None,
+                Some(Less)    => { self.a.next(); }
+                Some(Equal)   => { self.b.next(); return self.a.next() }
+                Some(Greater) => { self.b.next(); }
             }
         }
     }
@@ -670,22 +640,10 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for Intersection<'self, T> {
 impl<'self, T: TotalOrd> Iterator<&'self T> for Union<'self, T> {
     fn next(&mut self) -> Option<&'self T> {
         loop {
-            match (self.a.focus, self.b.focus) {
-                (ret     , None) => { self.a.step(); return ret },
-                (None    , ret ) => { self.b.step(); return ret },
-                (Some(a1), Some(b1)) => {
-                    let cmp = a1.cmp(b1);
-                    if cmp == Greater {
-                        self.b.step();
-                        return Some(b1);
-                    } else {
-                        self.a.step();
-                        if cmp == Equal {
-                            self.b.step();
-                        }
-                        return Some(a1);
-                    }
-                }
+            match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+                Less    => return self.a.next(),
+                Equal   => { self.b.next(); return self.a.next() }
+                Greater => return self.b.next(),
             }
         }
     }

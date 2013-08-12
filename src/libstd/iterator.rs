@@ -156,6 +156,28 @@ pub trait Iterator<A> {
         Enumerate{iter: self, count: 0}
     }
 
+
+    /// Creates an iterator that has a `.peek()` method
+    /// that returns a optional reference to the next element.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let a = [100, 200, 300];
+    /// let mut it = xs.iter().map(|&x|x).peekable();
+    /// assert_eq!(it.peek().unwrap(), &100);
+    /// assert_eq!(it.next().unwrap(), 100);
+    /// assert_eq!(it.next().unwrap(), 200);
+    /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(it.peek().unwrap(), &300);
+    /// assert_eq!(it.next().unwrap(), 300);
+    /// assert!(it.peek().is_none());
+    /// assert!(it.next().is_none());
+    /// ~~~
+    fn peekable(self) -> Peekable<A, Self> {
+        Peekable{iter: self, peeked: None}
+    }
+
     /// Creates an iterator which invokes the predicate on elements until it
     /// returns false. Once the predicate returns false, all further elements are
     /// yielded.
@@ -286,15 +308,15 @@ pub trait Iterator<A> {
     ///let xs = [1u, 4, 2, 3, 8, 9, 6];
     ///let sum = xs.iter()
     ///            .map(|&x| x)
-    ///            .peek(|&x| debug!("filtering %u", x))
+    ///            .inspect(|&x| debug!("filtering %u", x))
     ///            .filter(|&x| x % 2 == 0)
-    ///            .peek(|&x| debug!("%u made it through", x))
+    ///            .inspect(|&x| debug!("%u made it through", x))
     ///            .sum();
     ///println(sum.to_str());
     /// ~~~
     #[inline]
-    fn peek<'r>(self, f: &'r fn(&A)) -> Peek<'r, A, Self> {
-        Peek{iter: self, f: f}
+    fn inspect<'r>(self, f: &'r fn(&A)) -> Inspect<'r, A, Self> {
+        Inspect{iter: self, f: f}
     }
 
     /// An adaptation of an external iterator to the for-loop protocol of rust.
@@ -1059,6 +1081,38 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
     }
 }
 
+/// An iterator with a `peek()` that returns an optional reference to the next element.
+pub struct Peekable<A, T> {
+    priv iter: T,
+    priv peeked: Option<A>,
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.peeked.is_some() { self.peeked.take() }
+        else { self.iter.next() }
+    }
+}
+
+impl<'self, A, T: Iterator<A>> Peekable<A, T> {
+    /// Return a reference to the next element of the iterator with out advancing it,
+    /// or None if the iterator is exhausted.
+    #[inline]
+    pub fn peek(&'self mut self) -> Option<&'self A> {
+        match self.peeked {
+            Some(ref value) => Some(value),
+            None => {
+                self.peeked = self.iter.next();
+                match self.peeked {
+                    Some(ref value) => Some(value),
+                    None => None,
+                }
+            },
+        }
+    }
+}
+
 /// An iterator which rejects elements while `predicate` is true
 pub struct SkipWhile<'self, A, T> {
     priv iter: T,
@@ -1329,14 +1383,14 @@ impl<'self,
 
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
-pub struct Peek<'self, A, T> {
+pub struct Inspect<'self, A, T> {
     priv iter: T,
     priv f: &'self fn(&A)
 }
 
-impl<'self, A, T> Peek<'self, A, T> {
+impl<'self, A, T> Inspect<'self, A, T> {
     #[inline]
-    fn do_peek(&self, elt: Option<A>) -> Option<A> {
+    fn do_inspect(&self, elt: Option<A>) -> Option<A> {
         match elt {
             Some(ref a) => (self.f)(a),
             None => ()
@@ -1346,11 +1400,11 @@ impl<'self, A, T> Peek<'self, A, T> {
     }
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
+impl<'self, A, T: Iterator<A>> Iterator<A> for Inspect<'self, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
-        self.do_peek(next)
+        self.do_inspect(next)
     }
 
     #[inline]
@@ -1359,15 +1413,17 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for Peek<'self, A, T> {
     }
 }
 
-impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Peek<'self, A, T> {
+impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A>
+for Inspect<'self, A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         let next = self.iter.next_back();
-        self.do_peek(next)
+        self.do_inspect(next)
     }
 }
 
-impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Peek<'self, A, T> {
+impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A>
+for Inspect<'self, A, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
@@ -1375,7 +1431,7 @@ impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Peek<'sel
 
     #[inline]
     fn idx(&self, index: uint) -> Option<A> {
-        self.do_peek(self.iter.idx(index))
+        self.do_inspect(self.iter.idx(index))
     }
 }
 
@@ -1567,6 +1623,24 @@ mod tests {
     }
 
     #[test]
+    fn test_iterator_peekable() {
+        let xs = ~[0u, 1, 2, 3, 4, 5];
+        let mut it = xs.iter().map(|&x|x).peekable();
+        assert_eq!(it.peek().unwrap(), &0);
+        assert_eq!(it.next().unwrap(), 0);
+        assert_eq!(it.next().unwrap(), 1);
+        assert_eq!(it.next().unwrap(), 2);
+        assert_eq!(it.peek().unwrap(), &3);
+        assert_eq!(it.peek().unwrap(), &3);
+        assert_eq!(it.next().unwrap(), 3);
+        assert_eq!(it.next().unwrap(), 4);
+        assert_eq!(it.peek().unwrap(), &5);
+        assert_eq!(it.next().unwrap(), 5);
+        assert!(it.peek().is_none());
+        assert!(it.next().is_none());
+    }
+
+    #[test]
     fn test_iterator_take_while() {
         let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
         let ys = [0u, 1, 2, 3, 5, 13];
@@ -1651,13 +1725,13 @@ mod tests {
     }
 
     #[test]
-    fn test_peek() {
+    fn test_inspect() {
         let xs = [1u, 2, 3, 4];
         let mut n = 0;
 
         let ys = xs.iter()
                    .map(|&x| x)
-                   .peek(|_| n += 1)
+                   .inspect(|_| n += 1)
                    .collect::<~[uint]>();
 
         assert_eq!(n, xs.len());
@@ -2011,11 +2085,11 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_peek() {
+    fn test_random_access_inspect() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .map and .peek that don't implement Clone
-        let it = xs.iter().peek(|_| {});
+        // test .map and .inspect that don't implement Clone
+        let it = xs.iter().inspect(|_| {});
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(elt), it.idx(i));
@@ -2027,7 +2101,6 @@ mod tests {
     fn test_random_access_map() {
         let xs = [1, 2, 3, 4, 5];
 
-        // test .map and .peek that don't implement Clone
         let it = xs.iter().map(|x| *x);
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
