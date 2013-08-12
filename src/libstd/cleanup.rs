@@ -71,7 +71,6 @@ pub unsafe fn annihilate() {
     use io::WriterUtil;
     use io;
     use libc;
-    use rt::borrowck;
     use sys;
     use managed;
 
@@ -80,10 +79,6 @@ pub unsafe fn annihilate() {
         n_unique_boxes: 0,
         n_bytes_freed: 0
     };
-
-    // Quick hack: we need to free this list upon task exit, and this
-    // is a convenient place to do it.
-    borrowck::clear_task_borrow_list();
 
     // Pass 1: Make all boxes immortal.
     //

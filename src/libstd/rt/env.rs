@@ -18,6 +18,7 @@ use os;
 // They are expected to be initialized once then left alone.
 
 static mut MIN_STACK: uint = 2000000;
+static mut DEBUG_BORROW: bool = false;
 
 pub fn init() {
     unsafe {
@@ -28,9 +29,17 @@ pub fn init() {
             },
             None => ()
         }
+        match os::getenv("RUST_DEBUG_BORROW") {
+            Some(_) => DEBUG_BORROW = true,
+            None => ()
+        }
     }
 }
 
 pub fn min_stack() -> uint {
     unsafe { MIN_STACK }
+}
+
+pub fn debug_borrow() -> bool {
+    unsafe { DEBUG_BORROW }
 }
