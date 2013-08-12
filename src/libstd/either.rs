@@ -151,8 +151,9 @@ pub fn rights<L, R, Iter: Iterator<Either<L, R>>>(eithers: Iter)
 /// Returns a structure containing a vector of left values and a vector of
 /// right values.
 pub fn partition<L, R>(eithers: ~[Either<L, R>]) -> (~[L], ~[R]) {
-    let mut lefts: ~[L] = ~[];
-    let mut rights: ~[R] = ~[];
+    let n_lefts = eithers.iter().count(|elt| elt.is_left());
+    let mut lefts = vec::with_capacity(n_lefts);
+    let mut rights = vec::with_capacity(eithers.len() - n_lefts);
     for elt in eithers.move_iter() {
         match elt {
             Left(l) => lefts.push(l),
