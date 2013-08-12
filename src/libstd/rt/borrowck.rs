@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cell::Cell;
 use c_str::ToCStr;
 use cast::transmute;
 use libc::{c_char, size_t, STDERR_FILENO};
@@ -15,6 +16,9 @@ use io;
 use io::{Writer, WriterUtil};
 use option::{Option, None, Some};
 use uint;
+use rt::env;
+use rt::local::Local;
+use rt::task::Task;
 use str;
 use str::{OwnedStr, StrSlice};
 use sys;
@@ -26,22 +30,31 @@ pub static MUT_BIT: uint = 1 << (uint::bits - 2);
 static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
-struct BorrowRecord {
+pub struct BorrowRecord {
     box: *mut raw::Box<()>,
     file: *c_char,
     line: size_t
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    // XXX
-    None
+    do Local::borrow::<Task, Option<~[BorrowRecord]>> |task| {
+        task.borrow_list.take()
+    }
 }
 
-fn swap_task_borrow_list(_f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
-    // XXX
+fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
+    let borrows = match try_take_task_borrow_list() {
+        Some(l) => l,
+        None => ~[]
+    };
+    let borrows = f(borrows);
+    let borrows = Cell::new(borrows);
+    do Local::borrow::<Task, ()> |task| {
+        task.borrow_list = Some(borrows.take());
+    }
 }
 
-pub unsafe fn clear_task_borrow_list() {
+pub fn clear_task_borrow_list() {
     // pub because it is used by the box annihilator.
     let _ = try_take_task_borrow_list();
 }
@@ -89,8 +102,7 @@ unsafe fn debug_borrow<T>(tag: &'static str,
     //! A useful debugging function that prints a pointer + tag + newline
     //! without allocating memory.
 
-    // XXX
-    if false {
+    if ENABLE_DEBUG && env::debug_borrow() {
         debug_borrow_slow(tag, p, old_bits, new_bits, filename, line);
     }
 
