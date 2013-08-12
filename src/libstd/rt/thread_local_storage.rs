@@ -86,9 +86,16 @@ pub unsafe fn get(key: Key) -> *mut c_void {
     TlsGetValue(key)
 }
 
-#[cfg(windows)]
+#[cfg(windows, target_arch = "x86")]
 #[abi = "stdcall"]
 extern "stdcall" {
+       fn TlsAlloc() -> DWORD;
+       fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
+       fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
+}
+
+#[cfg(windows, target_arch = "x86_64")]
+extern {
        fn TlsAlloc() -> DWORD;
        fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
        fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;

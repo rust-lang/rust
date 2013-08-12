@@ -1042,9 +1042,16 @@ pub fn errno() -> uint {
     #[fixed_stack_segment]; #[inline(never)];
     use libc::types::os::arch::extra::DWORD;
 
+    #[cfg(target_arch = "x86")]
     #[link_name = "kernel32"]
     #[abi = "stdcall"]
     extern "stdcall" {
+        fn GetLastError() -> DWORD;
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    #[link_name = "kernel32"]
+    extern {
         fn GetLastError() -> DWORD;
     }
 
@@ -1113,9 +1120,23 @@ pub fn last_os_error() -> ~str {
         use libc::types::os::arch::extra::LPSTR;
         use libc::types::os::arch::extra::LPVOID;
 
+        #[cfg(target_arch = "x86")]
         #[link_name = "kernel32"]
         #[abi = "stdcall"]
         extern "stdcall" {
+            fn FormatMessageA(flags: DWORD,
+                              lpSrc: LPVOID,
+                              msgId: DWORD,
+                              langId: DWORD,
+                              buf: LPSTR,
+                              nsize: DWORD,
+                              args: *c_void)
+                              -> DWORD;
+        }
+
+        #[cfg(target_arch = "x86_64")]
+        #[link_name = "kernel32"]
+        extern {
             fn FormatMessageA(flags: DWORD,
                               lpSrc: LPVOID,
                               msgId: DWORD,
@@ -1241,7 +1262,7 @@ fn real_args() -> ~[~str] {
 
 type LPCWSTR = *u16;
 
-#[cfg(windows)]
+#[cfg(windows, target_arch = "x86")]
 #[link_name="kernel32"]
 #[abi="stdcall"]
 extern "stdcall" {
@@ -1249,10 +1270,23 @@ extern "stdcall" {
     fn LocalFree(ptr: *c_void);
 }
 
-#[cfg(windows)]
+#[cfg(windows, target_arch = "x86_64")]
+#[link_name="kernel32"]
+extern {
+    fn GetCommandLineW() -> LPCWSTR;
+    fn LocalFree(ptr: *c_void);
+}
+
+#[cfg(windows, target_arch = "x86")]
 #[link_name="shell32"]
 #[abi="stdcall"]
 extern "stdcall" {
+    fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
+}
+
+#[cfg(windows, target_arch = "x86_64")]
+#[link_name="shell32"]
+extern {
     fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
 }
 
