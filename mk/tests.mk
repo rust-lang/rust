@@ -552,7 +552,15 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 
 # The tests select when to use debug configuration on their own;
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
-CTEST_RUSTC_FLAGS = $$(subst --cfg debug,,$$(CFG_RUSTC_FLAGS))
+CTEST_RUSTC_FLAGS := $$(subst --cfg debug,,$$(CFG_RUSTC_FLAGS))
+
+# The tests can not be optimized while the rest of the compiler is optimized, so
+# filter out the optimization (if any) from rustc and then figure out if we need
+# to be optimized
+CTEST_RUSTC_FLAGS := $$(subst -O,,$$(CTEST_RUSTC_FLAGS))
+ifndef CFG_DISABLE_OPTIMIZE_TESTS
+CTEST_RUSTC_FLAGS += -O
+endif
 
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
