@@ -82,7 +82,7 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    pub fn name_str_pair(&self) -> Option<(@str, @str)> {
+    fn name_str_pair(&self) -> Option<(@str, @str)> {
         self.value_str().map_move(|s| (self.name(), s))
     }
 }
@@ -105,14 +105,14 @@ pub trait AttributeMethods {
 
 impl AttributeMethods for Attribute {
     /// Extract the MetaItem from inside this Attribute.
-    pub fn meta(&self) -> @MetaItem {
+    fn meta(&self) -> @MetaItem {
         self.node.value
     }
 
     /// Convert self to a normal #[doc="foo"] comment, if it is a
     /// comment like `///` or `/** */`. (Returns self unchanged for
     /// non-sugared doc attributes.)
-    pub fn desugar_doc(&self) -> Attribute {
+    fn desugar_doc(&self) -> Attribute {
         if self.node.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(@"doc",

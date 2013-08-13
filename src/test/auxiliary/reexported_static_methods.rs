@@ -14,20 +14,20 @@ pub use sub_foo::Boz;
 pub use sub_foo::Bort;
 
 pub trait Bar {
-    pub fn bar() -> Self;
+    fn bar() -> Self;
 }
 
 impl Bar for int {
-    pub fn bar() -> int { 84 }
+    fn bar() -> int { 84 }
 }
 
 pub mod sub_foo {
     pub trait Foo {
-        pub fn foo() -> Self;
+        fn foo() -> Self;
     }
 
     impl Foo for int {
-        pub fn foo() -> int { 42 }
+        fn foo() -> int { 42 }
     }
 
     pub struct Boz {
