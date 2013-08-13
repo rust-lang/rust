@@ -23,6 +23,7 @@ use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::glue;
 use middle::trans::write_guard;
+use middle::trans::debuginfo;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
@@ -226,7 +227,10 @@ pub struct FunctionContext {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @mut CrateContext
+    ccx: @mut CrateContext,
+
+    // Used and maintained by the debuginfo module.
+    debug_context: Option<~debuginfo::FunctionDebugContext>
 }
 
 impl FunctionContext {
