@@ -308,6 +308,7 @@ pub mod raw {
 mod test {
     use super::*;
     use prelude::*;
+    use bh = extra::test::BenchHarness;
 
     #[test]
     fn test() {
@@ -346,5 +347,85 @@ mod test {
         assert_eq!(to_managed([1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
         assert_eq!(to_managed([@"abc", @"123"]), @[@"abc", @"123"]);
         assert_eq!(to_managed([@[42]]), @[@[42]]);
+    }
+
+    #[bench]
+    fn bench_capacity(b: &mut bh) {
+        let x = @[1, 2, 3];
+        do b.iter {
+            capacity(x);
+        }
+    }
+
+    #[bench]
+    fn bench_build_sized(b: &mut bh) {
+        let len = 64;
+        do b.iter {
+            build_sized(len, |push| for i in range(0, 1024) { push(i) });
+        }
+    }
+
+    #[bench]
+    fn bench_build(b: &mut bh) {
+        do b.iter {
+            for i in range(0, 95) {
+                build(|push| push(i));
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_append(b: &mut bh) {
+        let lhs = @[7, ..128];
+        let rhs = range(0, 256).to_owned_vec();
+        do b.iter {
+            append(lhs, rhs);
+        }
+    }
+
+    #[bench]
+    fn bench_map(b: &mut bh) {
+        let elts = range(0, 256).to_owned_vec();
+        do b.iter {
+            map(elts, |x| x*2);
+        }
+    }
+
+    #[bench]
+    fn bench_from_fn(b: &mut bh) {
+        do b.iter {
+            from_fn(1024, |x| x);
+        }
+    }
+
+    #[bench]
+    fn bench_from_elem(b: &mut bh) {
+        do b.iter {
+            from_elem(1024, 0u64);
+        }
+    }
+
+    #[bench]
+    fn bench_to_managed_move(b: &mut bh) {
+        do b.iter {
+            let elts = range(0, 1024).to_owned_vec(); // yikes! can't move out of capture, though
+            to_managed_move(elts);
+        }
+    }
+
+    #[bench]
+    fn bench_to_managed(b: &mut bh) {
+        let elts = range(0, 1024).to_owned_vec();
+        do b.iter {
+            to_managed(elts);
+        }
+    }
+
+    #[bench]
+    fn bench_clone(b: &mut bh) {
+        let elts = to_managed(range(0, 1024).to_owned_vec());
+        do b.iter {
+            elts.clone();
+        }
     }
 }
