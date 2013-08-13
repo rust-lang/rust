@@ -853,7 +853,7 @@ impl<K: TotalOrd, V, T: Iterator<(K, V)>> Extendable<(K, V), T> for TreeMap<K, V
 }
 
 impl<T: TotalOrd, Iter: Iterator<T>> FromIterator<T, Iter> for TreeSet<T> {
-    pub fn from_iterator(iter: &mut Iter) -> TreeSet<T> {
+    fn from_iterator(iter: &mut Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
         set.extend(iter);
         set

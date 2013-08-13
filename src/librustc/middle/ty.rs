@@ -709,10 +709,10 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
 }
 
 impl CLike for BuiltinBound {
-    pub fn to_uint(&self) -> uint {
+    fn to_uint(&self) -> uint {
         *self as uint
     }
-    pub fn from_uint(v: uint) -> BuiltinBound {
+    fn from_uint(v: uint) -> BuiltinBound {
         unsafe { cast::transmute(v) }
     }
 }
@@ -4345,16 +4345,16 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 }
 
 pub trait ExprTyProvider {
-    pub fn expr_ty(&self, ex: &ast::expr) -> t;
-    pub fn ty_ctxt(&self) -> ctxt;
+    fn expr_ty(&self, ex: &ast::expr) -> t;
+    fn ty_ctxt(&self) -> ctxt;
 }
 
 impl ExprTyProvider for ctxt {
-    pub fn expr_ty(&self, ex: &ast::expr) -> t {
+    fn expr_ty(&self, ex: &ast::expr) -> t {
         expr_ty(*self, ex)
     }
 
-    pub fn ty_ctxt(&self) -> ctxt {
+    fn ty_ctxt(&self) -> ctxt {
         *self
     }
 }

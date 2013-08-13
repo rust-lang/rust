@@ -1,4 +1,4 @@
 pub enum Foo {
-    pub Bar,
+    Bar,
     priv Baz,
 }
