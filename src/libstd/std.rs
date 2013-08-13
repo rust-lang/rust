@@ -75,6 +75,7 @@ they contained the following prologue:
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
 #[doc(hidden)]
+#[cfg(not(no_rt))]
 pub mod linkhack {
     #[link_args="-lrustrt -lrt"]
     #[link_args = "-lpthread"]
@@ -116,6 +117,7 @@ pub mod char;
 pub mod tuple;
 
 pub mod vec;
+#[cfg(not(no_rt))]
 pub mod at_vec;
 pub mod str;
 
@@ -124,6 +126,7 @@ pub mod ascii;
 
 pub mod ptr;
 pub mod owned;
+#[cfg(not(no_rt))]
 pub mod managed;
 pub mod borrow;
 
@@ -145,16 +148,18 @@ pub mod iterator;
 pub mod to_str;
 pub mod to_bytes;
 pub mod clone;
+#[cfg(not(no_rt))]
 pub mod io;
+#[cfg(not(no_rt))]
 pub mod hash;
 pub mod container;
-
 
 /* Common data structures */
 
 pub mod option;
 pub mod result;
 pub mod either;
+#[cfg(not(no_rt))]
 pub mod hashmap;
 pub mod cell;
 pub mod trie;
@@ -162,8 +167,11 @@ pub mod trie;
 
 /* Tasks and communication */
 
+#[cfg(not(no_rt))]
 pub mod task;
+#[cfg(not(no_rt))]
 pub mod comm;
+#[cfg(not(no_rt))]
 pub mod local_data;
 
 
@@ -174,14 +182,20 @@ pub mod c_str;
 pub mod os;
 pub mod path;
 pub mod rand;
+#[cfg(not(no_rt))]
 pub mod run;
 pub mod sys;
 pub mod cast;
+#[cfg(not(no_rt))]
 pub mod fmt;
+#[cfg(not(no_rt))]
 pub mod repr;
+#[cfg(not(no_rt))]
 pub mod cleanup;
 pub mod reflect;
+#[cfg(not(no_rt))]
 pub mod condition;
+#[cfg(not(no_rt))]
 pub mod logging;
 pub mod util;
 
@@ -208,14 +222,17 @@ pub mod rt;
 mod std {
     pub use clone;
     pub use cmp;
+    #[cfg(not(no_rt))]
     pub use condition;
     pub use option;
     pub use kinds;
+    #[cfg(not(no_rt))]
     pub use local_data;
     pub use sys;
     pub use unstable;
     pub use str;
     pub use os;
+    #[cfg(not(no_rt))]
     pub use fmt;
     pub use to_bytes;
 }

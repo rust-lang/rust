@@ -16,6 +16,7 @@
  * for efficiency, but UTF-8 unsafe operations should be avoided.
  */
 
+#[cfg(not(no_rt))]
 use at_vec;
 use cast;
 use char;
@@ -42,8 +43,11 @@ use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 Section: Conditions
 */
 
-condition! {
-    not_utf8: (~str) -> ~str;
+#[cfg(not(no_rt))]
+pub mod conds {
+    condition! {
+        not_utf8: (~str) -> ~str;
+    }
 }
 
 /*
@@ -55,8 +59,9 @@ Section: Creating a string
 /// # Failure
 ///
 /// Raises the `not_utf8` condition if invalid UTF-8
+#[cfg(not(no_rt))]
 pub fn from_bytes(vv: &[u8]) -> ~str {
-    use str::not_utf8::cond;
+    use str::conds::not_utf8::cond;
 
     if !is_utf8(vv) {
         let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
@@ -67,13 +72,21 @@ pub fn from_bytes(vv: &[u8]) -> ~str {
     }
 }
 
+#[cfg(no_rt)]
+/// Convert a vector of bytes to a new UTF-8 string
+/// XXX: this is incorrect with no_rt
+pub fn from_bytes(vv: &[u8]) -> ~str {
+    return unsafe { raw::from_bytes(vv) }
+}
+
 /// Consumes a vector of bytes to create a new utf-8 string
 ///
 /// # Failure
 ///
 /// Raises the `not_utf8` condition if invalid UTF-8
+#[cfg(not(no_rt))]
 pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
-    use str::not_utf8::cond;
+    use str::conds::not_utf8::cond;
 
     if !is_utf8(vv) {
         let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
@@ -82,6 +95,14 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
     } else {
         return unsafe { raw::from_bytes_owned(vv) }
     }
+}
+
+#[cfg(no_rt)]
+/// Convert a vector of bytes to a new UTF-8 string
+/// XXX: this is incorrect with no_rt
+pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
+    // XXX: Incorrect
+    return unsafe { raw::from_bytes_owned(vv) }
 }
 
 /// Converts a vector to a string slice without performing any allocations.
@@ -1405,6 +1426,7 @@ pub trait StrSlice<'self> {
     fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
     fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
+    #[cfg(not(no_rt))]
     fn to_managed(&self) -> @str;
     fn to_utf16(&self) -> ~[u16];
     fn is_char_boundary(&self, index: uint) -> bool;
@@ -1850,7 +1872,7 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
-    #[cfg(stage0)]
+    #[cfg(stage0, not(no_rt))]
     #[inline]
     fn to_managed(&self) -> @str {
         let v = at_vec::from_fn(self.len() + 1, |i| {
@@ -1859,7 +1881,7 @@ impl<'self> StrSlice<'self> for &'self str {
         unsafe { cast::transmute(v) }
     }
 
-    #[cfg(not(stage0))]
+    #[cfg(not(stage0), not(no_rt))]
     #[inline]
     fn to_managed(&self) -> @str {
         unsafe {
@@ -3160,8 +3182,9 @@ mod tests {
 
     #[test]
     #[ignore(cfg(windows))]
+    #[cfg(not(no_rt))]
     fn test_from_bytes_fail() {
-        use str::not_utf8::cond;
+        use str::conds::not_utf8::cond;
 
         let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,

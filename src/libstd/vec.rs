@@ -1234,6 +1234,7 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
+    #[cfg(not(no_rt))]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
@@ -1253,6 +1254,24 @@ impl<T> OwnedVector<T> for ~[T] {
                            as *mut Vec<()>;
                     (**ptr).alloc = alloc;
                 }
+            }
+        }
+    }
+
+    #[cfg(no_rt)]
+    fn reserve(&mut self, n: uint) {
+        if self.capacity() < n {
+            unsafe {
+                let td = get_tydesc::<T>();
+                let ptr: *mut *mut Vec<()> = cast::transmute(self);
+                let alloc = n * sys::nonzero_size_of::<T>();
+                let size = alloc + sys::size_of::<Vec<()>>();
+                if alloc / sys::nonzero_size_of::<T>() != n || size < alloc {
+                    fail!("vector size is too large: %u", n);
+                }
+                *ptr = realloc_raw(*ptr as *mut c_void, size)
+                       as *mut Vec<()>;
+                (**ptr).alloc = alloc;
             }
         }
     }

@@ -10,11 +10,15 @@
 
 #[doc(hidden)];
 
+#[cfg(not(no_rt))]
 use comm::{GenericChan, GenericPort};
+#[cfg(not(no_rt))]
 use comm;
 use prelude::*;
+#[cfg(not(no_rt))]
 use task;
 
+#[cfg(not(no_rt))]
 pub mod dynamic_lib;
 
 pub mod finally;
@@ -22,7 +26,9 @@ pub mod intrinsics;
 pub mod simd;
 pub mod extfmt;
 #[cfg(not(test))]
+#[cfg(not(no_rt))]
 pub mod lang;
+#[cfg(not(no_rt))]
 pub mod sync;
 pub mod atomics;
 pub mod raw;
@@ -35,6 +41,7 @@ for it to terminate.
 The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
+#[cfg(not(no_rt))]
 pub fn run_in_bare_thread(f: ~fn()) {
     use cell::Cell;
     use rt::thread::Thread;
@@ -51,6 +58,7 @@ pub fn run_in_bare_thread(f: ~fn()) {
 }
 
 #[test]
+#[cfg(not(no_rt))]
 fn test_run_in_bare_thread() {
     let i = 100;
     do run_in_bare_thread {
@@ -59,6 +67,7 @@ fn test_run_in_bare_thread() {
 }
 
 #[test]
+#[cfg(not(no_rt))]
 fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
     let i = ~100;
@@ -82,6 +91,7 @@ fn test_run_in_bare_thread_exchange() {
 /// This uses a pthread mutex so descheduling in the action callback
 /// can lead to deadlock. Calling change_dir_locked recursively will
 /// also deadlock.
+#[cfg(not(no_rt))]
 pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
     use os;
     use os::change_dir;

@@ -866,44 +866,47 @@ pub fn std_macros() -> @str {
         )
     )
 
-    macro_rules! condition (
+    #[cfg(not(no_rt))]
+    #[macro_escape]
+    mod condition_macro {
+        macro_rules! condition (
 
-        { pub $c:ident: $input:ty -> $out:ty; } => {
+            { pub $c:ident: $input:ty -> $out:ty; } => {
 
-            pub mod $c {
-                #[allow(non_uppercase_statics)];
-                static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$input, $out>> =
-                    &::std::local_data::Key;
+                pub mod $c {
+                    #[allow(non_uppercase_statics)];
+                    static key: ::std::local_data::Key<
+                        @::std::condition::Handler<$input, $out>> =
+                        &::std::local_data::Key;
 
-                pub static cond :
-                    ::std::condition::Condition<$input,$out> =
-                    ::std::condition::Condition {
-                        name: stringify!($c),
-                        key: key
-                    };
+                    pub static cond :
+                        ::std::condition::Condition<$input,$out> =
+                        ::std::condition::Condition {
+                            name: stringify!($c),
+                            key: key
+                        };
+                }
+            };
+
+            { $c:ident: $input:ty -> $out:ty; } => {
+
+                // FIXME (#6009): remove mod's `pub` below once variant above lands.
+                pub mod $c {
+                    #[allow(non_uppercase_statics)];
+                    static key: ::std::local_data::Key<
+                        @::std::condition::Handler<$input, $out>> =
+                        &::std::local_data::Key;
+
+                    pub static cond :
+                        ::std::condition::Condition<$input,$out> =
+                        ::std::condition::Condition {
+                            name: stringify!($c),
+                            key: key
+                        };
+                }
             }
-        };
-
-        { $c:ident: $input:ty -> $out:ty; } => {
-
-            // FIXME (#6009): remove mod's `pub` below once variant above lands.
-            pub mod $c {
-                #[allow(non_uppercase_statics)];
-                static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$input, $out>> =
-                    &::std::local_data::Key;
-
-                pub static cond :
-                    ::std::condition::Condition<$input,$out> =
-                    ::std::condition::Condition {
-                        name: stringify!($c),
-                        key: key
-                    };
-            }
-        }
-    )
-
+        )
+    }
     //
     // A scheme-style conditional that helps to improve code clarity in some instances when
     // the `if`, `else if`, and `else` keywords obscure predicates undesirably.

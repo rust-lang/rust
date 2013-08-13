@@ -16,8 +16,11 @@ The `ToStr` trait for converting to strings
 
 use option::{Some, None};
 use str::OwnedStr;
+#[cfg(not(no_rt))]
 use hashmap::HashMap;
+#[cfg(not(no_rt))]
 use hashmap::HashSet;
+#[cfg(not(no_rt))]
 use hash::Hash;
 use iterator::Iterator;
 use cmp::Eq;
@@ -51,6 +54,7 @@ impl<A:ToStr> ToStr for (A,) {
     }
 }
 
+#[cfg(not(no_rt))]
 impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
     #[inline]
     fn to_str(&self) -> ~str {
@@ -72,6 +76,7 @@ impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
     }
 }
 
+#[cfg(not(no_rt))]
 impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline]
     fn to_str(&self) -> ~str {
@@ -180,7 +185,9 @@ impl<A:ToStr> ToStr for @[A] {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(no_rt))]
     use hashmap::HashMap;
+    #[cfg(not(no_rt))]
     use hashmap::HashSet;
     use container::{MutableSet, MutableMap};
     use super::*;
@@ -226,6 +233,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(no_rt))]
     fn test_hashmap() {
         let mut table: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
         let empty: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
