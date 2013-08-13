@@ -200,16 +200,6 @@ fn push_if_exists(vec: &mut ~[Path], p: &Path) {
 
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
-#[cfg(stage0)]
-pub fn libdir() -> ~str {
-   let libdir = env!("CFG_LIBDIR");
-   if libdir.is_empty() {
-      fail!("rustc compiled without CFG_LIBDIR environment variable");
-   }
-   libdir.to_owned()
-}
-
-#[cfg(not(stage0))]
 pub fn libdir() -> ~str {
     (env!("CFG_LIBDIR")).to_owned()
 }

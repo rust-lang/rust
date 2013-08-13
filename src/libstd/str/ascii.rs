@@ -19,8 +19,6 @@ use cast;
 use ptr;
 use iterator::Iterator;
 use vec::{CopyableVector, ImmutableVector};
-#[cfg(stage0)]
-use vec::OwnedVector;
 use to_bytes::IterBytes;
 use option::{Some, None};
 
@@ -105,14 +103,6 @@ impl<'self> AsciiCast<&'self [Ascii]> for &'self str {
         unsafe { self.to_ascii_nocheck() }
     }
 
-    #[cfg(stage0)]
-    #[inline]
-    unsafe fn to_ascii_nocheck(&self) -> &'self [Ascii] {
-        let (p,len): (*u8, uint) = cast::transmute(*self);
-        cast::transmute((p, len - 1))
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'self [Ascii] {
         cast::transmute(*self)
@@ -190,15 +180,6 @@ impl OwnedAsciiCast for ~str {
         unsafe {self.into_ascii_nocheck()}
     }
 
-    #[cfg(stage0)]
-    #[inline]
-    unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
-        let mut r: ~[Ascii] = cast::transmute(self);
-        r.pop();
-        r
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
         cast::transmute(self)
@@ -221,15 +202,6 @@ pub trait AsciiStr {
 }
 
 impl<'self> AsciiStr for &'self [Ascii] {
-    #[cfg(stage0)]
-    #[inline]
-    fn to_str_ascii(&self) -> ~str {
-        let mut cpy = self.to_owned();
-        cpy.push(0u8.to_ascii());
-        unsafe { cast::transmute(cpy) }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn to_str_ascii(&self) -> ~str {
         let cpy = self.to_owned();
@@ -253,15 +225,6 @@ impl<'self> AsciiStr for &'self [Ascii] {
 }
 
 impl ToStrConsume for ~[Ascii] {
-    #[cfg(stage0)]
-    #[inline]
-    fn into_str(self) -> ~str {
-        let mut cpy = self;
-        cpy.push(0u8.to_ascii());
-        unsafe { cast::transmute(cpy) }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn into_str(self) -> ~str {
         unsafe { cast::transmute(self) }

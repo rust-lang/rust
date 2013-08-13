@@ -1707,20 +1707,6 @@ pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     (*bytes).clone()
 }
 
-#[cfg(stage0)]
-pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
-    let mut v = with_bytes_writer(f);
-
-    // Make sure the vector has a trailing null and is proper utf8.
-    v.push(0);
-    assert!(str::is_utf8(v));
-
-    unsafe {
-        ::cast::transmute(v)
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     str::from_bytes(with_bytes_writer(f))
 }
