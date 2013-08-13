@@ -1103,7 +1103,6 @@ pub fn trans_stmt(cx: @mut Block, s: &ast::stmt) -> @mut Block {
     }
 
     let mut bcx = cx;
-    debuginfo::update_source_pos(cx, s.span);
 
     match s.node {
         ast::stmt_expr(e, _) | ast::stmt_semi(e, _) => {
@@ -1634,7 +1633,8 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           param_substs: param_substs,
           span: sp,
           path: path,
-          ccx: ccx
+          ccx: ccx,
+          debug_context: None,
     };
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
@@ -1933,7 +1933,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   attrs,
                   output_type,
                   |fcx| {
-                      if ccx.sess.opts.extra_debuginfo
+                      if ccx.sess.opts.debuginfo
                           && fcx_has_nonzero_span(fcx) {
                           debuginfo::create_function_metadata(fcx);
                       }
