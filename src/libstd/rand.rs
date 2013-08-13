@@ -461,6 +461,26 @@ pub trait RngUtil {
      * ~~~
      */
     fn shuffle_mut<T>(&mut self, values: &mut [T]);
+
+    /**
+     * Sample up to `n` values from an iterator.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     *
+     * use std::rand;
+     * use std::rand::RngUtil;
+     *
+     * fn main() {
+     *     let mut rng = rand::rng();
+     *     let vals = range(1, 100).to_owned_vec();
+     *     let sample = rng.sample(vals.iter(), 5);
+     *     printfln!(sample);
+     * }
+     * ~~~
+     */
+    fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A];
 }
 
 /// Extension methods for random number generators
@@ -606,6 +626,23 @@ impl<R: Rng> RngUtil for R {
             // lock element i in place.
             values.swap(i, self.gen_uint_range(0u, i + 1u));
         }
+    }
+
+    /// Randomly sample up to `n` elements from an iterator
+    fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
+        let mut reservoir : ~[A] = vec::with_capacity(n);
+        for (i, elem) in iter.enumerate() {
+            if i < n {
+                reservoir.push(elem);
+                loop
+            }
+
+            let k = self.gen_uint_range(0, i + 1);
+            if k < reservoir.len() {
+                reservoir[k] = elem
+            }
+        }
+        reservoir
     }
 }
 
@@ -914,6 +951,7 @@ pub fn random<T: Rand>() -> T {
 
 #[cfg(test)]
 mod test {
+    use iterator::{Iterator, range};
     use option::{Option, Some};
     use super::*;
 
@@ -1129,6 +1167,24 @@ mod test {
                 rustrt::rand_free(rt_rng);
             }
         }
+    }
+
+    #[test]
+    fn test_sample() {
+        let MIN_VAL = 1;
+        let MAX_VAL = 100;
+
+        let mut r = rng();
+        let vals = range(MIN_VAL, MAX_VAL).to_owned_vec();
+        let small_sample = r.sample(vals.iter(), 5);
+        let large_sample = r.sample(vals.iter(), vals.len() + 5);
+
+        assert_eq!(small_sample.len(), 5);
+        assert_eq!(large_sample.len(), vals.len());
+
+        assert!(small_sample.iter().all(|e| {
+            **e >= MIN_VAL && **e <= MAX_VAL
+        }));
     }
 }
 
