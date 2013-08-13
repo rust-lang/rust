@@ -45,11 +45,7 @@ impl Local for Task {
     }
     unsafe fn unsafe_borrow() -> *mut Task { local_ptr::unsafe_borrow() }
     unsafe fn try_unsafe_borrow() -> Option<*mut Task> {
-        if Local::exists::<Task>() {
-            Some(Local::unsafe_borrow())
-        } else {
-            None
-        }
+        local_ptr::try_unsafe_borrow()
     }
 }
 
