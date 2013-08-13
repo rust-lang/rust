@@ -19,7 +19,6 @@ use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
 use std::os;
 use messages::*;
-use package_id::*;
 
 pub fn default_workspace() -> Path {
     let p = rust_path();
@@ -51,35 +50,34 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let src_dir = workspace.push("src");
+
     let mut found = false;
     do os::walk_dir(&src_dir) |p| {
         debug!("=> p = %s", p.to_str());
-        if os::path_is_dir(p) {
-            debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
-            src_dir.push_rel(&pkgid.path).to_str());
 
-            if *p == src_dir.push_rel(&pkgid.path) {
-                found = true;
-            }
-            else {
+        let was_found = os::path_is_dir(p) && {
+            debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
+                   src_dir.push_rel(&pkgid.path).to_str());
+
+            *p == src_dir.push_rel(&pkgid.path) || {
                 let pf = p.filename();
-                for pf in pf.iter() {
-                    let f_ = (*pf).clone();
-                    let g = f_.to_str();
+                do pf.iter().any |pf| {
+                    let g = pf.to_str();
                     match split_version_general(g, '-') {
+                        None => false,
                         Some((ref might_match, ref vers)) => {
                             debug!("might_match = %s, vers = %s", *might_match,
-                               vers.to_str());
-                            if *might_match == pkgid.short_name
-                                 && (*vers == pkgid.version || pkgid.version == NoVersion)
-                            {
-                                  found = true;
-                            }
+                                   vers.to_str());
+                            *might_match == pkgid.short_name
+                                && (pkgid.version == *vers || pkgid.version == NoVersion)
                         }
-                        None => ()
-                     }
+                    }
                 }
             }
+        };
+
+        if was_found {
+            found = true
         }
         true
     };
@@ -102,12 +100,9 @@ pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
 /// Returns a src for pkgid that does exist -- None if none of them do
 pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let rs = pkgid_src_in_workspace(pkgid, workspace);
-    for p in rs.iter() {
-        if os::path_exists(p) {
-            return Some((*p).clone());
-        }
-    }
-    None
+    do rs.iter().find |&p| {
+        os::path_exists(p)
+    }.map(|p| (**p).clone())
 }
 
 /// Figure out what the executable name for <pkgid> in <workspace>'s build
@@ -195,22 +190,31 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
 
     debug!("lib_prefix = %s and lib_filetype = %s", lib_prefix, lib_filetype);
 
-    let mut result_filename = None;
-    for p in dir_contents.iter() {
-        let mut which = 0;
-        let mut hash = None;
-        let p_path = Path((*p).clone());
-        let extension = p_path.filetype();
+    // Find a filename that matches the pattern:
+    // (lib_prefix)-hash-(version)(lib_suffix)
+    let paths = do dir_contents.iter().map |p| {
+        Path((*p).clone())
+    };
+
+    let mut libraries = do paths.filter |p| {
+        let extension = p.filetype();
         debug!("p = %s, p's extension is %?", p.to_str(), extension);
         match extension {
-            Some(ref s) if lib_filetype == *s => (),
-            _ => loop
+            None => false,
+            Some(ref s) => lib_filetype == *s
         }
+    };
+
+    let mut result_filename = None;
+    for p_path in libraries {
         // Find a filename that matches the pattern: (lib_prefix)-hash-(version)(lib_suffix)
         // and remember what the hash was
         let f_name = match p_path.filename() {
             Some(s) => s, None => loop
         };
+
+        let mut hash = None;
+        let mut which = 0;
         for piece in f_name.split_iter('-') {
             debug!("a piece = %s", piece);
             if which == 0 && piece != lib_prefix {
@@ -229,26 +233,27 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                 break;
             }
         }
+
         if hash.is_some() {
             result_filename = Some(p_path);
             break;
         }
     }
 
+    if result_filename.is_none() {
+        warn(fmt!("library_in_workspace didn't find a library in %s for %s",
+                  dir_to_search.to_str(), short_name));
+    }
+
     // Return the filename that matches, which we now know exists
     // (if result_filename != None)
-    match result_filename {
-        None => {
-            warn(fmt!("library_in_workspace didn't find a library in %s for %s",
-                            dir_to_search.to_str(), short_name));
-            None
-        }
-        Some(result_filename) => {
-            let absolute_path = dir_to_search.push_rel(&result_filename);
-            debug!("result_filename = %s", absolute_path.to_str());
-            Some(absolute_path)
-        }
-    }
+    let abs_path = do result_filename.map |result_filename| {
+        let absolute_path = dir_to_search.push_rel(result_filename);
+        debug!("result_filename = %s", absolute_path.to_str());
+        absolute_path
+    };
+
+    abs_path
 }
 
 /// Returns the executable that would be installed for <pkgid>
