@@ -32,6 +32,21 @@
 // check:$6 = {{3.5, 4}, {4, 3.5}}
 // debugger:continue
 
+// debugger:finish
+// debugger:print *t0
+// check:$7 = 5
+// debugger:print *t1
+// check:$8 = {a = 6, b = 7.5}
+// debugger:print ret
+// check:$9 = {{5, {a = 6, b = 7.5}}, {{a = 6, b = 7.5}, 5}}
+// debugger:continue
+
+#[deriving(Clone)]
+struct Struct {
+    a: int,
+    b: float
+}
+
 fn dup_tup<T0: Clone, T1: Clone>(t0: &T0, t1: &T1) -> ((T0, T1), (T1, T0)) {
     let ret = ((t0.clone(), t1.clone()), (t1.clone(), t0.clone()));
     zzz();
@@ -42,7 +57,7 @@ fn main() {
 
     let _ = dup_tup(&1, &2.5);
     let _ = dup_tup(&3.5, &4_u16);
-
+    let _ = dup_tup(&5, &Struct { a: 6, b: 7.5 });
 }
 
 fn zzz() {()}
