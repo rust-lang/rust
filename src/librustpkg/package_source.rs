@@ -52,18 +52,19 @@ impl PkgSrc {
         use conditions::nonexistent_package::cond;
 
         debug!("Pushing onto root: %s | %s", self.id.path.to_str(), self.root.to_str());
-        let dir;
+
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
         debug!("Checking dirs: %?", dirs);
         let path = dirs.iter().find(|&d| os::path_exists(d));
-        match path {
-            Some(d) => dir = (*d).clone(),
-            None => dir = match self.fetch_git() {
+
+        let dir = match path {
+            Some(d) => (*d).clone(),
+            None => match self.fetch_git() {
+                Some(d) => d,
                 None => cond.raise((self.id.clone(), ~"supplied path for package dir does not \
-                                      exist, and couldn't interpret it as a URL fragment")),
-                Some(d) => d
+                                      exist, and couldn't interpret it as a URL fragment"))
             }
-        }
+        };
         if !os::path_is_dir(&dir) {
             cond.raise((self.id.clone(), ~"supplied path for package dir is a \
                                         non-directory"));
@@ -145,26 +146,26 @@ impl PkgSrc {
         let prefix = dir.components.len();
         debug!("Matching against %?", self.id.short_name);
         do os::walk_dir(&dir) |pth| {
-            match pth.filename() {
-                Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
-                                                      prefix,
-                                                      pth),
-                Some(~"main.rs") => PkgSrc::push_crate(&mut self.mains,
-                                                       prefix,
-                                                       pth),
-                Some(~"test.rs") => PkgSrc::push_crate(&mut self.tests,
-                                                       prefix,
-                                                       pth),
-                Some(~"bench.rs") => PkgSrc::push_crate(&mut self.benchs,
-                                                        prefix,
-                                                        pth),
-                _ => ()
+            let maybe_known_crate_set = match pth.filename() {
+                Some(filename) => match filename {
+                    ~"lib.rs" => Some(&mut self.libs),
+                    ~"main.rs" => Some(&mut self.mains),
+                    ~"test.rs" => Some(&mut self.tests),
+                    ~"bench.rs" => Some(&mut self.benchs),
+                    _ => None
+                },
+                _ => None
+            };
+
+            match maybe_known_crate_set {
+                Some(crate_set) => PkgSrc::push_crate(crate_set, prefix, pth),
+                None => ()
             }
             true
         };
 
-        if self.libs.is_empty() && self.mains.is_empty()
-            && self.tests.is_empty() && self.benchs.is_empty() {
+        let crate_sets = [&self.libs, &self.mains, &self.tests, &self.benchs];
+        if crate_sets.iter().all(|crate_set| crate_set.is_empty()) {
 
             note("Couldn't infer any crates to build.\n\
                          Try naming a crate `main.rs`, `lib.rs`, \
