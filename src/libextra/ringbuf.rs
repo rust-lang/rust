@@ -322,8 +322,8 @@ impl<A: Eq> Eq for RingBuf<A> {
     }
 }
 
-impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
-    fn from_iterator(iterator: &mut T) -> RingBuf<A> {
+impl<A> FromIterator<A> for RingBuf<A> {
+    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
@@ -331,8 +331,8 @@ impl<A, T: Iterator<A>> FromIterator<A, T> for RingBuf<A> {
     }
 }
 
-impl<A, T: Iterator<A>> Extendable<A, T> for RingBuf<A> {
-    fn extend(&mut self, iterator: &mut T) {
+impl<A> Extendable<A> for RingBuf<A> {
+    fn extend<T: Iterator<A>>(&mut self, iterator: &mut T) {
         for elt in *iterator {
             self.push_back(elt);
         }

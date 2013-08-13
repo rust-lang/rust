@@ -2111,9 +2111,9 @@ impl Clone for @str {
     }
 }
 
-impl<T: Iterator<char>> FromIterator<char, T> for ~str {
+impl FromIterator<char> for ~str {
     #[inline]
-    fn from_iterator(iterator: &mut T) -> ~str {
+    fn from_iterator<T: Iterator<char>>(iterator: &mut T) -> ~str {
         let (lower, _) = iterator.size_hint();
         let mut buf = with_capacity(lower);
         buf.extend(iterator);
@@ -2121,9 +2121,9 @@ impl<T: Iterator<char>> FromIterator<char, T> for ~str {
     }
 }
 
-impl<T: Iterator<char>> Extendable<char, T> for ~str {
+impl Extendable<char> for ~str {
     #[inline]
-    fn extend(&mut self, iterator: &mut T) {
+    fn extend<T: Iterator<char>>(&mut self, iterator: &mut T) {
         let (lower, _) = iterator.size_hint();
         let reserve = lower + self.len();
         self.reserve_at_least(reserve);
