@@ -99,9 +99,7 @@ pub struct DebugContext {
     priv created_files: HashMap<~str, DIFile>,
     priv created_functions: HashMap<ast::NodeId, DISubprogram>,
     priv created_blocks: HashMap<ast::NodeId, DILexicalBlock>,
-    priv created_types: HashMap<uint, DIType>,
-    priv last_function_context_id: ast::NodeId,
-    priv argument_counter: uint,
+    priv created_types: HashMap<uint, DIType>
 }
 
 impl DebugContext {
@@ -118,8 +116,21 @@ impl DebugContext {
             created_files: HashMap::new(),
             created_functions: HashMap::new(),
             created_blocks: HashMap::new(),
-            created_types: HashMap::new(),
-            last_function_context_id: -1, // magic value :(
+            created_types: HashMap::new()
+        };
+    }
+}
+
+
+pub struct FunctionDebugContext {
+    priv scope_map: HashMap<ast::NodeId, DIScope>,
+    priv argument_counter: uint,
+}
+
+impl FunctionDebugContext {
+    fn new() -> FunctionDebugContext {
+        return FunctionDebugContext {
+            scope_map: HashMap::new(),
             argument_counter: 1,
         };
     }
@@ -141,59 +152,22 @@ pub fn finalize(cx: @mut CrateContext) {
 pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     let cx = bcx.ccx();
     let def_map = cx.tcx.def_map;
-    let pattern = local.pat;
 
-    let scope = match bcx.parent {
-        None => create_function_metadata(bcx.fcx),
-        Some(_) => lexical_block_metadata(bcx)
-    };
+    do pat_util::pat_bindings(def_map, local.pat) |_, node_id, span, path_ref| {
 
-    let filename = span_start(cx, local.span).file.name;
-    let file_metadata = file_metadata(cx, filename);
+        let var_ident = ast_util::path_to_ident(path_ref);
+        let var_type = node_id_type(bcx, node_id);
 
-    do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
-
-        let ident = ast_util::path_to_ident(path_ref);
-        let name: &str = cx.sess.str_of(ident);
-        debug!("create_local_var_metadata: %s", name);
-        let loc = span_start(cx, span);
-        let ty = node_id_type(bcx, node_id);
-        let type_metadata = type_metadata(cx, ty, span);
-
-        let var_metadata = do name.to_c_str().with_ref |name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(
-                    DIB(cx),
-                    DW_TAG_auto_variable,
-                    scope,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
-                    false,
-                    0,
-                    0)
-            }
-        };
-
-        let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
-            }
-        };
-
-        set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
-        unsafe {
-            let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-                DIB(cx),
-                llptr,
-                var_metadata,
-                bcx.llbb);
-
-            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
-        }
+        declare_local(bcx, var_ident, node_id, var_type, span);
     }
+}
+
+pub fn create_match_binding_metadata(bcx: @mut Block,
+                                     variable_ident: ast::ident,
+                                     node_id: ast::NodeId,
+                                     variable_type: ty::t,
+                                     span: span) {
+    declare_local(bcx, variable_ident, node_id, variable_type, span);
 }
 
 /// Creates debug information for the given function argument.
@@ -213,20 +187,6 @@ pub fn create_argument_metadata(bcx: @mut Block,
         return;
     }
 
-    // Limited the scope within which `debug_context` is live,
-    // otherwise => borrowing errors
-    {
-        let debug_context = dbg_cx(cx);
-
-        // If this is a new function, reset the counter. llvm::DIBuilder
-        // wants arguments to be indexed starting from 1.
-        if fcx.id != debug_context.last_function_context_id {
-                    debug_context.argument_counter = 1;
-        }
-        // Keep track of the function we are in
-        debug_context.last_function_context_id = fcx.id;
-    }
-
     let def_map = cx.tcx.def_map;
     let file_metadata = file_metadata(cx, filename);
     let scope = create_function_metadata(fcx);
@@ -241,9 +201,9 @@ pub fn create_argument_metadata(bcx: @mut Block,
         debug!("create_argument_metadata: %s", name);
 
         let argument_index = {
-            let debug_context = dbg_cx(cx);
-            let argument_index = debug_context.argument_counter;
-            debug_context.argument_counter += 1;
+            let counter = &mut fcx.debug_context.get_mut_ref().argument_counter;
+            let argument_index = *counter;
+            *counter += 1;
             argument_index as c_uint
         };
 
@@ -270,7 +230,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
-        set_debug_location(cx, lexical_block_metadata(bcx), loc.line, loc.col.to_uint());
+        set_debug_location(cx, scope, loc.line, loc.col.to_uint());
         unsafe {
             let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                 DIB(cx),
@@ -286,28 +246,36 @@ pub fn create_argument_metadata(bcx: @mut Block,
 /// Sets the current debug location at the beginning of the span
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...)
-pub fn update_source_pos(bcx: @mut Block, span: span) {
-    if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
+pub fn update_source_pos(fcx: &FunctionContext,
+                         node_id: ast::NodeId,
+                         span: span) {
+    let cx: &mut CrateContext = fcx.ccx;
+
+    if !cx.sess.opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
-    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
-    let loc = span_start(bcx.ccx(), span);
-    set_debug_location(bcx.ccx(), lexical_block_metadata(bcx), loc.line, loc.col.to_uint())
+
+    debug!("update_source_pos: %s", cx.sess.codemap.span_to_str(span));
+
+    let loc = span_start(cx, span);
+    let scope = scope_metadata(fcx, node_id, span);
+
+    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
 }
 
 /// Creates debug information for the given function.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 /// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
+pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let cx = fcx.ccx;
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, ret_ty, id) = match fnitem {
+    let (ident, fn_decl, id) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
-                ast::item_fn(ast::fn_decl { output: ref ty, _}, _, _, _, _) => {
-                    (item.ident, ty, item.id)
+                ast::item_fn(ref fn_decl, _, _, _, _) => {
+                    (item.ident, fn_decl, item.id)
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
                                            "create_function_metadata: item bound to non-function")
@@ -315,20 +283,20 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
         }
         ast_map::node_method(
             @ast::method {
-                decl: ast::fn_decl { output: ref ty, _ },
+                decl: ref fn_decl,
                 id: id,
                 ident: ident,
                 _
             },
             _,
             _) => {
-            (ident, ty, id)
+            (ident, fn_decl, id)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
-                ast::expr_fn_block(ref decl, _) => {
+                ast::expr_fn_block(ref fn_decl, _) => {
                     let name = gensym_name("fn");
-                    (name, &decl.output, expr.id)
+                    (name, fn_decl, expr.id)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -337,20 +305,20 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
         ast_map::node_trait_method(
             @ast::provided(
                 @ast::method {
-                    decl: ast::fn_decl { output: ref ty, _ },
+                    decl: ref fn_decl,
                     id: id,
                     ident: ident,
                     _
                 }),
             _,
             _) => {
-            (ident, ty, id)
+            (ident, fn_decl, id)
         }
         _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
     };
 
-    match dbg_cx(cx).created_functions.find(&id) {
-        Some(fn_metadata) => return *fn_metadata,
+    match dbg_cx(cx).created_functions.find_copy(&id) {
+        Some(fn_metadata) => return fn_metadata,
         None => ()
     }
 
@@ -367,9 +335,9 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
     let file_metadata = file_metadata(cx, loc.file.name);
 
     let return_type_metadata = if cx.sess.opts.extra_debuginfo {
-        match ret_ty.node {
+        match fn_decl.output.node {
           ast::ty_nil => ptr::null(),
-          _ => type_metadata(cx, ty::node_id_to_type(cx.tcx, id), ret_ty.span)
+          _ => type_metadata(cx, ty::node_id_to_type(cx.tcx, id), fn_decl.output.span)
         }
     } else {
         ptr::null()
@@ -404,6 +372,27 @@ pub fn create_function_metadata(fcx: &FunctionContext) -> DISubprogram {
                     ptr::null())
             }
         }};
+
+    assert!(fcx.debug_context.is_none());
+
+    let mut fn_debug_context = ~FunctionDebugContext::new();
+    let entry_block_id = fcx.entry_bcx.get_ref().node_info.get_ref().id;
+    let entry_block = cx.tcx.items.get(&entry_block_id);
+
+    match *entry_block {
+        ast_map::node_block(ref block) => {
+            let scope_map = &mut fn_debug_context.scope_map;
+            let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
+
+            populate_scope_map(cx, arg_pats, block, fn_metadata, scope_map);
+        }
+        _ => cx.sess.span_bug(span,
+                fmt!("debuginfo::create_function_metadata() - \
+                     FunctionContext::entry_bcx::node_info points to wrong type of ast_map entry. \
+                     Expected: ast_map::node_block, actual: %?", *entry_block))
+    }
+
+    fcx.debug_context = Some(fn_debug_context);
 
     dbg_cx(cx).created_functions.insert(id, fn_metadata);
     return fn_metadata;
@@ -445,6 +434,56 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     }}}}};
 }
 
+fn declare_local(bcx: @mut Block,
+                 variable_ident: ast::ident,
+                 node_id: ast::NodeId,
+                 variable_type: ty::t,
+                 span: span) {
+    let cx: &mut CrateContext = bcx.ccx();
+
+    let filename = span_start(cx, span).file.name;
+    let file_metadata = file_metadata(cx, filename);
+
+    let name: &str = cx.sess.str_of(variable_ident);
+    let loc = span_start(cx, span);
+    let type_metadata = type_metadata(cx, variable_type, span);
+    let scope = scope_metadata(bcx.fcx, node_id, span);
+
+    let var_metadata = do name.to_c_str().with_ref |name| {
+        unsafe {
+            llvm::LLVMDIBuilderCreateLocalVariable(
+                DIB(cx),
+                DW_TAG_auto_variable,
+                scope,
+                name,
+                file_metadata,
+                loc.line as c_uint,
+                type_metadata,
+                false,
+                0,
+                0)
+        }
+    };
+
+    let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
+        }
+    };
+
+    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    unsafe {
+        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+            DIB(cx),
+            llptr,
+            var_metadata,
+            bcx.llbb);
+
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+    }
+}
+
 fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
     match dbg_cx(cx).created_files.find_equiv(&full_path) {
         Some(file_metadata) => return *file_metadata,
@@ -473,50 +512,26 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
     return file_metadata;
 }
 
-/// Get or create the lexical block metadata node for the given LLVM basic block.
-fn lexical_block_metadata(bcx: @mut Block) -> DILexicalBlock {
-    let cx = bcx.ccx();
-    let mut bcx = bcx;
+/// Finds the scope metadata node for the given AST node.
+fn scope_metadata(fcx: &FunctionContext,
+                  node_id: ast::NodeId,
+                  span: span) -> DIScope {
+    if fcx.debug_context.is_none() {
+        fcx.ccx.sess.span_bug(span, "debuginfo: FunctionDebugContext should be initialized \
+                                     but is not!");
+    }
 
-    // Search up the tree of basic blocks until we find one that knows the containing lexical block.
-    while bcx.node_info.is_none() {
-        match bcx.parent {
-            Some(b) => bcx = b,
-            None => cx.sess.bug("debuginfo: Could not find lexical block for LLVM basic block.")
+    let scope_map = &fcx.debug_context.get_ref().scope_map;
+
+    match scope_map.find_copy(&node_id) {
+        Some(scope_metadata) => scope_metadata,
+        None => {
+            let node = fcx.ccx.tcx.items.get_copy(&node_id);
+
+            fcx.ccx.sess.span_bug(span,
+                fmt!("debuginfo: Could not find scope info for node %?", node));
         }
     }
-
-    let span = bcx.node_info.unwrap().span;
-    let id = bcx.node_info.unwrap().id;
-
-    // Check whether we already have a cache entry for this node id
-    match dbg_cx(cx).created_blocks.find(&id) {
-        Some(block) => return *block,
-        None => ()
-    }
-
-    debug!("lexical_block_metadata: %s", bcx.sess().codemap.span_to_str(span));
-
-    let parent = match bcx.parent {
-        None => create_function_metadata(bcx.fcx),
-        Some(b) => lexical_block_metadata(b)
-    };
-
-    let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name);
-
-    let lexical_block_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateLexicalBlock(
-            DIB(cx),
-            parent,
-            file_metadata,
-            loc.line as c_uint,
-            loc.col.to_uint() as c_uint)
-    };
-
-    dbg_cx(cx).created_blocks.insert(id, lexical_block_metadata);
-
-    return lexical_block_metadata;
 }
 
 fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
@@ -1206,7 +1221,7 @@ fn type_metadata(cx: &mut CrateContext,
     return type_metadata;
 }
 
-fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: uint) {
+fn set_debug_location(cx: &mut CrateContext, scope: DIScope, line: uint, col: uint) {
     if dbg_cx(cx).curr_loc == (line, col) {
         return;
     }
@@ -1223,7 +1238,6 @@ fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: ui
         llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
     }
 }
-
 
 //=-------------------------------------------------------------------------------------------------
 //  Utility Functions
@@ -1255,4 +1269,452 @@ fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut DebugContext {
 #[inline]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
+}
+
+
+// This procedure builds the *scope map* for a given function, which maps any given ast::NodeId in
+// the function's AST to the correct DIScope metadata instance.
+//
+// This builder procedure walks the AST in execution order and keeps track of what belongs to which
+// scope, creating DIScope DIEs along the way, and introducing *artificial* lexical scope
+// descriptors where necessary. These artificial scopes allow GDB to correctly handle name
+// shadowing.
+fn populate_scope_map(cx: &mut CrateContext,
+                      arg_pats: &[@ast::pat],
+                      fn_entry_block: &ast::Block,
+                      fn_metadata: DISubprogram,
+                      scope_map: &mut HashMap<ast::NodeId, DIScope>) {
+    let def_map = cx.tcx.def_map;
+
+    struct ScopeStackEntry {
+        scope_metadata: DIScope,
+        ident: Option<ast::ident>
+    }
+
+    let mut scope_stack = ~[ScopeStackEntry { scope_metadata: fn_metadata, ident: None }];
+
+    // Push argument identifiers onto the stack so arguments integrate nicely with variable
+    // shadowing.
+    for &arg_pat in arg_pats.iter() {
+        do pat_util::pat_bindings(def_map, arg_pat) |_, _, _, path_ref| {
+            let ident = ast_util::path_to_ident(path_ref);
+            scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata, ident: Some(ident) });
+        }
+    }
+
+    walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
+
+    // local helper functions for walking the AST.
+
+    fn with_new_scope(cx: &mut CrateContext,
+                      scope_span: span,
+                      scope_stack: &mut ~[ScopeStackEntry],
+                      scope_map: &mut HashMap<ast::NodeId, DIScope>,
+                      inner_walk: &fn(&mut CrateContext,
+                                      &mut ~[ScopeStackEntry],
+                                      &mut HashMap<ast::NodeId, DIScope>)) {
+        // Create a new lexical scope and push it onto the stack
+        let loc = cx.sess.codemap.lookup_char_pos(scope_span.lo);
+        let file_metadata = file_metadata(cx, loc.file.name);
+        let parent_scope = scope_stack.last().scope_metadata;
+
+        let scope_metadata = unsafe {
+            llvm::LLVMDIBuilderCreateLexicalBlock(
+                DIB(cx),
+                parent_scope,
+                file_metadata,
+                loc.line as c_uint,
+                loc.col.to_uint() as c_uint)
+        };
+
+        scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata, ident: None });
+
+        inner_walk(cx, scope_stack, scope_map);
+
+        // pop artificial scopes
+        while scope_stack.last().ident.is_some() {
+            scope_stack.pop();
+        }
+
+        if scope_stack.last().scope_metadata != scope_metadata {
+            cx.sess.span_bug(scope_span, "debuginfo: Inconsistency in scope management.");
+        }
+
+        scope_stack.pop();
+    }
+
+    fn walk_block(cx: &mut CrateContext,
+                  block: &ast::Block,
+                  scope_stack: &mut ~[ScopeStackEntry],
+                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
+        scope_map.insert(block.id, scope_stack.last().scope_metadata);
+
+        // The interesting things here are statements and the concluding expression.
+        for &@ ref statement in block.stmts.iter() {
+            scope_map.insert(ast_util::stmt_id(statement), scope_stack.last().scope_metadata);
+
+            match statement.node {
+                ast::stmt_decl(@ref decl, _) => walk_decl(cx, decl, scope_stack, scope_map),
+                ast::stmt_expr(@ref exp, _) |
+                ast::stmt_semi(@ref exp, _) => walk_expr(cx, exp, scope_stack, scope_map),
+                ast::stmt_mac(*) => () // ignore macros (which should be expanded anyway)
+            }
+        }
+
+        for &@ref exp in block.expr.iter() {
+            walk_expr(cx, exp, scope_stack, scope_map);
+        }
+    }
+
+    fn walk_decl(cx: &mut CrateContext,
+                 decl: &ast::decl,
+                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_map: &mut HashMap<ast::NodeId, DIScope>) {
+        match *decl {
+            codemap::spanned { node: ast::decl_local(@ref local), _ } => {
+                scope_map.insert(local.id, scope_stack.last().scope_metadata);
+
+                walk_pattern(cx, local.pat, scope_stack, scope_map);
+
+                for &@ref exp in local.init.iter() {
+                    walk_expr(cx, exp, scope_stack, scope_map);
+                }
+            }
+            _ => ()
+        }
+    }
+
+    fn walk_pattern(cx: &mut CrateContext,
+                    pat: @ast::pat,
+                    scope_stack: &mut ~[ScopeStackEntry],
+                    scope_map: &mut HashMap<ast::NodeId, DIScope>) {
+
+        let def_map = cx.tcx.def_map;
+
+        // Unfortunately, we cannot just use pat_util::pat_bindings() or ast_util::walk_pat() here
+        // because we have to visit *all* nodes in order to put them into the scope map. The above
+        // functions don't do that.
+        match pat.node {
+            ast::pat_ident(_, ref path_ref, ref sub_pat_opt) => {
+
+                // Check if this is a binding. If so we need to put it on the scope stack and maybe
+                // introduce an articial scope
+                if pat_util::pat_is_binding(def_map, pat) {
+
+                    let ident = ast_util::path_to_ident(path_ref);
+
+                    // LLVM does not properly generate 'DW_AT_start_scope' fields for variable DIEs.
+                    // For this reason we have to introduce an artificial scope at bindings whenever
+                    // a variable with the same name is declared in *any* parent scope.
+                    //
+                    // Otherwise the following error occurs:
+                    //
+                    // let x = 10;
+                    //
+                    // do_something(); // 'gdb print x' correctly prints 10
+                    //
+                    // {
+                    //     do_something(); // 'gdb print x' prints 0, because it already reads the
+                    //                     // uninitialized 'x' from the next line...
+                    //     let x = 100;
+                    //     do_something(); // 'gdb print x' correctly prints 100
+                    // }
+
+                    // Is there already a binding with that name?
+                    let need_new_scope = scope_stack
+                        .iter()
+                        .any(|entry| entry.ident.iter().any(|i| *i == ident));
+
+                    if need_new_scope {
+                        // Create a new lexical scope and push it onto the stack
+                        let loc = cx.sess.codemap.lookup_char_pos(pat.span.lo);
+                        let file_metadata = file_metadata(cx, loc.file.name);
+                        let parent_scope = scope_stack.last().scope_metadata;
+
+                        let scope_metadata = unsafe {
+                            llvm::LLVMDIBuilderCreateLexicalBlock(
+                                DIB(cx),
+                                parent_scope,
+                                file_metadata,
+                                loc.line as c_uint,
+                                loc.col.to_uint() as c_uint)
+                        };
+
+                        scope_stack.push(ScopeStackEntry {
+                            scope_metadata: scope_metadata,
+                            ident: Some(ident)
+                        });
+
+                    } else {
+                        // Push a new entry anyway so the name can be found
+                        let prev_metadata = scope_stack.last().scope_metadata;
+                        scope_stack.push(ScopeStackEntry {
+                            scope_metadata: prev_metadata,
+                            ident: Some(ident)
+                        });
+                    }
+                }
+
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+
+                for &sub_pat in sub_pat_opt.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+            }
+
+            ast::pat_wild => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+            }
+
+            ast::pat_enum(_, ref sub_pats_opt) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+
+                for ref sub_pats in sub_pats_opt.iter() {
+                    for &p in sub_pats.iter() {
+                        walk_pattern(cx, p, scope_stack, scope_map);
+                    }
+                }
+            }
+
+            ast::pat_struct(_, ref field_pats, _) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+
+                for &ast::field_pat { pat: sub_pat, _ } in field_pats.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+            }
+
+            ast::pat_tup(ref sub_pats) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+
+                for &sub_pat in sub_pats.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+            }
+
+            ast::pat_box(sub_pat)    |
+            ast::pat_uniq(sub_pat)   |
+            ast::pat_region(sub_pat) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+                walk_pattern(cx, sub_pat, scope_stack, scope_map);
+            }
+
+            ast::pat_lit(@ref exp) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+                walk_expr(cx, exp, scope_stack, scope_map);
+            }
+
+            ast::pat_range(@ref exp1, @ref exp2) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+                walk_expr(cx, exp1, scope_stack, scope_map);
+                walk_expr(cx, exp2, scope_stack, scope_map);
+            }
+
+            ast::pat_vec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
+                scope_map.insert(pat.id, scope_stack.last().scope_metadata);
+
+                for &sub_pat in front_sub_pats.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+
+                for &sub_pat in middle_sub_pats.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+
+                for &sub_pat in back_sub_pats.iter() {
+                    walk_pattern(cx, sub_pat, scope_stack, scope_map);
+                }
+            }
+        }
+    }
+
+    fn walk_expr(cx: &mut CrateContext,
+                 exp: &ast::expr,
+                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_map: &mut HashMap<ast::NodeId, DIScope>) {
+
+        scope_map.insert(exp.id, scope_stack.last().scope_metadata);
+
+        match exp.node {
+            ast::expr_self     |
+            ast::expr_lit(_)   |
+            ast::expr_break(_) |
+            ast::expr_again(_) |
+            ast::expr_path(_)  => (),
+
+            ast::expr_vstore(@ref sub_exp, _)   |
+            ast::expr_cast(@ref sub_exp, _)     |
+            ast::expr_addr_of(_, @ref sub_exp)  |
+            ast::expr_field(@ref sub_exp, _, _) |
+            ast::expr_paren(@ref sub_exp)       => walk_expr(cx, sub_exp, scope_stack, scope_map),
+
+            ast::expr_ret(exp_opt) => match exp_opt {
+                Some(@ref sub_exp) => walk_expr(cx, sub_exp, scope_stack, scope_map),
+                None => ()
+            },
+
+            ast::expr_unary(node_id, _, @ref sub_exp) => {
+                scope_map.insert(node_id, scope_stack.last().scope_metadata);
+                walk_expr(cx, sub_exp, scope_stack, scope_map);
+            }
+
+            ast::expr_assign_op(node_id, _, @ref lhs, @ref rhs) |
+            ast::expr_index(node_id, @ref lhs, @ref rhs)        |
+            ast::expr_binary(node_id, _, @ref lhs, @ref rhs)    => {
+                scope_map.insert(node_id, scope_stack.last().scope_metadata);
+                walk_expr(cx, lhs, scope_stack, scope_map);
+                walk_expr(cx, rhs, scope_stack, scope_map);
+            }
+
+            ast::expr_vec(ref init_expressions, _) |
+            ast::expr_tup(ref init_expressions)    => {
+                for &@ref ie in init_expressions.iter() {
+                    walk_expr(cx, ie, scope_stack, scope_map);
+                }
+            }
+
+            ast::expr_assign(@ref sub_exp1, @ref sub_exp2)    |
+            ast::expr_log(@ref sub_exp1, @ref sub_exp2)       |
+            ast::expr_repeat(@ref sub_exp1, @ref sub_exp2, _) => {
+                walk_expr(cx, sub_exp1, scope_stack, scope_map);
+                walk_expr(cx, sub_exp2, scope_stack, scope_map);
+            }
+
+            ast::expr_if(@ref cond_exp, ref then_block, ref opt_else_exp) => {
+                walk_expr(cx, cond_exp, scope_stack, scope_map);
+
+                do with_new_scope(cx, then_block.span, scope_stack, scope_map) |cx,
+                                                                                scope_stack,
+                                                                                scope_map| {
+                    walk_block(cx, then_block, scope_stack, scope_map);
+                }
+
+                match *opt_else_exp {
+                    Some(@ref else_exp) => walk_expr(cx, else_exp, scope_stack, scope_map),
+                    _ => ()
+                }
+            }
+
+            ast::expr_while(@ref cond_exp, ref loop_body) => {
+                walk_expr(cx, cond_exp, scope_stack, scope_map);
+
+                do with_new_scope(cx, loop_body.span, scope_stack, scope_map) |cx,
+                                                                               scope_stack,
+                                                                               scope_map| {
+                    walk_block(cx, loop_body, scope_stack, scope_map);
+                }
+            }
+
+            ast::expr_for_loop(_, _, _) => {
+                cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                            Found unexpanded for-loop.");
+            }
+
+            ast::expr_mac(_) => {
+                cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                            Found unexpanded macro.");
+            }
+
+            ast::expr_loop(ref block, _) |
+            ast::expr_block(ref block)   => {
+                do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
+                                                                           scope_stack,
+                                                                           scope_map| {
+                    walk_block(cx, block, scope_stack, scope_map);
+                }
+            }
+
+            ast::expr_fn_block(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
+                do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
+                                                                           scope_stack,
+                                                                           scope_map| {
+                    for &ast::arg { pat: pattern, _ } in inputs.iter() {
+                        walk_pattern(cx, pattern, scope_stack, scope_map);
+                    }
+
+                    walk_block(cx, block, scope_stack, scope_map);
+                }
+            }
+
+            // ast::expr_loop_body(@ref inner_exp) |
+            ast::expr_do_body(@ref inner_exp)   => {
+                let inner_expr_is_expr_fn_block = match *inner_exp {
+                    ast::expr { node: ast::expr_fn_block(*), _ } => true,
+                    _ => false
+                };
+
+                if !inner_expr_is_expr_fn_block {
+                    cx.sess.span_bug(inner_exp.span, "debuginfo: Inner expression was expected \
+                                                      to be an ast::expr_fn_block.");
+                }
+
+                walk_expr(cx, inner_exp, scope_stack, scope_map);
+            }
+
+            ast::expr_call(@ref fn_exp, ref args, _) => {
+                walk_expr(cx, fn_exp, scope_stack, scope_map);
+
+                for &@ref arg_exp in args.iter() {
+                    walk_expr(cx, arg_exp, scope_stack, scope_map);
+                }
+            }
+
+            ast::expr_method_call(node_id, @ref receiver_exp, _, _, ref args, _) => {
+                scope_map.insert(node_id, scope_stack.last().scope_metadata);
+                walk_expr(cx, receiver_exp, scope_stack, scope_map);
+
+                for &@ref arg_exp in args.iter() {
+                    walk_expr(cx, arg_exp, scope_stack, scope_map);
+                }
+            }
+
+            ast::expr_match(@ref discriminant_exp, ref arms) => {
+                walk_expr(cx, discriminant_exp, scope_stack, scope_map);
+
+                // for each arm we have to first walk the pattern as these might introduce new
+                // artificial scopes. It should be sufficient to walk only one pattern per arm, as
+                // they all must contain the same binding names
+
+                for arm_ref in arms.iter() {
+                    let arm_span = arm_ref.pats[0].span;
+
+                    do with_new_scope(cx, arm_span, scope_stack, scope_map) |cx,
+                                                                             scope_stack,
+                                                                             scope_map| {
+                        walk_pattern(cx, arm_ref.pats[0], scope_stack, scope_map);
+
+                        for &@ref guard_exp in arm_ref.guard.iter() {
+                            walk_expr(cx, guard_exp, scope_stack, scope_map)
+                        }
+
+                        walk_block(cx, &arm_ref.body, scope_stack, scope_map);
+                    }
+                }
+            }
+
+            ast::expr_struct(_, ref fields, ref base_exp) => {
+                for &ast::Field { expr: @ref exp, _ } in fields.iter() {
+                    walk_expr(cx, exp, scope_stack, scope_map);
+                }
+
+                match *base_exp {
+                    Some(@ref exp) => walk_expr(cx, exp, scope_stack, scope_map),
+                    None => ()
+                }
+            }
+
+            ast::expr_inline_asm(ast::inline_asm { inputs: ref inputs,
+                                                   outputs: ref outputs,
+                                                   _ }) => {
+                // inputs, outputs: ~[(@str, @expr)]
+                for &(_, @ref exp) in inputs.iter() {
+                    walk_expr(cx, exp, scope_stack, scope_map);
+                }
+
+                for &(_, @ref exp) in outputs.iter() {
+                    walk_expr(cx, exp, scope_stack, scope_map);
+                }
+            }
+        }
+    }
 }

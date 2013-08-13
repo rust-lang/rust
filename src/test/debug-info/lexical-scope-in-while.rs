@@ -1,0 +1,123 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
+
+// compile-flags:-Z extra-debug-info
+// debugger:break zzz
+// debugger:run
+
+// FIRST ITERATION
+// debugger:finish
+// debugger:print x
+// check:$1 = 0
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$2 = 1
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$3 = 101
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$4 = 101
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$5 = -987
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$6 = 101
+// debugger:continue
+
+
+// SECOND ITERATION
+// debugger:finish
+// debugger:print x
+// check:$7 = 1
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$8 = 2
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$9 = 102
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$10 = 102
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$11 = -987
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$12 = 102
+// debugger:continue
+
+// debugger:finish
+// debugger:print x
+// check:$13 = 2
+// debugger:continue
+
+fn main() {
+
+    let mut x = 0;
+
+    while x < 2 {
+        zzz();
+        sentinel();
+
+        x += 1;
+        zzz();
+        sentinel();
+
+        // Shadow x
+        let x = x + 100;
+        zzz();
+        sentinel();
+
+        // open scope within loop's top level scope
+        {
+            zzz();
+            sentinel();
+
+            let x = -987;
+
+            zzz();
+            sentinel();
+        }
+
+        // Check that we get the x before the inner scope again
+        zzz();
+        sentinel();
+    }
+
+    zzz();
+    sentinel();
+}
+
+fn zzz() {()}
+fn sentinel() {()}

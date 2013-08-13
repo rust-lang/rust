@@ -214,6 +214,7 @@ use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
+use middle::trans::debuginfo;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, vec_map_to_str};
@@ -385,6 +386,7 @@ struct BindingInfo {
     llmatch: ValueRef,
     trmode: TransBindingMode,
     id: ast::NodeId,
+    span: span,
     ty: ty::t,
 }
 
@@ -1305,7 +1307,7 @@ fn insert_lllocals(bcx: @mut Block,
         BindArgument => bcx.fcx.llargs
     };
 
-    for (_, &binding_info) in bindings_map.iter() {
+    for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
@@ -1325,6 +1327,14 @@ fn insert_lllocals(bcx: @mut Block,
 
         debug!("binding %? to %s", binding_info.id, bcx.val_to_str(llval));
         llmap.insert(binding_info.id, llval);
+
+        if bcx.sess().opts.extra_debuginfo {
+            debuginfo::create_match_binding_metadata(bcx,
+                                                     ident,
+                                                     binding_info.id,
+                                                     binding_info.ty,
+                                                     binding_info.span);
+        }
     }
     return bcx;
 }
@@ -1771,7 +1781,7 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::pat) -> BindingsMap {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let mut bindings_map = HashMap::new();
-    do pat_bindings(tcx.def_map, pat) |bm, p_id, _s, path| {
+    do pat_bindings(tcx.def_map, pat) |bm, p_id, span, path| {
         let ident = path_to_ident(path);
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
@@ -1793,8 +1803,11 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::pat) -> BindingsMap {
             }
         };
         bindings_map.insert(ident, BindingInfo {
-            llmatch: llmatch, trmode: trmode,
-            id: p_id, ty: variable_ty
+            llmatch: llmatch,
+            trmode: trmode,
+            id: p_id,
+            span: span,
+            ty: variable_ty
         });
     }
     return bindings_map;
