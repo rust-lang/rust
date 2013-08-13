@@ -285,9 +285,6 @@ impl Coerce {
         let r_a = self.infcx.next_region_var(Coercion(self.trace));
 
         let a_borrowed = match *sty_a {
-            ty::ty_trait(_, _, ty::RegionTraitStore(_), _, _) => {
-                return self.subtype(a, b);
-            }
             ty::ty_trait(did, ref substs, _, _, b) => {
                 ty::mk_trait(tcx, did, substs.clone(),
                              ty::RegionTraitStore(r_a), b_mutbl, b)
@@ -297,7 +294,7 @@ impl Coerce {
             }
         };
 
-        if_ok!(self.tys(a_borrowed, b));
+        if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowObj(r_a, b_mutbl))
