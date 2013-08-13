@@ -691,6 +691,14 @@ pub fn build_session_options(binary: @str,
     let extra_debuginfo = debugging_opts & session::extra_debug_info != 0;
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
+
+    // If debugging info is generated, do not collapse monomorphized function instances.
+    // Functions with equivalent llvm code still need separate debugging descriptions because names
+    // might differ.
+    if debuginfo {
+        debugging_opts |= session::no_monomorphic_collapse;
+    }
+
     let statik = debugging_opts & session::statik != 0;
 
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
