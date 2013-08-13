@@ -38,7 +38,7 @@ impl Logger for StdErrLogger {
         };
 
         // Truncate the string
-        let buf_bytes = 256;
+        let buf_bytes = 2048;
         if s.len() > buf_bytes {
             let s = s.slice(0, buf_bytes) + "[...]";
             print(s);
