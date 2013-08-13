@@ -186,10 +186,10 @@ pub fn trans_method_callee(bcx: @mut Block,
             }
         }
 
-        typeck::method_trait(_, off) => {
+        typeck::method_object(ref mt) => {
             trans_trait_callee(bcx,
                                callee_id,
-                               off,
+                               mt.real_index,
                                this)
         }
     }
@@ -398,7 +398,6 @@ pub fn combine_impl_and_methods_tps(bcx: @mut Block,
     return (ty_substs, vtables);
 }
 
-
 pub fn trans_trait_callee(bcx: @mut Block,
                           callee_id: ast::NodeId,
                           n_method: uint,
@@ -506,20 +505,35 @@ pub fn vtable_id(ccx: @mut CrateContext,
 /// This is used only for objects.
 pub fn get_vtable(bcx: @mut Block,
                   self_ty: ty::t,
-                  origin: typeck::vtable_origin)
+                  origins: typeck::vtable_param_res)
                   -> ValueRef {
-    let hash_id = vtable_id(bcx.ccx(), &origin);
-    match bcx.ccx().vtables.find(&hash_id) {
-        Some(&val) => val,
-        None => {
-            match origin {
-                typeck::vtable_static(id, substs, sub_vtables) => {
-                    make_impl_vtable(bcx, id, self_ty, substs, sub_vtables)
-                }
-                _ => fail!("get_vtable: expected a static origin"),
-            }
-        }
+    let ccx = bcx.ccx();
+    let _icx = push_ctxt("impl::get_vtable");
+
+    // Check the cache.
+    let hash_id = (self_ty, vtable_id(ccx, &origins[0]));
+    match ccx.vtables.find(&hash_id) {
+        Some(&val) => { return val }
+        None => { }
     }
+
+    // Not in the cache. Actually build it.
+    let methods = do origins.flat_map |origin| {
+        match *origin {
+            typeck::vtable_static(id, ref substs, sub_vtables) => {
+                emit_vtable_methods(bcx, id, *substs, sub_vtables)
+            }
+            _ => ccx.sess.bug("get_vtable: expected a static origin"),
+        }
+    };
+
+    // Generate a type descriptor for the vtable.
+    let tydesc = get_tydesc(ccx, self_ty);
+    glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
+
+    let vtable = make_vtable(ccx, tydesc, methods);
+    ccx.vtables.insert(hash_id, vtable);
+    return vtable;
 }
 
 /// Helper function to declare and initialize the vtable.
@@ -547,15 +561,12 @@ pub fn make_vtable(ccx: &mut CrateContext,
     }
 }
 
-/// Generates a dynamic vtable for objects.
-pub fn make_impl_vtable(bcx: @mut Block,
-                        impl_id: ast::def_id,
-                        self_ty: ty::t,
-                        substs: &[ty::t],
-                        vtables: typeck::vtable_res)
-                        -> ValueRef {
+fn emit_vtable_methods(bcx: @mut Block,
+                       impl_id: ast::def_id,
+                       substs: &[ty::t],
+                       vtables: typeck::vtable_res)
+                       -> ~[ValueRef] {
     let ccx = bcx.ccx();
-    let _icx = push_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
@@ -565,7 +576,7 @@ pub fn make_impl_vtable(bcx: @mut Block,
     };
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
-    let methods = do trait_method_def_ids.map |method_def_id| {
+    do trait_method_def_ids.map |method_def_id| {
         let im = ty::method(tcx, *method_def_id);
         let fty = ty::subst_tps(tcx,
                                 substs,
@@ -583,13 +594,7 @@ pub fn make_impl_vtable(bcx: @mut Block,
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn
         }
-    };
-
-    // Generate a type descriptor for the vtable.
-    let tydesc = get_tydesc(ccx, self_ty);
-    glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
-
-    make_vtable(ccx, tydesc, methods)
+    }
 }
 
 pub fn trans_trait_cast(bcx: @mut Block,
@@ -621,9 +626,13 @@ pub fn trans_trait_cast(bcx: @mut Block,
     bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
-    let orig = ccx.maps.vtable_map.get(&id)[0][0].clone();
-    let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, &orig);
-    let vtable = get_vtable(bcx, v_ty, orig);
+    // This is structured a bit funny because of dynamic borrow failures.
+    let origins = {
+        let res = ccx.maps.vtable_map.get(&id);
+        let res = resolve_vtables_in_fn_ctxt(bcx.fcx, *res);
+        res[0]
+    };
+    let vtable = get_vtable(bcx, v_ty, origins);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
                                    val_ty(vtable).ptr_to()));

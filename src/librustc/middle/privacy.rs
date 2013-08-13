@@ -16,7 +16,7 @@ use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
 use middle::typeck::{method_map, method_origin, method_param};
-use middle::typeck::{method_static, method_trait};
+use middle::typeck::{method_static, method_object};
 
 use std::util::ignore;
 use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
@@ -280,10 +280,14 @@ impl PrivacyVisitor {
             }
             method_param(method_param {
                 trait_id: trait_id,
-                 method_num: method_num,
+                method_num: method_num,
                  _
             }) |
-            method_trait(trait_id, method_num) => {
+            method_object(method_object {
+                trait_id: trait_id,
+                method_num: method_num,
+                 _
+            }) => {
                 if trait_id.crate == LOCAL_CRATE {
                     match self.tcx.items.find(&trait_id.node) {
                         Some(&node_item(item, _)) => {

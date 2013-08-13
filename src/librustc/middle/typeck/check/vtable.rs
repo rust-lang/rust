@@ -647,30 +647,21 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                   self_ty: Some(mt.ty)
                               }
                           };
-                          let vtable_opt =
-                              lookup_vtable(&vcx,
-                                            location_info,
-                                            mt.ty,
-                                            target_trait_ref,
-                                            is_early);
-                          match vtable_opt {
-                              Some(vtable) => {
-                                  // Map this expression to that
-                                  // vtable (that is: "ex has vtable
-                                  // <vtable>")
-                                  if !is_early {
-                                      insert_vtables(fcx, ex.id,
-                                                     @~[@~[vtable]]);
-                                  }
-                              }
-                              None => {
-                                  fcx.tcx().sess.span_err(
-                                      ex.span,
-                                      fmt!("failed to find an implementation \
-                                            of trait %s for %s",
-                                           fcx.infcx().ty_to_str(target_ty),
-                                           fcx.infcx().ty_to_str(mt.ty)));
-                              }
+
+                          let param_bounds = ty::ParamBounds {
+                              builtin_bounds: ty::EmptyBuiltinBounds(),
+                              trait_bounds: ~[target_trait_ref]
+                          };
+                          let vtables =
+                                lookup_vtables_for_param(&vcx,
+                                                         location_info,
+                                                         None,
+                                                         &param_bounds,
+                                                         mt.ty,
+                                                         is_early);
+
+                          if !is_early {
+                              insert_vtables(fcx, ex.id, @~[vtables]);
                           }
 
                           // Now, if this is &trait, we need to link the
