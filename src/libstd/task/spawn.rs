@@ -22,10 +22,9 @@
  *
  *     A new one of these is created each spawn_linked or spawn_supervised.
  *
- * (2) The "tcb" is a per-task control structure that tracks a task's spawn
- *     configuration. It contains a reference to its taskgroup_arc, a
- *     reference to its node in the ancestor list (below), a flag for
- *     whether it's part of the 'main'/'root' taskgroup, and an optionally
+ * (2) The "taskgroup" is a per-task control structure that tracks a task's
+ *     spawn configuration. It contains a reference to its taskgroup_arc, a
+ *     reference to its node in the ancestor list (below), and an optionally
  *     configured notification port. These are stored in TLS.
  *
  * (3) The "ancestor_list" is a cons-style list of unsafe::exclusives which
@@ -84,7 +83,6 @@ use local_data;
 use task::{Failure, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult};
 use task::unkillable;
-use to_bytes::IterBytes;
 use uint;
 use util;
 use unstable::sync::Exclusive;
@@ -101,29 +99,7 @@ use rt::work_queue::WorkQueue;
 #[cfg(test)] use comm;
 #[cfg(test)] use task;
 
-// Transitionary.
-#[deriving(Eq)]
-enum TaskHandle {
-    NewTask(KillHandle),
-}
-
-impl Clone for TaskHandle {
-    fn clone(&self) -> TaskHandle {
-        match *self {
-            NewTask(ref x) => NewTask(x.clone()),
-        }
-    }
-}
-
-impl IterBytes for TaskHandle {
-    fn iter_bytes(&self, lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
-        match *self {
-            NewTask(ref x) => x.iter_bytes(lsb0, f),
-        }
-    }
-}
-
-struct TaskSet(HashSet<TaskHandle>);
+struct TaskSet(HashSet<KillHandle>);
 
 impl TaskSet {
     #[inline]
@@ -131,17 +107,17 @@ impl TaskSet {
         TaskSet(HashSet::new())
     }
     #[inline]
-    fn insert(&mut self, task: TaskHandle) {
+    fn insert(&mut self, task: KillHandle) {
         let didnt_overwrite = (**self).insert(task);
         assert!(didnt_overwrite);
     }
     #[inline]
-    fn remove(&mut self, task: &TaskHandle) {
+    fn remove(&mut self, task: &KillHandle) {
         let was_present = (**self).remove(task);
         assert!(was_present);
     }
     #[inline]
-    fn move_iter(self) -> HashSetMoveIterator<TaskHandle> {
+    fn move_iter(self) -> HashSetMoveIterator<KillHandle> {
         (*self).move_iter()
     }
 }
@@ -291,7 +267,7 @@ fn each_ancestor(list:        &mut AncestorList,
                             None => nobe_is_dead
                         };
                         // Call iterator block. (If the group is dead, it's
-                        // safe to skip it. This will leave our TaskHandle
+                        // safe to skip it. This will leave our KillHandle
                         // hanging around in the group even after it's freed,
                         // but that's ok because, by virtue of the group being
                         // dead, nobody will ever kill-all (for) over it.)
@@ -338,7 +314,6 @@ pub struct Taskgroup {
     tasks:      TaskGroupArc, // 'none' means the group has failed.
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
     ancestors:  AncestorList,
-    is_main:    bool,
     notifier:   Option<AutoNotify>,
 }
 
@@ -355,14 +330,18 @@ impl Drop for Taskgroup {
                     for x in this.notifier.mut_iter() {
                         x.failed = true;
                     }
-                    // Take everybody down with us.
-                    do access_group(&self.tasks) |tg| {
-                        kill_taskgroup(tg, &me, self.is_main);
-                    }
+                    // Take everybody down with us. After this point, every
+                    // other task in the group will see 'tg' as none, which
+                    // indicates the whole taskgroup is failing (and forbids
+                    // new spawns from succeeding).
+                    let tg = do access_group(&self.tasks) |tg| { tg.take() };
+                    // It's safe to send kill signals outside the lock, because
+                    // we have a refcount on all kill-handles in the group.
+                    kill_taskgroup(tg, me);
                 } else {
                     // Remove ourselves from the group(s).
                     do access_group(&self.tasks) |tg| {
-                        leave_taskgroup(tg, &me, true);
+                        leave_taskgroup(tg, me, true);
                     }
                 }
                 // It doesn't matter whether this happens before or after dealing
@@ -370,7 +349,7 @@ impl Drop for Taskgroup {
                 // We remove ourself from every ancestor we can, so no cleanup; no
                 // break.
                 do each_ancestor(&mut this.ancestors, |_| {}) |ancestor_group| {
-                    leave_taskgroup(ancestor_group, &me, false);
+                    leave_taskgroup(ancestor_group, me, false);
                     true
                 };
             }
@@ -380,7 +359,6 @@ impl Drop for Taskgroup {
 
 pub fn Taskgroup(tasks: TaskGroupArc,
        ancestors: AncestorList,
-       is_main: bool,
        mut notifier: Option<AutoNotify>) -> Taskgroup {
     for x in notifier.mut_iter() {
         x.failed = false;
@@ -389,7 +367,6 @@ pub fn Taskgroup(tasks: TaskGroupArc,
     Taskgroup {
         tasks: tasks,
         ancestors: ancestors,
-        is_main: is_main,
         notifier: notifier
     }
 }
@@ -413,7 +390,7 @@ fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
     }
 }
 
-fn enlist_in_taskgroup(state: TaskGroupInner, me: TaskHandle,
+fn enlist_in_taskgroup(state: TaskGroupInner, me: KillHandle,
                            is_member: bool) -> bool {
     let me = Cell::new(me); // :(
     // If 'None', the group was failing. Can't enlist.
@@ -428,8 +405,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: TaskHandle,
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
-fn leave_taskgroup(state: TaskGroupInner, me: &TaskHandle,
-                       is_member: bool) {
+fn leave_taskgroup(state: TaskGroupInner, me: &KillHandle, is_member: bool) {
     let me = Cell::new(me); // :(
     // If 'None', already failing and we've already gotten a kill signal.
     do state.map_mut |group| {
@@ -442,43 +418,23 @@ fn leave_taskgroup(state: TaskGroupInner, me: &TaskHandle,
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
-fn kill_taskgroup(state: TaskGroupInner, me: &TaskHandle, is_main: bool) {
-    unsafe {
-        // NB: We could do the killing iteration outside of the group arc, by
-        // having "let mut newstate" here, swapping inside, and iterating
-        // after. But that would let other exiting tasks fall-through and exit
-        // while we were trying to kill them, causing potential
-        // use-after-free. A task's presence in the arc guarantees it's alive
-        // only while we hold the lock, so if we're failing, all concurrently
-        // exiting tasks must wait for us. To do it differently, we'd have to
-        // use the runtime's task refcounting, but that could leave task
-        // structs around long after their task exited.
-        let newstate = util::replace(state, None);
-        // Might already be None, if Somebody is failing simultaneously.
-        // That's ok; only one task needs to do the dirty work. (Might also
-        // see 'None' if Somebody already failed and we got a kill signal.)
-        if newstate.is_some() {
-            let TaskGroupData { members: members, descendants: descendants } =
-                newstate.unwrap();
-            for sibling in members.move_iter() {
-                // Skip self - killing ourself won't do much good.
-                if &sibling != me {
-                    RuntimeGlue::kill_task(sibling);
-                }
+fn kill_taskgroup(state: Option<TaskGroupData>, me: &KillHandle) {
+    // Might already be None, if somebody is failing simultaneously.
+    // That's ok; only one task needs to do the dirty work. (Might also
+    // see 'None' if somebody already failed and we got a kill signal.)
+    do state.map_move |TaskGroupData { members: members, descendants: descendants }| {
+        for sibling in members.move_iter() {
+            // Skip self - killing ourself won't do much good.
+            if &sibling != me {
+                RuntimeGlue::kill_task(sibling);
             }
-            for child in descendants.move_iter() {
-                assert!(&child != me);
-                RuntimeGlue::kill_task(child);
-            }
-            // Only one task should ever do this.
-            if is_main {
-                RuntimeGlue::kill_all_tasks(me);
-            }
-            // Do NOT restore state to Some(..)! It stays None to indicate
-            // that the whole taskgroup is failing, to forbid new spawns.
         }
-        // (note: multiple tasks may reach this point)
-    }
+        for child in descendants.move_iter() {
+            assert!(&child != me);
+            RuntimeGlue::kill_task(child);
+        }
+    };
+    // (note: multiple tasks may reach this point)
 }
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
@@ -490,38 +446,23 @@ fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
 // Transitionary.
 struct RuntimeGlue;
 impl RuntimeGlue {
-    unsafe fn kill_task(task: TaskHandle) {
-        match task {
-            NewTask(handle) => {
-                let mut handle = handle;
-                do handle.kill().map_move |killed_task| {
-                    let killed_task = Cell::new(killed_task);
-                    do Local::borrow::<Scheduler, ()> |sched| {
-                        sched.enqueue_task(killed_task.take());
-                    }
-                };
+    fn kill_task(handle: KillHandle) {
+        let mut handle = handle;
+        do handle.kill().map_move |killed_task| {
+            let killed_task = Cell::new(killed_task);
+            do Local::borrow::<Scheduler, ()> |sched| {
+                sched.enqueue_task(killed_task.take());
             }
-        }
+        };
     }
 
-    unsafe fn kill_all_tasks(task: &TaskHandle) {
-        match *task {
-            // FIXME(#7544): Remove the kill_all feature entirely once the
-            // oldsched goes away.
-            NewTask(ref _handle) => rtabort!("can't kill_all in newsched"),
-        }
-    }
-
-    fn with_task_handle_and_failing(blk: &fn(TaskHandle, bool)) {
+    fn with_task_handle_and_failing(blk: &fn(&KillHandle, bool)) {
         if in_green_task_context() {
             unsafe {
                 // Can't use safe borrow, because the taskgroup destructor needs to
                 // access the scheduler again to send kill signals to other tasks.
                 let me = Local::unsafe_borrow::<Task>();
-                // FIXME(#7544): Get rid of this clone by passing by-ref.
-                // Will probably have to wait until the old rt is gone.
-                blk(NewTask((*me).death.kill_handle.get_ref().clone()),
-                    (*me).unwinder.unwinding)
+                blk((*me).death.kill_handle.get_ref(), (*me).unwinder.unwinding)
             }
         } else {
             rtabort!("task dying in bad context")
@@ -540,15 +481,12 @@ impl RuntimeGlue {
                         // Lazily initialize.
                         let mut members = TaskSet::new();
                         let my_handle = (*me).death.kill_handle.get_ref().clone();
-                        members.insert(NewTask(my_handle));
+                        members.insert(my_handle);
                         let tasks = Exclusive::new(Some(TaskGroupData {
                             members: members,
                             descendants: TaskSet::new(),
                         }));
-                        // FIXME(#7544): Remove the is_main flag entirely once
-                        // the newsched goes away. The main taskgroup has no special
-                        // behaviour.
-                        let group = Taskgroup(tasks, AncestorList(None), false, None);
+                        let group = Taskgroup(tasks, AncestorList(None), None);
                         (*me).taskgroup = Some(group);
                         (*me).taskgroup.get_ref()
                     }
@@ -563,9 +501,7 @@ impl RuntimeGlue {
 
 // Returns 'None' in the case where the child's TG should be lazily initialized.
 fn gen_child_taskgroup(linked: bool, supervised: bool)
-    -> Option<(TaskGroupArc, AncestorList, bool)> {
-    // FIXME(#7544): Not safe to lazily initialize in the old runtime. Remove
-    // this context check once 'spawn_raw_oldsched' is gone.
+    -> Option<(TaskGroupArc, AncestorList)> {
     if linked || supervised {
         // with_my_taskgroup will lazily initialize the parent's taskgroup if
         // it doesn't yet exist. We don't want to call it in the unlinked case.
@@ -574,8 +510,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             if linked {
                 // Child is in the same group as spawner.
                 // Child's ancestors are spawner's ancestors.
-                // Propagate main-ness.
-                Some((spawner_group.tasks.clone(), ancestors, spawner_group.is_main))
+                Some((spawner_group.tasks.clone(), ancestors))
             } else {
                 // Child is in a separate group from spawner.
                 let g = Exclusive::new(Some(TaskGroupData {
@@ -596,7 +531,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                     // Child has no ancestors.
                     AncestorList(None)
                 };
-                Some((g, a, false))
+                Some((g, a))
             }
         }
     } else {
@@ -607,7 +542,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 // Set up membership in taskgroup and descendantship in all ancestor
 // groups. If any enlistment fails, Some task was already failing, so
 // don't let the child task run, and undo every successful enlistment.
-fn enlist_many(child: TaskHandle, child_arc: &TaskGroupArc,
+fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
                ancestors: &mut AncestorList) -> bool {
     // Join this taskgroup.
     let mut result = do access_group(child_arc) |child_tg| {
@@ -615,7 +550,7 @@ fn enlist_many(child: TaskHandle, child_arc: &TaskGroupArc,
     };
     if result {
         // Unwinding function in case any ancestral enlisting fails
-        let bail: &fn(TaskGroupInner) = |tg| { leave_taskgroup(tg, &child, false) };
+        let bail: &fn(TaskGroupInner) = |tg| { leave_taskgroup(tg, child, false) };
         // Attempt to join every ancestor group.
         result = do each_ancestor(ancestors, bail) |ancestor_tg| {
             // Enlist as a descendant, not as an actual member.
@@ -625,7 +560,7 @@ fn enlist_many(child: TaskHandle, child_arc: &TaskGroupArc,
         // If any ancestor group fails, need to exit this group too.
         if !result {
             do access_group(child_arc) |child_tg| {
-                leave_taskgroup(child_tg, &child, true); // member
+                leave_taskgroup(child_tg, child, true); // member
             }
         }
     }
@@ -653,15 +588,14 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         let enlist_success = do child_data.take().map_move_default(true) |child_data| {
             let child_data = Cell::new(child_data); // :(
             do Local::borrow::<Task, bool> |me| {
-                let (child_tg, ancestors, is_main) = child_data.take();
+                let (child_tg, ancestors) = child_data.take();
                 let mut ancestors = ancestors;
-                // FIXME(#7544): Optimize out the xadd in this clone, somehow.
-                let handle = me.death.kill_handle.get_ref().clone();
+                let handle = me.death.kill_handle.get_ref();
                 // Atomically try to get into all of our taskgroups.
-                if enlist_many(NewTask(handle), &child_tg, &mut ancestors) {
+                if enlist_many(handle, &child_tg, &mut ancestors) {
                     // Got in. We can run the provided child body, and can also run
                     // the taskgroup's exit-time-destructor afterward.
-                    me.taskgroup = Some(Taskgroup(child_tg, ancestors, is_main, None));
+                    me.taskgroup = Some(Taskgroup(child_tg, ancestors, None));
                     true
                 } else {
                     false
@@ -678,14 +612,14 @@ fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
         }
     };
 
-    let mut task = unsafe {
-        if opts.sched.mode != SingleThreaded {
-            if opts.watched {
-                Task::build_child(opts.stack_size, child_wrapper)
-            } else {
-                Task::build_root(opts.stack_size, child_wrapper)
-            }
+    let mut task = if opts.sched.mode != SingleThreaded {
+        if opts.watched {
+            Task::build_child(opts.stack_size, child_wrapper)
         } else {
+            Task::build_root(opts.stack_size, child_wrapper)
+        }
+    } else {
+        unsafe {
             // Creating a 1:1 task:thread ...
             let sched = Local::unsafe_borrow::<Scheduler>();
             let sched_handle = (*sched).make_handle();

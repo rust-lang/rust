@@ -18,7 +18,8 @@ use kinds::Send;
 use rt;
 use rt::sched::Scheduler;
 use rt::local::Local;
-use rt::select::{Select, SelectPort};
+use rt::select::{SelectInner, SelectPortInner};
+use select::{Select, SelectPort};
 use unstable::atomics::{AtomicUint, AtomicOption, Acquire, Relaxed, SeqCst};
 use unstable::sync::UnsafeAtomicRcBox;
 use util::Void;
@@ -113,7 +114,9 @@ impl<T> ChanOne<T> {
     // 'do_resched' configures whether the scheduler immediately switches to
     // the receiving task, or leaves the sending task still running.
     fn try_send_inner(self, val: T, do_resched: bool) -> bool {
-        rtassert!(!rt::in_sched_context());
+        if do_resched {
+            rtassert!(!rt::in_sched_context());
+        }
 
         let mut this = self;
         let mut recvr_active = true;
@@ -215,7 +218,7 @@ impl<T> PortOne<T> {
     }
 }
 
-impl<T> Select for PortOne<T> {
+impl<T> SelectInner for PortOne<T> {
     #[inline] #[cfg(not(test))]
     fn optimistic_check(&mut self) -> bool {
         unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
@@ -318,7 +321,9 @@ impl<T> Select for PortOne<T> {
     }
 }
 
-impl<T> SelectPort<T> for PortOne<T> {
+impl<T> Select for PortOne<T> { }
+
+impl<T> SelectPortInner<T> for PortOne<T> {
     fn recv_ready(self) -> Option<T> {
         let mut this = self;
         let packet = this.packet();
@@ -348,6 +353,8 @@ impl<T> SelectPort<T> for PortOne<T> {
         }
     }
 }
+
+impl<T> SelectPort<T> for PortOne<T> { }
 
 impl<T> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
@@ -513,7 +520,7 @@ impl<T> Peekable<T> for Port<T> {
 // of them, but a &Port<T> should also be selectable so you can select2 on it
 // alongside a PortOne<U> without passing the port by value in recv_ready.
 
-impl<'self, T> Select for &'self Port<T> {
+impl<'self, T> SelectInner for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         do self.next.with_mut_ref |pone| { pone.optimistic_check() }
@@ -531,7 +538,9 @@ impl<'self, T> Select for &'self Port<T> {
     }
 }
 
-impl<T> Select for Port<T> {
+impl<'self, T> Select for &'self Port<T> { }
+
+impl<T> SelectInner for Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         (&*self).optimistic_check()
@@ -548,7 +557,9 @@ impl<T> Select for Port<T> {
     }
 }
 
-impl<'self, T> SelectPort<T> for &'self Port<T> {
+impl<T> Select for Port<T> { }
+
+impl<'self, T> SelectPortInner<T> for &'self Port<T> {
     fn recv_ready(self) -> Option<T> {
         match self.next.take().recv_ready() {
             Some(StreamPayload { val, next }) => {
@@ -559,6 +570,8 @@ impl<'self, T> SelectPort<T> for &'self Port<T> {
         }
     }
 }
+
+impl<'self, T> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
     // Just like Chan, but a shared AtomicOption instead of Cell
