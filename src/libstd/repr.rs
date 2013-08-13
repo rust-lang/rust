@@ -158,18 +158,6 @@ impl ReprVisitor {
     }
 
     #[inline]
-    #[cfg(stage0)]
-    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
-        unsafe {
-            let u = ReprVisitor(ptr, self.writer);
-            let v = reflect::MovePtrAdaptor(u);
-            visit_tydesc(inner, @v as @TyVisitor);
-            true
-        }
-    }
-
-    #[inline]
-    #[cfg(not(stage0))]
     pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
             let u = ReprVisitor(ptr, self.writer);
@@ -568,18 +556,6 @@ impl TyVisitor for ReprVisitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-#[cfg(stage0)]
-pub fn write_repr<T>(writer: @Writer, object: &T) {
-    unsafe {
-        let ptr = ptr::to_unsafe_ptr(object) as *c_void;
-        let tydesc = get_tydesc::<T>();
-        let u = ReprVisitor(ptr, writer);
-        let v = reflect::MovePtrAdaptor(u);
-        visit_tydesc(tydesc, @v as @TyVisitor)
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
