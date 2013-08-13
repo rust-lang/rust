@@ -286,6 +286,10 @@ impl ExtCtxt {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
+    pub fn span_note(&self, sp: span, msg: &str) {
+        self.print_backtrace();
+        self.parse_sess.span_diagnostic.span_note(sp, msg);
+    }
     pub fn span_unimpl(&self, sp: span, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_unimpl(sp, msg);

@@ -13,11 +13,19 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
+use ext::deriving::cmp::CmpOptions;
 
 pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                                span: span,
+                               options: DerivingOptions,
                                mitem: @MetaItem,
                                in_items: ~[@item]) -> ~[@item] {
+    let mut options = match CmpOptions::parse(cx, span, "TotalEq", options, false, false) {
+        Some(o) => o,
+        None => return in_items
+    };
+
     fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                cx, span, substr)
@@ -35,7 +43,9 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: true,
-                combine_substructure: cs_equals
+                combine_substructure: |cx, span, s| {
+                    options.call_substructure(cx, span, s, cs_equals)
+                }
             }
         ]
     };

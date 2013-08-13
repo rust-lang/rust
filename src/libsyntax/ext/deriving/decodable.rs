@@ -10,7 +10,7 @@
 
 /*!
 The compiler code necessary for #[deriving(Decodable)]. See
-encodable.rs for more.
+encodable.rs for more details.
 */
 
 use std::vec;
@@ -20,11 +20,15 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_decodable(cx: @ExtCtxt,
                                  span: span,
+                                 options: DerivingOptions,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "Decodable");
+
     let trait_def = TraitDef {
         path: Path::new_(~["extra", "serialize", "Decodable"], None,
                          ~[~Literal(Path::new_local("__D"))], true),

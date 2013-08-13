@@ -80,11 +80,15 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_encodable(cx: @ExtCtxt,
                                  span: span,
+                                 options: DerivingOptions,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "Encodable");
+
     let trait_def = TraitDef {
         path: Path::new_(~["extra", "serialize", "Encodable"], None,
                          ~[~Literal(Path::new_local("__E"))], true),

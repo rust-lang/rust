@@ -14,12 +14,16 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_to_str(cx: @ExtCtxt,
                               span: span,
+                              options: DerivingOptions,
                               mitem: @MetaItem,
                               in_items: ~[@item])
     -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "ToStr");
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "to_str", "ToStr"]),
         additional_bounds: ~[],

@@ -442,14 +442,14 @@ impl<'self> MethodDef<'self> {
                                 type_ident: ident,
                                 self_args: &[@expr],
                                 nonself_args: &[@expr],
-                                fields: &SubstructureFields)
+                                fields: SubstructureFields)
         -> @expr {
         let substructure = Substructure {
             type_ident: type_ident,
             method_ident: cx.ident_of(self.name),
             self_args: self_args,
             nonself_args: nonself_args,
-            fields: fields
+            fields: &fields
         };
         (self.combine_substructure)(cx, span,
                                     &substructure)
@@ -609,7 +609,7 @@ impl<'self> MethodDef<'self> {
             type_ident,
             self_args,
             nonself_args,
-            &Struct(fields));
+            Struct(fields));
 
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shoudn't
@@ -634,7 +634,7 @@ impl<'self> MethodDef<'self> {
         self.call_substructure_method(cx, span,
                                       type_ident,
                                       self_args, nonself_args,
-                                      &StaticStruct(struct_def, summary))
+                                      StaticStruct(struct_def, summary))
     }
 
     /**
@@ -761,7 +761,7 @@ impl<'self> MethodDef<'self> {
             }
             self.call_substructure_method(cx, span, type_ident,
                                           self_args, nonself_args,
-                                          &substructure)
+                                          substructure)
 
         } else {  // there are still matches to create
             let current_match_str = if match_count == 0 {
@@ -803,10 +803,9 @@ impl<'self> MethodDef<'self> {
                 arms.push(cx.arm(span, ~[ pattern ], arm_expr));
 
                 if enum_def.variants.len() > 1 {
-                    let e = &EnumNonMatching(&[]);
                     let wild_expr = self.call_substructure_method(cx, span, type_ident,
                                                                   self_args, nonself_args,
-                                                                  e);
+                                                                  EnumNonMatching(&[]));
                     let wild_arm = cx.arm(span,
                                           ~[ cx.pat_wild(span) ],
                                           wild_expr);
@@ -869,7 +868,7 @@ impl<'self> MethodDef<'self> {
         self.call_substructure_method(cx,
                                       span, type_ident,
                                       self_args, nonself_args,
-                                      &StaticEnum(enum_def, summary))
+                                      StaticEnum(enum_def, summary))
     }
 }
 

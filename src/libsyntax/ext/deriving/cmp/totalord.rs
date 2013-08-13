@@ -14,12 +14,20 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 use std::cmp::{Ordering, Equal, Less, Greater};
+use ext::deriving::cmp::CmpOptions;
 
 pub fn expand_deriving_totalord(cx: @ExtCtxt,
                                 span: span,
+                                options: DerivingOptions,
                                 mitem: @MetaItem,
                                 in_items: ~[@item]) -> ~[@item] {
+    let mut options = match CmpOptions::parse(cx, span, "TotalOrd", options, false, true) {
+        Some(o) => o,
+        None => return in_items
+    };
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "cmp", "TotalOrd"]),
         additional_bounds: ~[],
@@ -32,7 +40,9 @@ pub fn expand_deriving_totalord(cx: @ExtCtxt,
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["std", "cmp", "Ordering"])),
                 const_nonmatching: false,
-                combine_substructure: cs_cmp
+                combine_substructure: |cx, span, substr| {
+                    options.call_substructure(cx, span, substr, cs_cmp)
+                }
             }
         ]
     };

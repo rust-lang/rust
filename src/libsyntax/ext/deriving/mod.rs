@@ -18,8 +18,7 @@ library.
 
 */
 
-use ast::{enum_def, ident, item, Generics, struct_def};
-use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
+use ast::{item, lit, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::span;
@@ -32,30 +31,10 @@ pub mod rand;
 pub mod to_str;
 pub mod zero;
 
-#[path="cmp/eq.rs"]
-pub mod eq;
-#[path="cmp/totaleq.rs"]
-pub mod totaleq;
-#[path="cmp/ord.rs"]
-pub mod ord;
-#[path="cmp/totalord.rs"]
-pub mod totalord;
-
+#[path="cmp/mod.rs"]
+pub mod cmp;
 
 pub mod generic;
-
-pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ExtCtxt,
-                                                       span,
-                                                       x: &struct_def,
-                                                       ident,
-                                                       y: &Generics)
-                                                 -> @item;
-pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
-                                                    span,
-                                                    x: &enum_def,
-                                                    ident,
-                                                    y: &Generics)
-                                                 -> @item;
 
 pub fn expand_meta_deriving(cx: @ExtCtxt,
                             _span: span,
@@ -73,39 +52,62 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
         }
         MetaList(_, ref titems) => {
             do titems.rev_iter().fold(in_items) |in_items, &titem| {
-                match titem.node {
-                    MetaNameValue(tname, _) |
-                    MetaList(tname, _) |
-                    MetaWord(tname) => {
-                        macro_rules! expand(($func:path) => ($func(cx, titem.span,
-                                                                   titem, in_items)));
-                        match tname.as_slice() {
-                            "Clone" => expand!(clone::expand_deriving_clone),
-                            "DeepClone" => expand!(clone::expand_deriving_deep_clone),
+                let (name, options) = match titem.node {
+                    MetaNameValue(name, ref lit) => (name, Lit(lit)),
+                    MetaList(name, ref list) => (name, List(*list)),
+                    MetaWord(name) => (name, NoOptions),
+                };
 
-                            "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
+                macro_rules! expand(($func:path) => ($func(cx, titem.span, options,
+                                                           titem, in_items)));
+                match name.as_slice() {
+                    "Clone" => expand!(clone::expand_deriving_clone),
+                    "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
-                            "Encodable" => expand!(encodable::expand_deriving_encodable),
-                            "Decodable" => expand!(decodable::expand_deriving_decodable),
+                    "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
 
-                            "Eq" => expand!(eq::expand_deriving_eq),
-                            "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
-                            "Ord" => expand!(ord::expand_deriving_ord),
-                            "TotalOrd" => expand!(totalord::expand_deriving_totalord),
+                    "Encodable" => expand!(encodable::expand_deriving_encodable),
+                    "Decodable" => expand!(decodable::expand_deriving_decodable),
 
-                            "Rand" => expand!(rand::expand_deriving_rand),
+                    "Eq" => expand!(cmp::eq::expand_deriving_eq),
+                    "TotalEq" => expand!(cmp::totaleq::expand_deriving_totaleq),
+                    "Ord" => expand!(cmp::ord::expand_deriving_ord),
+                    "TotalOrd" => expand!(cmp::totalord::expand_deriving_totalord),
 
-                            "ToStr" => expand!(to_str::expand_deriving_to_str),
-                            "Zero" => expand!(zero::expand_deriving_zero),
+                    "Rand" => expand!(rand::expand_deriving_rand),
 
-                            ref tname => {
-                                cx.span_err(titem.span, fmt!("unknown \
-                                    `deriving` trait: `%s`", *tname));
-                                in_items
-                            }
-                        }
+                    "ToStr" => expand!(to_str::expand_deriving_to_str),
+                    "Zero" => expand!(zero::expand_deriving_zero),
+
+                    _ => {
+                        cx.span_err(titem.span, fmt!("unknown `deriving` trait: `%s`", name));
+                        in_items
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Summary of `#[deriving(SomeTrait(foo, option="bar"))]` and
+/// `#[deriving(SomeTrait="foo")]`.
+pub enum DerivingOptions<'self> {
+    NoOptions,
+    Lit(&'self lit),
+    List(&'self [@MetaItem])
+}
+
+impl<'self> DerivingOptions<'self> {
+    /// Emits a error when there are options and the deriving
+    /// implementation doesn't use them (i.e. it warns if `self` is
+    /// not `NoOptions`.)
+    pub fn unused_options_maybe_error(&self, cx: @ExtCtxt, span: span, deriving_name: &str) {
+        match *self {
+            NoOptions => {},
+            _ => {
+                cx.span_err(span,
+                            fmt!("`#[deriving(%s)]` does not use any options.",
+                                 deriving_name));
             }
         }
     }

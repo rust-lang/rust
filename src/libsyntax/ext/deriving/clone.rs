@@ -13,12 +13,16 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_clone(cx: @ExtCtxt,
                              span: span,
+                             options: DerivingOptions,
                              mitem: @MetaItem,
                              in_items: ~[@item])
                           -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "Clone");
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "clone", "Clone"]),
         additional_bounds: ~[],
@@ -41,9 +45,12 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
 
 pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
                                   span: span,
+                                  options: DerivingOptions,
                                   mitem: @MetaItem,
                                   in_items: ~[@item])
     -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "DeepClone");
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "clone", "DeepClone"]),
         additional_bounds: ~[],

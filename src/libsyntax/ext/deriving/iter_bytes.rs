@@ -13,12 +13,15 @@ use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
-
+use ext::deriving::DerivingOptions;
 
 pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,
+                                  options: DerivingOptions,
                                   mitem: @MetaItem,
                                   in_items: ~[@item]) -> ~[@item] {
+    options.unused_options_maybe_error(cx, span, "IterBytes");
+
     let trait_def = TraitDef {
         path: Path::new(~["std", "to_bytes", "IterBytes"]),
         additional_bounds: ~[],
