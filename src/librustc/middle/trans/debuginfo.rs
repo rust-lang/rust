@@ -256,9 +256,10 @@ pub fn create_argument_metadata(bcx: @mut Block,
     }
 }
 
-/// Sets the current debug location at the beginning of the span
+/// Sets the current debug location at the beginning of the span.
 ///
-/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...)
+/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id parameter is used to
+/// reliably find the correct visibility scope for the code position.
 pub fn update_source_pos(fcx: &FunctionContext,
                          node_id: ast::NodeId,
                          span: span) {
@@ -357,6 +358,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
+    // get_template_parameters() will append a `<...>` clause to the function name if necessary.
     let mut function_name = cx.sess.str_of(ident).to_owned();
     let template_parameters = get_template_parameters(fcx,
                                                       generics,
@@ -404,8 +406,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
             }
             _ => cx.sess.span_bug(span,
                     fmt!("debuginfo::create_function_metadata() - \
-                         FunctionContext::entry_bcx::node_info points to wrong type of ast_map entry. \
-                         Expected: ast_map::node_block, actual: %?", *entry_block))
+                         FunctionContext::entry_bcx::node_info points to wrong type of ast_map \
+                         entry. Expected: ast_map::node_block, actual: %?", *entry_block))
         }
 
         fcx.debug_context = Some(fn_debug_context);
@@ -508,7 +510,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                         let actual_type_name = ty_to_str(cx.tcx, actual_type);
                         name_to_append_suffix_to.push_str(actual_type_name);
                         if index != generics.ty_params.len() - 1 {
-                            name_to_append_suffix_to.push_str(", ");
+                            name_to_append_suffix_to.push_str(",");
                         }
 
                         do cx.sess.str_of(ident).to_c_str().with_ref |name| {
