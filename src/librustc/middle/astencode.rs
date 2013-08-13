@@ -586,8 +586,13 @@ impl tr for method_origin {
                 }
             )
           }
-          typeck::method_trait(did, m) => {
-              typeck::method_trait(did.tr(xcx), m)
+          typeck::method_object(ref mo) => {
+            typeck::method_object(
+                typeck::method_object {
+                    trait_id: mo.trait_id.tr(xcx),
+                    .. *mo
+                }
+            )
           }
         }
     }
