@@ -13,6 +13,7 @@
 #[missing_doc];
 
 use cast::transmute_mut;
+use unstable::finally::Finally;
 use prelude::*;
 
 /*
@@ -65,18 +66,17 @@ impl<T> Cell<T> {
 
     /// Calls a closure with a reference to the value.
     pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
-        let v = self.take();
-        let r = op(&v);
-        self.put_back(v);
-        r
+        do self.with_mut_ref |ptr| { op(ptr) }
     }
 
     /// Calls a closure with a mutable reference to the value.
     pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
-        let mut v = self.take();
-        let r = op(&mut v);
-        self.put_back(v);
-        r
+        let mut v = Some(self.take());
+        do (|| {
+            op(v.get_mut_ref())
+        }).finally {
+            self.put_back(v.take_unwrap());
+        }
     }
 }
 
