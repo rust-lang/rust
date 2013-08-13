@@ -13,6 +13,7 @@
 use libc;
 use libc::{c_void, uintptr_t, size_t};
 use ops::Drop;
+use option::{Some, None};
 use rt::local::Local;
 use rt::task::Task;
 use unstable::raw;
@@ -84,8 +85,12 @@ impl Drop for LocalHeap {
 
 // A little compatibility function
 pub unsafe fn local_free(ptr: *libc::c_char) {
-    do Local::borrow::<Task,()> |task| {
-        task.heap.free(ptr as *libc::c_void);
+    // XXX: Unsafe borrow for speed. Lame.
+    match Local::try_unsafe_borrow::<Task>() {
+        Some(task) => {
+            (*task).heap.free(ptr as *libc::c_void);
+        }
+        None => rtabort!("local free outside of task")
     }
 }
 
