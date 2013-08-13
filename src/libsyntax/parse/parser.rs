@@ -70,24 +70,7 @@ use parse::common::{SeqSep, seq_sep_none};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
 use parse::lexer::TokenAndSpan;
-use parse::obsolete::{ObsoleteClassTraits};
-use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
-use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
-use parse::obsolete::ObsoleteSyntax;
-use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
-use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoletePostFnTySigil};
-use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
-use parse::obsolete::ObsoleteMode;
-use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
-use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
-use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
-use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::obsolete::{ObsoleteMutWithMultipleBindings};
-use parse::obsolete::{ObsoleteExternVisibility, ObsoleteUnsafeExternFn};
-use parse::obsolete::{ParserObsoleteMethods, ObsoletePrivVisibility};
+use parse::obsolete::*;
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -932,6 +915,10 @@ impl Parser {
                 debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
+                if vis != ast::inherited {
+                    self.obsolete(*self.last_span,
+                                  ObsoleteTraitFuncVisibility);
+                }
                 required(TypeMethod {
                     ident: ident,
                     attrs: attrs,
