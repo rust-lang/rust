@@ -178,7 +178,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
     // Check magic number
     let magic = file.read_le_u16();
     if (magic != 0x011A) {
-        return Err(fmt!("invalid magic number: expected %x but found %x", 0x011A, magic as uint));
+        return Err(fmt!("invalid magic number: expected %x, found %x", 0x011A, magic as uint));
     }
 
     let names_bytes          = file.read_le_i16() as int;
@@ -196,19 +196,19 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
     debug!("string_table_bytes = %?", string_table_bytes);
 
     if (bools_bytes as uint) > boolnames.len() {
-        error!("expected bools_bytes to be less than %? but found %?", boolnames.len(),
+        error!("expected bools_bytes to be less than %?, found %?", boolnames.len(),
                bools_bytes);
         return Err(~"incompatible file: more booleans than expected");
     }
 
     if (numbers_count as uint) > numnames.len() {
-        error!("expected numbers_count to be less than %? but found %?", numnames.len(),
+        error!("expected numbers_count to be less than %?, found %?", numnames.len(),
                numbers_count);
         return Err(~"incompatible file: more numbers than expected");
     }
 
     if (string_offsets_count as uint) > stringnames.len() {
-        error!("expected string_offsets_count to be less than %? but found %?", stringnames.len(),
+        error!("expected string_offsets_count to be less than %?, found %?", stringnames.len(),
                string_offsets_count);
         return Err(~"incompatible file: more string offsets than expected");
     }

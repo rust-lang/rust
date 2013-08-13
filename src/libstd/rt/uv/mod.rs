@@ -90,8 +90,8 @@ pub trait Request { }
 
 /// A type that wraps a native handle
 pub trait NativeHandle<T> {
-    pub fn from_native_handle(T) -> Self;
-    pub fn native_handle(&self) -> T;
+    fn from_native_handle(T) -> Self;
+    fn native_handle(&self) -> T;
 }
 
 impl Loop {
@@ -155,7 +155,7 @@ pub trait WatcherInterop {
 
 impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
     /// Get the uv event loop from a Watcher
-    pub fn event_loop(&self) -> Loop {
+    fn event_loop(&self) -> Loop {
         unsafe {
             let handle = self.native_handle();
             let loop_ = uvll::get_loop_for_uv_handle(handle);
@@ -163,7 +163,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    pub fn install_watcher_data(&mut self) {
+    fn install_watcher_data(&mut self) {
         unsafe {
             let data = ~WatcherData {
                 read_cb: None,
@@ -182,7 +182,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    pub fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
+    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
@@ -190,7 +190,7 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
         }
     }
 
-    pub fn drop_watcher_data(&mut self) {
+    fn drop_watcher_data(&mut self) {
         unsafe {
             let data = uvll::get_data_for_uv_handle(self.native_handle());
             let _data = transmute::<*c_void, ~WatcherData>(data);

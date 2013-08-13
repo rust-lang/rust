@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = [1,..100];
-    let mut y = 0;
-    for i in x.iter() {
-        y += *i
-    }
-    assert!(y == 100);
+pub trait E {
+    pub fn foo();               //~ ERROR: obsolete syntax
+}
+trait F { pub fn foo(); }       //~ ERROR: obsolete syntax
+
+struct B;
+impl E for B {
+    priv fn foo() {}             //~ ERROR: obsolete syntax
 }
