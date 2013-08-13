@@ -112,7 +112,7 @@ mod message_queue;
 mod sleeper_list;
 
 /// Stack segments and caching.
-mod stack;
+pub mod stack;
 
 /// CPU context swapping.
 mod context;
