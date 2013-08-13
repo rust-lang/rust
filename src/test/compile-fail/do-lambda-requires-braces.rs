@@ -10,6 +10,6 @@
 
 fn main() {
     do something
-        |x| do somethingelse //~ ERROR: expected `{` but found `do`
+        |x| do somethingelse //~ ERROR: expected `{`, found `do`
         |y| say(x, y)
 }
