@@ -19,7 +19,6 @@ use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
-#[cfg(not(stage0))]
 use unstable::intrinsics;
 
 pub mod strconv;
@@ -522,7 +521,6 @@ pub trait CheckedAdd: Add<Self, Self> {
     fn checked_add(&self, v: &Self) -> Option<Self>;
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for i8 {
     #[inline]
     fn checked_add(&self, v: &i8) -> Option<i8> {
@@ -533,7 +531,6 @@ impl CheckedAdd for i8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for i16 {
     #[inline]
     fn checked_add(&self, v: &i16) -> Option<i16> {
@@ -544,7 +541,6 @@ impl CheckedAdd for i16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for i32 {
     #[inline]
     fn checked_add(&self, v: &i32) -> Option<i32> {
@@ -555,7 +551,6 @@ impl CheckedAdd for i32 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for i64 {
     #[inline]
     fn checked_add(&self, v: &i64) -> Option<i64> {
@@ -566,7 +561,7 @@ impl CheckedAdd for i64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedAdd for int {
     #[inline]
     fn checked_add(&self, v: &int) -> Option<int> {
@@ -577,7 +572,7 @@ impl CheckedAdd for int {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedAdd for int {
     #[inline]
     fn checked_add(&self, v: &int) -> Option<int> {
@@ -588,7 +583,6 @@ impl CheckedAdd for int {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for u8 {
     #[inline]
     fn checked_add(&self, v: &u8) -> Option<u8> {
@@ -599,7 +593,6 @@ impl CheckedAdd for u8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for u16 {
     #[inline]
     fn checked_add(&self, v: &u16) -> Option<u16> {
@@ -610,7 +603,6 @@ impl CheckedAdd for u16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for u32 {
     #[inline]
     fn checked_add(&self, v: &u32) -> Option<u32> {
@@ -621,7 +613,6 @@ impl CheckedAdd for u32 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedAdd for u64 {
     #[inline]
     fn checked_add(&self, v: &u64) -> Option<u64> {
@@ -632,7 +623,7 @@ impl CheckedAdd for u64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedAdd for uint {
     #[inline]
     fn checked_add(&self, v: &uint) -> Option<uint> {
@@ -643,7 +634,7 @@ impl CheckedAdd for uint {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedAdd for uint {
     #[inline]
     fn checked_add(&self, v: &uint) -> Option<uint> {
@@ -658,7 +649,6 @@ pub trait CheckedSub: Sub<Self, Self> {
     fn checked_sub(&self, v: &Self) -> Option<Self>;
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for i8 {
     #[inline]
     fn checked_sub(&self, v: &i8) -> Option<i8> {
@@ -669,7 +659,6 @@ impl CheckedSub for i8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for i16 {
     #[inline]
     fn checked_sub(&self, v: &i16) -> Option<i16> {
@@ -680,7 +669,6 @@ impl CheckedSub for i16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for i32 {
     #[inline]
     fn checked_sub(&self, v: &i32) -> Option<i32> {
@@ -691,7 +679,6 @@ impl CheckedSub for i32 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for i64 {
     #[inline]
     fn checked_sub(&self, v: &i64) -> Option<i64> {
@@ -702,7 +689,7 @@ impl CheckedSub for i64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedSub for int {
     #[inline]
     fn checked_sub(&self, v: &int) -> Option<int> {
@@ -713,7 +700,7 @@ impl CheckedSub for int {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedSub for int {
     #[inline]
     fn checked_sub(&self, v: &int) -> Option<int> {
@@ -724,7 +711,6 @@ impl CheckedSub for int {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for u8 {
     #[inline]
     fn checked_sub(&self, v: &u8) -> Option<u8> {
@@ -735,7 +721,6 @@ impl CheckedSub for u8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for u16 {
     #[inline]
     fn checked_sub(&self, v: &u16) -> Option<u16> {
@@ -746,7 +731,6 @@ impl CheckedSub for u16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for u32 {
     #[inline]
     fn checked_sub(&self, v: &u32) -> Option<u32> {
@@ -757,7 +741,6 @@ impl CheckedSub for u32 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedSub for u64 {
     #[inline]
     fn checked_sub(&self, v: &u64) -> Option<u64> {
@@ -768,7 +751,7 @@ impl CheckedSub for u64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedSub for uint {
     #[inline]
     fn checked_sub(&self, v: &uint) -> Option<uint> {
@@ -779,7 +762,7 @@ impl CheckedSub for uint {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedSub for uint {
     #[inline]
     fn checked_sub(&self, v: &uint) -> Option<uint> {
@@ -794,7 +777,6 @@ pub trait CheckedMul: Mul<Self, Self> {
     fn checked_mul(&self, v: &Self) -> Option<Self>;
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for i8 {
     #[inline]
     fn checked_mul(&self, v: &i8) -> Option<i8> {
@@ -805,7 +787,6 @@ impl CheckedMul for i8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for i16 {
     #[inline]
     fn checked_mul(&self, v: &i16) -> Option<i16> {
@@ -816,7 +797,6 @@ impl CheckedMul for i16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for i32 {
     #[inline]
     fn checked_mul(&self, v: &i32) -> Option<i32> {
@@ -828,7 +808,7 @@ impl CheckedMul for i32 {
 }
 
 // FIXME: #8449: should not be disabled on 32-bit
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedMul for i64 {
     #[inline]
     fn checked_mul(&self, v: &i64) -> Option<i64> {
@@ -839,7 +819,7 @@ impl CheckedMul for i64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedMul for int {
     #[inline]
     fn checked_mul(&self, v: &int) -> Option<int> {
@@ -850,7 +830,7 @@ impl CheckedMul for int {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedMul for int {
     #[inline]
     fn checked_mul(&self, v: &int) -> Option<int> {
@@ -861,7 +841,6 @@ impl CheckedMul for int {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for u8 {
     #[inline]
     fn checked_mul(&self, v: &u8) -> Option<u8> {
@@ -872,7 +851,6 @@ impl CheckedMul for u8 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for u16 {
     #[inline]
     fn checked_mul(&self, v: &u16) -> Option<u16> {
@@ -883,7 +861,6 @@ impl CheckedMul for u16 {
     }
 }
 
-#[cfg(not(stage0))]
 impl CheckedMul for u32 {
     #[inline]
     fn checked_mul(&self, v: &u32) -> Option<u32> {
@@ -895,7 +872,7 @@ impl CheckedMul for u32 {
 }
 
 // FIXME: #8449: should not be disabled on 32-bit
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedMul for u64 {
     #[inline]
     fn checked_mul(&self, v: &u64) -> Option<u64> {
@@ -906,7 +883,7 @@ impl CheckedMul for u64 {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "32")]
+#[cfg(target_word_size = "32")]
 impl CheckedMul for uint {
     #[inline]
     fn checked_mul(&self, v: &uint) -> Option<uint> {
@@ -917,7 +894,7 @@ impl CheckedMul for uint {
     }
 }
 
-#[cfg(not(stage0), target_word_size = "64")]
+#[cfg(target_word_size = "64")]
 impl CheckedMul for uint {
     #[inline]
     fn checked_mul(&self, v: &uint) -> Option<uint> {
