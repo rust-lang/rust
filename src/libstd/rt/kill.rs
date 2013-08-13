@@ -488,8 +488,8 @@ impl Death {
         rtassert!(self.unkillable == 0);
         self.unkillable = 1;
 
-        // FIXME(#7544): See corresponding fixme at the callsite in task.rs.
-        // NB(#8192): Doesn't work with "let _ = ..."
+        // NB. See corresponding comment at the callsite in task.rs.
+        // FIXME(#8192): Doesn't work with "let _ = ..."
         { use util; util::ignore(group); }
 
         // Step 1. Decide if we need to collect child failures synchronously.
