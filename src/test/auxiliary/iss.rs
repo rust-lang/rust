@@ -13,7 +13,7 @@
 // part of issue-6919.rs
 
 struct C<'self> {
-    pub k: &'self fn(),
+    k: &'self fn(),
 }
 
 fn no_op() { }
