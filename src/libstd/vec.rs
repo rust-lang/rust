@@ -691,12 +691,6 @@ impl<T> Vector<T> for @[T] {
 }
 
 impl<'self, T> Container for &'self [T] {
-    /// Returns true if a vector contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.as_imm_buf(|_p, len| len == 0u)
-    }
-
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -705,12 +699,6 @@ impl<'self, T> Container for &'self [T] {
 }
 
 impl<T> Container for ~[T] {
-    /// Returns true if a vector contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.as_imm_buf(|_p, len| len == 0u)
-    }
-
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
