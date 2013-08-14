@@ -45,6 +45,8 @@ pub fn main() {
     t!(ifmt!("{:x}", 10u), "a");
     t!(ifmt!("{:X}", 10u), "A");
     t!(ifmt!("{:s}", "foo"), "foo");
+    t!(ifmt!("{:s}", ~"foo"), "foo");
+    t!(ifmt!("{:s}", @"foo"), "foo");
     t!(ifmt!("{:p}", 0x1234 as *int), "0x1234");
     t!(ifmt!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(ifmt!("{:d}", A), "aloha");

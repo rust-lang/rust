@@ -726,9 +726,9 @@ impl Bool for bool {
     }
 }
 
-impl<'self> String for &'self str {
-    fn fmt(s: & &'self str, f: &mut Formatter) {
-        f.pad(*s);
+impl<'self, T: str::Str> String for T {
+    fn fmt(s: &T, f: &mut Formatter) {
+        f.pad(s.as_slice());
     }
 }
 
