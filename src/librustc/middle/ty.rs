@@ -3725,6 +3725,12 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
     return ret;
 }
 
+pub fn trait_ref_is_builtin_kind(tcx: ctxt, tr: &ast::trait_ref) -> bool {
+    let def = tcx.def_map.find(&tr.ref_id).expect("no def-map entry for trait");
+    let def_id = ast_util::def_id_of_def(*def);
+    tcx.lang_items.is_builtin_kind(def_id)
+}
+
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     match get(ty).sty {
       ty_trait(id, _, _, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
