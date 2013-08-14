@@ -110,7 +110,7 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod nil;
+pub mod unit;
 pub mod bool;
 pub mod char;
 pub mod tuple;
