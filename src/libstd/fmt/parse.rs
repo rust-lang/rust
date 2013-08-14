@@ -47,7 +47,7 @@ pub struct FormatSpec<'self> {
     /// Optionally specified character to fill alignment with
     fill: Option<char>,
     /// Optionally specified alignment
-    align: Option<Alignment>,
+    align: Alignment,
     /// Packed version of various flags provided
     flags: uint,
     /// The integer precision to use
@@ -68,7 +68,7 @@ pub enum Position<'self> {
 
 /// Enum of alignments which are supoprted.
 #[deriving(Eq)]
-pub enum Alignment { AlignLeft, AlignRight }
+pub enum Alignment { AlignLeft, AlignRight, AlignUnknown }
 
 /// Various flags which can be applied to format strings, the meaning of these
 /// flags is defined by the formatters themselves.
@@ -77,6 +77,7 @@ pub enum Flag {
     FlagSignPlus,
     FlagSignMinus,
     FlagAlternate,
+    FlagSignAwareZeroPad,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -288,7 +289,7 @@ impl<'self> Parser<'self> {
     fn format(&mut self) -> FormatSpec<'self> {
         let mut spec = FormatSpec {
             fill: None,
-            align: None,
+            align: AlignUnknown,
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
@@ -311,9 +312,9 @@ impl<'self> Parser<'self> {
         }
         // Alignment
         if self.consume('<') {
-            spec.align = Some(AlignLeft);
+            spec.align = AlignLeft;
         } else if self.consume('>') {
-            spec.align = Some(AlignRight);
+            spec.align = AlignRight;
         }
         // Sign flags
         if self.consume('+') {
@@ -326,6 +327,9 @@ impl<'self> Parser<'self> {
             spec.flags |= 1 << (FlagAlternate as uint);
         }
         // Width and precision
+        if self.consume('0') {
+            spec.flags |= 1 << (FlagSignAwareZeroPad as uint);
+        }
         spec.width = self.count();
         if self.consume('.') {
             if self.consume('*') {
@@ -597,7 +601,7 @@ mod tests {
     fn fmtdflt() -> FormatSpec<'static> {
         return FormatSpec {
             fill: None,
-            align: None,
+            align: AlignUnknown,
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
@@ -656,7 +660,7 @@ mod tests {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountImplied,
                 width: CountImplied,
@@ -671,7 +675,7 @@ mod tests {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
-                align: Some(AlignRight),
+                align: AlignRight,
                 flags: 0,
                 precision: CountImplied,
                 width: CountImplied,
@@ -683,7 +687,7 @@ mod tests {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('0'),
-                align: Some(AlignLeft),
+                align: AlignLeft,
                 flags: 0,
                 precision: CountImplied,
                 width: CountImplied,
@@ -695,7 +699,7 @@ mod tests {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('*'),
-                align: Some(AlignLeft),
+                align: AlignLeft,
                 flags: 0,
                 precision: CountImplied,
                 width: CountImplied,
@@ -710,7 +714,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountImplied,
                 width: CountIs(10),
@@ -722,7 +726,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountIs(10),
                 width: CountIsParam(10),
@@ -734,7 +738,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountIsNextParam,
                 width: CountImplied,
@@ -746,7 +750,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountIsParam(10),
                 width: CountImplied,
@@ -761,7 +765,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: (1 << FlagSignMinus as uint),
                 precision: CountImplied,
                 width: CountImplied,
@@ -773,7 +777,7 @@ mod tests {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: (1 << FlagSignPlus as uint) | (1 << FlagAlternate as uint),
                 precision: CountImplied,
                 width: CountImplied,
@@ -788,7 +792,7 @@ mod tests {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
-                align: None,
+                align: AlignUnknown,
                 flags: 0,
                 precision: CountImplied,
                 width: CountImplied,

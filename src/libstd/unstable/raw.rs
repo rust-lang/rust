@@ -56,6 +56,7 @@ impl<'self, T> Repr<Slice<T>> for &'self [T] {}
 impl<'self> Repr<Slice<u8>> for &'self str {}
 impl<T> Repr<*Box<T>> for @T {}
 impl<T> Repr<*Box<Vec<T>>> for @[T] {}
+impl Repr<*String> for ~str {}
 
 // sure would be nice to have this
 // impl<T> Repr<*Vec<T>> for ~[T] {}

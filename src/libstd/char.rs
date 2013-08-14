@@ -20,6 +20,15 @@ use unicode::{derived_property, general_category};
 #[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use num::Zero;
 
+// UTF-8 ranges and tags for encoding characters
+static TAG_CONT: uint = 128u;
+static MAX_ONE_B: uint = 128u;
+static TAG_TWO_B: uint = 192u;
+static MAX_TWO_B: uint = 2048u;
+static TAG_THREE_B: uint = 224u;
+static MAX_THREE_B: uint = 65536u;
+static TAG_FOUR_B: uint = 240u;
+
 /*
     Lu  Uppercase_Letter        an uppercase letter
     Ll  Lowercase_Letter        a lowercase letter
@@ -278,6 +287,12 @@ pub trait Char {
     fn escape_unicode(&self, f: &fn(char));
     fn escape_default(&self, f: &fn(char));
     fn len_utf8_bytes(&self) -> uint;
+
+    /// Encodes this character as utf-8 into the provided byte-buffer. The
+    /// buffer must be at least 4 bytes long or a runtime failure will occur.
+    ///
+    /// This will then return the number of characters written to the slice.
+    fn encode_utf8(&self, dst: &mut [u8]) -> uint;
 }
 
 impl Char for char {
@@ -308,6 +323,29 @@ impl Char for char {
     fn escape_default(&self, f: &fn(char)) { escape_default(*self, f) }
 
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+
+    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
+        let code = *self as uint;
+        if code < MAX_ONE_B {
+            dst[0] = code as u8;
+            return 1;
+        } else if code < MAX_TWO_B {
+            dst[0] = (code >> 6u & 31u | TAG_TWO_B) as u8;
+            dst[1] = (code & 63u | TAG_CONT) as u8;
+            return 2;
+        } else if code < MAX_THREE_B {
+            dst[0] = (code >> 12u & 15u | TAG_THREE_B) as u8;
+            dst[1] = (code >> 6u & 63u | TAG_CONT) as u8;
+            dst[2] = (code & 63u | TAG_CONT) as u8;
+            return 3;
+        } else {
+            dst[0] = (code >> 18u & 7u | TAG_FOUR_B) as u8;
+            dst[1] = (code >> 12u & 63u | TAG_CONT) as u8;
+            dst[2] = (code >> 6u & 63u | TAG_CONT) as u8;
+            dst[3] = (code & 63u | TAG_CONT) as u8;
+            return 4;
+        }
+    }
 }
 
 #[cfg(not(test))]
