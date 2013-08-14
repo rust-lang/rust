@@ -34,6 +34,7 @@ impl CString {
     }
 
     /// Unwraps the wrapped `*libc::c_char` from the `CString` wrapper.
+    /// Any ownership of the buffer by the `CString` wrapper is forgotten.
     pub unsafe fn unwrap(self) -> *libc::c_char {
         let mut c_str = self;
         c_str.owns_buffer_ = false;
