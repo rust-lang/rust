@@ -156,6 +156,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
                     kind_name = "variant";
                 }
                 None => {
+                    // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
                                                        expected.map_move_default(~"", |e| {
@@ -199,6 +200,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
             kind_name = "structure";
         }
         _ => {
+            // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
             fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                |expected, actual| {
                                                expected.map_move_default(~"", |e| {
@@ -302,10 +304,13 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             None => {
                 let name = pprust::path_to_str(path, tcx.sess.intr());
+                // Check the pattern anyway, so that attempts to look
+                // up its type won't fail
+                check_pat(pcx, field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
-                                  fmt!("struct `%s` does not have a field
-                                        named `%s`", name,
-                                       tcx.sess.str_of(field.ident)));
+                    fmt!("struct `%s` does not have a field named `%s`",
+                         name,
+                         tcx.sess.str_of(field.ident)));
             }
         }
     }
@@ -326,16 +331,17 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: span,
                         expected: ty::t, path: &ast::Path,
                         fields: &[ast::field_pat], etc: bool,
-                        class_id: ast::def_id, substitutions: &ty::substs) {
+                        struct_id: ast::def_id,
+                        substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let class_fields = ty::lookup_struct_fields(tcx, class_id);
+    let class_fields = ty::lookup_struct_fields(tcx, struct_id);
 
     // Check to ensure that the struct is the one specified.
     match tcx.def_map.find(&pat_id) {
         Some(&ast::def_struct(supplied_def_id))
-                if supplied_def_id == class_id => {
+                if supplied_def_id == struct_id => {
             // OK.
         }
         Some(&ast::def_struct(*)) | Some(&ast::def_variant(*)) => {
@@ -346,11 +352,11 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: span,
                                    name));
         }
         _ => {
-            tcx.sess.span_bug(span, "resolve didn't write in class");
+            tcx.sess.span_bug(span, "resolve didn't write in struct ID");
         }
     }
 
-    check_struct_pat_fields(pcx, span, path, fields, class_fields, class_id,
+    check_struct_pat_fields(pcx, span, path, fields, class_fields, struct_id,
                             substitutions, etc);
 }
 
@@ -499,9 +505,22 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                     substs);
             }
             _ => {
-                tcx.sess.span_err(pat.span,
-                                  fmt!("mismatched types: expected `%s` but found struct",
-                                       fcx.infcx().ty_to_str(expected)));
+               // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
+               fcx.infcx().type_error_message_str_with_expected(pat.span,
+                                                                |expected, actual| {
+                            expected.map_move_default(~"", |e| {
+                                    fmt!("mismatched types: expected `%s` but found %s",
+                                         e, actual)})},
+                                         Some(expected), ~"a structure pattern",
+                                         None);
+                match tcx.def_map.find(&pat.id) {
+                    Some(&ast::def_struct(supplied_def_id)) => {
+                         check_struct_pat(pcx, pat.id, pat.span, ty::mk_err(), path, *fields, etc,
+                         supplied_def_id,
+                         &ty::substs { self_ty: None, tps: ~[], regions: ty::ErasedRegions} );
+                    }
+                    _ => () // Error, but we're already in an error case
+                }
                 error_happened = true;
             }
         }
@@ -534,6 +553,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                                                            found: e_count}),
                     _ => ty::terr_mismatch
                 };
+                // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
                 fcx.infcx().type_error_message_str_with_expected(pat.span, |expected, actual| {
                 expected.map_move_default(~"", |e| {
                     fmt!("mismatched types: expected `%s` but found %s",
@@ -581,6 +601,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
               for &elt in after.iter() {
                   check_pat(pcx, elt, ty::mk_err());
               }
+              // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
               fcx.infcx().type_error_message_str_with_expected(
                   pat.span,
                   |expected, actual| {
@@ -639,6 +660,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         }
         _ => {
             check_pat(pcx, inner, ty::mk_err());
+            // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
             fcx.infcx().type_error_message_str_with_expected(
                 span,
                 |expected, actual| {
