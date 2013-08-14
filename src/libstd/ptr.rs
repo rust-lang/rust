@@ -47,6 +47,7 @@ pub unsafe fn buf_len<T>(buf: **T) -> uint {
 }
 
 impl<T> Clone for *T {
+    #[inline]
     fn clone(&self) -> *T {
         *self
     }
