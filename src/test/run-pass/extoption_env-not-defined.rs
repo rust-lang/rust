@@ -9,6 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let opt: Option<&'static str> = option_env!("__HOPEFULLY_DOESNT_EXIST__");
-    assert!(opt.is_none());
+    assert!(option_env!("__HOPEFULLY_DOESNT_EXIST__").is_none());
 }
