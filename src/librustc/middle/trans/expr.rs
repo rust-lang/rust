@@ -697,8 +697,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: @ast::expr,
                    expr_to_str(expr, tcx.sess.intr()),
                    expr_ty.repr(tcx));
             return closure::trans_expr_fn(bcx, sigil, decl, body,
-                                          expr.id, expr.id,
-                                          None, dest);
+                                          expr.id, expr.id, dest);
         }
         ast::expr_do_body(blk) => {
             return trans_into(bcx, blk, dest);
