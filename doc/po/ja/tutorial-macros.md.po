@@ -1,27 +1,27 @@
-# SOME DESCRIPTIVE TITLE
-# Copyright (C) YEAR The Rust Project Developers
+# Japanese translations for Rust package
+# Copyright (C) 2013 The Rust Project Developers
 # This file is distributed under the same license as the Rust package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Automatically generated, 2013.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8-pre\n"
-"POT-Creation-Date: 2013-07-22 23:37+0900\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2013-07-28 20:32+0900\n"
+"PO-Revision-Date: 2013-07-28 20:32+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
 #: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
 #: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
 #: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
 #: doc/rust.md:2136 doc/rust.md:2223 doc/tutorial-macros.md:323
