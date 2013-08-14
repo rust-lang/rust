@@ -88,3 +88,18 @@ pub fn pat_binding_ids(dm: resolve::DefMap, pat: @pat) -> ~[NodeId] {
     pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;
 }
+
+/// Checks if the pattern contains any patterns that bind something to
+/// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(*)`.
+pub fn pat_contains_bindings(dm: resolve::DefMap, pat: @pat) -> bool {
+    let mut contains_bindings = false;
+    do walk_pat(pat) |p| {
+        if pat_is_binding(dm, p) {
+            contains_bindings = true;
+            false // there's at least one binding, can short circuit now.
+        } else {
+            true
+        }
+    };
+    contains_bindings
+}
