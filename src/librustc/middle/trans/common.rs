@@ -196,9 +196,6 @@ pub struct FunctionContext {
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     personality: Option<ValueRef>,
-    // If this is a for-loop body that returns, this holds the pointers needed
-    // for that (flagptr, retptr)
-    loop_ret: Option<(ValueRef, ValueRef)>,
 
     // True if this function has an immediate return value, false otherwise.
     // If this is false, the llretptr will alias the first argument of the

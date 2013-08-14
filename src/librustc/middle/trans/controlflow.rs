@@ -20,7 +20,6 @@ use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::expr;
-use middle::trans::type_of::*;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux;
@@ -338,29 +337,15 @@ pub fn trans_cont(bcx: @mut Block, label_opt: Option<ident>) -> @mut Block {
 pub fn trans_ret(bcx: @mut Block, e: Option<@ast::expr>) -> @mut Block {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
-    let dest = match bcx.fcx.loop_ret {
-      Some((flagptr, retptr)) => {
-        // This is a loop body return. Must set continue flag (our retptr)
-        // to false, return flag to true, and then store the value in the
-        // parent's retptr.
-        Store(bcx, C_bool(true), flagptr);
-        Store(bcx, C_bool(false), bcx.fcx.llretptr.unwrap());
-        expr::SaveIn(match e {
-          Some(x) => PointerCast(bcx, retptr,
-                                 type_of(bcx.ccx(), expr_ty(bcx, x)).ptr_to()),
-          None => retptr
-        })
-      }
-      None => match bcx.fcx.llretptr {
+    let dest = match bcx.fcx.llretptr {
         None => expr::Ignore,
         Some(retptr) => expr::SaveIn(retptr),
-      }
     };
     match e {
-      Some(x) => {
-        bcx = expr::trans_into(bcx, x, dest);
-      }
-      _ => ()
+        Some(x) => {
+            bcx = expr::trans_into(bcx, x, dest);
+        }
+        _ => ()
     }
     cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
     Unreachable(bcx);
