@@ -108,7 +108,7 @@ impl<'self> PkgScript<'self> {
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, binary, &input);
+        let cfg = driver::build_configuration(sess);
         let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
         let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
