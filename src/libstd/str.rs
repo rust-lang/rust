@@ -1050,7 +1050,7 @@ pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 
-    /// Convert `self` into a ~str.
+    /// Convert `self` into a ~str, not making a copy if possible
     fn into_owned(self) -> ~str;
 }
 

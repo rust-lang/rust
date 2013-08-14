@@ -19,8 +19,6 @@ use prelude::*;
 #[cfg(not(test))]
 use num::Zero;
 
-
-
 #[cfg(not(test))]
 impl Eq for () {
     #[inline]
@@ -54,4 +52,3 @@ impl Zero for () {
     #[inline]
     fn is_zero(&self) -> bool { true }
 }
-

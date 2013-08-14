@@ -46,8 +46,8 @@ use cmp::{Eq,Ord};
 use ops::Add;
 use util;
 use num::Zero;
-use iterator::Iterator;
 use iterator;
+use iterator::{Iterator, DoubleEndedIterator};
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -372,7 +372,7 @@ impl<T:Zero> Option<T> {
         }
     }
 
-    /// Returns self or `Some(zero)` (for this type)
+    /// Returns self or `Some`-wrapped zero value
     #[inline]
     pub fn or_zero(self) -> Option<T> {
         match self {
@@ -404,6 +404,13 @@ impl<A> Iterator<A> for OptionIterator<A> {
             Some(_) => (1, Some(1)),
             None => (0, Some(0)),
         }
+    }
+}
+
+impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        self.opt.take()
     }
 }
 
