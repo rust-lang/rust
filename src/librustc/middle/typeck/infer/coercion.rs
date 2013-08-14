@@ -121,9 +121,9 @@ impl Coerce {
                 };
             }
 
-            ty::ty_trait(_, _, ty::RegionTraitStore(*), _, _) => {
+            ty::ty_trait(_, _, ty::RegionTraitStore(*), m, _) => {
                 return do self.unpack_actual_value(a) |sty_a| {
-                    self.coerce_borrowed_object(a, sty_a, b)
+                    self.coerce_borrowed_object(a, sty_a, b, m)
                 };
             }
 
@@ -274,7 +274,8 @@ impl Coerce {
     fn coerce_borrowed_object(&self,
                               a: ty::t,
                               sty_a: &ty::sty,
-                              b: ty::t) -> CoerceResult
+                              b: ty::t,
+                              b_mutbl: ast::mutability) -> CoerceResult
     {
         debug!("coerce_borrowed_object(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,
@@ -282,26 +283,21 @@ impl Coerce {
 
         let tcx = self.infcx.tcx;
         let r_a = self.infcx.next_region_var(Coercion(self.trace));
-        let trt_mut;
 
         let a_borrowed = match *sty_a {
-            ty::ty_trait(_, _, ty::RegionTraitStore(_), _, _) => {
-                return self.subtype(a, b);
-            }
-            ty::ty_trait(did, ref substs, _, m, b) => {
-                trt_mut = m;
+            ty::ty_trait(did, ref substs, _, _, b) => {
                 ty::mk_trait(tcx, did, substs.clone(),
-                             ty::RegionTraitStore(r_a), m, b)
+                             ty::RegionTraitStore(r_a), b_mutbl, b)
             }
             _ => {
                 return self.subtype(a, b);
             }
         };
 
-        if_ok!(self.tys(a_borrowed, b));
+        if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
-            autoref: Some(AutoBorrowObj(r_a, trt_mut))
+            autoref: Some(AutoBorrowObj(r_a, b_mutbl))
         })))
     }
 
