@@ -745,6 +745,14 @@ impl<T:Hash + Eq> HashSet<T> {
 
 }
 
+impl<T:Hash + Eq + Clone> Clone for HashSet<T> {
+    fn clone(&self) -> HashSet<T> {
+        HashSet {
+            map: self.map.clone()
+        }
+    }
+}
+
 impl<K: Eq + Hash, T: Iterator<K>> FromIterator<K, T> for HashSet<K> {
     fn from_iterator(iter: &mut T) -> HashSet<K> {
         let (lower, _) = iter.size_hint();
@@ -1189,5 +1197,23 @@ mod test_set {
 
         let v = hs.move_iter().collect::<~[char]>();
         assert!(['a', 'b'] == v || ['b', 'a'] == v);
+    }
+
+    #[test]
+    fn test_eq() {
+        let mut s1 = HashSet::new();
+        s1.insert(1);
+        s1.insert(2);
+        s1.insert(3);
+
+        let mut s2 = HashSet::new();
+        s2.insert(1);
+        s2.insert(2);
+
+        assert!(s1 != s2);
+
+        s2.insert(3);
+
+        assert_eq!(s1, s2);
     }
 }
