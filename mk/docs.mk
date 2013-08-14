@@ -13,6 +13,7 @@
 ######################################################################
 
 DOCS :=
+DOCS_L10N :=
 
 
 ######################################################################
@@ -85,6 +86,16 @@ doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
            --from=markdown --to=html --css=rust.css \
+	   --include-before-body=doc/version_info.html \
+           --output=$@
+
+DOCS_L10N += doc/l10n/ja/tutorial.html
+doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rust.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight doc/l10n/ja/tutorial.md | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=html --css=../../rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
@@ -235,10 +246,13 @@ GENERATED += doc/version.md doc/version_info.html
 
 docs: $(DOCS)
 
-docs-l10n:
+docs-l10n: $(DOCS_L10N)
+
+doc/l10n/%.md: doc/po/%.md.po doc/po4a.conf
 	po4a --copyright-holder="The Rust Project Developers" \
 	     --package-name="Rust" \
 	     --package-version="$(CFG_RELEASE)" \
+	     -M UTF-8 -L UTF-8 \
 	     doc/po4a.conf
 
 .PHONY: docs-l10n
