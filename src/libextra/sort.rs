@@ -782,10 +782,7 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-
     use sort::*;
-
-    use std::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = v1.len();
@@ -835,9 +832,7 @@ mod test_qsort {
 
         let immut_names = names;
 
-        let pairs = vec::zip_slice(expected, immut_names);
-        for p in pairs.iter() {
-            let (a, b) = *p;
+        for (&a, &b) in expected.iter().zip(immut_names.iter()) {
             debug!("%d %d", a, b);
             assert_eq!(a, b);
         }
