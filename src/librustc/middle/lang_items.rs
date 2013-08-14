@@ -158,6 +158,12 @@ impl LanguageItems {
         }
     }
 
+    pub fn is_builtin_kind(&self, id: def_id) -> bool {
+        Some(id) == self.freeze_trait() ||
+        Some(id) == self.send_trait() ||
+        Some(id) == self.sized_trait()
+    }
+
     pub fn freeze_trait(&self) -> Option<def_id> {
         self.items[FreezeTraitLangItem as uint]
     }

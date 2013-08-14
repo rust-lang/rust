@@ -869,6 +869,13 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                   &i_ty_generics, generics,
                                   parent_visibility);
         for t in opt_trait_ref.iter() {
+            // Prevent the builtin kind traits from being manually implemented.
+            if ty::trait_ref_is_builtin_kind(ccx.tcx, t) {
+                ccx.tcx.sess.span_err(it.span,
+                    "cannot provide an explicit implementation \
+                     for a builtin kind");
+            }
+
             check_methods_against_trait(ccx, generics, rp, selfty, t, cms);
         }
       }
