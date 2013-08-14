@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-
 fn test1() {
     // from issue 6338
     match ((1, ~"a"), (2, ~"b")) {
