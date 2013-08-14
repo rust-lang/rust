@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use std::{os, uint};
+use std::{os, uint, util};
 
 use sort;
 
@@ -236,7 +236,7 @@ impl Pattern {
                         AnyWithin(ref chars) => chars.contains(&c),
                         AnyExcept(ref chars) => !chars.contains(&c),
                         Char(c2) => c == c2,
-                        AnySequence => fail!(),
+                        AnySequence => util::unreachable(),
                     };
                     if !matches {
                         return false;
