@@ -93,7 +93,7 @@ string.
 Because formatting is done via traits, there is no requirement that the
 `d` format actually takes an `int`, but rather it simply requires a type which
 ascribes to the `Signed` formatting trait. There are various parameters which do
-require a particular type, however. Namely if the sytnax `{:.*s}` is used, then
+require a particular type, however. Namely if the syntax `{:.*s}` is used, then
 the number of characters to print from the string precedes the actual string and
 must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
 illegal to reference an argument as such. For example, this is another invalid

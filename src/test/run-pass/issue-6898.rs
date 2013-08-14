@@ -21,18 +21,18 @@ pub fn size_of_val<T>(val: &T) -> uint {
 }
 
 pub trait TypeInfo {
-    pub fn size_of() -> uint;
-    pub fn size_of_val(&self) -> uint;
+    fn size_of() -> uint;
+    fn size_of_val(&self) -> uint;
 }
 
 impl<T> TypeInfo for T {
     /// The size of the type in bytes.
-    pub fn size_of() -> uint {
+    fn size_of() -> uint {
         unsafe { intrinsics::size_of::<T>() }
     }
 
     /// Returns the size of the type of `self` in bytes.
-    pub fn size_of_val(&self) -> uint {
+    fn size_of_val(&self) -> uint {
         TypeInfo::size_of::<T>()
     }
 }
