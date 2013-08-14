@@ -1859,6 +1859,10 @@ pub fn trans_closure(ccx: @mut CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
+    if ccx.sess.opts.debuginfo && fcx_has_nonzero_span(fcx) {
+        debuginfo::create_function_metadata(fcx);
+    }
+
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
     let bcx_top = fcx.entry_bcx.unwrap();
@@ -1929,12 +1933,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   id,
                   attrs,
                   output_type,
-                  |fcx| {
-                      if ccx.sess.opts.debuginfo
-                          && fcx_has_nonzero_span(fcx) {
-                          debuginfo::create_function_metadata(fcx);
-                      }
-                  });
+                  |_fcx| { });
 }
 
 fn insert_synthetic_type_entries(bcx: @mut Block,
