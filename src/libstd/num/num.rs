@@ -468,54 +468,41 @@ impl<T: Zero> Zero for ~T {
 }
 
 /// Saturating math operations
-pub trait Saturating: Int {
+pub trait Saturating {
     /// Saturating addition operator.
     /// Returns a+b, saturating at the numeric bounds instead of overflowing.
-    #[inline]
-    fn saturating_add(self, v: Self) -> Self {
-        let x = self + v;
-        if v >= Zero::zero() {
-            if x < self {
-                // overflow
-                Bounded::max_value::<Self>()
-            } else { x }
-        } else {
-            if x > self {
-                // underflow
-                Bounded::min_value::<Self>()
-            } else { x }
-        }
-    }
+    fn saturating_add(self, v: Self) -> Self;
 
     /// Saturating subtraction operator.
     /// Returns a-b, saturating at the numeric bounds instead of overflowing.
+    fn saturating_sub(self, v: Self) -> Self;
+}
+
+impl<T: CheckedAdd+CheckedSub+Zero+Ord+Bounded> Saturating for T {
     #[inline]
-    fn saturating_sub(self, v: Self) -> Self {
-        let x = self - v;
-        if v >= Zero::zero() {
-            if x > self {
-                // underflow
-                Bounded::min_value::<Self>()
-            } else { x }
-        } else {
-            if x < self {
-                // overflow
-                Bounded::max_value::<Self>()
-            } else { x }
+    fn saturating_add(self, v: T) -> T {
+        match self.checked_add(&v) {
+            Some(x) => x,
+            None => if v >= Zero::zero() {
+                Bounded::max_value::<T>()
+            } else {
+                Bounded::min_value::<T>()
+            }
+        }
+    }
+
+    #[inline]
+    fn saturating_sub(self, v: T) -> T {
+        match self.checked_sub(&v) {
+            Some(x) => x,
+            None => if v >= Zero::zero() {
+                Bounded::min_value::<T>()
+            } else {
+                Bounded::max_value::<T>()
+            }
         }
     }
 }
-
-impl Saturating for int {}
-impl Saturating for i8 {}
-impl Saturating for i16 {}
-impl Saturating for i32 {}
-impl Saturating for i64 {}
-impl Saturating for uint {}
-impl Saturating for u8 {}
-impl Saturating for u16 {}
-impl Saturating for u32 {}
-impl Saturating for u64 {}
 
 pub trait CheckedAdd: Add<Self, Self> {
     fn checked_add(&self, v: &Self) -> Option<Self>;
