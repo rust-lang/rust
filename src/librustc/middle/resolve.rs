@@ -4981,20 +4981,37 @@ impl Resolver {
                                         wrong_name));
                         }
                         else {
-                            // limit search to 5 to reduce the number
-                            // of stupid suggestions
-                            match self.find_best_match_for_name(wrong_name, 5) {
-                                Some(m) => {
+                            // Be helpful if the name refers to a struct
+                            // (The pattern matching def_tys where the id is in self.structs
+                            // matches on regular structs while excluding tuple- and
+                            // enum-like structs, which wouldn't result in this error.)
+                            match self.resolve_path(expr.id, path, TypeNS, false, visitor) {
+                                Some(def_ty(struct_id))
+                                  if self.structs.contains(&struct_id) => {
                                     self.session.span_err(expr.span,
-                                            fmt!("unresolved name `%s`. \
-                                                Did you mean `%s`?",
-                                                wrong_name, m));
+                                            fmt!("`%s` is a structure name, but this expression \
+                                                uses it like a function name", wrong_name));
+
+                                    self.session.span_note(expr.span, fmt!("Did you mean to write: \
+                                                `%s { /* fields */ }`?", wrong_name));
+
                                 }
-                                None => {
-                                    self.session.span_err(expr.span,
-                                            fmt!("unresolved name `%s`.",
-                                                wrong_name));
-                                }
+                                _ =>
+                                   // limit search to 5 to reduce the number
+                                   // of stupid suggestions
+                                   match self.find_best_match_for_name(wrong_name, 5) {
+                                       Some(m) => {
+                                           self.session.span_err(expr.span,
+                                               fmt!("unresolved name `%s`. \
+                                                   Did you mean `%s`?",
+                                                   wrong_name, m));
+                                       }
+                                       None => {
+                                           self.session.span_err(expr.span,
+                                                fmt!("unresolved name `%s`.",
+                                                    wrong_name));
+                                       }
+                                   }
                             }
                         }
                     }
