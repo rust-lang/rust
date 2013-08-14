@@ -13,24 +13,31 @@ use syntax::ast;
 use syntax::print::pp;
 use syntax::print::pprust;
 use syntax::parse::token;
+use syntax::visit;
 
-pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
-    use syntax::oldvisit;
+struct EachBindingVisitor {
+    f: @fn(&ast::Path, ast::NodeId)
+}
 
-    let vt = oldvisit::mk_simple_visitor(
-        @oldvisit::SimpleVisitor {
-            visit_pat: |pat| {
+impl visit::Visitor<()> for EachBindingVisitor {
+    fn visit_pat(&mut self, pat:@ast::pat, _:()) {
                 match pat.node {
                     ast::pat_ident(_, ref path, _) => {
-                        f(path, pat.id);
+                        (self.f)(path, pat.id);
                     }
                     _ => {}
                 }
-            },
-            .. *oldvisit::default_simple_visitor()
-        }
-    );
-    (vt.visit_pat)(l.pat, ((), vt));
+
+                visit::walk_pat(self, pat, ());
+    }
+}
+
+pub fn each_binding(l: @ast::Local, f: @fn(&ast::Path, ast::NodeId)) {
+    use syntax::visit::Visitor;
+
+    let mut vt = EachBindingVisitor{ f: f };
+
+    vt.visit_pat(l.pat, ());
 }
 
 /// A utility function that hands off a pretty printer to a callback.
