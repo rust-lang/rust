@@ -127,7 +127,13 @@ impl Context {
                 }
             }
             parse::Argument(ref arg) => {
-                // argument first (it's first in the format string)
+                // width/precision first, if they have implicit positional
+                // parameters it makes more sense to consume them first.
+                self.verify_count(arg.format.width);
+                self.verify_count(arg.format.precision);
+
+                // argument second, if it's an implicit positional parameter
+                // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
                     parse::ArgumentNext => {
                         let i = self.next_arg;
@@ -143,10 +149,6 @@ impl Context {
                     Unknown
                 } else { Known(arg.format.ty.to_managed()) };
                 self.verify_arg_type(pos, ty);
-
-                // width/precision next
-                self.verify_count(arg.format.width);
-                self.verify_count(arg.format.precision);
 
                 // and finally the method being applied
                 match arg.method {
@@ -315,6 +317,10 @@ impl Context {
     /// Translate a `parse::Piece` to a static `rt::Piece`
     fn trans_piece(&mut self, piece: &parse::Piece) -> @ast::expr {
         let sp = self.fmtsp;
+        let parsepath = |s: &str| {
+            ~[self.ecx.ident_of("std"), self.ecx.ident_of("fmt"),
+              self.ecx.ident_of("parse"), self.ecx.ident_of(s)]
+        };
         let rtpath = |s: &str| {
             ~[self.ecx.ident_of("std"), self.ecx.ident_of("fmt"),
               self.ecx.ident_of("rt"), self.ecx.ident_of(s)]
@@ -480,20 +486,24 @@ impl Context {
                 let fill = self.ecx.expr_lit(sp, ast::lit_int(fill as i64,
                                                               ast::ty_char));
                 let align = match arg.format.align {
-                    None | Some(parse::AlignLeft) => {
-                        self.ecx.expr_bool(sp, true)
+                    parse::AlignLeft => {
+                        self.ecx.path_global(sp, parsepath("AlignLeft"))
                     }
-                    Some(parse::AlignRight) => {
-                        self.ecx.expr_bool(sp, false)
+                    parse::AlignRight => {
+                        self.ecx.path_global(sp, parsepath("AlignRight"))
+                    }
+                    parse::AlignUnknown => {
+                        self.ecx.path_global(sp, parsepath("AlignUnknown"))
                     }
                 };
+                let align = self.ecx.expr_path(align);
                 let flags = self.ecx.expr_uint(sp, arg.format.flags);
                 let prec = trans_count(arg.format.precision);
                 let width = trans_count(arg.format.width);
                 let path = self.ecx.path_global(sp, rtpath("FormatSpec"));
                 let fmt = self.ecx.expr_struct(sp, path, ~[
                     self.ecx.field_imm(sp, self.ecx.ident_of("fill"), fill),
-                    self.ecx.field_imm(sp, self.ecx.ident_of("alignleft"), align),
+                    self.ecx.field_imm(sp, self.ecx.ident_of("align"), align),
                     self.ecx.field_imm(sp, self.ecx.ident_of("flags"), flags),
                     self.ecx.field_imm(sp, self.ecx.ident_of("precision"), prec),
                     self.ecx.field_imm(sp, self.ecx.ident_of("width"), width),
@@ -627,15 +637,17 @@ impl Context {
             Known(tyname) => {
                 let fmt_trait = match tyname.as_slice() {
                     "?" => "Poly",
-                    "d" | "i" => "Signed",
-                    "u" => "Unsigned",
                     "b" => "Bool",
                     "c" => "Char",
+                    "d" | "i" => "Signed",
+                    "f" => "Float",
                     "o" => "Octal",
+                    "p" => "Pointer",
+                    "s" => "String",
+                    "t" => "Binary",
+                    "u" => "Unsigned",
                     "x" => "LowerHex",
                     "X" => "UpperHex",
-                    "s" => "String",
-                    "p" => "Pointer",
                     _ => {
                         self.ecx.span_err(sp, fmt!("unknown format trait \
                                                     `%s`", tyname));
