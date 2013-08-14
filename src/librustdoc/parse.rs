@@ -10,8 +10,6 @@
 
 //! AST-parsing helpers
 
-
-use rustc::driver::driver::{file_input, str_input};
 use rustc::driver::driver;
 use rustc::driver::session;
 use syntax::ast;
@@ -29,14 +27,15 @@ pub fn from_str(source: @str) -> @ast::Crate {
 
 pub fn from_file_sess(sess: session::Session, file: &Path) -> @ast::Crate {
     parse::parse_crate_from_file(
-        file, cfg(sess, file_input((*file).clone())), sess.parse_sess)
+        file, cfg(sess), sess.parse_sess)
 }
 
 pub fn from_str_sess(sess: session::Session, source: @str) -> @ast::Crate {
     parse::parse_crate_from_source_str(
-        @"-", source, cfg(sess, str_input(source)), sess.parse_sess)
+        @"-", source, cfg(sess), sess.parse_sess)
 }
 
-fn cfg(sess: session::Session, input: driver::input) -> ast::CrateConfig {
-    driver::build_configuration(sess, @"rustdoc", &input)
+fn cfg(sess: session::Session) -> ast::CrateConfig {
+    driver::build_configuration(sess)
 }
+

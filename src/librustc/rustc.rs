@@ -252,7 +252,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, "out-dir").map_move(|o| Path(o));
     let ofile = getopts::opt_maybe_str(matches, "o").map_move(|o| Path(o));
-    let cfg = build_configuration(sess, binary, &input);
+    let cfg = build_configuration(sess);
     let pretty = do getopts::opt_default(matches, "pretty", "normal").map_move |a| {
         parse_pretty(sess, a)
     };
