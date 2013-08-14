@@ -1624,7 +1624,6 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           llreturn: None,
           llself: None,
           personality: None,
-          loop_ret: None,
           has_immediate_return_value: is_immediate,
           llargs: @mut HashMap::new(),
           lllocals: @mut HashMap::new(),
@@ -1834,8 +1833,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                      id: ast::NodeId,
                      attributes: &[ast::Attribute],
                      output_type: ty::t,
-                     maybe_load_env: &fn(@mut FunctionContext),
-                     finish: &fn(@mut Block)) {
+                     maybe_load_env: &fn(@mut FunctionContext)) {
     ccx.stats.n_closures += 1;
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);
@@ -1885,7 +1883,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
         bcx = controlflow::trans_block(bcx, body, dest);
     }
 
-    finish(bcx);
     match fcx.llreturn {
         Some(llreturn) => cleanup_and_Br(bcx, bcx_top, llreturn),
         None => bcx = cleanup_block(bcx, Some(bcx_top.llbb))
@@ -1937,8 +1934,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                           && fcx_has_nonzero_span(fcx) {
                           debuginfo::create_function_metadata(fcx);
                       }
-                  },
-                  |_bcx| { });
+                  });
 }
 
 fn insert_synthetic_type_entries(bcx: @mut Block,
