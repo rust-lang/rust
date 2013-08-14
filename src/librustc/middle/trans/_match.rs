@@ -399,10 +399,17 @@ struct ArmData<'self> {
     bindings_map: @BindingsMap
 }
 
+/**
+ * Info about Match.
+ * If all `pats` are matched then arm `data` will be executed.
+ * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
+ * these pointers are stored in llmatch variables just before executing `data` arm.
+ */
 #[deriving(Clone)]
 struct Match<'self> {
     pats: ~[@ast::pat],
-    data: ArmData<'self>
+    data: ArmData<'self>,
+    bound_ptrs: ~[(ident, ValueRef)]
 }
 
 impl<'self> Repr for Match<'self> {
@@ -447,14 +454,13 @@ fn expand_nested_bindings<'r>(bcx: @mut Block,
                                 br.pats.slice(col + 1u,
                                            br.pats.len())));
 
-                let binding_info =
-                    br.data.bindings_map.get(&path_to_ident(path));
-
-                Store(bcx, val, binding_info.llmatch);
-                Match {
+                let mut res = Match {
                     pats: pats,
-                    data: br.data.clone()
-                }
+                    data: br.data.clone(),
+                    bound_ptrs: br.bound_ptrs.clone()
+                };
+                res.bound_ptrs.push((path_to_ident(path), val));
+                res
             }
             _ => (*br).clone(),
         }
@@ -496,13 +502,11 @@ fn enter_match<'r>(bcx: @mut Block,
                         br.pats.slice(col + 1u, br.pats.len()));
 
                 let this = br.pats[col];
+                let mut bound_ptrs = br.bound_ptrs.clone();
                 match this.node {
                     ast::pat_ident(_, ref path, None) => {
                         if pat_is_binding(dm, this) {
-                            let binding_info =
-                                br.data.bindings_map.get(
-                                    &path_to_ident(path));
-                            Store(bcx, val, binding_info.llmatch);
+                            bound_ptrs.push((path_to_ident(path), val));
                         }
                     }
                     _ => {}
@@ -510,7 +514,8 @@ fn enter_match<'r>(bcx: @mut Block,
 
                 result.push(Match {
                     pats: pats,
-                    data: br.data.clone()
+                    data: br.data.clone(),
+                    bound_ptrs: bound_ptrs
                 });
             }
             None => ()
@@ -1414,6 +1419,10 @@ fn compile_submatch(bcx: @mut Block,
     }
     if m[0].pats.len() == 0u {
         let data = &m[0].data;
+        for &(ref ident, ref value_ptr) in m[0].bound_ptrs.iter() {
+            let llmatch = data.bindings_map.get(ident).llmatch;
+            Store(bcx, *value_ptr, llmatch);
+        }
         match data.arm.guard {
             Some(guard_expr) => {
                 bcx = compile_guard(bcx,
@@ -1839,6 +1848,7 @@ fn trans_match_inner(scope_cx: @mut Block,
             matches.push(Match {
                 pats: ~[*p],
                 data: arm_data.clone(),
+                bound_ptrs: ~[],
             });
         }
     }
