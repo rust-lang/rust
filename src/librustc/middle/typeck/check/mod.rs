@@ -3208,10 +3208,19 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                   ty_param_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
+        let is_static_method = match fcx.ccx.tcx.def_map.find(&node_id) {
+            Some(&ast::def_static_method(*)) => true,
+            _ => false
+        };
         fcx.ccx.tcx.sess.span_err
             (span,
              fmt!("not enough type parameters provided: expected %u, found %u",
                   ty_param_count, ty_substs_len));
+        if is_static_method {
+            fcx.ccx.tcx.sess.span_note
+                (span, "Static methods have an extra implicit type parameter -- \
+                 did you omit the type parameter for the `Self` type?");
+        }
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(aty))
