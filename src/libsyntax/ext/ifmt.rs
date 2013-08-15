@@ -623,19 +623,16 @@ impl Context {
 
     fn format_arg(&self, sp: span, arg: Either<uint, @str>,
                   ident: ast::ident) -> @ast::expr {
-        let mut ty = match arg {
+        let ty = match arg {
             Left(i) => self.arg_types[i].unwrap(),
             Right(s) => *self.name_types.get(&s)
         };
-        // Default types to '?' if nothing else is specified.
-        if ty == Unknown {
-            ty = Known(@"?");
-        }
 
         let argptr = self.ecx.expr_addr_of(sp, self.ecx.expr_ident(sp, ident));
-        match ty {
+        let fmt_trait = match ty {
+            Unknown => "Default",
             Known(tyname) => {
-                let fmt_trait = match tyname.as_slice() {
+                match tyname.as_slice() {
                     "?" => "Poly",
                     "b" => "Bool",
                     "c" => "Char",
@@ -653,35 +650,35 @@ impl Context {
                                                     `%s`", tyname));
                         "Dummy"
                     }
-                };
-                let format_fn = self.ecx.path_global(sp, ~[
-                        self.ecx.ident_of("std"),
-                        self.ecx.ident_of("fmt"),
-                        self.ecx.ident_of(fmt_trait),
-                        self.ecx.ident_of("fmt"),
-                    ]);
-                self.ecx.expr_call_global(sp, ~[
-                        self.ecx.ident_of("std"),
-                        self.ecx.ident_of("fmt"),
-                        self.ecx.ident_of("argument"),
-                    ], ~[self.ecx.expr_path(format_fn), argptr])
+                }
             }
             String => {
-                self.ecx.expr_call_global(sp, ~[
+                return self.ecx.expr_call_global(sp, ~[
                         self.ecx.ident_of("std"),
                         self.ecx.ident_of("fmt"),
                         self.ecx.ident_of("argumentstr"),
                     ], ~[argptr])
             }
             Unsigned => {
-                self.ecx.expr_call_global(sp, ~[
+                return self.ecx.expr_call_global(sp, ~[
                         self.ecx.ident_of("std"),
                         self.ecx.ident_of("fmt"),
                         self.ecx.ident_of("argumentuint"),
                     ], ~[argptr])
             }
-            Unknown => { fail!() }
-        }
+        };
+
+        let format_fn = self.ecx.path_global(sp, ~[
+                self.ecx.ident_of("std"),
+                self.ecx.ident_of("fmt"),
+                self.ecx.ident_of(fmt_trait),
+                self.ecx.ident_of("fmt"),
+            ]);
+        self.ecx.expr_call_global(sp, ~[
+                self.ecx.ident_of("std"),
+                self.ecx.ident_of("fmt"),
+                self.ecx.ident_of("argument"),
+            ], ~[self.ecx.expr_path(format_fn), argptr])
     }
 }
 
