@@ -70,7 +70,7 @@ use std::ptr;
 use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
-use syntax::parse::token::keywords;
+use syntax::parse::token::special_idents;
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -195,9 +195,8 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
     let scope = create_function_metadata(bcx.fcx);
-    let self_ident = keywords::Self.to_ident();
 
-    let var_metadata = do cx.sess.str_of(self_ident).to_c_str().with_ref |name| {
+    let var_metadata = do cx.sess.str_of(special_idents::self_).to_c_str().with_ref |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateLocalVariable(
                 DIB(cx),
@@ -229,8 +228,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: @mut Block,
-                                arg: &ast::arg,
-                                needs_deref: bool) {
+                                arg: &ast::arg) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
@@ -337,11 +335,11 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     }
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, fn_decl, generics, span) = match fnitem {
+    let (ident, fn_decl, generics, span, is_trait_default_impl) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
                 ast::item_fn(ref fn_decl, _, _, ref generics, _) => {
-                    (item.ident, fn_decl, Some(generics), item.span)
+                    (item.ident, fn_decl, Some(generics), item.span, false)
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
                                            "create_function_metadata: item bound to non-function")
@@ -357,7 +355,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
             },
             _,
             _) => {
-            (ident, fn_decl, Some(generics), span)
+            (ident, fn_decl, Some(generics), span, false)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
@@ -367,7 +365,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
                         None,
-                        expr.span)
+                        expr.span,
+                        false)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -384,7 +383,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 }),
             _,
             _) => {
-            (ident, fn_decl, Some(generics), span)
+            (ident, fn_decl, Some(generics), span, true)
         }
         _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
     };
@@ -405,6 +404,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let mut function_name = cx.sess.str_of(ident).to_owned();
     let template_parameters = get_template_parameters(fcx,
                                                       generics,
+                                                      is_trait_default_impl,
                                                       file_metadata,
                                                       span,
                                                       &mut function_name);
@@ -507,6 +507,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
 
     fn get_template_parameters(fcx: &FunctionContext,
                                generics: Option<&ast::Generics>,
+                               is_trait_default_impl: bool,
                                file_metadata: DIFile,
                                span: span,
                                name_to_append_suffix_to: &mut ~str)
@@ -521,58 +522,131 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
 
         match generics {
             None => {
-                if (fcx.param_substs.is_some()) {
+                if (!is_trait_default_impl && fcx.param_substs.is_some()) {
                     cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
-                        Mismatch between ast::Generics and FunctionContext::param_substs");
+                        Mismatch between ast::Generics (does not exist) and \
+                        FunctionContext::param_substs (does exist)");
                 }
 
                 return ptr::null();
             }
 
             Some(generics) => {
-                let actual_types = match fcx.param_substs {
-                    Some(@param_substs { tys: ref actual_types, _}) => {
-                        actual_types
+                let (actual_types, actual_self_type) = match fcx.param_substs {
+                    Some(@param_substs { tys: ref types, self_ty: ref self_type, _ }) => {
+                        if is_trait_default_impl && self_type.is_none() {
+                            cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
+                                Expected self type parameter substitution for default \
+                                implementation of trait method");
+                        }
+
+                        (types, self_type)
                     }
                     None => {
                         cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
-                            Mismatch between ast::Generics and FunctionContext::param_substs");
+                            Mismatch between ast::Generics (does exist) and \
+                            FunctionContext::param_substs (does not exist)");
                     }
                 };
 
                 name_to_append_suffix_to.push_char('<');
 
-                let template_params: ~[DIDescriptor] = do generics
-                    .ty_params
-                    .iter()
-                    .enumerate()
-                    .map |(index, &ast::TyParam{ ident: ident, _ })| {
+                let mut template_params: ~[DIDescriptor] =
+                    vec::with_capacity(actual_types.len() + 1);
 
-                        let actual_type = actual_types[index];
-                        let actual_type_metadata = type_metadata(cx,
-                                                                 actual_type,
-                                                                 codemap::dummy_sp());
+                if is_trait_default_impl {
+                    let actual_self_type_metadata = type_metadata(cx,
+                                                                  actual_self_type.unwrap(),
+                                                                  codemap::dummy_sp());
 
-                        // Add actual type name to <...> clause of function name
-                        let actual_type_name = ty_to_str(cx.tcx, actual_type);
-                        name_to_append_suffix_to.push_str(actual_type_name);
-                        if index != generics.ty_params.len() - 1 {
-                            name_to_append_suffix_to.push_str(",");
+                    // Add self type name to <...> clause of function name
+                    let actual_self_type_name = ty_to_str(cx.tcx, actual_self_type.unwrap());
+                    name_to_append_suffix_to.push_str(actual_self_type_name);
+                    if actual_types.len() > 0 {
+                        name_to_append_suffix_to.push_str(",");
+                    }
+
+                    let ident = special_idents::type_self;
+
+                    let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                        unsafe {
+                            llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                                DIB(cx),
+                                file_metadata,
+                                name,
+                                actual_self_type_metadata,
+                                ptr::null(),
+                                0,
+                                0)
                         }
+                    };
 
-                        do cx.sess.str_of(ident).to_c_str().with_ref |name| {
-                            unsafe {
-                                llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                                    DIB(cx),
-                                    file_metadata,
-                                    name,
-                                    actual_type_metadata,
-                                    ptr::null(),
-                                    0,
-                                    0)
-                            }
+                    template_params.push(param_metadata);
+                }
+
+                for (index, &ast::TyParam{ ident: ident, _ }) in generics
+                                                                 .ty_params
+                                                                 .iter()
+                                                                 .enumerate() {
+                    let actual_type = actual_types[index];
+                    let actual_type_metadata = type_metadata(cx,
+                                                             actual_type,
+                                                             codemap::dummy_sp());
+
+                    // Add actual type name to <...> clause of function name
+                    let actual_type_name = ty_to_str(cx.tcx, actual_type);
+                    name_to_append_suffix_to.push_str(actual_type_name);
+                    if index != generics.ty_params.len() - 1 {
+                        name_to_append_suffix_to.push_str(",");
+                    }
+
+                    let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                        unsafe {
+                            llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                                DIB(cx),
+                                file_metadata,
+                                name,
+                                actual_type_metadata,
+                                ptr::null(),
+                                0,
+                                0)
                         }
-                    }.collect();
+                    };
+
+                    template_params.push(param_metadata);
+                }
+
+                // let template_params: ~[DIDescriptor] = do generics
+                //     .ty_params
+                //     .iter()
+                //     .enumerate()
+                //     .map |(index, &ast::TyParam{ ident: ident, _ })| {
+
+                //         let actual_type = actual_types[index];
+                //         let actual_type_metadata = type_metadata(cx,
+                //                                                  actual_type,
+                //                                                  codemap::dummy_sp());
+
+                //         // Add actual type name to <...> clause of function name
+                //         let actual_type_name = ty_to_str(cx.tcx, actual_type);
+                //         name_to_append_suffix_to.push_str(actual_type_name);
+                //         if index != generics.ty_params.len() - 1 {
+                //             name_to_append_suffix_to.push_str(",");
+                //         }
+
+                //         do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                //             unsafe {
+                //                 llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                //                     DIB(cx),
+                //                     file_metadata,
+                //                     name,
+                //                     actual_type_metadata,
+                //                     ptr::null(),
+                //                     0,
+                //                     0)
+                //             }
+                //         }
+                //     }.collect();
 
                 name_to_append_suffix_to.push_char('>');
 
@@ -795,7 +869,13 @@ fn struct_metadata(cx: &mut CrateContext,
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
     let field_llvm_types = do fields.map |field| { type_of::type_of(cx, field.mt.ty) };
-    let field_names = do fields.map |field| { cx.sess.str_of(field.ident).to_owned() };
+    let field_names = do fields.map |field| {
+        if field.ident == special_idents::unnamed_field {
+            ~""
+        } else {
+            cx.sess.str_of(field.ident).to_owned()
+        }
+    };
     let field_types_metadata = do fields.map |field| {
         type_metadata(cx, field.mt.ty, span)
     };
