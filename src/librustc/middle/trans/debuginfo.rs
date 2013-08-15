@@ -69,7 +69,7 @@ use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::vec;
 use syntax::codemap::span;
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token::special_idents;
 
 static DW_LANG_RUST: int = 0x9000;
@@ -334,12 +334,14 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         None => { /* fallthrough */}
     }
 
+    let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
+
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, fn_decl, generics, span, is_trait_default_impl) = match fnitem {
+    let (ident, fn_decl, generics, span) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
                 ast::item_fn(ref fn_decl, _, _, ref generics, _) => {
-                    (item.ident, fn_decl, Some(generics), item.span, false)
+                    (item.ident, fn_decl, generics, item.span)
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
                                            "create_function_metadata: item bound to non-function")
@@ -355,7 +357,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
             },
             _,
             _) => {
-            (ident, fn_decl, Some(generics), span, false)
+            (ident, fn_decl, generics, span)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
@@ -364,9 +366,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
-                        None,
-                        expr.span,
-                        false)
+                        &empty_generics,
+                        expr.span)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -383,7 +384,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 }),
             _,
             _) => {
-            (ident, fn_decl, Some(generics), span, true)
+            (ident, fn_decl, generics, span)
         }
         _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
     };
@@ -404,7 +405,6 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let mut function_name = cx.sess.str_of(ident).to_owned();
     let template_parameters = get_template_parameters(fcx,
                                                       generics,
-                                                      is_trait_default_impl,
                                                       file_metadata,
                                                       span,
                                                       &mut function_name);
@@ -506,153 +506,101 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     }
 
     fn get_template_parameters(fcx: &FunctionContext,
-                               generics: Option<&ast::Generics>,
-                               is_trait_default_impl: bool,
+                               generics: &ast::Generics,
                                file_metadata: DIFile,
                                span: span,
                                name_to_append_suffix_to: &mut ~str)
                             -> DIArray {
-        // Normalize cases
-        let generics = match generics {
-            Some(generics_ref) if generics_ref.is_type_parameterized() => Some(generics_ref),
+        let cx = fcx.ccx;
+
+        let self_type = match fcx.param_substs {
+            Some(@param_substs{ self_ty: self_type, _ }) => self_type,
             _ => None
         };
 
-        let cx = fcx.ccx;
+        // Only true for static default methods:
+        let has_self_type = self_type.is_some();
 
-        match generics {
-            None => {
-                if (!is_trait_default_impl && fcx.param_substs.is_some()) {
-                    cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
-                        Mismatch between ast::Generics (does not exist) and \
-                        FunctionContext::param_substs (does exist)");
-                }
+        if !generics.is_type_parameterized() && !has_self_type {
+            return ptr::null();
+        }
 
-                return ptr::null();
+        name_to_append_suffix_to.push_char('<');
+
+        // The list to be filled with template parameters:
+        let mut template_params: ~[DIDescriptor] = vec::with_capacity(generics.ty_params.len() + 1);
+
+        // Handle self type
+        if has_self_type {
+            let actual_self_type = self_type.unwrap();
+            let actual_self_type_metadata = type_metadata(cx,
+                                                          actual_self_type,
+                                                          codemap::dummy_sp());
+
+            // Add self type name to <...> clause of function name
+            let actual_self_type_name = ty_to_str(cx.tcx, actual_self_type);
+            name_to_append_suffix_to.push_str(actual_self_type_name);
+            if generics.is_type_parameterized() {
+                name_to_append_suffix_to.push_str(",");
             }
 
-            Some(generics) => {
-                let (actual_types, actual_self_type) = match fcx.param_substs {
-                    Some(@param_substs { tys: ref types, self_ty: ref self_type, _ }) => {
-                        if is_trait_default_impl && self_type.is_none() {
-                            cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
-                                Expected self type parameter substitution for default \
-                                implementation of trait method");
-                        }
+            let ident = special_idents::type_self;
 
-                        (types, self_type)
-                    }
-                    None => {
-                        cx.sess.span_bug(span, "debuginfo::create_function_metadata() - \
-                            Mismatch between ast::Generics (does exist) and \
-                            FunctionContext::param_substs (does not exist)");
-                    }
-                };
-
-                name_to_append_suffix_to.push_char('<');
-
-                let mut template_params: ~[DIDescriptor] =
-                    vec::with_capacity(actual_types.len() + 1);
-
-                if is_trait_default_impl {
-                    let actual_self_type_metadata = type_metadata(cx,
-                                                                  actual_self_type.unwrap(),
-                                                                  codemap::dummy_sp());
-
-                    // Add self type name to <...> clause of function name
-                    let actual_self_type_name = ty_to_str(cx.tcx, actual_self_type.unwrap());
-                    name_to_append_suffix_to.push_str(actual_self_type_name);
-                    if actual_types.len() > 0 {
-                        name_to_append_suffix_to.push_str(",");
-                    }
-
-                    let ident = special_idents::type_self;
-
-                    let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
-                        unsafe {
-                            llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                                DIB(cx),
-                                file_metadata,
-                                name,
-                                actual_self_type_metadata,
-                                ptr::null(),
-                                0,
-                                0)
-                        }
-                    };
-
-                    template_params.push(param_metadata);
+            let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name,
+                        actual_self_type_metadata,
+                        ptr::null(),
+                        0,
+                        0)
                 }
+            };
 
-                for (index, &ast::TyParam{ ident: ident, _ }) in generics
-                                                                 .ty_params
-                                                                 .iter()
-                                                                 .enumerate() {
-                    let actual_type = actual_types[index];
-                    let actual_type_metadata = type_metadata(cx,
-                                                             actual_type,
-                                                             codemap::dummy_sp());
+            template_params.push(param_metadata);
+        }
 
-                    // Add actual type name to <...> clause of function name
-                    let actual_type_name = ty_to_str(cx.tcx, actual_type);
-                    name_to_append_suffix_to.push_str(actual_type_name);
-                    if index != generics.ty_params.len() - 1 {
-                        name_to_append_suffix_to.push_str(",");
-                    }
-
-                    let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
-                        unsafe {
-                            llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                                DIB(cx),
-                                file_metadata,
-                                name,
-                                actual_type_metadata,
-                                ptr::null(),
-                                0,
-                                0)
-                        }
-                    };
-
-                    template_params.push(param_metadata);
-                }
-
-                // let template_params: ~[DIDescriptor] = do generics
-                //     .ty_params
-                //     .iter()
-                //     .enumerate()
-                //     .map |(index, &ast::TyParam{ ident: ident, _ })| {
-
-                //         let actual_type = actual_types[index];
-                //         let actual_type_metadata = type_metadata(cx,
-                //                                                  actual_type,
-                //                                                  codemap::dummy_sp());
-
-                //         // Add actual type name to <...> clause of function name
-                //         let actual_type_name = ty_to_str(cx.tcx, actual_type);
-                //         name_to_append_suffix_to.push_str(actual_type_name);
-                //         if index != generics.ty_params.len() - 1 {
-                //             name_to_append_suffix_to.push_str(",");
-                //         }
-
-                //         do cx.sess.str_of(ident).to_c_str().with_ref |name| {
-                //             unsafe {
-                //                 llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                //                     DIB(cx),
-                //                     file_metadata,
-                //                     name,
-                //                     actual_type_metadata,
-                //                     ptr::null(),
-                //                     0,
-                //                     0)
-                //             }
-                //         }
-                //     }.collect();
-
-                name_to_append_suffix_to.push_char('>');
-
+        // Handle other generic parameters
+        let actual_types = match fcx.param_substs {
+            Some(@param_substs { tys: ref types, _ }) => types,
+            None => {
                 return create_DIArray(DIB(cx), template_params);
             }
+        };
+
+        for (index, &ast::TyParam{ ident: ident, _ }) in generics.ty_params.iter().enumerate() {
+            let actual_type = actual_types[index];
+            let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
+
+            // Add actual type name to <...> clause of function name
+            let actual_type_name = ty_to_str(cx.tcx, actual_type);
+            name_to_append_suffix_to.push_str(actual_type_name);
+
+            if index != generics.ty_params.len() - 1 {
+                name_to_append_suffix_to.push_str(",");
+            }
+
+            let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name,
+                        actual_type_metadata,
+                        ptr::null(),
+                        0,
+                        0)
+                }
+            };
+
+            template_params.push(param_metadata);
         }
+
+        name_to_append_suffix_to.push_char('>');
+
+        return create_DIArray(DIB(cx), template_params);
     }
 }
 
