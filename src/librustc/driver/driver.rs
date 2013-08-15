@@ -65,14 +65,14 @@ pub fn source_name(input: &input) -> @str {
     }
 }
 
-pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
+pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
-    let (libc, tos) = match sess.targ_cfg.os {
-        session::os_win32 =>   (@"msvcrt.dll", @"win32"),
-        session::os_macos =>   (@"libc.dylib", @"macos"),
-        session::os_linux =>   (@"libc.so.6",  @"linux"),
-        session::os_android => (@"libc.so",    @"android"),
-        session::os_freebsd => (@"libc.so.7",  @"freebsd")
+    let tos = match sess.targ_cfg.os {
+        session::os_win32 =>   @"win32",
+        session::os_macos =>   @"macos",
+        session::os_linux =>   @"linux",
+        session::os_android => @"android",
+        session::os_freebsd => @"freebsd"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -92,10 +92,7 @@ pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
          mk(@"target_arch", arch),
          mk(@"target_endian", end),
          mk(@"target_word_size", wordsz),
-         mk(@"target_libc", libc),
-         // Build bindings.
-         mk(@"build_compiler", argv0),
-         mk(@"build_input", source_name(input))];
+    ];
 }
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
@@ -104,11 +101,11 @@ pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
     }
 }
 
-pub fn build_configuration(sess: Session, argv0: @str, input: &input) ->
+pub fn build_configuration(sess: Session) ->
    ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
-    let default_cfg = default_configuration(sess, argv0, input);
+    let default_cfg = default_configuration(sess);
     let mut user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
     if sess.opts.test { append_configuration(&mut user_cfg, @"test") }
@@ -980,7 +977,7 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 mod test {
 
     use driver::driver::{build_configuration, build_session};
-    use driver::driver::{build_session_options, optgroups, str_input};
+    use driver::driver::{build_session_options, optgroups};
 
     use extra::getopts::groups::getopts;
     use extra::getopts;
@@ -998,7 +995,7 @@ mod test {
         let sessopts = build_session_options(
             @"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, @"whatever", &str_input(@""));
+        let cfg = build_configuration(sess);
         assert!((attr::contains_name(cfg, "test")));
     }
 
@@ -1016,7 +1013,7 @@ mod test {
         let sessopts = build_session_options(
             @"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
-        let cfg = build_configuration(sess, @"whatever", &str_input(@""));
+        let cfg = build_configuration(sess);
         let mut test_items = cfg.iter().filter(|m| "test" == m.name());
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
