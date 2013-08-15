@@ -310,6 +310,8 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 
 /// Transmute an owned vector to a Buf
 pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let data = malloc(v.len() as size_t) as *u8;
         assert!(data.is_not_null());
@@ -323,6 +325,8 @@ pub fn vec_to_uv_buf(v: ~[u8]) -> Buf {
 
 /// Transmute a Buf that was once a ~[u8] back to ~[u8]
 pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
+    #[fixed_stack_segment]; #[inline(never)];
+
     if !(buf.len == 0 && buf.base.is_null()) {
         let v = unsafe { vec::from_buf(buf.base, buf.len as uint) };
         unsafe { free(buf.base as *c_void) };

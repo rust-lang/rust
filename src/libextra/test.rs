@@ -188,6 +188,8 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
 }
 
 fn usage(binary: &str, helpstr: &str) -> ! {
+    #[fixed_stack_segment]; #[inline(never)];
+
     let message = fmt!("Usage: %s [OPTIONS] [FILTER]", binary);
     println(groups::usage(message, optgroups()));
     println("");

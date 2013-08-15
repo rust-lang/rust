@@ -381,6 +381,7 @@ mod stat {
 #[cfg(target_os = "win32")]
 impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
         do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::stat(buf, &mut st) } {
@@ -415,6 +416,7 @@ impl WindowsPath {
 #[cfg(not(target_os = "win32"))]
 impl PosixPath {
     pub fn stat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
         do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::stat(buf as *libc::c_char, &mut st) } {
@@ -493,6 +495,7 @@ impl PosixPath {
 #[cfg(unix)]
 impl PosixPath {
     pub fn lstat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
         do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::lstat(buf, &mut st) } {
@@ -1101,6 +1104,8 @@ pub mod windows {
     }
 
     pub fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             if (s.len() > 1 &&
                 libc::isalpha(s[0] as libc::c_int) != 0 &&

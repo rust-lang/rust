@@ -19,10 +19,12 @@ mod libc {
     }
 }
 
+#[fixed_stack_segment]
 fn atol(s: ~str) -> int {
     s.with_c_str(|x| unsafe { libc::atol(x) as int })
 }
 
+#[fixed_stack_segment]
 fn atoll(s: ~str) -> i64 {
     s.with_c_str(|x| unsafe { libc::atoll(x) as i64 })
 }

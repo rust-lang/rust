@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// LLVM wrappers are intended to be called from trans,
+// which already runs in a #[fixed_stack_segment]
+#[allow(cstack)];
+
 use std::c_str::ToCStr;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort};

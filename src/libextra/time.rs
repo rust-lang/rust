@@ -64,6 +64,8 @@ impl Ord for Timespec {
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
 pub fn get_time() -> Timespec {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let mut sec = 0i64;
         let mut nsec = 0i32;
@@ -78,6 +80,8 @@ pub fn get_time() -> Timespec {
  * in nanoseconds since an unspecified epoch.
  */
 pub fn precise_time_ns() -> u64 {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let mut ns = 0u64;
         rustrt::precise_time_ns(&mut ns);
@@ -95,6 +99,8 @@ pub fn precise_time_s() -> float {
 }
 
 pub fn tzset() {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         rustrt::rust_tzset();
     }
@@ -135,6 +141,8 @@ pub fn empty_tm() -> Tm {
 
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
@@ -150,6 +158,8 @@ pub fn now_utc() -> Tm {
 
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
@@ -176,6 +186,8 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
 impl Tm {
     /// Convert time to the seconds from January 1, 1970
     pub fn to_timespec(&self) -> Timespec {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             let sec = match self.tm_gmtoff {
                 0_i32 => rustrt::rust_timegm(self),
