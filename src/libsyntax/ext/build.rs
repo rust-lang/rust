@@ -605,16 +605,28 @@ impl AstBuilder for @ExtCtxt {
 
         self.expr(span, ast::expr_fn_block(fn_decl, blk))
     }
+    #[cfg(stage0)]
     fn lambda0(&self, _span: span, blk: ast::Block) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|| $blk_e )
     }
+    #[cfg(not(stage0))]
+    fn lambda0(&self, _span: span, blk: ast::Block) -> @ast::expr {
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
+        quote_expr!(*self, || $blk_e )
+    }
 
+    #[cfg(stage0)]
     fn lambda1(&self, _span: span, blk: ast::Block, ident: ast::ident) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|$ident| $blk_e )
+    }
+    #[cfg(not(stage0))]
+    fn lambda1(&self, _span: span, blk: ast::Block, ident: ast::ident) -> @ast::expr {
+        let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
+        quote_expr!(*self, |$ident| $blk_e )
     }
 
     fn lambda_expr(&self, span: span, ids: ~[ast::ident], expr: @ast::expr) -> @ast::expr {
