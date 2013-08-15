@@ -409,6 +409,14 @@ mod tests {
 
     use uint;
 
+    // Hash just the bytes of the slice, without length prefix
+    struct Bytes<'self>(&'self [u8]);
+    impl<'self> IterBytes for Bytes<'self> {
+        fn iter_bytes(&self, _lsb0: bool, f: &fn(&[u8]) -> bool) -> bool {
+            f(**self)
+        }
+    }
+
     #[test]
     fn test_siphash() {
         let vecs : [[u8, ..8], ..64] = [
@@ -496,7 +504,7 @@ mod tests {
         while t < 64 {
             debug!("siphash test %?", t);
             let vec = u8to64_le!(vecs[t], 0);
-            let out = buf.hash_keyed(k0, k1);
+            let out = Bytes(buf.as_slice()).hash_keyed(k0, k1);
             debug!("got %?, expected %?", out, vec);
             assert_eq!(vec, out);
 
