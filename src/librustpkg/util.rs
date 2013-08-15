@@ -225,7 +225,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
-    let cfg = driver::build_configuration(sess, binary, &input);
+    let cfg = driver::build_configuration(sess);
     let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
     crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
 

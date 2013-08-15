@@ -142,7 +142,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 1: parse the input and filter it into the program (as necessary)
     //
     debug!("parsing: %s", input);
-    let crate = parse_input(sess, binary, input);
+    let crate = parse_input(sess, binary);
     let mut to_run = ~[];       // statements to run (emitted back into code)
     let new_locals = @mut ~[];  // new locals being defined
     let mut result = None;      // resultant expression (to print via pp)
@@ -222,7 +222,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let test = program.test_code(input, &result, *new_locals);
     debug!("testing with ^^^^^^ %?", (||{ println(test) })());
     let dinput = driver::str_input(test.to_managed());
-    let cfg = driver::build_configuration(sess, binary, &dinput);
+    let cfg = driver::build_configuration(sess);
 
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &dinput);
     let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
@@ -241,7 +241,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let code = program.code(input, &result);
     debug!("actually running ^^^^^^ %?", (||{ println(code) })());
     let input = driver::str_input(code.to_managed());
-    let cfg = driver::build_configuration(sess, binary, &input);
+    let cfg = driver::build_configuration(sess);
     let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
     let sess = driver::build_session(options, diagnostic::emit);
 
@@ -266,11 +266,10 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     //
     return (program, jit::consume_engine());
 
-    fn parse_input(sess: session::Session, binary: @str,
-                   input: &str) -> @ast::Crate {
+    fn parse_input(sess: session::Session, input: &str) -> @ast::Crate {
         let code = fmt!("fn main() {\n %s \n}", input);
         let input = driver::str_input(code.to_managed());
-        let cfg = driver::build_configuration(sess, binary, &input);
+        let cfg = driver::build_configuration(sess);
         driver::phase_1_parse_input(sess, cfg.clone(), &input)
     }
 
@@ -308,7 +307,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let input = driver::file_input(src_path.clone());
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
-        let cfg = driver::build_configuration(sess, binary, &input);
+        let cfg = driver::build_configuration(sess);
         let outputs = driver::build_output_filenames(
             &input, &None, &None, [], sess);
         // If the library already exists and is newer than the source
