@@ -31,6 +31,7 @@ mod rustrt2 {
     }
 }
 
+#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         rustrt1::rust_get_test_int();

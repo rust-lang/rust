@@ -17,6 +17,11 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+// Rustc tasks always run on a fixed_stack_segment, so code in this
+// module can call C functions (in particular, LLVM functions) with
+// impunity.
+#[allow(cstack)];
+
 extern mod extra;
 extern mod syntax;
 

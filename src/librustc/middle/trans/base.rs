@@ -2509,14 +2509,14 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                     register_method(ccx, id, pth, m)
                 }
 
-                ast_map::node_foreign_item(ni, _, _, pth) => {
+                ast_map::node_foreign_item(ni, abis, _, pth) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     exprt = true;
 
                     match ni.node {
                         ast::foreign_item_fn(*) => {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
-                            foreign::register_foreign_item_fn(ccx, abis, &path, ni);
+                            foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
                         ast::foreign_item_static(*) => {
                             let ident = token::ident_to_str(&ni.ident);

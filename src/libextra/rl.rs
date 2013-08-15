@@ -19,15 +19,25 @@ use std::str;
 pub mod rustrt {
     use std::libc::{c_char, c_int};
 
-    extern {
-        pub fn linenoise(prompt: *c_char) -> *c_char;
-        pub fn linenoiseHistoryAdd(line: *c_char) -> c_int;
-        pub fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
-        pub fn linenoiseHistorySave(file: *c_char) -> c_int;
-        pub fn linenoiseHistoryLoad(file: *c_char) -> c_int;
-        pub fn linenoiseSetCompletionCallback(callback: *u8);
-        pub fn linenoiseAddCompletion(completions: *(), line: *c_char);
+    #[cfg(stage0)]
+    mod macro_hack {
+    #[macro_escape];
+    macro_rules! externfn(
+        (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
+            extern {
+                fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
+            }
+        )
+    )
     }
+
+    externfn!(fn linenoise(prompt: *c_char) -> *c_char)
+    externfn!(fn linenoiseHistoryAdd(line: *c_char) -> c_int)
+    externfn!(fn linenoiseHistorySetMaxLen(len: c_int) -> c_int)
+    externfn!(fn linenoiseHistorySave(file: *c_char) -> c_int)
+    externfn!(fn linenoiseHistoryLoad(file: *c_char) -> c_int)
+    externfn!(fn linenoiseSetCompletionCallback(callback: *u8))
+    externfn!(fn linenoiseAddCompletion(completions: *(), line: *c_char))
 }
 
 /// Add a line to history
@@ -84,7 +94,7 @@ pub unsafe fn complete(cb: CompletionCb) {
                         rustrt::linenoiseAddCompletion(completions, buf);
                     }
                 }
-}
+            }
         }
     }
 

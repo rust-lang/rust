@@ -19,6 +19,7 @@ extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
 
+#[fixed_stack_segment]
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
     println(fmt!("max compressed length of a 100 byte buffer: %?", x));
@@ -34,6 +35,11 @@ promise to the compiler that everything contained within truly is safe. C librar
 interfaces that aren't thread-safe, and almost any function that takes a pointer argument isn't
 valid for all possible inputs since the pointer could be dangling, and raw pointers fall outside of
 Rust's safe memory model.
+
+Finally, the `#[fixed_stack_segment]` annotation that appears on
+`main()` instructs the Rust compiler that when `main()` executes, it
+should request a "very large" stack segment.  More details on
+stack management can be found in the following sections.
 
 When declaring the argument types to a foreign function, the Rust compiler will not check if the
 declaration is correct, so specifying it correctly is part of keeping the binding correct at
@@ -75,6 +81,8 @@ length is number of elements currently contained, and the capacity is the total 
 the allocated memory. The length is less than or equal to the capacity.
 
 ~~~~ {.xfail-test}
+#[fixed_stack_segment]
+#[inline(never)]
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
         snappy_validate_compressed_buffer(vec::raw::to_ptr(src), src.len() as size_t) == 0
@@ -86,6 +94,36 @@ The `validate_compressed_buffer` wrapper above makes use of an `unsafe` block, b
 guarantee that calling it is safe for all inputs by leaving off `unsafe` from the function
 signature.
 
+The `validate_compressed_buffer` wrapper is also annotated with two
+attributes `#[fixed_stack_segment]` and `#[inline(never)]`. The
+purpose of these attributes is to guarantee that there will be
+sufficient stack for the C function to execute. This is necessary
+because Rust, unlike C, does not assume that the stack is allocated in
+one continuous chunk. Instead, we rely on a *segmented stack* scheme,
+in which the stack grows and shrinks as necessary.  C code, however,
+expects one large stack, and so callers of C functions must request a
+large stack segment to ensure that the C routine will not run off the
+end of the stack.
+
+The compiler includes a lint mode that will report an error if you
+call a C function without a `#[fixed_stack_segment]` attribute. More
+details on the lint mode are given in a later section.
+
+You may be wondering why we include a `#[inline(never)]` directive.
+This directive informs the compiler never to inline this function.
+While not strictly necessary, it is usually a good idea to use an
+`#[inline(never)]` directive in concert with `#[fixed_stack_segment]`.
+The reason is that if a fn annotated with `fixed_stack_segment` is
+inlined, then its caller also inherits the `fixed_stack_segment`
+annotation. This means that rather than requesting a large stack
+segment only for the duration of the call into C, the large stack
+segment would be used for the entire duration of the caller. This is
+not necessarily *bad* -- it can for example be more efficient,
+particularly if `validate_compressed_buffer()` is called multiple
+times in a row -- but it does work against the purpose of the
+segmented stack scheme, which is to keep stacks small and thus
+conserve address space.
+
 The `snappy_compress` and `snappy_uncompress` functions are more complex, since a buffer has to be
 allocated to hold the output too.
 
@@ -96,6 +134,8 @@ the true length after compression for setting the length.
 
 ~~~~ {.xfail-test}
 pub fn compress(src: &[u8]) -> ~[u8] {
+    #[fixed_stack_segment]; #[inline(never)];
+    
     unsafe {
         let srclen = src.len() as size_t;
         let psrc = vec::raw::to_ptr(src);
@@ -116,6 +156,8 @@ format and `snappy_uncompressed_length` will retrieve the exact buffer size requ
 
 ~~~~ {.xfail-test}
 pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
+    #[fixed_stack_segment]; #[inline(never)];
+    
     unsafe {
         let srclen = src.len() as size_t;
         let psrc = vec::raw::to_ptr(src);
@@ -139,6 +181,99 @@ pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
 For reference, the examples used here are also available as an [library on
 GitHub](https://github.com/thestinger/rust-snappy).
 
+# Automatic wrappers
+
+Sometimes writing Rust wrappers can be quite tedious.  For example, if
+function does not take any pointer arguments, often there is no need
+for translating types. In such cases, it is usually still a good idea
+to have a Rust wrapper so as to manage the segmented stacks, but you
+can take advantage of the (standard) `externfn!` macro to remove some
+of the tedium.
+
+In the initial section, we showed an extern block that added a call
+to a specific snappy API:
+
+~~~~ {.xfail-test}
+use std::libc::size_t;
+
+#[link_args = "-lsnappy"]
+extern {
+    fn snappy_max_compressed_length(source_length: size_t) -> size_t;
+}
+
+#[fixed_stack_segment]
+fn main() {
+    let x = unsafe { snappy_max_compressed_length(100) };
+    println(fmt!("max compressed length of a 100 byte buffer: %?", x));
+}
+~~~~
+
+To avoid the need to create a wrapper fn for `snappy_max_compressed_length()`,
+and also to avoid the need to think about `#[fixed_stack_segment]`, we
+could simply use the `externfn!` macro instead, as shown here:
+
+~~~~ {.xfail-test}
+use std::libc::size_t;
+
+externfn!(#[link_args = "-lsnappy"]
+          fn snappy_max_compressed_length(source_length: size_t) -> size_t)
+
+fn main() {
+    let x = unsafe { snappy_max_compressed_length(100) };
+    println(fmt!("max compressed length of a 100 byte buffer: %?", x));
+}
+~~~~
+
+As you can see from the example, `externfn!` replaces the extern block
+entirely. After macro expansion, it will create something like this:
+
+~~~~ {.xfail-test}
+use std::libc::size_t;
+
+// Automatically generated by
+//   externfn!(#[link_args = "-lsnappy"]
+//             fn snappy_max_compressed_length(source_length: size_t) -> size_t)
+unsafe fn snappy_max_compressed_length(source_length: size_t) -> size_t {
+    #[fixed_stack_segment]; #[inline(never)];
+    return snappy_max_compressed_length(source_length);
+    
+    #[link_args = "-lsnappy"]
+    extern {
+        fn snappy_max_compressed_length(source_length: size_t) -> size_t;
+    }
+}
+
+fn main() {
+    let x = unsafe { snappy_max_compressed_length(100) };
+    println(fmt!("max compressed length of a 100 byte buffer: %?", x));
+}
+~~~~
+
+# Segmented stacks and the linter
+
+By default, whenever you invoke a non-Rust fn, the `cstack` lint will
+check that one of the following conditions holds:
+
+1. The call occurs inside of a fn that has been annotated with
+   `#[fixed_stack_segment]`;
+2. The call occurs inside of an `extern fn`;
+3. The call occurs within a stack closure created by some other
+   safe fn.
+   
+All of these conditions ensure that you are running on a large stack
+segmented. However, they are sometimes too strict. If your application
+will be making many calls into C, it is often beneficial to promote
+the `#[fixed_stack_segment]` attribute higher up the call chain.  For
+example, the Rust compiler actually labels main itself as requiring a
+`#[fixed_stack_segment]`. In such cases, the linter is just an
+annoyance, because all C calls that occur from within the Rust
+compiler are made on a large stack. Another situation where this
+frequently occurs is on a 64-bit architecture, where large stacks are
+the default. In cases, you can disable the linter by including a
+`#[allow(cstack)]` directive somewhere, which permits violations of
+the "cstack" rules given above (you can also use `#[warn(cstack)]` to
+convert the errors into warnings, if you prefer).
+
 # Destructors
 
 Foreign libraries often hand off ownership of resources to the calling code,
@@ -161,6 +296,9 @@ pub struct Unique<T> {
 
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
+        #[fixed_stack_segment];
+        #[inline(never)];
+        
         unsafe {
             let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
@@ -184,6 +322,9 @@ impl<T: Send> Unique<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Unique<T> {
     fn drop(&self) {
+        #[fixed_stack_segment];
+        #[inline(never)];
+        
         unsafe {
             let x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor

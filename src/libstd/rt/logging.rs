@@ -57,6 +57,7 @@ impl Logger for StdErrLogger {
 
 /// Configure logging by traversing the crate map and setting the
 /// per-module global logging flags based on the logging spec
+#[fixed_stack_segment] #[inline(never)]
 pub fn init(crate_map: *u8) {
     use c_str::ToCStr;
     use os;
@@ -78,8 +79,13 @@ pub fn init(crate_map: *u8) {
     }
 }
 
+#[fixed_stack_segment] #[inline(never)]
 pub fn console_on() { unsafe { rust_log_console_on() } }
+
+#[fixed_stack_segment] #[inline(never)]
 pub fn console_off() { unsafe { rust_log_console_off() } }
+
+#[fixed_stack_segment] #[inline(never)]
 fn should_log_console() -> bool { unsafe { rust_should_log_console() != 0 } }
 
 extern {
