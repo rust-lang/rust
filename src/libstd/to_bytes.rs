@@ -235,28 +235,37 @@ impl<'self,A:IterBytes> IterBytes for &'self [A] {
     }
 }
 
-impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
-  #[inline]
-  fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-    match *self {
-      (ref a, ref b) => { a.iter_bytes(lsb0, |b| f(b)) &&
-                          b.iter_bytes(lsb0, |b| f(b)) }
+impl<A: IterBytes> IterBytes for (A, ) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        match *self {
+            (ref a, ) => a.iter_bytes(lsb0, |b| f(b))
+        }
     }
-  }
 }
 
-impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
-  #[inline]
-  fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-    match *self {
-      (ref a, ref b, ref c) => {
-        a.iter_bytes(lsb0, |b| f(b)) &&
-        b.iter_bytes(lsb0, |b| f(b)) &&
-        c.iter_bytes(lsb0, |b| f(b))
-      }
-    }
-  }
-}
+macro_rules! iter_bytes_tuple(
+    ($($A:ident),+) => (
+        impl<$($A: IterBytes),+> IterBytes for ($($A),+) {
+            fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+                match *self {
+                    ($(ref $A),+) => {
+                        $(
+                            $A .iter_bytes(lsb0, |b| f(b))
+                        )&&+
+                    }
+                }
+            }
+        }
+    )
+)
+
+iter_bytes_tuple!(A, B)
+iter_bytes_tuple!(A, B, C)
+iter_bytes_tuple!(A, B, C, D)
+iter_bytes_tuple!(A, B, C, D, E)
+iter_bytes_tuple!(A, B, C, D, E, F)
+iter_bytes_tuple!(A, B, C, D, E, F, G)
+iter_bytes_tuple!(A, B, C, D, E, F, G, H)
 
 impl<A:IterBytes> IterBytes for ~[A] {
     #[inline]
