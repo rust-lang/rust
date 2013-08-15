@@ -406,7 +406,6 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let template_parameters = get_template_parameters(fcx,
                                                       generics,
                                                       file_metadata,
-                                                      span,
                                                       &mut function_name);
 
     let fn_metadata = do function_name.to_c_str().with_ref |function_name| {
@@ -508,7 +507,6 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     fn get_template_parameters(fcx: &FunctionContext,
                                generics: &ast::Generics,
                                file_metadata: DIFile,
-                               span: span,
                                name_to_append_suffix_to: &mut ~str)
                             -> DIArray {
         let cx = fcx.ccx;

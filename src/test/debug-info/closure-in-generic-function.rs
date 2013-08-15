@@ -10,12 +10,37 @@
 
 // xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
-// compile-flags:-Z debug-info
+// compile-flags:-Z extra-debug-info
+// debugger:break zzz
 // debugger:run
 
-// Nothing to do here really, just make sure it compiles. See issue #8513.
-fn main() {
-    let _ = ||();
-    let _ = range(1u,3).map(|_| 5);
+// debugger:finish
+// debugger:print x
+// check:$1 = 0.5
+// debugger:print y
+// check:$2 = 10
+// debugger:continue
+
+// debugger:finish
+// debugger:print *x
+// check:$3 = 29
+// debugger:print *y
+// check:$4 = 110
+// debugger:continue
+
+fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {
+
+    let closure = |x, y| {
+        zzz();
+        (y, x)
+    };
+
+    closure(a, b)
 }
 
+fn main() {
+    some_generic_fun(0.5, 10);
+    some_generic_fun(&29, ~110);
+}
+
+fn zzz() {()}
