@@ -52,22 +52,22 @@ fn mk_ctxt() -> fake_ext_ctxt {
 }
 
 fn main() {
-    let ext_cx = mk_ctxt();
+    let cx = mk_ctxt();
 
-    let abc = quote_expr!(23);
+    let abc = quote_expr!(cx, 23);
     check_pp(ext_cx, abc,  pprust::print_expr, ~"23");
 
 
-    let ty = quote_ty!(int);
+    let ty = quote_ty!(cx, int);
     check_pp(ext_cx, ty, pprust::print_type, ~"int");
 
-    let item = quote_item!(static x : int = 10;).get();
+    let item = quote_item!(cx, static x : int = 10;).get();
     check_pp(ext_cx, item, pprust::print_item, ~"static x: int = 10;");
 
-    let stmt = quote_stmt!(let x = 20;);
+    let stmt = quote_stmt!(cx, let x = 20;);
     check_pp(ext_cx, *stmt, pprust::print_stmt, ~"let x = 20;");
 
-    let pat = quote_pat!(Some(_));
+    let pat = quote_pat!(cx, Some(_));
     check_pp(ext_cx, pat, pprust::print_pat, ~"Some(_)");
 
 }

@@ -53,12 +53,12 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 
 fn main() {
-    let ext_cx = mk_ctxt();
+    let cx = mk_ctxt();
 
-    let abc = quote_expr!(23);
+    let abc = quote_expr!(cx, 23);
     check_pp(abc,  pprust::print_expr, "23");
 
-    let expr3 = quote_expr!(2 - $abcd + 7); //~ ERROR unresolved name: abcd
+    let expr3 = quote_expr!(cx, 2 - $abcd + 7); //~ ERROR unresolved name: abcd
     check_pp(expr3,  pprust::print_expr, "2 - 23 + 7");
 }
 

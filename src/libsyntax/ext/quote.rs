@@ -196,119 +196,45 @@ pub mod rt {
 
     // Alas ... we write these out instead. All redundant.
 
-    impl ToTokens for ast::ident {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
+    macro_rules! impl_to_tokens(
+        ($t:ty) => (
+            impl ToTokens for $t {
+                fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
+                    cx.parse_tts(self.to_source())
+                }
+            }
+        )
+    )
 
-    impl ToTokens for @ast::item {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
+    macro_rules! impl_to_tokens_self(
+        ($t:ty) => (
+            impl<'self> ToTokens for $t {
+                fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
+                    cx.parse_tts(self.to_source())
+                }
+            }
+        )
+    )
 
-    impl<'self> ToTokens for &'self [@ast::item] {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for ast::Ty {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl<'self> ToTokens for &'self [ast::Ty] {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for Generics {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for @ast::expr {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for ast::Block {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl<'self> ToTokens for &'self str {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for int {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for i8 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for i16 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for i32 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for i64 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for uint {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for u8 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for u16 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for u32 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
-
-    impl ToTokens for u64 {
-        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
-            cx.parse_tts(self.to_source())
-        }
-    }
+    impl_to_tokens!(ast::ident)
+    impl_to_tokens!(@ast::item)
+    impl_to_tokens_self!(&'self [@ast::item])
+    impl_to_tokens!(ast::Ty)
+    impl_to_tokens_self!(&'self [ast::Ty])
+    impl_to_tokens!(Generics)
+    impl_to_tokens!(@ast::expr)
+    impl_to_tokens!(ast::Block)
+    impl_to_tokens_self!(&'self str)
+    impl_to_tokens!(int)
+    impl_to_tokens!(i8)
+    impl_to_tokens!(i16)
+    impl_to_tokens!(i32)
+    impl_to_tokens!(i64)
+    impl_to_tokens!(uint)
+    impl_to_tokens!(u8)
+    impl_to_tokens!(u16)
+    impl_to_tokens!(u32)
+    impl_to_tokens!(u64)
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: @str) -> @ast::item;
@@ -366,7 +292,8 @@ pub mod rt {
 pub fn expand_quote_tokens(cx: @ExtCtxt,
                            sp: span,
                            tts: &[ast::token_tree]) -> base::MacResult {
-    base::MRExpr(expand_tts(cx, sp, tts))
+    let (cx_expr, expr) = expand_tts(cx, sp, tts);
+    base::MRExpr(expand_wrapper(cx, sp, cx_expr, expr))
 }
 
 pub fn expand_quote_expr(cx: @ExtCtxt,
@@ -640,7 +567,7 @@ fn mk_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
 fn expand_tts(cx: @ExtCtxt,
               sp: span,
-              tts: &[ast::token_tree]) -> @ast::expr {
+              tts: &[ast::token_tree]) -> (@ast::expr, @ast::expr) {
 
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
@@ -654,17 +581,14 @@ fn expand_tts(cx: @ExtCtxt,
         tts.to_owned()
     );
     *p.quote_depth += 1u;
+
+    let cx_expr = p.parse_expr();
+    if !p.eat(&token::COMMA) {
+        p.fatal("Expected token `,`");
+    }
+
     let tts = p.parse_all_token_trees();
     p.abort_if_errors();
-
-    // We want to emit a block expression that does a sequence of 'use's to
-    // import the runtime module, followed by a tt-building expression.
-
-    let uses = ~[ cx.view_use_glob(sp, ast::public,
-                                   ids_ext(~[~"syntax",
-                                             ~"ext",
-                                             ~"quote",
-                                             ~"rt"])) ];
 
     // We also bind a single value, sp, to ext_cx.call_site()
     //
@@ -683,9 +607,9 @@ fn expand_tts(cx: @ExtCtxt,
     // the site the string literal occurred, which was in a source file
     // _other_ than the one the user has control over. For example, an
     // error in a quote from the protocol compiler, invoked in user code
-    // using macro_rules! for example, will be attributed to the macro_rules.rs file in
-    // libsyntax, which the user might not even have source to (unless they
-    // happen to have a compiler on hand). Over all, the phase distinction
+    // using macro_rules! for example, will be attributed to the macro_rules.rs
+    // file in libsyntax, which the user might not even have source to (unless
+    // they happen to have a compiler on hand). Over all, the phase distinction
     // just makes quotes "hard to attribute". Possibly this could be fixed
     // by recreating some of the original qq machinery in the tt regime
     // (pushing fake FileMaps onto the parser to account for original sites
@@ -705,11 +629,28 @@ fn expand_tts(cx: @ExtCtxt,
                                   id_ext("tt"),
                                   cx.expr_vec_uniq(sp, ~[]));
 
-    cx.expr_block(
-        cx.block_all(sp, uses,
-                     ~[stmt_let_sp,
-                       stmt_let_tt] + mk_tts(cx, sp, tts),
-                     Some(cx.expr_ident(sp, id_ext("tt")))))
+    let block = cx.expr_block(
+        cx.block_all(sp,
+                     ~[],
+                     ~[stmt_let_sp, stmt_let_tt] + mk_tts(cx, sp, tts),
+                     Some(cx.expr_ident(sp, id_ext("tt")))));
+
+    (cx_expr, block)
+}
+
+fn expand_wrapper(cx: @ExtCtxt,
+                  sp: span,
+                  cx_expr: @ast::expr,
+                  expr: @ast::expr) -> @ast::expr {
+    let uses = ~[ cx.view_use_glob(sp, ast::public,
+                                   ids_ext(~[~"syntax",
+                                             ~"ext",
+                                             ~"quote",
+                                             ~"rt"])) ];
+
+    let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr);
+
+    cx.expr_block(cx.block_all(sp, uses, ~[stmt_let_ext_cx], Some(expr)))
 }
 
 fn expand_parse_call(cx: @ExtCtxt,
@@ -717,7 +658,7 @@ fn expand_parse_call(cx: @ExtCtxt,
                      parse_method: &str,
                      arg_exprs: ~[@ast::expr],
                      tts: &[ast::token_tree]) -> @ast::expr {
-    let tts_expr = expand_tts(cx, sp, tts);
+    let (cx_expr, tts_expr) = expand_tts(cx, sp, tts);
 
     let cfg_call = || cx.expr_method_call(
         sp, cx.expr_ident(sp, id_ext("ext_cx")),
@@ -728,17 +669,12 @@ fn expand_parse_call(cx: @ExtCtxt,
         id_ext("parse_sess"), ~[]);
 
     let new_parser_call =
-        cx.expr_call_global(sp,
-                            ids_ext(~[~"syntax",
-                                      ~"ext",
-                                      ~"quote",
-                                      ~"rt",
-                                      ~"new_parser_from_tts"]),
-                            ~[parse_sess_call(),
-                              cfg_call(),
-                              tts_expr]);
+        cx.expr_call(sp,
+                     cx.expr_ident(sp, id_ext("new_parser_from_tts")),
+                     ~[parse_sess_call(), cfg_call(), tts_expr]);
 
-    cx.expr_method_call(sp, new_parser_call,
-                        id_ext(parse_method),
-                        arg_exprs)
+    let expr = cx.expr_method_call(sp, new_parser_call, id_ext(parse_method),
+                                   arg_exprs);
+
+    expand_wrapper(cx, sp, cx_expr, expr)
 }
