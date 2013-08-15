@@ -359,7 +359,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
                 let xs = [
                     ~"the compiler hit an unexpected failure path. \
                      this is a bug",
-                    ~"try running with RUST_LOG=rustc=1,::rt::backtrace \
+                    ~"try running with RUST_LOG=rustc=1 \
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ];
