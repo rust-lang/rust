@@ -522,7 +522,7 @@ struct NewNameFinderContext {
 }
 
 impl Visitor<()> for NewNameFinderContext {
-    fn visit_pat(@mut self, pattern: @ast::pat, _: ()) {
+    fn visit_pat(&mut self, pattern: @ast::pat, _: ()) {
         match *pattern {
             // we found a pat_ident!
             ast::pat {
@@ -548,74 +548,74 @@ impl Visitor<()> for NewNameFinderContext {
                 }
             }
             // use the default traversal for non-pat_idents
-            _ => visit::visit_pat(self as @mut Visitor<()>, pattern, ())
+            _ => visit::walk_pat(self, pattern, ())
         }
     }
 
     // XXX: Methods below can become default methods.
 
-    fn visit_mod(@mut self, module: &ast::_mod, _: span, _: NodeId, _: ()) {
-        visit::visit_mod(self as @mut Visitor<()>, module, ())
+    fn visit_mod(&mut self, module: &ast::_mod, _: span, _: NodeId, _: ()) {
+        visit::walk_mod(self, module, ())
     }
 
-    fn visit_view_item(@mut self, view_item: &ast::view_item, _: ()) {
-        visit::visit_view_item(self as @mut Visitor<()>, view_item, ())
+    fn visit_view_item(&mut self, view_item: &ast::view_item, _: ()) {
+        visit::walk_view_item(self, view_item, ())
     }
 
-    fn visit_item(@mut self, item: @ast::item, _: ()) {
-        visit::visit_item(self as @mut Visitor<()>, item, ())
+    fn visit_item(&mut self, item: @ast::item, _: ()) {
+        visit::walk_item(self, item, ())
     }
 
-    fn visit_foreign_item(@mut self,
+    fn visit_foreign_item(&mut self,
                           foreign_item: @ast::foreign_item,
                           _: ()) {
-        visit::visit_foreign_item(self as @mut Visitor<()>, foreign_item, ())
+        visit::walk_foreign_item(self, foreign_item, ())
     }
 
-    fn visit_local(@mut self, local: @ast::Local, _: ()) {
-        visit::visit_local(self as @mut Visitor<()>, local, ())
+    fn visit_local(&mut self, local: @ast::Local, _: ()) {
+        visit::walk_local(self, local, ())
     }
 
-    fn visit_block(@mut self, block: &ast::Block, _: ()) {
-        visit::visit_block(self as @mut Visitor<()>, block, ())
+    fn visit_block(&mut self, block: &ast::Block, _: ()) {
+        visit::walk_block(self, block, ())
     }
 
-    fn visit_stmt(@mut self, stmt: @ast::stmt, _: ()) {
-        visit::visit_stmt(self as @mut Visitor<()>, stmt, ())
+    fn visit_stmt(&mut self, stmt: @ast::stmt, _: ()) {
+        visit::walk_stmt(self, stmt, ())
     }
 
-    fn visit_arm(@mut self, arm: &ast::arm, _: ()) {
-        visit::visit_arm(self as @mut Visitor<()>, arm, ())
+    fn visit_arm(&mut self, arm: &ast::arm, _: ()) {
+        visit::walk_arm(self, arm, ())
     }
 
-    fn visit_decl(@mut self, decl: @ast::decl, _: ()) {
-        visit::visit_decl(self as @mut Visitor<()>, decl, ())
+    fn visit_decl(&mut self, decl: @ast::decl, _: ()) {
+        visit::walk_decl(self, decl, ())
     }
 
-    fn visit_expr(@mut self, expr: @ast::expr, _: ()) {
-        visit::visit_expr(self as @mut Visitor<()>, expr, ())
+    fn visit_expr(&mut self, expr: @ast::expr, _: ()) {
+        visit::walk_expr(self, expr, ())
     }
 
-    fn visit_expr_post(@mut self, _: @ast::expr, _: ()) {
+    fn visit_expr_post(&mut self, _: @ast::expr, _: ()) {
         // Empty!
     }
 
-    fn visit_ty(@mut self, typ: &ast::Ty, _: ()) {
-        visit::visit_ty(self as @mut Visitor<()>, typ, ())
+    fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
+        visit::walk_ty(self, typ, ())
     }
 
-    fn visit_generics(@mut self, generics: &ast::Generics, _: ()) {
-        visit::visit_generics(self as @mut Visitor<()>, generics, ())
+    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
+        visit::walk_generics(self, generics, ())
     }
 
-    fn visit_fn(@mut self,
+    fn visit_fn(&mut self,
                 function_kind: &visit::fn_kind,
                 function_declaration: &ast::fn_decl,
                 block: &ast::Block,
                 span: span,
                 node_id: NodeId,
                 _: ()) {
-        visit::visit_fn(self as @mut Visitor<()>,
+        visit::walk_fn(self,
                         function_kind,
                         function_declaration,
                         block,
@@ -624,23 +624,23 @@ impl Visitor<()> for NewNameFinderContext {
                         ())
     }
 
-    fn visit_ty_method(@mut self, ty_method: &ast::TypeMethod, _: ()) {
-        visit::visit_ty_method(self as @mut Visitor<()>, ty_method, ())
+    fn visit_ty_method(&mut self, ty_method: &ast::TypeMethod, _: ()) {
+        visit::walk_ty_method(self, ty_method, ())
     }
 
-    fn visit_trait_method(@mut self,
+    fn visit_trait_method(&mut self,
                           trait_method: &ast::trait_method,
                           _: ()) {
-        visit::visit_trait_method(self as @mut Visitor<()>, trait_method, ())
+        visit::walk_trait_method(self, trait_method, ())
     }
 
-    fn visit_struct_def(@mut self,
+    fn visit_struct_def(&mut self,
                         struct_def: @ast::struct_def,
                         ident: ident,
                         generics: &ast::Generics,
                         node_id: NodeId,
                         _: ()) {
-        visit::visit_struct_def(self as @mut Visitor<()>,
+        visit::walk_struct_def(self,
                                 struct_def,
                                 ident,
                                 generics,
@@ -648,10 +648,10 @@ impl Visitor<()> for NewNameFinderContext {
                                 ())
     }
 
-    fn visit_struct_field(@mut self,
+    fn visit_struct_field(&mut self,
                           struct_field: @ast::struct_field,
                           _: ()) {
-        visit::visit_struct_field(self as @mut Visitor<()>, struct_field, ())
+        visit::walk_struct_field(self, struct_field, ())
     }
 }
 
