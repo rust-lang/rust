@@ -21,7 +21,17 @@ use sort;
 pub struct GlobIterator {
     priv root: Path,
     priv dir_patterns: ~[Pattern],
+    priv options: MatchOptions,
     priv todo: ~[Path]
+}
+
+/**
+ * Call glob_with with the default match options.
+ *
+ * This equivalent to glob_with(pattern, MatchOptions::new())
+ */
+pub fn glob(pattern: &str) -> GlobIterator {
+    glob_with(pattern, MatchOptions::new())
 }
 
 /**
@@ -32,9 +42,11 @@ pub struct GlobIterator {
  * with the exception that path separators (i.e. '/' on Posix systems) must be matched
  * by their literal representation - they can't be matched by '*', '?', '[...]', etc.
  *
+ * The options given are passed through unchanged to Pattern::matches_with(..).
+ *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
-pub fn glob(pattern: &str) -> GlobIterator {
+pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
 
     // note that this relies on the glob meta characters not
     // having any special meaning in actual pathnames
@@ -51,6 +63,7 @@ pub fn glob(pattern: &str) -> GlobIterator {
     GlobIterator {
         root: root,
         dir_patterns: dir_patterns,
+        options: options,
         todo: todo,
     }
 }
@@ -65,8 +78,9 @@ impl Iterator<Path> for GlobIterator {
 
             let path = self.todo.pop();
             let pattern_index = path.components.len() - self.root.components.len() - 1;
+            let ref pattern = self.dir_patterns[pattern_index];
 
-            if self.dir_patterns[pattern_index].matches(*path.components.last()) {
+            if pattern.matches_with(*path.components.last(), self.options) {
 
                 if pattern_index == self.dir_patterns.len() - 1 {
                     // it is not possible for a pattern to match a directory *AND* its children
@@ -198,26 +212,43 @@ impl Pattern {
     }
 
     /**
-     * Return if the given str matches this Pattern.
+     * Return if the given str matches this Pattern using the default
+     * match options (i.e. MatchOptions::new()).
      */
     pub fn matches(&self, file: &str) -> bool {
-        self.matches_from(file, 0)
+        self.matches_with(file, MatchOptions::new())
     }
 
     /**
-     * Return if the given Path, when converted to a str, matches this Pattern.
+     * Return if the given Path, when converted to a str, matches this Pattern
+     * using the default match options (i.e. MatchOptions::new()).
      */
     pub fn matches_path(&self, path: &Path) -> bool {
         self.matches(path.to_str())
     }
 
-    fn matches_from(&self, mut file: &str, i: uint) -> bool {
+    /**
+     * Return if the given str matches this Pattern using the specified match options.
+     */
+    pub fn matches_with(&self, file: &str, options: MatchOptions) -> bool {
+        self.matches_from(file, 0, options)
+    }
+
+    /**
+     * Return if the given Path, when converted to a str, matches this Pattern
+     * using the specified match options.
+     */
+    pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
+        self.matches_with(path.to_str(), options)
+    }
+
+    fn matches_from(&self, mut file: &str, i: uint, options: MatchOptions) -> bool {
 
         for uint::range(i, self.tokens.len()) |ti| {
             match self.tokens[ti] {
                 AnySequence => {
                     loop {
-                        if self.matches_from(file, ti + 1) {
+                        if self.matches_from(file, ti + 1, options) {
                             return true;
                         }
                         if file.is_empty() {
@@ -232,11 +263,21 @@ impl Pattern {
                     }
                     let (c, next) = file.slice_shift_char();
                     let matches = match self.tokens[ti] {
-                        AnyChar => true,
-                        AnyWithin(ref chars) => chars.contains(&c),
-                        AnyExcept(ref chars) => !chars.contains(&c),
-                        Char(c2) => c == c2,
-                        AnySequence => util::unreachable(),
+                        AnyChar => {
+                            true
+                        }
+                        AnyWithin(ref chars) => {
+                            chars.rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_some()
+                        }
+                        AnyExcept(ref chars) => {
+                            chars.rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_none()
+                        }
+                        Char(c2) => {
+                            chars_eq(c, c2, options.case_sensitive)
+                        }
+                        AnySequence => {
+                            util::unreachable()
+                        }
                     };
                     if !matches {
                         return false;
@@ -247,6 +288,43 @@ impl Pattern {
         }
 
         file.is_empty()
+    }
+
+}
+
+/// A helper function to determine if two chars are (possibly case-insensitively) equal.
+fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
+    // FIXME: work with non-ascii chars properly (issue #1347)
+    if !case_sensitive && a.is_ascii() && b.is_ascii() {
+        a.to_ascii().eq_ignore_case(b.to_ascii())
+    } else {
+        a == b
+    }
+}
+
+/**
+ * Configuration options to modify the behaviour of Pattern::matches_with(..)
+ */
+pub struct MatchOptions {
+    /// Whether or not patterns should be matched in a case-sensitive manner.
+    case_sensitive: bool
+}
+
+impl MatchOptions {
+
+    /**
+     * Constructs a new MatchOptions with default field values. This is used
+     * when calling functions that do not take an explicit MatchOptions parameter.
+     *
+     * This function always returns this value:
+     *     MatchOptions {
+     *         case_sensitive: true
+     *     }
+     */
+    pub fn new() -> MatchOptions {
+        MatchOptions {
+            case_sensitive: true
+        }
     }
 
 }
@@ -497,6 +575,38 @@ mod test {
         let s = "_[_]_?_*_!_";
         assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
         assert!(Pattern::new(Pattern::escape(s)).matches(s));
+    }
+
+    #[test]
+    fn test_pattern_matches_case_insensitive() {
+
+        let pat = Pattern::new("aBcDeFg");
+        let options = MatchOptions { case_sensitive: false };
+
+        assert!(pat.matches_with("aBcDeFg", options));
+        assert!(pat.matches_with("abcdefg", options));
+        assert!(pat.matches_with("ABCDEFG", options));
+        assert!(pat.matches_with("AbCdEfG", options));
+    }
+
+    #[test]
+    fn test_pattern_matches_case_insensitive_within() {
+
+        let pat = Pattern::new("[a]");
+
+        assert!(pat.matches_with("a", MatchOptions { case_sensitive: false }));
+        assert!(pat.matches_with("A", MatchOptions { case_sensitive: false }));
+        assert!(!pat.matches_with("A", MatchOptions { case_sensitive: true }));
+    }
+
+    #[test]
+    fn test_pattern_matches_case_insensitive_except() {
+
+        let pat = Pattern::new("[!a]");
+
+        assert!(!pat.matches_with("a", MatchOptions { case_sensitive: false }));
+        assert!(!pat.matches_with("A", MatchOptions { case_sensitive: false }));
+        assert!(pat.matches_with("A", MatchOptions { case_sensitive: true }));
     }
 }
 
