@@ -381,7 +381,7 @@ mod stat {
 #[cfg(target_os = "win32")]
 impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
-        do self.to_c_str().with_ref |buf| {
+        do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::stat(buf, &mut st) } {
                 0 => Some(st),
@@ -415,7 +415,7 @@ impl WindowsPath {
 #[cfg(not(target_os = "win32"))]
 impl PosixPath {
     pub fn stat(&self) -> Option<libc::stat> {
-        do self.to_c_str().with_ref |buf| {
+        do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::stat(buf as *libc::c_char, &mut st) } {
                 0 => Some(st),
@@ -493,7 +493,7 @@ impl PosixPath {
 #[cfg(unix)]
 impl PosixPath {
     pub fn lstat(&self) -> Option<libc::stat> {
-        do self.to_c_str().with_ref |buf| {
+        do self.with_c_str |buf| {
             let mut st = stat::arch::default_stat();
             match unsafe { libc::lstat(buf, &mut st) } {
                 0 => Some(st),

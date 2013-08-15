@@ -537,7 +537,7 @@ pub fn make_vtable(ccx: &mut CrateContext,
 
         let tbl = C_struct(components);
         let vtable = ccx.sess.str_of(gensym_name("vtable"));
-        let vt_gvar = do vtable.to_c_str().with_ref |buf| {
+        let vt_gvar = do vtable.with_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);

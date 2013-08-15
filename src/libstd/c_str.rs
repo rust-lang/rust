@@ -133,6 +133,29 @@ pub trait ToCStr {
 
     /// Unsafe variant of `to_c_str()` that doesn't check for nulls.
     unsafe fn to_c_str_unchecked(&self) -> CString;
+
+    /// Work with a temporary CString constructed from the receiver.
+    /// The provided `*libc::c_char` will be freed immediately upon return.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let s = "PATH".with_c_str(|path| libc::getenv(path))
+    /// ~~~
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the receiver has an interior null.
+    #[inline]
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.to_c_str().with_ref(f)
+    }
+
+    /// Unsafe variant of `with_c_str()` that doesn't check for nulls.
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.to_c_str_unchecked().with_ref(f)
+    }
 }
 
 impl<'self> ToCStr for &'self str {

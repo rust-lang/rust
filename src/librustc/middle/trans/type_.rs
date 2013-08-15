@@ -171,7 +171,7 @@ impl Type {
 
     pub fn named_struct(name: &str) -> Type {
         let ctx = base::task_llcx();
-        ty!(name.to_c_str().with_ref(|s| llvm::LLVMStructCreateNamed(ctx, s)))
+        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(ctx, s)))
     }
 
     pub fn empty_struct() -> Type {
