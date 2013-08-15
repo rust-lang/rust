@@ -214,6 +214,7 @@ CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
 CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
 CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
 CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
+CFG_LIBRUSTDOCNG_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc_ng)
 CFG_LIBRUSTI_$(1) :=$(call CFG_LIB_NAME_$(1),rusti)
 CFG_LIBRUST_$(1) :=$(call CFG_LIB_NAME_$(1),rust)
 
@@ -223,6 +224,7 @@ LIBRUSTC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustc)
 LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
 LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
+LIBRUSTDOCNG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc_ng)
 LIBRUSTI_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rusti)
 LIBRUST_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rust)
 EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
@@ -231,6 +233,7 @@ LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
 LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
+LIBRUSTDOCNG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc_ng)
 LIBRUSTI_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rusti)
 LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
 
@@ -443,6 +446,7 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rust$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUST_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
@@ -451,6 +455,7 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(2))
 
