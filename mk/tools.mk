@@ -23,6 +23,11 @@ RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*.rs)
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rs
 RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 
+# rustdoc_ng, the next generation documentation tool
+
+RUSTDOCNG_LIB := $(S)src/rustdoc/lib.rs
+RUSTDOCNG_INPUTS := $(wildcard $(S)src/rustdoc/*.rs)
+
 # Rusti, the JIT REPL
 RUSTI_LIB := $(S)src/librusti/rusti.rs
 RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
@@ -77,6 +82,14 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X_$(4)):			\
 		| $$(TBIN$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc -o $$@ $$<
+
+$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc_ng$$(X_$(4)):			\
+		$$(DRIVER_CRATE) 							\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(4))			\
+		| $$(TBIN$(1)_T_$(4)_H_$(3))/
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc_ng -o $$@ $$<
 
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4)):		\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)			\
