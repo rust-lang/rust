@@ -36,7 +36,7 @@ use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
 use std::hashmap::{HashMap};
-use std::libc::{c_uint, c_longlong, c_ulonglong};
+use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
@@ -760,8 +760,8 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
             None => ()
         }
 
-        let sc = do s.with_c_str |buf| {
-            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint, False)
+        let sc = do s.as_imm_buf |buf, buflen| {
+            llvm::LLVMConstStringInContext(cx.llcx, buf as *c_char, buflen as c_uint, False)
         };
 
         let gsym = token::gensym("str");
