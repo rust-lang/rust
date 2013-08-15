@@ -835,34 +835,34 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     };
 }
 
-impl<K: TotalOrd, V, T: Iterator<(K, V)>> FromIterator<(K, V), T> for TreeMap<K, V> {
-    fn from_iterator(iter: &mut T) -> TreeMap<K, V> {
+impl<K: TotalOrd, V> FromIterator<(K, V)> for TreeMap<K, V> {
+    fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> TreeMap<K, V> {
         let mut map = TreeMap::new();
         map.extend(iter);
         map
     }
 }
 
-impl<K: TotalOrd, V, T: Iterator<(K, V)>> Extendable<(K, V), T> for TreeMap<K, V> {
+impl<K: TotalOrd, V> Extendable<(K, V)> for TreeMap<K, V> {
     #[inline]
-    fn extend(&mut self, iter: &mut T) {
+    fn extend<T: Iterator<(K, V)>>(&mut self, iter: &mut T) {
         for (k, v) in *iter {
             self.insert(k, v);
         }
     }
 }
 
-impl<T: TotalOrd, Iter: Iterator<T>> FromIterator<T, Iter> for TreeSet<T> {
-    fn from_iterator(iter: &mut Iter) -> TreeSet<T> {
+impl<T: TotalOrd> FromIterator<T> for TreeSet<T> {
+    fn from_iterator<Iter: Iterator<T>>(iter: &mut Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
         set.extend(iter);
         set
     }
 }
 
-impl<T: TotalOrd, Iter: Iterator<T>> Extendable<T, Iter> for TreeSet<T> {
+impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
     #[inline]
-    fn extend(&mut self, iter: &mut Iter) {
+    fn extend<Iter: Iterator<T>>(&mut self, iter: &mut Iter) {
         for elem in *iter {
             self.insert(elem);
         }
