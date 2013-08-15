@@ -104,7 +104,7 @@ impl CString {
     }
 
     /// Return a CString iterator.
-    fn iter<'a>(&'a self) -> CStringIterator<'a> {
+    pub fn iter<'a>(&'a self) -> CStringIterator<'a> {
         CStringIterator {
             ptr: self.buf,
             lifetime: unsafe { cast::transmute(self.buf) },
