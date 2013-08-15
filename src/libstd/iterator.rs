@@ -26,15 +26,15 @@ use clone::Clone;
 use uint;
 
 /// Conversion from an `Iterator`
-pub trait FromIterator<A, T: Iterator<A>> {
+pub trait FromIterator<A> {
     /// Build a container with elements from an external iterator.
-    fn from_iterator(iterator: &mut T) -> Self;
+    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> Self;
 }
 
 /// A type growable from an `Iterator` implementation
-pub trait Extendable<A, T: Iterator<A>>: FromIterator<A, T> {
+pub trait Extendable<A>: FromIterator<A> {
     /// Extend a container with the elements yielded by an iterator
-    fn extend(&mut self, iterator: &mut T);
+    fn extend<T: Iterator<A>>(&mut self, iterator: &mut T);
 }
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -353,7 +353,7 @@ pub trait Iterator<A> {
     /// assert!(a == b);
     /// ~~~
     #[inline]
-    fn collect<B: FromIterator<A, Self>>(&mut self) -> B {
+    fn collect<B: FromIterator<A>>(&mut self) -> B {
         FromIterator::from_iterator(self)
     }
 

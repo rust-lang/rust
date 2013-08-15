@@ -573,16 +573,16 @@ impl<A> DoubleEndedIterator<A> for MoveIterator<A> {
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
-impl<A, T: Iterator<A>> FromIterator<A, T> for DList<A> {
-    fn from_iterator(iterator: &mut T) -> DList<A> {
+impl<A> FromIterator<A> for DList<A> {
+    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret
     }
 }
 
-impl<A, T: Iterator<A>> Extendable<A, T> for DList<A> {
-    fn extend(&mut self, iterator: &mut T) {
+impl<A> Extendable<A> for DList<A> {
+    fn extend<T: Iterator<A>>(&mut self, iterator: &mut T) {
         for elt in *iterator { self.push_back(elt); }
     }
 }
@@ -1163,4 +1163,3 @@ mod tests {
         }
     }
 }
-
