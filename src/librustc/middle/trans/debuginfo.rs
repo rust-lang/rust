@@ -70,6 +70,7 @@ use std::ptr;
 use std::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::parse::token::keywords;
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -140,15 +141,6 @@ pub struct FunctionDebugContext {
     priv argument_counter: uint,
 }
 
-impl FunctionDebugContext {
-    fn new() -> FunctionDebugContext {
-        return FunctionDebugContext {
-            scope_map: HashMap::new(),
-            argument_counter: 1,
-        };
-    }
-}
-
 /// Create any deferred debug metadata nodes
 pub fn finalize(cx: @mut CrateContext) {
     debug!("finalize");
@@ -175,6 +167,9 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     }
 }
 
+/// Creates debug information for a local variable introduced in the head of a match-statement arm.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata(bcx: @mut Block,
                                      variable_ident: ast::ident,
                                      node_id: ast::NodeId,
@@ -183,11 +178,59 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
     declare_local(bcx, variable_ident, node_id, variable_type, span);
 }
 
+/// Creates debug information for the self argument of a method.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_self_argument_metadata(bcx: @mut Block,
+                                     variable_type: ty::t,
+                                     llptr: ValueRef) {
+    assert_fcx_has_span(bcx.fcx);
+    let span = bcx.fcx.span.unwrap();
+
+    let cx = bcx.ccx();
+
+    let filename = span_start(cx, span).file.name;
+    let file_metadata = file_metadata(cx, filename);
+
+    let loc = span_start(cx, span);
+    let type_metadata = type_metadata(cx, variable_type, span);
+    let scope = create_function_metadata(bcx.fcx);
+    let self_ident = keywords::Self.to_ident();
+
+    let var_metadata = do cx.sess.str_of(self_ident).to_c_str().with_ref |name| {
+        unsafe {
+            llvm::LLVMDIBuilderCreateLocalVariable(
+                DIB(cx),
+                DW_TAG_arg_variable,
+                scope,
+                name,
+                file_metadata,
+                loc.line as c_uint,
+                type_metadata,
+                false,
+                0,
+                1)
+        }
+    };
+
+    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    unsafe {
+        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+            DIB(cx),
+            llptr,
+            var_metadata,
+            bcx.llbb);
+
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+    }
+}
+
 /// Creates debug information for the given function argument.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: @mut Block,
-                                arg: &ast::arg) {
+                                arg: &ast::arg,
+                                needs_deref: bool) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
@@ -393,7 +436,11 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     {
         assert!(fcx.debug_context.is_none());
 
-        let mut fn_debug_context = ~FunctionDebugContext::new();
+        let mut fn_debug_context = ~FunctionDebugContext {
+            scope_map: HashMap::new(),
+            argument_counter: if fcx.llself.is_some() { 2 } else { 1 }
+        };
+
         let entry_block_id = fcx.entry_bcx.get_ref().node_info.get_ref().id;
         let entry_block = cx.tcx.items.get(&entry_block_id);
 
@@ -1408,6 +1455,13 @@ fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
 }
 
+fn assert_fcx_has_span(fcx: &FunctionContext) {
+    if fcx.span.is_none() {
+        fcx.ccx.sess.bug(fmt!("debuginfo: Encountered function %s with invalid source span. \
+            This function should have been ignored by debuginfo generation.",
+            ast_map::path_to_str(fcx.path, fcx.ccx.sess.intr())));
+    }
+}
 
 // This procedure builds the *scope map* for a given function, which maps any given ast::NodeId in
 // the function's AST to the correct DIScope metadata instance.

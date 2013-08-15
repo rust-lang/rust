@@ -133,7 +133,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 
 fn fcx_has_nonzero_span(fcx: &FunctionContext) -> bool {
     match fcx.span {
-        None => true,
+        None => false,
         Some(span) => *span.lo != 0 || *span.hi != 0
     }
 }
@@ -1739,6 +1739,10 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
 
             fcx.llself = Some(ValSelfData {v: self_val, ..slf});
             add_clean(bcx, self_val, slf.t);
+
+            if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
+                debuginfo::create_self_argument_metadata(bcx, slf.t, self_val);
+            }
         }
         _ => {}
     }
