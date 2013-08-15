@@ -265,7 +265,7 @@ pub fn trans_lit_str(bcx: @mut Block,
         Ignore => bcx,
         SaveIn(lldest) => {
             unsafe {
-                let bytes = str_lit.len(); // count null-terminator too
+                let bytes = str_lit.len();
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
