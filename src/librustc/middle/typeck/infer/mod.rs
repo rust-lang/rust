@@ -698,6 +698,17 @@ impl InferCtxt {
         }
     }
 
+    // [Note-Type-error-reporting]
+    // An invariant is that anytime the expected or actual type is ty_err (the special
+    // error type, meaning that an error occurred when typechecking this expression),
+    // this is a derived error. The error cascaded from another error (that was already
+    // reported), so it's not useful to display it to the user.
+    // The following four methods -- type_error_message_str, type_error_message_str_with_expected,
+    // type_error_message, and report_mismatched_types -- implement this logic.
+    // They check if either the actual or expected type is ty_err, and don't print the error
+    // in this case. The typechecker should only ever report type errors involving mismatched
+    // types using one of these four methods, and should not call span_err directly for such
+    // errors.
     pub fn type_error_message_str(@mut self,
                                   sp: span,
                                   mk_msg: &fn(Option<~str>, ~str) -> ~str,
