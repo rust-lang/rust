@@ -569,6 +569,10 @@ impl ToCStr for PosixPath {
     fn to_c_str(&self) -> c_str::CString {
         self.to_str().to_c_str()
     }
+
+    unsafe fn to_c_str_unchecked(&self) -> c_str::CString {
+        self.to_str().to_c_str_unchecked()
+    }
 }
 
 // FIXME (#3227): when default methods in traits are working, de-duplicate
@@ -780,6 +784,10 @@ impl ToStr for WindowsPath {
 impl c_str::ToCStr for WindowsPath {
     fn to_c_str(&self) -> c_str::CString {
         self.to_str().to_c_str()
+    }
+
+    unsafe fn to_c_str_unchecked(&self) -> c_str::CString {
+        self.to_str().to_c_str_unchecked()
     }
 }
 
