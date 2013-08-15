@@ -224,8 +224,8 @@ implementing the `FromIterator` trait. For example, the implementation for
 vectors is as follows:
 
 ~~~
-impl<A, T: Iterator<A>> FromIterator<A, T> for ~[A] {
-    pub fn from_iterator(iterator: &mut T) -> ~[A] {
+impl<A> FromIterator<A> for ~[A] {
+    pub fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for x in iterator {

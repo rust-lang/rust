@@ -190,8 +190,8 @@ impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<T: Ord, Iter: Iterator<T>> FromIterator<T, Iter> for PriorityQueue<T> {
-    fn from_iterator(iter: &mut Iter) -> PriorityQueue<T> {
+impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
+    fn from_iterator<Iter: Iterator<T>>(iter: &mut Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
 
@@ -199,8 +199,8 @@ impl<T: Ord, Iter: Iterator<T>> FromIterator<T, Iter> for PriorityQueue<T> {
     }
 }
 
-impl<T: Ord, Iter: Iterator<T>> Extendable<T, Iter> for PriorityQueue<T> {
-    fn extend(&mut self, iter: &mut Iter) {
+impl<T: Ord> Extendable<T> for PriorityQueue<T> {
+    fn extend<Iter: Iterator<T>>(&mut self, iter: &mut Iter) {
         let (lower, _) = iter.size_hint();
 
         let len = self.capacity();
