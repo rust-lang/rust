@@ -2271,7 +2271,7 @@ pub struct TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd = do string_rep.to_c_str().with_ref |buf| {
+    let lltd = do string_rep.with_c_str |buf| {
         unsafe { llvm::LLVMCreateTargetData(buf) }
     };
 

@@ -199,7 +199,7 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
 fn get_metadata_section(os: os,
                         filename: &Path) -> Option<@~[u8]> {
     unsafe {
-        let mb = do filename.to_c_str().with_ref |buf| {
+        let mb = do filename.with_c_str |buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
         };
         if mb as int == 0 { return option::None::<@~[u8]>; }
