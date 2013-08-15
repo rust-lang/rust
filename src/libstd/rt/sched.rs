@@ -30,6 +30,7 @@ use cell::Cell;
 use rand::{XorShiftRng, RngUtil};
 use iterator::{range};
 use vec::{OwnedVector};
+use rt::uv::idle::IdleWatcher;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
@@ -76,8 +77,11 @@ pub struct Scheduler {
     /// them to.
     friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
-    rng: XorShiftRng
-
+    rng: XorShiftRng,
+    /// An IdleWatcher
+    idle_watcher: IdleWatcher,
+    /// A flag to indicate whether or not the idle callback is active.
+    idle_flag: bool
 }
 
 pub struct SchedHandle {
@@ -124,6 +128,9 @@ impl Scheduler {
                        friend: Option<SchedHandle>)
         -> Scheduler {
 
+        let mut event_loop = event_loop;
+        let idle_watcher = IdleWatcher::new(event_loop.uvio.uv_loop());
+
         Scheduler {
             sleeper_list: sleeper_list,
             message_queue: MessageQueue::new(),
@@ -138,7 +145,9 @@ impl Scheduler {
             metrics: SchedMetrics::new(),
             run_anything: run_anything,
             friend_handle: friend,
-            rng: XorShiftRng::new()
+            rng: XorShiftRng::new(),
+            idle_watcher: idle_watcher,
+            idle_flag: true
         }
     }
 
@@ -151,6 +160,8 @@ impl Scheduler {
     // scheduler task and bootstrap into it.
     pub fn bootstrap(~self, task: ~Task) {
 
+        let mut this = self;
+
         // Initialize the TLS key.
         local_ptr::init_tls_key();
 
@@ -161,10 +172,17 @@ impl Scheduler {
         // task, put it in TLS.
         Local::put::(sched_task);
 
+        // Before starting our first task, make sure the idle callback
+        // is active. As we do not start in the sleep state this is
+        // important.
+        do this.idle_watcher.start |_idle_watcher, _status| {
+            Scheduler::run_sched_once();
+        }
+
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
         // scheduler and resume the provided task.
-        self.resume_task_immediately(task);
+        this.resume_task_immediately(task);
 
         // Now we are back in the scheduler context, having
         // successfully run the input task. Start by running the
@@ -201,7 +219,7 @@ impl Scheduler {
         // Always run through the scheduler loop at least once so that
         // we enter the sleep state and can then be woken up by other
         // schedulers.
-        self_sched.event_loop.callback(Scheduler::run_sched_once);
+//        self_sched.event_loop.callback(Scheduler::run_sched_once);
 
         // This is unsafe because we need to place the scheduler, with
         // the event_loop inside, inside our task. But we still need a
@@ -235,7 +253,11 @@ impl Scheduler {
         // already have a scheduler stored in our local task, so we
         // start off by taking it. This is the only path through the
         // scheduler where we get the scheduler this way.
-        let sched = Local::take::<Scheduler>();
+        let mut sched = Local::take::<Scheduler>();
+
+        // Assume that we need to continue idling unless we reach the
+        // end of this function without performing an action.
+        sched.activate_idle();
 
         // Our first task is to read mail to see if we have important
         // messages.
@@ -282,13 +304,38 @@ impl Scheduler {
             sched.sleepy = true;
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
+            // Since we are sleeping, deactivate the idle callback.
+            sched.pause_idle();
         } else {
             rtdebug!("not sleeping, already doing so or no_sleep set");
+            // We may not be sleeping, but we still need to deactivate
+            // the idle callback.
+            sched.pause_idle();
         }
 
         // Finished a cycle without using the Scheduler. Place it back
         // in TLS.
         Local::put(sched);
+    }
+
+    fn activate_idle(&mut self) {        
+        if self.idle_flag {
+            rtdebug!("idle flag already set, not reactivating idle watcher");
+        } else {
+            rtdebug!("idle flag was false, reactivating idle watcher");
+            self.idle_flag = true;
+            self.idle_watcher.restart();
+        }            
+    }
+
+    fn pause_idle(&mut self) {
+        if !self.idle_flag {
+            rtdebug!("idle flag false, not stopping idle watcher");
+        } else {
+            rtdebug!("idle flag true, stopping idle watcher");
+            self.idle_flag = false;
+            self.idle_watcher.stop();
+        }
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
@@ -312,7 +359,7 @@ impl Scheduler {
 
         // We push the task onto our local queue clone.
         this.work_queue.push(task);
-        this.event_loop.callback(Scheduler::run_sched_once);
+//        this.event_loop.callback(Scheduler::run_sched_once);
 
         // We've made work available. Notify a
         // sleeping scheduler.
@@ -346,30 +393,34 @@ impl Scheduler {
     // * Scheduler-context operations
 
     // This function returns None if the scheduler is "used", or it
-    // returns the still-available scheduler.
+    // returns the still-available scheduler. Note: currently
+    // considers *any* message receive a use and returns None.
     fn interpret_message_queue(~self) -> Option<~Scheduler> {
 
         let mut this = self;
         match this.message_queue.pop() {
             Some(PinnedTask(task)) => {
-                this.event_loop.callback(Scheduler::run_sched_once);
+//                this.event_loop.callback(Scheduler::run_sched_once);
                 let mut task = task;
                 task.give_home(Sched(this.make_handle()));
                 this.resume_task_immediately(task);
                 return None;
             }
             Some(TaskFromFriend(task)) => {
-                this.event_loop.callback(Scheduler::run_sched_once);
+//                this.event_loop.callback(Scheduler::run_sched_once);
                 rtdebug!("got a task from a friend. lovely!");
-                return this.sched_schedule_task(task);
+                this.sched_schedule_task(task).map_move(Local::put);
+                return None;
             }
             Some(Wake) => {
-                this.event_loop.callback(Scheduler::run_sched_once);
+//                this.event_loop.callback(Scheduler::run_sched_once);
                 this.sleepy = false;
-                return Some(this);
+                Local::put(this);
+                return None;
+//                return Some(this);
             }
             Some(Shutdown) => {
-                this.event_loop.callback(Scheduler::run_sched_once);
+//                this.event_loop.callback(Scheduler::run_sched_once);
                 if this.sleepy {
                     // There may be an outstanding handle on the
                     // sleeper list.  Pop them all to make sure that's
@@ -388,11 +439,10 @@ impl Scheduler {
                 // event loop references we will shut down.
                 this.no_sleep = true;
                 this.sleepy = false;
-                // YYY: Does a shutdown count as a "use" of the
-                // scheduler? This seems to work - so I'm leaving it
-                // this way despite not having a solid rational for
-                // why I should return the scheduler here.
-                return Some(this);
+
+                Local::put(this);
+                return None;
+//                return Some(this);
             }
             None => {
                 return Some(this);
