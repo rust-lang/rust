@@ -26,9 +26,11 @@ use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::oldvisit;
 use syntax::codemap::span;
 use syntax::parse::token;
+use syntax::visit;
+use syntax::visit::{Visitor,fn_kind};
+use syntax::ast::{fn_decl,Block,NodeId};
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -59,6 +61,15 @@ impl Clone for LoanDataFlowOperator {
 
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
+struct BorrowckVisitor;
+
+impl Visitor<@BorrowckCtxt> for BorrowckVisitor {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
+                b:&Block, s:span, n:NodeId, e:@BorrowckCtxt) {
+        borrowck_fn(self, fk, fd, b, s, n, e);
+    }
+}
+
 pub fn check_crate(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
@@ -86,9 +97,8 @@ pub fn check_crate(
         }
     };
 
-    let v = oldvisit::mk_vt(@oldvisit::Visitor {visit_fn: borrowck_fn,
-                                          ..*oldvisit::default_visitor()});
-    oldvisit::visit_crate(crate, (bccx, v));
+    let mut v = BorrowckVisitor;
+    visit::walk_crate(&mut v, crate, bccx);
 
     if tcx.sess.borrowck_stats() {
         io::println("--- borrowck stats ---");
@@ -113,21 +123,21 @@ pub fn check_crate(
     }
 }
 
-fn borrowck_fn(fk: &oldvisit::fn_kind,
+fn borrowck_fn(v: &mut BorrowckVisitor,
+               fk: &visit::fn_kind,
                decl: &ast::fn_decl,
                body: &ast::Block,
                sp: span,
                id: ast::NodeId,
-               (this, v): (@BorrowckCtxt,
-                           oldvisit::vt<@BorrowckCtxt>)) {
+               this: @BorrowckCtxt) {
     match fk {
-        &oldvisit::fk_anon(*) |
-        &oldvisit::fk_fn_block(*) => {
+        &visit::fk_anon(*) |
+        &visit::fk_fn_block(*) => {
             // Closures are checked as part of their containing fn item.
         }
 
-        &oldvisit::fk_item_fn(*) |
-        &oldvisit::fk_method(*) => {
+        &visit::fk_item_fn(*) |
+        &visit::fk_method(*) => {
             debug!("borrowck_fn(id=%?)", id);
 
             // Check the body of fn items.
@@ -156,7 +166,7 @@ fn borrowck_fn(fk: &oldvisit::fn_kind,
         }
     }
 
-    oldvisit::visit_fn(fk, decl, body, sp, id, (this, v));
+    visit::walk_fn(v, fk, decl, body, sp, id, this);
 }
 
 // ----------------------------------------------------------------------

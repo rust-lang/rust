@@ -480,6 +480,7 @@ impl Context {
                             (orig.visit_item)(it, (self, stopping));
                         }
                         NewVisitor(new_visitor) => {
+                            let mut new_visitor = new_visitor;
                             new_visitor.visit_item(it, ());
                         }
                     }
@@ -492,7 +493,8 @@ impl Context {
                             oldvisit::visit_crate(c, (self, stopping))
                         }
                         NewVisitor(new_visitor) => {
-                            visit::visit_crate(new_visitor, c, ())
+                            let mut new_visitor = new_visitor;
+                            visit::walk_crate(&mut new_visitor, c, ())
                         }
                     }
                 }
@@ -518,6 +520,7 @@ impl Context {
                             let fk = visit::fk_method(m.ident,
                                                       &m.generics,
                                                       m);
+                            let mut new_visitor = new_visitor;
                             new_visitor.visit_fn(&fk,
                                                  &m.decl,
                                                  &m.body,
