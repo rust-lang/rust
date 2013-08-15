@@ -153,6 +153,8 @@ pub fn classify(e: &expr,
                 lookup_constness(tcx, e)
               }
 
+              ast::expr_repeat(*) => general_const,
+
               _ => non_const
             };
         tcx.ccache.insert(did, cn);

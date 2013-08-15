@@ -32,6 +32,7 @@ use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
 use std::libc::c_uint;
+use std::vec;
 use syntax::{ast, ast_util, ast_map};
 
 pub fn const_lit(cx: &mut CrateContext, e: &ast::expr, lit: ast::lit)
@@ -539,6 +540,23 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               }
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
+          }
+          ast::expr_repeat(elem, count, _) => {
+            let vec_ty = ty::expr_ty(cx.tcx, e);
+            let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
+            let llunitty = type_of::type_of(cx, unit_ty);
+            let n = match const_eval::eval_const_expr(cx.tcx, count) {
+                const_eval::const_int(i)  => i as uint,
+                const_eval::const_uint(i) => i as uint,
+                _ => cx.sess.span_bug(count.span, "count must be integral const expression.")
+            };
+            let vs = vec::from_elem(n, const_expr(cx, elem));
+            let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
+                C_struct(vs)
+            } else {
+                C_array(llunitty, vs)
+            };
+            v
           }
           ast::expr_path(ref pth) => {
             assert_eq!(pth.types.len(), 0);

@@ -160,6 +160,7 @@ pub fn check_expr(sess: Session,
           expr_field(*) |
           expr_index(*) |
           expr_tup(*) |
+          expr_repeat(*) |
           expr_struct(*) => { }
           expr_addr_of(*) => {
                 sess.span_err(
