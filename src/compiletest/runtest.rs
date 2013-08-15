@@ -20,16 +20,30 @@ use procsrv;
 use util;
 use util::logv;
 
+use std::cell::Cell;
 use std::io;
 use std::os;
 use std::str;
+use std::task::{spawn_sched, SingleThreaded};
 use std::vec;
 
 use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
-    let mut _mm = MetricMap::new();
-    run_metrics(config, testfile, &mut _mm);
+    let config = Cell::new(config);
+    let testfile = Cell::new(testfile);
+    // FIXME #6436: Creating another thread to run the test because this
+    // is going to call waitpid. The new scheduler has some strange
+    // interaction between the blocking tasks and 'friend' schedulers
+    // that destroys parallelism if we let normal schedulers block.
+    // It should be possible to remove this spawn once std::run is
+    // rewritten to be non-blocking.
+    do spawn_sched(SingleThreaded) {
+        let config = config.take();
+        let testfile = testfile.take();
+        let mut _mm = MetricMap::new();
+        run_metrics(config, testfile, &mut _mm);
+    }
 }
 
 pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
