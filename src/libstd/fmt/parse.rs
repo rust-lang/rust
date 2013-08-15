@@ -339,7 +339,11 @@ impl<'self> Parser<'self> {
             }
         }
         // Finally the actual format specifier
-        spec.ty = self.word();
+        if self.consume('?') {
+            spec.ty = "?";
+        } else {
+            spec.ty = self.word();
+        }
         return spec;
     }
 
