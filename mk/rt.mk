@@ -271,3 +271,10 @@ $(LIBUV_MAKEFILE): $(LIBUV_GYP)
 $(foreach stage,$(STAGES), \
 	$(foreach target,$(CFG_TARGET_TRIPLES), \
 	 $(eval $(call DEF_RUNTIME_TARGETS,$(target),$(stage)))))
+
+$(LIBUV_GYP):
+	mkdir -p $(S)src/libuv/build
+	git clone https://git.chromium.org/external/gyp.git $(S)src/libuv/build/gyp
+
+$(LIBUV_MAKEFILE): $(LIBUV_GYP)
+	(cd $(S)src/libuv/ && ./gyp_uv -f make)

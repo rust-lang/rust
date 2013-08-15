@@ -546,3 +546,37 @@ extern "C" uv_loop_t*
 rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
   return req->loop;
 }
+extern "C" int
+rust_uv_spawn(uv_loop_t *loop, uv_process_t *p, uv_process_options_t options) {
+  return uv_spawn(loop, p, options);
+}
+
+extern "C" int
+rust_uv_process_kill(uv_process_t *p, int signum) {
+  return uv_process_kill(p, signum);
+}
+
+extern "C" void
+rust_set_stdio_container_flags(uv_stdio_container_t *c, int flags) {
+  c->flags = (uv_stdio_flags) flags;
+}
+
+extern "C" void
+rust_set_stdio_container_fd(uv_stdio_container_t *c, int fd) {
+  c->data.fd = fd;
+}
+
+extern "C" void
+rust_set_stdio_container_stream(uv_stdio_container_t *c, uv_stream_t *stream) {
+  c->data.stream = stream;
+}
+
+extern "C" int
+rust_uv_process_pid(uv_process_t* p) {
+  return p->pid;
+}
+
+extern "C" int
+rust_uv_pipe_init(uv_loop_t *loop, uv_pipe_t* p, int ipc) {
+  return uv_pipe_init(loop, p, ipc);
+}

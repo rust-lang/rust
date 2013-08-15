@@ -191,3 +191,10 @@ rust_take_change_dir_lock
 rust_drop_change_dir_lock
 rust_get_test_int
 rust_get_task
+rust_uv_spawn
+rust_uv_process_kill
+rust_set_stdio_container_flags
+rust_set_stdio_container_fd
+rust_set_stdio_container_stream
+rust_uv_process_pid
+rust_uv_pipe_init

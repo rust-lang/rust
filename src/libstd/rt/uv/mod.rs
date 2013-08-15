@@ -58,6 +58,8 @@ pub use self::net::{StreamWatcher, TcpWatcher, UdpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
+pub use self::process::Process;
+pub use self::pipe::Pipe;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -70,6 +72,8 @@ pub mod net;
 pub mod idle;
 pub mod timer;
 pub mod async;
+pub mod process;
+pub mod pipe;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
@@ -126,6 +130,8 @@ pub type NullCallback = ~fn();
 pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
+// first int is exit_status, second is term_signal
+pub type ExitCallback = ~fn(Process, int, int, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
@@ -143,7 +149,8 @@ struct WatcherData {
     timer_cb: Option<TimerCallback>,
     async_cb: Option<AsyncCallback>,
     udp_recv_cb: Option<UdpReceiveCallback>,
-    udp_send_cb: Option<UdpSendCallback>
+    udp_send_cb: Option<UdpSendCallback>,
+    exit_cb: Option<ExitCallback>,
 }
 
 pub trait WatcherInterop {
@@ -175,7 +182,8 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 timer_cb: None,
                 async_cb: None,
                 udp_recv_cb: None,
-                udp_send_cb: None
+                udp_send_cb: None,
+                exit_cb: None,
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
@@ -273,10 +281,8 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     }
 }
 
-/// Given a uv handle, convert a callback status to a UvError
-pub fn status_to_maybe_uv_error<T, U: Watcher + NativeHandle<*T>>(
-    handle: U, status: c_int) -> Option<UvError>
-{
+/// Convert a callback status to a UvError
+pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError> {
     if status >= 0 {
         None
     } else {
