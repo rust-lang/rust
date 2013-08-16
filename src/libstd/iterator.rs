@@ -174,6 +174,7 @@ pub trait Iterator<A> {
     /// assert!(it.peek().is_none());
     /// assert!(it.next().is_none());
     /// ~~~
+    #[inline]
     fn peekable(self) -> Peekable<A, Self> {
         Peekable{iter: self, peeked: None}
     }
@@ -931,8 +932,7 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
     }
 }
 
-impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
-for Map<'self, A, B, T> {
+impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'self, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         let next = self.iter.next_back();
@@ -940,8 +940,7 @@ for Map<'self, A, B, T> {
     }
 }
 
-impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B>
-for Map<'self, A, B, T> {
+impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'self, A, B, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
