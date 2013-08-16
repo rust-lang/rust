@@ -1121,7 +1121,6 @@ mod tests {
 
     use std::either;
     use std::comm::{stream, SharedChan};
-    use std::vec;
     use tempfile;
     use std::os;
 
@@ -1309,14 +1308,8 @@ mod tests {
               ~"test::parse_ignored_flag",
               ~"test::sort_tests"];
 
-        let pairs = vec::zip(expected, filtered);
-
-        for p in pairs.iter() {
-            match *p {
-                (ref a, ref b) => {
-                    assert!(*a == b.desc.name.to_str());
-                }
-            }
+        for (a, b) in expected.iter().zip(filtered.iter()) {
+            assert!(*a == b.desc.name.to_str());
         }
     }
 

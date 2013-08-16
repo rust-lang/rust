@@ -18,27 +18,21 @@ intrinsic properties of the type. These classifications, often called
 They cannot be implemented by user code, but are instead implemented
 by the compiler automatically for the types to which they apply.
 
-The 2 kinds are
-
-* Send - owned types and types containing owned types.  These types
-  may be transferred across task boundaries.
-
-* Freeze - types that are deeply immutable.
-
 */
 
-#[allow(missing_doc)];
-
+/// Types able to be transferred across task boundaries.
 #[lang="send"]
 pub trait Send {
     // empty.
 }
 
+/// Types that are either immutable or have inherited mutability.
 #[lang="freeze"]
 pub trait Freeze {
     // empty.
 }
 
+/// Types with a constant size known at compile-time.
 #[lang="sized"]
 pub trait Sized {
     // Empty.

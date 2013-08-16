@@ -13,9 +13,6 @@
 #[allow(missing_doc)];
 
 use clone::Clone;
-use vec;
-use vec::ImmutableVector;
-use iterator::Iterator;
 
 pub use self::inner::*;
 
@@ -75,55 +72,6 @@ impl<T, U> ImmutableTuple<T, U> for (T, U) {
     fn second_ref<'a>(&'a self) -> &'a U {
         match *self {
             (_, ref u) => u,
-        }
-    }
-}
-
-pub trait ExtendedTupleOps<A,B> {
-    fn zip(&self) -> ~[(A, B)];
-    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
-}
-
-impl<'self,
-     A:Clone,
-     B:Clone>
-     ExtendedTupleOps<A,B> for
-     (&'self [A], &'self [B]) {
-    #[inline]
-    fn zip(&self) -> ~[(A, B)] {
-        match *self {
-            (ref a, ref b) => {
-                vec::zip_slice(*a, *b)
-            }
-        }
-    }
-
-    #[inline]
-    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
-        match *self {
-            (ref a, ref b) => {
-                a.iter().zip(b.iter()).map(|(aa, bb)| f(aa, bb)).collect()
-            }
-        }
-    }
-}
-
-impl<A:Clone, B:Clone> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
-    #[inline]
-    fn zip(&self) -> ~[(A, B)] {
-        match *self {
-            (ref a, ref b) => {
-                vec::zip_slice(*a, *b)
-            }
-        }
-    }
-
-    #[inline]
-    fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C] {
-        match *self {
-            (ref a, ref b) => {
-                a.iter().zip(b.iter()).map(|(aa, bb)| f(aa, bb)).collect()
-            }
         }
     }
 }
