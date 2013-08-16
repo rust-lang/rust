@@ -162,14 +162,32 @@ impl UvRemoteCallback {
         let exit_flag_clone = exit_flag.clone();
         let async = do AsyncWatcher::new(loop_) |watcher, status| {
             assert!(status.is_none());
+
+            // The synchronization logic here is subtle. To review, the uv async handle
+            // type promises that, after it is triggered the remote callback is definitely
+            // called at least once. UvRemoteCallback needs to maintain those semantics
+            // while also shutting down cleanly from the dtor. In our case that means that,
+            // when the UvRemoteCallback dtor calls `async.send()`, here `f` is always called
+            // later.
+
+            // In the dtor both the exit flag is set and the async callback fired under a lock.
+            // Here, before calling `f`, we take the lock and check the flag. Because we are
+            // checking the flag before calling `f`, and the flag is set under the same lock
+            // as the send, then if the flag is set then we're guaranteed to call `f` after
+            // the final send.
+
+            // If the check was done after `f()` then there would be a period between that call
+            // and the check where the dtor could be called in the other thread, missing the
+            // final callback while still destroying the handle.
+
+            let should_exit = unsafe { exit_flag_clone.with_imm(|&should_exit| should_exit) };
+
             f();
-            unsafe {
-                do exit_flag_clone.with_imm |&should_exit| {
-                    if should_exit {
-                        watcher.close(||());
-                    }
-                }
+
+            if should_exit {
+                watcher.close(||());
             }
+
         };
         UvRemoteCallback {
             async: async,
@@ -218,7 +236,10 @@ mod test_remote {
                 let tube_clone = tube_clone.clone();
                 let tube_clone_cell = Cell::new(tube_clone);
                 let remote = do sched.event_loop.remote_callback {
-                    tube_clone_cell.take().send(1);
+                    // This could be called multiple times
+                    if !tube_clone_cell.is_empty() {
+                        tube_clone_cell.take().send(1);
+                    }
                 };
                 remote_cell.put_back(remote);
             }
