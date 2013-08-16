@@ -116,6 +116,15 @@ impl EventLoop for UvEventLoop {
         }
     }
 
+    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback {
+        let idle_watcher = IdleWatcher::new(self.uvio.uv_loop());
+        return ~UvPausibleIdleCallback {
+            watcher: idle_watcher,
+            idle_flag: false,
+            closed: false
+        };
+    }
+
     fn callback_ms(&mut self, ms: u64, f: ~fn()) {
         let mut timer =  TimerWatcher::new(self.uvio.uv_loop());
         do timer.start(ms, 0) |timer, status| {
@@ -132,6 +141,44 @@ impl EventLoop for UvEventLoop {
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject> {
         Some(&mut self.uvio)
     }
+}
+
+pub struct UvPausibleIdleCallback {
+    watcher: IdleWatcher,
+    idle_flag: bool,
+    closed: bool
+}
+
+impl UvPausibleIdleCallback {
+    #[inline]
+    pub fn start(&mut self, f: ~fn()) {
+        do self.watcher.start |_idle_watcher, _status| {
+            f();
+        };
+        self.idle_flag = true;
+    }
+    #[inline]
+    pub fn pause(&mut self) {
+        if self.idle_flag == true {
+            self.watcher.stop();
+            self.idle_flag = false;
+        }
+    }
+    #[inline]
+    pub fn resume(&mut self) {
+        if self.idle_flag == false {
+            self.watcher.restart();
+            self.idle_flag = true;
+        }
+    }
+    #[inline]
+    pub fn close(&mut self) {
+        self.pause();
+        if !self.closed {
+            self.closed = true;
+            self.watcher.close(||());
+        }
+    }                
 }
 
 #[test]
@@ -163,24 +210,31 @@ impl UvRemoteCallback {
         let async = do AsyncWatcher::new(loop_) |watcher, status| {
             assert!(status.is_none());
 
-            // The synchronization logic here is subtle. To review, the uv async handle
-            // type promises that, after it is triggered the remote callback is definitely
-            // called at least once. UvRemoteCallback needs to maintain those semantics
-            // while also shutting down cleanly from the dtor. In our case that means that,
-            // when the UvRemoteCallback dtor calls `async.send()`, here `f` is always called
-            // later.
+            // The synchronization logic here is subtle. To review,
+            // the uv async handle type promises that, after it is
+            // triggered the remote callback is definitely called at
+            // least once. UvRemoteCallback needs to maintain those
+            // semantics while also shutting down cleanly from the
+            // dtor. In our case that means that, when the
+            // UvRemoteCallback dtor calls `async.send()`, here `f` is
+            // always called later.
 
-            // In the dtor both the exit flag is set and the async callback fired under a lock.
-            // Here, before calling `f`, we take the lock and check the flag. Because we are
-            // checking the flag before calling `f`, and the flag is set under the same lock
-            // as the send, then if the flag is set then we're guaranteed to call `f` after
-            // the final send.
+            // In the dtor both the exit flag is set and the async
+            // callback fired under a lock.  Here, before calling `f`,
+            // we take the lock and check the flag. Because we are
+            // checking the flag before calling `f`, and the flag is
+            // set under the same lock as the send, then if the flag
+            // is set then we're guaranteed to call `f` after the
+            // final send.
 
-            // If the check was done after `f()` then there would be a period between that call
-            // and the check where the dtor could be called in the other thread, missing the
-            // final callback while still destroying the handle.
+            // If the check was done after `f()` then there would be a
+            // period between that call and the check where the dtor
+            // could be called in the other thread, missing the final
+            // callback while still destroying the handle.
 
-            let should_exit = unsafe { exit_flag_clone.with_imm(|&should_exit| should_exit) };
+            let should_exit = unsafe { 
+                exit_flag_clone.with_imm(|&should_exit| should_exit) 
+            };
 
             f();
 
