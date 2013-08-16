@@ -114,7 +114,7 @@ fn mk_temp_workspace(short_name: &Path, version: &Version) -> Path {
 fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &str) {
     let cwd = (*cwd).clone();
     let mut prog = run::Process::new("git", args, run::ProcessOptions {
-        env: env.map(|v| v.slice(0, v.len())),
+        env: env,
         dir: Some(&cwd),
         in_fd: None,
         out_fd: None,
@@ -222,7 +222,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
     assert!(os::path_is_dir(&*cwd));
     let cwd = (*cwd).clone();
     let mut prog = run::Process::new(cmd, args, run::ProcessOptions {
-        env: env.map(|v| v.slice(0, v.len())),
+        env: env,
         dir: Some(&cwd),
         in_fd: None,
         out_fd: None,
@@ -757,7 +757,9 @@ fn rust_path_test() {
                                      // use command_line_test_with_env
     let mut prog = run::Process::new("rustpkg",
                                      [~"install", ~"foo"],
-                                     run::ProcessOptions { env: Some(&[(~"RUST_LOG",
+// This should actually extend the environment; then we can probably
+// un-ignore it
+                                     run::ProcessOptions { env: Some(~[(~"RUST_LOG",
                                                                         ~"rustpkg"),
                                                                        (~"RUST_PATH",
                                                                        dir_for_path.to_str())]),
@@ -1039,7 +1041,7 @@ fn test_extern_mod() {
                                                       ~"--sysroot", test_sysroot().to_str(),
                                                ~"-o", exec_file.to_str()],
                                      run::ProcessOptions {
-        env: env.map(|v| v.slice(0, v.len())),
+        env: env,
         dir: Some(&dir),
         in_fd: None,
         out_fd: None,
