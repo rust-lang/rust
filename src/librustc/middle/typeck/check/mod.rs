@@ -942,15 +942,7 @@ impl FnCtxt {
         if ty::type_is_error(e) || ty::type_is_error(a) {
             return;
         }
-        match self.fn_kind {
-            DoBlock if ty::type_is_bool(e) && ty::type_is_nil(a) =>
-                // If we expected bool and got ()...
-                    self.tcx().sess.span_err(sp, fmt!("Do-block body must \
-                        return %s, but returns () here. Perhaps you meant \
-                        to write a `for`-loop?",
-                        ppaux::ty_to_str(self.tcx(), e))),
-            _ => self.infcx().report_mismatched_types(sp, e, a, err)
-        }
+        self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
     pub fn report_mismatched_types(&self,
