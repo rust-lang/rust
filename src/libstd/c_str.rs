@@ -9,14 +9,28 @@
 // except according to those terms.
 
 use cast;
-use iterator::Iterator;
+use iterator::{Iterator,range};
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
-use vec::ImmutableVector;
+use vec::{ImmutableVector,CopyableVector};
+use container::Container;
+
+/// Resolution options for the `null_byte` condition
+pub enum NullByteResolution {
+    /// Truncate at the null byte
+    Truncate,
+    /// Use a replacement byte
+    ReplaceWith(libc::c_char)
+}
+
+condition! {
+    // this should be &[u8] but there's a lifetime issue
+    null_byte: (~[u8]) -> super::NullByteResolution;
+}
 
 /// The representation of a C String.
 ///
@@ -34,6 +48,7 @@ impl CString {
     }
 
     /// Unwraps the wrapped `*libc::c_char` from the `CString` wrapper.
+    /// Any ownership of the buffer by the `CString` wrapper is forgotten.
     pub unsafe fn unwrap(self) -> *libc::c_char {
         let mut c_str = self;
         c_str.owns_buffer_ = false;
@@ -89,7 +104,7 @@ impl CString {
     }
 
     /// Return a CString iterator.
-    fn iter<'a>(&'a self) -> CStringIterator<'a> {
+    pub fn iter<'a>(&'a self) -> CStringIterator<'a> {
         CStringIterator {
             ptr: self.buf,
             lifetime: unsafe { cast::transmute(self.buf) },
@@ -109,8 +124,38 @@ impl Drop for CString {
 
 /// A generic trait for converting a value to a CString.
 pub trait ToCStr {
-    /// Create a C String.
+    /// Copy the receiver into a CString.
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the receiver has an interior null.
     fn to_c_str(&self) -> CString;
+
+    /// Unsafe variant of `to_c_str()` that doesn't check for nulls.
+    unsafe fn to_c_str_unchecked(&self) -> CString;
+
+    /// Work with a temporary CString constructed from the receiver.
+    /// The provided `*libc::c_char` will be freed immediately upon return.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let s = "PATH".with_c_str(|path| libc::getenv(path))
+    /// ~~~
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the receiver has an interior null.
+    #[inline]
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.to_c_str().with_ref(f)
+    }
+
+    /// Unsafe variant of `with_c_str()` that doesn't check for nulls.
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.to_c_str_unchecked().with_ref(f)
+    }
 }
 
 impl<'self> ToCStr for &'self str {
@@ -118,22 +163,43 @@ impl<'self> ToCStr for &'self str {
     fn to_c_str(&self) -> CString {
         self.as_bytes().to_c_str()
     }
+
+    #[inline]
+    unsafe fn to_c_str_unchecked(&self) -> CString {
+        self.as_bytes().to_c_str_unchecked()
+    }
 }
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
-        do self.as_imm_buf |self_buf, self_len| {
-            unsafe {
-                let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
-                if buf.is_null() {
-                    fail!("failed to allocate memory!");
+        let mut cs = unsafe { self.to_c_str_unchecked() };
+        do cs.with_mut_ref |buf| {
+            for i in range(0, self.len()) {
+                unsafe {
+                    let p = buf.offset_inbounds(i as int);
+                    if *p == 0 {
+                        match null_byte::cond.raise(self.to_owned()) {
+                            Truncate => break,
+                            ReplaceWith(c) => *p = c
+                        }
+                    }
                 }
-
-                ptr::copy_memory(buf, self_buf, self_len);
-                *ptr::mut_offset(buf, self_len as int) = 0;
-
-                CString::new(buf as *libc::c_char, true)
             }
+        }
+        cs
+    }
+
+    unsafe fn to_c_str_unchecked(&self) -> CString {
+        do self.as_imm_buf |self_buf, self_len| {
+            let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
+            if buf.is_null() {
+                fail!("failed to allocate memory!");
+            }
+
+            ptr::copy_memory(buf, self_buf, self_len);
+            *ptr::mut_offset(buf, self_len as int) = 0;
+
+            CString::new(buf as *libc::c_char, true)
         }
     }
 }
@@ -229,5 +295,50 @@ mod tests {
         assert_eq!(iter.next(), Some('l' as libc::c_char));
         assert_eq!(iter.next(), Some('o' as libc::c_char));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    #[ignore(cfg(windows))]
+    fn test_to_c_str_fail() {
+        use c_str::null_byte::cond;
+
+        let mut error_happened = false;
+        do cond.trap(|err| {
+            assert_eq!(err, bytes!("he", 0, "llo").to_owned())
+            error_happened = true;
+            Truncate
+        }).inside {
+            "he\x00llo".to_c_str()
+        };
+        assert!(error_happened);
+
+        do cond.trap(|_| {
+            ReplaceWith('?' as libc::c_char)
+        }).inside(|| "he\x00llo".to_c_str()).with_ref |buf| {
+            unsafe {
+                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
+                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
+                assert_eq!(*buf.offset(2), '?' as libc::c_char);
+                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
+                assert_eq!(*buf.offset(4), 'l' as libc::c_char);
+                assert_eq!(*buf.offset(5), 'o' as libc::c_char);
+                assert_eq!(*buf.offset(6), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_to_c_str_unchecked() {
+        unsafe {
+            do "he\x00llo".to_c_str_unchecked().with_ref |buf| {
+                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
+                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
+                assert_eq!(*buf.offset(2), 0);
+                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
+                assert_eq!(*buf.offset(4), 'l' as libc::c_char);
+                assert_eq!(*buf.offset(5), 'o' as libc::c_char);
+                assert_eq!(*buf.offset(6), 0);
+            }
+        }
     }
 }

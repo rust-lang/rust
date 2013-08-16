@@ -36,7 +36,7 @@ use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
 use std::hashmap::{HashMap};
-use std::libc::{c_uint, c_longlong, c_ulonglong};
+use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
@@ -709,7 +709,7 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
 
 pub fn C_floating(s: &str, t: Type) -> ValueRef {
     unsafe {
-        do s.to_c_str().with_ref |buf| {
+        do s.with_c_str |buf| {
             llvm::LLVMConstRealOfString(t.to_ref(), buf)
         }
     }
@@ -757,12 +757,12 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
             None => ()
         }
 
-        let sc = do s.to_c_str().with_ref |buf| {
-            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint, False)
+        let sc = do s.as_imm_buf |buf, buflen| {
+            llvm::LLVMConstStringInContext(cx.llcx, buf as *c_char, buflen as c_uint, False)
         };
 
         let gsym = token::gensym("str");
-        let g = do fmt!("str%u", gsym).to_c_str().with_ref |buf| {
+        let g = do fmt!("str%u", gsym).with_c_str |buf| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(sc).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(g, sc);

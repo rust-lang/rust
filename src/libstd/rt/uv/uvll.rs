@@ -373,12 +373,12 @@ pub unsafe fn is_ip6_addr(addr: *sockaddr) -> bool {
 }
 
 pub unsafe fn malloc_ip4_addr(ip: &str, port: int) -> *sockaddr_in {
-    do ip.to_c_str().with_ref |ip_buf| {
+    do ip.with_c_str |ip_buf| {
         rust_uv_ip4_addrp(ip_buf as *u8, port as libc::c_int)
     }
 }
 pub unsafe fn malloc_ip6_addr(ip: &str, port: int) -> *sockaddr_in6 {
-    do ip.to_c_str().with_ref |ip_buf| {
+    do ip.with_c_str |ip_buf| {
         rust_uv_ip6_addrp(ip_buf as *u8, port as libc::c_int)
     }
 }

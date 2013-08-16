@@ -29,7 +29,7 @@ pub fn fail_bounds_check(file: *c_char, line: size_t,
                          index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
-    do msg.to_c_str().with_ref |buf| {
+    do msg.with_c_str |buf| {
         fail_(buf, file, line);
     }
 }
