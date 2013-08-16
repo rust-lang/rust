@@ -50,8 +50,6 @@ use syntax::visit::Visitor;
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-pub static try_adding: &'static str = "Try adding a move";
-
 #[deriving(Clone)]
 pub struct Context {
     tcx: ty::ctxt,
@@ -76,9 +74,6 @@ impl Visitor<Context> for KindAnalysisVisitor {
     }
     fn visit_item(&mut self, i:@item, e:Context) {
         check_item(self, i, e);
-    }
-    fn visit_block(&mut self, b:&Block, e:Context) {
-        check_block(self, b, e);
     }
 }
 
@@ -125,46 +120,47 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(visitor: &mut KindAnalysisVisitor,
-               block: &Block,
-               cx: Context) {
-    visit::walk_block(visitor, block, cx);
+fn check_impl_of_trait(cx: Context, it: @item, trait_ref: &trait_ref, self_type: &Ty) {
+    let ast_trait_def = cx.tcx.def_map.find(&trait_ref.ref_id)
+                            .expect("trait ref not in def map!");
+    let trait_def_id = ast_util::def_id_of_def(*ast_trait_def);
+    let trait_def = cx.tcx.trait_defs.find(&trait_def_id)
+                        .expect("trait def not in trait-defs map!");
+
+    // If this trait has builtin-kind supertraits, meet them.
+    let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
+    error!("checking impl with self type %?", ty::get(self_ty).sty);
+    do check_builtin_bounds(cx, self_ty, trait_def.bounds) |missing| {
+        cx.tcx.sess.span_err(self_type.span,
+            fmt!("the type `%s', which does not fulfill `%s`, cannot implement this \
+                  trait", ty_to_str(cx.tcx, self_ty), missing.user_string(cx.tcx)));
+        cx.tcx.sess.span_note(self_type.span,
+            fmt!("types implementing this trait must fulfill `%s`",
+                 trait_def.bounds.user_string(cx.tcx)));
+    }
+
+    // If this is a destructor, check kinds.
+    if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
+        match self_type.node {
+            ty_path(_, ref bounds, path_node_id) => {
+                assert!(bounds.is_none());
+                let struct_def = cx.tcx.def_map.get_copy(&path_node_id);
+                let struct_did = ast_util::def_id_of_def(struct_def);
+                check_struct_safe_for_destructor(cx, self_type.span, struct_did);
+            }
+            _ => {
+                cx.tcx.sess.span_bug(self_type.span,
+                    "the self type for the Drop trait impl is not a path");
+            }
+        }
+    }
 }
 
 fn check_item(visitor: &mut KindAnalysisVisitor, item: @item, cx: Context) {
-    // If this is a destructor, check kinds.
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
             item_impl(_, Some(ref trait_ref), ref self_type, _) => {
-                match cx.tcx.def_map.find(&trait_ref.ref_id) {
-                    None => cx.tcx.sess.bug("trait ref not in def map!"),
-                    Some(&trait_def) => {
-                        let trait_def_id = ast_util::def_id_of_def(trait_def);
-                        if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
-                            // Yes, it's a destructor.
-                            match self_type.node {
-                                ty_path(_, ref bounds, path_node_id) => {
-                                    assert!(bounds.is_none());
-                                    let struct_def = cx.tcx.def_map.get_copy(
-                                        &path_node_id);
-                                    let struct_did =
-                                        ast_util::def_id_of_def(struct_def);
-                                    check_struct_safe_for_destructor(
-                                        cx,
-                                        self_type.span,
-                                        struct_did);
-                                }
-                                _ => {
-                                    cx.tcx.sess.span_bug(self_type.span,
-                                                         "the self type for \
-                                                          the Drop trait \
-                                                          impl is not a \
-                                                          path");
-                                }
-                            }
-                        }
-                    }
-                }
+                check_impl_of_trait(cx, item, trait_ref, self_type);
             }
             _ => {}
         }
