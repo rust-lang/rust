@@ -10,7 +10,7 @@
 
 /*!
 
-Bindings to libuv, along with the default implementation of `core::rt::rtio`.
+Bindings to libuv, along with the default implementation of `std::rt::rtio`.
 
 UV types consist of the event loop (Loop), Watchers, Requests and
 Callbacks.

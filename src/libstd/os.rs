@@ -411,7 +411,7 @@ pub fn pipe() -> Pipe {
         // inheritance has to be handled in a different way that I do not
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
-        // first, as in core::run.
+        // first, as in std::run.
         let mut fds = Pipe {input: 0 as c_int,
                     out: 0 as c_int };
         let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,

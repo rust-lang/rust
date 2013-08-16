@@ -66,7 +66,7 @@ fn ziggurat<R:Rng>(rng: &mut R,
 /// # Example
 ///
 /// ~~~
-/// use core::rand::distributions::StandardNormal;
+/// use std::rand::distributions::StandardNormal;
 ///
 /// fn main() {
 ///     let normal = 2.0 + (*rand::random::<StandardNormal>()) * 3.0;
@@ -120,7 +120,7 @@ impl Rand for StandardNormal {
 /// # Example
 ///
 /// ~~~
-/// use core::rand::distributions::Exp1;
+/// use std::rand::distributions::Exp1;
 ///
 /// fn main() {
 ///     let exp2 = (*rand::random::<Exp1>()) * 0.5;
