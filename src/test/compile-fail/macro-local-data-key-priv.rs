@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Testing that we can't store a borrowed pointer it task-local storage
-
 use std::local_data;
 
-local_data_key!(key: @&int)
-//~^ ERROR only 'static is allowed
+// check that the local data keys are private by default.
 
-fn main() {}
+mod bar {
+    local_data_key!(baz: float)
+}
+
+fn main() {
+    local_data::set(bar::baz, -10.0);
+    //~^ ERROR unresolved name `bar::baz`
+}
