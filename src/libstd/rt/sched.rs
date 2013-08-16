@@ -79,7 +79,7 @@ pub struct Scheduler {
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// An IdleWatcher
-    idle_watcher: IdleWatcher,
+    idle_watcher: Option<IdleWatcher>,
     /// A flag to indicate whether or not the idle callback is active.
     idle_flag: bool
 }
@@ -128,9 +128,6 @@ impl Scheduler {
                        friend: Option<SchedHandle>)
         -> Scheduler {
 
-        let mut event_loop = event_loop;
-        let idle_watcher = IdleWatcher::new(event_loop.uvio.uv_loop());
-
         Scheduler {
             sleeper_list: sleeper_list,
             message_queue: MessageQueue::new(),
@@ -146,8 +143,8 @@ impl Scheduler {
             run_anything: run_anything,
             friend_handle: friend,
             rng: XorShiftRng::new(),
-            idle_watcher: idle_watcher,
-            idle_flag: true
+            idle_watcher: None,
+            idle_flag: false
         }
     }
 
@@ -175,9 +172,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        do this.idle_watcher.start |_idle_watcher, _status| {
-            Scheduler::run_sched_once();
-        }
+        this.activate_idle();
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -318,23 +313,43 @@ impl Scheduler {
         Local::put(sched);
     }
 
-    fn activate_idle(&mut self) {        
+    fn activate_idle(&mut self) {
+        rtdebug!("activating idle");
         if self.idle_flag {
+            rtassert!(self.idle_watcher.is_some());
             rtdebug!("idle flag already set, not reactivating idle watcher");
         } else {
             rtdebug!("idle flag was false, reactivating idle watcher");
             self.idle_flag = true;
-            self.idle_watcher.restart();
+            if self.idle_watcher.is_none() {
+                // There's no idle handle yet. Create one
+                let mut idle_watcher = IdleWatcher::new(self.event_loop.uvio.uv_loop());
+                do idle_watcher.start |_idle_watcher, _status| {
+                    Scheduler::run_sched_once();
+                }
+                self.idle_watcher = Some(idle_watcher);
+            } else {
+                self.idle_watcher.get_mut_ref().restart();
+            }
         }            
     }
 
     fn pause_idle(&mut self) {
-        if !self.idle_flag {
-            rtdebug!("idle flag false, not stopping idle watcher");
+        rtassert!(self.idle_watcher.is_some());
+        rtassert!(self.idle_flag);
+
+        rtdebug!("stopping idle watcher");
+
+        self.idle_flag = false;
+        if !self.no_sleep {
+            self.idle_watcher.get_mut_ref().stop();
         } else {
-            rtdebug!("idle flag true, stopping idle watcher");
-            self.idle_flag = false;
-            self.idle_watcher.stop();
+            rtdebug!("closing idle watcher");
+            // The scheduler is trying to exit. Destroy the idle watcher
+            // to drop the reference to the event loop.
+            let mut idle_watcher = self.idle_watcher.take_unwrap();
+            idle_watcher.stop();
+            idle_watcher.close(||());
         }
     }
 
@@ -357,9 +372,14 @@ impl Scheduler {
 
         let this = self;
 
+        rtdebug!("enqueuing task");
+
         // We push the task onto our local queue clone.
         this.work_queue.push(task);
 //        this.event_loop.callback(Scheduler::run_sched_once);
+
+        // There is definitely work to be done later. Make sure we wake up for it.
+        this.activate_idle();
 
         // We've made work available. Notify a
         // sleeping scheduler.
