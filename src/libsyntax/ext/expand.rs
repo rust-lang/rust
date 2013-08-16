@@ -957,6 +957,17 @@ pub fn std_macros() -> @str {
             println(fmt!($($arg),+))
         )
     )
+
+    // NOTE: use this after a snapshot lands to abstract the details
+    // of the TLS interface.
+    macro_rules! local_data_key (
+        ($name:ident: $ty:ty) => (
+            static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        );
+        (pub $name:ident: $ty:ty) => (
+            pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
+        )
+    )
 }";
 }
 
