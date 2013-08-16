@@ -23,14 +23,13 @@ use super::message_queue::MessageQueue;
 use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::RemoteCallback;
+use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use rt::metrics::SchedMetrics;
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, RngUtil};
 use iterator::{range};
 use vec::{OwnedVector};
-use rt::uv::idle::IdleWatcher;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
@@ -78,10 +77,13 @@ pub struct Scheduler {
     friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
-    /// An IdleWatcher
-    idle_watcher: Option<IdleWatcher>,
-    /// A flag to indicate whether or not the idle callback is active.
-    idle_flag: bool
+    /// A toggleable idle callback
+    idle_callback: ~PausibleIdleCallback
+}
+
+enum CleanupJob {
+    DoNothing,
+    GiveTask(~Task, UnsafeTaskReceiver)
 }
 
 pub struct SchedHandle {
@@ -95,11 +97,6 @@ pub enum SchedMessage {
     Shutdown,
     PinnedTask(~Task),
     TaskFromFriend(~Task)
-}
-
-enum CleanupJob {
-    DoNothing,
-    GiveTask(~Task, UnsafeTaskReceiver)
 }
 
 impl Scheduler {
@@ -126,7 +123,10 @@ impl Scheduler {
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>)
-        -> Scheduler {
+        -> Scheduler {        
+
+        let mut event_loop = event_loop;
+        let idle_callback = event_loop.pausible_idle_callback();
 
         Scheduler {
             sleeper_list: sleeper_list,
@@ -142,9 +142,8 @@ impl Scheduler {
             metrics: SchedMetrics::new(),
             run_anything: run_anything,
             friend_handle: friend,
-            rng: XorShiftRng::new(),
-            idle_watcher: None,
-            idle_flag: false
+            rng: XorShiftRng::new(),            
+            idle_callback: idle_callback
         }
     }
 
@@ -172,7 +171,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        this.activate_idle();
+        this.idle_callback.start(Scheduler::run_sched_once);
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -194,13 +193,16 @@ impl Scheduler {
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-        let mut stask = Local::take::<Task>();
+        let mut stask = Local::take::<Task>();        
 
         rtdebug!("stopping scheduler %u", stask.sched.get_ref().sched_id());
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
         assert!(message.is_none());
+
+        // Close the idle callback.
+        stask.sched.get_mut_ref().idle_callback.close();
 
         stask.destroyed = true;
     }
@@ -210,11 +212,6 @@ impl Scheduler {
     pub fn run(~self) {
 
         let mut self_sched = self;
-
-        // Always run through the scheduler loop at least once so that
-        // we enter the sleep state and can then be woken up by other
-        // schedulers.
-//        self_sched.event_loop.callback(Scheduler::run_sched_once);
 
         // This is unsafe because we need to place the scheduler, with
         // the event_loop inside, inside our task. But we still need a
@@ -252,7 +249,7 @@ impl Scheduler {
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
-        sched.activate_idle();
+        sched.idle_callback.resume();
 
         // Our first task is to read mail to see if we have important
         // messages.
@@ -300,57 +297,17 @@ impl Scheduler {
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
             // Since we are sleeping, deactivate the idle callback.
-            sched.pause_idle();
+            sched.idle_callback.pause();
         } else {
             rtdebug!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
             // the idle callback.
-            sched.pause_idle();
+            sched.idle_callback.pause();
         }
 
         // Finished a cycle without using the Scheduler. Place it back
         // in TLS.
         Local::put(sched);
-    }
-
-    fn activate_idle(&mut self) {
-        rtdebug!("activating idle");
-        if self.idle_flag {
-            rtassert!(self.idle_watcher.is_some());
-            rtdebug!("idle flag already set, not reactivating idle watcher");
-        } else {
-            rtdebug!("idle flag was false, reactivating idle watcher");
-            self.idle_flag = true;
-            if self.idle_watcher.is_none() {
-                // There's no idle handle yet. Create one
-                let mut idle_watcher = IdleWatcher::new(self.event_loop.uvio.uv_loop());
-                do idle_watcher.start |_idle_watcher, _status| {
-                    Scheduler::run_sched_once();
-                }
-                self.idle_watcher = Some(idle_watcher);
-            } else {
-                self.idle_watcher.get_mut_ref().restart();
-            }
-        }            
-    }
-
-    fn pause_idle(&mut self) {
-        rtassert!(self.idle_watcher.is_some());
-        rtassert!(self.idle_flag);
-
-        rtdebug!("stopping idle watcher");
-
-        self.idle_flag = false;
-        if !self.no_sleep {
-            self.idle_watcher.get_mut_ref().stop();
-        } else {
-            rtdebug!("closing idle watcher");
-            // The scheduler is trying to exit. Destroy the idle watcher
-            // to drop the reference to the event loop.
-            let mut idle_watcher = self.idle_watcher.take_unwrap();
-            idle_watcher.stop();
-            idle_watcher.close(||());
-        }
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
@@ -376,10 +333,9 @@ impl Scheduler {
 
         // We push the task onto our local queue clone.
         this.work_queue.push(task);
-//        this.event_loop.callback(Scheduler::run_sched_once);
 
         // There is definitely work to be done later. Make sure we wake up for it.
-        this.activate_idle();
+        this.idle_callback.resume();
 
         // We've made work available. Notify a
         // sleeping scheduler.
@@ -420,28 +376,23 @@ impl Scheduler {
         let mut this = self;
         match this.message_queue.pop() {
             Some(PinnedTask(task)) => {
-//                this.event_loop.callback(Scheduler::run_sched_once);
                 let mut task = task;
                 task.give_home(Sched(this.make_handle()));
                 this.resume_task_immediately(task);
                 return None;
             }
             Some(TaskFromFriend(task)) => {
-//                this.event_loop.callback(Scheduler::run_sched_once);
                 rtdebug!("got a task from a friend. lovely!");
                 this.sched_schedule_task(task).map_move(Local::put);
                 return None;
             }
             Some(Wake) => {
-//                this.event_loop.callback(Scheduler::run_sched_once);
                 this.sleepy = false;
                 Local::put(this);
                 return None;
-//                return Some(this);
             }
             Some(Shutdown) => {
                 rtdebug!("shutting down");
-//                this.event_loop.callback(Scheduler::run_sched_once);
                 if this.sleepy {
                     // There may be an outstanding handle on the
                     // sleeper list.  Pop them all to make sure that's
@@ -463,7 +414,6 @@ impl Scheduler {
 
                 Local::put(this);
                 return None;
-//                return Some(this);
             }
             None => {
                 return Some(this);
