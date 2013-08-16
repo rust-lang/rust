@@ -49,7 +49,7 @@ pub fn run(lib_path: &str,
 
     let env = env + target_env(lib_path, prog);
     let mut proc = run::Process::new(prog, args, run::ProcessOptions {
-        env: Some(env.slice(0, env.len())),
+        env: Some(env),
         dir: None,
         in_fd: None,
         out_fd: None,

@@ -68,7 +68,7 @@ pub struct ProcessOptions<'self> {
      * If this is Some(vec-of-names-and-values) then the new process will
      * have an environment containing the given named values only.
      */
-    env: Option<&'self [(~str, ~str)]>,
+    env: Option<~[(~str, ~str)]>,
 
     /**
      * If this is None then the new process will use the same initial working
@@ -171,7 +171,7 @@ impl Process {
             Some(fd) => (None, fd)
         };
 
-        let res = spawn_process_os(prog, args, options.env, options.dir,
+        let res = spawn_process_os(prog, args, options.env.clone(), options.dir,
                                    in_fd, out_fd, err_fd);
 
         unsafe {
@@ -444,7 +444,7 @@ struct SpawnProcessResult {
 
 #[cfg(windows)]
 fn spawn_process_os(prog: &str, args: &[~str],
-                    env: Option<&[(~str, ~str)]>,
+                    env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
 
@@ -627,7 +627,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 
 #[cfg(unix)]
 fn spawn_process_os(prog: &str, args: &[~str],
-                    env: Option<&[(~str, ~str)]>,
+                    env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
 
@@ -717,7 +717,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: &fn(**libc::c_char) -> T) -> T {
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
     use vec;
 
     // On posixy systems we can pass a char** for envp, which is a
@@ -749,7 +749,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
+fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -1284,14 +1284,14 @@ mod tests {
     }
 
     #[cfg(unix,not(target_os="android"))]
-    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+    fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
         run::Process::new("env", [], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
         })
     }
     #[cfg(unix,target_os="android")]
-    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+    fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
         run::Process::new("/system/bin/sh", [~"-c",~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
@@ -1299,7 +1299,7 @@ mod tests {
     }
 
     #[cfg(windows)]
-    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+    fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
         run::Process::new("cmd", [~"/c", ~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
@@ -1344,7 +1344,7 @@ mod tests {
         let mut new_env = os::env();
         new_env.push((~"RUN_TEST_NEW_ENV", ~"123"));
 
-        let mut prog = run_env(Some(new_env.slice(0, new_env.len())));
+        let mut prog = run_env(Some(new_env));
         let output = str::from_bytes(prog.finish_with_output().output);
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"));
