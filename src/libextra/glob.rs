@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use std::{os, uint, util};
+use std::{os, path, uint, util};
 
 use sort;
 
@@ -38,11 +38,10 @@ pub fn glob(pattern: &str) -> GlobIterator {
  * Return an iterator that produces all the Paths that match the given pattern,
  * which may be absolute or relative to the current working directory.
  *
- * This function accepts Unix shell style patterns as described by Pattern::new(..),
- * with the exception that path separators (i.e. '/' on Posix systems) must be matched
- * by their literal representation - they can't be matched by '*', '?', '[...]', etc.
- *
- * The options given are passed through unchanged to Pattern::matches_with(..).
+ * This function accepts Unix shell style patterns as described by Pattern::new(..).
+ * The options given are passed through unchanged to Pattern::matches_with(..) with
+ * the exception that require_literal_separator is always set to true regardless of the
+ * value passed to this function.
  *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
@@ -251,25 +250,37 @@ impl Pattern {
                         if self.matches_from(file, ti + 1, options) {
                             return true;
                         }
+
                         if file.is_empty() {
                             return false;
                         }
-                        file = file.slice_shift_char().second();
+
+                        let (c, next) = file.slice_shift_char();
+                        if options.require_literal_separator && is_sep(c) {
+                            return false;
+                        }
+
+                        file = next;
                     }
                 }
                 _ => {
                     if file.is_empty() {
                         return false;
                     }
+
                     let (c, next) = file.slice_shift_char();
+                    let require_literal = options.require_literal_separator && is_sep(c);
+
                     let matches = match self.tokens[ti] {
                         AnyChar => {
-                            true
+                            !require_literal
                         }
                         AnyWithin(ref chars) => {
+                            !require_literal &&
                             chars.rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_some()
                         }
                         AnyExcept(ref chars) => {
+                            !require_literal &&
                             chars.rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_none()
                         }
                         Char(c2) => {
@@ -302,12 +313,25 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
     }
 }
 
+/// A helper function to determine if a char is a path separator on the current platform.
+#[cfg(windows)]
+fn is_sep(c: char) -> bool {
+    path::windows::is_sep(c)
+}
+#[cfg(unix)]
+fn is_sep(c: char) -> bool {
+    path::posix::is_sep(c)
+}
+
 /**
  * Configuration options to modify the behaviour of Pattern::matches_with(..)
  */
 pub struct MatchOptions {
     /// Whether or not patterns should be matched in a case-sensitive manner.
-    case_sensitive: bool
+    case_sensitive: bool,
+    /// If this is true then path-component separator characters (e.g. '/' on Posix)
+    /// must be matched by a literal '/', rather than by '*' or '?' or '[...]'
+    require_literal_separator: bool
 }
 
 impl MatchOptions {
@@ -318,12 +342,14 @@ impl MatchOptions {
      *
      * This function always returns this value:
      *     MatchOptions {
-     *         case_sensitive: true
+     *         case_sensitive: true,
+     *         require_literal_separator: false
      *     }
      */
     pub fn new() -> MatchOptions {
         MatchOptions {
-            case_sensitive: true
+            case_sensitive: true,
+            require_literal_separator: false
         }
     }
 
@@ -581,7 +607,10 @@ mod test {
     fn test_pattern_matches_case_insensitive() {
 
         let pat = Pattern::new("aBcDeFg");
-        let options = MatchOptions { case_sensitive: false };
+        let options = MatchOptions {
+            case_sensitive: false,
+            require_literal_separator: false
+        };
 
         assert!(pat.matches_with("aBcDeFg", options));
         assert!(pat.matches_with("abcdefg", options));
@@ -590,23 +619,50 @@ mod test {
     }
 
     #[test]
-    fn test_pattern_matches_case_insensitive_within() {
+    fn test_pattern_matches_case_insensitive_range() {
 
-        let pat = Pattern::new("[a]");
+        let pat_within = Pattern::new("[a]");
+        let pat_except = Pattern::new("[!a]");
 
-        assert!(pat.matches_with("a", MatchOptions { case_sensitive: false }));
-        assert!(pat.matches_with("A", MatchOptions { case_sensitive: false }));
-        assert!(!pat.matches_with("A", MatchOptions { case_sensitive: true }));
+        let options_case_insensitive = MatchOptions {
+            case_sensitive: false,
+            require_literal_separator: false
+        };
+        let options_case_sensitive = MatchOptions {
+            case_sensitive: true,
+            require_literal_separator: false
+        };
+
+        assert!(pat_within.matches_with("a", options_case_insensitive));
+        assert!(pat_within.matches_with("A", options_case_insensitive));
+        assert!(!pat_within.matches_with("A", options_case_sensitive));
+
+        assert!(!pat_except.matches_with("a", options_case_insensitive));
+        assert!(!pat_except.matches_with("A", options_case_insensitive));
+        assert!(pat_except.matches_with("A", options_case_sensitive));
     }
 
     #[test]
-    fn test_pattern_matches_case_insensitive_except() {
+    fn test_pattern_matches_require_literal_separator() {
 
-        let pat = Pattern::new("[!a]");
+        let options_requires_literal = MatchOptions {
+            case_sensitive: true,
+            require_literal_separator: true
+        };
+        let options_not_requires_literal = MatchOptions {
+            case_sensitive: true,
+            require_literal_separator: false
+        };
 
-        assert!(!pat.matches_with("a", MatchOptions { case_sensitive: false }));
-        assert!(!pat.matches_with("A", MatchOptions { case_sensitive: false }));
-        assert!(pat.matches_with("A", MatchOptions { case_sensitive: true }));
+        assert!(Pattern::new("abc/def").matches_with("abc/def", options_requires_literal));
+        assert!(!Pattern::new("abc?def").matches_with("abc/def", options_requires_literal));
+        assert!(!Pattern::new("abc*def").matches_with("abc/def", options_requires_literal));
+        assert!(!Pattern::new("abc[/]def").matches_with("abc/def", options_requires_literal));
+
+        assert!(Pattern::new("abc/def").matches_with("abc/def", options_not_requires_literal));
+        assert!(Pattern::new("abc?def").matches_with("abc/def", options_not_requires_literal));
+        assert!(Pattern::new("abc*def").matches_with("abc/def", options_not_requires_literal));
+        assert!(Pattern::new("abc[/]def").matches_with("abc/def", options_not_requires_literal));
     }
 }
 
