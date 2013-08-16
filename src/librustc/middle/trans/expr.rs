@@ -1030,7 +1030,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
-                            let llval = do symbol.to_c_str().with_ref |buf| {
+                            let llval = do symbol.with_c_str |buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
                                                     llty.to_ref(),
                                                     buf)

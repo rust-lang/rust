@@ -78,10 +78,10 @@ pub fn WriteOutputFile(sess: Session,
         OptLevel: c_int,
         EnableSegmentedStacks: bool) {
     unsafe {
-        do Triple.to_c_str().with_ref |Triple| {
-            do Cpu.to_c_str().with_ref |Cpu| {
-                do Feature.to_c_str().with_ref |Feature| {
-                    do Output.to_c_str().with_ref |Output| {
+        do Triple.with_c_str |Triple| {
+            do Cpu.with_c_str |Cpu| {
+                do Feature.with_c_str |Feature| {
+                    do Output.with_c_str |Output| {
                         let result = llvm::LLVMRustWriteOutputFile(
                                 PM,
                                 M,
@@ -152,7 +152,7 @@ pub mod jit {
 
                 debug!("linking: %s", path);
 
-                do path.to_c_str().with_ref |buf_t| {
+                do path.with_c_str |buf_t| {
                     if !llvm::LLVMRustLoadCrate(manager, buf_t) {
                         llvm_err(sess, ~"Could not link");
                     }
@@ -171,7 +171,7 @@ pub mod jit {
             // Next, we need to get a handle on the _rust_main function by
             // looking up it's corresponding ValueRef and then requesting that
             // the execution engine compiles the function.
-            let fun = do "_rust_main".to_c_str().with_ref |entry| {
+            let fun = do "_rust_main".with_c_str |entry| {
                 llvm::LLVMGetNamedFunction(m, entry)
             };
             if fun.is_null() {
@@ -270,14 +270,14 @@ pub mod write {
                   output_type_bitcode => {
                     if opts.optimize != session::No {
                         let filename = output.with_filetype("no-opt.bc");
-                        do filename.to_c_str().with_ref |buf| {
+                        do filename.with_c_str |buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         }
                     }
                   }
                   _ => {
                     let filename = output.with_filetype("bc");
-                    do filename.to_c_str().with_ref |buf| {
+                    do filename.with_c_str |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf);
                     }
                   }
@@ -340,7 +340,7 @@ pub mod write {
                     // Always output the bitcode file with --save-temps
 
                     let filename = output.with_filetype("opt.bc");
-                    do filename.to_c_str().with_ref |buf| {
+                    do filename.with_c_str |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     };
                     // Save the assembly file if -S is used
@@ -401,13 +401,13 @@ pub mod write {
 
             if output_type == output_type_llvm_assembly {
                 // Given options "-S --emit-llvm": output LLVM assembly
-                do output.to_c_str().with_ref |buf_o| {
+                do output.with_c_str |buf_o| {
                     llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o);
                 }
             } else {
                 // If only a bitcode file is asked for by using the
                 // '--emit-llvm' flag, then output it here
-                do output.to_c_str().with_ref |buf| {
+                do output.with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }

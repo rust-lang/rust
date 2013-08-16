@@ -120,8 +120,8 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         ast::asm_intel => lib::llvm::AD_Intel
     };
 
-    let r = do ia.asm.to_c_str().with_ref |a| {
-        do constraints.to_c_str().with_ref |c| {
+    let r = do ia.asm.with_c_str |a| {
+        do constraints.with_c_str |c| {
             InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
         }
     };

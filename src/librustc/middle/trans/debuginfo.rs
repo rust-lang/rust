@@ -207,7 +207,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
             argument_index as c_uint
         };
 
-        let arg_metadata = do name.to_c_str().with_ref |name| {
+        let arg_metadata = do name.with_c_str |name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateLocalVariable(
                     DIB(cx),
@@ -351,8 +351,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     };
 
     let fn_metadata =
-        do cx.sess.str_of(ident).to_c_str().with_ref |name| {
-        do cx.sess.str_of(ident).to_c_str().with_ref |linkage| {
+        do cx.sess.str_of(ident).with_c_str |name| {
+        do cx.sess.str_of(ident).with_c_str |linkage| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
                     DIB(cx),
@@ -420,11 +420,11 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     let work_dir = cx.sess.working_dir.to_str();
     let producer = fmt!("rustc version %s", env!("CFG_VERSION"));
 
-    do crate_name.to_c_str().with_ref |crate_name| {
-    do work_dir.to_c_str().with_ref |work_dir| {
-    do producer.to_c_str().with_ref |producer| {
-    do "".to_c_str().with_ref |flags| {
-    do "".to_c_str().with_ref |split_name| {
+    do crate_name.with_c_str |crate_name| {
+    do work_dir.with_c_str |work_dir| {
+    do producer.with_c_str |producer| {
+    do "".with_c_str |flags| {
+    do "".with_c_str |split_name| {
         unsafe {
             llvm::LLVMDIBuilderCreateCompileUnit(dcx.builder,
                 DW_LANG_RUST as c_uint, crate_name, work_dir, producer,
@@ -449,7 +449,7 @@ fn declare_local(bcx: @mut Block,
     let type_metadata = type_metadata(cx, variable_type, span);
     let scope = scope_metadata(bcx.fcx, node_id, span);
 
-    let var_metadata = do name.to_c_str().with_ref |name| {
+    let var_metadata = do name.with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateLocalVariable(
                 DIB(cx),
@@ -501,8 +501,8 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
         };
 
     let file_metadata =
-        do file_name.to_c_str().with_ref |file_name| {
-        do work_dir.to_c_str().with_ref |work_dir| {
+        do file_name.with_c_str |file_name| {
+        do work_dir.with_c_str |work_dir| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name, work_dir)
             }
@@ -566,7 +566,7 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
 
     let llvm_type = type_of::type_of(cx, t);
     let (size, align) = size_and_align_of(cx, llvm_type);
-    let ty_metadata = do name.to_c_str().with_ref |name| {
+    let ty_metadata = do name.with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
@@ -587,7 +587,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = ty_to_str(cx.tcx, pointer_type);
-    let ptr_metadata = do name.to_c_str().with_ref |name| {
+    let ptr_metadata = do name.with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
                 DIB(cx),
@@ -681,7 +681,7 @@ fn enum_metadata(cx: &mut CrateContext,
             let name: &str = cx.sess.str_of(v.name);
             let discriminant_value = v.disr_val as c_ulonglong;
 
-            do name.to_c_str().with_ref |name| {
+            do name.with_c_str |name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateEnumerator(
                         DIB(cx),
@@ -695,7 +695,7 @@ fn enum_metadata(cx: &mut CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let discriminant_type_metadata = do enum_name.to_c_str().with_ref |enum_name| {
+    let discriminant_type_metadata = do enum_name.with_c_str |enum_name| {
         unsafe {
             llvm::LLVMDIBuilderCreateEnumerationType(
                 DIB(cx),
@@ -732,7 +732,7 @@ fn enum_metadata(cx: &mut CrateContext,
                         Some(discriminant_type_metadata),
                         span);
 
-                    do "".to_c_str().with_ref |name| {
+                    do "".with_c_str |name| {
                         unsafe {
                             llvm::LLVMDIBuilderCreateMemberType(
                                 DIB(cx),
@@ -752,7 +752,7 @@ fn enum_metadata(cx: &mut CrateContext,
             let enum_llvm_type = type_of::type_of(cx, enum_type);
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
 
-            return do enum_name.to_c_str().with_ref |enum_name| {
+            return do enum_name.with_c_str |enum_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateUnionType(
                     DIB(cx),
@@ -836,7 +836,7 @@ fn composite_type_metadata(cx: &mut CrateContext,
             let member_offset = machine::llelement_offset(cx, composite_llvm_type, i);
             let member_name: &str = member_names[i];
 
-            do member_name.to_c_str().with_ref |member_name| {
+            do member_name.with_c_str |member_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateMemberType(
                         DIB(cx),
@@ -854,7 +854,7 @@ fn composite_type_metadata(cx: &mut CrateContext,
         })
         .collect();
 
-    return do composite_type_name.to_c_str().with_ref |name| {
+    return do composite_type_name.with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateStructType(
                 DIB(cx),
@@ -1080,7 +1080,7 @@ fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("unimplemented_type_metadata: %?", ty::get(t));
 
     let name = ty_to_str(cx.tcx, t);
-    let metadata = do fmt!("NYI<%s>", name).to_c_str().with_ref |name| {
+    let metadata = do fmt!("NYI<%s>", name).with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),

@@ -482,7 +482,7 @@ pub mod ptr_tests {
     fn test_position() {
         use libc::c_char;
 
-        do "hello".to_c_str().with_ref |p| {
+        do "hello".with_c_str |p| {
             unsafe {
                 assert!(2u == position(p, |c| *c == 'l' as c_char));
                 assert!(4u == position(p, |c| *c == 'o' as c_char));
@@ -493,9 +493,9 @@ pub mod ptr_tests {
 
     #[test]
     fn test_buf_len() {
-        do "hello".to_c_str().with_ref |p0| {
-            do "there".to_c_str().with_ref |p1| {
-                do "thing".to_c_str().with_ref |p2| {
+        do "hello".with_c_str |p0| {
+            do "there".with_c_str |p1| {
+                do "thing".with_c_str |p2| {
                     let v = ~[p0, p1, p2, null()];
                     do v.as_imm_buf |vp, len| {
                         assert_eq!(unsafe { buf_len(vp) }, 3u);

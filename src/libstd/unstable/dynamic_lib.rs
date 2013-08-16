@@ -66,7 +66,7 @@ impl DynamicLibrary {
         // T but that feature is still unimplemented
 
         let maybe_symbol_value = do dl::check_for_errors_in {
-            do symbol.to_c_str().with_ref |raw_string| {
+            do symbol.with_c_str |raw_string| {
                 dl::symbol(self.handle, raw_string)
             }
         };
@@ -145,7 +145,7 @@ mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
-        do filename.to_c_str().with_ref |raw_name| {
+        do filename.with_c_str |raw_name| {
             dlopen(raw_name, Lazy as libc::c_int)
         }
     }
