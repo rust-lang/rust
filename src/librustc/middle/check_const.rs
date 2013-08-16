@@ -16,8 +16,9 @@ use middle::typeck;
 use util::ppaux;
 
 use syntax::ast::*;
+use syntax::ast_map;
+use syntax::ast_util;
 use syntax::codemap;
-use syntax::{oldvisit, ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -226,41 +227,29 @@ struct env {
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
-pub fn check_item_recursion(sess: Session,
-                            ast_map: ast_map::map,
-                            def_map: resolve::DefMap,
-                            it: @item) {
-    let env = env {
-        root_it: it,
-        sess: sess,
-        ast_map: ast_map,
-        def_map: def_map,
-        idstack: @mut ~[]
-    };
+struct ItemRecursionCheckingVisitor {
+    sess: Session,
+    ast_map: ast_map::map,
+    def_map: resolve::DefMap,
+}
 
-    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_item: visit_item,
-        visit_expr: visit_expr,
-        .. *oldvisit::default_visitor()
-    });
-    (visitor.visit_item)(it, (env, visitor));
-
-    fn visit_item(it: @item, (env, v): (env, oldvisit::vt<env>)) {
+impl Visitor<env> for ItemRecursionCheckingVisitor {
+    fn visit_item(&mut self, it: @item, env: env) {
         if env.idstack.iter().any(|x| x == &(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);
-        oldvisit::visit_item(it, (env, v));
+        visit::walk_item(self, it, env);
         env.idstack.pop();
     }
 
-    fn visit_expr(e: @expr, (env, v): (env, oldvisit::vt<env>)) {
+    fn visit_expr(&mut self, e: @expr, env: env) {
         match e.node {
             expr_path(*) => match env.def_map.find(&e.id) {
                 Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
                     match env.ast_map.get_copy(&def_id.node) {
                         ast_map::node_item(it, _) => {
-                            (v.visit_item)(it, (env, v));
+                            self.visit_item(it, env);
                         }
                         _ => fail!("const not bound to an item")
                     },
@@ -268,6 +257,26 @@ pub fn check_item_recursion(sess: Session,
             },
             _ => ()
         }
-        oldvisit::visit_expr(e, (env, v));
+        visit::walk_expr(self, e, env);
     }
 }
+
+fn check_item_recursion(sess: Session,
+                        ast_map: ast_map::map,
+                        def_map: resolve::DefMap,
+                        it: @item) {
+    let env = env {
+        root_it: it,
+        sess: sess,
+        ast_map: ast_map,
+        def_map: def_map,
+        idstack: @mut ~[]
+    };
+    let mut visitor = ItemRecursionCheckingVisitor {
+        sess: sess,
+        ast_map: ast_map,
+        def_map: def_map,
+    };
+    visitor.visit_item(it, env);
+}
+
