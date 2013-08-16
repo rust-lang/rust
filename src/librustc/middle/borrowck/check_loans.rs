@@ -27,7 +27,8 @@ use syntax::ast::m_mutbl;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::oldvisit;
+use syntax::visit::Visitor;
+use syntax::visit;
 use util::ppaux::Repr;
 
 #[deriving(Clone)]
@@ -39,6 +40,93 @@ struct CheckLoanCtxt<'self> {
     reported: @mut HashSet<ast::NodeId>,
 }
 
+impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
+    fn visit_expr(&mut self, expr: @ast::expr, _: ()) {
+        visit::walk_expr(self, expr, ());
+
+        debug!("check_loans_in_expr(expr=%s)", expr.repr(self.tcx()));
+
+        self.check_for_conflicting_loans(expr.id);
+        self.check_move_out_from_expr(expr);
+
+        match expr.node {
+          ast::expr_self |
+          ast::expr_path(*) => {
+              if !self.move_data.is_assignee(expr.id) {
+                  let cmt = self.bccx.cat_expr_unadjusted(expr);
+                  debug!("path cmt=%s", cmt.repr(self.tcx()));
+                  let r = opt_loan_path(cmt);
+                  for &lp in r.iter() {
+                      self.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
+                  }
+              }
+          }
+          ast::expr_assign(dest, _) |
+          ast::expr_assign_op(_, _, dest, _) => {
+            self.check_assignment(dest);
+          }
+          ast::expr_call(f, ref args, _) => {
+            self.check_call(expr, Some(f), f.id, f.span, *args);
+          }
+          ast::expr_method_call(callee_id, _, _, _, ref args, _) => {
+            self.check_call(expr, None, callee_id, expr.span, *args);
+          }
+          ast::expr_index(callee_id, _, rval) |
+          ast::expr_binary(callee_id, _, _, rval)
+          if self.bccx.method_map.contains_key(&expr.id) => {
+            self.check_call(expr,
+                            None,
+                            callee_id,
+                            expr.span,
+                            [rval]);
+          }
+          ast::expr_unary(callee_id, _, _) | ast::expr_index(callee_id, _, _)
+          if self.bccx.method_map.contains_key(&expr.id) => {
+            self.check_call(expr,
+                            None,
+                            callee_id,
+                            expr.span,
+                            []);
+          }
+          _ => { }
+        }
+    }
+
+    fn visit_pat(&mut self, pat: @ast::pat, _: ()) {
+        self.check_for_conflicting_loans(pat.id);
+        self.check_move_out_from_id(pat.id, pat.span);
+        visit::walk_pat(self, pat, ());
+    }
+
+    fn visit_fn(&mut self,
+                fk: &visit::fn_kind,
+                decl: &ast::fn_decl,
+                body: &ast::Block,
+                sp: span,
+                id: ast::NodeId,
+                _: ()) {
+        match *fk {
+            visit::fk_item_fn(*) |
+            visit::fk_method(*) => {
+                // Don't process nested items.
+                return;
+            }
+
+            visit::fk_anon(*) |
+            visit::fk_fn_block(*) => {
+                self.check_captured_variables(id, sp);
+            }
+        }
+
+        visit::walk_fn(self, fk, decl, body, sp, id, ());
+    }
+
+    fn visit_block(&mut self, blk: &ast::Block, _: ()) {
+        visit::walk_block(self, blk, ());
+        self.check_for_conflicting_loans(blk.id);
+    }
+}
+
 pub fn check_loans(bccx: @BorrowckCtxt,
                    dfcx_loans: &LoanDataFlow,
                    move_data: move_data::FlowedMoveData,
@@ -46,23 +134,14 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                    body: &ast::Block) {
     debug!("check_loans(body id=%?)", body.id);
 
-    let clcx = CheckLoanCtxt {
+    let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
         move_data: @move_data,
         all_loans: all_loans,
         reported: @mut HashSet::new(),
     };
-
-    let vt = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: check_loans_in_expr,
-        visit_local: check_loans_in_local,
-        visit_block: check_loans_in_block,
-        visit_pat: check_loans_in_pat,
-        visit_fn: check_loans_in_fn,
-        .. *oldvisit::default_visitor()
-    });
-    (vt.visit_block)(body, (clcx, vt));
+    clcx.visit_block(body, ());
 }
 
 enum MoveError {
@@ -71,6 +150,44 @@ enum MoveError {
 }
 
 impl<'self> CheckLoanCtxt<'self> {
+    fn check_by_move_capture(&self,
+                             closure_id: ast::NodeId,
+                             cap_var: &moves::CaptureVar,
+                             move_path: @LoanPath) {
+        let move_err = self.analyze_move_out_from(closure_id, move_path);
+        match move_err {
+            MoveOk => {}
+            MoveWhileBorrowed(loan_path, loan_span) => {
+                self.bccx.span_err(
+                    cap_var.span,
+                    fmt!("cannot move `%s` into closure \
+                          because it is borrowed",
+                         self.bccx.loan_path_to_str(move_path)));
+                self.bccx.span_note(
+                    loan_span,
+                    fmt!("borrow of `%s` occurs here",
+                         self.bccx.loan_path_to_str(loan_path)));
+            }
+        }
+    }
+
+    fn check_captured_variables(&self, closure_id: ast::NodeId, span: span) {
+        let cap_vars = self.bccx.capture_map.get(&closure_id);
+        for cap_var in cap_vars.iter() {
+            let var_id = ast_util::def_id_of_def(cap_var.def).node;
+            let var_path = @LpVar(var_id);
+            self.check_if_path_is_moved(closure_id, span,
+                                        MovedInCapture, var_path);
+            match cap_var.mode {
+                moves::CapRef | moves::CapCopy => {}
+                moves::CapMove => {
+                    self.check_by_move_capture(closure_id, cap_var, var_path);
+                }
+            }
+        }
+        return;
+    }
+
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self,
@@ -628,142 +745,3 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 }
 
-fn check_loans_in_fn<'a>(fk: &oldvisit::fn_kind,
-                         decl: &ast::fn_decl,
-                         body: &ast::Block,
-                         sp: span,
-                         id: ast::NodeId,
-                         (this, visitor): (CheckLoanCtxt<'a>,
-                                           oldvisit::vt<CheckLoanCtxt<'a>>)) {
-    match *fk {
-        oldvisit::fk_item_fn(*) |
-        oldvisit::fk_method(*) => {
-            // Don't process nested items.
-            return;
-        }
-
-        oldvisit::fk_anon(*) |
-        oldvisit::fk_fn_block(*) => {
-            check_captured_variables(this, id, sp);
-        }
-    }
-
-    oldvisit::visit_fn(fk, decl, body, sp, id, (this, visitor));
-
-    fn check_captured_variables(this: CheckLoanCtxt,
-                                closure_id: ast::NodeId,
-                                span: span) {
-        let cap_vars = this.bccx.capture_map.get(&closure_id);
-        for cap_var in cap_vars.iter() {
-            let var_id = ast_util::def_id_of_def(cap_var.def).node;
-            let var_path = @LpVar(var_id);
-            this.check_if_path_is_moved(closure_id, span,
-                                        MovedInCapture, var_path);
-            match cap_var.mode {
-                moves::CapRef | moves::CapCopy => {}
-                moves::CapMove => {
-                    check_by_move_capture(this, closure_id, cap_var, var_path);
-                }
-            }
-        }
-        return;
-
-        fn check_by_move_capture(this: CheckLoanCtxt,
-                                 closure_id: ast::NodeId,
-                                 cap_var: &moves::CaptureVar,
-                                 move_path: @LoanPath) {
-            let move_err = this.analyze_move_out_from(closure_id, move_path);
-            match move_err {
-                MoveOk => {}
-                MoveWhileBorrowed(loan_path, loan_span) => {
-                    this.bccx.span_err(
-                        cap_var.span,
-                        fmt!("cannot move `%s` into closure \
-                              because it is borrowed",
-                             this.bccx.loan_path_to_str(move_path)));
-                    this.bccx.span_note(
-                        loan_span,
-                        fmt!("borrow of `%s` occurs here",
-                             this.bccx.loan_path_to_str(loan_path)));
-                }
-            }
-        }
-    }
-}
-
-fn check_loans_in_local<'a>(local: @ast::Local,
-                            (this, vt): (CheckLoanCtxt<'a>,
-                                         oldvisit::vt<CheckLoanCtxt<'a>>)) {
-    oldvisit::visit_local(local, (this, vt));
-}
-
-fn check_loans_in_expr<'a>(expr: @ast::expr,
-                           (this, vt): (CheckLoanCtxt<'a>,
-                                        oldvisit::vt<CheckLoanCtxt<'a>>)) {
-    oldvisit::visit_expr(expr, (this, vt));
-
-    debug!("check_loans_in_expr(expr=%s)",
-           expr.repr(this.tcx()));
-
-    this.check_for_conflicting_loans(expr.id);
-    this.check_move_out_from_expr(expr);
-
-    match expr.node {
-      ast::expr_self |
-      ast::expr_path(*) => {
-          if !this.move_data.is_assignee(expr.id) {
-              let cmt = this.bccx.cat_expr_unadjusted(expr);
-              debug!("path cmt=%s", cmt.repr(this.tcx()));
-              let r = opt_loan_path(cmt);
-              for &lp in r.iter() {
-                  this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
-              }
-          }
-      }
-      ast::expr_assign(dest, _) |
-      ast::expr_assign_op(_, _, dest, _) => {
-        this.check_assignment(dest);
-      }
-      ast::expr_call(f, ref args, _) => {
-        this.check_call(expr, Some(f), f.id, f.span, *args);
-      }
-      ast::expr_method_call(callee_id, _, _, _, ref args, _) => {
-        this.check_call(expr, None, callee_id, expr.span, *args);
-      }
-      ast::expr_index(callee_id, _, rval) |
-      ast::expr_binary(callee_id, _, _, rval)
-      if this.bccx.method_map.contains_key(&expr.id) => {
-        this.check_call(expr,
-                        None,
-                        callee_id,
-                        expr.span,
-                        [rval]);
-      }
-      ast::expr_unary(callee_id, _, _) | ast::expr_index(callee_id, _, _)
-      if this.bccx.method_map.contains_key(&expr.id) => {
-        this.check_call(expr,
-                        None,
-                        callee_id,
-                        expr.span,
-                        []);
-      }
-      _ => { }
-    }
-}
-
-fn check_loans_in_pat<'a>(pat: @ast::pat,
-                          (this, vt): (CheckLoanCtxt<'a>,
-                                       oldvisit::vt<CheckLoanCtxt<'a>>))
-{
-    this.check_for_conflicting_loans(pat.id);
-    this.check_move_out_from_id(pat.id, pat.span);
-    oldvisit::visit_pat(pat, (this, vt));
-}
-
-fn check_loans_in_block<'a>(blk: &ast::Block,
-                            (this, vt): (CheckLoanCtxt<'a>,
-                                         oldvisit::vt<CheckLoanCtxt<'a>>))
-{
-    oldvisit::visit_block(blk, (this, vt));
-    this.check_for_conflicting_loans(blk.id);
-}
