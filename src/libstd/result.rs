@@ -18,8 +18,7 @@ use either;
 use iterator::Iterator;
 use option::{None, Option, Some, OptionIterator};
 use vec;
-use vec::{OwnedVector, ImmutableVector};
-use container::Container;
+use vec::OwnedVector;
 use to_str::ToStr;
 use str::StrSlice;
 
@@ -269,86 +268,76 @@ pub fn map_opt<T, U: ToStr, V>(o_t: &Option<T>,
     }
 }
 
-// FIXME: #8228 Replaceable by an external iterator?
-/// Maps each element in the vector `ts` using the operation `op`.  Should an
-/// error occur, no further mappings are performed and the error is returned.
-/// Should no error occur, a vector containing the result of each map is
-/// returned.
+/// Takes each element in the iterator: if it is an error, no further
+/// elements are taken, and the error is returned.
+/// Should no error occur, a vector containing the values of each Result
+/// is returned.
 ///
 /// Here is an example which increments every integer in a vector,
 /// checking for overflow:
 ///
-///     fn inc_conditionally(x: uint) -> result<uint,str> {
+///     fn inc_conditionally(x: uint) -> Result<uint, &'static str> {
 ///         if x == uint::max_value { return Err("overflow"); }
 ///         else { return Ok(x+1u); }
 ///     }
-///     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
-///         assert!(incd == ~[2u, 3u, 4u]);
-///     }
+///     let v = [1u, 2, 3];
+///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
+///     assert!(res == Ok(~[2u, 3, 4]));
 #[inline]
-pub fn map_vec<T,U,V>(ts: &[T], op: &fn(&T) -> Result<V,U>)
-                      -> Result<~[V],U> {
-    let mut vs: ~[V] = vec::with_capacity(ts.len());
-    for t in ts.iter() {
-        match op(t) {
-          Ok(v) => vs.push(v),
-          Err(u) => return Err(u)
+pub fn collect<T, E, Iter: Iterator<Result<T, E>>>(mut iterator: Iter)
+    -> Result<~[T], E> {
+    let (lower, _) = iterator.size_hint();
+    let mut vs: ~[T] = vec::with_capacity(lower);
+    for t in iterator {
+        match t {
+            Ok(v) => vs.push(v),
+            Err(u) => return Err(u)
         }
     }
-    return Ok(vs);
+    Ok(vs)
 }
 
-// FIXME: #8228 Replaceable by an external iterator?
-/// Same as map, but it operates over two parallel vectors.
+/// Perform a fold operation over the result values from an iterator.
 ///
-/// A precondition is used here to ensure that the vectors are the same
-/// length.  While we do not often use preconditions in the standard
-/// library, a precondition is used here because result::t is generally
-/// used in 'careful' code contexts where it is both appropriate and easy
-/// to accommodate an error like the vectors being of different lengths.
+/// If an `Err` is encountered, it is immediately returned.
+/// Otherwise, the folded value is returned.
 #[inline]
-pub fn map_vec2<S, T, U: ToStr, V>(ss: &[S], ts: &[T],
-                                   op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
-    assert!(vec::same_length(ss, ts));
-    let n = ts.len();
-    let mut vs = vec::with_capacity(n);
-    let mut i = 0u;
-    while i < n {
-        match op(&ss[i],&ts[i]) {
-          Ok(v) => vs.push(v),
-          Err(u) => return Err(u)
+pub fn fold<T, V, E,
+            Iter: Iterator<Result<T, E>>>(
+            mut iterator: Iter,
+            mut init: V,
+            f: &fn(V, T) -> V)
+         -> Result<V, E> {
+    for t in iterator {
+        match t {
+            Ok(v) => init = f(init, v),
+            Err(u) => return Err(u)
         }
-        i += 1u;
     }
-    return Ok(vs);
+    Ok(init)
 }
 
-// FIXME: #8228 Replaceable by an external iterator?
-/// Applies op to the pairwise elements from `ss` and `ts`, aborting on
-/// error.  This could be implemented using `map_zip()` but it is more efficient
-/// on its own as no result vector is built.
+/// Perform a trivial fold operation over the result values
+/// from an iterator.
+///
+/// If an `Err` is encountered, it is immediately returned.
+/// Otherwise, a simple `Ok(())` is returned.
 #[inline]
-pub fn iter_vec2<S, T, U: ToStr>(ss: &[S], ts: &[T],
-                                 op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
-    assert!(vec::same_length(ss, ts));
-    let n = ts.len();
-    let mut i = 0u;
-    while i < n {
-        match op(&ss[i],&ts[i]) {
-          Ok(()) => (),
-          Err(u) => return Err(u)
-        }
-        i += 1u;
-    }
-    return Ok(());
+pub fn fold_<T, E, Iter: Iterator<Result<T, E>>>(
+             iterator: Iter)
+          -> Result<(), E> {
+    fold(iterator, (), |_, _| ())
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use either;
+    use iterator::range;
     use str::OwnedStr;
+    use vec::ImmutableVector;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
 
@@ -430,5 +419,45 @@ mod tests {
 
         assert_eq!(r.to_either(), either::Right(100));
         assert_eq!(err.to_either(), either::Left(404));
+    }
+
+    #[test]
+    fn test_collect() {
+        assert_eq!(collect(range(0, 0)
+                           .map(|_| Ok::<int, ()>(0))),
+                   Ok(~[]));
+        assert_eq!(collect(range(0, 3)
+                           .map(|x| Ok::<int, ()>(x))),
+                   Ok(~[0, 1, 2]));
+        assert_eq!(collect(range(0, 3)
+                           .map(|x| if x > 1 { Err(x) } else { Ok(x) })),
+                   Err(2));
+
+        // test that it does not take more elements than it needs
+        let functions = [|| Ok(()), || Err(1), || fail!()];
+
+        assert_eq!(collect(functions.iter().map(|f| (*f)())),
+                   Err(1));
+    }
+
+    #[test]
+    fn test_fold() {
+        assert_eq!(fold_(range(0, 0)
+                        .map(|_| Ok::<(), ()>(()))),
+                   Ok(()));
+        assert_eq!(fold(range(0, 3)
+                        .map(|x| Ok::<int, ()>(x)),
+                        0, |a, b| a + b),
+                   Ok(3));
+        assert_eq!(fold_(range(0, 3)
+                        .map(|x| if x > 1 { Err(x) } else { Ok(()) })),
+                   Err(2));
+
+        // test that it does not take more elements than it needs
+        let functions = [|| Ok(()), || Err(1), || fail!()];
+
+        assert_eq!(fold_(functions.iter()
+                        .map(|f| (*f)())),
+                   Err(1));
     }
 }
