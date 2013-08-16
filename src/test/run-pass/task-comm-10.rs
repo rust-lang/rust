@@ -36,5 +36,5 @@ pub fn main() {
     let c = p.recv();
     c.send(~"A");
     c.send(~"B");
-    task::yield();
+    task::deschedule();
 }
