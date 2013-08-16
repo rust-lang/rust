@@ -654,7 +654,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
     fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let r = unsafe {
-            do multi.to_str().to_c_str().with_ref |m_addr| {
+            do multi.to_str().with_c_str |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_JOIN_GROUP)
             }
@@ -668,7 +668,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
     fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
         let r = unsafe {
-            do multi.to_str().to_c_str().with_ref |m_addr| {
+            do multi.to_str().with_c_str |m_addr| {
                 uvll::udp_set_membership(self.native_handle(), m_addr,
                                          ptr::null(), uvll::UV_LEAVE_GROUP)
             }

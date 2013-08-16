@@ -105,8 +105,8 @@ pub trait FailWithCause {
 
 impl FailWithCause for ~str {
     fn fail_with(cause: ~str, file: &'static str, line: uint) -> ! {
-        do cause.to_c_str().with_ref |msg_buf| {
-            do file.to_c_str().with_ref |file_buf| {
+        do cause.with_c_str |msg_buf| {
+            do file.with_c_str |file_buf| {
                 begin_unwind_(msg_buf, file_buf, line as libc::size_t)
             }
         }
@@ -115,8 +115,8 @@ impl FailWithCause for ~str {
 
 impl FailWithCause for &'static str {
     fn fail_with(cause: &'static str, file: &'static str, line: uint) -> ! {
-        do cause.to_c_str().with_ref |msg_buf| {
-            do file.to_c_str().with_ref |file_buf| {
+        do cause.with_c_str |msg_buf| {
+            do file.with_c_str |file_buf| {
                 begin_unwind_(msg_buf, file_buf, line as libc::size_t)
             }
         }

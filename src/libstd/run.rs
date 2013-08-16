@@ -506,7 +506,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_envp(env) |envp| {
             do with_dirp(dir) |dirp| {
-                do cmd.to_c_str().with_ref |cmdp| {
+                do cmd.with_c_str |cmdp| {
                     let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  0, envp, dirp, &mut si, &mut pi);
@@ -775,7 +775,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
 
 fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
     match d {
-      Some(dir) => dir.to_c_str().with_ref(|buf| cb(buf)),
+      Some(dir) => dir.with_c_str(|buf| cb(buf)),
       None => cb(ptr::null())
     }
 }

@@ -237,7 +237,7 @@ pub fn trans_log(log_ex: &ast::expr,
             ccx, modpath, "loglevel");
         let global;
         unsafe {
-            global = do s.to_c_str().with_ref |buf| {
+            global = do s.with_c_str |buf| {
                 llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
             };
             llvm::LLVMSetGlobalConstant(global, False);
