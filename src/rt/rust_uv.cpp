@@ -18,16 +18,13 @@
 #include <signal.h>
 #endif
 
+#include <fcntl.h>
 #include "uv.h"
 
 #include "rust_globals.h"
 
 extern "C" void*
 rust_uv_loop_new() {
-// XXX libuv doesn't always ignore SIGPIPE even though we don't need it.
-#ifndef __WIN32__
-    signal(SIGPIPE, SIG_IGN);
-#endif
     return (void*)uv_loop_new();
 }
 
@@ -516,4 +513,46 @@ rust_uv_handle_type_max() {
 extern "C" uintptr_t
 rust_uv_req_type_max() {
   return UV_REQ_TYPE_MAX;
+}
+
+extern "C" int
+rust_uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+                int mode, uv_fs_cb cb) {
+  return uv_fs_open(loop, req, path, flags, mode, cb);
+}
+extern "C" int
+rust_uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
+  return uv_fs_close(loop, req, fd, cb);
+}
+extern "C" void
+rust_uv_fs_req_cleanup(uv_fs_t* req) {
+  uv_fs_req_cleanup(req);
+}
+extern "C" int
+rust_uv_get_O_RDONLY() {
+  return O_RDONLY;
+}
+extern "C" int
+rust_uv_get_O_WRONLY() {
+  return O_WRONLY;
+}
+extern "C" int
+rust_uv_get_O_RDWR() {
+  return O_RDWR;
+}
+extern "C" int
+rust_uv_get_O_CREAT() {
+  return O_CREAT;
+}
+extern "C" int
+rust_uv_get_O_TRUNC() {
+  return O_TRUNC;
+}
+extern "C" int
+rust_uv_get_result_from_fs_req(uv_fs_t* req) {
+  return req->result;
+}
+extern "C" uv_loop_t*
+rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
+  return req->loop;
 }

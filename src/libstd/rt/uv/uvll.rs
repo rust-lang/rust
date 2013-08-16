@@ -621,6 +621,10 @@ pub unsafe fn fs_open(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char, flags:
                 cb: *u8) -> c_int {
     rust_uv_fs_open(loop_ptr, req, path, flags as c_int, mode as c_int, cb)
 }
+pub unsafe fn fs_write(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
+                       len: uint, offset: i64, cb: *u8) -> c_int {
+    rust_uv_fs_write(loop_ptr, req, fd, buf, len as c_uint, offset, cb)
+}
 pub unsafe fn fs_close(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int,
                 cb: *u8) -> c_int {
     rust_uv_fs_close(loop_ptr, req, fd, cb)
@@ -630,21 +634,15 @@ pub unsafe fn fs_req_cleanup(req: *uv_fs_t) {
 }
 
 // data access helpers
-pub unsafe fn get_O_RDONLY() -> c_int {
-    rust_uv_get_O_RDONLY()
-}
-pub unsafe fn get_O_WRONLY() -> c_int {
-    rust_uv_get_O_WRONLY()
-}
-pub unsafe fn get_O_RDWR() -> c_int {
-    rust_uv_get_O_RDWR()
-}
-pub unsafe fn get_O_CREAT() -> c_int {
-    rust_uv_get_O_CREAT()
-}
-pub unsafe fn get_O_TRUNC() -> c_int {
-    rust_uv_get_O_TRUNC()
-}
+pub unsafe fn get_O_RDONLY() -> c_int { rust_uv_get_O_RDONLY() }
+pub unsafe fn get_O_WRONLY() -> c_int { rust_uv_get_O_WRONLY() }
+pub unsafe fn get_O_RDWR() -> c_int { rust_uv_get_O_RDWR() }
+pub unsafe fn get_O_CREAT() -> c_int { rust_uv_get_O_CREAT() }
+pub unsafe fn get_O_TRUNC() -> c_int { rust_uv_get_O_TRUNC() }
+pub unsafe fn get_S_IWUSR() -> c_int { rust_uv_get_S_IWUSR() }
+pub unsafe fn get_S_IRUSR() -> c_int { rust_uv_get_S_IRUSR() }
+pub unsafe fn get_S_IRGRP() -> c_int { rust_uv_get_S_IRGRP() }
+pub unsafe fn get_S_IROTH() -> c_int { rust_uv_get_S_IROTH() }
 pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
     rust_uv_get_result_from_fs_req(req)
 }
@@ -819,6 +817,8 @@ extern {
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
     fn rust_uv_fs_open(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                        flags: c_int, mode: c_int, cb: *u8) -> c_int;
+    fn rust_uv_fs_write(loop_ptr: *c_void, req: *uv_fs_t, fd: c_int,
+                       buf: *c_void, len: c_uint, offset: i64, cb: *u8) -> c_int;
     fn rust_uv_fs_close(loop_ptr: *c_void, req: *uv_fs_t, fd: c_int,
                         cb: *u8) -> c_int;
     fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
@@ -827,6 +827,10 @@ extern {
     fn rust_uv_get_O_RDWR() -> c_int;
     fn rust_uv_get_O_CREAT() -> c_int;
     fn rust_uv_get_O_TRUNC() -> c_int;
+    fn rust_uv_get_S_IWUSR() -> c_int;
+    fn rust_uv_get_S_IRUSR() -> c_int;
+    fn rust_uv_get_S_IRGRP() -> c_int;
+    fn rust_uv_get_S_IROTH() -> c_int;
     fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
     fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
 
