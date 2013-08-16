@@ -440,6 +440,7 @@ impl Scheduler {
 //                return Some(this);
             }
             Some(Shutdown) => {
+                rtdebug!("shutting down");
 //                this.event_loop.callback(Scheduler::run_sched_once);
                 if this.sleepy {
                     // There may be an outstanding handle on the
@@ -1163,6 +1164,51 @@ mod test {
 
             thread_two.join();
             thread_one.join();
+        }
+    }
+
+    // A regression test that the final message is always handled.
+    // Used to deadlock because Shutdown was never recvd.
+    #[test]
+    fn no_missed_messages() {
+        use rt::work_queue::WorkQueue;
+        use rt::sleeper_list::SleeperList;
+        use rt::stack::StackPool;
+        use rt::uv::uvio::UvEventLoop;
+        use rt::sched::{Shutdown, TaskFromFriend};
+        use util;
+
+        do run_in_bare_thread {
+            do stress_factor().times {
+                let sleepers = SleeperList::new();
+                let queue = WorkQueue::new();
+                let queues = ~[queue.clone()];
+
+                let mut sched = ~Scheduler::new(
+                    ~UvEventLoop::new(),
+                    queue,
+                    queues.clone(),
+                    sleepers.clone());
+
+                let mut handle = sched.make_handle();
+
+                let sched = Cell::new(sched);
+
+                let thread = do Thread::start {
+                    let mut sched = sched.take();
+                    let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, ||());
+                    sched.bootstrap(bootstrap_task);
+                };
+
+                let mut stack_pool = StackPool::new();
+                let task = ~Task::new_root(&mut stack_pool, None, ||());
+                handle.send(TaskFromFriend(task));
+
+                handle.send(Shutdown);
+                util::ignore(handle);
+
+                thread.join();
+            }
         }
     }
 
