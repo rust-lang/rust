@@ -12,7 +12,7 @@
 
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
-pub use version::{Version, NoVersion, split_version_general};
+pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
 
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
@@ -153,21 +153,19 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
 /// Figure out what the library name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
 pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&pkgid.path, pkgid.short_name, Build, workspace, "build")
+    library_in_workspace(&pkgid.path, pkgid.short_name, Build, workspace, "build", &pkgid.version)
 }
 
 /// Does the actual searching stuff
 pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib")
+    // NOTE: this could break once we're handling multiple versions better... want a test for it
+    library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib", &NoVersion)
 }
 
-
-/// This doesn't take a PkgId, so we can use it for `extern mod` inference, where we
-/// don't know the entire package ID.
 /// `workspace` is used to figure out the directory to search.
 /// `short_name` is taken as the link name of the library.
 pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
-                        workspace: &Path, prefix: &str) -> Option<Path> {
+                        workspace: &Path, prefix: &str, version: &Version) -> Option<Path> {
     debug!("library_in_workspace: checking whether a library named %s exists",
            short_name);
 
@@ -209,36 +207,37 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
     for p_path in libraries {
         // Find a filename that matches the pattern: (lib_prefix)-hash-(version)(lib_suffix)
         // and remember what the hash was
-        let f_name = match p_path.filename() {
+        let mut f_name = match p_path.filestem() {
             Some(s) => s, None => loop
         };
+        // Already checked the filetype above
 
-        let mut hash = None;
-        let mut which = 0;
-        for piece in f_name.split_iter('-') {
-            debug!("a piece = %s", piece);
-            if which == 0 && piece != lib_prefix {
-                break;
-            }
-            else if which == 0 {
-                which += 1;
-            }
-            else if which == 1 {
-                hash = Some(piece.to_owned());
-                break;
-            }
-            else {
-                // something went wrong
-                hash = None;
-                break;
-            }
-        }
-
-        if hash.is_some() {
-            result_filename = Some(p_path);
-            break;
-        }
-    }
+         // This is complicated because library names and versions can both contain dashes
+         loop {
+            if f_name.is_empty() { break; }
+            match f_name.rfind('-') {
+                Some(i) => {
+                    debug!("Maybe %s is a version", f_name.slice(i + 1, f_name.len()));
+                    match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
+                       Some(ref found_vers) if version == found_vers => {
+                           match f_name.slice(0, i).rfind('-') {
+                               Some(j) => {
+                                   debug!("Maybe %s equals %s", f_name.slice(0, j), lib_prefix);
+                                   if f_name.slice(0, j) == lib_prefix {
+                                       result_filename = Some(p_path);
+                                   }
+                                   break;
+                               }
+                               None => break
+                           }
+                       }
+                       _ => { f_name = f_name.slice(0, i).to_owned(); }
+                 }
+               }
+               None => break
+         } // match
+       } // loop
+    } // for
 
     if result_filename.is_none() {
         warn(fmt!("library_in_workspace didn't find a library in %s for %s",
