@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // xfail-test
-use core::io::ReaderUtil;
-use core::io::Reader;
+use std::io::ReaderUtil;
+use std::io::Reader;
 
 fn bar(r:@ReaderUtil) -> ~str { r.read_line() }
 

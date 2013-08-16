@@ -19,7 +19,7 @@ file, TCP, UDP, Unix domain sockets.
 Readers and Writers may be composed to add capabilities like string
 parsing, encoding, and compression.
 
-This will likely live in core::io, not core::rt::io.
+This will likely live in std::io, not std::rt::io.
 
 # Examples
 

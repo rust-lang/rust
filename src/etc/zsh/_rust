@@ -36,7 +36,7 @@ _rustc_opts_lint=(
     'path-statement[path statements with no effect]'
     'missing-trait-doc[detects missing documentation for traits]'
     'missing-struct-doc[detects missing documentation for structs]'
-    'ctypes[proper use of core::libc types in foreign modules]'
+    'ctypes[proper use of std::libc types in foreign modules]'
     "unused-mut[detect mut variables which don't need to be mutable]"
     'unused-imports[imports that are never used]'
     'heap-memory[use of any (~ type or @ type) heap memory]'
