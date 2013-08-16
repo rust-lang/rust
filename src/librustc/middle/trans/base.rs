@@ -136,6 +136,13 @@ fn fcx_has_nonzero_span(fcx: &FunctionContext) -> bool {
     }
 }
 
+fn span_is_empty(opt_span: &Option<span>) -> bool {
+    match *opt_span {
+        None => true,
+        Some(span) => *span.lo == 0 && *span.hi == 0
+    }
+}
+
 struct StatRecorder<'self> {
     ccx: @mut CrateContext,
     name: &'self str,
@@ -1623,6 +1630,13 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
         }
     };
     let uses_outptr = type_of::return_uses_outptr(ccx.tcx, substd_output_type);
+
+    let debug_context = if id != -1 && ccx.sess.opts.debuginfo && !span_is_empty(&sp) {
+        Some(debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl))
+    } else {
+        None
+    };
+
     let fcx = @mut FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
@@ -1643,7 +1657,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           span: sp,
           path: path,
           ccx: ccx,
-          debug_context: None,
+          debug_context: debug_context,
     };
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
@@ -1878,10 +1892,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
     if attr::contains_name(attributes, "fixed_stack_segment") {
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
-    }
-
-    if ccx.sess.opts.debuginfo && fcx_has_nonzero_span(fcx) {
-        debuginfo::create_function_metadata(fcx);
     }
 
     // Create the first basic block in the function and keep a handle on it to
