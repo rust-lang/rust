@@ -953,7 +953,7 @@ impl Parser {
               _ => {
                     p.fatal(
                         fmt!(
-                            "expected `;` or `}` but found `%s`",
+                            "expected `;` or `{` but found `%s`",
                             self.this_token_to_str()
                         )
                     );
