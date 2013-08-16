@@ -16,7 +16,7 @@ use option::{Some, None};
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
-use iterator::Iterator;
+use iterator::{Iterator, FilterMap};
 use result::Result;
 use result;
 use str::StrSlice;
@@ -116,31 +116,34 @@ impl<L, R> Either<L, R> {
     }
 }
 
-// FIXME: #8228 Replaceable by an external iterator?
-/// Extracts from a vector of either all the left values
-pub fn lefts<L: Clone, R>(eithers: &[Either<L, R>]) -> ~[L] {
-    do vec::build_sized(eithers.len()) |push| {
-        for elt in eithers.iter() {
-            match *elt {
-                Left(ref l) => { push((*l).clone()); }
-                _ => { /* fallthrough */ }
-            }
+/// An iterator yielding the `Left` values of its source
+pub type Lefts<L, R, Iter> = FilterMap<'static, Either<L, R>, L, Iter>;
+
+/// An iterator yielding the `Right` values of its source
+pub type Rights<L, R, Iter> = FilterMap<'static, Either<L, R>, R, Iter>;
+
+/// Extracts all the left values
+pub fn lefts<L, R, Iter: Iterator<Either<L, R>>>(eithers: Iter)
+    -> Lefts<L, R, Iter> {
+    do eithers.filter_map |elt| {
+        match elt {
+            Left(x) => Some(x),
+            _ => None,
         }
     }
 }
 
-// FIXME: #8228 Replaceable by an external iterator?
-/// Extracts from a vector of either all the right values
-pub fn rights<L, R: Clone>(eithers: &[Either<L, R>]) -> ~[R] {
-    do vec::build_sized(eithers.len()) |push| {
-        for elt in eithers.iter() {
-            match *elt {
-                Right(ref r) => { push((*r).clone()); }
-                _ => { /* fallthrough */ }
-            }
+/// Extracts all the right values
+pub fn rights<L, R, Iter: Iterator<Either<L, R>>>(eithers: Iter)
+    -> Rights<L, R, Iter> {
+    do eithers.filter_map |elt| {
+        match elt {
+            Right(x) => Some(x),
+            _ => None,
         }
     }
 }
+
 
 // FIXME: #8228 Replaceable by an external iterator?
 /// Extracts from a vector of either all the left values and right values
@@ -148,8 +151,9 @@ pub fn rights<L, R: Clone>(eithers: &[Either<L, R>]) -> ~[R] {
 /// Returns a structure containing a vector of left values and a vector of
 /// right values.
 pub fn partition<L, R>(eithers: ~[Either<L, R>]) -> (~[L], ~[R]) {
-    let mut lefts: ~[L] = ~[];
-    let mut rights: ~[R] = ~[];
+    let n_lefts = eithers.iter().count(|elt| elt.is_left());
+    let mut lefts = vec::with_capacity(n_lefts);
+    let mut rights = vec::with_capacity(eithers.len() - n_lefts);
     for elt in eithers.move_iter() {
         match elt {
             Left(l) => lefts.push(l),
@@ -182,42 +186,42 @@ mod tests {
     #[test]
     fn test_lefts() {
         let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
-        let result = lefts(input);
+        let result = lefts(input.move_iter()).to_owned_vec();
         assert_eq!(result, ~[10, 12, 14]);
     }
 
     #[test]
     fn test_lefts_none() {
         let input: ~[Either<int, int>] = ~[Right(10), Right(10)];
-        let result = lefts(input);
+        let result = lefts(input.move_iter()).to_owned_vec();
         assert_eq!(result.len(), 0u);
     }
 
     #[test]
     fn test_lefts_empty() {
         let input: ~[Either<int, int>] = ~[];
-        let result = lefts(input);
+        let result = lefts(input.move_iter()).to_owned_vec();
         assert_eq!(result.len(), 0u);
     }
 
     #[test]
     fn test_rights() {
         let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
-        let result = rights(input);
+        let result = rights(input.move_iter()).to_owned_vec();
         assert_eq!(result, ~[11, 13]);
     }
 
     #[test]
     fn test_rights_none() {
         let input: ~[Either<int, int>] = ~[Left(10), Left(10)];
-        let result = rights(input);
+        let result = rights(input.move_iter()).to_owned_vec();
         assert_eq!(result.len(), 0u);
     }
 
     #[test]
     fn test_rights_empty() {
         let input: ~[Either<int, int>] = ~[];
-        let result = rights(input);
+        let result = rights(input.move_iter()).to_owned_vec();
         assert_eq!(result.len(), 0u);
     }
 
