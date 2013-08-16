@@ -66,7 +66,7 @@ pub enum Position<'self> {
     ArgumentNext, ArgumentIs(uint), ArgumentNamed(&'self str)
 }
 
-/// Enum of alignments which are supoprted.
+/// Enum of alignments which are supported.
 #[deriving(Eq)]
 pub enum Alignment { AlignLeft, AlignRight, AlignUnknown }
 

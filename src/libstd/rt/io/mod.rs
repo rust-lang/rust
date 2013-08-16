@@ -93,7 +93,7 @@ Asynchronous interfaces are most often associated with the callback
 (continuation-passing) style popularised by node.js. Such systems rely
 on all computations being run inside an event loop which maintains a
 list of all pending I/O events; when one completes the registered
-callback is run and the code that made the I/O request continiues.
+callback is run and the code that made the I/O request continues.
 Such interfaces achieve non-blocking at the expense of being more
 difficult to reason about.
 
@@ -136,7 +136,7 @@ Rust's I/O employs a combination of techniques to reduce boilerplate
 while still providing feedback about errors. The basic strategy:
 
 * Errors are fatal by default, resulting in task failure
-* Errors raise the `io_error` conditon which provides an opportunity to inspect
+* Errors raise the `io_error` condition which provides an opportunity to inspect
   an IoError object containing details.
 * Return values must have a sensible null or zero value which is returned
   if a condition is handled successfully. This may be an `Option`, an empty
@@ -189,7 +189,7 @@ will start passing around null or zero objects when wrapped in a condition handl
 * XXX: How should we use condition handlers that return values?
 * XXX: Should EOF raise default conditions when EOF is not an error?
 
-# Issues withi/o scheduler affinity, work stealing, task pinning
+# Issues with i/o scheduler affinity, work stealing, task pinning
 
 # Resource management
 

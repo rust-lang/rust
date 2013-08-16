@@ -200,7 +200,7 @@ pub mod raw {
      * Sets the length of a vector
      *
      * This will explicitly set the size of the vector, without actually
-     * modifing its buffers, so it is up to the caller to ensure that
+     * modifying its buffers, so it is up to the caller to ensure that
      * the vector is actually the specified size.
      */
     #[inline]

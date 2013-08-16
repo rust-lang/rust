@@ -166,7 +166,7 @@ Constructors for flat pipes that send POD types using memcpy.
 
 This module is currently unsafe because it uses `Clone + Send` as a type
 parameter bounds meaning POD (plain old data), but `Clone + Send` and
-POD are not equivelant.
+POD are not equivalent.
 
 */
 pub mod pod {

@@ -23,7 +23,7 @@
  * There are also a collection of helper functions to ease interacting
  * with the low-level API.
  *
- * As new functionality, existant in uv.h, is added to the rust stdlib,
+ * As new functionality, existent in uv.h, is added to the rust stdlib,
  * the mappings should be added in this module.
  */
 

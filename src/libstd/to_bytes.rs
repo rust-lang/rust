@@ -28,7 +28,7 @@ pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
  * A trait to implement in order to make a type hashable;
  * This works in combination with the trait `Hash::Hash`, and
  * may in the future be merged with that trait or otherwise
- * modified when default methods and trait inheritence are
+ * modified when default methods and trait inheritance are
  * completed.
  */
 pub trait IterBytes {
