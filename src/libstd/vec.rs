@@ -391,39 +391,6 @@ pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
 }
 
 /**
- * Convert two vectors to a vector of pairs, by reference. As zip().
- */
-pub fn zip_slice<T:Clone,U:Clone>(v: &[T], u: &[U]) -> ~[(T, U)] {
-    let mut zipped = ~[];
-    let sz = v.len();
-    let mut i = 0u;
-    assert_eq!(sz, u.len());
-    while i < sz {
-        zipped.push((v[i].clone(), u[i].clone()));
-        i += 1u;
-    }
-    zipped
-}
-
-/**
- * Convert two vectors to a vector of pairs.
- *
- * Returns a vector of tuples, where the i-th tuple contains the
- * i-th elements from each of the input vectors.
- */
-pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
-    let mut i = v.len();
-    assert_eq!(i, u.len());
-    let mut w = with_capacity(i);
-    while i > 0 {
-        w.push((v.pop(),u.pop()));
-        i -= 1;
-    }
-    w.reverse();
-    w
-}
-
-/**
  * Iterate over all permutations of vector `v`.
  *
  * Permutations are produced in lexicographic order with respect to the order
@@ -724,12 +691,6 @@ impl<T> Vector<T> for @[T] {
 }
 
 impl<'self, T> Container for &'self [T] {
-    /// Returns true if a vector contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.as_imm_buf(|_p, len| len == 0u)
-    }
-
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -738,12 +699,6 @@ impl<'self, T> Container for &'self [T] {
 }
 
 impl<T> Container for ~[T] {
-    /// Returns true if a vector contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.as_imm_buf(|_p, len| len == 0u)
-    }
-
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -2865,14 +2820,7 @@ mod tests {
 
     #[test]
     fn test_zip_unzip() {
-        let v1 = ~[1, 2, 3];
-        let v2 = ~[4, 5, 6];
-
-        let z1 = zip(v1, v2);
-
-        assert_eq!((1, 4), z1[0]);
-        assert_eq!((2, 5), z1[1]);
-        assert_eq!((3, 6), z1[2]);
+        let z1 = ~[(1, 4), (2, 5), (3, 6)];
 
         let (left, right) = unzip(z1);
 

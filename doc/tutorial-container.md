@@ -112,10 +112,10 @@ iterator object. For example, vector slices several iterators available:
 
 * `iter()` and `rev_iter()`, for immutable references to the elements
 * `mut_iter()` and `mut_rev_iter()`, for mutable references to the elements
-* `consume_iter()` and `consume_rev_iter`, to move the elements out by-value
+* `move_iter()` and `move_rev_iter`, to move the elements out by-value
 
 A typical mutable container will implement at least `iter()`, `mut_iter()` and
-`consume_iter()` along with the reverse variants if it maintains an order.
+`move_iter()` along with the reverse variants if it maintains an order.
 
 ### Freezing
 
@@ -139,9 +139,9 @@ and `&mut`.
 
 ## Iterator adaptors
 
-The `IteratorUtil` trait implements common algorithms as methods extending
-every `Iterator` implementation. For example, the `fold` method will accumulate
-the items yielded by an `Iterator` into a single value:
+The `Iterator` trait provides many common algorithms as default methods. For
+example, the `fold` method will accumulate the items yielded by an `Iterator`
+into a single value:
 
 ~~~
 let xs = [1, 9, 2, 3, 14, 12];
@@ -154,13 +154,9 @@ Some adaptors return an adaptor object implementing the `Iterator` trait itself:
 ~~~
 let xs = [1, 9, 2, 3, 14, 12];
 let ys = [5, 2, 1, 8];
-let sum = xs.iter().chain_(ys.iter()).fold(0, |a, b| a + *b);
+let sum = xs.iter().chain(ys.iter()).fold(0, |a, b| a + *b);
 assert_eq!(sum, 57);
 ~~~
-
-Note that some adaptors like the `chain_` method above use a trailing
-underscore to work around an issue with method resolve. The underscores will be
-dropped when they become unnecessary.
 
 ## For loops
 
@@ -212,7 +208,7 @@ Iterators offer generic conversion to containers with the `collect` adaptor:
 
 ~~~
 let xs = [0, 1, 1, 2, 3, 5, 8];
-let ys = xs.rev_iter().skip(1).transform(|&x| x * 2).collect::<~[int]>();
+let ys = xs.rev_iter().skip(1).map(|&x| x * 2).collect::<~[int]>();
 assert_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
 ~~~
 
@@ -307,13 +303,13 @@ for &x in it.invert() {
 The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted
 version of the standard immutable and mutable vector iterators.
 
-The `chain_`, `transform`, `filter`, `filter_map` and `peek` adaptors are
+The `chain`, `map`, `filter`, `filter_map` and `inspect` adaptors are
 `DoubleEndedIterator` implementations if the underlying iterators are.
 
 ~~~
 let xs = [1, 2, 3, 4];
 let ys = [5, 6, 7, 8];
-let mut it = xs.iter().chain_(ys.iter()).transform(|&x| x * 2);
+let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 
 printfln!("%?", it.next()); // prints `Some(2)`
 
@@ -329,13 +325,13 @@ The `RandomAccessIterator` trait represents an iterator offering random access
 to the whole range. The `indexable` method retrieves the number of elements
 accessible with the `idx` method.
 
-The `chain_` adaptor is an implementation of `RandomAccessIterator` if the
+The `chain` adaptor is an implementation of `RandomAccessIterator` if the
 underlying iterators are.
 
 ~~~
 let xs = [1, 2, 3, 4, 5];
 let ys = ~[7, 9, 11];
-let mut it = xs.iter().chain_(ys.iter());
+let mut it = xs.iter().chain(ys.iter());
 printfln!("%?", it.idx(0)); // prints `Some(&1)`
 printfln!("%?", it.idx(5)); // prints `Some(&7)`
 printfln!("%?", it.idx(7)); // prints `Some(&11)`
