@@ -15,7 +15,7 @@ use std::comm;
 use std::task;
 
 fn goodfail() {
-    task::yield();
+    task::deschedule();
     fail!("goodfail");
 }
 

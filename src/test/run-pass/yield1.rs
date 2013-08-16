@@ -17,7 +17,7 @@ pub fn main() {
     builder.future_result(|r| { result = Some(r); });
     builder.spawn(child);
     error!("1");
-    task::yield();
+    task::deschedule();
     result.unwrap().recv();
 }
 

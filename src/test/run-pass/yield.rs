@@ -17,13 +17,13 @@ pub fn main() {
     builder.future_result(|r| { result = Some(r); });
     builder.spawn(child);
     error!("1");
-    task::yield();
+    task::deschedule();
     error!("2");
-    task::yield();
+    task::deschedule();
     error!("3");
     result.unwrap().recv();
 }
 
 fn child() {
-    error!("4"); task::yield(); error!("5"); task::yield(); error!("6");
+    error!("4"); task::deschedule(); error!("5"); task::deschedule(); error!("6");
 }
