@@ -863,6 +863,7 @@ pub struct ty_param_bounds_and_ty {
 /// As `ty_param_bounds_and_ty` but for a trait ref.
 pub struct TraitDef {
     generics: Generics,
+    bounds: BuiltinBounds,
     trait_ref: @ty::TraitRef,
 }
 
@@ -3725,10 +3726,23 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
     return ret;
 }
 
-pub fn trait_ref_is_builtin_kind(tcx: ctxt, tr: &ast::trait_ref) -> bool {
+pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::trait_ref) -> ast::def_id {
     let def = tcx.def_map.find(&tr.ref_id).expect("no def-map entry for trait");
-    let def_id = ast_util::def_id_of_def(*def);
-    tcx.lang_items.is_builtin_kind(def_id)
+    ast_util::def_id_of_def(*def)
+}
+
+pub fn try_add_builtin_trait(tcx: ctxt,
+                             trait_def_id: ast::def_id,
+                             builtin_bounds: &mut BuiltinBounds) -> bool {
+    //! Checks whether `trait_ref` refers to one of the builtin
+    //! traits, like `Send`, and adds the corresponding
+    //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
+    //! is a builtin trait.
+
+    match tcx.lang_items.to_builtin_kind(trait_def_id) {
+        Some(bound) => { builtin_bounds.add(bound); true }
+        None => false
+    }
 }
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {

@@ -773,9 +773,8 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
                     ast::TraitTyParamBound(ref b) => {
                         match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
                             ast::def_trait(trait_did) => {
-                                if try_add_builtin_trait(tcx,
-                                                         trait_did,
-                                                         &mut builtin_bounds) {
+                                if ty::try_add_builtin_trait(tcx, trait_did,
+                                                             &mut builtin_bounds) {
                                     loop; // success
                                 }
                             }
@@ -805,28 +804,5 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
         }
         // &'r Trait is sugar for &'r Trait:<no-bounds>.
         (&None, ty::RegionTraitStore(*)) => ty::EmptyBuiltinBounds(),
-    }
-}
-
-pub fn try_add_builtin_trait(tcx: ty::ctxt,
-                             trait_def_id: ast::def_id,
-                             builtin_bounds: &mut ty::BuiltinBounds) -> bool {
-    //! Checks whether `trait_ref` refers to one of the builtin
-    //! traits, like `Send`, and adds the corresponding
-    //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
-    //! is a builtin trait.
-
-    let li = &tcx.lang_items;
-    if Some(trait_def_id) == li.send_trait() {
-        builtin_bounds.add(ty::BoundSend);
-        true
-    } else if Some(trait_def_id) == li.freeze_trait() {
-        builtin_bounds.add(ty::BoundFreeze);
-        true
-    } else if Some(trait_def_id) == li.sized_trait() {
-        builtin_bounds.add(ty::BoundSized);
-        true
-    } else {
-        false
     }
 }
