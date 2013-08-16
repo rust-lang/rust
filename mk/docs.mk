@@ -150,6 +150,16 @@ doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
+DOCS += doc/tutorial-conditions.html
+doc/tutorial-conditions.html: tutorial-conditions.md doc/version_info.html doc/rust.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=html --css=rust.css \
+           --include-before-body=doc/version_info.html \
+           --output=$@
+
   ifeq ($(CFG_PDFLATEX),)
     $(info cfg: no pdflatex found, omitting doc/rust.pdf)
   else
