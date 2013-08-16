@@ -125,7 +125,7 @@ pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // staticants from cmath.
-    /// Archimedes' staticant
+    /// Archimedes' constant
     pub static pi: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi/2.0

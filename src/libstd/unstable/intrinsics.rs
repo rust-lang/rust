@@ -22,7 +22,7 @@ semantics as C++11. See the LLVM documentation on [[atomics]].
 
 A quick refresher on memory ordering:
 
-* Acquire - a barrier for aquiring a lock. Subsequent reads and writes
+* Acquire - a barrier for acquiring a lock. Subsequent reads and writes
   take place after the barrier.
 * Release - a barrier for releasing a lock. Preceding reads and writes
   take place before the barrier.

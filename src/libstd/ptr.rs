@@ -254,7 +254,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
   passing to the provided callback function
 
   SAFETY NOTE: This will only work with a null-terminated
-  pointer array. Barely less-dodgey Pointer Arithmetic.
+  pointer array. Barely less-dodgy Pointer Arithmetic.
   Dragons be here.
 */
 pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {

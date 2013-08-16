@@ -33,7 +33,7 @@ and more.
 
 Also, a few conversion functions: `to_bit` and `to_str`.
 
-Finally, some inquries into the nature of truth: `is_true` and `is_false`.
+Finally, some inquiries into the nature of truth: `is_true` and `is_false`.
 
 */
 
