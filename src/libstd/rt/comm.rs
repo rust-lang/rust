@@ -125,7 +125,7 @@ impl<T> ChanOne<T> {
         unsafe {
 
             // Install the payload
-            assert!((*packet).payload.is_none());
+            rtassert!((*packet).payload.is_none());
             (*packet).payload = Some(val);
 
             // Atomically swap out the old state to figure out what
@@ -307,7 +307,7 @@ impl<T> SelectInner for PortOne<T> {
                         STATE_ONE  => true, // Lost the race. Data available.
                         same_ptr   => {
                             // We successfully unblocked our task pointer.
-                            assert!(task_as_state == same_ptr);
+                            rtassert!(task_as_state == same_ptr);
                             let handle = BlockedTask::cast_from_uint(task_as_state);
                             // Because we are already awake, the handle we
                             // gave to this port shall already be empty.
@@ -341,7 +341,8 @@ impl<T> SelectPortInner<T> for PortOne<T> {
         unsafe {
             // See corresponding store() above in block_on for rationale.
             // FIXME(#8130) This can happen only in test builds.
-            assert!((*packet).state.load(Relaxed) == STATE_ONE);
+            // This load is not required for correctness and may be compiled out.
+            rtassert!((*packet).state.load(Relaxed) == STATE_ONE);
 
             let payload = (*packet).payload.take();
 
@@ -387,7 +388,7 @@ impl<T> Drop for ChanOne<T> {
                 },
                 task_as_state => {
                     // The port is blocked waiting for a message we will never send. Wake it.
-                    assert!((*this.packet()).payload.is_none());
+                    rtassert!((*this.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     do recvr.wake().map_move |woken_task| {
                         Scheduler::run_task(woken_task);
