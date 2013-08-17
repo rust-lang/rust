@@ -186,7 +186,7 @@ impl Scheduler {
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
-        assert!(message.is_none());
+        rtassert!(message.is_none());
 
         stask.destroyed = true;
     }
