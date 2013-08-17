@@ -23,7 +23,7 @@
  */
 
 
-use cryptoutil::{write_u32_be, read_u32v_be, shift_add_check_overflow, FixedBuffer, FixedBuffer64,
+use cryptoutil::{write_u32_be, read_u32v_be, add_bytes_to_bits, FixedBuffer, FixedBuffer64,
     StandardPadding};
 use digest::Digest;
 
@@ -52,7 +52,7 @@ pub struct Sha1 {
 fn add_input(st: &mut Sha1, msg: &[u8]) {
     assert!((!st.computed));
     // Assumes that msg.len() can be converted to u64 without overflow
-    st.length_bits = shift_add_check_overflow(st.length_bits, msg.len() as u64, 3);
+    st.length_bits = add_bytes_to_bits(st.length_bits, msg.len() as u64);
     st.buffer.input(msg, |d: &[u8]| { process_msg_block(d, &mut st.h); });
 }
 
