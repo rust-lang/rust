@@ -10,8 +10,8 @@
 
 use std::uint;
 
-use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, shift_add_check_overflow,
-    shift_add_check_overflow_tuple, FixedBuffer, FixedBuffer128, FixedBuffer64, StandardPadding};
+use cryptoutil::{write_u64_be, write_u32_be, read_u64v_be, read_u32v_be, add_bytes_to_bits,
+    add_bytes_to_bits_tuple, FixedBuffer, FixedBuffer128, FixedBuffer64, StandardPadding};
 use digest::Digest;
 
 
@@ -210,7 +210,7 @@ impl Engine512 {
     fn input(&mut self, input: &[u8]) {
         assert!(!self.finished)
         // Assumes that input.len() can be converted to u64 without overflow
-        self.length_bits = shift_add_check_overflow_tuple(self.length_bits, input.len() as u64, 3);
+        self.length_bits = add_bytes_to_bits_tuple(self.length_bits, input.len() as u64);
         self.buffer.input(input, |input: &[u8]| { self.state.process_block(input) });
     }
 
@@ -602,7 +602,7 @@ impl Engine256 {
     fn input(&mut self, input: &[u8]) {
         assert!(!self.finished)
         // Assumes that input.len() can be converted to u64 without overflow
-        self.length_bits = shift_add_check_overflow(self.length_bits, input.len() as u64, 3);
+        self.length_bits = add_bytes_to_bits(self.length_bits, input.len() as u64);
         self.buffer.input(input, |input: &[u8]| { self.state.process_block(input) });
     }
 

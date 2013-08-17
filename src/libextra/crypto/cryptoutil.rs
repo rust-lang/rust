@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num::One;
+use std::num::{One, Zero, CheckedAdd};
 use std::vec::bytes::{MutableByteVector, copy_memory};
 
 
@@ -33,6 +33,18 @@ pub fn write_u32_be(dst: &mut[u8], input: u32) {
     unsafe {
         let x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         *x = to_be32(input as i32);
+    }
+}
+
+/// Write a u32 into a vector, which must be 4 bytes long. The value is written in little-endian
+/// format.
+pub fn write_u32_le(dst: &mut[u8], input: u32) {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(dst.len() == 4);
+    unsafe {
+        let x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
+        *x = to_le32(input as i32);
     }
 }
 
@@ -68,51 +80,90 @@ pub fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     }
 }
 
-
-/// Returns true if adding the two parameters will result in integer overflow
-pub fn will_add_overflow<T: Int + Unsigned>(x: T, y: T) -> bool {
-    // This doesn't handle negative values! Don't copy this code elsewhere without considering if
-    // negative values are important to you!
-    let max: T = Bounded::max_value();
-    return x > max - y;
+/// Read a vector of bytes into a vector of u32s. The values are read in little-endian format.
+pub fn read_u32v_le(dst: &mut[u32], input: &[u8]) {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(dst.len() * 4 == input.len());
+    unsafe {
+        let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
+        let mut y: *i32 = transmute(input.unsafe_ref(0));
+        do dst.len().times() {
+            *x = to_le32(*y);
+            x = x.offset(1);
+            y = y.offset(1);
+        }
+    }
 }
 
-/// Shifts the second parameter and then adds it to the first. fails!() if there would be unsigned
-/// integer overflow.
-pub fn shift_add_check_overflow<T: Int + Unsigned + Clone>(x: T, mut y: T, shift: T) -> T {
-    if y.leading_zeros() < shift {
-        fail!("Could not add values - integer overflow.");
-    }
-    y = y << shift;
 
-    if will_add_overflow(x.clone(), y.clone()) {
-        fail!("Could not add values - integer overflow.");
-    }
-
-    return x + y;
+trait ToBits {
+    /// Convert the value in bytes to the number of bits, a tuple where the 1st item is the
+    /// high-order value and the 2nd item is the low order value.
+    fn to_bits(self) -> (Self, Self);
 }
 
-/// Shifts the second parameter and then adds it to the first, which is a tuple where the first
-/// element is the high order value. fails!() if there would be unsigned integer overflow.
-pub fn shift_add_check_overflow_tuple
-        <T: Int + Unsigned + Clone>
-        (x: (T, T), mut y: T, shift: T) -> (T, T) {
-    if y.leading_zeros() < shift {
-        fail!("Could not add values - integer overflow.");
+impl ToBits for u64 {
+    fn to_bits(self) -> (u64, u64) {
+        return (self >> 61, self << 3);
     }
-    y = y << shift;
+}
 
-    match x {
-        (hi, low) => {
-            let one: T = One::one();
-            if will_add_overflow(low.clone(), y.clone()) {
-                if will_add_overflow(hi.clone(), one.clone()) {
-                    fail!("Could not add values - integer overflow.");
-                } else {
-                    return (hi + one, low + y);
-                }
+/// Adds the specified number of bytes to the bit count. fail!() if this would cause numeric
+/// overflow.
+pub fn add_bytes_to_bits<T: Int + CheckedAdd + ToBits>(bits: T, bytes: T) -> T {
+    let (new_high_bits, new_low_bits) = bytes.to_bits();
+
+    if new_high_bits > Zero::zero() {
+        fail!("Numeric overflow occured.")
+    }
+
+    match bits.checked_add(&new_low_bits) {
+        Some(x) => return x,
+        None => fail!("Numeric overflow occured.")
+    }
+}
+
+/// Adds the specified number of bytes to the bit count, which is a tuple where the first element is
+/// the high order value. fail!() if this would cause numeric overflow.
+pub fn add_bytes_to_bits_tuple
+        <T: Int + Unsigned + CheckedAdd + ToBits>
+        (bits: (T, T), bytes: T) -> (T, T) {
+    let (new_high_bits, new_low_bits) = bytes.to_bits();
+    let (hi, low) = bits;
+
+    // Add the low order value - if there is no overflow, then add the high order values
+    // If the addition of the low order values causes overflow, add one to the high order values
+    // before adding them.
+    match low.checked_add(&new_low_bits) {
+        Some(x) => {
+            if new_high_bits == Zero::zero() {
+                // This is the fast path - every other alternative will rarely occur in practice
+                // considering how large an input would need to be for those paths to be used.
+                return (hi, x);
             } else {
-                return (hi, low + y);
+                match hi.checked_add(&new_high_bits) {
+                    Some(y) => return (y, x),
+                    None => fail!("Numeric overflow occured.")
+                }
+            }
+        },
+        None => {
+            let one: T = One::one();
+            let z = match new_high_bits.checked_add(&one) {
+                Some(w) => w,
+                None => fail!("Numeric overflow occured.")
+            };
+            match hi.checked_add(&z) {
+                // This re-executes the addition that was already performed earlier when overflow
+                // occured, this time allowing the overflow to happen. Technically, this could be
+                // avoided by using the checked add intrinsic directly, but that involves using
+                // unsafe code and is not really worthwhile considering how infrequently code will
+                // run in practice. This is the reason that this function requires that the type T
+                // be Unsigned - overflow is not defined for Signed types. This function could be
+                // implemented for signed types as well if that were needed.
+                Some(y) => return (y, low + new_low_bits),
+                None => fail!("Numeric overflow occured.")
             }
         }
     }
@@ -300,6 +351,7 @@ mod test {
     use std::rand::RngUtil;
     use std::vec;
 
+    use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
     use digest::Digest;
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
@@ -323,5 +375,51 @@ mod test {
         let result_str = digest.result_str();
 
         assert!(expected == result_str);
+    }
+
+    // A normal addition - no overflow occurs
+    #[test]
+    fn test_add_bytes_to_bits_ok() {
+        assert!(add_bytes_to_bits::<u64>(100, 10) == 180);
+    }
+
+    // A simple failure case - adding 1 to the max value
+    #[test]
+    #[should_fail]
+    fn test_add_bytes_to_bits_overflow() {
+        add_bytes_to_bits::<u64>(Bounded::max_value(), 1);
+    }
+
+    // A normal addition - no overflow occurs (fast path)
+    #[test]
+    fn test_add_bytes_to_bits_tuple_ok() {
+        assert!(add_bytes_to_bits_tuple::<u64>((5, 100), 10) == (5, 180));
+    }
+
+    // The low order value overflows into the high order value
+    #[test]
+    fn test_add_bytes_to_bits_tuple_ok2() {
+        assert!(add_bytes_to_bits_tuple::<u64>((5, Bounded::max_value()), 1) == (6, 7));
+    }
+
+    // The value to add is too large to be converted into bits without overflowing its type
+    #[test]
+    fn test_add_bytes_to_bits_tuple_ok3() {
+        assert!(add_bytes_to_bits_tuple::<u64>((5, 0), 0x4000000000000001) == (7, 8));
+    }
+
+    // A simple failure case - adding 1 to the max value
+    #[test]
+    #[should_fail]
+    fn test_add_bytes_to_bits_tuple_overflow() {
+        add_bytes_to_bits_tuple::<u64>((Bounded::max_value(), Bounded::max_value()), 1);
+    }
+
+    // The value to add is too large to convert to bytes without overflowing its type, but the high
+    // order value from this conversion overflows when added to the existing high order value
+    #[test]
+    #[should_fail]
+    fn test_add_bytes_to_bits_tuple_overflow2() {
+        add_bytes_to_bits_tuple::<u64>((Bounded::max_value::<u64>() - 1, 0), 0x8000000000000000);
     }
 }
