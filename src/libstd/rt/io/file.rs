@@ -13,7 +13,7 @@ use super::support::PathLike;
 use super::{Reader, Writer, Seek};
 use super::SeekStyle;
 
-/// # XXX
+/// # FIXME #7785
 /// * Ugh, this is ridiculous. What is the best way to represent these options?
 enum FileMode {
     /// Opens an existing file. IoError if file does not exist.

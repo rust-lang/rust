@@ -92,7 +92,7 @@ impl Rand for StandardNormal {
             let mut x = 1.0f64;
             let mut y = 0.0f64;
 
-            // XXX infinities?
+            // FIXME #7755: infinities?
             while -2.0 * y < x * x {
                 x = rng.gen::<f64>().ln() / ziggurat_tables::ZIG_NORM_R;
                 y = rng.gen::<f64>().ln();
