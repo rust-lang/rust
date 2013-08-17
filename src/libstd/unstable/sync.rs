@@ -281,20 +281,24 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
  */
 // FIXME(#8140) should not be pub
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    use rt::task::Task;
+    use rt::task::{Task, GreenTask, SchedTask};
     use rt::local::Local;
-    use rt::in_green_task_context;
 
-    if in_green_task_context() {
-        let t = Local::unsafe_borrow::<Task>();
-        do (|| {
-            (*t).death.inhibit_deschedule();
-            f()
-        }).finally {
-            (*t).death.allow_deschedule();
+    match Local::try_unsafe_borrow::<Task>() {
+        Some(t) => {
+            match (*t).task_type {
+                GreenTask(_) => {
+                    do (|| {
+                        (*t).death.inhibit_deschedule();
+                        f()
+                    }).finally {
+                        (*t).death.allow_deschedule();
+                    }
+                }
+                SchedTask => f()
+            }
         }
-    } else {
-        f()
+        None => f()
     }
 }
 
