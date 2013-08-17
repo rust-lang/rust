@@ -3929,10 +3929,6 @@ impl Parser {
            return ~[self.parse_single_struct_field(public, attrs)];
         }
 
-        if self.try_parse_obsolete_struct_ctor() {
-            return ~[];
-        }
-
         return ~[self.parse_single_struct_field(inherited, attrs)];
     }
 
