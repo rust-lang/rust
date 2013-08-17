@@ -597,21 +597,34 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
     }
 }
 
-/// The inverse of unkillable. Only ever to be used nested in unkillable().
-pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
+/**
+ * Makes killable a task marked as unkillable
+ *
+ * # Example
+ *
+ * ~~~
+ * do task::unkillable {
+ *     do task::rekillable {
+ *          // Task is killable
+ *     }
+ * }
+ */
+pub fn rekillable<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
 
-    if in_green_task_context() {
-        let t = Local::unsafe_borrow::<Task>();
-        do (|| {
-            (*t).death.allow_kill((*t).unwinder.unwinding);
+    unsafe {
+        if in_green_task_context() {
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                (*t).death.allow_kill((*t).unwinder.unwinding);
+                f()
+            }).finally {
+                (*t).death.inhibit_kill((*t).unwinder.unwinding);
+            }
+        } else {
+            // FIXME(#3095): As in unkillable().
             f()
-        }).finally {
-            (*t).death.inhibit_kill((*t).unwinder.unwinding);
         }
-    } else {
-        // FIXME(#3095): As in unkillable().
-        f()
     }
 }
 
@@ -646,11 +659,9 @@ fn test_kill_rekillable_task() {
     do run_in_newsched_task {
         do task::try {
             do task::unkillable {
-                unsafe {
-                    do task::rekillable {
-                        do task::spawn {
-                            fail!();
-                        }
+                do task::rekillable {
+                    do task::spawn {
+                        fail!();
                     }
                 }
             }
