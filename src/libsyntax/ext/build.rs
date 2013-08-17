@@ -74,6 +74,13 @@ pub trait AstBuilder {
     // statements
     fn stmt_expr(&self, expr: @ast::expr) -> @ast::stmt;
     fn stmt_let(&self, sp: span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt;
+    fn stmt_let_typed(&self,
+                      sp: span,
+                      mutbl: bool,
+                      ident: ast::ident,
+                      typ: ast::Ty,
+                      ex: @ast::expr)
+                      -> @ast::stmt;
 
     // blocks
     fn block(&self, span: span, stmts: ~[@ast::stmt], expr: Option<@ast::expr>) -> ast::Block;
@@ -233,18 +240,31 @@ impl AstBuilder for @ExtCtxt {
     fn path_global(&self, span: span, strs: ~[ast::ident]) -> ast::Path {
         self.path_all(span, true, strs, None, ~[])
     }
-    fn path_all(&self, sp: span,
+    fn path_all(&self,
+                sp: span,
                 global: bool,
-                idents: ~[ast::ident],
+                mut idents: ~[ast::ident],
                 rp: Option<ast::Lifetime>,
                 types: ~[ast::Ty])
-        -> ast::Path {
+                -> ast::Path {
+        let last_identifier = idents.pop();
+        let mut segments: ~[ast::PathSegment] = idents.move_iter()
+                                                      .map(|ident| {
+            ast::PathSegment {
+                identifier: ident,
+                lifetime: None,
+                types: opt_vec::Empty,
+            }
+        }).collect();
+        segments.push(ast::PathSegment {
+            identifier: last_identifier,
+            lifetime: rp,
+            types: opt_vec::from(types),
+        });
         ast::Path {
             span: sp,
             global: global,
-            idents: idents,
-            rp: rp,
-            types: types
+            segments: segments,
         }
     }
 
@@ -378,6 +398,26 @@ impl AstBuilder for @ExtCtxt {
         let local = @ast::Local {
             is_mutbl: mutbl,
             ty: self.ty_infer(sp),
+            pat: pat,
+            init: Some(ex),
+            id: self.next_id(),
+            span: sp,
+        };
+        let decl = respan(sp, ast::decl_local(local));
+        @respan(sp, ast::stmt_decl(@decl, self.next_id()))
+    }
+
+    fn stmt_let_typed(&self,
+                      sp: span,
+                      mutbl: bool,
+                      ident: ast::ident,
+                      typ: ast::Ty,
+                      ex: @ast::expr)
+                      -> @ast::stmt {
+        let pat = self.pat_ident(sp, ident);
+        let local = @ast::Local {
+            is_mutbl: mutbl,
+            ty: typ,
             pat: pat,
             init: Some(ex),
             id: self.next_id(),

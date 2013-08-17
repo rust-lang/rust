@@ -269,9 +269,13 @@ impl<T: FromStr + Clone + Integer + Ord>
     /// Parses `numer/denom`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
         let split: ~[&str] = s.splitn_iter('/', 1).collect();
-        if split.len() < 2 { return None; }
-        do FromStr::from_str::<T>(split[0]).chain |a| {
-            do FromStr::from_str::<T>(split[1]).chain |b| {
+        if split.len() < 2 {
+            return None
+        }
+        let a_option: Option<T> = FromStr::from_str(split[0]);
+        do a_option.chain |a| {
+            let b_option: Option<T> = FromStr::from_str(split[1]);
+            do b_option.chain |b| {
                 Some(Ratio::new(a.clone(), b.clone()))
             }
         }
@@ -282,10 +286,15 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
         let split: ~[&str] = s.splitn_iter('/', 1).collect();
-        if split.len() < 2 { None }
-        else {
-            do FromStrRadix::from_str_radix::<T>(split[0], radix).chain |a| {
-                do FromStrRadix::from_str_radix::<T>(split[1], radix).chain |b| {
+        if split.len() < 2 {
+            None
+        } else {
+            let a_option: Option<T> = FromStrRadix::from_str_radix(split[0],
+                                                                   radix);
+            do a_option.chain |a| {
+                let b_option: Option<T> =
+                    FromStrRadix::from_str_radix(split[1], radix);
+                do b_option.chain |b| {
                     Some(Ratio::new(a.clone(), b.clone()))
                 }
             }
@@ -496,7 +505,8 @@ mod test {
     #[test]
     fn test_from_str_fail() {
         fn test(s: &str) {
-            assert_eq!(FromStr::from_str::<Rational>(s), None);
+            let rational: Option<Rational> = FromStr::from_str(s);
+            assert_eq!(rational, None);
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1"];
@@ -536,7 +546,8 @@ mod test {
     #[test]
     fn test_from_str_radix_fail() {
         fn test(s: &str) {
-            assert_eq!(FromStrRadix::from_str_radix::<Rational>(s, 3), None);
+            let radix: Option<Rational> = FromStrRadix::from_str_radix(s, 3);
+            assert_eq!(radix, None);
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"];

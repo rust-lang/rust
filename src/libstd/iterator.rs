@@ -637,7 +637,10 @@ pub trait AdditiveIterator<A> {
 
 impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
     #[inline]
-    fn sum(&mut self) -> A { self.fold(Zero::zero::<A>(), |s, x| s + x) }
+    fn sum(&mut self) -> A {
+        let zero: A = Zero::zero();
+        self.fold(zero, |s, x| s + x)
+    }
 }
 
 /// A trait for iterators over elements whose elements can be multiplied
@@ -662,7 +665,10 @@ pub trait MultiplicativeIterator<A> {
 
 impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
     #[inline]
-    fn product(&mut self) -> A { self.fold(One::one::<A>(), |p, x| p * x) }
+    fn product(&mut self) -> A {
+        let one: A = One::one();
+        self.fold(one, |p, x| p * x)
+    }
 }
 
 /// A trait for iterators over elements which can be compared to one another.

@@ -14,8 +14,10 @@ use middle::astencode;
 use middle::ty;
 use middle;
 
-use syntax::{ast, ast_map, ast_util, oldvisit};
+use syntax::{ast, ast_map, ast_util};
 use syntax::ast::*;
+use syntax::visit::{SimpleVisitor, SimpleVisitorVisitor};
+use syntax::visit;
 
 use std::float;
 use std::hashmap::{HashMap, HashSet};
@@ -267,13 +269,25 @@ pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
     }
 }
 
+struct ConstantClassifyingVisitor {
+    tcx: ty::ctxt,
+}
+
+impl SimpleVisitor for ConstantClassifyingVisitor {
+    fn visit_expr_post(&mut self, e: @expr) {
+        let _ = classify(e, self.tcx);
+    }
+}
+
 pub fn process_crate(crate: &ast::Crate,
                      tcx: ty::ctxt) {
-    let v = oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-        visit_expr_post: |e| { classify(e, tcx); },
-        .. *oldvisit::default_simple_visitor()
-    });
-    oldvisit::visit_crate(crate, ((), v));
+    let visitor = @mut ConstantClassifyingVisitor {
+        tcx: tcx,
+    };
+    let mut simple_visitor = SimpleVisitorVisitor {
+        simple_visitor: visitor as @mut SimpleVisitor,
+    };
+    visit::walk_crate(&mut simple_visitor, crate, ());
     tcx.sess.abort_if_errors();
 }
 

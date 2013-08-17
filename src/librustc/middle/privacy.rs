@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// A pass that checks to make sure private fields and methods aren't used
-// outside their scopes.
-
+//! A pass that checks to make sure private fields and methods aren't used
+//! outside their scopes.
 
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
@@ -33,12 +32,12 @@ use syntax::ast_util::{Private, Public, is_local};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::parse::token;
 use syntax::oldvisit;
+use syntax::parse::token;
 
 pub fn check_crate<'mm>(tcx: ty::ctxt,
-                   method_map: &'mm method_map,
-                   crate: &ast::Crate) {
+                        method_map: &'mm method_map,
+                        crate: &ast::Crate) {
     let privileged_items = @mut ~[];
 
     // Adds an item to its scope.
@@ -255,7 +254,9 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         match def {
             def_static_method(method_id, _, _) => {
                 debug!("found static method def, checking it");
-                check_method_common(span, method_id, path.idents.last())
+                check_method_common(span,
+                                    method_id,
+                                    &path.segments.last().identifier)
             }
             def_fn(def_id, _) => {
                 if def_id.crate == LOCAL_CRATE {
@@ -263,13 +264,19 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                             !privileged_items.iter().any(|x| x == &def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               token::ident_to_str(path.idents.last())));
+                                               token::ident_to_str(
+                                                &path.segments
+                                                     .last()
+                                                     .identifier)));
                     }
                 } else if csearch::get_item_visibility(tcx.sess.cstore,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           token::ident_to_str(path.idents.last())));
+                                           token::ident_to_str(
+                                                &path.segments
+                                                     .last()
+                                                     .identifier)));
                 }
             }
             _ => {}

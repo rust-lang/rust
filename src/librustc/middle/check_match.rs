@@ -25,7 +25,8 @@ use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{span, dummy_sp, spanned};
-use syntax::oldvisit;
+use syntax::visit::Visitor;
+use syntax::visit;
 
 pub struct MatchCheckCtxt {
     tcx: ty::ctxt,
@@ -33,70 +34,94 @@ pub struct MatchCheckCtxt {
     moves_map: moves::MovesMap
 }
 
+impl Visitor<()> for MatchCheckCtxt {
+    fn visit_expr(&mut self, ex: @expr, _: ()) {
+        visit::walk_expr(self, ex, ());
+        match ex.node {
+          expr_match(scrut, ref arms) => {
+            // First, check legality of move bindings.
+            for arm in arms.iter() {
+                check_legality_of_move_bindings(self,
+                                                arm.guard.is_some(),
+                                                arm.pats);
+            }
+
+            check_arms(self, *arms);
+            /* Check for exhaustiveness */
+             // Check for empty enum, because is_useful only works on inhabited
+             // types.
+           let pat_ty = node_id_to_type(self.tcx, scrut.id);
+           if (*arms).is_empty() {
+               if !type_is_empty(self.tcx, pat_ty) {
+                   // We know the type is inhabited, so this must be wrong
+                   self.tcx.sess.span_err(ex.span,
+                                          fmt!("non-exhaustive patterns: \
+                                                type %s is non-empty",
+                                                ty_to_str(self.tcx, pat_ty)));
+               }
+               // If the type *is* empty, it's vacuously exhaustive
+               return;
+           }
+           match ty::get(pat_ty).sty {
+              ty_enum(did, _) => {
+                  if (*enum_variants(self.tcx, did)).is_empty() &&
+                        (*arms).is_empty() {
+
+                   return;
+                }
+              }
+              _ => { /* We assume only enum types can be uninhabited */ }
+           }
+           let arms = arms.iter().filter_map(unguarded_pat).collect::<~[~[@pat]]>().concat_vec();
+           if arms.is_empty() {
+               self.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
+           } else {
+               check_exhaustive(self, ex.span, arms);
+           }
+         }
+         _ => ()
+        }
+    }
+
+    fn visit_local(&mut self, loc: @Local, _: ()) {
+        visit::walk_local(self, loc, ());
+        if is_refutable(self, loc.pat) {
+            self.tcx.sess.span_err(loc.pat.span,
+                                 "refutable pattern in local binding");
+        }
+
+        // Check legality of move bindings.
+        check_legality_of_move_bindings(self, false, [ loc.pat ]);
+    }
+
+    fn visit_fn(&mut self,
+                kind: &visit::fn_kind,
+                decl: &fn_decl,
+                body: &Block,
+                sp: span,
+                id: NodeId,
+                _: ()) {
+        visit::walk_fn(self, kind, decl, body, sp, id, ());
+        for input in decl.inputs.iter() {
+            if is_refutable(self, input.pat) {
+                self.tcx.sess.span_err(input.pat.span,
+                                     "refutable pattern in function argument");
+            }
+        }
+    }
+}
+
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: method_map,
                    moves_map: moves::MovesMap,
                    crate: &Crate) {
-    let cx = @MatchCheckCtxt {tcx: tcx,
-                              method_map: method_map,
-                              moves_map: moves_map};
-    oldvisit::visit_crate(crate, ((), oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |a,b| check_expr(cx, a, b),
-        visit_local: |a,b| check_local(cx, a, b),
-        visit_fn: |kind, decl, body, sp, id, (e, v)|
-            check_fn(cx, kind, decl, body, sp, id, (e, v)),
-        .. *oldvisit::default_visitor::<()>()
-    })));
+    let mut cx = MatchCheckCtxt {
+        tcx: tcx,
+        method_map: method_map,
+        moves_map: moves_map
+    };
+    visit::walk_crate(&mut cx, crate, ());
     tcx.sess.abort_if_errors();
-}
-
-pub fn check_expr(cx: @MatchCheckCtxt,
-                  ex: @expr,
-                  (s, v): ((), oldvisit::vt<()>)) {
-    oldvisit::visit_expr(ex, (s, v));
-    match ex.node {
-      expr_match(scrut, ref arms) => {
-        // First, check legality of move bindings.
-        for arm in arms.iter() {
-            check_legality_of_move_bindings(cx,
-                                            arm.guard.is_some(),
-                                            arm.pats);
-        }
-
-        check_arms(cx, *arms);
-        /* Check for exhaustiveness */
-         // Check for empty enum, because is_useful only works on inhabited
-         // types.
-       let pat_ty = node_id_to_type(cx.tcx, scrut.id);
-       if (*arms).is_empty() {
-           if !type_is_empty(cx.tcx, pat_ty) {
-               // We know the type is inhabited, so this must be wrong
-               cx.tcx.sess.span_err(ex.span, fmt!("non-exhaustive patterns: \
-                            type %s is non-empty",
-                            ty_to_str(cx.tcx, pat_ty)));
-           }
-           // If the type *is* empty, it's vacuously exhaustive
-           return;
-       }
-       match ty::get(pat_ty).sty {
-          ty_enum(did, _) => {
-              if (*enum_variants(cx.tcx, did)).is_empty() &&
-                    (*arms).is_empty() {
-
-               return;
-            }
-          }
-          _ => { /* We assume only enum types can be uninhabited */ }
-       }
-       let arms = arms.iter().filter_map(unguarded_pat).collect::<~[~[@pat]]>().concat_vec();
-       if arms.is_empty() {
-           cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
-       } else {
-           check_exhaustive(cx, ex.span, arms);
-       }
-     }
-     _ => ()
-    }
 }
 
 // Check for unreachable patterns
@@ -785,36 +810,6 @@ pub fn specialize(cx: &MatchCheckCtxt,
 pub fn default(cx: &MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
     if is_wild(cx, r[0]) { Some(r.tail().to_owned()) }
     else { None }
-}
-
-pub fn check_local(cx: &MatchCheckCtxt,
-                   loc: @Local,
-                   (s, v): ((), oldvisit::vt<()>)) {
-    oldvisit::visit_local(loc, (s, v));
-    if is_refutable(cx, loc.pat) {
-        cx.tcx.sess.span_err(loc.pat.span,
-                             "refutable pattern in local binding");
-    }
-
-    // Check legality of move bindings.
-    check_legality_of_move_bindings(cx, false, [ loc.pat ]);
-}
-
-pub fn check_fn(cx: &MatchCheckCtxt,
-                kind: &oldvisit::fn_kind,
-                decl: &fn_decl,
-                body: &Block,
-                sp: span,
-                id: NodeId,
-                (s, v): ((),
-                         oldvisit::vt<()>)) {
-    oldvisit::visit_fn(kind, decl, body, sp, id, (s, v));
-    for input in decl.inputs.iter() {
-        if is_refutable(cx, input.pat) {
-            cx.tcx.sess.span_err(input.pat.span,
-                                 "refutable pattern in function argument");
-        }
-    }
 }
 
 pub fn is_refutable(cx: &MatchCheckCtxt, pat: &pat) -> bool {

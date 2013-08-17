@@ -15,9 +15,9 @@ use syntax::ast::{Crate, NodeId, item, item_fn};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::oldvisit::{default_visitor, mk_vt, vt, Visitor, visit_crate};
-use syntax::oldvisit::{visit_item};
 use syntax::parse::token::special_idents;
+use syntax::visit::Visitor;
+use syntax::visit;
 use std::util;
 
 struct EntryContext {
@@ -39,8 +39,6 @@ struct EntryContext {
     non_main_fns: ~[(NodeId, span)],
 }
 
-type EntryVisitor = vt<@mut EntryContext>;
-
 pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
@@ -56,7 +54,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         return
     }
 
-    let ctxt = @mut EntryContext {
+    let mut ctxt = EntryContext {
         session: session,
         ast_map: ast_map,
         main_fn: None,
@@ -64,67 +62,64 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         start_fn: None,
         non_main_fns: ~[],
     };
-
-    visit_crate(crate, (ctxt, mk_vt(@Visitor {
-        visit_item: |item, (ctxt, visitor)| find_item(item, ctxt, visitor),
-        .. *default_visitor()
-    })));
-
-    configure_main(ctxt);
+    visit::walk_crate(&mut ctxt, crate, ());
+    configure_main(&mut ctxt);
 }
 
-fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
-    match item.node {
-        item_fn(*) => {
-            if item.ident == special_idents::main {
-                match ctxt.ast_map.find(&item.id) {
-                    Some(&ast_map::node_item(_, path)) => {
-                        if path.len() == 0 {
-                            // This is a top-level function so can be 'main'
-                            if ctxt.main_fn.is_none() {
-                                ctxt.main_fn = Some((item.id, item.span));
+impl Visitor<()> for EntryContext {
+    fn visit_item(&mut self, item: @item, _: ()) {
+        match item.node {
+            item_fn(*) => {
+                if item.ident == special_idents::main {
+                    match self.ast_map.find(&item.id) {
+                        Some(&ast_map::node_item(_, path)) => {
+                            if path.len() == 0 {
+                                // This is a top-level function so can be
+                                // 'main'
+                                if self.main_fn.is_none() {
+                                    self.main_fn = Some((item.id, item.span));
+                                } else {
+                                    self.session.span_err(
+                                        item.span,
+                                        "multiple 'main' functions");
+                                }
                             } else {
-                                ctxt.session.span_err(
-                                    item.span,
-                                    "multiple 'main' functions");
+                                // This isn't main
+                                self.non_main_fns.push((item.id, item.span));
                             }
-                        } else {
-                            // This isn't main
-                            ctxt.non_main_fns.push((item.id, item.span));
                         }
+                        _ => util::unreachable()
                     }
-                    _ => util::unreachable()
                 }
-            }
 
-            if attr::contains_name(item.attrs, "main") {
-                if ctxt.attr_main_fn.is_none() {
-                    ctxt.attr_main_fn = Some((item.id, item.span));
-                } else {
-                    ctxt.session.span_err(
-                        item.span,
-                        "multiple 'main' functions");
+                if attr::contains_name(item.attrs, "main") {
+                    if self.attr_main_fn.is_none() {
+                        self.attr_main_fn = Some((item.id, item.span));
+                    } else {
+                        self.session.span_err(
+                            item.span,
+                            "multiple 'main' functions");
+                    }
                 }
-            }
 
-            if attr::contains_name(item.attrs, "start") {
-                if ctxt.start_fn.is_none() {
-                    ctxt.start_fn = Some((item.id, item.span));
-                } else {
-                    ctxt.session.span_err(
-                        item.span,
-                        "multiple 'start' functions");
+                if attr::contains_name(item.attrs, "start") {
+                    if self.start_fn.is_none() {
+                        self.start_fn = Some((item.id, item.span));
+                    } else {
+                        self.session.span_err(
+                            item.span,
+                            "multiple 'start' functions");
+                    }
                 }
             }
+            _ => ()
         }
-        _ => ()
-    }
 
-    visit_item(item, (ctxt, visitor));
+        visit::walk_item(self, item, ());
+    }
 }
 
-fn configure_main(ctxt: @mut EntryContext) {
-    let this = &mut *ctxt;
+fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
         *this.session.entry_fn = this.start_fn;
         *this.session.entry_type = Some(session::EntryStart);

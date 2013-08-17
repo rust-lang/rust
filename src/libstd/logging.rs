@@ -59,7 +59,8 @@ fn newsched_log_str(msg: ~str) {
     use rt::local::Local;
 
     unsafe {
-        match Local::try_unsafe_borrow::<Task>() {
+        let optional_task: Option<*mut Task> = Local::try_unsafe_borrow();
+        match optional_task {
             Some(local) => {
                 // Use the available logger
                 (*local).logger.log(Left(msg));

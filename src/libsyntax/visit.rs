@@ -319,8 +319,10 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
 }
 
 pub fn walk_path<E:Clone, V:Visitor<E>>(visitor: &mut V, path: &Path, env: E) {
-    for typ in path.types.iter() {
-        visitor.visit_ty(typ, env.clone())
+    for segment in path.segments.iter() {
+        for typ in segment.types.iter() {
+            visitor.visit_ty(typ, env.clone())
+        }
     }
 }
 
@@ -671,26 +673,35 @@ pub fn walk_arm<E:Clone, V:Visitor<E>>(visitor: &mut V, arm: &arm, env: E) {
 // calls the given functions on the nodes.
 
 pub trait SimpleVisitor {
-    fn visit_mod(&mut self, &_mod, span, NodeId);
-    fn visit_view_item(&mut self, &view_item);
-    fn visit_foreign_item(&mut self, @foreign_item);
-    fn visit_item(&mut self, @item);
-    fn visit_local(&mut self, @Local);
-    fn visit_block(&mut self, &Block);
-    fn visit_stmt(&mut self, @stmt);
-    fn visit_arm(&mut self, &arm);
-    fn visit_pat(&mut self, @pat);
-    fn visit_decl(&mut self, @decl);
-    fn visit_expr(&mut self, @expr);
-    fn visit_expr_post(&mut self, @expr);
-    fn visit_ty(&mut self, &Ty);
-    fn visit_generics(&mut self, &Generics);
-    fn visit_fn(&mut self, &fn_kind, &fn_decl, &Block, span, NodeId);
-    fn visit_ty_method(&mut self, &TypeMethod);
-    fn visit_trait_method(&mut self, &trait_method);
-    fn visit_struct_def(&mut self, @struct_def, ident, &Generics, NodeId);
-    fn visit_struct_field(&mut self, @struct_field);
-    fn visit_struct_method(&mut self, @method);
+    fn visit_mod(&mut self, _m: &_mod, _s: span, _n: NodeId) {}
+    fn visit_view_item(&mut self, _vi: &view_item) {}
+    fn visit_foreign_item(&mut self, _fi: @foreign_item) {}
+    fn visit_item(&mut self, _i: @item) {}
+    fn visit_local(&mut self, _l: @Local) {}
+    fn visit_block(&mut self, _b: &Block) {}
+    fn visit_stmt(&mut self, _s: @stmt) {}
+    fn visit_arm(&mut self, _a: &arm) {}
+    fn visit_pat(&mut self, _p: @pat) {}
+    fn visit_decl(&mut self, _d: @decl) {}
+    fn visit_expr(&mut self, _e: @expr) {}
+    fn visit_expr_post(&mut self, _e: @expr) {}
+    fn visit_ty(&mut self, _t: &Ty) {}
+    fn visit_generics(&mut self, _g: &Generics) {}
+    fn visit_fn(&mut self,
+                _fk: &fn_kind,
+                _fd: &fn_decl,
+                _b: &Block,
+                _s: span,
+                _n: NodeId) {}
+    fn visit_ty_method(&mut self, _t: &TypeMethod) {}
+    fn visit_trait_method(&mut self, _t: &trait_method) {}
+    fn visit_struct_def(&mut self,
+                        _s: @struct_def,
+                        _i: ident,
+                        _g: &Generics,
+                        _n: NodeId) {}
+    fn visit_struct_field(&mut self, _s: @struct_field) {}
+    fn visit_struct_method(&mut self, _m: @method) {}
 }
 
 pub struct SimpleVisitorVisitor {

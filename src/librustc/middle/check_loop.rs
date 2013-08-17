@@ -12,7 +12,8 @@
 use middle::ty;
 
 use syntax::ast::*;
-use syntax::oldvisit;
+use syntax::visit::Visitor;
+use syntax::visit;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -20,50 +21,61 @@ pub struct Context {
     can_ret: bool
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: &Crate) {
-    oldvisit::visit_crate(crate,
-                          (Context { in_loop: false, can_ret: true },
-                          oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_item: |i, (_cx, v)| {
-            oldvisit::visit_item(i, (Context {
-                                    in_loop: false,
-                                    can_ret: true
-                                 }, v));
-        },
-        visit_expr: |e: @expr, (cx, v): (Context, oldvisit::vt<Context>)| {
-            match e.node {
-              expr_while(e, ref b) => {
-                (v.visit_expr)(e, (cx, v));
-                (v.visit_block)(b, (Context { in_loop: true,.. cx }, v));
-              }
-              expr_loop(ref b, _) => {
-                (v.visit_block)(b, (Context { in_loop: true,.. cx }, v));
-              }
-              expr_fn_block(_, ref b) => {
-                (v.visit_block)(b, (Context {
-                                         in_loop: false,
-                                         can_ret: false
-                                      }, v));
-              }
-              expr_break(_) => {
-                if !cx.in_loop {
-                    tcx.sess.span_err(e.span, "`break` outside of loop");
-                }
-              }
-              expr_again(_) => {
-                if !cx.in_loop {
-                    tcx.sess.span_err(e.span, "`loop` outside of loop");
-                }
-              }
-              expr_ret(oe) => {
-                if !cx.can_ret {
-                    tcx.sess.span_err(e.span, "`return` in block function");
-                }
-                oldvisit::visit_expr_opt(oe, (cx, v));
-              }
-              _ => oldvisit::visit_expr(e, (cx, v))
+struct LoopCheckingVisitor {
+    tcx: ty::ctxt,
+}
+
+impl Visitor<Context> for LoopCheckingVisitor {
+    fn visit_item(&mut self, i: @item, _: Context) {
+        visit::walk_item(self, i, Context {
+            in_loop: false,
+            can_ret: true,
+        });
+    }
+
+    fn visit_expr(&mut self, e: @expr, cx: Context) {
+        match e.node {
+          expr_while(e, ref b) => {
+            self.visit_expr(e, cx);
+            self.visit_block(b, Context { in_loop: true,.. cx });
+          }
+          expr_loop(ref b, _) => {
+            self.visit_block(b, Context { in_loop: true,.. cx });
+          }
+          expr_fn_block(_, ref b) => {
+            self.visit_block(b, Context {
+                in_loop: false,
+                can_ret: false,
+            });
+          }
+          expr_break(_) => {
+            if !cx.in_loop {
+                self.tcx.sess.span_err(e.span, "`break` outside of loop");
             }
-        },
-        .. *oldvisit::default_visitor()
-    })));
+          }
+          expr_again(_) => {
+            if !cx.in_loop {
+                self.tcx.sess.span_err(e.span, "`loop` outside of loop");
+            }
+          }
+          expr_ret(oe) => {
+            if !cx.can_ret {
+                self.tcx.sess.span_err(e.span, "`return` in block function");
+            }
+            visit::walk_expr_opt(self, oe, cx);
+          }
+          _ => visit::walk_expr(self, e, cx)
+        }
+    }
+}
+
+pub fn check_crate(tcx: ty::ctxt, crate: &Crate) {
+    let cx = Context {
+        in_loop: false,
+        can_ret: true,
+    };
+    let mut visitor = LoopCheckingVisitor {
+        tcx: tcx,
+    };
+    visit::walk_crate(&mut visitor, crate, cx);
 }
