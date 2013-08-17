@@ -13,7 +13,6 @@
 #define RUST_TYPE_H
 
 #include "rust_globals.h"
-#include "rust_refcount.h"
 
 struct rust_opaque_box;
 
@@ -27,6 +26,8 @@ struct type_desc;
 
 typedef void CDECL (glue_fn)(void *,
                              void *);
+
+typedef unsigned long ref_cnt_t;
 
 // Corresponds to the boxed data in the @ region.  The body follows the
 // header; you can obtain a ptr via box_body() below.
@@ -60,8 +61,6 @@ struct type_desc {
     glue_fn *visit_glue;
     size_t borrow_offset;
 };
-
-extern "C" type_desc *rust_clone_type_desc(type_desc*);
 
 #endif
 

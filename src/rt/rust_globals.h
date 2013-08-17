@@ -81,15 +81,12 @@ extern "C" {
 #define CDECL __cdecl
 #endif
 #ifndef FASTCALL
-#define FASTCALL __fastcall
 #endif
 #else
 #define CDECL __attribute__((cdecl))
-#define FASTCALL __attribute__((fastcall))
 #endif
 #else
 #define CDECL
-#define FASTCALL
 #endif
 
 #define CHECKED(call)                                               \
@@ -103,23 +100,5 @@ extern "C" {
             abort();                                                \
         }                                                           \
     }
-
-#define MUST_CHECK __attribute__((warn_unused_result))
-
-#define PTR "0x%" PRIxPTR
-
-// This accounts for logging buffers.
-static size_t const BUF_BYTES = 2048;
-
-#define INIT_TASK_ID 1
-
-// The error status to use when the process fails
-#define PROC_FAIL_CODE 101
-
-// A cond(ition) is something we can block on. This can be a channel
-// (writing), a port (reading) or a task (waiting).
-struct rust_cond { };
-
-extern void* global_crate_map;
 
 #endif /* RUST_GLOBALS_H */
