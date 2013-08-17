@@ -109,7 +109,9 @@ rust_uv_idle_init
 rust_uv_idle_start
 rust_uv_idle_stop
 rust_uv_fs_open
+rust_uv_fs_unlink
 rust_uv_fs_write
+rust_uv_fs_read
 rust_uv_fs_close
 rust_uv_get_O_RDONLY
 rust_uv_get_O_WRONLY

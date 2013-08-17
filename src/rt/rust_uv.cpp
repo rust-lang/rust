@@ -13,11 +13,6 @@
 #include <malloc.h>
 #endif
 
-#ifndef __WIN32__
-// for signal
-#include <signal.h>
-#endif
-
 #include <fcntl.h>
 #include "uv.h"
 
@@ -521,6 +516,20 @@ rust_uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
   return uv_fs_open(loop, req, path, flags, mode, cb);
 }
 extern "C" int
+rust_uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  return uv_fs_unlink(loop, req, path, cb);
+}
+extern "C" int
+rust_uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+                 size_t len, int64_t offset, uv_fs_cb cb) {
+  return uv_fs_write(loop, req, fd, buf, len, offset, cb);
+}
+extern "C" int
+rust_uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+                 size_t len, int64_t offset, uv_fs_cb cb) {
+  return uv_fs_read(loop, req, fd, buf, len, offset, cb);
+}
+extern "C" int
 rust_uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
   return uv_fs_close(loop, req, fd, cb);
 }
@@ -547,6 +556,22 @@ rust_uv_get_O_CREAT() {
 extern "C" int
 rust_uv_get_O_TRUNC() {
   return O_TRUNC;
+}
+extern "C" int
+rust_uv_get_S_IWUSR() {
+  return S_IWUSR;
+}
+extern "C" int
+rust_uv_get_S_IRUSR() {
+  return S_IRUSR;
+}
+extern "C" int
+rust_uv_get_S_IRGRP() {
+  return S_IRGRP;
+}
+extern "C" int
+rust_uv_get_S_IROTH() {
+  return S_IROTH;
 }
 extern "C" int
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
