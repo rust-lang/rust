@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
-// xfail-test broken in newrt?
 
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
@@ -25,29 +24,45 @@
 // debugger:print full
 // check:$3 = {454545, 0x87654321, 9988}
 
-// debugger:print empty
-// check:$4 = {0, 0x0, 0}
+// debugger:print empty->discr
+// check:$4 = (int *) 0x0
 
 // debugger:print droid
 // check:$5 = {id = 675675, range = 10000001, internals = 0x43218765}
 
-// debugger:print void_droid
-// check:$6 = {id = 0, range = 0, internals = 0x0}
+// debugger:print void_droid->internals
+// check:$6 = (int *) 0x0
 
+// debugger:continue
 
 // If a struct has exactly two variants, one of them is empty, and the other one
 // contains a non-nullable pointer, then this value is used as the discriminator.
 // The test cases in this file make sure that something readable is generated for
 // this kind of types.
+// Unfortunately (for these test cases) the content of the non-discriminant fields
+// in the null-case is not defined. So we just read the discriminator field in
+// this case (by casting the value to a memory-equivalent struct).
 
 enum MoreFields<'self> {
     Full(u32, &'self int, i16),
     Empty
 }
 
+struct MoreFieldsRepr<'self> {
+    a: u32,
+    discr: &'self int,
+    b: i16
+}
+
 enum NamedFields<'self> {
     Droid { id: i32, range: i64, internals: &'self int },
     Void
+}
+
+struct NamedFieldsRepr<'self> {
+    id: i32,
+    range: i64,
+    internals: &'self int
 }
 
 fn main() {
@@ -58,13 +73,15 @@ fn main() {
     let full = Full(454545, unsafe { std::cast::transmute(0x87654321) }, 9988);
 
     let int_val = 0;
-    let mut empty = Full(0, &int_val, 0);
-    empty = Empty;
+    let empty: &MoreFieldsRepr = unsafe { std::cast::transmute(&Empty) };
 
-    let droid = Droid { id: 675675, range: 10000001, internals: unsafe { std::cast::transmute(0x43218765) } };
+    let droid = Droid {
+        id: 675675,
+        range: 10000001,
+        internals: unsafe { std::cast::transmute(0x43218765) }
+    };
 
-    let mut void_droid = Droid { id: 0, range: 0, internals: &int_val };
-    void_droid = Void;
+    let void_droid: &NamedFieldsRepr = unsafe { std::cast::transmute(&Void) };
 
     zzz();
 }

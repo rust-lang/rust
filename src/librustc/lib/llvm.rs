@@ -2086,6 +2086,16 @@ pub mod llvm {
 
         #[fast_ffi]
         pub fn LLVMSetUnnamedAddr(GlobalVar: ValueRef, UnnamedAddr: Bool);
+
+        #[fast_ffi]
+        pub fn LLVMDIBuilderCreateTemplateTypeParameter(Builder: DIBuilderRef,
+                                                        Scope: ValueRef,
+                                                        Name: *c_char,
+                                                        Ty: ValueRef,
+                                                        File: ValueRef,
+                                                        LineNo: c_uint,
+                                                        ColumnNo: c_uint)
+                                                        -> ValueRef;
     }
 }
 

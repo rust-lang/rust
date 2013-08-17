@@ -51,7 +51,7 @@ This file consists of three conceptual sections:
 
 use driver::session;
 use lib::llvm::llvm;
-use lib::llvm::{ModuleRef, ContextRef};
+use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
 use middle::trans::common::*;
 use middle::trans::machine;
@@ -69,7 +69,8 @@ use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::vec;
 use syntax::codemap::span;
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
+use syntax::parse::token::special_idents;
 
 static DW_LANG_RUST: int = 0x9000;
 
@@ -97,7 +98,7 @@ pub struct DebugContext {
     priv builder: DIBuilderRef,
     priv curr_loc: (uint, uint),
     priv created_files: HashMap<~str, DIFile>,
-    priv created_functions: HashMap<ast::NodeId, DISubprogram>,
+    priv created_functions: HashMap<FunctionCacheKey, DISubprogram>,
     priv created_blocks: HashMap<ast::NodeId, DILexicalBlock>,
     priv created_types: HashMap<uint, DIType>
 }
@@ -121,19 +122,23 @@ impl DebugContext {
     }
 }
 
+#[deriving(Eq,IterBytes)]
+struct FunctionCacheKey {
+    // Use the address of the llvm function (FunctionContext::llfn) as key for the cache. This
+    // nicely takes care of monomorphization, where two specializations will have the same
+    // ast::NodeId but different llvm functions (each needing its own debug description).
+    priv llfn: ValueRef
+}
+
+impl FunctionCacheKey {
+    fn for_function_context(fcx: &FunctionContext) -> FunctionCacheKey {
+        FunctionCacheKey { llfn: fcx.llfn }
+    }
+}
 
 pub struct FunctionDebugContext {
     priv scope_map: HashMap<ast::NodeId, DIScope>,
     priv argument_counter: uint,
-}
-
-impl FunctionDebugContext {
-    fn new() -> FunctionDebugContext {
-        return FunctionDebugContext {
-            scope_map: HashMap::new(),
-            argument_counter: 1,
-        };
-    }
 }
 
 /// Create any deferred debug metadata nodes
@@ -162,12 +167,61 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
     }
 }
 
+/// Creates debug information for a local variable introduced in the head of a match-statement arm.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata(bcx: @mut Block,
                                      variable_ident: ast::ident,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
                                      span: span) {
     declare_local(bcx, variable_ident, node_id, variable_type, span);
+}
+
+/// Creates debug information for the self argument of a method.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_self_argument_metadata(bcx: @mut Block,
+                                     variable_type: ty::t,
+                                     llptr: ValueRef) {
+    assert_fcx_has_span(bcx.fcx);
+    let span = bcx.fcx.span.unwrap();
+
+    let cx = bcx.ccx();
+
+    let filename = span_start(cx, span).file.name;
+    let file_metadata = file_metadata(cx, filename);
+
+    let loc = span_start(cx, span);
+    let type_metadata = type_metadata(cx, variable_type, span);
+    let scope = create_function_metadata(bcx.fcx);
+
+    let var_metadata = do cx.sess.str_of(special_idents::self_).to_c_str().with_ref |name| {
+        unsafe {
+            llvm::LLVMDIBuilderCreateLocalVariable(
+                DIB(cx),
+                DW_TAG_arg_variable,
+                scope,
+                name,
+                file_metadata,
+                loc.line as c_uint,
+                type_metadata,
+                false,
+                0,
+                1)
+        }
+    };
+
+    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    unsafe {
+        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+            DIB(cx),
+            llptr,
+            var_metadata,
+            bcx.llbb);
+
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+    }
 }
 
 /// Creates debug information for the given function argument.
@@ -243,9 +297,10 @@ pub fn create_argument_metadata(bcx: @mut Block,
     }
 }
 
-/// Sets the current debug location at the beginning of the span
+/// Sets the current debug location at the beginning of the span.
 ///
-/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...)
+/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id parameter is used to
+/// reliably find the correct visibility scope for the code position.
 pub fn update_source_pos(fcx: &FunctionContext,
                          node_id: ast::NodeId,
                          span: span) {
@@ -269,13 +324,24 @@ pub fn update_source_pos(fcx: &FunctionContext,
 /// The return value should be ignored if called from outside of the debuginfo module.
 pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let cx = fcx.ccx;
+    let cache_key = FunctionCacheKey::for_function_context(fcx);
+
+    match dbg_cx(cx).created_functions.find_copy(&cache_key) {
+        Some(fn_metadata) => {
+            assert!(fcx.debug_context.is_some());
+            return fn_metadata;
+        }
+        None => { /* fallthrough */}
+    }
+
+    let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
     let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, fn_decl, id) = match fnitem {
+    let (ident, fn_decl, generics, span) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
-                ast::item_fn(ref fn_decl, _, _, _, _) => {
-                    (item.ident, fn_decl, item.id)
+                ast::item_fn(ref fn_decl, _, _, ref generics, _) => {
+                    (item.ident, fn_decl, generics, item.span)
                 }
                 _ => fcx.ccx.sess.span_bug(item.span,
                                            "create_function_metadata: item bound to non-function")
@@ -284,19 +350,24 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         ast_map::node_method(
             @ast::method {
                 decl: ref fn_decl,
-                id: id,
                 ident: ident,
+                generics: ref generics,
+                span: span,
                 _
             },
             _,
             _) => {
-            (ident, fn_decl, id)
+            (ident, fn_decl, generics, span)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
                 ast::expr_fn_block(ref fn_decl, _) => {
                     let name = gensym_name("fn");
-                    (name, fn_decl, expr.id)
+                    (name, fn_decl,
+                        // This is not quite right. It should actually inherit the generics of the
+                        // enclosing function.
+                        &empty_generics,
+                        expr.span)
                 }
                 _ => fcx.ccx.sess.span_bug(expr.span,
                         "create_function_metadata: expected an expr_fn_block here")
@@ -306,25 +377,16 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
             @ast::provided(
                 @ast::method {
                     decl: ref fn_decl,
-                    id: id,
                     ident: ident,
+                    generics: ref generics,
+                    span: span,
                     _
                 }),
             _,
             _) => {
-            (ident, fn_decl, id)
+            (ident, fn_decl, generics, span)
         }
         _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
-    };
-
-    match dbg_cx(cx).created_functions.find_copy(&id) {
-        Some(fn_metadata) => return fn_metadata,
-        None => ()
-    }
-
-    let span = match fcx.span {
-        Some(value) => value,
-        None => codemap::dummy_sp()
     };
 
     debug!("create_function_metadata: %s, %s",
@@ -334,68 +396,210 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let return_type_metadata = if cx.sess.opts.extra_debuginfo {
-        match fn_decl.output.node {
-          ast::ty_nil => ptr::null(),
-          _ => type_metadata(cx, ty::node_id_to_type(cx.tcx, id), fn_decl.output.span)
+    let function_type_metadata = unsafe {
+        let fn_signature = get_function_signature(fcx, fn_decl);
+        llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
+    };
+
+    // get_template_parameters() will append a `<...>` clause to the function name if necessary.
+    let mut function_name = cx.sess.str_of(ident).to_owned();
+    let template_parameters = get_template_parameters(fcx,
+                                                      generics,
+                                                      file_metadata,
+                                                      &mut function_name);
+
+    let fn_metadata = do function_name.to_c_str().with_ref |function_name| {
+        unsafe {
+            llvm::LLVMDIBuilderCreateFunction(
+                DIB(cx),
+                file_metadata,
+                function_name,
+                function_name,
+                file_metadata,
+                loc.line as c_uint,
+                function_type_metadata,
+                false,
+                true,
+                loc.line as c_uint,
+                FlagPrototyped as c_uint,
+                cx.sess.opts.optimize != session::No,
+                fcx.llfn,
+                template_parameters,
+                ptr::null())
         }
-    } else {
-        ptr::null()
     };
 
-    let fn_ty = unsafe {
-        llvm::LLVMDIBuilderCreateSubroutineType(
-            DIB(cx),
-            file_metadata,
-            create_DIArray(DIB(cx), [return_type_metadata]))
-    };
+    dbg_cx(cx).created_functions.insert(cache_key, fn_metadata);
 
-    let fn_metadata =
-        do cx.sess.str_of(ident).with_c_str |name| {
-        do cx.sess.str_of(ident).with_c_str |linkage| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateFunction(
-                    DIB(cx),
-                    file_metadata,
-                    name,
-                    linkage,
-                    file_metadata,
-                    loc.line as c_uint,
-                    fn_ty,
-                    false,
-                    true,
-                    loc.line as c_uint,
-                    FlagPrototyped as c_uint,
-                    cx.sess.opts.optimize != session::No,
-                    fcx.llfn,
-                    ptr::null(),
-                    ptr::null())
+    // Initialize fn debug context (including scope map)
+    {
+        assert!(fcx.debug_context.is_none());
+
+        let mut fn_debug_context = ~FunctionDebugContext {
+            scope_map: HashMap::new(),
+            argument_counter: if fcx.llself.is_some() { 2 } else { 1 }
+        };
+
+        let entry_block_id = fcx.entry_bcx.get_ref().node_info.get_ref().id;
+        let entry_block = cx.tcx.items.get(&entry_block_id);
+
+        match *entry_block {
+            ast_map::node_block(ref block) => {
+                let scope_map = &mut fn_debug_context.scope_map;
+                let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
+
+                populate_scope_map(cx, arg_pats, block, fn_metadata, scope_map);
             }
-        }};
-
-    assert!(fcx.debug_context.is_none());
-
-    let mut fn_debug_context = ~FunctionDebugContext::new();
-    let entry_block_id = fcx.entry_bcx.get_ref().node_info.get_ref().id;
-    let entry_block = cx.tcx.items.get(&entry_block_id);
-
-    match *entry_block {
-        ast_map::node_block(ref block) => {
-            let scope_map = &mut fn_debug_context.scope_map;
-            let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
-
-            populate_scope_map(cx, arg_pats, block, fn_metadata, scope_map);
+            _ => cx.sess.span_bug(span,
+                    fmt!("debuginfo::create_function_metadata() - \
+                         FunctionContext::entry_bcx::node_info points to wrong type of ast_map \
+                         entry. Expected: ast_map::node_block, actual: %?", *entry_block))
         }
-        _ => cx.sess.span_bug(span,
-                fmt!("debuginfo::create_function_metadata() - \
-                     FunctionContext::entry_bcx::node_info points to wrong type of ast_map entry. \
-                     Expected: ast_map::node_block, actual: %?", *entry_block))
+
+        fcx.debug_context = Some(fn_debug_context);
     }
 
-    fcx.debug_context = Some(fn_debug_context);
-
-    dbg_cx(cx).created_functions.insert(id, fn_metadata);
     return fn_metadata;
+
+    fn get_function_signature(fcx: &FunctionContext, fn_decl: &ast::fn_decl) -> DIArray {
+        let cx = fcx.ccx;
+
+        if !cx.sess.opts.extra_debuginfo {
+            return create_DIArray(DIB(cx), []);
+        }
+
+        let mut signature = vec::with_capacity(fn_decl.inputs.len() + 1);
+
+        // Return type -- llvm::DIBuilder wants this at index 0
+        match fn_decl.output.node {
+            ast::ty_nil => {
+                signature.push(ptr::null());
+            }
+            _ => {
+                let return_type = ty::node_id_to_type(cx.tcx, fcx.id);
+                let return_type = match fcx.param_substs {
+                    None => return_type,
+                    Some(substs) => {
+                        ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, return_type)
+                    }
+                };
+
+                signature.push(type_metadata(cx, return_type, codemap::dummy_sp()));
+            }
+        }
+
+        // arguments types
+        for arg in fn_decl.inputs.iter() {
+            let arg_type = ty::node_id_to_type(cx.tcx, arg.pat.id);
+            let arg_type = match fcx.param_substs {
+                None => arg_type,
+                Some(substs) => {
+                    ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, arg_type)
+                }
+            };
+
+            signature.push(type_metadata(cx, arg_type, codemap::dummy_sp()));
+        }
+
+        return create_DIArray(DIB(cx), signature);
+    }
+
+    fn get_template_parameters(fcx: &FunctionContext,
+                               generics: &ast::Generics,
+                               file_metadata: DIFile,
+                               name_to_append_suffix_to: &mut ~str)
+                            -> DIArray {
+        let cx = fcx.ccx;
+
+        let self_type = match fcx.param_substs {
+            Some(@param_substs{ self_ty: self_type, _ }) => self_type,
+            _ => None
+        };
+
+        // Only true for static default methods:
+        let has_self_type = self_type.is_some();
+
+        if !generics.is_type_parameterized() && !has_self_type {
+            return ptr::null();
+        }
+
+        name_to_append_suffix_to.push_char('<');
+
+        // The list to be filled with template parameters:
+        let mut template_params: ~[DIDescriptor] = vec::with_capacity(generics.ty_params.len() + 1);
+
+        // Handle self type
+        if has_self_type {
+            let actual_self_type = self_type.unwrap();
+            let actual_self_type_metadata = type_metadata(cx,
+                                                          actual_self_type,
+                                                          codemap::dummy_sp());
+
+            // Add self type name to <...> clause of function name
+            let actual_self_type_name = ty_to_str(cx.tcx, actual_self_type);
+            name_to_append_suffix_to.push_str(actual_self_type_name);
+            if generics.is_type_parameterized() {
+                name_to_append_suffix_to.push_str(",");
+            }
+
+            let ident = special_idents::type_self;
+
+            let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name,
+                        actual_self_type_metadata,
+                        ptr::null(),
+                        0,
+                        0)
+                }
+            };
+
+            template_params.push(param_metadata);
+        }
+
+        // Handle other generic parameters
+        let actual_types = match fcx.param_substs {
+            Some(@param_substs { tys: ref types, _ }) => types,
+            None => {
+                return create_DIArray(DIB(cx), template_params);
+            }
+        };
+
+        for (index, &ast::TyParam{ ident: ident, _ }) in generics.ty_params.iter().enumerate() {
+            let actual_type = actual_types[index];
+            let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
+
+            // Add actual type name to <...> clause of function name
+            let actual_type_name = ty_to_str(cx.tcx, actual_type);
+            name_to_append_suffix_to.push_str(actual_type_name);
+
+            if index != generics.ty_params.len() - 1 {
+                name_to_append_suffix_to.push_str(",");
+            }
+
+            let param_metadata = do cx.sess.str_of(ident).to_c_str().with_ref |name| {
+                unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name,
+                        actual_type_metadata,
+                        ptr::null(),
+                        0,
+                        0)
+                }
+            };
+
+            template_params.push(param_metadata);
+        }
+
+        name_to_append_suffix_to.push_char('>');
+
+        return create_DIArray(DIB(cx), template_params);
+    }
 }
 
 
@@ -611,7 +815,13 @@ fn struct_metadata(cx: &mut CrateContext,
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
     let field_llvm_types = do fields.map |field| { type_of::type_of(cx, field.mt.ty) };
-    let field_names = do fields.map |field| { cx.sess.str_of(field.ident).to_owned() };
+    let field_names = do fields.map |field| {
+        if field.ident == special_idents::unnamed_field {
+            ~""
+        } else {
+            cx.sess.str_of(field.ident).to_owned()
+        }
+    };
     let field_types_metadata = do fields.map |field| {
         type_metadata(cx, field.mt.ty, span)
     };
@@ -1271,6 +1481,13 @@ fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
 }
 
+fn assert_fcx_has_span(fcx: &FunctionContext) {
+    if fcx.span.is_none() {
+        fcx.ccx.sess.bug(fmt!("debuginfo: Encountered function %s with invalid source span. \
+            This function should have been ignored by debuginfo generation.",
+            ast_map::path_to_str(fcx.path, fcx.ccx.sess.intr())));
+    }
+}
 
 // This procedure builds the *scope map* for a given function, which maps any given ast::NodeId in
 // the function's AST to the correct DIScope metadata instance.
