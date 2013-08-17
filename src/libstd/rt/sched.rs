@@ -563,11 +563,10 @@ impl Scheduler {
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         unsafe {
-            let sched = Local::unsafe_borrow::<Scheduler>();
-            (*sched).run_cleanup_job();
+            let task = Local::unsafe_borrow::<Task>();
+            (*task).sched.get_mut_ref().run_cleanup_job();
 
             // Must happen after running the cleanup job (of course).
-            let task = Local::unsafe_borrow::<Task>();
             (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
