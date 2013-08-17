@@ -11,7 +11,7 @@
 /*!
  * Conversion from AST representation of types to the ty.rs
  * representation.  The main routine here is `ast_ty_to_ty()`: each use
- * is parameterized by an instance of `AstConv` and a `region_scope`.
+ * is parameterized by an instance of `AstConv` and a `RegionScope`.
  *
  * The parameterization of `ast_ty_to_ty()` is because it behaves
  * somewhat differently during the collect and check phases,
@@ -23,12 +23,12 @@
  * In the check phase, when the @FnCtxt is used as the `AstConv`,
  * `get_item_ty()` just looks up the item type in `tcx.tcache`.
  *
- * The `region_scope` trait controls how region references are
+ * The `RegionScope` trait controls how region references are
  * handled.  It has two methods which are used to resolve anonymous
  * region references (e.g., `&T`) and named region references (e.g.,
  * `&a.T`).  There are numerous region scopes that can be used, but most
- * commonly you want either `empty_rscope`, which permits only the static
- * region, or `type_rscope`, which permits the self region if the type in
+ * commonly you want either `EmptyRscope`, which permits only the static
+ * region, or `TypeRscope`, which permits the self region if the type in
  * question is parameterized by a region.
  *
  * Unlike the `AstConv` trait, the region scope can change as we descend
@@ -58,7 +58,7 @@ use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::in_binding_rscope;
-use middle::typeck::rscope::{region_scope, RegionError};
+use middle::typeck::rscope::{RegionScope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
@@ -104,7 +104,7 @@ pub fn get_region_reporting_err(
     }
 }
 
-pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ast_region_to_region<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     default_span: span,
@@ -129,7 +129,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Clone + 'static>(
     get_region_reporting_err(this.tcx(), span, opt_lifetime, res)
 }
 
-fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
+fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     def_id: ast::def_id,
@@ -200,7 +200,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,
-                                 RS:region_scope + Clone + 'static>(
+                                 RS:RegionScope + Clone + 'static>(
                                  this: &AC,
                                  rscope: &RS,
                                  did: ast::def_id,
@@ -217,7 +217,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     trait_def_id: ast::def_id,
@@ -240,7 +240,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Clone + 'static>(
     return trait_ref;
 }
 
-pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         did: ast::def_id,
@@ -262,10 +262,10 @@ pub static NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
+pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
     this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Clone + 'static>(
+    fn ast_mt_to_mt<AC:AstConv, RS:RegionScope + Clone + 'static>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
@@ -274,7 +274,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
-    fn mk_pointer<AC:AstConv,RS:region_scope + Clone + 'static>(
+    fn mk_pointer<AC:AstConv,RS:RegionScope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         a_seq_ty: &ast::mt,
@@ -540,7 +540,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
 }
 
 pub fn ty_of_arg<AC:AstConv,
-                 RS:region_scope + Clone + 'static>(
+                 RS:RegionScope + Clone + 'static>(
                  this: &AC,
                  rscope: &RS,
                  a: &ast::arg,
@@ -588,7 +588,7 @@ struct SelfInfo {
     explicit_self: ast::explicit_self
 }
 
-pub fn ty_of_method<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ty_of_method<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -606,7 +606,7 @@ pub fn ty_of_method<AC:AstConv,RS:region_scope + Clone + 'static>(
     (a.unwrap(), b)
 }
 
-pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ty_of_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -619,7 +619,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
     b
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
+fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -657,7 +657,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
                                 output: output_ty}
             });
 
-    fn transform_self_ty<AC:AstConv,RS:region_scope + Clone + 'static>(
+    fn transform_self_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
@@ -690,7 +690,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Clone + 'static>(
     }
 }
 
-pub fn ty_of_closure<AC:AstConv,RS:region_scope + Clone + 'static>(
+pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
     sigil: ast::Sigil,
