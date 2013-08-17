@@ -145,7 +145,10 @@ impl SimpleVisitor for Env {
                                   ~[attr::mk_name_value_item_str(@"package_id", p),
                                    attr::mk_name_value_item_str(@"name", s.to_managed())],
                                   *meta_items),
-                          None => self.diag.span_bug(i.span, "Bad package path in `extern mod` item")
+                          None => {
+                            self.diag.span_bug(i.span,
+                              "bad package path in `extern mod` item")
+                          }
                       }
                 }
               };
