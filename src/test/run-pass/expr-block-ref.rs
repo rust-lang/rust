@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // Regression test for issue #388
-pub fn main() { let x = { { @10 } }; }
+pub fn main() { let _x = { { @10 } }; }

@@ -11,7 +11,6 @@
 // xfail-fast
 
 use std::uint;
-use std::vec;
 
 pub trait plus {
     fn plus(&self) -> int;

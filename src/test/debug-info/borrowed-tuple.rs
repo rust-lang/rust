@@ -27,6 +27,8 @@
 // debugger:print *unique_val_ref
 // check:$4 = {-17, -22}
 
+#[allow(unused_variable)];
+
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);
     let stack_val_ref: &(i16, f32) = &stack_val;

@@ -12,8 +12,8 @@
 
 use std::task;
 
-fn child2(s: ~str) { }
+fn child2(_s: ~str) { }
 
 pub fn main() {
-    let x = task::spawn(|| child2(~"hi"));
+    let _x = task::spawn(|| child2(~"hi"));
 }

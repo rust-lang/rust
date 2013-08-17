@@ -47,6 +47,8 @@
 // debugger:print padded_struct.data_ptr[1]
 // check:$13 = {x = 13, y = 14, z = 15}
 
+#[allow(unused_variable)];
+
 struct AStruct {
     x: i16,
     y: i32,

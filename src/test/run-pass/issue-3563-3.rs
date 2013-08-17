@@ -20,7 +20,6 @@ extern mod extra;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
-use std::int;
 use std::io::WriterUtil;
 use std::io;
 use std::str;
@@ -67,7 +66,7 @@ impl Drop for AsciiArt {
 fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
-    let mut lines = do vec::build_sized(height) |push| {
+    let lines = do vec::build_sized(height) |push| {
             do height.times {
                 push(vec::from_elem(width, '.'));
             }

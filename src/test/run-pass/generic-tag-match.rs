@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+#[allow(dead_assignment)];
 
 enum foo<T> { arm(T), }
 
 fn altfoo<T>(f: foo<T>) {
     let mut hit = false;
-    match f { arm::<T>(x) => { info!("in arm"); hit = true; } }
+    match f { arm::<T>(_x) => { info!("in arm"); hit = true; } }
     assert!((hit));
 }
 

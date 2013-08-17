@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+#[allow(dead_assignment)];
+
 extern mod extra;
 
 use std::comm;

@@ -13,7 +13,7 @@ enum ast<'self> {
     add(&'self ast<'self>, &'self ast<'self>)
 }
 
-fn mk_add_ok<'a>(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'a> {
+fn mk_add_ok<'a>(x: &'a ast<'a>, y: &'a ast<'a>, _z: &ast) -> ast<'a> {
     add(x, y)
 }
 

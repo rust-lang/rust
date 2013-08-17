@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+#[allow(unreachable_code)];
 
 // -*- rust -*-
 fn dont_call_me() { fail!(); info!(1); }

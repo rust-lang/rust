@@ -1,7 +1,6 @@
 // Perlin noise benchmark from https://gist.github.com/1170424
 
 use std::float;
-use std::int;
 use std::rand::{Rng, RngUtil};
 use std::rand;
 

@@ -17,13 +17,13 @@ pub fn main() {
         g: 0,
     };
 
-    let y = Pair {
+    let _y = Pair {
         f: 1,
         g: 1,
         .. x
     };
 
-    let z = Pair {
+    let _z = Pair {
         f: 1,
         .. x
     };

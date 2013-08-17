@@ -15,9 +15,7 @@ struct r {
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&self) {
-        unsafe {
-            *(self.i) = *(self.i) + 1;
-        }
+        *(self.i) = *(self.i) + 1;
     }
 }
 
@@ -30,7 +28,7 @@ fn r(i: @mut int) -> r {
 pub fn main() {
     let i = @mut 0;
     {
-        let j = ~r(i);
+        let _j = ~r(i);
     }
     assert_eq!(*i, 1);
 }

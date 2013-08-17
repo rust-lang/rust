@@ -62,6 +62,7 @@
 // debugger:print *f64_ref
 // check:$15 = 3.5
 
+#[allow(unused_variable)];
 
 fn main() {
     let bool_box: @bool = @true;

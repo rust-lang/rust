@@ -18,7 +18,7 @@ struct Bar<'self> {
 }
 
 fn check(a: @Foo) {
-    let mut _ic = Bar{ b: a, a: ~None };
+    let _ic = Bar{ b: a, a: ~None };
 }
 
 pub fn main(){}

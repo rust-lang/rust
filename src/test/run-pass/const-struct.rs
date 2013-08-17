@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp;
-use std::io;
 
 struct foo { a: int, b: int, c: int }
 

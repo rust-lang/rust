@@ -16,7 +16,6 @@ extern mod extra;
 
 use std::io::ReaderUtil;
 use std::io;
-use std::str;
 use std::to_str;
 
 enum square {

@@ -14,6 +14,6 @@ fn add2(_:&mut int)
 pub fn main()
 {
     let a = @mut 3;
-    let b = &*a; // freezes a
+    let _b = &*a; // freezes a
     add1(a);
 }

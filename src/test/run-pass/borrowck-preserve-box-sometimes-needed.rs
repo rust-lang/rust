@@ -13,9 +13,10 @@
 fn switcher(x: Option<@int>) {
     let mut x = x;
     match x {
-      Some(@y) => { y.clone(); x = None; }
-      None => { }
+        Some(@y) => { y.clone(); x = None; }
+        None => { }
     }
+    assert_eq!(x, None);
 }
 
 pub fn main() {

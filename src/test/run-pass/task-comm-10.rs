@@ -31,7 +31,7 @@ fn start(c: &comm::Chan<comm::Chan<~str>>) {
 
 pub fn main() {
     let (p, ch) = comm::stream();
-    let child = task::spawn(|| start(&ch) );
+    let _child = task::spawn(|| start(&ch) );
 
     let c = p.recv();
     c.send(~"A");

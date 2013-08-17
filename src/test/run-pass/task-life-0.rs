@@ -16,6 +16,6 @@ pub fn main() {
     task::spawn(|| child(~"Hello") );
 }
 
-fn child(s: ~str) {
+fn child(_s: ~str) {
 
 }

@@ -17,7 +17,7 @@ fn build() -> ~[int] {
 struct Blk { node: ~[int] }
 
 fn main() {
-    let blk = Blk {
+    let _blk = Blk {
         node: build()
     };
 }

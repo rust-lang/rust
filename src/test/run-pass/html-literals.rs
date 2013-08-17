@@ -85,7 +85,7 @@ macro_rules! parse_node (
 )
 
 pub fn main() {
-    let page = html! (
+    let _page = html! (
         <html>
             <head><title>This is the title.</title></head>
             <body>

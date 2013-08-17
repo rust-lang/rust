@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
 
 trait Foo {
     fn foo(&self, mut v: int) { v = 1; }

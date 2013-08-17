@@ -648,7 +648,7 @@ pub mod ptr_tests {
                 one, two, three
             ];
 
-            do arr.as_imm_buf |arr_ptr, arr_len| {
+            do arr.as_imm_buf |arr_ptr, _| {
                 let mut ctr = 0;
                 let mut iteration_count = 0;
                 do array_each(arr_ptr) |e| {

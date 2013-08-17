@@ -19,7 +19,7 @@ fn prime() {
 }
 
 fn partial() {
-    let x = ~[~[0], f(), ~[0]];
+    let _x = ~[~[0], f(), ~[0]];
 }
 
 fn main() {

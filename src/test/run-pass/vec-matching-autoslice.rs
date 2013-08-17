@@ -17,6 +17,6 @@ pub fn main() {
             assert_eq!(b, 2);
             assert!(tail.is_empty());
         }
-        ([..tail], _) => fail!()
+        ([.._tail], _) => fail!()
     }
 }

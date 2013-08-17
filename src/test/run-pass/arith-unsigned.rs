@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+#[allow(type_limits)];
 
 // Unsigned integer operations
 pub fn main() {

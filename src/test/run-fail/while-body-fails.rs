@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(while_true)];
+
 // error-pattern:quux
-fn main() { let x: int = { while true { fail!("quux"); } ; 8 } ; }
+fn main() { let _x: int = { while true { fail!("quux"); } ; 8 } ; }

@@ -33,6 +33,7 @@
 // debugger:print paddingAtEnd
 // check:$7 = {15, 16}
 
+#[allow(unused_variable)];
 
 fn main() {
     let noPadding8: (i8, u8) = (-100, 100);

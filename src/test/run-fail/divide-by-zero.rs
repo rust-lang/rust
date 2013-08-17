@@ -11,5 +11,5 @@
 // error-pattern:attempted to divide by zero
 fn main() {
     let y = 0;
-    let z = 1 / y;
+    let _z = 1 / y;
 }

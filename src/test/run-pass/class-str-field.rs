@@ -21,5 +21,5 @@ fn cat(in_name: ~str) -> cat {
 }
 
 pub fn main() {
-  let nyan = cat(~"nyan");
+  let _nyan = cat(~"nyan");
 }

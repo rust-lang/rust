@@ -17,5 +17,5 @@ mod a {
 }
 
 pub fn main() {
-    let x = a::Bar;
+    let _x = a::Bar;
 }

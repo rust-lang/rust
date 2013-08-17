@@ -16,7 +16,7 @@ struct foo<A> {
 }
 
 impl<A> clam<A> for foo<A> {
-  fn chowder(&self, y: A) {
+  fn chowder(&self, _y: A) {
   }
 }
 

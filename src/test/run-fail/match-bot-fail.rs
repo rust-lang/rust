@@ -10,6 +10,9 @@
 
 // error-pattern:explicit failure
 
+#[allow(unreachable_code)];
+#[allow(unused_variable)];
+
 fn foo(s: ~str) { }
 
 fn main() {

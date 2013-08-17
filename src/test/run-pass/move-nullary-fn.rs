@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Issue #922
-fn f2(thing: @fn()) { }
+fn f2(_thing: @fn()) { }
 
 fn f(thing: @fn()) {
     f2(thing);

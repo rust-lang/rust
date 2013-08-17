@@ -55,7 +55,7 @@ fn test00() {
 
     // Read from spawned tasks...
     let mut sum = 0;
-    for r in results.iter() {
+    for _r in results.iter() {
         i = 0;
         while i < number_of_messages {
             let value = po.recv();

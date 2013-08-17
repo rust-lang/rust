@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Eq, Ord};
+use std::cmp::Eq;
 use std::num::NumCast;
 
 pub trait NumExt: Eq + Num + NumCast {}

@@ -29,6 +29,6 @@ impl Eq for e {
 
 pub fn nominal() -> e { e_val }
 
-pub fn nominal_neq(e1: e, e2: e) -> bool { false }
+pub fn nominal_neq(_e1: e, _e2: e) -> bool { false }
 
 pub fn f() -> int { 20 }

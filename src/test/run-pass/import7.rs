@@ -10,8 +10,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused_imports)];
+
 use foo::zed;
 use bar::baz;
+
 mod foo {
     pub mod zed {
         pub fn baz() { info!("baz"); }

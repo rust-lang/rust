@@ -9,9 +9,11 @@
 // except according to those terms.
 
 mod foo {
+    use std::libc::c_int;
+
     #[nolink]
     extern {
-        pub static errno: int;
+        pub static errno: c_int;
     }
 }
 

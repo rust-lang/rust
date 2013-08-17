@@ -8,7 +8,7 @@ pub fn main() {
         info!(i);
         i = i + 1;
         if i == 95 {
-            let v: ~[int] =
+            let _v: ~[int] =
                 ~[1, 2, 3, 4, 5]; // we check that it is freed by break
 
             info!("breaking");

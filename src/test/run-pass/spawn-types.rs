@@ -14,16 +14,15 @@
   Arnold.
  */
 
-use std::comm::*;
 use std::task;
 
 type ctx = Chan<int>;
 
-fn iotask(cx: &ctx, ip: ~str) {
+fn iotask(_cx: &ctx, ip: ~str) {
     assert_eq!(ip, ~"localhost");
 }
 
 pub fn main() {
-    let (p, ch) = stream::<int>();
+    let (_p, ch) = stream::<int>();
     task::spawn(|| iotask(&ch, ~"localhost") );
 }

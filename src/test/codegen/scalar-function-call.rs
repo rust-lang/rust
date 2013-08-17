@@ -14,5 +14,5 @@ fn foo(x: int) -> int {
 
 #[no_mangle]
 fn test() {
-    let x = foo(10);
+    let _x = foo(10);
 }

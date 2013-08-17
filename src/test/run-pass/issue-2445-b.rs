@@ -13,7 +13,7 @@ struct c1<T> {
 }
 
 impl<T> c1<T> {
-    pub fn f1(&self, x: int) {
+    pub fn f1(&self, _x: int) {
     }
 }
 
@@ -24,7 +24,7 @@ fn c1<T>(x: T) -> c1<T> {
 }
 
 impl<T> c1<T> {
-    pub fn f2(&self, x: int) {
+    pub fn f2(&self, _x: int) {
     }
 }
 

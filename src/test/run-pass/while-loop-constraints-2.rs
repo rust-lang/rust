@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
 
+pub fn main() {
     let mut y: int = 42;
     let mut z: int = 42;
     let mut x: int;

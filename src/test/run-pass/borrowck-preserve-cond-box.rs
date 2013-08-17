@@ -15,8 +15,8 @@ fn testfn(cond: bool) {
     let mut y = @4;
 
     // borrow x and y
-    let mut r_x = &*x;
-    let mut r_y = &*y;
+    let r_x = &*x;
+    let r_y = &*y;
     let mut r = r_x;
     let mut exp = 3;
 
@@ -33,6 +33,8 @@ fn testfn(cond: bool) {
 
     info!("*r = %d, exp = %d", *r, exp);
     assert_eq!(*r, exp);
+    assert_eq!(x, @5);
+    assert_eq!(y, @6);
 }
 
 pub fn main() {

@@ -11,7 +11,7 @@
 pub fn main() {
     enum t { t1(int), t2(int), }
 
-    let x = ~t1(10);
+    let _x = ~t1(10);
 
     /*alt *x {
       t1(a) {

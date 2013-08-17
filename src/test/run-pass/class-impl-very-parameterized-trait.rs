@@ -11,8 +11,6 @@
 // xfail-fast
 
 use std::cmp;
-use std::int;
-use std::uint;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 

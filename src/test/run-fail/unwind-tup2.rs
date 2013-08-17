@@ -19,5 +19,5 @@ fn fold_remote() -> @~[int]{
 }
 
 fn main() {
-    let lss = (fold_local(), fold_remote());
+    let _lss = (fold_local(), fold_remote());
 }

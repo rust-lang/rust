@@ -9,4 +9,12 @@
 // except according to those terms.
 
 // Regression test for issue #388
-pub fn main() { let x = if false { @0u } else if true { @10u } else { @0u }; }
+pub fn main() {
+    let _x = if false {
+        @0u
+    } else if true {
+        @10u
+    } else {
+        @0u
+    };
+}

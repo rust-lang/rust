@@ -16,20 +16,20 @@ extern mod extra;
 
 use std::task;
 
-fn test_break() { loop { let x: @int = break; } }
+fn test_break() { loop { let _x: @int = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let x: @int = loop; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: @int = loop; } }
 
-fn test_ret() { let x: @int = return; }
+fn test_ret() { let _x: @int = return; }
 
 fn test_fail() {
-    fn f() { let x: @int = fail!(); }
+    fn f() { let _x: @int = fail!(); }
     task::try(|| f() );
 }
 
 fn test_fail_indirect() {
     fn f() -> ! { fail!(); }
-    fn g() { let x: @int = f(); }
+    fn g() { let _x: @int = f(); }
     task::try(|| g() );
 }
 

@@ -16,5 +16,5 @@ fn f() {
 
 fn main() {
     f();
-    let a = @0;
+    let _a = @0;
 }

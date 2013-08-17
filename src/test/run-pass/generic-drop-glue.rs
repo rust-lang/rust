@@ -11,6 +11,6 @@
 
 struct Pair { x: @int, y: @int }
 
-fn f<T>(t: T) { let t1: T = t; }
+fn f<T>(t: T) { let _t1: T = t; }
 
 pub fn main() { let x = Pair {x: @10, y: @12}; f(x); }

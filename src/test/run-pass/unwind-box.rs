@@ -14,7 +14,7 @@ extern mod extra;
 use std::task;
 
 fn f() {
-    let a = @0;
+    let _a = @0;
     fail!();
 }
 

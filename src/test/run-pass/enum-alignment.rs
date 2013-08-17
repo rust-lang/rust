@@ -14,7 +14,7 @@ use std::sys;
 
 fn addr_of<T>(ptr: &T) -> uint {
     let ptr = ptr::to_unsafe_ptr(ptr);
-    unsafe { ptr as uint }
+    ptr as uint
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {

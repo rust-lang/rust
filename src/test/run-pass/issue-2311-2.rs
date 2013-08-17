@@ -14,7 +14,7 @@ struct foo<A> {
 }
 
 impl<A> foo<A> {
-   pub fn bar<B,C:clam<A>>(&self, c: C) -> B {
+   pub fn bar<B,C:clam<A>>(&self, _c: C) -> B {
      fail!();
    }
 }
