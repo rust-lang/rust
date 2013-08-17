@@ -69,7 +69,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBSYNTAX_GLOB_$(2)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) --out-dir $$(@D) $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $$(WFLAGS_ST$(1)) $(BORROWCK) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBSYNTAX_GLOB_$(2)),$$(notdir $$@))
 
 # Only build the compiler for host triples
@@ -90,7 +90,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(2)),$$(notdir $$@))
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --out-dir $$(@D) $$< && touch $$@
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $$(WFLAGS_ST$(1)) --out-dir $$(@D) $$< && touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(2)),$$(notdir $$@))
 
 $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(3)):			\
