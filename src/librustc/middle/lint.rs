@@ -480,7 +480,7 @@ impl Context {
                             (orig.visit_item)(it, (self, stopping));
                         }
                         NewVisitor(new_visitor) => {
-                            let mut new_visitor = new_visitor;
+                            let new_visitor = new_visitor;
                             new_visitor.visit_item(it, ());
                         }
                     }
@@ -520,7 +520,7 @@ impl Context {
                             let fk = visit::fk_method(m.ident,
                                                       &m.generics,
                                                       m);
-                            let mut new_visitor = new_visitor;
+                            let new_visitor = new_visitor;
                             new_visitor.visit_fn(&fk,
                                                  &m.decl,
                                                  &m.body,
