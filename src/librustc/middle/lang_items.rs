@@ -57,28 +57,27 @@ pub enum LangItem {
 
     StrEqFnLangItem,                   // 19
     UniqStrEqFnLangItem,               // 20
-    AnnihilateFnLangItem,              // 21
-    LogTypeFnLangItem,                 // 22
-    FailFnLangItem,                    // 23
-    FailBoundsCheckFnLangItem,         // 24
-    ExchangeMallocFnLangItem,          // 25
-    ClosureExchangeMallocFnLangItem,   // 26
-    ExchangeFreeFnLangItem,            // 27
-    MallocFnLangItem,                  // 28
-    FreeFnLangItem,                    // 29
-    BorrowAsImmFnLangItem,             // 30
-    BorrowAsMutFnLangItem,             // 31
-    ReturnToMutFnLangItem,             // 32
-    CheckNotBorrowedFnLangItem,        // 33
-    StrDupUniqFnLangItem,              // 34
-    RecordBorrowFnLangItem,            // 35
-    UnrecordBorrowFnLangItem,          // 36
+    LogTypeFnLangItem,                 // 21
+    FailFnLangItem,                    // 22
+    FailBoundsCheckFnLangItem,         // 23
+    ExchangeMallocFnLangItem,          // 24
+    ClosureExchangeMallocFnLangItem,   // 25
+    ExchangeFreeFnLangItem,            // 26
+    MallocFnLangItem,                  // 27
+    FreeFnLangItem,                    // 28
+    BorrowAsImmFnLangItem,             // 29
+    BorrowAsMutFnLangItem,             // 30
+    ReturnToMutFnLangItem,             // 31
+    CheckNotBorrowedFnLangItem,        // 32
+    StrDupUniqFnLangItem,              // 33
+    RecordBorrowFnLangItem,            // 34
+    UnrecordBorrowFnLangItem,          // 35
 
-    StartFnLangItem,                   // 37
+    StartFnLangItem,                   // 36
 
-    TyDescStructLangItem,              // 38
-    TyVisitorTraitLangItem,            // 39
-    OpaqueStructLangItem,              // 40
+    TyDescStructLangItem,              // 37
+    TyVisitorTraitLangItem,            // 38
+    OpaqueStructLangItem,              // 39
 }
 
 pub struct LanguageItems {
@@ -122,28 +121,27 @@ impl LanguageItems {
 
             19 => "str_eq",
             20 => "uniq_str_eq",
-            21 => "annihilate",
-            22 => "log_type",
-            23 => "fail_",
-            24 => "fail_bounds_check",
-            25 => "exchange_malloc",
-            26 => "closure_exchange_malloc",
-            27 => "exchange_free",
-            28 => "malloc",
-            29 => "free",
-            30 => "borrow_as_imm",
-            31 => "borrow_as_mut",
-            32 => "return_to_mut",
-            33 => "check_not_borrowed",
-            34 => "strdup_uniq",
-            35 => "record_borrow",
-            36 => "unrecord_borrow",
+            21 => "log_type",
+            22 => "fail_",
+            23 => "fail_bounds_check",
+            24 => "exchange_malloc",
+            25 => "closure_exchange_malloc",
+            26 => "exchange_free",
+            27 => "malloc",
+            28 => "free",
+            29 => "borrow_as_imm",
+            30 => "borrow_as_mut",
+            31 => "return_to_mut",
+            32 => "check_not_borrowed",
+            33 => "strdup_uniq",
+            34 => "record_borrow",
+            35 => "unrecord_borrow",
 
-            37 => "start",
+            36 => "start",
 
-            38 => "ty_desc",
-            39 => "ty_visitor",
-            40 => "opaque",
+            37 => "ty_desc",
+            38 => "ty_visitor",
+            39 => "opaque",
 
             _ => "???"
         }
@@ -225,9 +223,6 @@ impl LanguageItems {
     }
     pub fn uniq_str_eq_fn(&self) -> Option<def_id> {
         self.items[UniqStrEqFnLangItem as uint]
-    }
-    pub fn annihilate_fn(&self) -> Option<def_id> {
-        self.items[AnnihilateFnLangItem as uint]
     }
     pub fn log_type_fn(&self) -> Option<def_id> {
         self.items[LogTypeFnLangItem as uint]
@@ -327,7 +322,6 @@ impl<'self> LanguageItemCollector<'self> {
 
         item_refs.insert(@"str_eq", StrEqFnLangItem as uint);
         item_refs.insert(@"uniq_str_eq", UniqStrEqFnLangItem as uint);
-        item_refs.insert(@"annihilate", AnnihilateFnLangItem as uint);
         item_refs.insert(@"log_type", LogTypeFnLangItem as uint);
         item_refs.insert(@"fail_", FailFnLangItem as uint);
         item_refs.insert(@"fail_bounds_check",

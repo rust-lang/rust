@@ -68,9 +68,7 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/rust_thread.cpp \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
-              rt/rust_env.cpp \
               rt/rust_rng.cpp \
-              rt/rust_stack.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_crate_map.cpp \

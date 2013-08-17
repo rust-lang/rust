@@ -571,7 +571,47 @@ rust_running_on_valgrind() {
     return RUNNING_ON_VALGRIND;
 }
 
-extern int get_num_cpus();
+#if defined(__WIN32__)
+int
+get_num_cpus() {
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+
+    return (int) sysinfo.dwNumberOfProcessors;
+}
+#elif defined(__BSD__)
+int
+get_num_cpus() {
+    /* swiped from http://stackoverflow.com/questions/150355/
+       programmatically-find-the-number-of-cores-on-a-machine */
+
+    unsigned int numCPU;
+    int mib[4];
+    size_t len = sizeof(numCPU);
+
+    /* set the mib for hw.ncpu */
+    mib[0] = CTL_HW;
+    mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+    /* get the number of CPUs from the system */
+    sysctl(mib, 2, &numCPU, &len, NULL, 0);
+
+    if( numCPU < 1 ) {
+        mib[1] = HW_NCPU;
+        sysctl( mib, 2, &numCPU, &len, NULL, 0 );
+
+        if( numCPU < 1 ) {
+            numCPU = 1;
+        }
+    }
+    return numCPU;
+}
+#elif defined(__GNUC__)
+int
+get_num_cpus() {
+    return sysconf(_SC_NPROCESSORS_ONLN);
+}
+#endif
 
 extern "C" CDECL uintptr_t
 rust_get_num_cpus() {
@@ -627,6 +667,28 @@ rust_drop_change_dir_lock() {
 extern "C" CDECL uintptr_t
 rust_get_task() {
     return 0;
+}
+
+static lock_and_signal env_lock;
+
+extern "C" CDECL void
+rust_take_env_lock() {
+    env_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_env_lock() {
+    env_lock.unlock();
+}
+
+extern "C" CDECL unsigned int
+rust_valgrind_stack_register(void *start, void *end) {
+  return VALGRIND_STACK_REGISTER(start, end);
+}
+
+extern "C" CDECL void
+rust_valgrind_stack_deregister(unsigned int id) {
+  VALGRIND_STACK_DEREGISTER(id);
 }
 
 //

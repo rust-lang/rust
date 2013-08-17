@@ -2906,24 +2906,12 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     }
     subcrates.push(C_int(ccx, 0));
 
-    let llannihilatefn = match ccx.tcx.lang_items.annihilate_fn() {
-        Some(annihilate_def_id) => {
-            if annihilate_def_id.crate == ast::LOCAL_CRATE {
-                get_item_val(ccx, annihilate_def_id.node)
-            } else {
-                let annihilate_fn_type = csearch::get_type(ccx.tcx,
-                                                           annihilate_def_id).ty;
-                trans_external_path(ccx, annihilate_def_id, annihilate_fn_type)
-            }
-        }
-        None => { C_null(Type::i8p()) }
-    };
-
     unsafe {
         let mod_map = create_module_map(ccx);
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
-             lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn, Type::i8p().to_ref()),
+             // FIXME #8431 This used to be the annihilate function, now it's nothing
+             C_null(Type::i8p()),
              p2i(ccx, mod_map),
              C_array(ccx.int_type, subcrates)]));
     }
