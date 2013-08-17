@@ -40,6 +40,7 @@ pub fn init_tls_key() {
 /// # Safety note
 ///
 /// Does not validate the pointer type.
+#[inline]
 pub unsafe fn put<T>(sched: ~T) {
     let key = tls_key();
     let void_ptr: *mut c_void = cast::transmute(sched);
@@ -51,6 +52,7 @@ pub unsafe fn put<T>(sched: ~T) {
 /// # Safety note
 ///
 /// Does not validate the pointer type.
+#[inline]
 pub unsafe fn take<T>() -> ~T {
     let key = tls_key();
     let void_ptr: *mut c_void = tls::get(key);
@@ -99,10 +101,15 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 /// Because this leaves the value in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
 pub unsafe fn unsafe_borrow<T>() -> *mut T {
-    match try_unsafe_borrow() {
-        Some(p) => p,
-        None => rtabort!("thread-local pointer is null. bogus!")
+    let key = tls_key();
+    let mut void_ptr: *mut c_void = tls::get(key);
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!")
     }
+    let ptr: *mut *mut c_void = &mut void_ptr;
+    let ptr: *mut ~T = ptr as *mut ~T;
+    let ptr: *mut T = &mut **ptr;
+    return ptr;
 }
 
 pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
@@ -119,6 +126,7 @@ pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
     }
 }
 
+#[inline]
 fn tls_key() -> tls::Key {
     match maybe_tls_key() {
         Some(key) => key,
