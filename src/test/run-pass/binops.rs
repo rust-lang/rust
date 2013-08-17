@@ -10,8 +10,6 @@
 
 // Binop corner cases
 
-use std::libc;
-
 fn test_nil() {
     assert_eq!((), ());
     assert!((!(() != ())));
@@ -95,7 +93,7 @@ fn p(x: int, y: int) -> p {
 }
 
 fn test_class() {
-  let mut q = p(1, 2);
+  let q = p(1, 2);
   let mut r = p(1, 2);
 
   unsafe {

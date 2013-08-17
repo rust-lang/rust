@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    let x: &mut [int] = &mut [ 1, 2, 3 ];
+    let _x: &mut [int] = &mut [ 1, 2, 3 ];
 }

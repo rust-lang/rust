@@ -37,7 +37,7 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
     }
 }
 
-fn add_interface(store: int, managed_ip: ~str, data: extra::json::Json) -> (~str, object)
+fn add_interface(_store: int, managed_ip: ~str, data: extra::json::Json) -> (~str, object)
 {
     match &data {
         &extra::json::Object(ref interface) => {

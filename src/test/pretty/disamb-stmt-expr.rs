@@ -16,5 +16,5 @@
 
 fn id(f: &fn() -> int) -> int { f() }
 
-fn wsucc(n: int) -> int { (do id || { 1 }) - 0 }
+fn wsucc(_n: int) -> int { (do id || { 1 }) - 0 }
 fn main() { }

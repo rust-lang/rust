@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::to_str::*;
-
 pub mod kitty {
     pub struct cat {
       priv meows : uint,

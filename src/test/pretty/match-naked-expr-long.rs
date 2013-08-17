@@ -15,11 +15,11 @@
 
 fn main() {
     let x = Some(3);
-    let y =
+    let _y =
         match x {
             Some(_) =>
-            ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
-                ~"very" + ~"very" + ~"very" + ~"long" + ~"string",
+            ~"some" + "very" + "very" + "very" + "very" + "very" + "very" +
+                "very" + "very" + "long" + "string",
             None => ~"none"
         };
 }

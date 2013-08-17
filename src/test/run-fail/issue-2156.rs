@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unnecessary_allocation)];
+
 // error-pattern:explicit failure
 // Don't double free the string
 extern mod extra;

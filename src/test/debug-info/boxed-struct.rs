@@ -27,6 +27,8 @@
 // debugger:print managed_dtor->val
 // check:$4 = {x = 33, y = 333, z = 3333, w = 33333}
 
+#[allow(unused_variable)];
+
 struct StructWithSomePadding {
     x: i16,
     y: i32,

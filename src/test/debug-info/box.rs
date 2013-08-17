@@ -24,6 +24,8 @@
 // debugger:print d->val
 // check:$4 = false
 
+#[allow(unused_variable)];
+
 fn main() {
     let a = ~1;
     let b = ~(2, 3.5);

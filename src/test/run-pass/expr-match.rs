@@ -22,7 +22,7 @@ fn test_basic() {
 }
 
 fn test_inferrence() {
-    let mut rs = match true { true => { true } false => { false } };
+    let rs = match true { true => { true } false => { false } };
     assert!((rs));
 }
 

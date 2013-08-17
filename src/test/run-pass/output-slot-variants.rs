@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
+
 struct A { a: int, b: int }
 struct Abox { a: @int, b: @int }
 

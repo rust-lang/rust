@@ -13,8 +13,6 @@
 extern mod cci_class_4;
 use cci_class_4::kitties::*;
 
-use std::uint;
-
 pub fn main() {
     let mut nyan = cat(0u, 2, ~"nyan");
     nyan.eat();

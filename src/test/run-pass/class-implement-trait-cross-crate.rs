@@ -13,8 +13,6 @@
 extern mod cci_class_trait;
 use cci_class_trait::animals::*;
 
-use std::uint;
-
 struct cat {
   priv meows: uint,
 

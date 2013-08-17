@@ -19,7 +19,7 @@ fn prime() {
 }
 
 fn partial() {
-    let x = @f();
+    let _x = @f();
 }
 
 fn main() {

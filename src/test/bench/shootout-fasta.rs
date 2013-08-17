@@ -22,9 +22,7 @@ use std::io;
 use std::os;
 use std::rand::Rng;
 use std::rand;
-use std::result;
 use std::str;
-use std::uint;
 
 static LINE_LENGTH: uint = 60u;
 

@@ -18,6 +18,8 @@
 // debugger:print a
 // check:$1 = {1, 2, 3}
 
+#[allow(unused_variable)];
+
 fn main() {
     let a = [1, 2, 3];
 

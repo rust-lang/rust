@@ -30,33 +30,33 @@ fn test_heap_assign() {
 fn test_heap_log() { let s = ~"a big ol' string"; info!(s); }
 
 fn test_stack_add() {
-    assert_eq!(~"a" + ~"b", ~"ab");
+    assert_eq!(~"a" + "b", ~"ab");
     let s: ~str = ~"a";
     assert_eq!(s + s, ~"aa");
-    assert_eq!(~"" + ~"", ~"");
+    assert_eq!(~"" + "", ~"");
 }
 
-fn test_stack_heap_add() { assert!((~"a" + ~"bracadabra" == ~"abracadabra")); }
+fn test_stack_heap_add() { assert!((~"a" + "bracadabra" == ~"abracadabra")); }
 
 fn test_heap_add() {
-    assert_eq!(~"this should" + ~" totally work", ~"this should totally work");
+    assert_eq!(~"this should" + " totally work", ~"this should totally work");
 }
 
 fn test_append() {
     let mut s = ~"";
-    s.push_str(~"a");
+    s.push_str("a");
     assert_eq!(s, ~"a");
 
     let mut s = ~"a";
-    s.push_str(~"b");
+    s.push_str("b");
     info!(s.clone());
     assert_eq!(s, ~"ab");
 
     let mut s = ~"c";
-    s.push_str(~"offee");
+    s.push_str("offee");
     assert!(s == ~"coffee");
 
-    s.push_str(~"&tea");
+    s.push_str("&tea");
     assert!(s == ~"coffee&tea");
 }
 

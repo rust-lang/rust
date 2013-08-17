@@ -18,5 +18,5 @@ enum e<T> { e(arc::Arc<T>) }
 fn foo() -> e<int> {fail!();}
 
 fn main() {
-   let f = foo();
+   let _f = foo();
 }

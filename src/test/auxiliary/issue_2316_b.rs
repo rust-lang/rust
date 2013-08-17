@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused_imports)];
+
 extern mod issue_2316_a;
 
 pub mod cloth {

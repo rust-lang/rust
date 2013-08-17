@@ -14,7 +14,7 @@ fn main() {
     let c = @mut b;
 
     // this should freeze `a` only
-    let x: &mut [int] = c[0];
+    let _x: &mut [int] = c[0];
 
     // hence this should fail
     a[0] = a[0];

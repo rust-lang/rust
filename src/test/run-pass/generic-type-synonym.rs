@@ -16,6 +16,6 @@ struct Foo<T> {
 
 type Bar<T> = Foo<T>;
 
-fn takebar<T>(b: Bar<T>) { }
+fn takebar<T>(_b: Bar<T>) { }
 
 pub fn main() { }

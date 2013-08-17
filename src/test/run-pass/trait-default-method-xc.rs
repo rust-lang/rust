@@ -10,7 +10,7 @@ fn f<T: aux::A>(i: T) {
     assert_eq!(i.g(), 10);
 }
 
-fn welp<T>(i: int, x: &T) -> int {
+fn welp<T>(i: int, _x: &T) -> int {
     i.g()
 }
 

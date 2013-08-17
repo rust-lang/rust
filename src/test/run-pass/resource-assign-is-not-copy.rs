@@ -15,9 +15,7 @@ struct r {
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&self) {
-        unsafe {
-            *(self.i) += 1;
-        }
+        *(self.i) += 1;
     }
 }
 

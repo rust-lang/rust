@@ -45,7 +45,7 @@
 // debugger:print *unique_val_interior_ref_2
 // check:$10 = 26.5
 
-
+#[allow(unused_variable)];
 
 struct SomeStruct {
     x: int,

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(path_statement)];
+#[allow(unreachable_code)];
+#[allow(unused_variable)];
 
 fn id(x: bool) -> bool { x }
 

@@ -34,6 +34,7 @@
 // debugger:print padding_at_end
 // check:$6 = {x = -10014, y = 10015}
 
+#[allow(unused_variable)];
 
 struct NoPadding16 {
     x: u16,

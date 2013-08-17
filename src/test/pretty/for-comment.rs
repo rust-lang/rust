@@ -10,9 +10,11 @@
 
 // pp-exact
 
-fn f(v: &[int]) {
+fn f(v: &[int]) -> int {
     let mut n = 0;
     for e in v.iter() {
         n = *e; // This comment once triggered pretty printer bug
     }
+
+    n
 }

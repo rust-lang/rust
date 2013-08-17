@@ -12,8 +12,6 @@
 // xfail-fast
 extern mod xcrate_unit_struct;
 
-use std::util;
-
 static s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
 static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::Unit;
 static s3: xcrate_unit_struct::Unit =

@@ -10,6 +10,6 @@
 
 
 
-fn leaky<T>(t: T) { }
+fn leaky<T>(_t: T) { }
 
 pub fn main() { let x = ~10; leaky::<~int>(x); }

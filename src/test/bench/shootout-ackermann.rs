@@ -11,7 +11,6 @@
 extern mod extra;
 
 use std::int;
-use std::io;
 use std::os;
 
 fn ack(m: int, n: int) -> int {

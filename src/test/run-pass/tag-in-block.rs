@@ -11,7 +11,7 @@
 
 
 fn foo() {
-    fn zed(z: bar) { }
+    fn zed(_z: bar) { }
     enum bar { nil, }
     fn baz() { zed(nil); }
 }

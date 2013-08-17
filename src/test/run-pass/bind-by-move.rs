@@ -11,7 +11,7 @@
 // xfail-fast
 extern mod extra;
 use extra::arc;
-fn dispose(_x: arc::Arc<bool>) { unsafe { } }
+fn dispose(_x: arc::Arc<bool>) { }
 
 pub fn main() {
     let p = arc::Arc::new(true);

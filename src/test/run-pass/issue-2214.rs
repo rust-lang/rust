@@ -12,7 +12,6 @@
 
 use std::cast;
 use std::libc::{c_double, c_int};
-use std::f64::*;
 
 fn to_c_int(v: &mut int) -> &mut c_int {
     unsafe {

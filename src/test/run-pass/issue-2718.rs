@@ -10,8 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::util;
-
 pub type Task = int;
 
 // tjc: I don't know why
@@ -62,7 +60,7 @@ pub mod pipes {
     // We should consider moving this to ::std::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     pub unsafe fn uniquify<T>(x: *T) -> ~T {
-        unsafe { cast::transmute(x) }
+        cast::transmute(x)
     }
 
     pub fn swap_state_acq(dst: &mut state, src: state) -> state {
@@ -78,7 +76,7 @@ pub mod pipes {
     }
 
     pub fn send<T:Send>(mut p: send_packet<T>, payload: T) {
-        let mut p = p.unwrap();
+        let p = p.unwrap();
         let mut p = unsafe { uniquify(p) };
         assert!((*p).payload.is_none());
         (*p).payload = Some(payload);
@@ -104,7 +102,7 @@ pub mod pipes {
     }
 
     pub fn recv<T:Send>(mut p: recv_packet<T>) -> Option<T> {
-        let mut p = p.unwrap();
+        let p = p.unwrap();
         let mut p = unsafe { uniquify(p) };
         loop {
             let old_state = swap_state_acq(&mut (*p).state,
@@ -123,7 +121,7 @@ pub mod pipes {
         }
     }
 
-    pub fn sender_terminate<T:Send>(mut p: *packet<T>) {
+    pub fn sender_terminate<T:Send>(p: *packet<T>) {
         let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
@@ -140,7 +138,7 @@ pub mod pipes {
         }
     }
 
-    pub fn receiver_terminate<T:Send>(mut p: *packet<T>) {
+    pub fn receiver_terminate<T:Send>(p: *packet<T>) {
         let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
@@ -225,15 +223,13 @@ pub mod pipes {
 
 pub mod pingpong {
     use std::cast;
-    use std::ptr;
-    use std::util;
 
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);
 
     pub fn liberate_ping(p: ping) -> ::pipes::send_packet<pong> {
         unsafe {
-            let addr : *::pipes::send_packet<pong> = match &p {
+            let _addr : *::pipes::send_packet<pong> = match &p {
               &ping(ref x) => { cast::transmute(x) }
             };
             fail!()
@@ -242,7 +238,7 @@ pub mod pingpong {
 
     pub fn liberate_pong(p: pong) -> ::pipes::send_packet<ping> {
         unsafe {
-            let addr : *::pipes::send_packet<ping> = match &p {
+            let _addr : *::pipes::send_packet<ping> = match &p {
               &pong(ref x) => { cast::transmute(x) }
             };
             fail!()
@@ -254,7 +250,6 @@ pub mod pingpong {
     }
 
     pub mod client {
-        use std::option;
         use pingpong;
 
         pub type ping = ::pipes::send_packet<pingpong::ping>;

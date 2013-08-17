@@ -1,4 +1,3 @@
-use std::comm::*;
 use std::task;
 
 fn producer(c: &Chan<~[u8]>) {
@@ -9,7 +8,7 @@ fn producer(c: &Chan<~[u8]>) {
 
 pub fn main() {
     let (p, ch) = stream::<~[u8]>();
-    let prod = task::spawn(|| producer(&ch) );
+    let _prod = task::spawn(|| producer(&ch) );
 
-    let data: ~[u8] = p.recv();
+    let _data: ~[u8] = p.recv();
 }

@@ -26,7 +26,7 @@ struct Large {a: int,
              k: int,
              l: int}
 fn f() {
-    let foo: Large =
+    let _foo: Large =
         Large {a: 0,
          b: 0,
          c: 0,

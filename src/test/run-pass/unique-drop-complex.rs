@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = ~~[0,0,0,0,0];
+    let _x = ~~[0,0,0,0,0];
 }

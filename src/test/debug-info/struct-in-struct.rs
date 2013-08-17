@@ -25,6 +25,7 @@
 // debugger:print padding_at_end_parent
 // check:$3 = {x = {x = 10, y = 11}, y = {x = 12, y = 13}, z = {x = 14, y = 15}}
 
+#[allow(unused_variable)];
 
 struct Simple {
     x: i32

@@ -1,3 +1,3 @@
-fn foo<T: ::std::cmp::Eq>(t: T) { }
+fn foo<T: ::std::cmp::Eq>(_t: T) { }
 
 fn main() { }
