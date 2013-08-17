@@ -795,14 +795,18 @@ fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::expr,
                 return bcx;
             }
         }
-        ast::def_struct(*) => {
+        ast::def_struct(def_id) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty::get(ty).sty {
                 ty::ty_struct(did, _) if ty::has_dtor(ccx.tcx, did) => {
                     let repr = adt::represent_type(ccx, ty);
                     adt::trans_start_init(bcx, repr, lldest, 0);
                 }
-                _ => {}
+                ty::ty_bare_fn(*) => {
+                    let fn_data = callee::trans_fn_ref(bcx, def_id, ref_expr.id);
+                    Store(bcx, fn_data.llfn, lldest);
+                }
+                _ => ()
             }
             return bcx;
         }
