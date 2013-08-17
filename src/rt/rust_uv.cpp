@@ -17,34 +17,6 @@
 
 #include "rust_globals.h"
 
-// extern fn pointers
-typedef void (*extern_async_op_cb)(uv_loop_t* loop, void* data,
-        uv_async_t* op_handle);
-typedef void (*extern_simple_cb)(uint8_t* id_buf, void* loop_data);
-typedef void (*extern_close_cb)(uint8_t* id_buf, void* handle,
-        void* data);
-
-// data types
-#define RUST_UV_HANDLE_LEN 16
-
-struct handle_data {
-    uint8_t id_buf[RUST_UV_HANDLE_LEN];
-    extern_simple_cb cb;
-    extern_close_cb close_cb;
-};
-
-static void
-foreign_timer_cb(uv_timer_t* handle, int status) {
-    handle_data* handle_d = (handle_data*)handle->data;
-    void* loop_data = handle->loop->data;
-    handle_d->cb(handle_d->id_buf, loop_data);
-}
-
-static void
-foreign_close_cb(uv_handle_t* handle) {
-    handle_data* data = (handle_data*)handle->data;
-    data->close_cb(data->id_buf, handle, handle->loop->data);
-}
 extern "C" void*
 rust_uv_loop_new() {
     return (void*)uv_loop_new();
@@ -92,13 +64,6 @@ rust_uv_walk(uv_loop_t* loop, uv_walk_cb cb, void* arg) {
 }
 
 extern "C" void
-rust_uv_hilvl_close(uv_handle_t* handle, extern_close_cb cb) {
-    handle_data* data = (handle_data*)handle->data;
-    data->close_cb = cb;
-    uv_close(handle, foreign_close_cb);
-}
-
-extern "C" void
 rust_uv_async_send(uv_async_t* handle) {
     uv_async_send(handle);
 }
@@ -108,12 +73,6 @@ rust_uv_async_init(uv_loop_t* loop_handle,
         uv_async_t* async_handle,
         uv_async_cb cb) {
     return uv_async_init(loop_handle, async_handle, cb);
-}
-
-extern "C" void
-rust_uv_hilvl_timer_start(uv_timer_t* the_timer, uint32_t timeout,
-        uint32_t repeat) {
-    uv_timer_start(the_timer, foreign_timer_cb, timeout, repeat);
 }
 
 extern "C" int
@@ -301,58 +260,6 @@ rust_uv_accept(uv_stream_t* server, uv_stream_t* client) {
     return uv_accept(server, client);
 }
 
-extern "C" size_t
-rust_uv_helper_uv_tcp_t_size() {
-    return sizeof(uv_tcp_t);
-}
-extern "C" size_t
-rust_uv_helper_uv_connect_t_size() {
-    return sizeof(uv_connect_t);
-}
-extern "C" size_t
-rust_uv_helper_uv_buf_t_size() {
-    return sizeof(uv_buf_t);
-}
-extern "C" size_t
-rust_uv_helper_uv_write_t_size() {
-    return sizeof(uv_write_t);
-}
-extern "C" size_t
-rust_uv_helper_uv_err_t_size() {
-    return sizeof(uv_err_t);
-}
-extern "C" size_t
-rust_uv_helper_sockaddr_in_size() {
-    return sizeof(sockaddr_in);
-}
-extern "C" size_t
-rust_uv_helper_sockaddr_in6_size() {
-    return sizeof(sockaddr_in6);
-}
-extern "C" size_t
-rust_uv_helper_uv_async_t_size() {
-    return sizeof(uv_async_t);
-}
-extern "C" size_t
-rust_uv_helper_uv_timer_t_size() {
-    return sizeof(uv_timer_t);
-}
-extern "C" size_t
-rust_uv_helper_addr_in_size() {
-    return sizeof(sockaddr_in6);
-}
-extern "C" size_t
-rust_uv_helper_uv_getaddrinfo_t_size() {
-    return sizeof(uv_getaddrinfo_t);
-}
-extern "C" size_t
-rust_uv_helper_addrinfo_size() {
-    return sizeof(addrinfo);
-}
-extern "C" unsigned int
-rust_uv_helper_get_INADDR_NONE() {
-    return INADDR_NONE;
-}
 extern "C" uv_stream_t*
 rust_uv_get_stream_handle_from_connect_req(uv_connect_t* connect) {
     return connect->handle;

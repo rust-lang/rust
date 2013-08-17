@@ -92,11 +92,6 @@ pub unsafe fn check_not_borrowed(a: *u8,
     borrowck::check_not_borrowed(a, file, line)
 }
 
-#[lang="annihilate"]
-pub unsafe fn annihilate() {
-    ::cleanup::annihilate()
-}
-
 #[lang="start"]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {

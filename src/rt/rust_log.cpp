@@ -13,7 +13,6 @@
  */
 
 
-#include "rust_log.h"
 #include "rust_crate_map.h"
 #include "util/array_list.h"
 #include "rust_util.h"
@@ -24,6 +23,12 @@ struct log_directive {
     char* name;
     size_t level;
 };
+
+
+const uint32_t log_err = 1;
+const uint32_t log_warn = 2;
+const uint32_t log_info = 3;
+const uint32_t log_debug = 4;
 
 const size_t max_log_directives = 255;
 const size_t max_log_level = 255;
@@ -84,12 +89,6 @@ static void update_entry(const mod_entry* entry, void *cookie) {
     }
 }
 
-void update_module_map(const mod_entry* map, log_directive* dirs,
-                       size_t n_dirs, size_t *n_matches) {
-    update_entry_args args = { dirs, n_dirs, n_matches };
-    iter_module_map(map, update_entry, &args);
-}
-
 void update_crate_map(const cratemap* map, log_directive* dirs,
                       size_t n_dirs, size_t *n_matches) {
     update_entry_args args = { dirs, n_dirs, n_matches };
@@ -103,40 +102,6 @@ void print_mod_name(const mod_entry* mod, void *cooke) {
 void print_crate_log_map(const cratemap* map) {
     iter_crate_map(map, print_mod_name, NULL);
 }
-
-// These are pseudo-modules used to control logging in the runtime.
-
-uint32_t log_rt_mem;
-uint32_t log_rt_box;
-uint32_t log_rt_comm;
-uint32_t log_rt_task;
-uint32_t log_rt_dom;
-uint32_t log_rt_trace;
-uint32_t log_rt_cache;
-uint32_t log_rt_upcall;
-uint32_t log_rt_timer;
-uint32_t log_rt_gc;
-uint32_t log_rt_stdlib;
-uint32_t log_rt_kern;
-uint32_t log_rt_backtrace;
-uint32_t log_rt_callback;
-
-static const mod_entry _rt_module_map[] =
-    {{"::rt::mem", &log_rt_mem},
-     {"::rt::box", &log_rt_box},
-     {"::rt::comm", &log_rt_comm},
-     {"::rt::task", &log_rt_task},
-     {"::rt::dom", &log_rt_dom},
-     {"::rt::trace", &log_rt_trace},
-     {"::rt::cache", &log_rt_cache},
-     {"::rt::upcall", &log_rt_upcall},
-     {"::rt::timer", &log_rt_timer},
-     {"::rt::gc", &log_rt_gc},
-     {"::rt::stdlib", &log_rt_stdlib},
-     {"::rt::kern", &log_rt_kern},
-     {"::rt::backtrace", &log_rt_backtrace},
-     {"::rt::callback", &log_rt_callback},
-     {NULL, NULL}};
 
 void update_log_settings(void* crate_map, char* settings) {
     char* buffer = NULL;
@@ -160,7 +125,6 @@ void update_log_settings(void* crate_map, char* settings) {
     }
 
     size_t n_matches = 0;
-    update_module_map(_rt_module_map, &dirs[0], n_dirs, &n_matches);
     update_crate_map((const cratemap*)crate_map, &dirs[0],
                      n_dirs, &n_matches);
 
