@@ -12,7 +12,7 @@
 pub fn main() {
     let x = &"hello";
     let v = &"hello";
-    let mut y : &str = &"there";
+    let y : &str = &"there";
 
     info!(x);
     info!(y);

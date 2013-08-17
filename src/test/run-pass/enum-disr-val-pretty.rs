@@ -19,7 +19,7 @@ pub fn main() {
     test_color(imaginary, -1, ~"imaginary");
 }
 
-fn test_color(color: color, val: int, name: ~str) {
+fn test_color(color: color, val: int, _name: ~str) {
     assert!(color as int == val);
     assert!(color as float == val as float);
 }

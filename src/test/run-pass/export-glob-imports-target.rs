@@ -21,7 +21,7 @@ mod foo {
         pub static a : int = 10;
     }
     pub fn zum() {
-        let b = a;
+        let _b = a;
     }
 }
 

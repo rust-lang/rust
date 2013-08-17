@@ -12,7 +12,7 @@
 // Testing that comments are correctly interleaved
 // pp-exact:vec-comments.pp
 fn main() {
-    let v1 =
+    let _v1 =
         ~[
           // Comment
           0,
@@ -20,11 +20,11 @@ fn main() {
           1,
           // Comment
           2];
-    let v2 =
+    let _v2 =
         ~[0, // Comment
           1, // Comment
           2]; // Comment
-    let v3 =
+    let _v3 =
         ~[
           /* Comment */
           0,
@@ -32,7 +32,7 @@ fn main() {
           1,
           /* Comment */
           2];
-    let v4 =
+    let _v4 =
         ~[0, /* Comment */
           1, /* Comment */
           2]; /* Comment */

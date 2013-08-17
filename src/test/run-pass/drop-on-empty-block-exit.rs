@@ -12,4 +12,7 @@
 
 enum t { foo(@int), }
 
-pub fn main() { let tt = foo(@10); match tt { foo(z) => { } } }
+pub fn main() {
+    let tt = foo(@10);
+    match tt { foo(_z) => { } }
+}

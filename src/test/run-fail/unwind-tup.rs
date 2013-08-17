@@ -15,5 +15,5 @@ fn fold_local() -> @~[int]{
 }
 
 fn main() {
-    let lss = (fold_local(), 0);
+    let _lss = (fold_local(), 0);
 }

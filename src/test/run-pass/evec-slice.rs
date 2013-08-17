@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_assignment)];
+
 pub fn main() {
     let x : &[int] = &[1,2,3,4,5];
     let mut z = &[1,2,3,4,5];

@@ -18,8 +18,10 @@ fn range_(lo: uint, hi: uint, it: &fn(uint)) {
     while lo_ < hi { it(lo_); lo_ += 1u; }
 }
 
-fn create_index<T>(index: ~[S<T>], hash_fn: extern fn(T) -> uint) {
-    range_(0u, 256u, |_i| { let bucket: ~[T] = ~[]; } )
+fn create_index<T>(_index: ~[S<T>], _hash_fn: extern fn(T) -> uint) {
+    do range_(0u, 256u) |_i| {
+        let _bucket: ~[T] = ~[];
+    }
 }
 
 pub fn main() { }

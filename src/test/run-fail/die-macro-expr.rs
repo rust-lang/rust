@@ -1,5 +1,5 @@
 // error-pattern:test
 
 fn main() {
-    let i: int = fail!("test");
+    let _i: int = fail!("test");
 }

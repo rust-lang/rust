@@ -14,7 +14,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn start(task_number: int) { info!("Started / Finished task."); }
+fn start(_task_number: int) { info!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;

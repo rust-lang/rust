@@ -10,7 +10,6 @@
 
 // error-pattern:Ensure that the child task runs by failing
 
-use std::str;
 use std::task;
 
 fn main() {

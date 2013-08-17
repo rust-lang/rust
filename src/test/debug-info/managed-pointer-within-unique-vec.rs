@@ -27,6 +27,8 @@
 // debugger:print unique->val.elements[3]->val
 // check:$4 = 13
 
+#[allow(unused_variable)];
+
 fn main() {
 
     let unique: ~[@i64] = ~[@10, @11, @12, @13];

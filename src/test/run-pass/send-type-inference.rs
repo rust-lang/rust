@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::*;
-
 // tests that ctrl's type gets inferred properly
 struct Command<K, V> {
     key: K,
@@ -17,7 +15,7 @@ struct Command<K, V> {
 }
 
 fn cache_server<K:Send,V:Send>(c: Chan<Chan<Command<K, V>>>) {
-    let (ctrl_port, ctrl_chan) = stream();
+    let (_ctrl_port, ctrl_chan) = stream();
     c.send(ctrl_chan);
 }
 pub fn main() { }

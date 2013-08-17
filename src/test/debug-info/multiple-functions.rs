@@ -28,6 +28,8 @@
 // debugger:print c
 // check:$3 = 30303
 
+#[allow(unused_variable)];
+
 fn function_one() {
 	let a = 10101;
 	zzz();

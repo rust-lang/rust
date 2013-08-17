@@ -17,7 +17,7 @@ extern mod pub_use_xcrate2;
 use pub_use_xcrate2::Foo;
 
 pub fn main() {
-    let foo: Foo = Foo {
+    let _foo: Foo = Foo {
         name: 0
     };
 }

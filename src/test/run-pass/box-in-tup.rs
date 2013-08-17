@@ -8,4 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let i: (@int, int) = (@10, 10); let (a, _) = i; }
+pub fn main() {
+    let i: (@int, int) = (@10, 10);
+    let (_a, _) = i;
+}

@@ -12,4 +12,4 @@
 
 
 // -*- rust -*-
-pub fn main() { let x: uint = 10 as uint; }
+pub fn main() { let _x: uint = 10 as uint; }

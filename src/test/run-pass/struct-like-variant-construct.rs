@@ -20,5 +20,5 @@ enum Foo {
 }
 
 pub fn main() {
-    let x = Bar { a: 2, b: 3 };
+    let _x = Bar { a: 2, b: 3 };
 }

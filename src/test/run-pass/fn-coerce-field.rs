@@ -14,5 +14,5 @@ struct r {
 
 pub fn main() {
     fn f() {}
-    let i: r = r {field: f};
+    let _i: r = r {field: f};
 }

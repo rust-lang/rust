@@ -14,10 +14,10 @@ pub type SIZE_T = u32;
 pub type LPVOID = uint;
 pub type BOOL = u8;
 
+#[cfg(target_os = "win32")]
 mod kernel32 {
     use super::{HANDLE, DWORD, SIZE_T, LPVOID, BOOL};
 
-    #[cfg(target_os = "win32")]
     #[abi = "stdcall"]
     extern "stdcall" {
         pub fn GetProcessHeap() -> HANDLE;

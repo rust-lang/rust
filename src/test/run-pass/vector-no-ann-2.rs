@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let quux: @~[uint] = @~[]; }
+pub fn main() { let _quux: @~[uint] = @~[]; }

@@ -22,7 +22,6 @@ use std::io::ReaderUtil;
 use std::io;
 use std::option;
 use std::os;
-use std::result;
 use std::str;
 use std::task;
 use std::util;

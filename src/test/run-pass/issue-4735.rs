@@ -17,12 +17,12 @@ struct NonCopyable(*c_void);
 impl Drop for NonCopyable {
     fn drop(&self) {
         let p = **self;
-        let v = unsafe { transmute::<*c_void, ~int>(p) };
+        let _v = unsafe { transmute::<*c_void, ~int>(p) };
     }
 }
 
 fn main() {
     let t = ~0;
     let p = unsafe { transmute::<~int, *c_void>(t) };
-    let z = NonCopyable(p);
+    let _z = NonCopyable(p);
 }

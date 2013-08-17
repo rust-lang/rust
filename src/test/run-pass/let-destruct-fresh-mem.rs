@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_assignment)];
+
 struct X { x: int, y: @A }
 struct A { a: int }
 

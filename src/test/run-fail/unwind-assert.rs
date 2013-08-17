@@ -11,6 +11,6 @@
 // error-pattern:fail
 
 fn main() {
-    let a = @0;
+    let _a = @0;
     assert!(false);
 }

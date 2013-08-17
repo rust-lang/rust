@@ -15,7 +15,6 @@ extern mod extra;
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
 use std::os;
-use std::u8;
 use std::uint;
 use std::unstable::intrinsics::cttz16;
 use std::vec;

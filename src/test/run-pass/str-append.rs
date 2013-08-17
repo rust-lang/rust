@@ -24,8 +24,8 @@ fn test2() {
     // This tests for issue #163
 
     let ff: ~str = ~"abc";
-    let a: ~str = ff + ~"ABC" + ff;
-    let b: ~str = ~"ABC" + ff + ~"ABC";
+    let a: ~str = ff + "ABC" + ff;
+    let b: ~str = ~"ABC" + ff + "ABC";
     info!(a.clone());
     info!(b.clone());
     assert_eq!(a, ~"abcABCabc");

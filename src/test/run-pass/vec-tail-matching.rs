@@ -16,7 +16,7 @@ pub fn main() {
             assert!(tail[1].string == ~"baz");
 
             match tail {
-                [Foo { _ }, _, Foo { _ }, ..tail] => {
+                [Foo { _ }, _, Foo { _ }, .. _tail] => {
                     ::std::util::unreachable();
                 }
                 [Foo { string: ref a }, Foo { string: ref b }] => {

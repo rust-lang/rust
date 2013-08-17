@@ -25,7 +25,7 @@ pub enum e {
 
 pub fn nominal() -> e { e_val }
 
-pub fn nominal_eq(e1: e, e2: e) -> bool { true }
+pub fn nominal_eq(_e1: e, _e2: e) -> bool { true }
 
 impl Eq for e {
     fn eq(&self, other: &e) -> bool { nominal_eq(*self, *other) }

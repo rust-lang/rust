@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(a: ~[int]) { }
+fn f(_a: ~[int]) { }
 pub fn main() { f(~[1, 2, 3, 4, 5]); }

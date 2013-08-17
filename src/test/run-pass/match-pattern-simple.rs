@@ -10,6 +10,6 @@
 
 
 
-fn altsimple(f: int) { match f { x => () } }
+fn altsimple(f: int) { match f { _x => () } }
 
 pub fn main() { }

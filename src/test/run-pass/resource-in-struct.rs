@@ -21,9 +21,7 @@ struct close_res {
 #[unsafe_destructor]
 impl Drop for close_res {
     fn drop(&self) {
-        unsafe {
-            *(self.i) = false;
-        }
+        *(self.i) = false;
     }
 }
 
@@ -35,7 +33,7 @@ fn close_res(i: closable) -> close_res {
 
 enum option<T> { none, some(T), }
 
-fn sink(res: option<close_res>) { }
+fn sink(_res: option<close_res>) { }
 
 pub fn main() {
     let c = @mut true;

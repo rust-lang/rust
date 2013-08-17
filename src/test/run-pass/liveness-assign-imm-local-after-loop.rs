@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test(cond: bool) {
+#[allow(dead_assignment)];
+#[allow(unreachable_code)];
+#[allow(unused_variable)];
+
+fn test(_cond: bool) {
     let v: int;
     v = 1;
     loop { } // loop never terminates, so no error is reported

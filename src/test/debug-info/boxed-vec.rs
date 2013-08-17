@@ -25,6 +25,8 @@
 // debugger:print *((uint64_t[4]*)(unique->elements))
 // check:$4 = {10, 11, 12, 13}
 
+#[allow(unused_variable)];
+
 fn main() {
 
     let managed: @[i64] = @[7, 8, 9];

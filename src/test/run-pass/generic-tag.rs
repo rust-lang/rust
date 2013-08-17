@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
 
 enum option<T> { some(@T), none, }
 
-pub fn main() { let mut a: option<int> = some::<int>(@10); a = none::<int>; }
+pub fn main() {
+    let mut a: option<int> = some::<int>(@10);
+    a = none::<int>;
+}

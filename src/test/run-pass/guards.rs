@@ -19,7 +19,7 @@ pub fn main() {
         match Pair {x: 10, y: 20} {
           x if x.x < 5 && x.y < 5 => { 1 }
           Pair {x: x, y: y} if x == 10 && y == 20 => { 2 }
-          Pair {x: x, y: y} => { 3 }
+          Pair {x: _x, y: _y} => { 3 }
         };
     assert_eq!(b, 2);
 }

@@ -10,8 +10,6 @@
 
 extern mod extra;
 
-use std::str;
-
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
     let mut a: ~str = ~"A";

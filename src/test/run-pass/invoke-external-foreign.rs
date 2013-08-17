@@ -19,6 +19,6 @@ extern mod foreign_lib;
 
 pub fn main() {
     unsafe {
-        let foo = foreign_lib::rustrt::rust_get_test_int();
+        let _foo = foreign_lib::rustrt::rust_get_test_int();
     }
 }

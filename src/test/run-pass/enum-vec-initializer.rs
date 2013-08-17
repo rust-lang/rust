@@ -16,9 +16,9 @@ static BAR:uint = Bunny as uint;
 static BAR2:uint = BAR;
 
 fn main() {
-    let v = [0, .. Bunny as uint];
-    let v = [0, .. BAR];
-    let v = [0, .. BAR2];
+    let _v = [0, .. Bunny as uint];
+    let _v = [0, .. BAR];
+    let _v = [0, .. BAR2];
     static BAR3:uint = BAR2;
-    let v = [0, .. BAR3];
+    let _v = [0, .. BAR3];
 }

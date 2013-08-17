@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused_mut)];
 
 struct Pair { a: int, b: int}
 
 pub fn main() {
     // This just tests whether the vec leaks its members.
-    let mut pvec: ~[@Pair] =
+    let mut _pvec: ~[@Pair] =
         ~[@Pair{a: 1, b: 2}, @Pair{a: 3, b: 4}, @Pair{a: 5, b: 6}];
 }

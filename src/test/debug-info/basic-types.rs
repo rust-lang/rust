@@ -51,6 +51,8 @@
 // debugger:print f64
 // check:$15 = 3.5
 
+#[allow(unused_variable)];
+
 fn main() {
     let b: bool = false;
     let i: int = -1;

@@ -89,8 +89,8 @@ pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
     // if they had the bogus definition
     assert!((b));
-    let x: t = true;
-    let y: tg = bar;
+    let _x: t = true;
+    let _y: tg = bar;
 
     test_in_fn_ctxt();
 }

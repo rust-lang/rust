@@ -15,7 +15,7 @@ use std::ptr;
 struct F { f: ~int }
 
 pub fn main() {
-    let mut x = @mut @F {f: ~3};
+    let x = @mut @F {f: ~3};
     match x {
       @@F{f: ref b_x} => {
         assert_eq!(**b_x, 3);

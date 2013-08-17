@@ -12,10 +12,10 @@
 // error-pattern:fail
 
 fn main() {
-    let count = @mut 0u;
+    let _count = @mut 0u;
     let mut map = std::hashmap::HashMap::new();
     let mut arr = ~[];
-    for i in range(0u, 10u) {
+    for _i in range(0u, 10u) {
         arr.push(@~"key stuff");
         map.insert(arr.clone(), arr + &[@~"value stuff"]);
         if arr.len() == 5 {

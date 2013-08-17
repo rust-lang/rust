@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-
 // Check usage and precedence of block arguments in expressions:
 pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];

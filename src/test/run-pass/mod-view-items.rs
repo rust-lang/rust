@@ -21,4 +21,4 @@ mod m {
     pub fn f() -> ~[int] { vec::from_elem(1u, 0) }
 }
 
-pub fn main() { let x = m::f(); }
+pub fn main() { let _x = m::f(); }

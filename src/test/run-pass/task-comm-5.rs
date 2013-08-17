@@ -15,7 +15,7 @@ use std::comm;
 pub fn main() { test00(); }
 
 fn test00() {
-    let r: int = 0;
+    let _r: int = 0;
     let mut sum: int = 0;
     let (p, c) = comm::stream();
     let number_of_messages: int = 1000;

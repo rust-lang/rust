@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-
 fn w_semi(v: ~[int]) -> int {
     // the semicolon causes compiler not to
     // complain about the ignored return value:
