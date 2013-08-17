@@ -32,7 +32,6 @@ use std::to_bytes;
 pub enum ObsoleteSyntax {
     ObsoleteLet,
     ObsoleteFieldTerminator,
-    ObsoleteStructCtor,
     ObsoleteWith,
     ObsoleteClassTraits,
     ObsoletePrivSection,
@@ -89,7 +88,6 @@ pub trait ParserObsoleteMethods {
     fn token_is_obsolete_ident(&self, ident: &str, token: &Token) -> bool;
     fn is_obsolete_ident(&self, ident: &str) -> bool;
     fn eat_obsolete_ident(&self, ident: &str) -> bool;
-    fn try_parse_obsolete_struct_ctor(&self) -> bool;
     fn try_parse_obsolete_with(&self) -> bool;
     fn try_parse_obsolete_priv_section(&self, attrs: &[Attribute]) -> bool;
 }
@@ -105,12 +103,6 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteFieldTerminator => (
                 "field declaration terminated with semicolon",
                 "fields are now separated by commas"
-            ),
-            ObsoleteStructCtor => (
-                "struct constructor",
-                "structs are now constructed with `MyStruct { foo: val }` \
-                 syntax. Structs with private fields cannot be created \
-                 outside of their defining module"
             ),
             ObsoleteWith => (
                 "with",
@@ -305,17 +297,6 @@ impl ParserObsoleteMethods for Parser {
     fn eat_obsolete_ident(&self, ident: &str) -> bool {
         if self.is_obsolete_ident(ident) {
             self.bump();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn try_parse_obsolete_struct_ctor(&self) -> bool {
-        if self.eat_obsolete_ident("new") {
-            self.obsolete(*self.last_span, ObsoleteStructCtor);
-            self.parse_fn_decl();
-            self.parse_block();
             true
         } else {
             false
