@@ -156,7 +156,7 @@ impl FileInput {
     /**
     Create a `FileInput` object from a vec of files. An empty
     vec means lines are read from `stdin` (use `from_vec_raw` to stop
-    this behaviour). Any occurence of `None` represents `stdin`.
+    this behaviour). Any occurrence of `None` represents `stdin`.
     */
     pub fn from_vec(files: ~[Option<Path>]) -> FileInput {
         FileInput::from_vec_raw(

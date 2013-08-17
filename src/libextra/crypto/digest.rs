@@ -47,18 +47,18 @@ pub trait Digest {
     fn output_bits(&self) -> uint;
 
     /**
-     * Convenience functon that feeds a string into a digest
+     * Convenience function that feeds a string into a digest.
      *
      * # Arguments
      *
-     * * in The string to feed into the digest
+     * * `input` The string to feed into the digest
      */
     fn input_str(&mut self, input: &str) {
         self.input(input.as_bytes());
     }
 
     /**
-     * Convenience functon that retrieves the result of a digest as a
+     * Convenience function that retrieves the result of a digest as a
      * ~str in hexadecimal format.
      */
     fn result_str(&mut self) -> ~str {
