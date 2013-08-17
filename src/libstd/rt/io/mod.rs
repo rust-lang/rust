@@ -430,7 +430,7 @@ pub trait Reader {
     ///         println(reader.read_line());
     ///     }
     ///
-    /// # Failue
+    /// # Failure
     ///
     /// Returns `true` on failure.
     fn eof(&mut self) -> bool;

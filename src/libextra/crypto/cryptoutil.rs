@@ -125,7 +125,7 @@ pub fn shift_add_check_overflow_tuple
 /// method that modifies the buffer directory or provides the caller with bytes that can be modifies
 /// results in those bytes being marked as used by the buffer.
 pub trait FixedBuffer {
-    /// Input a vector of bytes. If the buffer becomes full, proccess it with the provided
+    /// Input a vector of bytes. If the buffer becomes full, process it with the provided
     /// function and then clear the buffer.
     fn input(&mut self, input: &[u8], func: &fn(&[u8]));
 
