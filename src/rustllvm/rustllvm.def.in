@@ -613,4 +613,5 @@ LLVMDIBuilderInsertDeclareBefore
 LLVMDIBuilderCreateEnumerator
 LLVMDIBuilderCreateEnumerationType
 LLVMDIBuilderCreateUnionType
+LLVMDIBuilderCreateTemplateTypeParameter
 LLVMSetUnnamedAddr

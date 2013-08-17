@@ -133,7 +133,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 
 fn fcx_has_nonzero_span(fcx: &FunctionContext) -> bool {
     match fcx.span {
-        None => true,
+        None => false,
         Some(span) => *span.lo != 0 || *span.hi != 0
     }
 }
@@ -1739,6 +1739,10 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
 
             fcx.llself = Some(ValSelfData {v: self_val, ..slf});
             add_clean(bcx, self_val, slf.t);
+
+            if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
+                debuginfo::create_self_argument_metadata(bcx, slf.t, self_val);
+            }
         }
         _ => {}
     }
@@ -1859,6 +1863,10 @@ pub fn trans_closure(ccx: @mut CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
+    if ccx.sess.opts.debuginfo && fcx_has_nonzero_span(fcx) {
+        debuginfo::create_function_metadata(fcx);
+    }
+
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
     let bcx_top = fcx.entry_bcx.unwrap();
@@ -1929,12 +1937,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   id,
                   attrs,
                   output_type,
-                  |fcx| {
-                      if ccx.sess.opts.debuginfo
-                          && fcx_has_nonzero_span(fcx) {
-                          debuginfo::create_function_metadata(fcx);
-                      }
-                  });
+                  |_fcx| { });
 }
 
 fn insert_synthetic_type_entries(bcx: @mut Block,
