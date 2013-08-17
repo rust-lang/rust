@@ -10,7 +10,6 @@
 
 use ast;
 use codemap::{spanned, mk_sp};
-use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;
 use parse::parser::Parser;
