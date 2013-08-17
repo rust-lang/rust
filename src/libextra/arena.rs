@@ -38,7 +38,7 @@
 use list::{MutList, MutCons, MutNil};
 
 use std::at_vec;
-use std::cast::{transmute, transmute_mut, transmute_mut_region};
+use std::cast::{transmute, transmute_mut_region};
 use std::cast;
 use std::num;
 use std::ptr;
@@ -263,14 +263,12 @@ impl Arena {
 
     // The external interface
     #[inline]
-    pub fn alloc<'a, T>(&'a self, op: &fn() -> T) -> &'a T {
+    pub fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
-            // XXX: Borrow check
-            let this = transmute_mut(self);
             if intrinsics::needs_drop::<T>() {
-                this.alloc_nonpod(op)
+                self.alloc_nonpod(op)
             } else {
-                this.alloc_pod(op)
+                self.alloc_pod(op)
             }
         }
     }
@@ -279,7 +277,7 @@ impl Arena {
 #[test]
 fn test_arena_destructors() {
     let arena = Arena::new();
-    for i in range(0u, 10) {
+    for i in range(0, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
         do arena.alloc { @i };

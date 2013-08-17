@@ -59,7 +59,7 @@ fn main() {
 
     let stretch_arena = Arena::new();
     let stretch_depth = max_depth + 1;
-    let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
+    let stretch_tree = bottom_up_tree(&mut stretch_arena, 0, stretch_depth);
 
     printfln!("stretch tree of depth %d\t check: %d",
               stretch_depth,
