@@ -16,7 +16,7 @@ use extra::getopts::*;
 
 pub fn main() {
     let args = ~[];
-    let opts = ~[optopt(~"b")];
+    let opts = ~[optopt("b")];
 
     match getopts(args, opts) {
         Ok(ref m)  =>

@@ -13,14 +13,11 @@
 extern mod extra;
 
 use extra::time::precise_time_s;
-use std::int;
 use std::io;
 use std::os;
 use std::rand::RngUtil;
 use std::rand;
-use std::result;
 use std::str;
-use std::uint;
 use std::util;
 use std::vec;
 

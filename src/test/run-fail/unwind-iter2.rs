@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn x(it: &fn(int)) {
-    let a = @0;
+    let _a = @0;
     it(1);
 }
 

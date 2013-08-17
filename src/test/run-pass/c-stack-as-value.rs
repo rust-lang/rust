@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc;
-
 mod rustrt {
     use std::libc;
 
@@ -20,7 +18,5 @@ mod rustrt {
 }
 
 pub fn main() {
-    unsafe {
-        let _foo = rustrt::rust_get_test_int;
-    }
+    let _foo = rustrt::rust_get_test_int;
 }

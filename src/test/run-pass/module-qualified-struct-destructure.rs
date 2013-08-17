@@ -17,5 +17,5 @@ mod m {
 
 pub fn main() {
     let x = m::S { x: 1, y: 2 };
-    let m::S { x: a, y: b } = x;
+    let m::S { x: _a, y: _b } = x;
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint;
-
 trait noisy {
   fn speak(&self) -> int;
 }
@@ -83,7 +81,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 fn annoy_neighbors(critter: @noisy) {
-    for i in range(0u, 10) { critter.speak(); }
+    for _i in range(0u, 10) { critter.speak(); }
 }
 
 pub fn main() {

@@ -40,5 +40,5 @@ impl Scheduler {
 }
 
 fn main() {
-    let mut sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop);
+    let _sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop);
 }

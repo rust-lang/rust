@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let foo = 100;
+    let _foo = 100;
     static quux: int = 5;
 
     enum Stuff {

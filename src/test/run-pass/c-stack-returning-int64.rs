@@ -8,29 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str;
-
 mod libc {
+    use std::libc::{c_char, c_long, c_longlong};
+
     #[abi = "cdecl"]
     #[nolink]
     extern {
-        pub fn atol(x: *u8) -> int;
-        pub fn atoll(x: *u8) -> i64;
+        pub fn atol(x: *c_char) -> c_long;
+        pub fn atoll(x: *c_char) -> c_longlong;
     }
 }
 
 fn atol(s: ~str) -> int {
-    s.with_c_str(|x| unsafe { libc::atol(x as *u8) })
+    s.with_c_str(|x| unsafe { libc::atol(x) as int })
 }
 
 fn atoll(s: ~str) -> i64 {
-    s.with_c_str(|x| unsafe { libc::atoll(x as *u8) })
+    s.with_c_str(|x| unsafe { libc::atoll(x) as i64 })
 }
 
 pub fn main() {
-    unsafe {
-        assert_eq!(atol(~"1024") * 10, atol(~"10240"));
-        assert!((atoll(~"11111111111111111") * 10i64)
-            == atoll(~"111111111111111110"));
-    }
+    assert_eq!(atol(~"1024") * 10, atol(~"10240"));
+    assert!((atoll(~"11111111111111111") * 10) == atoll(~"111111111111111110"));
 }

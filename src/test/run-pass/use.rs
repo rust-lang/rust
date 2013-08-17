@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused_imports)];
+
 #[no_std];
 extern mod std;
 extern mod zed(name = "std");

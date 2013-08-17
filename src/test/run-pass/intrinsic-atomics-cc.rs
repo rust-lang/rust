@@ -15,9 +15,7 @@ extern mod cci_intrinsic;
 use cci_intrinsic::atomic_xchg;
 
 pub fn main() {
-    unsafe {
-        let mut x = 1;
-        atomic_xchg(&mut x, 5);
-        assert_eq!(x, 5);
-    }
+    let mut x = 1;
+    atomic_xchg(&mut x, 5);
+    assert_eq!(x, 5);
 }

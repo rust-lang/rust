@@ -9,12 +9,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::*;
 use std::task;
 
 pub fn main() {
     let (p, ch) = stream();
-    let t = task::spawn(|| child(&ch) );
+    let _t = task::spawn(|| child(&ch) );
     let y = p.recv();
     error!("received");
     error!(y);

@@ -21,11 +21,12 @@ mod zed {
 }
 
 mod libc {
+    use std::libc::{c_int, c_void, size_t, ssize_t};
+
     #[abi = "cdecl"]
     #[nolink]
     extern {
-        pub fn write(fd: int, buf: *u8, count: ::std::libc::size_t)
-                     -> ::std::libc::ssize_t;
+        pub fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
     }
 }
 

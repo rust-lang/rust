@@ -22,7 +22,7 @@ impl Drop for Foo {
 fn main() {
     let y = @mut 32;
     {
-        let x = Foo(y);
+        let _x = Foo(y);
     }
     assert_eq!(*y, 23);
 }

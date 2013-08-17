@@ -19,7 +19,7 @@ impl A for Something {
 
 trait B<T> {
     fn thing<U>(&self, x: T, y: U) -> (T, U) { (x, y) }
-    fn staticthing<U>(z: &Self, x: T, y: U) -> (T, U) { (x, y) }
+    fn staticthing<U>(_z: &Self, x: T, y: U) -> (T, U) { (x, y) }
 }
 
 impl<T> B<T> for int { }

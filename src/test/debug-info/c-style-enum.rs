@@ -36,6 +36,8 @@
 // debugger:print single_variant
 // check:$7 = TheOnlyVariant
 
+#[allow(unused_variable)];
+
 enum AutoDiscriminant {
     One,
     Two,

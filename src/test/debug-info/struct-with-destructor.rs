@@ -26,6 +26,8 @@
 // debugger:print nested
 // check:$4 = {a = {a = {x = 7890, y = 9870}}}
 
+#[allow(unused_variable)];
+
 struct NoDestructor {
     x: i32,
     y: i64

@@ -20,7 +20,7 @@ pub mod name_pool {
     }
 
     impl add for name_pool {
-        fn add(&self, s: ~str) {
+        fn add(&self, _s: ~str) {
         }
     }
 }

@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn blk1(b: &fn()) -> @fn() { return || { }; }
+fn blk1(_b: &fn()) -> @fn() { return || { }; }
 fn test1() { (do blk1 { info!("hi"); })(); }

@@ -16,7 +16,7 @@ fn foo(c: ~[int]) {
 
     match none::<int> {
         some::<int>(_) => {
-            for i in c.iter() {
+            for _i in c.iter() {
                 info!(a);
                 let a = 17;
                 b.push(a);

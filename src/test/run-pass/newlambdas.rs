@@ -12,7 +12,7 @@
 
 fn f(i: int, f: &fn(int) -> int) -> int { f(i) }
 
-fn g(g: &fn()) { }
+fn g(_g: &fn()) { }
 
 fn ff() -> @fn(int) -> int {
     return |x| x + 1;

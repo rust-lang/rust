@@ -12,6 +12,8 @@
 // Issue Name: Unused move causes a crash
 // Abstract: zero-fill to block after drop
 
+#[allow(path_statement)];
+
 pub fn main()
 {
     let y = ~1;

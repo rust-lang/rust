@@ -10,6 +10,9 @@
 
 // Issue #2263.
 
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
+
 // Should pass region checking.
 fn ok(f: @fn(x: &uint)) {
     // Here, g is a function that can accept a uint pointer with

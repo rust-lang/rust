@@ -11,9 +11,9 @@
 // error-pattern:fail
 
 fn main() {
-    let a = @0;
+    let _a = @0;
     {
-        let b = @0;
+        let _b = @0;
         {
             fail!();
         }

@@ -19,15 +19,15 @@ pub fn main() {
 
     let c = 1;
     let c_neg: i32 = -c;
-    error!(b_neg);
+    error!(c_neg);
 
     let d = 1;
     let d_neg: i64 = -d;
-    error!(b_neg);
+    error!(d_neg);
 
     let e = 1;
     let e_neg: int = -e;
-    error!(b_neg);
+    error!(e_neg);
 
     // intentional overflows
 

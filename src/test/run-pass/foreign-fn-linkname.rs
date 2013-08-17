@@ -10,24 +10,22 @@
 
 extern mod extra;
 
-use std::libc;
-use std::str;
-use std::vec;
-
 mod libc {
+    use std::libc::{c_char, size_t};
+
     #[nolink]
     #[abi = "cdecl"]
     extern {
         #[link_name = "strlen"]
-        pub fn my_strlen(str: *u8) -> uint;
+        pub fn my_strlen(str: *c_char) -> size_t;
     }
 }
 
 fn strlen(str: ~str) -> uint {
-    unsafe {
-        // C string is terminated with a zero
-        do str.with_c_str |buf| {
-            libc::my_strlen(buf as *u8)
+    // C string is terminated with a zero
+    do str.with_c_str |buf| {
+        unsafe {
+            libc::my_strlen(buf) as uint
         }
     }
 }

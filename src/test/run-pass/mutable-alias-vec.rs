@@ -11,8 +11,6 @@
 // -*- rust -*-
 extern mod extra;
 
-use std::vec;
-
 fn grow(v: &mut ~[int]) {
     v.push(1);
 }

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+#[allow(unused_variable)];
+#[allow(dead_assignment)];
 
 // -*- rust -*-
 fn f(u: ()) { return u; }

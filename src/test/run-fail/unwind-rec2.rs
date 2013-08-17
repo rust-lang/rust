@@ -21,7 +21,7 @@ fn build2() -> ~[int] {
 struct Blk { node: ~[int], span: ~[int] }
 
 fn main() {
-    let blk = Blk {
+    let _blk = Blk {
         node: build1(),
         span: build2()
     };

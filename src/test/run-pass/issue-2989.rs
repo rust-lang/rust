@@ -10,7 +10,6 @@
 
 extern mod extra;
 
-use std::io;
 use std::vec;
 
 trait methods {

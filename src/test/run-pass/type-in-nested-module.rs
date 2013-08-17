@@ -14,7 +14,7 @@ mod a {
     pub mod b {
         pub type t = int;
 
-        pub fn foo() { let x: t = 10; }
+        pub fn foo() { let _x: t = 10; }
     }
 }
 

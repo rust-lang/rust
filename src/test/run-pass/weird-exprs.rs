@@ -71,7 +71,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let evil = info!("lincoln"); }
+fn evil_lincoln() { let _evil = info!("lincoln"); }
 
 pub fn main() {
     strange();

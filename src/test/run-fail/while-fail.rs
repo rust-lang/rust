@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(while_true)];
+
 // error-pattern:giraffe
 fn main() {
     fail!({ while true { fail!("giraffe") }; "clandestine" });

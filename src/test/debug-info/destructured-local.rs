@@ -125,6 +125,7 @@
 // debugger:print *nn
 // check:$43 = 56
 
+#[allow(unused_variable)];
 
 struct Struct {
     a: i64,

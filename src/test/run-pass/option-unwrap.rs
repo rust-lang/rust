@@ -17,9 +17,7 @@ struct dtor {
 impl Drop for dtor {
     fn drop(&self) {
         // abuse access to shared mutable state to write this code
-        unsafe {
-            *self.x -= 1;
-        }
+        *self.x -= 1;
     }
 }
 
@@ -35,7 +33,7 @@ pub fn main() {
 
     {
         let b = Some(dtor { x:x });
-        let c = unwrap(b);
+        let _c = unwrap(b);
     }
 
     assert_eq!(*x, 0);

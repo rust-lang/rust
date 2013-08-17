@@ -21,7 +21,6 @@ use extra::arc;
 use extra::future;
 use extra::time;
 use std::cell::Cell;
-use std::io;
 use std::os;
 use std::uint;
 

@@ -11,5 +11,5 @@
 // error-pattern:attempted remainder with a divisor of zero
 fn main() {
     let y = 0;
-    let z = 1 % y;
+    let _z = 1 % y;
 }

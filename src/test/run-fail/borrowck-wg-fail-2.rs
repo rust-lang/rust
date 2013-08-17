@@ -9,7 +9,7 @@ struct S {
 
 fn main() {
     let x = @mut S { x: 3 };
-    let y: &S = x;
+    let _y: &S = x;
     let z = x;
     z.x = 5;
 }

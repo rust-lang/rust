@@ -20,5 +20,5 @@ impl EventLoop for UvEventLoop { }
 
 pub fn main() {
     let loop_: ~EventLoop = ~UvEventLoop { uvio: 0 } as ~EventLoop;
-    let loop2_ = loop_;
+    let _loop2_ = loop_;
 }

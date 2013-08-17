@@ -15,8 +15,8 @@ fn a() { }
 fn b() { fail!(); }
 
 fn main() {
-    let x = ~[0];
+    let _x = ~[0];
     a();
-    let y = ~[0];
+    let _y = ~[0];
     b();
 }

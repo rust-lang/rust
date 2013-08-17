@@ -20,5 +20,5 @@ impl<T> ::std::ops::Drop for S<T> {
 }
 
 pub fn main() {
-    let x = S { x: 1 };
+    let _x = S { x: 1 };
 }

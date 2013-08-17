@@ -16,7 +16,7 @@ fn foo(src: uint) {
 
     match Some(src) {
       Some(src_id) => {
-        for i in range(0u, 10u) {
+        for _i in range(0u, 10u) {
             let yyy = src_id;
             assert_eq!(yyy, 0u);
         }

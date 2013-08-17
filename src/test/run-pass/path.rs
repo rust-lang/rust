@@ -11,7 +11,7 @@
 
 
 mod foo {
-    pub fn bar(offset: uint) { }
+    pub fn bar(_offset: uint) { }
 }
 
 pub fn main() { foo::bar(0u); }
