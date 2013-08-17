@@ -16,12 +16,12 @@ use std::comm;
 use std::task;
 
 fn start(c: &comm::Chan<comm::Chan<int>>) {
-    let (p, ch) = comm::stream();
+    let (_p, ch) = comm::stream();
     c.send(ch);
 }
 
 pub fn main() {
     let (p, ch) = comm::stream();
-    let child = task::spawn(|| start(&ch) );
-    let c = p.recv();
+    let _child = task::spawn(|| start(&ch) );
+    let _c = p.recv();
 }

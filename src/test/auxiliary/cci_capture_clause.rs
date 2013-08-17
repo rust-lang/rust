@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::*;
 use std::task;
 
 pub fn foo<T:Send + Clone>(x: T) -> Port<T> {

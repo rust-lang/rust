@@ -17,5 +17,5 @@ struct foo(X);
 struct X { x: uint, nxt: *foo }
 
 pub fn main() {
-    let x = foo(X {x: 0, nxt: ptr::null()});
+    let _x = foo(X {x: 0, nxt: ptr::null()});
 }

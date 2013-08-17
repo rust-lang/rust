@@ -20,7 +20,7 @@ impl Foo for Struct {}
 
 pub fn main() {
     match A(~Struct as ~Foo) {
-        A(a) => 0,
+        A(_a) => 0,
     };
 }
 

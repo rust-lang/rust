@@ -35,9 +35,7 @@ fn arc<T:Freeze>(_data: T) -> arc_destruct<T> {
 }
 
 fn init() -> arc_destruct<context_res> {
-    unsafe {
-        arc(context_res())
-    }
+    arc(context_res())
 }
 
 struct context_res {

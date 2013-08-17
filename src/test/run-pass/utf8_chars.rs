@@ -11,7 +11,6 @@
 extern mod extra;
 
 use std::str;
-use std::vec;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
@@ -28,19 +27,19 @@ pub fn main() {
 
     assert!((str::is_utf8(s.as_bytes())));
     // invalid prefix
-    assert!((!str::is_utf8(~[0x80_u8])));
+    assert!((!str::is_utf8([0x80_u8])));
     // invalid 2 byte prefix
-    assert!((!str::is_utf8(~[0xc0_u8])));
-    assert!((!str::is_utf8(~[0xc0_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xc0_u8])));
+    assert!((!str::is_utf8([0xc0_u8, 0x10_u8])));
     // invalid 3 byte prefix
-    assert!((!str::is_utf8(~[0xe0_u8])));
-    assert!((!str::is_utf8(~[0xe0_u8, 0x10_u8])));
-    assert!((!str::is_utf8(~[0xe0_u8, 0xff_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xe0_u8])));
+    assert!((!str::is_utf8([0xe0_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xe0_u8, 0xff_u8, 0x10_u8])));
     // invalid 4 byte prefix
-    assert!((!str::is_utf8(~[0xf0_u8])));
-    assert!((!str::is_utf8(~[0xf0_u8, 0x10_u8])));
-    assert!((!str::is_utf8(~[0xf0_u8, 0xff_u8, 0x10_u8])));
-    assert!((!str::is_utf8(~[0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xf0_u8])));
+    assert!((!str::is_utf8([0xf0_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xf0_u8, 0xff_u8, 0x10_u8])));
+    assert!((!str::is_utf8([0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8])));
 
     let mut stack = ~"a×c€";
     assert_eq!(stack.pop_char(), '€');

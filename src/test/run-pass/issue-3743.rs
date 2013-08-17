@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-
 struct Vec2 {
     x: float,
     y: float

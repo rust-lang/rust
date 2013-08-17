@@ -12,6 +12,6 @@ pub fn main() {
     let _: ~int;
 }
 
-fn f(i: ~int) -> ~int {
+fn f(_i: ~int) -> ~int {
     fail!();
 }

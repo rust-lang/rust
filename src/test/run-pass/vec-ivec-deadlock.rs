@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_assignment)];
+
 pub fn main() {
     let a = ~[1, 2, 3, 4, 5];
     let mut b = ~[a.clone(), a.clone()];

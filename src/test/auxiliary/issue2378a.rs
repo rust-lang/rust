@@ -14,7 +14,7 @@
 enum maybe<T> { just(T), nothing }
 
 impl <T:Clone> Index<uint,T> for maybe<T> {
-    fn index(&self, idx: &uint) -> T {
+    fn index(&self, _idx: &uint) -> T {
         match self {
             &just(ref t) => (*t).clone(),
             &nothing => { fail!(); }

@@ -10,7 +10,6 @@
 
 // xfail-win32
 
-use std::result;
 use std::task;
 
 fn adder(x: @int, y: @int) -> int { return *x + *y; }

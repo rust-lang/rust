@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(f: &fn()) {
+fn f(_f: &fn()) {
 }
 
 fn g() {

@@ -10,4 +10,7 @@
 
 
 
-pub fn main() { let x: @int = @10; let y: int = *x; }
+pub fn main() {
+    let x: @int = @10;
+    let _y: int = *x;
+}

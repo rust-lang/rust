@@ -23,5 +23,5 @@ impl Drop for S {
 pub fn f() {
     let x = S { x: 1 };
     let y = x;
-    let z = y;
+    let _z = y;
 }

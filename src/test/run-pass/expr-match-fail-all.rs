@@ -14,7 +14,7 @@
 // When all branches of an match expression result in fail, the entire
 // match expression results in fail.
 pub fn main() {
-    let x =
+    let _x =
         match true {
           true => { 10 }
           false => { match true { true => { fail!() } false => { fail!() } } }

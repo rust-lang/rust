@@ -13,9 +13,9 @@
 pub fn main() {
     let x: @mut @Option<~int> = @mut @None;
     match x {
-      @@Some(ref y) => {
+      @@Some(ref _y) => {
         // here, the refcount of `*x` is bumped so
-        // `y` remains valid even if `*x` is modified.
+        // `_y` remains valid even if `*x` is modified.
         *x = @None;
       }
       @@None => {

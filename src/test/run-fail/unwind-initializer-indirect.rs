@@ -13,5 +13,5 @@
 fn f() -> @int { fail!(); }
 
 fn main() {
-    let a: @int = f();
+    let _a: @int = f();
 }

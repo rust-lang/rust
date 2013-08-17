@@ -1,5 +1,3 @@
-use std::str;
-
 struct StringBuffer {
     s: ~str
 }

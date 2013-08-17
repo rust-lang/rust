@@ -34,6 +34,8 @@
 // debugger:print sizeof(packedInPacked)
 // check:$6 = 40
 
+#[allow(unused_variable)];
+
 #[packed]
 struct Packed {
     x: i16,

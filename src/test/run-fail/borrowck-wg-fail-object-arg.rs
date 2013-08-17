@@ -10,7 +10,7 @@ impl Foo for int {
     }
 }
 
-fn it_takes_two(f: &Foo, g: &mut Foo) {
+fn it_takes_two(_f: &Foo, _g: &mut Foo) {
 }
 
 fn main() {

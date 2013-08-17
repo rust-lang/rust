@@ -10,6 +10,9 @@
 
 // error-pattern:fail
 
+#[allow(unreachable_code)];
+#[allow(unused_variable)];
+
 fn x(it: &fn(int)) {
     fail!();
     it(0);

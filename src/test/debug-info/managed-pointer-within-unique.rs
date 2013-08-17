@@ -25,6 +25,8 @@
 // debugger:print managed_within_unique.val->y->val
 // check:$3 = -4
 
+#[allow(unused_variable)];
+
 struct ContainsManaged
 {
 	x: int,

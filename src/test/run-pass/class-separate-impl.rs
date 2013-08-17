@@ -52,10 +52,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 impl ToStr for cat {
     fn to_str(&self) -> ~str {
-        // FIXME #5384: this unsafe block is to work around purity
-        unsafe {
-            self.name.clone()
-        }
+        self.name.clone()
     }
 }
 
@@ -66,6 +63,6 @@ fn print_out(thing: @ToStr, expected: ~str) {
 }
 
 pub fn main() {
-  let mut nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
+  let nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
   print_out(nyan, ~"nyan");
 }

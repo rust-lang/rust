@@ -30,6 +30,8 @@
 // debugger:print struct_padded_at_end
 // check:$5 = {x = {22, 23}, y = {24, 25}}
 
+#[allow(unused_variable)];
+
 struct NoPadding1 {
     x: [u32, ..3],
     y: i32,

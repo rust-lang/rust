@@ -11,7 +11,7 @@
 // no-reformat
 // Testing various forms of `do` with empty arg lists
 
-fn f(f: &fn() -> bool) -> bool {
+fn f(_f: &fn() -> bool) -> bool {
     true
 }
 

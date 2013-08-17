@@ -41,6 +41,8 @@
 // debugger:print deeplyNested
 // check:$8 = {a = {a = 1, b = {x = 2, y = 3, z = 4}, c = 5, d = {x = 6, y = 7, z = 8}}, b = {a = 9, b = {x = 10, y = 11, z = 12}, c = {x = 13, y = 14, z = 15}, d = 16}, c = {a = 17, b = {x = 18, y = 19, z = 20}, c = 21, d = {x = 22, y = 23, z = 24}}, d = {a = 25, b = {x = 26, y = 27, z = 28}, c = 29, d = {x = 30, y = 31, z = 32}}, e = {a = 33, b = {x = 34, y = 35, z = 36}, c = {x = 37, y = 38, z = 39}, d = 40}, f = {a = 41, b = {x = 42, y = 43, z = 44}, c = 45, d = {x = 46, y = 47, z = 48}}}
 
+#[allow(unused_variable)];
+
 #[packed]
 struct Packed {
     x: i16,

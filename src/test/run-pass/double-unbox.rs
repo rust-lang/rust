@@ -12,7 +12,7 @@ struct Quux {
     bar: int
 }
 
-fn g(i: int) { }
+fn g(_i: int) { }
 fn f(foo: @@Quux) { g(foo.bar); }
 
 pub fn main() { }

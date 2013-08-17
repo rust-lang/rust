@@ -18,7 +18,7 @@ mod rusti {
 
 pub fn main() {
     unsafe {
-        let mut x = @1;
+        let x = @1;
         let mut y = @2;
         rusti::move_val(&mut y, x);
         assert_eq!(*y, 1);

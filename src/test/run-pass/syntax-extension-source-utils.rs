@@ -23,17 +23,17 @@ pub fn main() {
     assert_eq!(line!(), 23);
     //assert!((col!() == 11));
     assert_eq!(indirect_line!(), 25);
-    assert!((file!().to_owned().ends_with(~"syntax-extension-source-utils.rs")));
+    assert!((file!().to_owned().ends_with("syntax-extension-source-utils.rs")));
     assert_eq!(stringify!((2*3) + 5).to_owned(), ~"( 2 * 3 ) + 5");
     assert!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
            == ~"victory robot 6");
 
     assert!(
         include_str!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
-        .starts_with(~"/* this is for "));
+        .starts_with("/* this is for "));
     assert!(
         include_bin!("syntax-extension-source-utils-files/includeme.fragment")
         [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
-    assert!((m1::m2::where_am_i().ends_with(~"m1::m2")));
+    assert!((m1::m2::where_am_i().ends_with("m1::m2")));
 }

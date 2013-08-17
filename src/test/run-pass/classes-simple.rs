@@ -22,8 +22,8 @@ fn cat(in_x : uint, in_y : int) -> cat {
 }
 
 pub fn main() {
-  let mut nyan : cat = cat(52u, 99);
-  let mut kitty = cat(1000u, 2);
+  let nyan : cat = cat(52u, 99);
+  let kitty = cat(1000u, 2);
   assert_eq!(nyan.how_hungry, 99);
   assert_eq!(kitty.how_hungry, 2);
 }

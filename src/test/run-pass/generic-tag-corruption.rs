@@ -14,4 +14,4 @@
 // This causes memory corruption in stage0.
 enum thing<K> { some(K), }
 
-pub fn main() { let x = some(~"hi"); }
+pub fn main() { let _x = some(~"hi"); }

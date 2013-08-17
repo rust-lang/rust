@@ -14,7 +14,7 @@ pub fn main() {
     let x = os::args();
     for arg in x.iter() {
         match arg.clone() {
-            s => { }
+            _s => { }
         }
     }
 }

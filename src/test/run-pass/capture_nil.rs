@@ -24,7 +24,6 @@
 // course preferable, as the value itself is
 // irrelevant).
 
-use std::comm::*;
 use std::task;
 
 fn foo(x: ()) -> Port<()> {

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-
 trait sum {
     fn sum_(self) -> int;
 }
@@ -29,7 +27,7 @@ pub fn main() {
     info!("y==%d", y);
     assert_eq!(y, 6);
 
-    let mut x = ~[1, 2, 3];
+    let x = ~[1, 2, 3];
     let y = x.sum_();
     info!("y==%d", y);
     assert_eq!(y, 6);

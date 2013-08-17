@@ -12,6 +12,6 @@
 // values from the else if branch
 pub fn main() {
     let y: @uint = @10u;
-    let x = if false { y } else if true { y } else { y };
+    let _x = if false { y } else if true { y } else { y };
     assert_eq!(*y, 10u);
 }

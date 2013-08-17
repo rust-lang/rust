@@ -33,6 +33,8 @@
 // debugger:print padding_at_end2
 // check:$7 = {{21, 22}, 23}
 
+#[allow(unused_variable)];
+
 fn main() {
     let no_padding1: ((u32, u32), u32, u32) = ((0, 1), 2, 3);
     let no_padding2: (u32, (u32, u32), u32) = (4, (5, 6), 7);

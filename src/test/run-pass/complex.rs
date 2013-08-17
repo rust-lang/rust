@@ -16,9 +16,9 @@ type t = int;
 
 fn nothing() { }
 
-fn putstr(s: ~str) { }
+fn putstr(_s: ~str) { }
 
-fn putint(i: int) {
+fn putint(_i: int) {
     let mut i: int = 33;
     while i < 36 { putstr(~"hi"); i = i + 1; }
 }

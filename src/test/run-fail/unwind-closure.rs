@@ -10,7 +10,7 @@
 
 // error-pattern:fail
 
-fn f(a: @int) {
+fn f(_a: @int) {
     fail!();
 }
 

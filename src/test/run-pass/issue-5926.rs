@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(unused_mut)];
+
 pub fn main() {
     let  mut your_favorite_numbers = @[1,2,3];
     let  mut my_favorite_numbers = @[4,5,6];

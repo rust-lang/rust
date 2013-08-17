@@ -38,7 +38,7 @@ pub fn main() {
     assert!((~[2, 3, 4]).to_str() == ~"[2, 3, 4]");
 
     fn indirect<T:to_str>(x: T) -> ~str {
-        x.to_str() + ~"!"
+        x.to_str() + "!"
     }
     assert!(indirect(~[10, 20]) == ~"[10, 20]!");
 
