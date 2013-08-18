@@ -20,7 +20,7 @@ use at_vec;
 use cast;
 use char;
 use char::Char;
-use clone::Clone;
+use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::Times;
 use iterator::{Iterator, FromIterator, Extendable};
@@ -2104,9 +2104,23 @@ impl Clone for ~str {
     }
 }
 
+impl DeepClone for ~str {
+    #[inline]
+    fn deep_clone(&self) -> ~str {
+        self.to_owned()
+    }
+}
+
 impl Clone for @str {
     #[inline]
     fn clone(&self) -> @str {
+        *self
+    }
+}
+
+impl DeepClone for @str {
+    #[inline]
+    fn deep_clone(&self) -> @str {
         *self
     }
 }
