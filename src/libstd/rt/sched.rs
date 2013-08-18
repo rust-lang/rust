@@ -83,6 +83,14 @@ pub struct Scheduler {
     idle_callback: Option<~PausibleIdleCallback>
 }
 
+/// An indication of how hard to work on a given operation, the difference
+/// mainly being whether memory is synchronized or not
+#[deriving(Eq)]
+enum EffortLevel {
+    DontTryTooHard,
+    GiveItYourBest
+}
+
 impl Scheduler {
 
     // * Initialization Functions
@@ -237,14 +245,21 @@ impl Scheduler {
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
-        let sched = match sched.interpret_message_queue() {
+        let sched = match sched.interpret_message_queue(DontTryTooHard) {
             Some(sched) => sched,
             None => return
         };
 
         // This helper will use a randomized work-stealing algorithm
         // to find work.
-        let mut sched = match sched.do_work() {
+        let sched = match sched.do_work() {
+            Some(sched) => sched,
+            None => return
+        };
+
+        // Now, before sleeping we need to find out if there really
+        // were any messages. Give it your best!
+        let mut sched = match sched.interpret_message_queue(GiveItYourBest) {
             Some(sched) => sched,
             None => return
         };
@@ -277,10 +292,18 @@ impl Scheduler {
     // returns the still-available scheduler. At this point all
     // message-handling will count as a turn of work, and as a result
     // return None.
-    fn interpret_message_queue(~self) -> Option<~Scheduler> {
+    fn interpret_message_queue(~self, effort: EffortLevel) -> Option<~Scheduler> {
 
         let mut this = self;
-        match this.message_queue.pop() {
+
+        let msg = if effort == DontTryTooHard {
+            // Do a cheap check that may miss messages
+            this.message_queue.casual_pop()
+        } else {
+            this.message_queue.pop()
+        };
+
+        match msg {
             Some(PinnedTask(task)) => {
                 let mut task = task;
                 task.give_home(Sched(this.make_handle()));
