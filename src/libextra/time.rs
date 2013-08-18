@@ -34,7 +34,7 @@ pub mod rustrt {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
 pub struct Timespec { sec: i64, nsec: i32 }
 
 /*
@@ -100,7 +100,7 @@ pub fn tzset() {
     }
 }
 
-#[deriving(Eq, Encodable, Decodable)]
+#[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
 pub struct Tm {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
