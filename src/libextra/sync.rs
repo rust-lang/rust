@@ -112,7 +112,7 @@ impl<Q:Send> Sem<Q> {
                 }
             }
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-            /* do 1000.times { task::yield(); } */
+            /* do 1000.times { task::deschedule(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = waiter_nobe.unwrap().recv();
@@ -225,7 +225,7 @@ impl<'self> Condvar<'self> {
                 }
             }
 
-            // If yield checks start getting inserted anywhere, we can be
+            // If deschedule checks start getting inserted anywhere, we can be
             // killed before or after enqueueing. Deciding whether to
             // unkillably reacquire the lock needs to happen atomically
             // wrt enqueuing.
@@ -731,11 +731,11 @@ mod tests {
         let s2 = ~s.clone();
         do task::spawn || {
             do s2.access {
-                do 5.times { task::yield(); }
+                do 5.times { task::deschedule(); }
             }
         }
         do s.access {
-            do 5.times { task::yield(); }
+            do 5.times { task::deschedule(); }
         }
     }
     #[test]
@@ -748,7 +748,7 @@ mod tests {
             s2.acquire();
             c.send(());
         }
-        do 5.times { task::yield(); }
+        do 5.times { task::deschedule(); }
         s.release();
         let _ = p.recv();
 
@@ -757,7 +757,7 @@ mod tests {
         let s = ~Semaphore::new(0);
         let s2 = ~s.clone();
         do task::spawn || {
-            do 5.times { task::yield(); }
+            do 5.times { task::deschedule(); }
             s2.release();
             let _ = p.recv();
         }
@@ -800,7 +800,7 @@ mod tests {
                     c.send(());
                 }
                 let _ = p.recv(); // wait for child to come alive
-                do 5.times { task::yield(); } // let the child contend
+                do 5.times { task::deschedule(); } // let the child contend
             }
             let _ = p.recv(); // wait for child to be done
         }
@@ -837,7 +837,7 @@ mod tests {
             do n.times {
                 do m.lock {
                     let oldval = *sharedstate;
-                    task::yield();
+                    task::deschedule();
                     *sharedstate = oldval + 1;
                 }
             }
@@ -948,7 +948,7 @@ mod tests {
             let (p,c) = comm::stream();
             do task::spawn || { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
-                task::yield();
+                task::deschedule();
                 fail!();
             }
             do m2.lock_cond |cond| {
@@ -1114,7 +1114,7 @@ mod tests {
             do n.times {
                 do lock_rwlock_in_mode(x, mode) {
                     let oldval = *sharedstate;
-                    task::yield();
+                    task::deschedule();
                     *sharedstate = oldval + 1;
                 }
             }

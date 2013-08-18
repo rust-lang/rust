@@ -108,7 +108,7 @@ pub mod pipes {
             let old_state = swap_state_acq(&mut (*p).state,
                                            blocked);
             match old_state {
-              empty | blocked => { task::yield(); }
+              empty | blocked => { task::deschedule(); }
               full => {
                 let payload = util::replace(&mut p.payload, None);
                 return Some(payload.unwrap())

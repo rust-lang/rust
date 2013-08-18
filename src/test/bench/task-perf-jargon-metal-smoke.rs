@@ -31,7 +31,7 @@ fn child_generation(gens_left: uint, c: comm::Chan<()>) {
     do task::spawn_supervised {
         let c = c.take();
         if gens_left & 1 == 1 {
-            task::yield(); // shake things up a bit
+            task::deschedule(); // shake things up a bit
         }
         if gens_left > 0 {
             child_generation(gens_left - 1, c); // recurse

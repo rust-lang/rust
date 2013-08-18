@@ -141,7 +141,7 @@ pub struct Death {
     on_exit:         Option<~fn(bool)>,
     // nesting level counter for task::unkillable calls (0 == killable).
     unkillable:      int,
-    // nesting level counter for unstable::atomically calls (0 == can yield).
+    // nesting level counter for unstable::atomically calls (0 == can deschedule).
     wont_sleep:      int,
     // A "spare" handle to the kill flag inside the kill handle. Used during
     // blocking/waking as an optimization to avoid two xadds on the refcount.
@@ -572,16 +572,16 @@ impl Death {
     }
 
     /// Enter a possibly-nested "atomic" section of code. Just for assertions.
-    /// All calls must be paired with a subsequent call to allow_yield.
+    /// All calls must be paired with a subsequent call to allow_deschedule.
     #[inline]
-    pub fn inhibit_yield(&mut self) {
+    pub fn inhibit_deschedule(&mut self) {
         self.wont_sleep += 1;
     }
 
     /// Exit a possibly-nested "atomic" section of code. Just for assertions.
-    /// All calls must be paired with a preceding call to inhibit_yield.
+    /// All calls must be paired with a preceding call to inhibit_deschedule.
     #[inline]
-    pub fn allow_yield(&mut self) {
+    pub fn allow_deschedule(&mut self) {
         rtassert!(self.wont_sleep != 0);
         self.wont_sleep -= 1;
     }

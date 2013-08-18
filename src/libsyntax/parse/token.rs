@@ -477,6 +477,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 
         "be",                 // 64
         "pure",               // 65
+        "yield",              // 66
     ];
 
     @ident_interner {
@@ -585,7 +586,6 @@ pub mod keywords {
         Once,
         Priv,
         Pub,
-        Pure,
         Ref,
         Return,
         Static,
@@ -601,6 +601,8 @@ pub mod keywords {
 
         // Reserved keywords
         Be,
+        Pure,
+        Yield,
     }
 
     impl Keyword {
@@ -628,7 +630,6 @@ pub mod keywords {
                 Once => ident { name: 50, ctxt: 0 },
                 Priv => ident { name: 51, ctxt: 0 },
                 Pub => ident { name: 52, ctxt: 0 },
-                Pure => ident { name: 65, ctxt: 0 },
                 Ref => ident { name: 53, ctxt: 0 },
                 Return => ident { name: 54, ctxt: 0 },
                 Static => ident { name: 27, ctxt: 0 },
@@ -642,6 +643,8 @@ pub mod keywords {
                 Use => ident { name: 61, ctxt: 0 },
                 While => ident { name: 62, ctxt: 0 },
                 Be => ident { name: 64, ctxt: 0 },
+                Pure => ident { name: 65, ctxt: 0 },
+                Yield => ident { name: 66, ctxt: 0 },
             }
         }
     }
@@ -657,7 +660,7 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 65 => true,
+            8 | 27 | 32 .. 66 => true,
             _ => false,
         },
         _ => false
@@ -677,7 +680,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            64 .. 65 => true,
+            64 .. 66 => true,
             _ => false,
         },
         _ => false,
