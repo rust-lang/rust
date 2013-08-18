@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32
-
 use std::task;
 
 fn adder(x: @int, y: @int) -> int { return *x + *y; }

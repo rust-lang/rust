@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test linked failure
-// xfail-win32
 
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test linked failure
-// xfail-win32
 // error-pattern:explicit
 extern mod extra;
 
