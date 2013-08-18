@@ -27,7 +27,7 @@ use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
 use iterator::{Invert, DoubleEndedIterator};
 use libc;
-use num::Zero;
+use num::{Saturating, Zero};
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
@@ -1698,21 +1698,29 @@ impl<'self> StrSlice<'self> for &'self str {
     fn char_range_at_reverse(&self, start: uint) -> CharRange {
         let mut prev = start;
 
-        // while there is a previous byte == 10......
-        while prev > 0u && self[prev - 1u] & 192u8 == TAG_CONT_U8 {
-            prev -= 1u;
+        prev = prev.saturating_sub(1);
+        if self[prev] < 128 { return CharRange{ch: self[prev] as char, next: prev} }
+
+        // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
+        fn multibyte_char_range_at_rev(s: &str, mut i: uint) -> CharRange {
+            // while there is a previous byte == 10......
+            while i > 0 && s[i] & 192u8 == TAG_CONT_U8 {
+                i -= 1u;
+            }
+
+            let mut val = s[i] as uint;
+            let w = UTF8_CHAR_WIDTH[val] as uint;
+            assert!((w != 0));
+
+            val = utf8_first_byte!(val, w);
+            val = utf8_acc_cont_byte!(val, s[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
+
+            return CharRange {ch: val as char, next: i};
         }
 
-        // now refer to the initial byte of previous char
-        if prev > 0u {
-            prev -= 1u;
-        } else {
-            prev = 0u;
-        }
-
-
-        let ch = self.char_at(prev);
-        return CharRange {ch:ch, next:prev};
+        return multibyte_char_range_at_rev(*self, prev);
     }
 
     /// Plucks the character ending at the `i`th byte of a string
