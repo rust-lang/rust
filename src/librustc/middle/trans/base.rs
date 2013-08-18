@@ -71,7 +71,6 @@ use std::hash;
 use std::hashmap::HashMap;
 use std::io;
 use std::libc::c_uint;
-use std::uint;
 use std::vec;
 use std::local_data;
 use extra::time;
@@ -719,7 +718,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
                   for variant in (*variants).iter() {
                       let variant_cx =
                           sub_block(cx, ~"enum-iter-variant-" +
-                                    uint::to_str(variant.disr_val));
+                                    variant.disr_val.to_str());
                       let variant_cx =
                           iter_variant(variant_cx, repr, av, *variant,
                                        substs.tps, |x,y,z| f(x,y,z));

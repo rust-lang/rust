@@ -525,35 +525,25 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     f(buf.slice(0, cur))
 }
 
-/// Convert to a string in base 10.
-#[inline]
-pub fn to_str(num: $T) -> ~str {
-    to_str_radix(num, 10u)
-}
-
-/// Convert to a string in a given base.
-#[inline]
-pub fn to_str_radix(num: $T, radix: uint) -> ~str {
-    let mut buf: ~[u8] = ~[];
-    do strconv::int_to_str_bytes_common(num, radix, strconv::SignNeg) |i| {
-        buf.push(i);
-    }
-    // We know we generated valid utf-8, so we don't need to go through that
-    // check.
-    unsafe { str::raw::from_bytes_owned(buf) }
-}
-
 impl ToStr for $T {
+    /// Convert to a string in base 10.
     #[inline]
     fn to_str(&self) -> ~str {
-        to_str(*self)
+        self.to_str_radix(10)
     }
 }
 
 impl ToStrRadix for $T {
+    /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
-        to_str_radix(*self, radix)
+        let mut buf: ~[u8] = ~[];
+        do strconv::int_to_str_bytes_common(*self, radix, strconv::SignNeg) |i| {
+            buf.push(i);
+        }
+        // We know we generated valid utf-8, so we don't need to go through that
+        // check.
+        unsafe { str::raw::from_bytes_owned(buf) }
     }
 }
 
@@ -813,39 +803,39 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!(to_str_radix(0 as $T, 10u), ~"0");
-        assert_eq!(to_str_radix(1 as $T, 10u), ~"1");
-        assert_eq!(to_str_radix(-1 as $T, 10u), ~"-1");
-        assert_eq!(to_str_radix(127 as $T, 16u), ~"7f");
-        assert_eq!(to_str_radix(100 as $T, 10u), ~"100");
+        assert_eq!((0 as $T).to_str_radix(10u), ~"0");
+        assert_eq!((1 as $T).to_str_radix(10u), ~"1");
+        assert_eq!((-1 as $T).to_str_radix(10u), ~"-1");
+        assert_eq!((127 as $T).to_str_radix(16u), ~"7f");
+        assert_eq!((100 as $T).to_str_radix(10u), ~"100");
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8::to_str(i8_val), ~"127");
+        assert_eq!(i8_val.to_str(), ~"127");
 
         i8_val += 1 as i8;
-        assert_eq!(i8::to_str(i8_val), ~"-128");
+        assert_eq!(i8_val.to_str(), ~"-128");
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16::to_str(i16_val), ~"32767");
+        assert_eq!(i16_val.to_str(), ~"32767");
 
         i16_val += 1 as i16;
-        assert_eq!(i16::to_str(i16_val), ~"-32768");
+        assert_eq!(i16_val.to_str(), ~"-32768");
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32::to_str(i32_val), ~"2147483647");
+        assert_eq!(i32_val.to_str(), ~"2147483647");
 
         i32_val += 1 as i32;
-        assert_eq!(i32::to_str(i32_val), ~"-2147483648");
+        assert_eq!(i32_val.to_str(), ~"-2147483648");
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64::to_str(i64_val), ~"9223372036854775807");
+        assert_eq!(i64_val.to_str(), ~"9223372036854775807");
 
         i64_val += 1 as i64;
-        assert_eq!(i64::to_str(i64_val), ~"-9223372036854775808");
+        assert_eq!(i64_val.to_str(), ~"-9223372036854775808");
     }
 
     #[test]

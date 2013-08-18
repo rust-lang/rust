@@ -480,7 +480,6 @@ pub mod rt {
     use str;
     use sys;
     use num;
-    use uint;
     use vec;
     use option::{Some, None, Option};
 
@@ -593,7 +592,7 @@ pub mod rt {
         return if prec == 0u && num == 0u {
                 ~""
             } else {
-                let s = uint::to_str_radix(num, radix);
+                let s = num.to_str_radix(radix);
                 let len = s.char_len();
                 if len < prec {
                     let diff = prec - len;

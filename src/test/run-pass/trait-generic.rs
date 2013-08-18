@@ -13,16 +13,16 @@
 use std::int;
 
 trait to_str {
-    fn to_str(&self) -> ~str;
+    fn to_string(&self) -> ~str;
 }
 impl to_str for int {
-    fn to_str(&self) -> ~str { int::to_str(*self) }
+    fn to_string(&self) -> ~str { self.to_str() }
 }
 impl to_str for ~str {
-    fn to_str(&self) -> ~str { self.clone() }
+    fn to_string(&self) -> ~str { self.clone() }
 }
 impl to_str for () {
-    fn to_str(&self) -> ~str { ~"()" }
+    fn to_string(&self) -> ~str { ~"()" }
 }
 
 trait map<T> {
@@ -43,7 +43,7 @@ fn foo<U, T: map<U>>(x: T) -> ~[~str] {
     x.map(|_e| ~"hi" )
 }
 fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
-    x.map(|_e| _e.to_str() )
+    x.map(|_e| _e.to_string() )
 }
 
 pub fn main() {

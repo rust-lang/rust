@@ -708,14 +708,14 @@ mod test {
 mod bench {
     use extra::test::BenchHarness;
     use rand::{XorShiftRng,RngUtil};
-    use uint;
     use float;
+    use to_str::ToStr;
 
     #[bench]
     fn uint_to_str_rand(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         do bh.iter {
-            uint::to_str(rng.gen());
+            rng.gen::<uint>().to_str();
         }
     }
 

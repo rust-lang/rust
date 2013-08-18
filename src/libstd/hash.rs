@@ -27,8 +27,8 @@ use option::{Some, None};
 use rt::io::Writer;
 use str::OwnedStr;
 use to_bytes::IterBytes;
-use uint;
 use vec::ImmutableVector;
+use num::ToStrRadix;
 
 // Alias `SipState` to `State`.
 pub use State = hash::SipState;
@@ -386,7 +386,7 @@ impl Streaming for SipState {
         let r = self.result_bytes();
         let mut s = ~"";
         for b in r.iter() {
-            s.push_str(uint::to_str_radix(*b as uint, 16u));
+            s.push_str((*b as uint).to_str_radix(16u));
         }
         s
     }
@@ -406,8 +406,6 @@ impl Streaming for SipState {
 mod tests {
     use super::*;
     use prelude::*;
-
-    use uint;
 
     // Hash just the bytes of the slice, without length prefix
     struct Bytes<'self>(&'self [u8]);
@@ -496,7 +494,7 @@ mod tests {
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
             for b in r.iter() {
-                s.push_str(uint::to_str_radix(*b as uint, 16u));
+                s.push_str((*b as uint).to_str_radix(16u));
             }
             s
         }
