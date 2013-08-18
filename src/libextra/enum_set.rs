@@ -18,7 +18,7 @@ pub struct EnumSet<E> {
     priv bits: uint
 }
 
-/// An iterface for casting C-like enum to uint and back.
+/// An interface for casting C-like enum to uint and back.
 pub trait CLike {
     /// Converts C-like enum to uint.
     fn to_uint(&self) -> uint;

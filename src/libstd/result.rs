@@ -24,7 +24,7 @@ use str::StrSlice;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
-/// In order to provide informative error messages, `E` is reqired to implement `ToStr`.
+/// In order to provide informative error messages, `E` is required to implement `ToStr`.
 /// It is further recommended for `E` to be a descriptive error type, eg a `enum` for
 /// all possible errors cases.
 #[deriving(Clone, Eq)]

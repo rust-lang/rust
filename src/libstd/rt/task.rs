@@ -69,7 +69,7 @@ pub struct Coroutine {
     saved_context: Context
 }
 
-/// Some tasks have a deciated home scheduler that they must run on.
+/// Some tasks have a dedicated home scheduler that they must run on.
 pub enum SchedHome {
     AnySched,
     Sched(SchedHandle)
@@ -592,4 +592,3 @@ mod test {
         }
     }
 }
-

@@ -147,7 +147,7 @@ helper methods.
 ## Internationalization
 
 The formatting syntax supported by the `ifmt!` extension supports
-internationalization by providing "methods" which execute various differnet
+internationalization by providing "methods" which execute various different
 outputs depending on the input. The syntax and methods provided are similar to
 other internationalization systems, so again nothing should seem alien.
 Currently two methods are supported by this extension: "select" and "plural".

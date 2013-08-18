@@ -658,7 +658,7 @@ pub fn rng() -> IsaacRng {
 
 /// Create a weak random number generator with a default algorithm and seed.
 ///
-/// It returns the fatest `Rng` algorithm currently available in Rust without
+/// It returns the fastest `Rng` algorithm currently available in Rust without
 /// consideration for cryptography or security. If you require a specifically
 /// seeded `Rng` for consistency over time you should pick one algorithm and
 /// create the `Rng` yourself.

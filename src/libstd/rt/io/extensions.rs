@@ -262,7 +262,7 @@ pub trait WriterByteConversions {
     /// (8 bytes).
     fn write_le_f64(&mut self, f: f64);
 
-    /// Write a litten-endian IEEE754 single-precision floating-point
+    /// Write a little-endian IEEE754 single-precision floating-point
     /// (4 bytes).
     fn write_le_f32(&mut self, f: f32);
 

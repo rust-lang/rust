@@ -100,7 +100,7 @@ pub struct Lifetime {
 }
 
 // a "Path" is essentially Rust's notion of a name;
-// for instance: core::cmp::Eq  .  It's represented
+// for instance: std::cmp::Eq  .  It's represented
 // as a sequence of identifiers, along with a bunch
 // of supporting information.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -1093,8 +1093,8 @@ pub enum inlined_item {
 /* hold off on tests ... they appear in a later merge.
 #[cfg(test)]
 mod test {
-    use core::option::{None, Option, Some};
-    use core::uint;
+    use std::option::{None, Option, Some};
+    use std::uint;
     use extra;
     use codemap::*;
     use super::*;

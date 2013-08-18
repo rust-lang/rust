@@ -90,7 +90,7 @@ pub struct ProcessOptions<'self> {
     in_fd: Option<c_int>,
 
     /**
-     * If this is None then a new pipe will be created for the new progam's
+     * If this is None then a new pipe will be created for the new program's
      * output and Process.output() will provide a Reader to read from this pipe.
      *
      * If this is Some(file-descriptor) then the new process will write its output
@@ -100,7 +100,7 @@ pub struct ProcessOptions<'self> {
     out_fd: Option<c_int>,
 
     /**
-     * If this is None then a new pipe will be created for the new progam's
+     * If this is None then a new pipe will be created for the new program's
      * error stream and Process.error() will provide a Reader to read from this pipe.
      *
      * If this is Some(file-descriptor) then the new process will write its error output
@@ -840,7 +840,7 @@ pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
  * Note that this is private to avoid race conditions on unix where if
  * a user calls waitpid(some_process.get_id()) then some_process.finish()
  * and some_process.destroy() and some_process.finalize() will then either
- * operate on a none-existant process or, even worse, on a newer process
+ * operate on a none-existent process or, even worse, on a newer process
  * with the same id.
  */
 fn waitpid(pid: pid_t) -> int {
