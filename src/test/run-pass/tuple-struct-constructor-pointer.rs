@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving(Eq)]
 struct Foo(int);
+#[deriving(Eq)]
 struct Bar(int, int);
 
 fn main() {
     let f: extern fn(int) -> Foo = Foo;
     let g: extern fn(int, int) -> Bar = Bar;
-    f(42);
-    g(4, 7);
+    assert_eq!(f(42), Foo(42));
+    assert_eq!(g(4, 7), Bar(4, 7));
 }
