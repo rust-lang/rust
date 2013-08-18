@@ -875,13 +875,22 @@ impl Rng for XorShiftRng {
 }
 
 impl XorShiftRng {
-    /// Create an xor shift random number generator with a default seed.
+    /// Create an xor shift random number generator with a random seed.
     pub fn new() -> XorShiftRng {
-        // constants taken from http://en.wikipedia.org/wiki/Xorshift
-        XorShiftRng::new_seeded(123456789u32,
-                                362436069u32,
-                                521288629u32,
-                                88675123u32)
+        // generate seeds the same way as seed(), except we have a spceific size
+        let mut s = [0u8, ..16];
+        loop {
+            do s.as_mut_buf |p, sz| {
+                unsafe {
+                    rustrt::rand_gen_seed(p, sz as size_t);
+                }
+            }
+            if !s.iter().all(|x| *x == 0) {
+                break;
+            }
+        }
+        let s: &[u32, ..4] = unsafe { cast::transmute(&s) };
+        XorShiftRng::new_seeded(s[0], s[1], s[2], s[3])
     }
 
     /**
