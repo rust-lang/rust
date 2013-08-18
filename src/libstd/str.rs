@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * String manipulation
- *
- * Strings are a packed UTF-8 representation of text, stored as null
- * terminated buffers of u8 bytes.  Strings should be indexed in bytes,
- * for efficiency, but UTF-8 unsafe operations should be avoided.
- */
+//! String manipulation
+//!
+//! Strings are a packed UTF-8 representation of text, stored as
+//! buffers of u8 bytes. The buffer is not null terminated.
+//! Strings should be indexed in bytes, for efficiency, but UTF-8 unsafe
+//! operations should be avoided.
 
 use at_vec;
 use cast;
@@ -1772,8 +1771,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /// Work with the byte buffer of a string as a byte slice.
-    ///
-    /// The byte slice does not include the null terminator.
     fn as_bytes(&self) -> &'self [u8] {
         unsafe { cast::transmute(*self) }
     }
@@ -1953,10 +1950,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Work with the byte buffer and length of a slice.
     ///
-    /// The given length is one byte longer than the 'official' indexable
-    /// length of the string. This is to permit probing the byte past the
-    /// indexable area for a null byte, as is the case in slices pointing
-    /// to full strings, or suffixes of them.
+    /// The buffer does not have a null terminator.
     #[inline]
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T {
         let v: &[u8] = unsafe { cast::transmute(*self) };
@@ -1979,12 +1973,10 @@ pub trait OwnedStr {
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
-    /// The given length is one byte longer than the 'official' indexable
-    /// length of the string. This is to permit probing the byte past the
-    /// indexable area for a null byte, as is the case in slices pointing
-    /// to full strings, or suffixes of them.
+    /// The buffer does not have a null terminator.
     ///
-    /// Make sure any mutations to this buffer keep this string valid UTF8.
+    /// The caller must make sure any mutations to this buffer keep the string
+    /// valid UTF-8!
     fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T;
 }
 
@@ -2085,12 +2077,10 @@ impl OwnedStr for ~str {
         new_str
     }
 
-    /// Reserves capacity for exactly `n` bytes in the given string, not including
-    /// the null terminator.
+    /// Reserves capacity for exactly `n` bytes in the given string.
     ///
     /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
+    /// enough to hold a string of length `n`.
     ///
     /// If the capacity for `s` is already equal to or greater than the requested
     /// capacity, then no action is taken.
@@ -2110,8 +2100,7 @@ impl OwnedStr for ~str {
     /// Reserves capacity for at least `n` bytes in the given string.
     ///
     /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
+    /// enough to hold a string of length `n`.
     ///
     /// This function will over-allocate in order to amortize the allocation costs
     /// in scenarios where the caller may need to repeatedly reserve additional
