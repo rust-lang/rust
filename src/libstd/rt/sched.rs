@@ -24,7 +24,6 @@ use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
-use rt::metrics::SchedMetrics;
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, RngUtil};
@@ -71,7 +70,6 @@ pub struct Scheduler {
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     cleanup_job: Option<CleanupJob>,
-    metrics: SchedMetrics,
     /// Should this scheduler run any task, or only pinned tasks?
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
@@ -126,7 +124,6 @@ impl Scheduler {
             stack_pool: StackPool::new(),
             sched_task: None,
             cleanup_job: None,
-            metrics: SchedMetrics::new(),
             run_anything: run_anything,
             friend_handle: friend,
             rng: XorShiftRng::new(),
@@ -267,10 +264,8 @@ impl Scheduler {
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
-        sched.metrics.wasted_turns += 1;
         if !sched.sleepy && !sched.no_sleep {
             rtdebug!("scheduler has no work to do, going to sleep");
-            sched.metrics.sleepy_times += 1;
             sched.sleepy = true;
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);

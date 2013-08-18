@@ -144,16 +144,8 @@ impl<T> ChanOne<T> {
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
-                    do Local::borrow::<Scheduler, ()> |sched| {
-                        rtdebug!("non-rendezvous send");
-                        sched.metrics.non_rendezvous_sends += 1;
-                    }
                 }
                 STATE_ONE => {
-                    do Local::borrow::<Scheduler, ()> |sched| {
-                        rtdebug!("rendezvous send");
-                        sched.metrics.rendezvous_sends += 1;
-                    }
                     // Port has closed. Need to clean up.
                     let _packet: ~Packet<T> = cast::transmute(this.void_packet);
                     recvr_active = false;
@@ -251,7 +243,6 @@ impl<T> SelectInner for PortOne<T> {
                 STATE_BOTH => {
                     // Data has not been sent. Now we're blocked.
                     rtdebug!("non-rendezvous recv");
-                    sched.metrics.non_rendezvous_recvs += 1;
                     false
                 }
                 STATE_ONE => {
@@ -267,7 +258,6 @@ impl<T> SelectInner for PortOne<T> {
                     (*self.packet()).state.store(STATE_ONE, Relaxed);
 
                     rtdebug!("rendezvous recv");
-                    sched.metrics.rendezvous_recvs += 1;
 
                     // Channel is closed. Switch back and check the data.
                     // NB: We have to drop back into the scheduler event loop here
