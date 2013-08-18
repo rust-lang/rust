@@ -3267,6 +3267,62 @@ mod tests {
 mod bench {
     use extra::test::BenchHarness;
     use super::*;
+    use prelude::*;
+
+    #[bench]
+    fn char_iterator(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_iterator_ascii(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_iterator_rev(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.rev_iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_offset_iterator(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.char_offset_iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_offset_iterator_rev(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.char_offset_rev_iter().len(), len);
+        }
+    }
 
     #[bench]
     fn is_utf8_100_ascii(bh: &mut BenchHarness) {
