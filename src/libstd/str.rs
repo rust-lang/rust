@@ -847,12 +847,21 @@ pub mod raw {
     /// If end is greater than the length of the string.
     #[inline]
     pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        do s.as_imm_buf |sbuf, n| {
-             assert!((begin <= end));
-             assert!((end <= n));
+        assert!(begin <= end);
+        assert!(end <= s.len());
+        slice_unchecked(s, begin, end)
+    }
 
+    /// Takes a bytewise (not UTF-8) slice from a string.
+    ///
+    /// Returns the substring from [`begin`..`end`).
+    ///
+    /// Caller must check slice boundaries!
+    #[inline]
+    pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
+        do s.as_imm_buf |sbuf, _n| {
              cast::transmute(Slice {
-                 data: ptr::offset(sbuf, begin as int),
+                 data: sbuf.offset_inbounds(begin as int),
                  len: end - begin,
              })
         }
