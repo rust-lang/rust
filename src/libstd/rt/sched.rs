@@ -505,7 +505,9 @@ impl Scheduler {
         let mut this = self;
 
         // The current task is grabbed from TLS, not taken as an input.
-        let current_task: ~Task = Local::take::<Task>();
+        // Doing an unsafe_take to avoid writing back a null pointer -
+        // We're going to call `put` later to do that.
+        let current_task: ~Task = unsafe { Local::unsafe_take::<Task>() };
 
         // Check that the task is not in an atomically() section (e.g.,
         // holding a pthread mutex, which could deadlock the scheduler).

@@ -21,6 +21,7 @@ pub trait Local {
     fn take() -> ~Self;
     fn exists() -> bool;
     fn borrow<T>(f: &fn(&mut Self) -> T) -> T;
+    unsafe fn unsafe_take() -> ~Self;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
@@ -45,6 +46,8 @@ impl Local for Task {
             None => { rtabort!("function failed in local_borrow") }
         }
     }
+    #[inline]
+    unsafe fn unsafe_take() -> ~Task { local_ptr::unsafe_take() }
     #[inline]
     unsafe fn unsafe_borrow() -> *mut Task { local_ptr::unsafe_borrow() }
     #[inline]
@@ -89,6 +92,7 @@ impl Local for Scheduler {
             }
         }
     }
+    unsafe fn unsafe_take() -> ~Scheduler { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut Scheduler {
         match (*Local::unsafe_borrow::<Task>()).sched {
             Some(~ref mut sched) => {
@@ -122,6 +126,8 @@ impl Local for IoFactoryObject {
     fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
     fn exists() -> bool { rtabort!("unimpl") }
     fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
+
+    unsafe fn unsafe_take() -> ~IoFactoryObject { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
         let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
