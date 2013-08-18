@@ -376,7 +376,6 @@ static ASCII_UPPER_MAP: &'static [u8] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use to_bytes::ToBytes;
     use str::from_char;
 
     macro_rules! v2ascii (
@@ -445,7 +444,6 @@ mod tests {
 
     #[test]
     fn test_ascii_to_bytes() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).to_bytes(false), ~[40u8, 32u8, 59u8]);
         assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), ~[40u8, 32u8, 59u8]);
     }
 
