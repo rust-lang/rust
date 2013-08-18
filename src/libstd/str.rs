@@ -1438,23 +1438,24 @@ impl<'self> StrSlice<'self> for &'self str {
     /// beyond the last character of the string.
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
         assert!(begin <= end);
-        // not sure how to use the iterators for this nicely.
-        let mut position = 0;
         let mut count = 0;
-        let l = self.len();
-        while count < begin && position < l {
-            position = self.char_range_at(position).next;
-            count += 1;
-        }
-        if count < begin { fail!("Attempted to begin slice_chars beyond end of string") }
-        let start_byte = position;
-        while count < end && position < l {
-            position = self.char_range_at(position).next;
-            count += 1;
-        }
-        if count < end { fail!("Attempted to end slice_chars beyond end of string") }
+        let mut begin_byte = None;
+        let mut end_byte = None;
 
-        self.slice(start_byte, position)
+        // This could be even more efficient by not decoding,
+        // only finding the char boundaries
+        for (idx, _) in self.char_offset_iter() {
+            if count == begin { begin_byte = Some(idx); }
+            if count == end { end_byte = Some(idx); break; }
+            count += 1;
+        }
+        if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
+
+        match (begin_byte, end_byte) {
+            (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
+            (_, None) => fail!("slice_chars: `end` is beyond end of string"),
+            (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
+        }
     }
 
     /// Returns true if `needle` is a prefix of the string.
