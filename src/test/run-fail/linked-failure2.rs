@@ -21,5 +21,5 @@ fn child() { fail!(); }
 fn main() {
     let (p, _c) = comm::stream::<()>();
     task::spawn(|| child() );
-    task::yield();
+    task::deschedule();
 }

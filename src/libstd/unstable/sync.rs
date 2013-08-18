@@ -272,9 +272,9 @@ impl<T> Drop for UnsafeAtomicRcBox<T>{
 
 /**
  * Enables a runtime assertion that no operation in the argument closure shall
- * use scheduler operations (yield, recv, spawn, etc). This is for use with
+ * use scheduler operations (deschedule, recv, spawn, etc). This is for use with
  * pthread mutexes, which may block the entire scheduler thread, rather than
- * just one task, and is hence prone to deadlocks if mixed with yielding.
+ * just one task, and is hence prone to deadlocks if mixed with descheduling.
  *
  * NOTE: THIS DOES NOT PROVIDE LOCKING, or any sort of critical-section
  * synchronization whatsoever. It only makes sense to use for CPU-local issues.
@@ -288,10 +288,10 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
     if in_green_task_context() {
         let t = Local::unsafe_borrow::<Task>();
         do (|| {
-            (*t).death.inhibit_yield();
+            (*t).death.inhibit_deschedule();
             f()
         }).finally {
-            (*t).death.allow_yield();
+            (*t).death.allow_deschedule();
         }
     } else {
         f()
@@ -349,7 +349,7 @@ struct ExData<T> {
  * This uses a pthread mutex, not one that's aware of the userspace scheduler.
  * The user of an Exclusive must be careful not to invoke any functions that may
  * reschedule the task while holding the lock, or deadlock may result. If you
- * need to block or yield while accessing shared state, use extra::sync::RWArc.
+ * need to block or deschedule while accessing shared state, use extra::sync::RWArc.
  */
 pub struct Exclusive<T> {
     x: UnsafeAtomicRcBox<ExData<T>>
@@ -377,7 +377,7 @@ impl<T:Send> Exclusive<T> {
     // Exactly like std::arc::MutexArc,access(), but with the LittleLock
     // instead of a proper mutex. Same reason for being unsafe.
     //
-    // Currently, scheduling operations (i.e., yielding, receiving on a pipe,
+    // Currently, scheduling operations (i.e., descheduling, receiving on a pipe,
     // accessing the provided condition variable) are prohibited while inside
     // the Exclusive. Supporting that is a work in progress.
     #[inline]
@@ -431,7 +431,7 @@ mod tests {
     fn test_atomically() {
         // NB. The whole runtime will abort on an 'atomic-sleep' violation,
         // so we can't really test for the converse behaviour.
-        unsafe { do atomically { } } task::yield(); // oughtn't fail
+        unsafe { do atomically { } } task::deschedule(); // oughtn't fail
     }
 
     #[test]
@@ -545,7 +545,7 @@ mod tests {
             c.send(());
         }
         p.recv();
-        task::yield(); // Try to make the unwrapper get blocked first.
+        task::deschedule(); // Try to make the unwrapper get blocked first.
         let left_x = x.try_unwrap();
         assert!(left_x.is_left());
         util::ignore(left_x);
@@ -566,7 +566,7 @@ mod tests {
         do task::spawn {
             let x2 = x2.take();
             unsafe { do x2.with |_hello| { } }
-            task::yield();
+            task::deschedule();
         }
         assert!(x.unwrap() == ~~"hello");
 
@@ -612,7 +612,7 @@ mod tests {
             let x = Exclusive::new(~~"hello");
             let x2 = x.clone();
             do task::spawn {
-                do 10.times { task::yield(); } // try to let the unwrapper go
+                do 10.times { task::deschedule(); } // try to let the unwrapper go
                 fail!(); // punt it awake from its deadlock
             }
             let _z = x.unwrap();

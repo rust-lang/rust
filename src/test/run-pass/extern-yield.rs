@@ -30,7 +30,7 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 
 fn count(n: uint) -> uint {
     unsafe {
-        task::yield();
+        task::deschedule();
         rustrt::rust_dbg_call(cb, n)
     }
 }

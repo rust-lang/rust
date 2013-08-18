@@ -250,7 +250,7 @@ mod test {
                     let (c2, p3, c4) = x.take();
                     p3.recv();   // handshake parent
                     c4.send(()); // normal receive
-                    task::yield();
+                    task::deschedule();
                     c2.send(()); // select receive
                 }
 
@@ -294,7 +294,7 @@ mod test {
                             if send_on_chans.contains(&i) {
                                 let c = Cell::new(c);
                                 do spawntask_random {
-                                    task::yield();
+                                    task::deschedule();
                                     c.take().send(());
                                 }
                             }
