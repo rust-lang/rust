@@ -15,37 +15,43 @@ The `ToBytes` and `IterBytes` traits
 */
 
 use cast;
+use container::Container;
 use io;
 use io::Writer;
 use iterator::Iterator;
 use option::{None, Option, Some};
-use str::StrSlice;
-use vec::ImmutableVector;
+use str::{Str, StrSlice};
+use vec::{Vector, ImmutableVector};
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
-/**
- * A trait to implement in order to make a type hashable;
- * This works in combination with the trait `Hash::Hash`, and
- * may in the future be merged with that trait or otherwise
- * modified when default methods and trait inheritance are
- * completed.
- */
+///
+/// A trait to implement in order to make a type hashable;
+/// This works in combination with the trait `std::hash::Hash`, and
+/// may in the future be merged with that trait or otherwise
+/// modified when default methods and trait inheritance are
+/// completed.
+///
+/// IterBytes should be implemented so that the extent of the
+/// produced byte stream can be discovered, given the original
+/// type.
+/// For example, the IterBytes implementation for vectors emits
+/// its length first, and enums should emit their discriminant.
+///
 pub trait IterBytes {
-    /**
-     * Call the provided callback `f` one or more times with
-     * byte-slices that should be used when computing a hash
-     * value or otherwise "flattening" the structure into
-     * a sequence of bytes. The `lsb0` parameter conveys
-     * whether the caller is asking for little-endian bytes
-     * (`true`) or big-endian (`false`); this should only be
-     * relevant in implementations that represent a single
-     * multi-byte datum such as a 32 bit integer or 64 bit
-     * floating-point value. It can be safely ignored for
-     * larger structured types as they are usually processed
-     * left-to-right in declaration order, regardless of
-     * underlying memory endianness.
-     */
+    /// Call the provided callback `f` one or more times with
+    /// byte-slices that should be used when computing a hash
+    /// value or otherwise "flattening" the structure into
+    /// a sequence of bytes. The `lsb0` parameter conveys
+    /// whether the caller is asking for little-endian bytes
+    /// (`true`) or big-endian (`false`); this should only be
+    /// relevant in implementations that represent a single
+    /// multi-byte datum such as a 32 bit integer or 64 bit
+    /// floating-point value. It can be safely ignored for
+    /// larger structured types as they are usually processed
+    /// left-to-right in declaration order, regardless of
+    /// underlying memory endianness.
+    ///
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool;
 }
 
@@ -224,74 +230,76 @@ impl IterBytes for f64 {
 impl<'self,A:IterBytes> IterBytes for &'self [A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.len().iter_bytes(lsb0, |b| f(b)) &&
         self.iter().advance(|elt| elt.iter_bytes(lsb0, |b| f(b)))
     }
 }
 
-impl<A:IterBytes,B:IterBytes> IterBytes for (A,B) {
-  #[inline]
-  fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-    match *self {
-      (ref a, ref b) => { a.iter_bytes(lsb0, |b| f(b)) &&
-                          b.iter_bytes(lsb0, |b| f(b)) }
+impl<A: IterBytes> IterBytes for (A, ) {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        match *self {
+            (ref a, ) => a.iter_bytes(lsb0, |b| f(b))
+        }
     }
-  }
 }
 
-impl<A:IterBytes,B:IterBytes,C:IterBytes> IterBytes for (A,B,C) {
-  #[inline]
-  fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-    match *self {
-      (ref a, ref b, ref c) => {
-        a.iter_bytes(lsb0, |b| f(b)) &&
-        b.iter_bytes(lsb0, |b| f(b)) &&
-        c.iter_bytes(lsb0, |b| f(b))
-      }
-    }
-  }
-}
+macro_rules! iter_bytes_tuple(
+    ($($A:ident),+) => (
+        impl<$($A: IterBytes),+> IterBytes for ($($A),+) {
+            fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+                match *self {
+                    ($(ref $A),+) => {
+                        $(
+                            $A .iter_bytes(lsb0, |b| f(b))
+                        )&&+
+                    }
+                }
+            }
+        }
+    )
+)
 
-// Move this to vec, probably.
-fn borrow<'x,A>(a: &'x [A]) -> &'x [A] {
-    a
-}
+iter_bytes_tuple!(A, B)
+iter_bytes_tuple!(A, B, C)
+iter_bytes_tuple!(A, B, C, D)
+iter_bytes_tuple!(A, B, C, D, E)
+iter_bytes_tuple!(A, B, C, D, E, F)
+iter_bytes_tuple!(A, B, C, D, E, F, G)
+iter_bytes_tuple!(A, B, C, D, E, F, G, H)
 
 impl<A:IterBytes> IterBytes for ~[A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        borrow(*self).iter_bytes(lsb0, f)
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
 impl<A:IterBytes> IterBytes for @[A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        borrow(*self).iter_bytes(lsb0, f)
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
 impl<'self> IterBytes for &'self str {
     #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        f(self.as_bytes())
+        // Terminate the string with a byte that does not appear in UTF-8
+        f(self.as_bytes()) && f([0xFF])
     }
 }
 
 impl IterBytes for ~str {
     #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        // this should possibly include the null terminator, but that
-        // breaks .find_equiv on hashmaps.
-        f(self.as_bytes())
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
 impl IterBytes for @str {
     #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        // this should possibly include the null terminator, but that
-        // breaks .find_equiv on hashmaps.
-        f(self.as_bytes())
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.as_slice().iter_bytes(lsb0, f)
     }
 }
 
