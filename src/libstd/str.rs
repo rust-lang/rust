@@ -1790,10 +1790,8 @@ impl<'self> StrSlice<'self> for &'self str {
                 if search.matches(b as char) { return Some(i) }
             }
         } else {
-            let mut index = 0;
-            for c in self.iter() {
+            for (index, c) in self.char_offset_iter() {
                 if search.matches(c) { return Some(index); }
-                index += c.len_utf8_bytes();
             }
         }
 
@@ -1807,15 +1805,14 @@ impl<'self> StrSlice<'self> for &'self str {
     /// `Some` containing the byte index of the last matching character
     /// or `None` if there is no match
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
-        let mut index = self.len();
         if search.only_ascii() {
+            let mut index = self.len();
             for b in self.byte_rev_iter() {
                 index -= 1;
                 if search.matches(b as char) { return Some(index); }
             }
         } else {
-            for c in self.rev_iter() {
-                index -= c.len_utf8_bytes();
+            for (index, c) in self.char_offset_rev_iter() {
                 if search.matches(c) { return Some(index); }
             }
         }
