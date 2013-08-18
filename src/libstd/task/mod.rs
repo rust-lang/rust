@@ -537,7 +537,7 @@ pub fn with_task_name<U>(blk: &fn(Option<&str>) -> U) -> U {
     }
 }
 
-pub fn yield() {
+pub fn deschedule() {
     //! Yield control to the task scheduler
 
     use rt::local::Local;
@@ -568,10 +568,10 @@ pub fn failing() -> bool {
  *
  * ~~~
  * do task::unkillable {
- *     // detach / yield / destroy must all be called together
+ *     // detach / deschedule / destroy must all be called together
  *     rustrt::rust_port_detach(po);
  *     // This must not result in the current task being killed
- *     task::yield();
+ *     task::deschedule();
  *     rustrt::rust_port_destroy(po);
  * }
  * ~~~
@@ -689,7 +689,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
             let ch = ch.clone();
             do spawn_unlinked {
                 // Give middle task a chance to fail-but-not-kill-us.
-                do 16.times { task::yield(); }
+                do 16.times { task::deschedule(); }
                 ch.send(()); // If killed first, grandparent hangs.
             }
             fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -712,7 +712,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do run_in_newsched_task {
         do spawn_supervised { fail!(); }
         // Give child a chance to fail-but-not-kill-us.
-        do 16.times { task::yield(); }
+        do 16.times { task::deschedule(); }
     }
 }
 #[ignore(reason = "linked failure")]
@@ -821,7 +821,7 @@ fn test_spawn_failure_propagate_grandchild() {
             do spawn_supervised {
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::yield(); }
+            do 16.times { task::deschedule(); }
             fail!();
         };
         assert!(result.is_err());
@@ -838,7 +838,7 @@ fn test_spawn_failure_propagate_secondborn() {
             do spawn_supervised {
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::yield(); }
+            do 16.times { task::deschedule(); }
             fail!();
         };
         assert!(result.is_err());
@@ -855,7 +855,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             do spawn { // linked
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::yield(); }
+            do 16.times { task::deschedule(); }
             fail!();
         };
         assert!(result.is_err());
@@ -872,7 +872,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             do spawn { // linked
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::yield(); }
+            do 16.times { task::deschedule(); }
             fail!();
         };
         assert!(result.is_err());
@@ -1169,12 +1169,12 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        do 10.times { yield() }
+        do 10.times { deschedule() }
         ch.send(());
     }
 
     do spawn {
-        yield();
+        deschedule();
         // We want to fail after the unkillable task
         // blocks on recv
         fail!();
@@ -1205,12 +1205,12 @@ fn test_unkillable_nested() {
 
     // We want to do this after failing
     do spawn_unlinked || {
-        do 10.times { yield() }
+        do 10.times { deschedule() }
         ch.send(());
     }
 
     do spawn {
-        yield();
+        deschedule();
         // We want to fail after the unkillable task
         // blocks on recv
         fail!();
@@ -1277,7 +1277,7 @@ fn test_spawn_watched() {
                 t.unlinked();
                 t.watched();
                 do t.spawn {
-                    task::yield();
+                    task::deschedule();
                     fail!();
                 }
             }
@@ -1313,7 +1313,7 @@ fn test_indestructible() {
                 t.unwatched();
                 do t.spawn {
                     p3.recv();
-                    task::yield();
+                    task::deschedule();
                     fail!();
                 }
                 c3.send(());

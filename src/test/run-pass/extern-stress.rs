@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This creates a bunch of yielding tasks that run concurrently
+// This creates a bunch of descheduling tasks that run concurrently
 // while holding onto C stacks
 
 use std::libc;
@@ -27,7 +27,7 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     if data == 1u {
         data
     } else {
-        task::yield();
+        task::deschedule();
         count(data - 1u) + count(data - 1u)
     }
 }

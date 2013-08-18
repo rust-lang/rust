@@ -23,13 +23,13 @@ fn iloop() {
     task::spawn(|| die() );
     let (p, c) = comm::stream::<()>();
     loop {
-        // Sending and receiving here because these actions yield,
+        // Sending and receiving here because these actions deschedule,
         // at which point our child can kill us.
         c.send(());
         p.recv();
         // The above comment no longer makes sense but I'm
         // reluctant to remove a linked failure test case.
-        task::yield();
+        task::deschedule();
     }
 }
 

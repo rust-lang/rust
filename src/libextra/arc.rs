@@ -762,7 +762,7 @@ mod tests {
                 do 10.times {
                     let tmp = *num;
                     *num = -1;
-                    task::yield();
+                    task::deschedule();
                     *num = tmp + 1;
                 }
                 c.send(());
@@ -913,7 +913,7 @@ mod tests {
             do read_mode.read |state| {
                 // if writer mistakenly got in, make sure it mutates state
                 // before we assert on it
-                do 5.times { task::yield(); }
+                do 5.times { task::deschedule(); }
                 // make sure writer didn't get in.
                 assert!(*state);
             }
@@ -921,9 +921,9 @@ mod tests {
     }
     #[test]
     fn test_rw_write_cond_downgrade_read_race() {
-        // Ideally the above test case would have yield statements in it that
+        // Ideally the above test case would have deschedule statements in it that
         // helped to expose the race nearly 100% of the time... but adding
-        // yields in the intuitively-right locations made it even less likely,
+        // deschedules in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
         do 8.times { test_rw_write_cond_downgrade_read_race_helper() }
     }

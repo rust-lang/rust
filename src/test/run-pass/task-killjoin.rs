@@ -19,10 +19,10 @@
 use std::task;
 
 fn supervised() {
-    // Yield to make sure the supervisor joins before we fail. This is
+    // Deschedule to make sure the supervisor joins before we fail. This is
     // currently not needed because the supervisor runs first, but I can
     // imagine that changing.
-    task::yield();
+    task::deschedule();
     fail!();
 }
 

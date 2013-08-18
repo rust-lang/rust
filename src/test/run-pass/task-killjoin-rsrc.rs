@@ -69,11 +69,11 @@ fn join(port: Port<bool>) -> bool {
 }
 
 fn supervised() {
-    // Yield to make sure the supervisor joins before we
+    // Deschedule to make sure the supervisor joins before we
     // fail. This is currently not needed because the supervisor
     // runs first, but I can imagine that changing.
     error!("supervised task=%?", 0);
-    task::yield();
+    task::deschedule();
     fail!();
 }
 
