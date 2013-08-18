@@ -1366,8 +1366,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// beyond the last character of the string
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'self str {
-        assert!(self.is_char_boundary(begin));
-        assert!(self.is_char_boundary(end));
+        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
 
@@ -1609,6 +1608,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Returns false if the index points into the middle of a multi-byte
     /// character sequence.
+    #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
         let b = self[index];
@@ -1694,6 +1694,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// This function can be used to iterate over a unicode string in reverse.
     ///
     /// Returns 0 for next index if called on start index 0.
+    #[inline]
     fn char_range_at_reverse(&self, start: uint) -> CharRange {
         let mut prev = start;
 
