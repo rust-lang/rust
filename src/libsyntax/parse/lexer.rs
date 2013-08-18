@@ -782,7 +782,9 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       c => {
           // So the error span points to the unrecognized character
           rdr.peek_span = codemap::mk_sp(rdr.last_pos, rdr.pos);
-          rdr.fatal(fmt!("unknown start of token: %d", c as int));
+          let mut cs = ~"";
+          char::escape_default(c, |c| cs.push_char(c));
+          rdr.fatal(fmt!("unknown start of token: %s", cs));
       }
     }
 }
