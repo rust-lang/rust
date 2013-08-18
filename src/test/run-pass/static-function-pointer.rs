@@ -8,12 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:static-function-pointer-aux.rs
+extern mod aux(name = "static-function-pointer-aux");
+
 fn f(x: int) -> int { x }
+fn g(x: int) -> int { 2 * x }
 
 static F: extern fn(int) -> int = f;
 static mut G: extern fn(int) -> int = f;
 
 fn main() {
-    F(42);
-    unsafe { G(7); }
+    assert_eq!(F(42), 42);
+    unsafe {
+        assert_eq!(G(42), 42);
+        G = g;
+        assert_eq!(G(42), 84);
+    }
+    assert_eq!(aux::F(42), -42);
+    unsafe {
+        assert_eq!(aux::MutF(42), -42);
+        aux::MutF = f;
+        assert_eq!(aux::MutF(42), 42);
+    }
 }
