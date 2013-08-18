@@ -469,10 +469,7 @@ impl Scheduler {
         // We've made work available. Notify a
         // sleeping scheduler.
 
-        // XXX: perf. Check for a sleeper without
-        // synchronizing memory.  It's not critical
-        // that we always find it.
-        match this.sleeper_list.pop() {
+        match this.sleeper_list.casual_pop() {
             Some(handle) => {
                         let mut handle = handle;
                 handle.send(Wake)
