@@ -598,7 +598,8 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
 }
 
 /**
- * Makes killable a task marked as unkillable
+ * Makes killable a task marked as unkillable. This
+ * is meant to be used only nested in unkillable.
  *
  * # Example
  *
@@ -607,6 +608,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
  *     do task::rekillable {
  *          // Task is killable
  *     }
+ *    // Task is unkillable again
  * }
  */
 pub fn rekillable<U>(f: &fn() -> U) -> U {
@@ -1235,6 +1237,20 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
+}
+
+#[ignore(reason = "linked failure")]
+#[test]
+#[ignore(cfg(windows))]
+#[should_fail]
+fn test_rekillable_not_nested() {
+    do rekillable {
+        // This should fail before
+        // receiving anything since
+        // this block should be nested
+        // into a unkillable block.
+        yield();
+    }
 }
 
 #[test]
