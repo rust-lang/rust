@@ -595,4 +595,18 @@ mod tests {
     fn test_float_hashes_of_zero() {
         assert_eq!(0.0.hash(), (-0.0).hash());
     }
+
+    #[test]
+    fn test_hash_no_concat_alias() {
+        let s = ("aa", "bb");
+        let t = ("aabb", "");
+        let u = ("a", "abb");
+
+        let v = (&[1u8], &[0u8, 0], &[0u8]);
+        let w = (&[1u8, 0, 0, 0], &[], &[]);
+
+        assert!(v != w);
+        assert!(s.hash() != t.hash() && s.hash() != u.hash());
+        assert!(v.hash() != w.hash());
+    }
 }
