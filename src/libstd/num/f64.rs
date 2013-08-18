@@ -788,29 +788,6 @@ pub fn to_str_hex(num: f64) -> ~str {
 }
 
 ///
-/// Converts a float to a string in a given radix
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * radix - The base to use
-///
-/// # Failure
-///
-/// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
-/// possible misinterpretation of the result at higher bases. If those values
-/// are expected, use `to_str_radix_special()` instead.
-///
-#[inline]
-pub fn to_str_radix(num: f64, rdx: uint) -> ~str {
-    let (r, special) = strconv::float_to_str_common(
-        num, rdx, true, strconv::SignNeg, strconv::DigAll);
-    if special { fail!("number has a special value, \
-                      try to_str_radix_special() if those are expected") }
-    r
-}
-
-///
 /// Converts a float to a string in a given radix, and a flag indicating
 /// whether it's a special value
 ///
@@ -863,9 +840,25 @@ impl to_str::ToStr for f64 {
 }
 
 impl num::ToStrRadix for f64 {
+    /// Converts a float to a string in a given radix
+    ///
+    /// # Arguments
+    ///
+    /// * num - The float value
+    /// * radix - The base to use
+    ///
+    /// # Failure
+    ///
+    /// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+    /// possible misinterpretation of the result at higher bases. If those values
+    /// are expected, use `to_str_radix_special()` instead.
     #[inline]
     fn to_str_radix(&self, rdx: uint) -> ~str {
-        to_str_radix(*self, rdx)
+        let (r, special) = strconv::float_to_str_common(
+            *self, rdx, true, strconv::SignNeg, strconv::DigAll);
+        if special { fail!("number has a special value, \
+                          try to_str_radix_special() if those are expected") }
+        r
     }
 }
 
