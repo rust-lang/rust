@@ -20,14 +20,13 @@ use unstable::sync::Exclusive;
 use clone::Clone;
 
 pub struct MessageQueue<T> {
-    // XXX: Another mystery bug fixed by boxing this lock
-    priv queue: ~Exclusive<~[T]>
+    priv queue: Exclusive<~[T]>
 }
 
 impl<T: Send> MessageQueue<T> {
     pub fn new() -> MessageQueue<T> {
         MessageQueue {
-            queue: ~Exclusive::new(~[])
+            queue: Exclusive::new(~[])
         }
     }
 
@@ -51,7 +50,7 @@ impl<T: Send> MessageQueue<T> {
     }
 }
 
-impl<T> Clone for MessageQueue<T> {
+impl<T: Send> Clone for MessageQueue<T> {
     fn clone(&self) -> MessageQueue<T> {
         MessageQueue {
             queue: self.queue.clone()
