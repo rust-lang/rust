@@ -1427,7 +1427,8 @@ impl<'self> StrSlice<'self> for &'self str {
     /// out of bounds.
     #[inline]
     fn slice_to(&self, end: uint) -> &'self str {
-        self.slice(0, end)
+        assert!(self.is_char_boundary(end));
+        unsafe { raw::slice_bytes(*self, 0, end) }
     }
 
     /// Returns a slice of the string from the char range
