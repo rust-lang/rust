@@ -14,7 +14,7 @@ trait Fooable {
 
 impl Fooable for uint {
     fn yes(self) {
-        do self.times {
+        for _ in range(0, self) {
             println("yes");
         }
     }

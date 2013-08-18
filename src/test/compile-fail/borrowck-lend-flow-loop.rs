@@ -39,7 +39,7 @@ fn block_overarching_alias_mut() {
 
     let mut v = ~3;
     let mut x = &mut v;
-    do 3.times {
+    for _ in range(0, 3u) {
         borrow(v); //~ ERROR cannot borrow
     }
     *x = ~5;

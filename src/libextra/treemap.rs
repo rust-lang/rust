@@ -1014,8 +1014,8 @@ mod test_treemap {
 
         let mut rng = rand::IsaacRng::new_seeded(&[42]);
 
-        do 3.times {
-            do 90.times {
+        for _ in range(0, 3u) {
+            for _ in range(0, 90u) {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -1026,7 +1026,7 @@ mod test_treemap {
                 }
             }
 
-            do 30.times {
+            for _ in range(0, 30u) {
                 let r = rng.gen_uint_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));

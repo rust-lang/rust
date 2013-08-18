@@ -689,7 +689,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
             let ch = ch.clone();
             do spawn_unlinked {
                 // Give middle task a chance to fail-but-not-kill-us.
-                do 16.times { task::yield(); }
+                for _ in range(0u, 16) { task::yield(); }
                 ch.send(()); // If killed first, grandparent hangs.
             }
             fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -712,7 +712,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do run_in_newsched_task {
         do spawn_supervised { fail!(); }
         // Give child a chance to fail-but-not-kill-us.
-        do 16.times { task::yield(); }
+        for _ in range(0u, 16) { task::yield(); }
     }
 }
 #[ignore(reason = "linked failure")]
@@ -821,7 +821,7 @@ fn test_spawn_failure_propagate_grandchild() {
             do spawn_supervised {
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::yield(); }
+            for _ in range(0u, 16) { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -838,7 +838,7 @@ fn test_spawn_failure_propagate_secondborn() {
             do spawn_supervised {
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::yield(); }
+            for _ in range(0u, 16) { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -855,7 +855,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             do spawn { // linked
                 do spawn_supervised { block_forever(); }
             }
-            do 16.times { task::yield(); }
+            for _ in range(0u, 16) { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -872,7 +872,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             do spawn { // linked
                 do spawn { block_forever(); } // linked
             }
-            do 16.times { task::yield(); }
+            for _ in range(0u, 16) { task::yield(); }
             fail!();
         };
         assert!(result.is_err());
@@ -1062,7 +1062,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        do 20u.times {
+        for _ in range(0, 20u) {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
@@ -1169,7 +1169,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        do 10.times { yield() }
+        for _ in range(0, 10u) { yield() }
         ch.send(());
     }
 
@@ -1205,7 +1205,7 @@ fn test_unkillable_nested() {
 
     // We want to do this after failing
     do spawn_unlinked || {
-        do 10.times { yield() }
+        for _ in range(0u, 10) { yield() }
         ch.send(());
     }
 

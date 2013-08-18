@@ -483,6 +483,7 @@ pub mod rt {
     use uint;
     use vec;
     use option::{Some, None, Option};
+    use iterator::{Iterator, range};
 
     pub static flag_none : u32 = 0u32;
     pub static flag_left_justify   : u32 = 0b00000000000001u32;
@@ -638,7 +639,7 @@ pub mod rt {
                 buf.push_char(c);
             }
             buf.push_str(s);
-            do diff.times {
+            for _ in range(0, diff) {
                 buf.push_char(padchar);
             }
             return;

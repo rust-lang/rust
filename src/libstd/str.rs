@@ -22,10 +22,9 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use iter::Times;
 use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
-use iterator::{Invert, DoubleEndedIterator};
+use iterator::{Invert, DoubleEndedIterator, range};
 use libc;
 use num::Zero;
 use option::{None, Option, Some};
@@ -1801,7 +1800,7 @@ impl<'self> StrSlice<'self> for &'self str {
                 do ret.as_mut_buf |rbuf, _len| {
                     let mut rbuf = rbuf;
 
-                    do nn.times {
+                    for _ in range(0, nn) {
                         ptr::copy_memory(rbuf, buf, len);
                         rbuf = rbuf.offset(len as int);
                     }

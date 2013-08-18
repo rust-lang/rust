@@ -750,7 +750,7 @@ impl IsaacRng {
             }}
         );
 
-        do 4.times { mix!(); }
+        for _ in range(0u, 4) { mix!(); }
 
         if use_rsl {
             macro_rules! memloop (
@@ -960,9 +960,8 @@ pub fn random<T: Rand>() -> T {
 
 #[cfg(test)]
 mod test {
-    use iterator::{Iterator, range};
-    use option::{Option, Some};
     use super::*;
+    use prelude::*;
 
     #[test]
     fn test_rng_seeded() {
@@ -1162,7 +1161,7 @@ mod test {
         }
 
         // run against several seeds
-        do 10.times {
+        for _ in range(0u, 10) {
             unsafe {
                 let seed = super::seed();
                 let rt_rng = do seed.as_imm_buf |p, sz| {
@@ -1170,7 +1169,7 @@ mod test {
                 };
                 let mut rng = IsaacRng::new_seeded(seed);
 
-                do 10000.times {
+                for _ in range(0u, 10000) {
                     assert_eq!(rng.next(), rustrt::rand_next(rt_rng));
                 }
                 rustrt::rand_free(rt_rng);

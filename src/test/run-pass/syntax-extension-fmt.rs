@@ -266,7 +266,7 @@ fn more_floats() {
 }
 
 fn pointer() {
-    do 10.times {
+    for _ in range(0, 10u) {
         let x: uint = ::std::rand::random();
         assert_eq!(fmt!("%p", x as *uint), fmt!("0x%x", x));
     }

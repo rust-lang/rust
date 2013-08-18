@@ -1024,7 +1024,7 @@ mod tests {
 
     #[test]
     fn test_fuzz() {
-        do 25.times {
+        for _ in range(0, 25u) {
             fuzz_test(3);
             fuzz_test(16);
             fuzz_test(189);
