@@ -20,13 +20,13 @@ use rt::sched::SchedHandle;
 use clone::Clone;
 
 pub struct SleeperList {
-    priv stack: ~Exclusive<~[SchedHandle]>
+    priv stack: Exclusive<~[SchedHandle]>
 }
 
 impl SleeperList {
     pub fn new() -> SleeperList {
         SleeperList {
-            stack: ~Exclusive::new(~[])
+            stack: Exclusive::new(~[])
         }
     }
 
