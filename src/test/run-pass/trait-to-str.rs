@@ -10,35 +10,26 @@
 
 // xfail-fast
 
-#[no_std];
-
-extern mod std;
-
-use std::str::StrVector;
-use std::vec::ImmutableVector;
-use std::iterator::Iterator;
-use std::int;
-
 trait to_str {
-    fn to_str(&self) -> ~str;
+    fn to_string(&self) -> ~str;
 }
 
 impl to_str for int {
-    fn to_str(&self) -> ~str { int::to_str(*self) }
+    fn to_string(&self) -> ~str { self.to_str() }
 }
 
 impl<T:to_str> to_str for ~[T] {
-    fn to_str(&self) -> ~str {
-        fmt!("[%s]", self.iter().map(|e| e.to_str()).collect::<~[~str]>().connect(", "))
+    fn to_string(&self) -> ~str {
+        fmt!("[%s]", self.iter().map(|e| e.to_string()).collect::<~[~str]>().connect(", "))
     }
 }
 
 pub fn main() {
-    assert!(1.to_str() == ~"1");
-    assert!((~[2, 3, 4]).to_str() == ~"[2, 3, 4]");
+    assert!(1.to_string() == ~"1");
+    assert!((~[2, 3, 4]).to_string() == ~"[2, 3, 4]");
 
     fn indirect<T:to_str>(x: T) -> ~str {
-        x.to_str() + "!"
+        x.to_string() + "!"
     }
     assert!(indirect(~[10, 20]) == ~"[10, 20]!");
 

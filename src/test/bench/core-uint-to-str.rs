@@ -24,7 +24,7 @@ fn main() {
     let n = uint::from_str(args[1]).unwrap();
 
     for i in range(0u, n) {
-        let x = uint::to_str(i);
+        let x = i.to_str();
         info!(x);
     }
 }
