@@ -365,7 +365,7 @@ pub fn write_boxplot(w: @io::Writer, s: &Summary, width_hint: uint) {
     w.write_str(histr);
 }
 
-/// Returns a HashMap with the number of occurences of every element in the
+/// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
 pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U, uint> {
     let mut map = hashmap::HashMap::new::<U, uint>();

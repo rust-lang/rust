@@ -382,7 +382,7 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> 
     }
 }
 
-/// An iterator over the start and end indicies of the matches of a
+/// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[deriving(Clone)]
 pub struct MatchesIndexIterator<'self> {
@@ -893,7 +893,7 @@ pub mod raw {
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
-    /// modifing its buffers, so it is up to the caller to ensure that
+    /// modifying its buffers, so it is up to the caller to ensure that
     /// the string is actually the specified size.
     #[inline]
     pub unsafe fn set_len(s: &mut ~str, new_len: uint) {

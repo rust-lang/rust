@@ -582,7 +582,7 @@ a referencing source file, or by the name of the crate itself.
 
 Each source file contains a sequence of zero or more `item` definitions,
 and may optionally begin with any number of `attributes` that apply to the containing module.
-Atributes on the anonymous crate module define important metadata that influences
+Attributes on the anonymous crate module define important metadata that influences
 the behavior of the compiler.
 
 ~~~~~~~~
@@ -1273,7 +1273,7 @@ since the typechecker checks that any type with an implementation of `Circle` al
 
 In type-parameterized functions,
 methods of the supertrait may be called on values of subtrait-bound type parameters.
-Refering to the previous example of `trait Circle : Shape`:
+Referring to the previous example of `trait Circle : Shape`:
 
 ~~~
 # trait Shape { fn area(&self) -> float; }
@@ -1914,7 +1914,7 @@ A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) refe
 When the field is mutable, it can be [assigned](#assignment-expressions) to.
 
 When the type of the expression to the left of the dot is a pointer to a record or structure,
-it is automatically derferenced to make the field access possible.
+it is automatically dereferenced to make the field access possible.
 
 
 ### Vector expressions

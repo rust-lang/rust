@@ -39,14 +39,14 @@ pub struct AtomicBool {
 }
 
 /**
- * A signed atomic integer type, supporting basic atomic aritmetic operations
+ * A signed atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicInt {
     priv v: int
 }
 
 /**
- * An unsigned atomic integer type, supporting basic atomic aritmetic operations
+ * An unsigned atomic integer type, supporting basic atomic arithmetic operations
  */
 pub struct AtomicUint {
     priv v: uint
@@ -497,7 +497,7 @@ pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
  * A fence 'A' which has `Release` ordering semantics, synchronizes with a
  * fence 'B' with (at least) `Acquire` semantics, if and only if there exists
  * atomic operations X and Y, both operating on some atomic object 'M' such
- * that A is sequenced before X, Y is synchronized before B and Y obsevers
+ * that A is sequenced before X, Y is synchronized before B and Y observers
  * the change to M. This provides a happens-before dependence between A and B.
  *
  * Atomic operations with `Release` or `Acquire` semantics can also synchronize

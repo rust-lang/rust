@@ -40,17 +40,17 @@ out of `rt` as development proceeds.
 
 Several modules in `core` are clients of `rt`:
 
-* `core::task` - The user-facing interface to the Rust task model.
-* `core::task::local_data` - The interface to local data.
-* `core::gc` - The garbage collector.
-* `core::unstable::lang` - Miscellaneous lang items, some of which rely on `core::rt`.
-* `core::condition` - Uses local data.
-* `core::cleanup` - Local heap destruction.
-* `core::io` - In the future `core::io` will use an `rt` implementation.
-* `core::logging`
-* `core::pipes`
-* `core::comm`
-* `core::stackwalk`
+* `std::task` - The user-facing interface to the Rust task model.
+* `std::task::local_data` - The interface to local data.
+* `std::gc` - The garbage collector.
+* `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
+* `std::condition` - Uses local data.
+* `std::cleanup` - Local heap destruction.
+* `std::io` - In the future `std::io` will use an `rt` implementation.
+* `std::logging`
+* `std::pipes`
+* `std::comm`
+* `std::stackwalk`
 
 */
 
@@ -139,7 +139,7 @@ pub mod rc;
 /// scheduler and task context
 pub mod tube;
 
-/// Simple reimplementation of core::comm
+/// Simple reimplementation of std::comm
 pub mod comm;
 
 mod select;
