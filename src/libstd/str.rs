@@ -255,56 +255,94 @@ impl<'self, C: CharEq> CharEq for &'self [C] {
 Section: Iterators
 */
 
+/// External iterator for a string's characters.
+#[deriving(Clone)]
+pub struct CharIterator<'self> {
+    priv string: &'self str,
+}
+
+impl<'self> Iterator<char> for CharIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        if self.string.len() != 0 {
+            let CharRange {ch, next} = self.string.char_range_at(0);
+            unsafe {
+                self.string = raw::slice_unchecked(self.string, next, self.string.len());
+            }
+            Some(ch)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (self.string.len().saturating_add(3)/4, Some(self.string.len()))
+    }
+}
+
+impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        if self.string.len() != 0 {
+            let CharRange {ch, next} = self.string.char_range_at_reverse(self.string.len());
+            unsafe {
+                self.string = raw::slice_unchecked(self.string, 0, next);
+            }
+            Some(ch)
+        } else {
+            None
+        }
+    }
+}
+
+
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharOffsetIterator<'self> {
-    priv index_front: uint,
-    priv index_back: uint,
     priv string: &'self str,
+    priv iter: CharIterator<'self>,
 }
 
 impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
-        if self.index_front < self.index_back {
-            let CharRange {ch, next} = self.string.char_range_at(self.index_front);
-            let index = self.index_front;
-            self.index_front = next;
-            Some((index, ch))
-        } else {
-            None
-        }
+        let offset = do self.string.as_imm_buf |a, _| {
+            do self.iter.string.as_imm_buf |b, _| {
+                b as uint - a as uint
+            }
+        };
+        self.iter.next().map_move(|ch| (offset, ch))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.iter.size_hint()
     }
 }
 
 impl<'self> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
-        if self.index_front < self.index_back {
-            let CharRange {ch, next} = self.string.char_range_at_reverse(self.index_back);
-            self.index_back = next;
-            Some((next, ch))
-        } else {
-            None
-        }
+        self.iter.next_back().map_move(|ch| {
+            let offset = do self.string.as_imm_buf |a, _| {
+                do self.iter.string.as_imm_buf |b, len| {
+                    b as uint - a as uint + len
+                }
+            };
+            (offset, ch)
+        })
     }
 }
 
-/// External iterator for a string's characters and their byte offsets in reverse order.
-/// Use with the `std::iterator` module.
-pub type CharOffsetRevIterator<'self> =
-    Invert<CharOffsetIterator<'self>>;
-
-/// External iterator for a string's characters.
-/// Use with the `std::iterator` module.
-pub type CharIterator<'self> =
-    Map<'self, (uint, char), char, CharOffsetIterator<'self>>;
-
 /// External iterator for a string's characters in reverse order.
 /// Use with the `std::iterator` module.
-pub type CharRevIterator<'self> =
-    Invert<Map<'self, (uint, char), char, CharOffsetIterator<'self>>>;
+pub type CharRevIterator<'self> = Invert<CharIterator<'self>>;
+
+/// External iterator for a string's characters and their byte offsets in reverse order.
+/// Use with the `std::iterator` module.
+pub type CharOffsetRevIterator<'self> = Invert<CharOffsetIterator<'self>>;
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iterator` module.
@@ -313,8 +351,7 @@ pub type ByteIterator<'self> =
 
 /// External iterator for a string's bytes in reverse order.
 /// Use with the `std::iterator` module.
-pub type ByteRevIterator<'self> =
-    Invert<Map<'self, &'self u8, u8, vec::VecIterator<'self, u8>>>;
+pub type ByteRevIterator<'self> = Invert<ByteIterator<'self>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
@@ -1218,7 +1255,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~
     #[inline]
     fn iter(&self) -> CharIterator<'self> {
-        self.char_offset_iter().map(|(_, c)| c)
+        CharIterator{string: *self}
     }
 
     /// An iterator over the characters of `self`, in reverse order.
@@ -1242,11 +1279,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the characters of `self` and their byte offsets.
     #[inline]
     fn char_offset_iter(&self) -> CharOffsetIterator<'self> {
-        CharOffsetIterator {
-            index_front: 0,
-            index_back: self.len(),
-            string: *self
-        }
+        CharOffsetIterator{string: *self, iter: self.iter()}
     }
 
     /// An iterator over the characters of `self` and their byte offsets.
