@@ -13,7 +13,7 @@
 #include <math.h>
 #include <stdio.h>
 
-// must match core::ctypes
+// must match std::ctypes
 
 #define C_FLT(x) (float)x
 #define C_DBL(x) (double)x

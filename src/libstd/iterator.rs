@@ -511,7 +511,8 @@ pub trait Iterator<A> {
         i
     }
 
-    /// Return the element that gives the maximum value from the specfied function
+    /// Return the element that gives the maximum value from the
+    /// specified function.
     ///
     /// # Example
     ///
@@ -534,7 +535,8 @@ pub trait Iterator<A> {
         }).map_move(|(x, _)| x)
     }
 
-    /// Return the element that gives the minimum value from the specfied function
+    /// Return the element that gives the minimum value from the
+    /// specified function.
     ///
     /// # Example
     ///
@@ -1541,7 +1543,7 @@ pub struct Repeat<A> {
 }
 
 impl<A: Clone> Repeat<A> {
-    /// Create a new `Repeat` that enlessly repeats the element `elt`.
+    /// Create a new `Repeat` that endlessly repeats the element `elt`.
     #[inline]
     pub fn new(elt: A) -> Repeat<A> {
         Repeat{element: elt}

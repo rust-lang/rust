@@ -157,7 +157,7 @@ impl Terminal {
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Rturns true if the color was set, false otherwise.
+    /// Returns true if the color was set, false otherwise.
     pub fn bg(&self, color: color::Color) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {

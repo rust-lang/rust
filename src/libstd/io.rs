@@ -1029,9 +1029,9 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 * # Example
 *
 * ~~~ {.rust}
-* let stdin = core::io::stdin();
+* let stdin = std::io::stdin();
 * let line = stdin.read_line();
-* core::io::print(line);
+* std::io::print(line);
 * ~~~
 */
 pub fn stdin() -> @Reader {
@@ -1462,7 +1462,7 @@ pub trait WriterUtil {
     /// (8 bytes).
     fn write_le_f64(&self, f: f64);
 
-    /// Write a litten-endian IEEE754 single-precision floating-point
+    /// Write a little-endian IEEE754 single-precision floating-point
     /// (4 bytes).
     fn write_le_f32(&self, f: f32);
 
@@ -1598,7 +1598,7 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 * # Example
 *
 * ~~~ {.rust}
-* let stdout = core::io::stdout();
+* let stdout = std::io::stdout();
 * stdout.write_str("hello\n");
 * ~~~
 */
@@ -1610,7 +1610,7 @@ pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 * # Example
 *
 * ~~~ {.rust}
-* let stderr = core::io::stderr();
+* let stderr = std::io::stderr();
 * stderr.write_str("hello\n");
 * ~~~
 */

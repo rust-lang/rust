@@ -365,7 +365,7 @@ impl TaskBuilder {
         spawn::spawn_raw(opts, f);
     }
 
-    /// Runs a task, while transfering ownership of one argument to the child.
+    /// Runs a task, while transferring ownership of one argument to the child.
     pub fn spawn_with<A:Send>(&mut self, arg: A, f: ~fn(v: A)) {
         let arg = Cell::new(arg);
         do self.spawn {
@@ -474,10 +474,10 @@ pub fn spawn_indestructible(f: ~fn()) {
 
 pub fn spawn_with<A:Send>(arg: A, f: ~fn(v: A)) {
     /*!
-     * Runs a task, while transfering ownership of one argument to the
+     * Runs a task, while transferring ownership of one argument to the
      * child.
      *
-     * This is useful for transfering ownership of noncopyables to
+     * This is useful for transferring ownership of noncopyables to
      * another task.
      *
      * This function is equivalent to `task().spawn_with(arg, f)`.

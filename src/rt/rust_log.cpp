@@ -36,7 +36,7 @@ const size_t default_log_level = log_err;
 
 // This is a rather ugly parser for strings in the form
 // "crate1,crate2.mod3,crate3.x=1". Log levels are 0-255,
-// with the most likely ones being 0-3 (defined in core::).
+// with the most likely ones being 0-3 (defined in std::).
 size_t parse_logging_spec(char* spec, log_directive* dirs) {
     size_t dir = 0;
     while (dir < max_log_directives && *spec) {

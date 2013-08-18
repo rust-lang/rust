@@ -18,7 +18,7 @@ stack closures that emulates Java-style try/finally blocks.
 do || {
     ...
 }.finally {
-    alway_run_this();
+    always_run_this();
 }
 ~~~
 */
