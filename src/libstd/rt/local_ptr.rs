@@ -64,6 +64,23 @@ pub unsafe fn take<T>() -> ~T {
     return ptr;
 }
 
+/// Take ownership of a pointer from thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+/// Leaves the old pointer in TLS for speed.
+#[inline]
+pub unsafe fn unsafe_take<T>() -> ~T {
+    let key = tls_key();
+    let void_ptr: *mut c_void = tls::get(key);
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!");
+    }
+    let ptr: ~T = cast::transmute(void_ptr);
+    return ptr;
+}
+
 /// Check whether there is a thread-local pointer installed.
 pub fn exists() -> bool {
     unsafe {
