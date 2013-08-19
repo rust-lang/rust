@@ -671,7 +671,39 @@ fn test_kill_rekillable_task() {
     }
 }
 
-#[test] #[should_fail]
+#[test]
+#[ignore(cfg(windows))]
+#[should_fail]
+fn test_rekillable_not_nested() {
+    do rekillable {
+        // This should fail before
+        // receiving anything since
+        // this block should be nested
+        // into a unkillable block.
+        yield();
+    }
+}
+
+
+#[test]
+#[ignore(cfg(windows))]
+fn test_rekillable_nested_failure() {
+
+    let result = do task::try {
+        do unkillable {
+            do rekillable {
+                let (port,chan) = comm::stream();
+                do task::spawn { chan.send(()); fail!(); }
+                port.recv(); // wait for child to exist
+                port.recv(); // block forever, expect to get killed.
+            } 
+        }
+    };
+    assert!(result.is_err());
+}
+
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_cant_dup_task_builder() {
     let mut builder = task();
     builder.unlinked();
@@ -1237,20 +1269,6 @@ fn test_unkillable_nested() {
 
     // Now we can be killed
     po.recv();
-}
-
-#[ignore(reason = "linked failure")]
-#[test]
-#[ignore(cfg(windows))]
-#[should_fail]
-fn test_rekillable_not_nested() {
-    do rekillable {
-        // This should fail before
-        // receiving anything since
-        // this block should be nested
-        // into a unkillable block.
-        yield();
-    }
 }
 
 #[test]
