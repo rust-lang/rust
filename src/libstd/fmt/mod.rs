@@ -399,6 +399,43 @@ pub trait Pointer { fn fmt(&Self, &mut Formatter); }
 #[allow(missing_doc)]
 pub trait Float { fn fmt(&Self, &mut Formatter); }
 
+/// The fprintf function takes an output stream, a precompiled format string,
+/// and a list of arguments. The arguments will be formatted according to the
+/// specified format string into the output stream provided.
+///
+/// See the documentation for `sprintf` for why this function is unsafe and care
+/// should be taken if calling it manually.
+///
+/// Thankfully the rust compiler provides the macro `fmtf!` which will perform
+/// all of this validation at compile-time and provides a safe interface for
+/// invoking this function.
+///
+/// # Arguments
+///
+///   * output - the buffer to write output to
+///   * fmts - the precompiled format string to emit
+///   * args - the list of arguments to the format string. These are only the
+///            positional arguments (not named)
+///
+/// Note that this function assumes that there are enough arguments for the
+/// format string.
+pub unsafe fn fprintf(output: &mut io::Writer,
+                      fmt: &[rt::Piece], args: &[Argument]) {
+    let mut formatter = Formatter {
+        flags: 0,
+        width: None,
+        precision: None,
+        buf: output,
+        align: parse::AlignUnknown,
+        fill: ' ',
+        args: args,
+        curarg: args.iter(),
+    };
+    for piece in fmt.iter() {
+        formatter.run(piece, None);
+    }
+}
+
 /// The sprintf function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
@@ -422,23 +459,8 @@ pub trait Float { fn fmt(&Self, &mut Formatter); }
 /// Note that this function assumes that there are enough arguments for the
 /// format string.
 pub unsafe fn sprintf(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
-    let output = MemWriter::new();
-    {
-        let mut formatter = Formatter {
-            flags: 0,
-            width: None,
-            precision: None,
-            // FIXME(#8248): shouldn't need a transmute
-            buf: cast::transmute(&output as &io::Writer),
-            align: parse::AlignUnknown,
-            fill: ' ',
-            args: args,
-            curarg: args.iter(),
-        };
-        for piece in fmt.iter() {
-            formatter.run(piece, None);
-        }
-    }
+    let mut output = MemWriter::new();
+    fprintf(&mut output as &mut io::Writer, fmt, args);
     return str::from_bytes_owned(output.inner());
 }
 
