@@ -163,7 +163,7 @@ assert_eq!(sum, 57);
 The `for` keyword can be used as sugar for iterating through any iterator:
 
 ~~~
-let xs = [2, 3, 5, 7, 11, 13, 17];
+let xs = [2u, 3, 5, 7, 11, 13, 17];
 
 // print out all the elements in the vector
 for x in xs.iter() {
@@ -219,7 +219,7 @@ Containers can provide conversion from iterators through `collect` by
 implementing the `FromIterator` trait. For example, the implementation for
 vectors is as follows:
 
-~~~
+~~~ {.xfail-test}
 impl<A> FromIterator<A> for ~[A] {
     pub fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
@@ -237,7 +237,7 @@ impl<A> FromIterator<A> for ~[A] {
 The `Iterator` trait provides a `size_hint` default method, returning a lower
 bound and optionally on upper bound on the length of the iterator:
 
-~~~
+~~~ {.xfail-test}
 fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 ~~~
 
