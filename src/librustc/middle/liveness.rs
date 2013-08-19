@@ -1617,7 +1617,7 @@ impl Liveness {
 
     pub fn should_warn(&self, var: Variable) -> Option<@str> {
         let name = self.ir.variable_name(var);
-        if name[0] == ('_' as u8) { None } else { Some(name) }
+        if name.len() == 0 || name[0] == ('_' as u8) { None } else { Some(name) }
     }
 
     pub fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
