@@ -319,6 +319,16 @@ for x in it.invert() {
 }
 ~~~
 
+The `reverse_` method is also available for any double-ended iterator yielding
+mutable references. It can be used to reverse a container in-place. Note that
+the trailing underscore is a workaround for issue #5898 and will be removed.
+
+~~~
+let mut ys = [1, 2, 3, 4, 5];
+ys.mut_iter().reverse_();
+assert_eq!(ys, [5, 4, 3, 2, 1]);
+~~~
+
 ## Random-access iterators
 
 The `RandomAccessIterator` trait represents an iterator offering random access
