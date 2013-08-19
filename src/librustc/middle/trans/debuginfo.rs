@@ -96,7 +96,7 @@ pub struct DebugContext {
     priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
-    priv curr_loc: (uint, uint),
+    priv curr_loc: DebugLocation,
     priv created_files: HashMap<~str, DIFile>,
     priv created_types: HashMap<uint, DIType>,
 }
@@ -111,7 +111,7 @@ impl DebugContext {
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
-            curr_loc: (0, 0),
+            curr_loc: UnknownLocation,
             created_files: HashMap::new(),
             created_types: HashMap::new(),
         };
@@ -122,6 +122,7 @@ pub struct FunctionDebugContext {
     priv scope_map: HashMap<ast::NodeId, DIScope>,
     priv fn_metadata: DISubprogram,
     priv argument_counter: uint,
+    priv source_locations_enabled: bool,
 }
 
 /// Create any deferred debug metadata nodes
@@ -202,7 +203,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
         }
     };
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -212,6 +213,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }
+    set_debug_location(cx, UnknownLocation);
 }
 
 /// Creates debug information for the given function argument.
@@ -274,7 +276,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
-        set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+        set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
         unsafe {
             let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                 DIB(cx),
@@ -284,6 +286,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
 
             llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
         }
+        set_debug_location(cx, UnknownLocation);
     }
 }
 
@@ -291,21 +294,31 @@ pub fn create_argument_metadata(bcx: @mut Block,
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id parameter is used to
 /// reliably find the correct visibility scope for the code position.
-pub fn update_source_pos(fcx: &FunctionContext,
-                         node_id: ast::NodeId,
-                         span: span) {
+pub fn set_source_location(fcx: &FunctionContext,
+                           node_id: ast::NodeId,
+                           span: span) {
     let cx: &mut CrateContext = fcx.ccx;
 
     if !cx.sess.opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
 
-    debug!("update_source_pos: %s", cx.sess.codemap.span_to_str(span));
+    debug!("set_source_location: %s", cx.sess.codemap.span_to_str(span));
 
-    let loc = span_start(cx, span);
-    let scope = scope_metadata(fcx, node_id, span);
+    if fcx.debug_context.get_ref().source_locations_enabled {
+        let loc = span_start(cx, span);
+        let scope = scope_metadata(fcx, node_id, span);
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+        set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
+    } else {
+        set_debug_location(cx, UnknownLocation);
+    }
+}
+
+pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
+    for debug_context in fcx.debug_context.mut_iter() {
+        debug_context.source_locations_enabled = true;
+    }
 }
 
 pub fn create_function_debug_context(cx: &mut CrateContext,
@@ -401,6 +414,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         ptr::null()
     };
 
+    let scope_line = get_scope_line(cx, top_level_block, loc.line);
+
     let fn_metadata = do function_name.to_c_str().with_ref |function_name| {
         unsafe {
             llvm::LLVMDIBuilderCreateFunction(
@@ -413,7 +428,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                 function_type_metadata,
                 false,
                 true,
-                loc.line as c_uint,
+                scope_line as c_uint,
                 FlagPrototyped as c_uint,
                 cx.sess.opts.optimize != session::No,
                 llfn,
@@ -427,6 +442,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         scope_map: HashMap::new(),
         fn_metadata: fn_metadata,
         argument_counter: 1,
+        source_locations_enabled: false,
     };
 
     let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
@@ -438,8 +454,6 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::fn_decl,
                               param_substs: Option<@param_substs>) -> DIArray {
-        //let cx = fcx.ccx;
-
         if !cx.sess.opts.extra_debuginfo {
             return create_DIArray(DIB(cx), []);
         }
@@ -575,9 +589,22 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
         return create_DIArray(DIB(cx), template_params);
     }
+
+    fn get_scope_line(cx: &CrateContext,
+                      top_level_block: Option<&ast::Block>,
+                      default: uint)
+                   -> uint {
+        match top_level_block {
+            Some(&ast::Block { stmts: ref statements, _ }) if statements.len() > 0 => {
+                span_start(cx, statements[0].span).line
+            }
+            Some(&ast::Block { expr: Some(@ref expr), _ }) => {
+                span_start(cx, expr.span).line
+            }
+            _ => default
+        }
+    }
 }
-
-
 
 //=-------------------------------------------------------------------------------------------------
 // Module-Internal debug info creation functions
@@ -650,7 +677,7 @@ fn declare_local(bcx: @mut Block,
         }
     };
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -1409,22 +1436,51 @@ fn type_metadata(cx: &mut CrateContext,
     return type_metadata;
 }
 
-fn set_debug_location(cx: &mut CrateContext, scope: DIScope, line: uint, col: uint) {
-    if dbg_cx(cx).curr_loc == (line, col) {
+#[deriving(Eq)]
+enum DebugLocation {
+    KnownLocation { scope: DIScope, line: uint, col: uint },
+    UnknownLocation
+}
+
+impl DebugLocation {
+    fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {
+        KnownLocation {
+            scope: scope,
+            line: line,
+            col: col,
+        }
+    }
+}
+
+fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
+    if debug_location == dbg_cx(cx).curr_loc {
         return;
     }
-    debug!("setting debug location to %u %u", line, col);
-    dbg_cx(cx).curr_loc = (line, col);
 
-    let elems = ~[C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+
+    let metadata_node;
+
+    match debug_location {
+        KnownLocation { scope, line, col } => {
+            debug!("setting debug location to %u %u", line, col);
+            let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+            unsafe {
+                metadata_node = llvm::LLVMMDNodeInContext(dbg_cx(cx).llcontext,
+                                                          vec::raw::to_ptr(elements),
+                                                          elements.len() as c_uint);
+            }
+        }
+        UnknownLocation => {
+            debug!("clearing debug location ");
+            metadata_node = ptr::null();
+        }
+    };
+
     unsafe {
-        let dbg_loc = llvm::LLVMMDNodeInContext(
-                dbg_cx(cx).llcontext,
-                vec::raw::to_ptr(elems),
-                elems.len() as c_uint);
-
-        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
+        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, metadata_node);
     }
+
+    dbg_cx(cx).curr_loc = debug_location;
 }
 
 //=-------------------------------------------------------------------------------------------------

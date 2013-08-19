@@ -413,7 +413,7 @@ pub fn trans_into(bcx: @mut Block, expr: @ast::expr, dest: Dest) -> @mut Block {
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
 
-    debuginfo::update_source_pos(bcx.fcx, expr.id, expr.span);
+    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     let dest = {
         if ty::type_is_voidish(ty) {
@@ -485,7 +485,7 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_to_datum_unadjusted(expr=%s)", bcx.expr_to_str(expr));
     let _indenter = indenter();
 
-    debuginfo::update_source_pos(bcx.fcx, expr.id, expr.span);
+    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match ty::expr_kind(bcx.tcx(), bcx.ccx().maps.method_map, expr) {
         ty::LvalueExpr => {
