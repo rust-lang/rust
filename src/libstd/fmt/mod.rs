@@ -356,28 +356,46 @@ pub struct Argument<'self> {
     priv value: &'self util::Void,
 }
 
+/// When a format is not otherwise specified, types are formatted by ascribing
+/// to this trait. There is not an explicit way of selecting this trait to be
+/// used for formatting, it is only if no other format is specified.
+#[allow(missing_doc)]
+pub trait Default { fn fmt(&Self, &mut Formatter); }
+
+/// Format trait for the `b` character
 #[allow(missing_doc)]
 pub trait Bool { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `c` character
 #[allow(missing_doc)]
 pub trait Char { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `i` and `d` characters
 #[allow(missing_doc)]
 pub trait Signed { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `u` character
 #[allow(missing_doc)]
 pub trait Unsigned { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `o` character
 #[allow(missing_doc)]
 pub trait Octal { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `b` character
 #[allow(missing_doc)]
 pub trait Binary { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `x` character
 #[allow(missing_doc)]
 pub trait LowerHex { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `X` character
 #[allow(missing_doc)]
 pub trait UpperHex { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `s` character
 #[allow(missing_doc)]
 pub trait String { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `?` character
 #[allow(missing_doc)]
 pub trait Poly { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `p` character
 #[allow(missing_doc)]
 pub trait Pointer { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `f` character
 #[allow(missing_doc)]
 pub trait Float { fn fmt(&Self, &mut Formatter); }
 
@@ -726,9 +744,9 @@ impl Bool for bool {
     }
 }
 
-impl<'self> String for &'self str {
-    fn fmt(s: & &'self str, f: &mut Formatter) {
-        f.pad(*s);
+impl<'self, T: str::Str> String for T {
+    fn fmt(s: &T, f: &mut Formatter) {
+        f.pad(s.as_slice());
     }
 }
 
@@ -853,6 +871,38 @@ impl<T> Pointer for *const T {
             f.pad_integral(buf, "0x", true);
         }
     }
+}
+
+// Implementation of Default for various core types
+
+macro_rules! delegate(($ty:ty to $other:ident) => {
+    impl<'self> Default for $ty {
+        fn fmt(me: &$ty, f: &mut Formatter) {
+            $other::fmt(me, f)
+        }
+    }
+})
+delegate!(int to Signed)
+delegate!( i8 to Signed)
+delegate!(i16 to Signed)
+delegate!(i32 to Signed)
+delegate!(i64 to Signed)
+delegate!(uint to Unsigned)
+delegate!(  u8 to Unsigned)
+delegate!( u16 to Unsigned)
+delegate!( u32 to Unsigned)
+delegate!( u64 to Unsigned)
+delegate!(@str to String)
+delegate!(~str to String)
+delegate!(&'self str to String)
+delegate!(bool to Bool)
+delegate!(char to Char)
+delegate!(float to Float)
+delegate!(f32 to Float)
+delegate!(f64 to Float)
+
+impl<T> Default for *const T {
+    fn fmt(me: &*const T, f: &mut Formatter) { Pointer::fmt(me, f) }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
