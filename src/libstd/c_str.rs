@@ -96,6 +96,7 @@ impl CString {
     ///
     /// Fails if the CString is null.
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+        #[fixed_stack_segment]; #[inline(never)];
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
             let len = libc::strlen(self.buf) as uint;
@@ -114,6 +115,7 @@ impl CString {
 
 impl Drop for CString {
     fn drop(&self) {
+        #[fixed_stack_segment]; #[inline(never)];
         if self.owns_buffer_ {
             unsafe {
                 libc::free(self.buf as *libc::c_void)
@@ -172,6 +174,7 @@ impl<'self> ToCStr for &'self str {
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
+        #[fixed_stack_segment]; #[inline(never)];
         let mut cs = unsafe { self.to_c_str_unchecked() };
         do cs.with_mut_ref |buf| {
             for i in range(0, self.len()) {
@@ -190,6 +193,7 @@ impl<'self> ToCStr for &'self [u8] {
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
+        #[fixed_stack_segment]; #[inline(never)];
         do self.as_imm_buf |self_buf, self_len| {
             let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
             if buf.is_null() {
@@ -260,12 +264,16 @@ mod tests {
 
     #[test]
     fn test_unwrap() {
+        #[fixed_stack_segment]; #[inline(never)];
+
         let c_str = "hello".to_c_str();
         unsafe { libc::free(c_str.unwrap() as *libc::c_void) }
     }
 
     #[test]
     fn test_with_ref() {
+        #[fixed_stack_segment]; #[inline(never)];
+
         let c_str = "hello".to_c_str();
         let len = unsafe { c_str.with_ref(|buf| libc::strlen(buf)) };
         assert!(!c_str.is_null());

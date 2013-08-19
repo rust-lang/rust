@@ -877,6 +877,8 @@ impl Rng for XorShiftRng {
 impl XorShiftRng {
     /// Create an xor shift random number generator with a random seed.
     pub fn new() -> XorShiftRng {
+        #[fixed_stack_segment]; #[inline(never)];
+
         // generate seeds the same way as seed(), except we have a spceific size
         let mut s = [0u8, ..16];
         loop {
@@ -910,6 +912,8 @@ impl XorShiftRng {
 
 /// Create a new random seed.
 pub fn seed() -> ~[u8] {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let n = rustrt::rand_seed_size() as uint;
         let mut s = vec::from_elem(n, 0_u8);
@@ -1142,6 +1146,8 @@ mod test {
 
     #[test]
     fn compare_isaac_implementation() {
+        #[fixed_stack_segment]; #[inline(never)];
+
         // This is to verify that the implementation of the ISAAC rng is
         // correct (i.e. matches the output of the upstream implementation,
         // which is in the runtime)

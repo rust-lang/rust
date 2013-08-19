@@ -23,6 +23,8 @@ pub struct Thread {
 impl Thread {
     pub fn start(main: ~fn()) -> Thread {
         fn substart(main: &~fn()) -> *raw_thread {
+            #[fixed_stack_segment]; #[inline(never)];
+
             unsafe { rust_raw_thread_start(main) }
         }
         let raw = substart(&main);
@@ -34,6 +36,8 @@ impl Thread {
     }
 
     pub fn join(self) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         assert!(!self.joined);
         let mut this = self;
         unsafe { rust_raw_thread_join(this.raw_thread); }
@@ -43,6 +47,8 @@ impl Thread {
 
 impl Drop for Thread {
     fn drop(&self) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         assert!(self.joined);
         unsafe { rust_raw_thread_delete(self.raw_thread) }
     }

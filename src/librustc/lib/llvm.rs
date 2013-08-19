@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// LLVM wrappers are intended to be called from trans,
+// which already runs in a #[fixed_stack_segment]
+#[allow(cstack)];
+
 use std::c_str::ToCStr;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort};
@@ -2244,6 +2248,11 @@ impl TypeNames {
 
     pub fn type_to_str(&self, ty: Type) -> ~str {
         self.type_to_str_depth(ty, 30)
+    }
+
+    pub fn types_to_str(&self, tys: &[Type]) -> ~str {
+        let strs = tys.map(|t| self.type_to_str(*t));
+        fmt!("[%s]", strs.connect(","))
     }
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {

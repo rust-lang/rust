@@ -29,6 +29,7 @@ mod kernel32 {
 
 
 #[cfg(target_os = "win32")]
+#[fixed_stack_segment]
 pub fn main() {
     let heap = unsafe { kernel32::GetProcessHeap() };
     let mem = unsafe { kernel32::HeapAlloc(heap, 0u32, 100u32) };

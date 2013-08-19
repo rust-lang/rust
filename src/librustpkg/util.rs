@@ -382,6 +382,8 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
 
 #[cfg(windows)]
 pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+
     /* FIXME (#1768): Investigate how to do this on win32
        Node wraps symlinks by having a .bat,
        but that won't work with minGW. */
@@ -394,6 +396,8 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+
     use std::c_str::ToCStr;
     use std::libc;
 

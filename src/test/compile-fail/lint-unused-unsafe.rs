@@ -10,6 +10,7 @@
 
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
+#[allow(cstack)];
 #[deny(unused_unsafe)];
 
 mod foo {
@@ -55,6 +56,7 @@ fn good2() {
         }
     }
 }
+
 unsafe fn good3() { foo::bar() }
 fn good4() { unsafe { foo::bar() } }
 

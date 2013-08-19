@@ -136,6 +136,7 @@ impl DebugPrints for io::fd_t {
     }
 
     unsafe fn write_cstr(&self, p: *c_char) {
+        #[fixed_stack_segment]; #[inline(never)];
         use libc::strlen;
         use vec;
 

@@ -968,6 +968,85 @@ pub fn std_macros() -> @str {
             pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
         )
     )
+
+    // externfn! declares a wrapper for an external function.
+    // It is intended to be used like:
+    //
+    // externfn!(#[nolink]
+    //           #[abi = \"cdecl\"]
+    //           fn memcmp(cx: *u8, ct: *u8, n: u32) -> u32)
+    //
+    // Due to limitations in the macro parser, this pattern must be
+    // implemented with 4 distinct patterns (with attrs / without
+    // attrs CROSS with args / without ARGS).
+    //
+    // Also, this macro grammar allows for any number of return types
+    // because I couldn't figure out the syntax to specify at most one.
+    macro_rules! externfn(
+        (fn $name:ident () $(-> $ret_ty:ty),*) => (
+            pub unsafe fn $name() $(-> $ret_ty),* {
+                // Note: to avoid obscure bug in macros, keep these
+                // attributes *internal* to the fn
+                #[fixed_stack_segment];
+                #[inline(never)];
+                #[allow(missing_doc)];
+
+                return $name();
+
+                extern {
+                    fn $name() $(-> $ret_ty),*;
+                }
+            }
+        );
+        (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
+            pub unsafe fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),* {
+                // Note: to avoid obscure bug in macros, keep these
+                // attributes *internal* to the fn
+                #[fixed_stack_segment];
+                #[inline(never)];
+                #[allow(missing_doc)];
+
+                return $name($($arg_name),*);
+
+                extern {
+                    fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
+                }
+            }
+        );
+        ($($attrs:attr)* fn $name:ident () $(-> $ret_ty:ty),*) => (
+            pub unsafe fn $name() $(-> $ret_ty),* {
+                // Note: to avoid obscure bug in macros, keep these
+                // attributes *internal* to the fn
+                #[fixed_stack_segment];
+                #[inline(never)];
+                #[allow(missing_doc)];
+
+                return $name();
+
+                $($attrs)*
+                extern {
+                    fn $name() $(-> $ret_ty),*;
+                }
+            }
+        );
+        ($($attrs:attr)* fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
+            pub unsafe fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),* {
+                // Note: to avoid obscure bug in macros, keep these
+                // attributes *internal* to the fn
+                #[fixed_stack_segment];
+                #[inline(never)];
+                #[allow(missing_doc)];
+
+                return $name($($arg_name),*);
+
+                $($attrs)*
+                extern {
+                    fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
+                }
+            }
+        )
+    )
+
 }";
 }
 

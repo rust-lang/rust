@@ -41,7 +41,7 @@ macro_rules! delegate(
             use unstable::intrinsics;
 
             $(
-                #[inline]
+                #[inline] #[fixed_stack_segment] #[inline(never)]
                 pub fn $name($( $arg : $arg_ty ),*) -> $rv {
                     unsafe {
                         $bound_name($( $arg ),*)
