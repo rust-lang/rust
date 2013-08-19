@@ -54,9 +54,9 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 
 fn main() {
-    let ext_cx = mk_ctxt();
-    let s = quote_expr!(__s);
-    let e = quote_expr!(__e);
-    let f = quote_expr!($s.foo {|__e| $e});
+    let cx = mk_ctxt();
+    let s = quote_expr!(cx, __s);
+    let e = quote_expr!(cx, __e);
+    let f = quote_expr!(cx, $s.foo {|__e| $e});
     log(error, pprust::expr_to_str(f));
 }
