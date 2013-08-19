@@ -2249,9 +2249,6 @@ impl Resolver {
 
         // We need to resolve both namespaces for this to succeed.
         //
-        // FIXME #4949: See if there's some way of handling namespaces in
-        // a more generic way. We have two of them; it seems worth
-        // doing...
 
         let mut value_result = UnknownResult;
         let mut type_result = UnknownResult;
