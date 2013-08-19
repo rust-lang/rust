@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests correct implementation of traits with super-builtin-kinds
+// using a bounded type parameter.
+
 trait Foo : Send { }
 
 impl <T: Send> Foo for T { }

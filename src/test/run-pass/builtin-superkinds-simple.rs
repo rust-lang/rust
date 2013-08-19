@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Simple test case of implementing a trait with super-builtin-kinds.
+
 trait Foo : Send { }
 
 impl Foo for int { }

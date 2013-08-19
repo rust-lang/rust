@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test for traits that inherit from multiple builtin kinds at once,
+// testing that all such kinds must be present on implementing types.
+
 trait Foo : Send+Freeze { }
 
 impl <T: Freeze> Foo for (T,) { } //~ ERROR cannot implement this trait

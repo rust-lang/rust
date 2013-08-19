@@ -10,13 +10,15 @@
 
 // aux-build:trait_superkinds_in_metadata.rs
 
+// Tests (correct) usage of trait super-builtin-kinds cross-crate.
+
 extern mod trait_superkinds_in_metadata;
-use trait_superkinds_in_metadata::{Foo, Bar};
+use trait_superkinds_in_metadata::{RequiresRequiresFreezeAndSend, RequiresFreeze};
 
 struct X<T>(T);
 
-impl <T:Freeze> Bar for X<T> { }
+impl <T:Freeze> RequiresFreeze for X<T> { }
 
-impl <T:Freeze+Send> Foo for X<T> { }
+impl <T:Freeze+Send> RequiresRequiresFreezeAndSend for X<T> { }
 
 fn main() { }
