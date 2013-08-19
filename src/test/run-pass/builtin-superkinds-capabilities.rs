@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests "capabilities" granted by traits that inherit from super-
+// builtin-kinds, e.g., if a trait requires Send to implement, then
+// at usage site of that trait, we know we have the Send capability.
+
 trait Foo : Send { }
 
 impl <T: Send> Foo for T { }

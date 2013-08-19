@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Basic test for traits inheriting from the builtin kinds, checking
+// the type contents of the implementing type (that's not a typaram).
+
 trait Foo : Send { }
 
 impl <'self> Foo for &'self mut () { } //~ ERROR cannot implement this trait

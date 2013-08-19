@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Basic test for traits inheriting from the builtin kinds.
+
 trait Foo : Send { }
 
 impl <T: Freeze> Foo for T { } //~ ERROR cannot implement this trait

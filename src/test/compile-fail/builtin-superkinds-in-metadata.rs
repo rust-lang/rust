@@ -10,13 +10,16 @@
 
 // aux-build:trait_superkinds_in_metadata.rs
 
+// Test for traits inheriting from the builtin kinds cross-crate.
+// Mostly tests correctness of metadata.
+
 extern mod trait_superkinds_in_metadata;
-use trait_superkinds_in_metadata::{Foo, Bar};
+use trait_superkinds_in_metadata::{RequiresRequiresFreezeAndSend, RequiresFreeze};
 
 struct X<T>(T);
 
-impl <T:Freeze> Bar for X<T> { }
+impl <T:Freeze> RequiresFreeze for X<T> { }
 
-impl <T:Freeze> Foo for X<T> { } //~ ERROR cannot implement this trait
+impl <T:Freeze> RequiresRequiresFreezeAndSend for X<T> { } //~ ERROR cannot implement this trait
 
 fn main() { }

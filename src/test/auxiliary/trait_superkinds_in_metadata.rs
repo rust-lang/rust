@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test library crate for cross-crate usages of traits inheriting
+// from the builtin kinds. Mostly tests metadata correctness.
+
 #[crate_type="lib"];
 
-pub trait Bar : Freeze { }
-pub trait Foo : Bar + Send { }
+pub trait RequiresFreeze : Freeze { }
+pub trait RequiresRequiresFreezeAndSend : RequiresFreeze + Send { }
