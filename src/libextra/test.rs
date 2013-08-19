@@ -1163,7 +1163,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     fn test_should_fail() {
         fn f() { fail!(); }
         let desc = TestDescAndFn {

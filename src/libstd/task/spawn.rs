@@ -722,7 +722,6 @@ fn test_spawn_raw_simple() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 fn test_spawn_raw_unsupervise() {
     let opts = task::TaskOpts {
         linked: false,
@@ -736,7 +735,6 @@ fn test_spawn_raw_unsupervise() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 fn test_spawn_raw_notify_success() {
     let (notify_po, notify_ch) = comm::stream();
 
@@ -750,7 +748,6 @@ fn test_spawn_raw_notify_success() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 fn test_spawn_raw_notify_failure() {
     // New bindings for these
     let (notify_po, notify_ch) = comm::stream();

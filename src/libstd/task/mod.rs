@@ -616,7 +616,7 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_kill_unkillable_task() {
     use rt::test::*;
 
@@ -637,7 +637,7 @@ fn test_kill_unkillable_task() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_kill_rekillable_task() {
     use rt::test::*;
 
@@ -658,7 +658,7 @@ fn test_kill_rekillable_task() {
     }
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[should_fail]
 fn test_cant_dup_task_builder() {
     let mut builder = task();
     builder.unlinked();
@@ -679,7 +679,7 @@ fn test_cant_dup_task_builder() {
 fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -698,7 +698,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -706,7 +706,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -716,7 +716,7 @@ fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_unlinked_sup_fail_down() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -729,7 +729,7 @@ fn test_spawn_unlinked_sup_fail_down() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -750,7 +750,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -767,7 +767,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -780,7 +780,7 @@ fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -793,7 +793,7 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     }
 }
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -812,7 +812,7 @@ fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
 // when the middle task exits successfully early before kill signals are sent.
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_failure_propagate_grandchild() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -829,7 +829,7 @@ fn test_spawn_failure_propagate_grandchild() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_failure_propagate_secondborn() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -846,7 +846,7 @@ fn test_spawn_failure_propagate_secondborn() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_failure_propagate_nephew_or_niece() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -863,7 +863,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_linked_sup_propagate_sibling() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -941,7 +941,6 @@ fn test_add_wrapper() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = None;
     let mut builder = task();
@@ -959,7 +958,7 @@ fn test_future_result() {
     assert_eq!(result.unwrap().recv(), Failure);
 }
 
-#[test] #[should_fail] #[ignore(cfg(windows))]
+#[test] #[should_fail]
 fn test_back_to_the_future_result() {
     let mut builder = task();
     builder.future_result(util::ignore);
@@ -977,7 +976,6 @@ fn test_try_success() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 fn test_try_fail() {
     match do try {
         fail!()
@@ -1159,7 +1157,6 @@ fn test_avoid_copying_the_body_unlinked() {
 
 #[ignore(reason = "linked failure")]
 #[test]
-#[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable() {
     let (po, ch) = stream();
@@ -1195,7 +1192,6 @@ fn test_unkillable() {
 
 #[ignore(reason = "linked failure")]
 #[test]
-#[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable_nested() {
     let (po, ch) = comm::stream();
@@ -1261,7 +1257,7 @@ fn test_simple_newsched_spawn() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_spawn_watched() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {
@@ -1284,7 +1280,7 @@ fn test_spawn_watched() {
 }
 
 #[ignore(reason = "linked failure")]
-#[test] #[ignore(cfg(windows))]
+#[test]
 fn test_indestructible() {
     use rt::test::run_in_newsched_task;
     do run_in_newsched_task {

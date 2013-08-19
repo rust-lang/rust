@@ -921,7 +921,7 @@ mod tests {
             assert!(!cond.signal());
         }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_mutex_killed_simple() {
         // Mutex must get automatically unlocked if failed/killed within.
         let m = ~Mutex::new();
@@ -937,7 +937,7 @@ mod tests {
         do m.lock { }
     }
     #[ignore(reason = "linked failure")]
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_mutex_killed_cond() {
         // Getting killed during cond wait must not corrupt the mutex while
         // unwinding (e.g. double unlock).
@@ -964,7 +964,7 @@ mod tests {
         }
     }
     #[ignore(reason = "linked failure")]
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_mutex_killed_broadcast() {
         use std::unstable::finally::Finally;
 
@@ -1024,7 +1024,7 @@ mod tests {
             cond.wait();
         }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_mutex_different_conds() {
         let result = do task::try {
             let m = ~Mutex::new_with_condvars(2);
@@ -1045,7 +1045,7 @@ mod tests {
         };
         assert!(result.is_err());
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_mutex_no_condvars() {
         let result = do task::try {
             let m = ~Mutex::new_with_condvars(0);
@@ -1275,7 +1275,7 @@ mod tests {
         test_rwlock_cond_broadcast_helper(12, false, true);
         test_rwlock_cond_broadcast_helper(12, false, false);
     }
-    #[cfg(test)] #[ignore(cfg(windows))]
+    #[cfg(test)]
     fn rwlock_kill_helper(mode1: RWLockMode, mode2: RWLockMode) {
         // Mutex must get automatically unlocked if failed/killed within.
         let x = ~RWLock::new();
@@ -1290,23 +1290,23 @@ mod tests {
         // child task must have finished by the time try returns
         do lock_rwlock_in_mode(x, mode2) { }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rwlock_reader_killed_writer() {
         rwlock_kill_helper(Read, Write);
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rwlock_writer_killed_reader() {
         rwlock_kill_helper(Write,Read );
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rwlock_reader_killed_reader() {
         rwlock_kill_helper(Read, Read );
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rwlock_writer_killed_writer() {
         rwlock_kill_helper(Write,Write);
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rwlock_kill_downgrader() {
         rwlock_kill_helper(Downgrade, Read);
         rwlock_kill_helper(Read, Downgrade);
@@ -1321,7 +1321,7 @@ mod tests {
         rwlock_kill_helper(Downgrade, DowngradeRead);
         rwlock_kill_helper(Downgrade, DowngradeRead);
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_rwlock_downgrade_cant_swap() {
         // Tests that you can't downgrade with a different rwlock's token.
         let x = ~RWLock::new();

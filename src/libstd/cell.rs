@@ -93,7 +93,6 @@ fn test_basic() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(windows))]
 fn test_take_empty() {
     let value_cell = Cell::new_empty::<~int>();
     value_cell.take();
@@ -101,7 +100,6 @@ fn test_take_empty() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(windows))]
 fn test_put_back_non_empty() {
     let value_cell = Cell::new(~10);
     value_cell.put_back(~20);
