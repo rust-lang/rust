@@ -178,7 +178,7 @@ impl UvPausibleIdleCallback {
             self.closed = true;
             self.watcher.close(||());
         }
-    }                
+    }
 }
 
 #[test]
@@ -232,8 +232,8 @@ impl UvRemoteCallback {
             // could be called in the other thread, missing the final
             // callback while still destroying the handle.
 
-            let should_exit = unsafe { 
-                exit_flag_clone.with_imm(|&should_exit| should_exit) 
+            let should_exit = unsafe {
+                exit_flag_clone.with_imm(|&should_exit| should_exit)
             };
 
             f();

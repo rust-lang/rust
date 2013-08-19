@@ -105,7 +105,7 @@ impl Scheduler {
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>)
-        -> Scheduler {        
+        -> Scheduler {
 
         let mut event_loop = event_loop;
         let idle_callback = event_loop.pausible_idle_callback();
@@ -124,7 +124,7 @@ impl Scheduler {
             metrics: SchedMetrics::new(),
             run_anything: run_anything,
             friend_handle: friend,
-            rng: XorShiftRng::new(),            
+            rng: XorShiftRng::new(),
             idle_callback: idle_callback
         }
     }
@@ -174,7 +174,7 @@ impl Scheduler {
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-        let mut stask = Local::take::<Task>();        
+        let mut stask = Local::take::<Task>();
 
         rtdebug!("stopping scheduler %u", stask.sched.get_ref().sched_id());
 
