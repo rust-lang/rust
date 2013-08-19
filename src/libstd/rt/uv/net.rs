@@ -16,7 +16,6 @@ use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
-use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
@@ -232,7 +231,7 @@ impl TcpWatcher {
             };
             match result {
                 0 => Ok(()),
-                _ => Err(last_uv_error(self)),
+                _ => Err(UvError(result)),
             }
         }
     }
@@ -327,7 +326,7 @@ impl UdpWatcher {
             };
             match result {
                 0 => Ok(()),
-                _ => Err(last_uv_error(self)),
+                _ => Err(UvError(result)),
             }
         }
     }
