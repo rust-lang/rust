@@ -56,10 +56,25 @@ use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, explicit_self_to_str};
-use syntax::oldvisit;
+use syntax::visit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
+
+struct CollectItemTypesVisitor {
+    ccx: @mut CrateCtxt
+}
+
+impl visit::Visitor<()> for CollectItemTypesVisitor {
+    fn visit_item(&mut self, i:@ast::item, _:()) {
+        convert(self.ccx, i);
+        visit::walk_item(self, i, ());
+    }
+    fn visit_foreign_item(&mut self, i:@ast::foreign_item, _:()) {
+        convert_foreign(self.ccx, i);
+        visit::walk_foreign_item(self, i, ());
+    }
+}
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
@@ -76,13 +91,8 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
         Some(id) => { collect_intrinsic_type(ccx, id); } None => {}
     }
 
-    oldvisit::visit_crate(
-        crate, ((),
-        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-            visit_item: |a| convert(ccx, a),
-            visit_foreign_item: |a|convert_foreign(ccx, a),
-            .. *oldvisit::default_simple_visitor()
-        })));
+    let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
+    visit::walk_crate(&mut visitor, crate, ());
 }
 
 pub trait ToTy {
