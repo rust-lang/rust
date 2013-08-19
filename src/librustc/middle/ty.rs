@@ -2322,7 +2322,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let _i = indenter();
 
         let mut tc = TC_ALL;
-        for bound in type_param_def.bounds.builtin_bounds.iter() {
+        do each_inherited_builtin_bound(cx, type_param_def.bounds) |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
                 BoundStatic => TypeContents::nonstatic(cx),
@@ -2335,6 +2335,23 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         debug!("result = %s", tc.to_str());
         return tc;
+
+        // Iterates over all builtin bounds on the type parameter def, including
+        // those inherited from traits with builtin-kind-supertraits.
+        fn each_inherited_builtin_bound(cx: ctxt, bounds: &ParamBounds,
+                                        f: &fn(BuiltinBound)) {
+            for bound in bounds.builtin_bounds.iter() {
+                f(bound);
+            }
+
+            do each_bound_trait_and_supertraits(cx, bounds.trait_bounds) |trait_ref| {
+                let trait_def = lookup_trait_def(cx, trait_ref.def_id);
+                for bound in trait_def.bounds.iter() {
+                    f(bound);
+                }
+                true
+            };
+        }
     }
 }
 
