@@ -26,6 +26,7 @@ use std::os;
 use std::str;
 use std::task::{spawn_sched, SingleThreaded};
 use std::vec;
+use std::unstable::running_on_valgrind;
 
 use extra::test::MetricMap;
 
@@ -38,11 +39,21 @@ pub fn run(config: config, testfile: ~str) {
     // that destroys parallelism if we let normal schedulers block.
     // It should be possible to remove this spawn once std::run is
     // rewritten to be non-blocking.
-    do spawn_sched(SingleThreaded) {
+    //
+    // We do _not_ create another thread if we're running on V because
+    // it serializes all threads anyways.
+    if running_on_valgrind() {
         let config = config.take();
         let testfile = testfile.take();
         let mut _mm = MetricMap::new();
         run_metrics(config, testfile, &mut _mm);
+    } else {
+        do spawn_sched(SingleThreaded) {
+            let config = config.take();
+            let testfile = testfile.take();
+            let mut _mm = MetricMap::new();
+            run_metrics(config, testfile, &mut _mm);
+        }
     }
 }
 
