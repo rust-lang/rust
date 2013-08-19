@@ -85,7 +85,7 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
-use syntax::oldvisit;
+use syntax::visit;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
@@ -2646,13 +2646,18 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
     }
 }
 
+struct TransConstantsVisitor { ccx: @mut CrateContext }
+
+impl visit::Visitor<()> for TransConstantsVisitor {
+    fn visit_item(&mut self, i:@ast::item, _:()) {
+        trans_constant(self.ccx, i);
+        visit::walk_item(self, i, ());
+    }
+}
+
 pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::Crate) {
-    oldvisit::visit_crate(
-        crate, ((),
-        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-            visit_item: |a| trans_constant(ccx, a),
-            ..*oldvisit::default_simple_visitor()
-        })));
+    let mut v = TransConstantsVisitor { ccx: ccx };
+    visit::walk_crate(&mut v, crate, ());
 }
 
 pub fn vp2i(cx: @mut Block, v: ValueRef) -> ValueRef {
