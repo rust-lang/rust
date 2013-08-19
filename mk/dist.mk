@@ -12,7 +12,7 @@ PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
-PKG_GITMODULES := $(S)src/libuv $(S)src/llvm
+PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp
 
 PKG_FILES := \
     $(S)COPYRIGHT                              \
