@@ -338,7 +338,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_empty_pop() { let mut heap = PriorityQueue::new::<int>(); heap.pop(); }
 
     #[test]
@@ -349,7 +348,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_empty_top() { let empty = PriorityQueue::new::<int>(); empty.top(); }
 
     #[test]
@@ -360,7 +358,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_empty_replace() { let mut heap = PriorityQueue::new(); heap.replace(5); }
 
     #[test]

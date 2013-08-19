@@ -201,7 +201,6 @@ fn test_tls_overwrite_multiple_types() {
 
 #[test]
 #[should_fail]
-#[ignore(cfg(windows))]
 fn test_tls_cleanup_on_failure() {
     static str_key: Key<@~str> = &Key;
     static box_key: Key<@@()> = &Key;

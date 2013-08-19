@@ -967,12 +967,10 @@ mod test {
         }
 
         #[test]
-        #[ignore(cfg(windows))]
         fn test_try_recv_none4_reader() {
             test_try_recv_none4(reader_port_loader);
         }
         #[test]
-        #[ignore(cfg(windows))]
         fn test_try_recv_none4_pipe() {
             test_try_recv_none4(pipe_port_loader);
         }

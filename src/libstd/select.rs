@@ -136,7 +136,7 @@ mod test {
     use cell::Cell;
     use iterator::{Iterator, range};
 
-    #[test] #[ignore(cfg(windows))] #[should_fail]
+    #[test] #[should_fail]
     fn select_doesnt_get_trolled() {
         select::<PortOne<()>>([]);
     }
@@ -316,7 +316,7 @@ mod test {
         }
     }
 
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn select_killed() {
         do run_in_newsched_task {
             let (success_p, success_c) = oneshot::<bool>();

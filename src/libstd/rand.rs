@@ -1007,7 +1007,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_gen_int_from_fail() {
         let mut r = rng();
         r.gen_int_range(5, -2);
@@ -1024,7 +1023,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_gen_uint_range_fail() {
         let mut r = rng();
         r.gen_uint_range(5u, 2u);
