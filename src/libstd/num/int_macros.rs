@@ -17,7 +17,7 @@ macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 #[allow(non_uppercase_statics)];
 
 use num::{ToStrRadix, FromStrRadix};
-use num::{Zero, One, strconv};
+use num::{CheckedDiv, Zero, One, strconv};
 use prelude::*;
 use str;
 
@@ -28,6 +28,17 @@ pub static bytes : uint = ($bits / 8);
 
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 pub static max_value: $T = min_value - 1 as $T;
+
+impl CheckedDiv for $T {
+    #[inline]
+    fn checked_div(&self, v: &$T) -> Option<$T> {
+        if *v == 0 || (*self == min_value && *v == -1) {
+            None
+        } else {
+            Some(self / *v)
+        }
+    }
+}
 
 enum Range { Closed, HalfOpen }
 
@@ -551,6 +562,7 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use int;
     use i16;
     use i32;
     use i64;
@@ -920,6 +932,13 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_range_step_zero_step() {
         do range_step(0,10,0) |_i| { true };
+    }
+
+    #[test]
+    fn test_signed_checked_div() {
+        assert_eq!(10i.checked_div(&2), Some(5));
+        assert_eq!(5i.checked_div(&0), None);
+        assert_eq!(int::min_value.checked_div(&-1), None);
     }
 }
 
