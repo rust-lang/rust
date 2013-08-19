@@ -113,15 +113,6 @@ rust_uv_fs_unlink
 rust_uv_fs_write
 rust_uv_fs_read
 rust_uv_fs_close
-rust_uv_get_O_RDONLY
-rust_uv_get_O_WRONLY
-rust_uv_get_O_RDWR
-rust_uv_get_O_CREAT
-rust_uv_get_O_TRUNC
-rust_uv_get_S_IRUSR
-rust_uv_get_S_IWUSR
-rust_uv_get_S_IROTH
-rust_uv_get_S_IRGRP
 rust_uv_get_result_from_fs_req
 rust_uv_get_loop_from_fs_req
 rust_uv_fs_req_cleanup

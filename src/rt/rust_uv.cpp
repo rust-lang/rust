@@ -538,42 +538,6 @@ rust_uv_fs_req_cleanup(uv_fs_t* req) {
   uv_fs_req_cleanup(req);
 }
 extern "C" int
-rust_uv_get_O_RDONLY() {
-  return O_RDONLY;
-}
-extern "C" int
-rust_uv_get_O_WRONLY() {
-  return O_WRONLY;
-}
-extern "C" int
-rust_uv_get_O_RDWR() {
-  return O_RDWR;
-}
-extern "C" int
-rust_uv_get_O_CREAT() {
-  return O_CREAT;
-}
-extern "C" int
-rust_uv_get_O_TRUNC() {
-  return O_TRUNC;
-}
-extern "C" int
-rust_uv_get_S_IWUSR() {
-  return S_IWUSR;
-}
-extern "C" int
-rust_uv_get_S_IRUSR() {
-  return S_IRUSR;
-}
-extern "C" int
-rust_uv_get_S_IRGRP() {
-  return S_IRGRP;
-}
-extern "C" int
-rust_uv_get_S_IROTH() {
-  return S_IROTH;
-}
-extern "C" int
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
   return req->result;
 }

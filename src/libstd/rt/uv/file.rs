@@ -12,60 +12,19 @@ use prelude::*;
 use ptr::null;
 use libc::c_void;
 use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf,
-             status_to_maybe_uv_error_with_loop,
-             vec_to_uv_buf, vec_from_uv_buf};
+             status_to_maybe_uv_error_with_loop};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use path::Path;
 use cast::transmute;
 use libc::{c_int};
 use option::{None, Some, Option};
-use vec;
 
 pub struct FsRequest(*uvll::uv_fs_t);
 impl Request for FsRequest;
 
-#[allow(non_camel_case_types)]
-pub enum UvFileFlag {
-    O_RDONLY,
-    O_WRONLY,
-    O_RDWR,
-    O_CREAT,
-    O_TRUNC
-}
-// just want enough to get 0644
-#[allow(non_camel_case_types)]
-pub enum UvFileMode {
-    S_IWUSR,
-    S_IRUSR,
-    S_IRGRP,
-    S_IROTH
-}
-pub fn map_flag(v: UvFileFlag) -> int {
-    unsafe {
-        match v {
-            O_RDONLY => uvll::get_O_RDONLY() as int,
-            O_WRONLY => uvll::get_O_WRONLY() as int,
-            O_RDWR => uvll::get_O_RDWR() as int,
-            O_CREAT => uvll::get_O_CREAT() as int,
-            O_TRUNC => uvll::get_O_TRUNC() as int
-        }
-    }
-}
-pub fn map_mode(v: UvFileMode) -> int {
-    unsafe {
-        match v {
-            S_IWUSR => uvll::get_S_IWUSR() as int,
-            S_IRUSR => uvll::get_S_IRUSR() as int,
-            S_IRGRP => uvll::get_S_IRGRP() as int,
-            S_IROTH => uvll::get_S_IROTH() as int
-        }
-    }
-}
-
 pub struct RequestData {
     complete_cb: Option<FsCallback>,
-    buf: Option<Buf>,
     raw_fd: Option<c_int>
 }
 
@@ -82,7 +41,6 @@ impl FsRequest {
         let fs_req = (self.native_handle()) as *uvll::uv_write_t;
         let data = ~RequestData {
             complete_cb: cb,
-            buf: None,
             raw_fd: None
         };
         unsafe {
@@ -112,15 +70,7 @@ impl FsRequest {
     fn cleanup_and_delete(self) {
         unsafe {
             let data = uvll::get_data_for_req(self.native_handle());
-            let mut _data = transmute::<*c_void, ~RequestData>(data);
-            // if set we're going to convert the buf param back into
-            // a rust vec, as that's the mechanism by which the raw
-            // uv_buf_t's .base field gets freed. We immediately discard
-            // the result
-            if _data.buf.is_some() {
-                let buf = _data.buf.take_unwrap();
-                vec_from_uv_buf(buf);
-            }
+            let _data = transmute::<*c_void, ~RequestData>(data);
             uvll::set_data_for_req(self.native_handle(), null::<()>());
             uvll::fs_req_cleanup(self.native_handle());
             free_req(self.native_handle() as *c_void)
@@ -192,7 +142,7 @@ impl FileDescriptor {
     }
 
     // as per bnoordhuis in #libuv: offset >= 0 uses prwrite instead of write
-    fn write_common(&self, loop_: Loop, buf: ~[u8], offset: i64, cb: Option<FsCallback>)
+    fn write_common(&self, loop_: Loop, buf: Buf, offset: i64, cb: Option<FsCallback>)
           -> int {
         let complete_cb_ptr = match cb {
             Some(_) => compl_cb,
@@ -200,10 +150,8 @@ impl FileDescriptor {
         };
         let is_sync = cb.is_none();
         let mut req = FsRequest::new(cb);
-        let len = buf.len();
-        let buf = vec_to_uv_buf(buf);
         let base_ptr = buf.base as *c_void;
-        req.get_req_data().buf = Some(buf);
+        let len = buf.len as uint;
         req.get_req_data().raw_fd = Some(self.native_handle());
         let result = unsafe {
             uvll::fs_write(loop_.native_handle(), req.native_handle(),
@@ -213,17 +161,17 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn write(&self, loop_: Loop, buf: ~[u8], offset: i64, cb: FsCallback)
+    pub fn write(&self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
           -> int {
         self.write_common(loop_, buf, offset, Some(cb))
     }
-    pub fn write_sync(&self, loop_: Loop, buf: ~[u8], offset: i64)
+    pub fn write_sync(&self, loop_: Loop, buf: Buf, offset: i64)
           -> int {
         self.write_common(loop_, buf, offset, None)
     }
 
-    fn read_common(&self, loop_: Loop, buf_ptr: Option<*c_void>,
-                   len: uint, offset: i64, cb: Option<FsCallback>)
+    fn read_common(&self, loop_: Loop, buf: Buf,
+                   offset: i64, cb: Option<FsCallback>)
           -> int {
         let complete_cb_ptr = match cb {
             Some(_) => compl_cb,
@@ -232,31 +180,22 @@ impl FileDescriptor {
         let is_sync = cb.is_none();
         let mut req = FsRequest::new(cb);
         req.get_req_data().raw_fd = Some(self.native_handle());
+        let buf_ptr = buf.base as *c_void;
         let result = unsafe {
-            let buf_ptr = match buf_ptr {
-                Some(ptr) => ptr,
-                None => {
-                    let buf = vec::from_elem(len, 0u8);
-                    let buf = vec_to_uv_buf(buf);
-                    req.get_req_data().buf = Some(buf);
-                    buf.base as *c_void
-                }
-            };
             uvll::fs_read(loop_.native_handle(), req.native_handle(),
                            self.native_handle(), buf_ptr,
-                           len, offset, complete_cb_ptr) as int
+                           buf.len as uint, offset, complete_cb_ptr) as int
         };
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn read(&self, loop_: Loop, buf_ptr: Option<*c_void>,
-                len: uint, offset: i64, cb: FsCallback)
+    pub fn read(&self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
           -> int {
-        self.read_common(loop_, buf_ptr, len, offset, Some(cb))
+        self.read_common(loop_, buf, offset, Some(cb))
     }
-    pub fn read_sync(&self, loop_: Loop, buf_ptr: Option<*c_void>, len: uint, offset: i64)
+    pub fn read_sync(&self, loop_: Loop, buf: Buf, offset: i64)
           -> int {
-        self.read_common(loop_, buf_ptr, len, offset, None)
+        self.read_common(loop_, buf, offset, None)
     }
 
     fn close_common(self, loop_: Loop, cb: Option<FsCallback>) -> int {
@@ -316,61 +255,67 @@ impl NativeHandle<c_int> for FileDescriptor {
 mod test {
     use super::*;
     //use rt::test::*;
-    use option::{Some};
-    use libc::{STDOUT_FILENO, c_void};
+    use libc::{STDOUT_FILENO};
     use vec;
     use str;
     use unstable::run_in_bare_thread;
     use path::Path;
-    use rt::uv::{Loop, vec_to_uv_buf, vec_from_uv_buf,
+    use rt::uv::{Loop, Buf, slice_to_uv_buf,
                  status_to_maybe_uv_error_with_loop};
-    use option::{None};
+    use libc::{O_CREAT, O_RDWR, O_RDONLY,
+               S_IWUSR, S_IRUSR}; //NOTE: need defs for S_**GRP|S_**OTH in libc:: ...
+               //S_IRGRP, S_IROTH};
 
     fn file_test_full_simple_impl() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
-            let create_flags = map_flag(O_RDWR) |
-                map_flag(O_CREAT);
-            let read_flags = map_flag(O_RDONLY);
-            // 0644
-            let mode = map_mode(S_IWUSR) |
-                map_mode(S_IRUSR) |
-                map_mode(S_IRGRP) |
-                map_mode(S_IROTH);
+            let create_flags = O_RDWR | O_CREAT;
+            let read_flags = O_RDONLY;
+            // 0644 BZZT! WRONG! 0600! See below.
+            let mode = S_IWUSR |S_IRUSR;
+                // these aren't defined in std::libc :(
+                //map_mode(S_IRGRP) |
+                //map_mode(S_IROTH);
             let path_str = "./file_full_simple.txt";
-            let write_val = "hello";
-            do FileDescriptor::open(loop_, Path(path_str), create_flags, mode)
+            let write_val = "hello".as_bytes().to_owned();
+            let write_buf  = slice_to_uv_buf(write_val);
+            let write_buf_ptr: *Buf = &write_buf;
+            let read_buf_len = 1028;
+            let read_mem = vec::from_elem(read_buf_len, 0u8);
+            let read_buf = slice_to_uv_buf(read_mem);
+            let read_buf_ptr: *Buf = &read_buf;
+            do FileDescriptor::open(loop_, Path(path_str), create_flags as int, mode as int)
             |req, uverr| {
                 let loop_ = req.get_loop();
                 assert!(uverr.is_none());
                 let fd = FileDescriptor::from_open_req(req);
-                let msg: ~[u8] = write_val.as_bytes().to_owned();
                 let raw_fd = fd.native_handle();
-                do fd.write(loop_, msg, -1) |_, uverr| {
+                let buf = unsafe { *write_buf_ptr };
+                do fd.write(loop_, buf, -1) |_, uverr| {
                     let fd = FileDescriptor(raw_fd);
                     do fd.close(loop_) |req, _| {
                         let loop_ = req.get_loop();
                         assert!(uverr.is_none());
-                        do FileDescriptor::open(loop_, Path(path_str), read_flags,0)
+                        do FileDescriptor::open(loop_, Path(path_str), read_flags as int,0)
                             |req, uverr| {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
-                            let len = 1028;
                             let fd = FileDescriptor::from_open_req(req);
                             let raw_fd = fd.native_handle();
-                            do fd.read(loop_, None, len, 0) |req, uverr| {
+                            let read_buf = unsafe { *read_buf_ptr };
+                            do fd.read(loop_, read_buf, 0) |req, uverr| {
                                 assert!(uverr.is_none());
                                 let loop_ = req.get_loop();
                                 // we know nread >=0 because uverr is none..
                                 let nread = req.get_result() as uint;
                                 // nread == 0 would be EOF
                                 if nread > 0 {
-                                    let buf = vec_from_uv_buf(
-                                        req.get_req_data().buf.take_unwrap())
-                                        .take_unwrap();
-                                    let read_str = str::from_bytes(
-                                        buf.slice(0,
-                                                  nread));
+                                    let read_str = unsafe {
+                                        let read_buf = *read_buf_ptr;
+                                        str::from_bytes(
+                                            vec::from_buf(
+                                                read_buf.base, nread))
+                                    };
                                     assert!(read_str == ~"hello");
                                     do FileDescriptor(raw_fd).close(loop_) |_,uverr| {
                                         assert!(uverr.is_none());
@@ -393,24 +338,25 @@ mod test {
         do run_in_bare_thread {
             // setup
             let mut loop_ = Loop::new();
-            let create_flags = map_flag(O_RDWR) |
-                map_flag(O_CREAT);
-            let read_flags = map_flag(O_RDONLY);
+            let create_flags = O_RDWR |
+                O_CREAT;
+            let read_flags = O_RDONLY;
             // 0644
-            let mode = map_mode(S_IWUSR) |
-                map_mode(S_IRUSR) |
-                map_mode(S_IRGRP) |
-                map_mode(S_IROTH);
+            let mode = S_IWUSR |
+                S_IRUSR;
+                //S_IRGRP |
+                //S_IROTH;
             let path_str = "./file_full_simple_sync.txt";
-            let write_val = "hello";
+            let write_val = "hello".as_bytes().to_owned();
+            let write_buf = slice_to_uv_buf(write_val);
             // open/create
-            let result = FileDescriptor::open_sync(loop_, Path(path_str), create_flags, mode);
+            let result = FileDescriptor::open_sync(loop_, Path(path_str),
+                                                   create_flags as int, mode as int);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             let fd = FileDescriptor(result as i32);
-            let msg: ~[u8] = write_val.as_bytes().to_owned();
             // write
-            let result = fd.write_sync(loop_, msg, -1);
+            let result = fd.write_sync(loop_, write_buf, -1);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             // close
@@ -418,25 +364,24 @@ mod test {
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             // re-open
-            let result = FileDescriptor::open_sync(loop_, Path(path_str), read_flags,0);
+            let result = FileDescriptor::open_sync(loop_, Path(path_str),
+                                                   read_flags as int,0);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             let len = 1028;
             let fd = FileDescriptor(result as i32);
             // read
-            let buf: ~[u8] = vec::from_elem(len, 0u8);
-            let buf = vec_to_uv_buf(buf);
-            let buf_ptr = buf.base as *c_void;
-            let result = fd.read_sync(loop_, Some(buf_ptr), len, 0);
+            let read_mem: ~[u8] = vec::from_elem(len, 0u8);
+            let buf = slice_to_uv_buf(read_mem);
+            let result = fd.read_sync(loop_, buf, 0);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             let nread = result;
             // nread == 0 would be EOF.. we know it's >= zero because otherwise
             // the above assert would fail
             if nread > 0 {
-                let buf = vec_from_uv_buf(buf).take_unwrap();
                 let read_str = str::from_bytes(
-                    buf.slice(0, nread as uint));
+                    read_mem.slice(0, nread as uint));
                 assert!(read_str == ~"hello");
                 // close
                 let result = fd.close_sync(loop_);
@@ -461,19 +406,18 @@ mod test {
         file_test_full_simple_impl_sync();
     }
 
-    fn naive_print(loop_: Loop, input: ~str) {
+    fn naive_print(loop_: Loop, input: &str) {
         let stdout = FileDescriptor(STDOUT_FILENO);
-        let msg = input.as_bytes().to_owned();
-        do stdout.write(loop_, msg, -1) |_, uverr| {
-            assert!(uverr.is_none());
-        };
+        let write_val = input.as_bytes();
+        let write_buf = slice_to_uv_buf(write_val);
+        stdout.write_sync(loop_, write_buf, 0);
     }
 
     #[test]
     fn file_test_write_to_stdout() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
-            naive_print(loop_, ~"zanzibar!\n");
+            naive_print(loop_, "zanzibar!\n");
             loop_.run();
             loop_.close();
         };
