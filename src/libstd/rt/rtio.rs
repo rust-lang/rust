@@ -10,10 +10,12 @@
 
 use option::*;
 use result::*;
+use libc::c_int;
 
 use rt::io::IoError;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use rt::uv::uvio;
+use path::Path;
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
@@ -46,11 +48,27 @@ pub trait RemoteCallback {
     fn fire(&mut self);
 }
 
+/// Data needed to make a successful open(2) call
+/// Using unix flag conventions for now, which happens to also be what's supported
+/// libuv (it does translation to windows under the hood).
+pub struct FileOpenConfig {
+    /// Path to file to be opened
+    path: Path,
+    /// Flags for file access mode (as per open(2))
+    flags: int,
+    /// File creation mode, ignored unless O_CREAT is passed as part of flags
+    mode: int
+}
+
 pub trait IoFactory {
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError>;
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError>;
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
+    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileDescriptor;
+    fn fs_open(&mut self, path: Path, flags: int, mode:int)
+        -> Result<~RtioFileDescriptor, IoError>;
+    fn fs_unlink(&mut self, path: Path) -> Result<(), IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -92,4 +110,9 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
+}
+
+pub trait RtioFileDescriptor {
+    fn read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError>;
+    fn write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError>;
 }
