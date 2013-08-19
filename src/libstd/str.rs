@@ -255,14 +255,18 @@ Section: Iterators
 */
 
 /// External iterator for a string's characters.
+/// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharIterator<'self> {
+    /// The slice remaining to be iterated
     priv string: &'self str,
 }
 
 impl<'self> Iterator<char> for CharIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
+        // Decode the next codepoint, then update
+        // the slice to be just the remaining part
         if self.string.len() != 0 {
             let CharRange {ch, next} = self.string.char_range_at(0);
             unsafe {
@@ -300,6 +304,7 @@ impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
 /// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharOffsetIterator<'self> {
+    /// The original string to be iterated
     priv string: &'self str,
     priv iter: CharIterator<'self>,
 }
@@ -307,6 +312,8 @@ pub struct CharOffsetIterator<'self> {
 impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
+        // Compute the byte offset by using the pointer offset between
+        // the original string slice and the iterator's remaining part
         let offset = do self.string.as_imm_buf |a, _| {
             do self.iter.string.as_imm_buf |b, _| {
                 b as uint - a as uint
@@ -1281,7 +1288,8 @@ impl<'self> StrSlice<'self> for &'self str {
         CharOffsetIterator{string: *self, iter: self.iter()}
     }
 
-    /// An iterator over the characters of `self` and their byte offsets.
+    /// An iterator over the characters of `self` and their byte offsets,
+    /// in reverse order.
     #[inline]
     fn char_offset_rev_iter(&self) -> CharOffsetRevIterator<'self> {
         self.char_offset_iter().invert()
