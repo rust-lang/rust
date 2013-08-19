@@ -65,6 +65,7 @@ pub enum ObsoleteSyntax {
     ObsoleteExternVisibility,
     ObsoleteUnsafeExternFn,
     ObsoletePrivVisibility,
+    ObsoletePrivStructFieldVisibility,
     ObsoleteTraitFuncVisibility,
 }
 
@@ -258,6 +259,10 @@ impl ParserObsoleteMethods for Parser {
             ObsoletePrivVisibility => (
                 "`priv` not necessary",
                 "an item without a visibility qualifier is private by default"
+            ),
+            ObsoletePrivStructFieldVisibility=> (
+                "`priv` not necessary",
+                "struct fields are private by default",
             ),
             ObsoleteTraitFuncVisibility => (
                 "visibility not necessary",
