@@ -20,6 +20,7 @@ use rt::select::{SelectInner, SelectPortInner};
 use rt::local::Local;
 use rt::rtio::EventLoop;
 use task;
+use unstable::finally::Finally;
 use vec::{OwnedVector, MutableVector};
 
 /// Trait for message-passing primitives that can be select()ed on.
@@ -57,27 +58,31 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     let p = Cell::new(p);
     let c = Cell::new(c);
 
-    let sched = Local::take::<Scheduler>();
-    do sched.deschedule_running_task_and_then |sched, task| {
-        let task_handles = task.make_selectable(ports.len());
-
-        for (index, (port, task_handle)) in
-                ports.mut_iter().zip(task_handles.move_iter()).enumerate() {
-            // If one of the ports has data by now, it will wake the handle.
-            if port.block_on(sched, task_handle) {
-                ready_index = index;
-                break;
-            }
-        }
-
+    do (|| {
         let c = Cell::new(c.take());
-        do sched.event_loop.callback { c.take().send_deferred(()) }
-    }
+        let sched = Local::take::<Scheduler>();
+        do sched.deschedule_running_task_and_then |sched, task| {
+            let task_handles = task.make_selectable(ports.len());
 
-    // Unkillable is necessary not because getting killed is dangerous here,
-    // but to force the recv not to use the same kill-flag that we used for
-    // selecting. Otherwise a user-sender could spuriously wakeup us here.
-    do task::unkillable { p.take().recv(); }
+            for (index, (port, task_handle)) in
+                    ports.mut_iter().zip(task_handles.move_iter()).enumerate() {
+                // If one of the ports has data by now, it will wake the handle.
+                if port.block_on(sched, task_handle) {
+                    ready_index = index;
+                    break;
+                }
+            }
+
+            let c = Cell::new(c.take());
+            do sched.event_loop.callback { c.take().send_deferred(()) }
+        }
+    }).finally {
+        let p = Cell::new(p.take());
+        // Unkillable is necessary not because getting killed is dangerous here,
+        // but to force the recv not to use the same kill-flag that we used for
+        // selecting. Otherwise a user-sender could spuriously wakeup us here.
+        do task::unkillable { p.take().recv(); }
+    }
 
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.
