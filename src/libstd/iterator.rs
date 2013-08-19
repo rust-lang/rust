@@ -24,6 +24,7 @@ use ops::{Add, Mul, Sub};
 use cmp::Ord;
 use clone::Clone;
 use uint;
+use util;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -580,6 +581,26 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     #[inline]
     fn invert(self) -> Invert<Self> {
         Invert{iter: self}
+    }
+}
+
+/// A double-ended iterator yielding mutable references
+pub trait MutableDoubleEndedIterator {
+    // FIXME: #5898: should be called `reverse`
+    /// Use an iterator to reverse a container in-place
+    fn reverse_(&mut self);
+}
+
+impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator for T {
+    // FIXME: #5898: should be called `reverse`
+    /// Use an iterator to reverse a container in-place
+    fn reverse_(&mut self) {
+        loop {
+            match (self.next(), self.next_back()) {
+                (Some(x), Some(y)) => util::swap(x, y),
+                _ => break
+            }
+        }
     }
 }
 
@@ -2337,5 +2358,12 @@ mod tests {
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+    }
+
+    #[test]
+    fn test_reverse() {
+        let mut ys = [1, 2, 3, 4, 5];
+        ys.mut_iter().reverse_();
+        assert_eq!(ys, [5, 4, 3, 2, 1]);
     }
 }
