@@ -822,9 +822,10 @@ pub fn link_binary(sess: Session,
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
-    // For win32, there is no cc command,
-    // so we add a condition to make it use gcc.
-    let cc_prog: ~str = match sess.opts.linker {
+    // For win32, there is no cc command, so we add a condition to make it use g++.
+    // We use g++ rather than gcc because it automatically adds linker options required
+    // for generation of dll modules that correctly register stack unwind tables.
+    match sess.opts.linker {
         Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
             session::os_android =>
@@ -837,7 +838,7 @@ pub fn link_binary(sess: Session,
                                     (--android-cross-path)")
                     }
                 },
-            session::os_win32 => ~"gcc",
+            session::os_win32 => ~"g++",
             _ => ~"cc"
         }
     };
