@@ -292,6 +292,7 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
     }
 }
 
+#[cfg(stage0)]
 fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // Link to extra
@@ -304,6 +305,48 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     // with our list of tests
     let ext_cx = cx.ext_cx;
     let mainfn = (quote_item!(
+        pub fn main() {
+            #[main];
+            extra::test::test_main_static(::std::os::args(), TESTS);
+        }
+    )).unwrap();
+
+    let testmod = ast::_mod {
+        view_items: view_items,
+        items: ~[mainfn, tests],
+    };
+    let item_ = ast::item_mod(testmod);
+
+    // This attribute tells resolve to let us call unexported functions
+    let resolve_unexported_attr =
+        attr::mk_attr(attr::mk_word_item(@"!resolve_unexported"));
+
+    let item = ast::item {
+        ident: cx.sess.ident_of("__test"),
+        attrs: ~[resolve_unexported_attr],
+        id: cx.sess.next_node_id(),
+        node: item_,
+        vis: ast::public,
+        span: dummy_sp(),
+     };
+
+    debug!("Synthetic test module:\n%s\n",
+           pprust::item_to_str(@item.clone(), cx.sess.intr()));
+
+    return @item;
+}
+#[cfg(not(stage0))]
+fn mk_test_module(cx: &TestCtxt) -> @ast::item {
+
+    // Link to extra
+    let view_items = ~[mk_std(cx)];
+
+    // A constant vector of test descriptors.
+    let tests = mk_tests(cx);
+
+    // The synthesized main function which will call the console test runner
+    // with our list of tests
+    let mainfn = (quote_item!(cx.ext_cx,
         pub fn main() {
             #[main];
             extra::test::test_main_static(::std::os::args(), TESTS);
@@ -355,6 +398,7 @@ fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
                  types: ~[] }
 }
 
+#[cfg(stage0)]
 fn mk_tests(cx: &TestCtxt) -> @ast::item {
 
     let ext_cx = cx.ext_cx;
@@ -363,6 +407,17 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(
+        pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
+            $test_descs
+        ;
+    )).unwrap()
+}
+#[cfg(not(stage0))]
+fn mk_tests(cx: &TestCtxt) -> @ast::item {
+    // The vector of test_descs for this crate
+    let test_descs = mk_test_descs(cx);
+
+    (quote_item!(cx.ext_cx,
         pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
@@ -398,6 +453,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 }
 
+#[cfg(stage0)]
 fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let span = test.span;
     let path = test.path.clone();
@@ -442,6 +498,60 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     };
 
     let e = quote_expr!(
+        self::extra::test::TestDescAndFn {
+            desc: self::extra::test::TestDesc {
+                name: self::extra::test::StaticTestName($name_expr),
+                ignore: $ignore_expr,
+                should_fail: $fail_expr
+            },
+            testfn: $t_expr,
+        }
+    );
+    e
+}
+#[cfg(not(stage0))]
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
+    let span = test.span;
+    let path = test.path.clone();
+
+    debug!("encoding %s", ast_util::path_name_i(path));
+
+    let name_lit: ast::lit =
+        nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
+
+    let name_expr = @ast::expr {
+          id: cx.sess.next_node_id(),
+          node: ast::expr_lit(@name_lit),
+          span: span
+    };
+
+    let fn_path = path_node_global(path);
+
+    let fn_expr = @ast::expr {
+        id: cx.sess.next_node_id(),
+        node: ast::expr_path(fn_path),
+        span: span,
+    };
+
+    let t_expr = if test.bench {
+        quote_expr!(cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
+    } else {
+        quote_expr!(cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
+    };
+
+    let ignore_expr = if test.ignore {
+        quote_expr!(cx.ext_cx, true )
+    } else {
+        quote_expr!(cx.ext_cx, false )
+    };
+
+    let fail_expr = if test.should_fail {
+        quote_expr!(cx.ext_cx, true )
+    } else {
+        quote_expr!(cx.ext_cx, false )
+    };
+
+    let e = quote_expr!(cx.ext_cx,
         self::extra::test::TestDescAndFn {
             desc: self::extra::test::TestDesc {
                 name: self::extra::test::StaticTestName($name_expr),

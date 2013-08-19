@@ -1288,24 +1288,24 @@ fn roundtrip(in_item: Option<@ast::item>) {
 
 #[test]
 fn test_basic() {
-    let ext_cx = mk_ctxt();
-    roundtrip(quote_item!(
+    let cx = mk_ctxt();
+    roundtrip(quote_item!(cx,
         fn foo() {}
     ));
 }
 
 #[test]
 fn test_smalltalk() {
-    let ext_cx = mk_ctxt();
-    roundtrip(quote_item!(
+    let cx = mk_ctxt();
+    roundtrip(quote_item!(cx,
         fn foo() -> int { 3 + 4 } // first smalltalk program ever executed.
     ));
 }
 
 #[test]
 fn test_more() {
-    let ext_cx = mk_ctxt();
-    roundtrip(quote_item!(
+    let cx = mk_ctxt();
+    roundtrip(quote_item!(cx,
         fn foo(x: uint, y: uint) -> uint {
             let z = x + y;
             return z;
@@ -1315,15 +1315,15 @@ fn test_more() {
 
 #[test]
 fn test_simplification() {
-    let ext_cx = mk_ctxt();
-    let item_in = ast::ii_item(quote_item!(
+    let cx = mk_ctxt();
+    let item_in = ast::ii_item(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).unwrap());
     let item_out = simplify_ast(&item_in);
-    let item_exp = ast::ii_item(quote_item!(
+    let item_exp = ast::ii_item(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};
         }
