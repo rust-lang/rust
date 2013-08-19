@@ -83,6 +83,8 @@ fn test_run_in_bare_thread_exchange() {
 /// can lead to deadlock. Calling change_dir_locked recursively will
 /// also deadlock.
 pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+
     use os;
     use os::change_dir;
     use unstable::sync::atomically;

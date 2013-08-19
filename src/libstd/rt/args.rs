@@ -118,11 +118,21 @@ mod imp {
         args
     }
 
-    extern {
-        fn rust_take_global_args_lock();
-        fn rust_drop_global_args_lock();
-        fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>;
+    #[cfg(stage0)]
+    mod macro_hack {
+    #[macro_escape];
+    macro_rules! externfn(
+        (fn $name:ident () $(-> $ret_ty:ty),*) => (
+            extern {
+                fn $name() $(-> $ret_ty),*;
+            }
+        )
+    )
     }
+
+    externfn!(fn rust_take_global_args_lock())
+    externfn!(fn rust_drop_global_args_lock())
+    externfn!(fn rust_get_global_args_ptr() -> *mut Option<~~[~str]>)
 
     #[cfg(test)]
     mod tests {

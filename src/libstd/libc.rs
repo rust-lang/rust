@@ -2762,9 +2762,11 @@ pub mod funcs {
             // doesn't link it correctly on i686, so we're going
             // through a C function that mysteriously does work.
             pub unsafe fn opendir(dirname: *c_char) -> *DIR {
+                #[fixed_stack_segment]; #[inline(never)];
                 rust_opendir(dirname)
             }
             pub unsafe fn readdir(dirp: *DIR) -> *dirent_t {
+                #[fixed_stack_segment]; #[inline(never)];
                 rust_readdir(dirp)
             }
 

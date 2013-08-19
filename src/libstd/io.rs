@@ -928,6 +928,8 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 
 impl Reader for *libc::FILE {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             do bytes.as_mut_buf |buf_p, buf_len| {
                 assert!(buf_len >= len);
@@ -950,16 +952,22 @@ impl Reader for *libc::FILE {
         }
     }
     fn read_byte(&self) -> int {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             libc::fgetc(*self) as int
         }
     }
     fn eof(&self) -> bool {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             return libc::feof(*self) != 0 as c_int;
         }
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             assert!(libc::fseek(*self,
                                      offset as c_long,
@@ -967,6 +975,8 @@ impl Reader for *libc::FILE {
         }
     }
     fn tell(&self) -> uint {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             return libc::ftell(*self) as uint;
         }
@@ -1005,6 +1015,8 @@ impl FILERes {
 
 impl Drop for FILERes {
     fn drop(&self) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             libc::fclose(self.f);
         }
@@ -1035,12 +1047,16 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 * ~~~
 */
 pub fn stdin() -> @Reader {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         @rustrt::rust_get_stdin() as @Reader
     }
 }
 
 pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
+    #[fixed_stack_segment]; #[inline(never)];
+
     let f = do path.with_c_str |pathbuf| {
         do "rb".with_c_str |modebuf| {
             unsafe { libc::fopen(pathbuf, modebuf as *libc::c_char) }
@@ -1162,6 +1178,8 @@ impl<W:Writer,C> Writer for Wrapper<W, C> {
 
 impl Writer for *libc::FILE {
     fn write(&self, v: &[u8]) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             do v.as_imm_buf |vbuf, len| {
                 let nout = libc::fwrite(vbuf as *c_void,
@@ -1177,6 +1195,8 @@ impl Writer for *libc::FILE {
         }
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             assert!(libc::fseek(*self,
                                      offset as c_long,
@@ -1184,16 +1204,22 @@ impl Writer for *libc::FILE {
         }
     }
     fn tell(&self) -> uint {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             libc::ftell(*self) as uint
         }
     }
     fn flush(&self) -> int {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             libc::fflush(*self) as int
         }
     }
     fn get_type(&self) -> WriterType {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             let fd = libc::fileno(*self);
             if libc::isatty(fd) == 0 { File   }
@@ -1212,6 +1238,8 @@ pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
 
 impl Writer for fd_t {
     fn write(&self, v: &[u8]) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             let mut count = 0u;
             do v.as_imm_buf |vbuf, len| {
@@ -1238,6 +1266,8 @@ impl Writer for fd_t {
     }
     fn flush(&self) -> int { 0 }
     fn get_type(&self) -> WriterType {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             if libc::isatty(*self) == 0 { File } else { Screen }
         }
@@ -1256,6 +1286,8 @@ impl FdRes {
 
 impl Drop for FdRes {
     fn drop(&self) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             libc::close(self.fd);
         }
@@ -1273,6 +1305,8 @@ pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
 
 pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<@Writer, ~str> {
+    #[fixed_stack_segment]; #[inline(never)];
+
     #[cfg(windows)]
     fn wb() -> c_int {
       (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int
@@ -1573,6 +1607,8 @@ pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
 
 // FIXME: fileflags // #2004
 pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         let f = do path.with_c_str |pathbuf| {
             do "w".with_c_str |modebuf| {
@@ -1803,12 +1839,13 @@ pub mod fsync {
                          blk: &fn(v: Res<*libc::FILE>)) {
         blk(Res::new(Arg {
             val: file.f, opt_level: opt_level,
-            fsync_fn: |file, l| {
-                unsafe {
-                    os::fsync_fd(libc::fileno(*file), l) as int
-                }
-            }
+            fsync_fn: |file, l| fsync_fd(fileno(*file), l)
         }));
+
+        fn fileno(stream: *libc::FILE) -> libc::c_int {
+            #[fixed_stack_segment]; #[inline(never)];
+            unsafe { libc::fileno(stream) }
+        }
     }
 
     // fsync fd after executing blk
@@ -1816,8 +1853,14 @@ pub mod fsync {
                        blk: &fn(v: Res<fd_t>)) {
         blk(Res::new(Arg {
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: |fd, l| os::fsync_fd(*fd, l) as int
+            fsync_fn: |fd, l| fsync_fd(*fd, l)
         }));
+    }
+
+    fn fsync_fd(fd: libc::c_int, level: Level) -> int {
+        #[fixed_stack_segment]; #[inline(never)];
+
+        os::fsync_fd(fd, level) as int
     }
 
     // Type of objects that may want to fsync

@@ -203,28 +203,28 @@ pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRe
     return llfn;
 }
 
-pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: @str,
+pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
                      cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
-    match externs.find_copy(&name) {
-        Some(n) => return n,
+    match externs.find_equiv(&name) {
+        Some(n) => return *n,
         None => ()
     }
     let f = decl_fn(llmod, name, cc, ty);
-    externs.insert(name, f);
+    externs.insert(name.to_owned(), f);
     return f;
 }
 
 pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
-                        name: @str, ty: Type) -> ValueRef {
-    match externs.find_copy(&name) {
-        Some(n) => return n,
+                        name: &str, ty: Type) -> ValueRef {
+    match externs.find_equiv(&name) {
+        Some(n) => return *n,
         None => ()
     }
     unsafe {
         let c = do name.with_c_str |buf| {
             llvm::LLVMAddGlobal(llmod, ty.to_ref(), buf)
         };
-        externs.insert(name, c);
+        externs.insert(name.to_owned(), c);
         return c;
     }
 }
@@ -511,7 +511,6 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                                      None,
                                      ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
-        let name = name.to_managed(); // :-(
         get_extern_fn(&mut ccx.externs,
                       ccx.llmod,
                       name,
@@ -798,13 +797,13 @@ pub fn fail_if_zero(cx: @mut Block, span: span, divrem: ast::binop,
     }
 }
 
-pub fn null_env_ptr(bcx: @mut Block) -> ValueRef {
-    C_null(Type::opaque_box(bcx.ccx()).ptr_to())
+pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
+    C_null(Type::opaque_box(ccx).ptr_to())
 }
 
 pub fn trans_external_path(ccx: &mut CrateContext, did: ast::def_id, t: ty::t)
     -> ValueRef {
-    let name = csearch::get_symbol(ccx.sess.cstore, did).to_managed(); // Sad
+    let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
       ty::ty_bare_fn(_) | ty::ty_closure(_) => {
         let llty = type_of_fn_from_ty(ccx, t);
@@ -1572,7 +1571,7 @@ pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> ValueRef {
     unsafe {
-        if !ty::type_is_immediate(fcx.ccx.tcx, output_type) {
+        if type_of::return_uses_outptr(fcx.ccx.tcx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
@@ -1612,7 +1611,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let is_immediate = ty::type_is_immediate(ccx.tcx, substd_output_type);
+    let uses_outptr = type_of::return_uses_outptr(ccx.tcx, substd_output_type);
     let fcx = @mut FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
@@ -1624,7 +1623,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           llreturn: None,
           llself: None,
           personality: None,
-          has_immediate_return_value: is_immediate,
+          caller_expects_out_pointer: uses_outptr,
           llargs: @mut HashMap::new(),
           lllocals: @mut HashMap::new(),
           llupvars: @mut HashMap::new(),
@@ -1647,8 +1646,15 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
         fcx.alloca_insert_pt = Some(llvm::LLVMGetFirstInstruction(entry_bcx.llbb));
     }
 
-    if !ty::type_is_nil(substd_output_type) && !(is_immediate && skip_retptr) {
-        fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+    if !ty::type_is_voidish(substd_output_type) {
+        // If the function returns nil/bot, there is no real return
+        // value, so do not set `llretptr`.
+        if !skip_retptr || uses_outptr {
+            // Otherwise, we normally allocate the llretptr, unless we
+            // have been instructed to skip it for immediate return
+            // values.
+            fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+        }
     }
     fcx
 }
@@ -1796,7 +1802,7 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @mut Block) {
 // Builds the return block for a function.
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: @mut Block) {
     // Return the value if this function immediate; otherwise, return void.
-    if fcx.llretptr.is_none() || !fcx.has_immediate_return_value {
+    if fcx.llretptr.is_none() || fcx.caller_expects_out_pointer {
         return RetVoid(ret_cx);
     }
 
@@ -1882,9 +1888,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.expr.is_none() || ty::type_is_bot(block_ty) ||
-        ty::type_is_nil(block_ty)
-    {
+    if body.expr.is_none() || ty::type_is_voidish(block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         let dest = expr::SaveIn(fcx.llretptr.unwrap());
@@ -2129,13 +2133,14 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
       ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
-            foreign::trans_foreign_fn(ccx,
-                                      vec::append((*path).clone(),
-                                                  [path_name(item.ident)]),
-                                      decl,
-                                      body,
-                                      llfndecl,
-                                      item.id);
+            foreign::trans_rust_fn_with_foreign_abi(
+                ccx,
+                &vec::append((*path).clone(),
+                             [path_name(item.ident)]),
+                decl,
+                body,
+                llfndecl,
+                item.id);
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
@@ -2196,7 +2201,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           }
       },
       ast::item_foreign_mod(ref foreign_mod) => {
-        foreign::trans_foreign_mod(ccx, path, foreign_mod);
+        foreign::trans_foreign_mod(ccx, foreign_mod);
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
@@ -2291,8 +2296,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
 
     fn create_main(ccx: @mut CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil();
-
-        let llfty = type_of_fn(ccx, [], nt);
+        let llfty = type_of_rust_fn(ccx, [], nt);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
@@ -2300,7 +2304,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
 
         // the args vector built in create_entry_fn will need
         // be updated if this assertion starts to fail.
-        assert!(fcx.has_immediate_return_value);
+        assert!(!fcx.caller_expects_out_pointer);
 
         let bcx = fcx.entry_bcx.unwrap();
         // Call main.
@@ -2463,7 +2467,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let llfn = if purity != ast::extern_fn {
                                 register_fn(ccx, i.span, sym, i.id, ty)
                             } else {
-                                foreign::register_foreign_fn(ccx, i.span, sym, i.id)
+                                foreign::register_rust_fn_with_foreign_abi(ccx,
+                                                                           i.span,
+                                                                           sym,
+                                                                           i.id)
                             };
                             set_inline_hint_if_appr(i.attrs, llfn);
                             llfn
@@ -2502,16 +2509,14 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                     register_method(ccx, id, pth, m)
                 }
 
-                ast_map::node_foreign_item(ni, _, _, pth) => {
+                ast_map::node_foreign_item(ni, abis, _, pth) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     exprt = true;
 
                     match ni.node {
                         ast::foreign_item_fn(*) => {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
-                            let sym = exported_name(ccx, path, ty, ni.attrs);
-
-                            register_fn(ccx, ni.span, sym, ni.id, ty)
+                            foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
                         ast::foreign_item_static(*) => {
                             let ident = token::ident_to_str(&ni.ident);

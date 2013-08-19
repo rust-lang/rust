@@ -265,6 +265,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, ~"loop checking", ||
          middle::check_loop::check_crate(ty_cx, crate));
 
+    time(time_passes, ~"stack checking", ||
+         middle::stack_check::stack_check_crate(ty_cx, crate));
+
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
         time(time_passes, ~"compute moves", ||
@@ -642,9 +645,13 @@ pub fn build_session_options(binary: @str,
         }
         debugging_opts |= this_bit;
     }
+
     if debugging_opts & session::debug_llvm != 0 {
-        unsafe {
-            llvm::LLVMSetDebug(1);
+        set_llvm_debug();
+
+        fn set_llvm_debug() {
+            #[fixed_stack_segment]; #[inline(never)];
+            unsafe { llvm::LLVMSetDebug(1); }
         }
     }
 

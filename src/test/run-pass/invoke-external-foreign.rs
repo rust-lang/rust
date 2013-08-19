@@ -17,6 +17,7 @@
 
 extern mod foreign_lib;
 
+#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         let _foo = foreign_lib::rustrt::rust_get_test_int();
