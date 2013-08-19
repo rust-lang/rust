@@ -1886,6 +1886,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                param_substs,
                                body.info(),
                                Some(body.span));
+
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
@@ -1904,6 +1905,11 @@ pub fn trans_closure(ccx: @mut CrateContext,
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
     maybe_load_env(fcx);
+
+    // Up until here, IR instructions for this function have explicitly not been annotated with
+    // source code location, so we don't step into call setup code. From here on, source location
+    // emitting should be enabled.
+    debuginfo::start_emitting_source_locations(fcx);
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
