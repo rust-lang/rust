@@ -11,7 +11,8 @@
 
 use syntax::ast;
 use syntax::codemap::{span};
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 use std::hashmap::HashSet;
 use extra;
@@ -59,42 +60,48 @@ pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::expr] {
     fields.map(|f| f.expr)
 }
 
-// Takes a predicate p, returns true iff p is true for any subexpressions
-// of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
-    let rs = @mut false;
-    let visit_expr: @fn(@ast::expr,
-                        (@mut bool,
-                         oldvisit::vt<@mut bool>)) = |e, (flag, v)| {
-        *flag |= p(&e.node);
+struct LoopQueryVisitor {
+    p: @fn(&ast::expr_) -> bool
+}
+
+impl Visitor<@mut bool> for LoopQueryVisitor {
+    fn visit_expr(&mut self, e:@ast::expr, flag:@mut bool) {
+        *flag |= (self.p)(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
           ast::expr_loop(*) | ast::expr_while(*) => {}
-          _ => oldvisit::visit_expr(e, (flag, v))
+          _ => visit::walk_expr(self, e, flag)
         }
-    };
-    let v = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: visit_expr,
-        .. *oldvisit::default_visitor()});
-    oldvisit::visit_block(b, (rs, v));
+    }
+}
+
+// Takes a predicate p, returns true iff p is true for any subexpressions
+// of b -- skipping any inner loops (loop, while, loop_body)
+pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
+    let rs = @mut false;
+    let mut v = LoopQueryVisitor { p: p };
+    visit::walk_block(&mut v, b, rs);
     return *rs;
+}
+
+struct BlockQueryVisitor {
+    p: @fn(@ast::expr) -> bool
+}
+
+impl Visitor<@mut bool> for BlockQueryVisitor {
+    fn visit_expr(&mut self, e:@ast::expr, flag:@mut bool) {
+        *flag |= (self.p)(e);
+        visit::walk_expr(self, e, flag)
+    }
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
 pub fn block_query(b: &ast::Block, p: @fn(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
-    let visit_expr: @fn(@ast::expr,
-                        (@mut bool,
-                         oldvisit::vt<@mut bool>)) = |e, (flag, v)| {
-        *flag |= p(e);
-        oldvisit::visit_expr(e, (flag, v))
-    };
-    let v = oldvisit::mk_vt(@oldvisit::Visitor{
-        visit_expr: visit_expr,
-        .. *oldvisit::default_visitor()});
-    oldvisit::visit_block(b, (rs, v));
+    let mut v = BlockQueryVisitor { p: p };
+    visit::walk_block(&mut v, b, rs);
     return *rs;
 }
 
