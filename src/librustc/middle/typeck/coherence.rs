@@ -45,10 +45,7 @@ use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::{span, dummy_sp};
 use syntax::opt_vec;
-use syntax::oldvisit::{default_simple_visitor, default_visitor};
-use syntax::oldvisit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
-use syntax::oldvisit::{Visitor, SimpleVisitor};
-use syntax::oldvisit::{visit_mod};
+use syntax::visit;
 use syntax::parse;
 use util::ppaux::ty_to_str;
 
@@ -168,15 +165,13 @@ pub struct CoherenceChecker {
     base_type_def_ids: @mut HashMap<def_id,def_id>,
 }
 
-impl CoherenceChecker {
-    pub fn check_coherence(self, crate: &Crate) {
-        // Check implementations and traits. This populates the tables
-        // containing the inherent methods and extension methods. It also
-        // builds up the trait inheritance table.
-        visit_crate(crate, ((), mk_simple_visitor(@SimpleVisitor {
-            visit_item: |item| {
+struct CoherenceCheckVisitor { cc: CoherenceChecker }
+
+impl visit::Visitor<()> for CoherenceCheckVisitor {
+    fn visit_item(&mut self, item:@item, _:()) {
+
 //                debug!("(checking coherence) item '%s'",
-//                       self.crate_context.tcx.sess.str_of(item.ident));
+//                       self.cc.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
                     item_impl(_, ref opt_trait, _, _) => {
@@ -184,15 +179,75 @@ impl CoherenceChecker {
                             opt_trait.iter()
                                      .map(|x| (*x).clone())
                                      .collect();
-                        self.check_implementation(item, opt_trait);
+                        self.cc.check_implementation(item, opt_trait);
                     }
                     _ => {
                         // Nothing to do.
                     }
                 };
-            },
-            .. *default_simple_visitor()
-        })));
+
+        visit::walk_item(self, item, ());
+    }
+}
+
+struct PrivilegedScopeVisitor { cc: CoherenceChecker }
+
+impl visit::Visitor<()> for PrivilegedScopeVisitor {
+    fn visit_item(&mut self, item:@item, _:()) {
+
+                match item.node {
+                    item_mod(ref module_) => {
+                        // Then visit the module items.
+                        visit::walk_mod(self, module_, ());
+                    }
+                    item_impl(_, None, ref ast_ty, _) => {
+                        if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
+                            // This is an error.
+                            let session = self.cc.crate_context.tcx.sess;
+                            session.span_err(item.span,
+                                             "cannot associate methods with a type outside the \
+                                              crate the type is defined in; define and implement \
+                                              a trait or new type instead");
+                        }
+                    }
+                    item_impl(_, Some(ref trait_ref), _, _) => {
+                        // `for_ty` is `Type` in `impl Trait for Type`
+                        let for_ty =
+                            ty::node_id_to_type(self.cc.crate_context.tcx,
+                                                item.id);
+                        if !type_is_defined_in_local_crate(for_ty) {
+                            // This implementation is not in scope of its base
+                            // type. This still might be OK if the trait is
+                            // defined in the same crate.
+
+                            let trait_def_id =
+                                self.cc.trait_ref_to_trait_def_id(trait_ref);
+
+                            if trait_def_id.crate != LOCAL_CRATE {
+                                let session = self.cc.crate_context.tcx.sess;
+                                session.span_err(item.span,
+                                                 "cannot provide an extension implementation \
+                                                  for a trait not defined in this crate");
+                            }
+                        }
+
+                        visit::walk_item(self, item, ());
+                    }
+                    _ => {
+                        visit::walk_item(self, item, ());
+                    }
+                }
+    }
+}
+
+impl CoherenceChecker {
+    pub fn check_coherence(self, crate: &Crate) {
+        // Check implementations and traits. This populates the tables
+        // containing the inherent methods and extension methods. It also
+        // builds up the trait inheritance table.
+
+        let mut visitor = CoherenceCheckVisitor { cc: self };
+        visit::walk_crate(&mut visitor, crate, ());
 
         // Check that there are no overlapping trait instances
         self.check_implementation_coherence();
@@ -486,53 +541,8 @@ impl CoherenceChecker {
 
     // Privileged scope checking
     pub fn check_privileged_scopes(self, crate: &Crate) {
-        visit_crate(crate, ((), mk_vt(@Visitor {
-            visit_item: |item, (_context, visitor)| {
-                match item.node {
-                    item_mod(ref module_) => {
-                        // Then visit the module items.
-                        visit_mod(module_, item.span, item.id, ((), visitor));
-                    }
-                    item_impl(_, None, ref ast_ty, _) => {
-                        if !self.ast_type_is_defined_in_local_crate(ast_ty) {
-                            // This is an error.
-                            let session = self.crate_context.tcx.sess;
-                            session.span_err(item.span,
-                                             "cannot associate methods with a type outside the \
-                                              crate the type is defined in; define and implement \
-                                              a trait or new type instead");
-                        }
-                    }
-                    item_impl(_, Some(ref trait_ref), _, _) => {
-                        // `for_ty` is `Type` in `impl Trait for Type`
-                        let for_ty =
-                            ty::node_id_to_type(self.crate_context.tcx,
-                                                item.id);
-                        if !type_is_defined_in_local_crate(for_ty) {
-                            // This implementation is not in scope of its base
-                            // type. This still might be OK if the trait is
-                            // defined in the same crate.
-
-                            let trait_def_id =
-                                self.trait_ref_to_trait_def_id(trait_ref);
-
-                            if trait_def_id.crate != LOCAL_CRATE {
-                                let session = self.crate_context.tcx.sess;
-                                session.span_err(item.span,
-                                                 "cannot provide an extension implementation \
-                                                  for a trait not defined in this crate");
-                            }
-                        }
-
-                        visit_item(item, ((), visitor));
-                    }
-                    _ => {
-                        visit_item(item, ((), visitor));
-                    }
-                }
-            },
-            .. *default_visitor()
-        })));
+        let mut visitor = PrivilegedScopeVisitor{ cc: self };
+        visit::walk_crate(&mut visitor, crate, ());
     }
 
     pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> def_id {
