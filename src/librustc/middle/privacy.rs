@@ -208,7 +208,11 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
         let fields = ty::lookup_struct_fields(tcx, id);
         for field in fields.iter() {
             if field.ident != ident { loop; }
-            if field.vis == private {
+            // NOTE: this means that the next snapshot will totally not respect
+            //       visibility of struct fields at all. The plan is to move
+            //       from public-by-default to private-by-default, and this is
+            //       necessary for bootstrapping.
+            if !cfg!(stage3) && field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
                                              token::ident_to_str(&ident)));
             }
@@ -581,21 +585,6 @@ fn check_sane_privacy(tcx: ty::ctxt, item: @ast::item) {
             }
         }
 
-        ast::item_struct(ref def, _) => {
-            for f in def.fields.iter() {
-                match f.node.kind {
-                    ast::named_field(_, ast::public) => {
-                        tcx.sess.span_err(f.span, "unnecessary `pub` \
-                                                   visibility");
-                    }
-                    ast::named_field(_, ast::private) => {
-                        // Fields should really be private by default...
-                    }
-                    ast::named_field(*) | ast::unnamed_field => {}
-                }
-            }
-        }
-
         ast::item_trait(_, _, ref methods) => {
             for m in methods.iter() {
                 match *m {
@@ -616,6 +605,6 @@ fn check_sane_privacy(tcx: ty::ctxt, item: @ast::item) {
 
         ast::item_impl(*) | ast::item_static(*) | ast::item_foreign_mod(*) |
         ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
-        ast::item_mac(*) => {}
+        ast::item_mac(*) | ast::item_struct(*) => {}
     }
 }

@@ -3824,9 +3824,9 @@ impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                let r = self.parse_struct_decl_field();
-                for struct_field in r.iter() {
-                    fields.push(*struct_field)
+                match self.parse_struct_decl_field() {
+                    Some(f) => fields.push(f),
+                    None => {}
                 }
             }
             if fields.len() == 0 {
@@ -3913,27 +3913,28 @@ impl Parser {
     }
 
     // parse an element of a struct definition
-    fn parse_struct_decl_field(&self) -> ~[@struct_field] {
-
+    fn parse_struct_decl_field(&self) -> Option<@struct_field> {
         let attrs = self.parse_outer_attributes();
 
         if self.try_parse_obsolete_priv_section(attrs) {
-            return ~[];
+            return None;
         }
-
-        if self.eat_keyword(keywords::Priv) {
-            return ~[self.parse_single_struct_field(private, attrs)]
-        }
-
-        if self.eat_keyword(keywords::Pub) {
-           return ~[self.parse_single_struct_field(public, attrs)];
-        }
+        let vis = if self.eat_keyword(keywords::Priv) {
+            // NOTE: after a snapshot, acrichto needs to make a pull request to
+            //       finish this work.
+            // self.obsolete(*self.last_span, ObsoletePrivStructFieldVisibility);
+            private
+        } else if self.eat_keyword(keywords::Pub) {
+            public
+        } else {
+            inherited
+        };
 
         if self.try_parse_obsolete_struct_ctor() {
-            return ~[];
+            return None;
         }
 
-        return ~[self.parse_single_struct_field(inherited, attrs)];
+        return Some(self.parse_single_struct_field(vis, attrs));
     }
 
     // parse visiility: PUB, PRIV, or nothing
@@ -4341,9 +4342,9 @@ impl Parser {
     fn parse_struct_def(&self) -> @struct_def {
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            let r = self.parse_struct_decl_field();
-            for struct_field in r.iter() {
-                fields.push(*struct_field);
+            match self.parse_struct_decl_field() {
+                Some(f) => fields.push(f),
+                None => {}
             }
         }
         self.bump();
