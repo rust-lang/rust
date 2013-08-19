@@ -147,8 +147,11 @@ impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str], options: ProcessOptions)
+    pub fn new(prog: &str, args: &[~str],
+               options: ProcessOptions)
                -> Process {
+        #[fixed_stack_segment]; #[inline(never)];
+
         let (in_pipe, in_fd) = match options.in_fd {
             None => {
                 let pipe = os::pipe();
@@ -287,6 +290,7 @@ impl Process {
      * method does nothing.
      */
     pub fn close_input(&mut self) {
+        #[fixed_stack_segment]; #[inline(never)];
         match self.input {
             Some(-1) | None => (),
             Some(fd) => {
@@ -299,10 +303,12 @@ impl Process {
     }
 
     fn close_outputs(&mut self) {
+        #[fixed_stack_segment]; #[inline(never)];
         fclose_and_null(&mut self.output);
         fclose_and_null(&mut self.error);
 
         fn fclose_and_null(f_opt: &mut Option<*libc::FILE>) {
+            #[allow(cstack)]; // fixed_stack_segment declared on enclosing fn
             match *f_opt {
                 Some(f) if !f.is_null() => {
                     unsafe {
@@ -387,6 +393,7 @@ impl Process {
 
         #[cfg(windows)]
         fn killpid(pid: pid_t, _force: bool) {
+            #[fixed_stack_segment]; #[inline(never)];
             unsafe {
                 libc::funcs::extra::kernel32::TerminateProcess(
                     cast::transmute(pid), 1);
@@ -395,6 +402,8 @@ impl Process {
 
         #[cfg(unix)]
         fn killpid(pid: pid_t, force: bool) {
+            #[fixed_stack_segment]; #[inline(never)];
+
             let signal = if force {
                 libc::consts::os::posix88::SIGKILL
             } else {
@@ -447,6 +456,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+    #[fixed_stack_segment]; #[inline(never)];
 
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
@@ -630,6 +640,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+    #[fixed_stack_segment]; #[inline(never)];
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
@@ -782,6 +793,7 @@ fn with_dirp<T>(d: Option<&Path>, cb: &fn(*libc::c_char) -> T) -> T {
 
 #[cfg(windows)]
 fn free_handle(handle: *()) {
+    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
     }
@@ -848,6 +860,7 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
+        #[fixed_stack_segment]; #[inline(never)];
 
         use libc::types::os::arch::extra::DWORD;
         use libc::consts::os::extra::{
@@ -892,6 +905,7 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
+        #[fixed_stack_segment]; #[inline(never)];
 
         use libc::funcs::posix01::wait::*;
 
@@ -1069,6 +1083,8 @@ mod tests {
     }
 
     fn readclose(fd: c_int) -> ~str {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             let file = os::fdopen(fd);
             let reader = io::FILE_reader(file, false);
@@ -1351,6 +1367,7 @@ mod tests {
     }
 
     fn running_on_valgrind() -> bool {
+        #[fixed_stack_segment]; #[inline(never)];
         unsafe { rust_running_on_valgrind() != 0 }
     }
 

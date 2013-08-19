@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 #5745
-// xfail-macos Broken on mac i686
-
 struct TwoU16s {
     one: u16, two: u16
 }
@@ -19,6 +16,7 @@ extern {
     pub fn rust_dbg_extern_return_TwoU16s() -> TwoU16s;
 }
 
+#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         let y = rust_dbg_extern_return_TwoU16s();

@@ -2908,6 +2908,7 @@ mod tests {
 
     #[test]
     fn test_map() {
+        #[fixed_stack_segment]; #[inline(never)];
         assert_eq!(~"", "".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
         assert_eq!(~"YMCA", "ymca".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
     }

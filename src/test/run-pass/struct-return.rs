@@ -21,6 +21,7 @@ mod rustrt {
     }
 }
 
+#[fixed_stack_segment] #[inline(never)]
 fn test1() {
     unsafe {
         let q = Quad { a: 0xaaaa_aaaa_aaaa_aaaa_u64,
@@ -40,6 +41,8 @@ fn test1() {
 }
 
 #[cfg(target_arch = "x86_64")]
+#[fixed_stack_segment]
+#[inline(never)]
 fn test2() {
     unsafe {
         let f = Floats { a: 1.234567890e-15_f64,

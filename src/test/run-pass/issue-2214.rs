@@ -19,6 +19,7 @@ fn to_c_int(v: &mut int) -> &mut c_int {
     }
 }
 
+#[fixed_stack_segment] #[inline(never)]
 fn lgamma(n: c_double, value: &mut int) -> c_double {
     unsafe {
         return m::lgamma(n, to_c_int(value));
