@@ -49,7 +49,8 @@ use middle::trans::type_::Type;
 use syntax::ast;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure
@@ -556,21 +557,29 @@ pub fn trans_lang_call_with_type_params(bcx: @mut Block,
         ArgVals(args), Some(dest), DontAutorefArg).bcx;
 }
 
-pub fn body_contains_ret(body: &ast::Block) -> bool {
-    let cx = @mut false;
-    oldvisit::visit_block(body, (cx, oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_item: |_i, (_cx, _v)| { },
-        visit_expr: |e: @ast::expr,
-                     (cx, v): (@mut bool, oldvisit::vt<@mut bool>)| {
+
+struct CalleeTranslationVisitor;
+
+impl Visitor<@mut bool> for CalleeTranslationVisitor {
+
+    fn visit_item(&mut self, _:@ast::item, _:@mut bool) { }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut bool) {
+
             if !*cx {
                 match e.node {
                   ast::expr_ret(_) => *cx = true,
-                  _ => oldvisit::visit_expr(e, (cx, v)),
+                  _ => visit::walk_expr(self, e, cx),
                 }
             }
-        },
-        ..*oldvisit::default_visitor()
-    })));
+    }
+
+}
+
+pub fn body_contains_ret(body: &ast::Block) -> bool {
+    let cx = @mut false;
+    let mut v = CalleeTranslationVisitor;
+    visit::walk_block(&mut v, body, cx);
     *cx
 }
 

@@ -43,7 +43,8 @@ use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
 use syntax::codemap::span;
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 pub struct Rcx {
     fcx: @mut FnCtxt,
@@ -52,8 +53,6 @@ pub struct Rcx {
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
 }
-
-pub type rvt = oldvisit::vt<@mut Rcx>;
 
 fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
@@ -146,8 +145,8 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
                          repeating_scope: e.id };
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
-        let v = regionck_visitor();
-        (v.visit_expr)(e, (rcx, v));
+        let mut v = regionck_visitor();
+        v.visit_expr(e, rcx);
     }
     fcx.infcx().resolve_regions();
 }
@@ -157,13 +156,15 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::Block) {
                          repeating_scope: blk.id };
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
-        let v = regionck_visitor();
-        (v.visit_block)(blk, (rcx, v));
+        let mut v = regionck_visitor();
+        v.visit_block(blk, rcx);
     }
     fcx.infcx().resolve_regions();
 }
 
-fn regionck_visitor() -> rvt {
+struct RegionckVisitor;
+
+impl Visitor<@mut Rcx> for RegionckVisitor {
     // (*) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -171,41 +172,46 @@ fn regionck_visitor() -> rvt {
     // addressed by deferring the construction of the region
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_item: visit_item,
-        visit_expr: visit_expr,
+
+    fn visit_item(&mut self, i:@ast::item, e:@mut Rcx) { visit_item(self, i, e); }
+
+    fn visit_expr(&mut self, ex:@ast::expr, e:@mut Rcx) { visit_expr(self, ex, e); }
 
         //visit_pat: visit_pat, // (*) see above
-        visit_arm: visit_arm,
-        visit_local: visit_local,
 
-        visit_block: visit_block,
-        .. *oldvisit::default_visitor()
-    })
+    fn visit_arm(&mut self, a:&ast::arm, e:@mut Rcx) { visit_arm(self, a, e); }
+
+    fn visit_local(&mut self, l:@ast::Local, e:@mut Rcx) { visit_local(self, l, e); }
+
+    fn visit_block(&mut self, b:&ast::Block, e:@mut Rcx) { visit_block(self, b, e); }
 }
 
-fn visit_item(_item: @ast::item, (_rcx, _v): (@mut Rcx, rvt)) {
+fn regionck_visitor() -> RegionckVisitor {
+    RegionckVisitor
+}
+
+fn visit_item(_v: &mut RegionckVisitor, _item: @ast::item, _rcx: @mut Rcx) {
     // Ignore items
 }
 
-fn visit_block(b: &ast::Block, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_block(v: &mut RegionckVisitor, b: &ast::Block, rcx: @mut Rcx) {
     rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
-    oldvisit::visit_block(b, (rcx, v));
+    visit::walk_block(v, b, rcx);
 }
 
-fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_arm(v: &mut RegionckVisitor, arm: &ast::arm, rcx: @mut Rcx) {
     // see above
     for &p in arm.pats.iter() {
         constrain_bindings_in_pat(p, rcx);
     }
 
-    oldvisit::visit_arm(arm, (rcx, v));
+    visit::walk_arm(v, arm, rcx);
 }
 
-fn visit_local(l: @ast::Local, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_local(v: &mut RegionckVisitor, l: @ast::Local, rcx: @mut Rcx) {
     // see above
     constrain_bindings_in_pat(l.pat, rcx);
-    oldvisit::visit_local(l, (rcx, v));
+    visit::walk_local(v, l, rcx);
 }
 
 fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
@@ -242,7 +248,7 @@ fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
     }
 }
 
-fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
+fn visit_expr(v: &mut RegionckVisitor, expr: @ast::expr, rcx: @mut Rcx) {
     debug!("regionck::visit_expr(e=%s, repeating_scope=%?)",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
@@ -330,13 +336,13 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             constrain_callee(rcx, callee.id, expr, callee);
             constrain_call(rcx, callee.id, expr, None, *args, false);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_method_call(callee_id, arg0, _, _, ref args, _) => {
             constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v,expr, rcx);
         }
 
         ast::expr_index(callee_id, lhs, rhs) |
@@ -348,14 +354,14 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             // should be converted to an adjustment!
             constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_unary(callee_id, _, lhs) if has_method_map => {
             // As above.
             constrain_call(rcx, callee_id, expr, Some(lhs), [], true);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_unary(_, ast::deref, base) => {
@@ -363,7 +369,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             let base_ty = rcx.resolve_node_type(base.id);
             constrain_derefs(rcx, expr, 1, base_ty);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_index(_, vec_expr, _) => {
@@ -371,7 +377,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
             constrain_index(rcx, expr, vec_type);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_cast(source, _) => {
@@ -401,7 +407,7 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
                 _ => ()
             }
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_addr_of(_, base) => {
@@ -417,13 +423,13 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
             let ty0 = rcx.resolve_node_type(expr.id);
             constrain_regions_in_type(rcx, ty::re_scope(expr.id),
                                       infer::AddrOf(expr.span), ty0);
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_match(discr, ref arms) => {
             guarantor::for_match(rcx, discr, *arms);
 
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
 
         ast::expr_fn_block(*) => {
@@ -432,29 +438,29 @@ fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
 
         ast::expr_loop(ref body, _) => {
             let repeating_scope = rcx.set_repeating_scope(body.id);
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
             rcx.set_repeating_scope(repeating_scope);
         }
 
         ast::expr_while(cond, ref body) => {
             let repeating_scope = rcx.set_repeating_scope(cond.id);
-            (v.visit_expr)(cond, (rcx, v));
+            v.visit_expr(cond, rcx);
 
             rcx.set_repeating_scope(body.id);
-            (v.visit_block)(body, (rcx, v));
+            v.visit_block(body, rcx);
 
             rcx.set_repeating_scope(repeating_scope);
         }
 
         _ => {
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
         }
     }
 }
 
 fn check_expr_fn_block(rcx: @mut Rcx,
                        expr: @ast::expr,
-                       v: rvt) {
+                       v: &mut RegionckVisitor) {
     let tcx = rcx.fcx.tcx();
     match expr.node {
         ast::expr_fn_block(_, ref body) => {
@@ -483,7 +489,7 @@ fn check_expr_fn_block(rcx: @mut Rcx,
             }
 
             let repeating_scope = rcx.set_repeating_scope(body.id);
-            oldvisit::visit_expr(expr, (rcx, v));
+            visit::walk_expr(v, expr, rcx);
             rcx.set_repeating_scope(repeating_scope);
         }
 
