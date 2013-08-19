@@ -706,7 +706,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
                   for variant in (*variants).iter() {
                       let variant_cx =
                           sub_block(cx, ~"enum-iter-variant-" +
-                                    uint::to_str(variant.disr_val));
+                                    variant.disr_val.to_str());
                       let variant_cx =
                           iter_variant(variant_cx, repr, av, *variant,
                                        substs.tps, |x,y,z| f(x,y,z));
@@ -1975,7 +1975,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
                           _enum_id: ast::NodeId,
                           variant: &ast::variant,
                           args: &[ast::variant_arg],
-                          disr: uint,
+                          disr: ty::Disr,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
@@ -2024,7 +2024,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     ccx: @mut CrateContext,
     ctor_id: ast::NodeId,
     args: &[A],
-    disr: uint,
+    disr: ty::Disr,
     param_substs: Option<@param_substs>,
     llfndecl: ValueRef)
 {
@@ -2633,7 +2633,7 @@ pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
                 }
             };
             unsafe {
-                llvm::LLVMSetInitializer(discrim_gvar, C_uint(ccx, disr_val));
+                llvm::LLVMSetInitializer(discrim_gvar, C_uint(ccx, disr_val /*bad*/ as uint));
                 llvm::LLVMSetGlobalConstant(discrim_gvar, True);
             }
             ccx.discrims.insert(
