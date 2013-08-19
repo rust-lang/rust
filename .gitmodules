@@ -4,5 +4,8 @@
 	branch = master
 [submodule "src/libuv"]
 	path = src/libuv
-	url = https://github.com/brson/libuv.git
+	url = https://github.com/alexcrichton/libuv.git
 	branch = master
+[submodule "src/gyp"]
+	path = src/gyp
+	url = https://git.chromium.org/external/gyp.git

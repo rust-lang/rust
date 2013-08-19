@@ -34,7 +34,7 @@ impl AsyncWatcher {
 
         extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
             let mut watcher: AsyncWatcher = NativeHandle::from_native_handle(handle);
-            let status = status_to_maybe_uv_error(watcher, status);
+            let status = status_to_maybe_uv_error(status);
             let data = watcher.get_watcher_data();
             let cb = data.async_cb.get_ref();
             (*cb)(watcher, status);

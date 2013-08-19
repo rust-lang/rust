@@ -17,7 +17,7 @@ use ptr::null;
 use rt::uv::uvll;
 use rt::uv::uvll::UV_GETADDRINFO;
 use rt::uv::{Loop, UvError, NativeHandle};
-use rt::uv::status_to_maybe_uv_error_with_loop;
+use rt::uv::status_to_maybe_uv_error;
 use rt::uv::net::UvAddrInfo;
 
 type GetAddrInfoCallback = ~fn(GetAddrInfoRequest, &UvAddrInfo, Option<UvError>);
@@ -90,8 +90,7 @@ impl GetAddrInfoRequest {
                                      status: c_int,
                                      res: *uvll::addrinfo) {
             let mut req: GetAddrInfoRequest = NativeHandle::from_native_handle(req);
-            let loop_ = req.get_loop();
-            let err = status_to_maybe_uv_error_with_loop(loop_.native_handle(), status);
+            let err = status_to_maybe_uv_error(status);
             let addrinfo = UvAddrInfo(res);
             let data = req.get_req_data();
             (*data.getaddrinfo_cb.get_ref())(req, &addrinfo, err);

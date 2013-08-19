@@ -329,20 +329,13 @@ rust_uv_get_len_from_buf(uv_buf_t buf) {
     return buf.len;
 }
 
-extern "C" uv_err_t
-rust_uv_last_error(uv_loop_t* loop) {
-    return uv_last_error(loop);
-}
-
 extern "C" const char*
-rust_uv_strerror(uv_err_t* err_ptr) {
-    uv_err_t err = *err_ptr;
+rust_uv_strerror(int err) {
     return uv_strerror(err);
 }
 
 extern "C" const char*
-rust_uv_err_name(uv_err_t* err_ptr) {
-    uv_err_t err = *err_ptr;
+rust_uv_err_name(int err) {
     return uv_err_name(err);
 }
 
