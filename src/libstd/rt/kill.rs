@@ -647,7 +647,9 @@ impl Death {
     /// All calls must be paired with a preceding call to inhibit_kill.
     #[inline]
     pub fn allow_kill(&mut self, already_failing: bool) {
-        rtassert!(self.unkillable != 0);
+        if self.unkillable == 0 {
+            fail!("illegal call of rekillable");
+        }
         self.unkillable -= 1;
         if self.unkillable == 0 {
             rtassert!(self.kill_handle.is_some());
