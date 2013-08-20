@@ -13,12 +13,21 @@
 #include <malloc.h>
 #endif
 
+#ifndef __WIN32__
+// for signal
+#include <signal.h>
+#endif
+
 #include "uv.h"
 
 #include "rust_globals.h"
 
 extern "C" void*
 rust_uv_loop_new() {
+// XXX libuv doesn't always ignore SIGPIPE even though we don't need it.
+#ifndef __WIN32__
+    signal(SIGPIPE, SIG_IGN);
+#endif
     return (void*)uv_loop_new();
 }
 
