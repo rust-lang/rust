@@ -18,7 +18,6 @@ use ops::Drop;
 use option::*;
 use ptr;
 use str;
-use path::Path;
 use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
@@ -31,6 +30,7 @@ use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use unstable::sync::Exclusive;
+use super::super::io::support::PathLike;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -466,7 +466,7 @@ impl IoFactory for UvIoFactory {
         } as ~RtioFileDescriptor
     }
 
-    fn fs_open(&mut self, path: Path, flags: int, mode: int)
+    fn fs_open<P: PathLike>(&mut self, path: &P, flags: int, mode: int)
         -> Result<~RtioFileDescriptor, IoError> {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
         let result_cell = Cell::new_empty();
@@ -497,7 +497,7 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn fs_unlink(&mut self, path: Path) -> Result<(), IoError> {
+    fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
@@ -1636,6 +1636,7 @@ fn file_test_uvio_full_simple_impl() {
     use str::StrSlice; // why does this have to be explicitly imported to work?
                        // compiler was complaining about no trait for str that
                        // does .as_bytes() ..
+    use path::Path;
     unsafe {
         let io = Local::unsafe_borrow::<IoFactoryObject>();
         let create_flags = O_RDWR | O_CREAT;
@@ -1644,18 +1645,18 @@ fn file_test_uvio_full_simple_impl() {
         let mode = S_IWUSR | S_IRUSR;
         let path = "./file_test_uvio_full.txt";
         {
-            let mut fd = (*io).fs_open(Path(path), create_flags as int, mode as int).unwrap();
+            let mut fd = (*io).fs_open(&Path(path), create_flags as int, mode as int).unwrap();
             let write_buf = write_val.as_bytes();
             fd.write(write_buf, 0);
         }
         {
-            let mut fd = (*io).fs_open(Path(path), ro_flags as int, mode as int).unwrap();
+            let mut fd = (*io).fs_open(&Path(path), ro_flags as int, mode as int).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec, 0).unwrap();
             let read_val = str::from_bytes(read_vec.slice(0, nread as uint));
             assert!(read_val == write_val.to_owned());
         }
-        (*io).fs_unlink(Path(path));
+        (*io).fs_unlink(&Path(path));
     }
 }
 

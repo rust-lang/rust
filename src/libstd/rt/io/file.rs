@@ -12,6 +12,11 @@ use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek};
 use super::SeekStyle;
+use rt::rtio::{RtioFileDescriptor, IoFactory, IoFactoryObject};
+use rt::io::{io_error, read_error, EndOfFile};
+use rt::local::Local;
+use libc::{O_RDWR, O_RDONLY, O_WRONLY, S_IWUSR, S_IRUSR,
+           O_CREAT, O_TRUNC, O_APPEND};
 
 /// # FIXME #7785
 /// * Ugh, this is ridiculous. What is the best way to represent these options?
@@ -36,29 +41,85 @@ enum FileAccess {
     ReadWrite
 }
 
-pub struct FileStream;
+pub struct FileStream {
+    fd: ~RtioFileDescriptor,
+    last_nread: int
+}
 
 impl FileStream {
-    pub fn open<P: PathLike>(_path: &P,
-                             _mode: FileMode,
-                             _access: FileAccess
+    pub fn open<P: PathLike>(path: &P,
+                             mode: FileMode,
+                             access: FileAccess
                             ) -> Option<FileStream> {
-        fail!()
+        let open_result = unsafe {
+            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let mut flags = match mode {
+                Open => 0,
+                Create => O_CREAT,
+                OpenOrCreate => O_CREAT,
+                Append => O_APPEND,
+                Truncate => O_TRUNC,
+                CreateOrTruncate => O_TRUNC | O_CREAT
+            };
+            flags = match access {
+                Read => flags | O_RDONLY,
+                Write => flags | O_WRONLY,
+                ReadWrite => flags | O_RDWR
+            };
+            let create_mode = match mode {
+                Create|OpenOrCreate|CreateOrTruncate =>
+                    S_IRUSR | S_IWUSR,
+                _ => 0
+            };
+            (*io).fs_open(path, flags as int, create_mode as int)
+        };
+        match open_result {
+            Ok(fd) => Some(FileStream {
+                fd: fd,
+                last_nread: -1
+            }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            }
+        }
     }
 }
 
 impl Reader for FileStream {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> {
-        fail!()
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        match self.fd.read(buf, 0) {
+            Ok(read) => {
+                self.last_nread = read;
+                match read {
+                    0 => None,
+                    _ => Some(read as uint)
+                }
+            },
+            Err(ioerr) => {
+                // EOF is indicated by returning None
+                if ioerr.kind != EndOfFile {
+                    read_error::cond.raise(ioerr);
+                }
+                return None;
+            }
+        }
     }
 
     fn eof(&mut self) -> bool {
-        fail!()
+        self.last_nread == 0
     }
 }
 
 impl Writer for FileStream {
-    fn write(&mut self, _v: &[u8]) { fail!() }
+    fn write(&mut self, buf: &[u8]) {
+        match self.fd.write(buf, 0) {
+            Ok(_) => (),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+            }
+        }
+    }
 
     fn flush(&mut self) { fail!() }
 }
@@ -69,11 +130,29 @@ impl Seek for FileStream {
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
+fn file_test_smoke_test_impl() {
+    use rt::test::*;
+    do run_in_newsched_task {
+        let message = "it's alright. have a good time";
+        let filename = &Path("rt_io_file_test.txt");
+        {
+            let mut write_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
+            write_stream.write(message.as_bytes());
+        }
+        {
+            use str;
+            let mut read_stream = FileStream::open(filename, Open, Read).unwrap();
+            let mut read_buf = [0, .. 1028];
+            let read_str = match read_stream.read(read_buf).unwrap() {
+                -1|0 => fail!("shouldn't happen"),
+                n => str::from_bytes(read_buf.slice_to(n))
+            };
+            assert!(read_str == message.to_owned());
+        }
+    }
+}
+
 #[test]
-#[ignore]
-fn super_simple_smoke_test_lets_go_read_some_files_and_have_a_good_time() {
-    let message = "it's alright. have a good time";
-    let filename = &Path("test.txt");
-    let mut outstream = FileStream::open(filename, Create, Read).unwrap();
-    outstream.write(message.as_bytes());
+fn file_test_smoke_test() {
+    file_test_smoke_test_impl();
 }
