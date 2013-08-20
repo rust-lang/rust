@@ -12,7 +12,7 @@
 use back::link::mangle_exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
-use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
+use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use middle::trans::base::{trans_enum_variant,push_ctxt};
 use middle::trans::base::{trans_fn, decl_internal_cdecl_fn};
 use middle::trans::base::{get_item_val, no_self};
@@ -222,7 +222,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
                 _
             }, _) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(i.attrs, d);
+        set_llvm_fn_attrs(i.attrs, d);
         trans_fn(ccx,
                  pt,
                  decl,
@@ -266,13 +266,13 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
       ast_map::node_method(mth, _, _) => {
         // XXX: What should the self type be here?
         let d = mk_lldecl();
-        set_inline_hint_if_appr(mth.attrs.clone(), d);
+        set_llvm_fn_attrs(mth.attrs, d);
         meth::trans_method(ccx, pt, mth, Some(psubsts), d);
         d
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(mth.attrs.clone(), d);
+        set_llvm_fn_attrs(mth.attrs, d);
         meth::trans_method(ccx, (*pt).clone(), mth, Some(psubsts), d);
         d
       }
