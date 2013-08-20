@@ -8,17 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Passing enums by value
+// xfail-fast
+// aux-build:xc_conditions_4.rs
 
-pub enum void { }
+extern mod xc_conditions_4;
+use xcc = xc_conditions_4;
 
-mod bindgen {
-    use super::void;
+struct SThunk {
+    x: int
+}
 
-    #[nolink]
-    extern {
-        pub fn printf(v: void);
+impl xcc::Thunk<xcc::Color> for SThunk {
+    fn call(self) -> xcc::Color {
+        xcc::oops::cond.raise((self.x, 1.23, ~"oh no"))
     }
 }
 
-pub fn main() { }
+pub fn main() {
+    do xcc::oops::cond.trap(|_| xcc::Red).inside {
+        let t = SThunk { x : 10 };
+        assert_eq!(xcc::callback(t), xcc::Red)
+    }
+}

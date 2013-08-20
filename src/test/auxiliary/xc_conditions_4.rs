@@ -8,17 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Passing enums by value
+#[crate_type="lib"];
 
-pub enum void { }
-
-mod bindgen {
-    use super::void;
-
-    #[nolink]
-    extern {
-        pub fn printf(v: void);
-    }
+#[deriving(Eq)]
+pub enum Color {
+    Red, Green, Blue
 }
 
-pub fn main() { }
+condition! {
+    pub oops: (int,float,~str) -> ::Color;
+}
+
+pub trait Thunk<T> {
+    fn call(self) -> T;
+}
+
+pub fn callback<T,TH:Thunk<T>>(t:TH) -> T {
+    t.call()
+}
+

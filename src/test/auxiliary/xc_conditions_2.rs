@@ -8,17 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Passing enums by value
+#[crate_type="lib"];
 
-pub enum void { }
-
-mod bindgen {
-    use super::void;
-
-    #[nolink]
-    extern {
-        pub fn printf(v: void);
-    }
+condition! {
+    pub oops: int -> int;
 }
-
-pub fn main() { }
