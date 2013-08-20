@@ -66,9 +66,9 @@ pub trait IoFactory {
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError>;
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
-    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileDescriptor;
+    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream;
     fn fs_open<P: PathLike>(&mut self, path: &P, flags: int, mode:int)
-        -> Result<~RtioFileDescriptor, IoError>;
+        -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
 }
 
@@ -113,7 +113,12 @@ pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
 }
 
-pub trait RtioFileDescriptor {
-    fn read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError>;
-    fn write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError>;
+pub trait RtioFileStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError>;
+    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError>;
+    fn seek(&mut self, pos: i64, whence: i64) -> Result<(), IoError>;
+    fn tell(&self) -> Result<u64, IoError>;
+    fn flush(&mut self) -> Result<(), IoError>;
 }

@@ -461,6 +461,7 @@ pub enum SeekStyle {
 /// # XXX
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
+    /// Return position of file cursor in the stream
     fn tell(&self) -> u64;
 
     /// Seek to an offset in a stream
