@@ -18,7 +18,7 @@ use iterator::{Iterator, range};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 use rt::sched::Scheduler;
-use unstable::run_in_bare_thread;
+use unstable::{run_in_bare_thread};
 use rt::thread::Thread;
 use rt::task::Task;
 use rt::uv::uvio::UvEventLoop;
@@ -162,10 +162,14 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).unwrap(),
             None => {
-                // Using more threads than cores in test code
-                // to force the OS to preempt them frequently.
-                // Assuming that this help stress test concurrent types.
-                util::num_cpus() * 2
+                if util::limit_thread_creation_due_to_osx_and_valgrind() {
+                    1
+                } else {
+                    // Using more threads than cores in test code
+                    // to force the OS to preempt them frequently.
+                    // Assuming that this help stress test concurrent types.
+                    util::num_cpus() * 2
+                }
             }
         };
 

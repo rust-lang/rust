@@ -14,6 +14,7 @@ use comm::{GenericChan, GenericPort};
 use comm;
 use prelude::*;
 use task;
+use libc::uintptr_t;
 
 pub mod dynamic_lib;
 
@@ -117,4 +118,18 @@ pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
         fn rust_take_change_dir_lock();
         fn rust_drop_change_dir_lock();
     }
+}
+
+
+/// Dynamically inquire about whether we're running under V.
+/// You should usually not use this unless your test definitely
+/// can't run correctly un-altered. Valgrind is there to help
+/// you notice weirdness in normal, un-doctored code paths!
+pub fn running_on_valgrind() -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+    unsafe { rust_running_on_valgrind() != 0 }
+}
+
+extern {
+    fn rust_running_on_valgrind() -> uintptr_t;
 }
