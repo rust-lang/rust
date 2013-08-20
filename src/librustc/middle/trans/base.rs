@@ -442,14 +442,19 @@ pub fn set_inline_hint(f: ValueRef) {
     lib::llvm::SetFunctionAttribute(f, lib::llvm::InlineHintAttribute)
 }
 
-pub fn set_inline_hint_if_appr(attrs: &[ast::Attribute],
-                               llfn: ValueRef) {
+pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
+    // Set the inline hint if there is one
     match find_inline_attr(attrs) {
         InlineHint   => set_inline_hint(llfn),
         InlineAlways => set_always_inline(llfn),
         InlineNever  => set_no_inline(llfn),
         InlineNone   => { /* fallthrough */ }
+    }
+
+    // Add the no-split-stack attribute if requested
+    if contains_name(attrs, "no_split_stack") {
+        set_no_split_stack(llfn);
     }
 }
 
@@ -458,7 +463,15 @@ pub fn set_always_inline(f: ValueRef) {
 }
 
 pub fn set_fixed_stack_segment(f: ValueRef) {
-    lib::llvm::SetFixedStackSegmentAttribute(f);
+    do "fixed-stack-segment".to_c_str().with_ref |buf| {
+        unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
+    }
+}
+
+pub fn set_no_split_stack(f: ValueRef) {
+    do "no-split-stack".to_c_str().with_ref |buf| {
+        unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
+    }
 }
 
 pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
@@ -2472,7 +2485,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                                                            sym,
                                                                            i.id)
                             };
-                            set_inline_hint_if_appr(i.attrs, llfn);
+                            set_llvm_fn_attrs(i.attrs, llfn);
                             llfn
                         }
 
@@ -2605,7 +2618,7 @@ pub fn register_method(ccx: @mut CrateContext,
     let sym = exported_name(ccx, path, mty, m.attrs);
 
     let llfn = register_fn(ccx, m.span, sym, id, mty);
-    set_inline_hint_if_appr(m.attrs, llfn);
+    set_llvm_fn_attrs(m.attrs, llfn);
     llfn
 }
 

@@ -43,7 +43,7 @@ extern "C" void LLVMRustAddPrintModulePass(LLVMPassManagerRef PMR,
                                            const char* path) {
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
-  raw_fd_ostream OS(path, ErrorInfo, raw_fd_ostream::F_Binary);
+  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_Binary);
   formatted_raw_ostream FOS(OS);
   PM->add(createPrintModulePass(&FOS));
   PM->run(*unwrap(M));
@@ -413,7 +413,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   bool NoVerify = false;
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
-                    raw_fd_ostream::F_Binary);
+                    sys::fs::F_Binary);
   if (ErrorInfo != "") {
     LLVMRustError = ErrorInfo.c_str();
     return false;
@@ -480,6 +480,10 @@ extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
 
 extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
   return wrap(Type::getMetadataTy(*unwrap(C)));
+}
+
+extern "C" void LLVMAddFunctionAttrString(LLVMValueRef fn, const char *Name) {
+  unwrap<Function>(fn)->addFnAttr(Name);
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
@@ -625,7 +629,7 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateFunction(
     return wrap(Builder->createFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
-        unwrapDI<DIType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
+        unwrapDI<DICompositeType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
         Flags, isOptimized,
         unwrap<Function>(Fn),
         unwrapDI<MDNode*>(TParam),

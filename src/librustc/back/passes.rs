@@ -293,7 +293,6 @@ pub static transform_passes : &'static [(&'static str, &'static str)] = &'static
     ("scalarrepl",                      "Scalar Replacement of Aggregates (DT)"),
     ("scalarrepl-ssa",                  "Scalar Replacement of Aggregates (SSAUp)"),
     ("sccp",                            "Sparse Conditional Constant Propagation"),
-    ("simplify-libcalls",               "Simplify well-known library calls"),
     ("simplifycfg",                     "Simplify the CFG"),
     ("sink",                            "Code sinking"),
     ("strip",                           "Strip all symbols from a module"),
