@@ -18,9 +18,6 @@ use rt::local::Local;
 pub struct Timer(~RtioTimerObject);
 
 impl Timer {
-    fn new_on_rt(i: ~RtioTimerObject) -> Timer {
-        Timer(i)
-    }
 
     pub fn new() -> Option<Timer> {
         let timer = unsafe {
@@ -30,7 +27,7 @@ impl Timer {
             (*io).timer_init()
         };
         match timer {
-            Ok(t) => Some(Timer::new_on_rt(t)),
+            Ok(t) => Some(Timer(t)),
             Err(ioerr) => {
                 rtdebug!("Timer::init: failed to init: %?", ioerr);
                 io_error::cond.raise(ioerr);
@@ -38,10 +35,8 @@ impl Timer {
             }
         }
     }
-}
 
-impl RtioTimer for Timer {
-    fn sleep(&mut self, msecs: u64) {
+    pub fn sleep(&mut self, msecs: u64) {
         (**self).sleep(msecs);
     }
 }
