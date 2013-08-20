@@ -20,6 +20,8 @@ use libc::{c_void, uintptr_t};
 use ptr;
 use prelude::*;
 use option::{Option, Some, None};
+use rt::borrowck;
+use rt::borrowck::BorrowRecord;
 use rt::env;
 use rt::kill::Death;
 use rt::local::Local;
@@ -51,7 +53,9 @@ pub struct Task {
     name: Option<~str>,
     coroutine: Option<Coroutine>,
     sched: Option<~Scheduler>,
-    task_type: TaskType
+    task_type: TaskType,
+    // Dynamic borrowck debugging info
+    borrow_list: Option<~[BorrowRecord]>
 }
 
 pub enum TaskType {
@@ -135,7 +139,8 @@ impl Task {
             coroutine: Some(Coroutine::empty()),
             name: None,
             sched: None,
-            task_type: SchedTask
+            task_type: SchedTask,
+            borrow_list: None
         }
     }
 
@@ -168,7 +173,8 @@ impl Task {
             name: None,
             coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
-            task_type: GreenTask(Some(~home))
+            task_type: GreenTask(Some(~home)),
+            borrow_list: None
         }
     }
 
@@ -190,7 +196,8 @@ impl Task {
             name: None,
             coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
             sched: None,
-            task_type: GreenTask(Some(~home))
+            task_type: GreenTask(Some(~home)),
+            borrow_list: None
         }
     }
 
@@ -252,6 +259,9 @@ impl Task {
                 unsafe { cleanup::annihilate(); }
             }
         }
+
+        // Cleanup the dynamic borrowck debugging info
+        borrowck::clear_task_borrow_list();
 
         // NB. We pass the taskgroup into death so that it can be dropped while
         // the unkillable counter is set. This is necessary for when the
