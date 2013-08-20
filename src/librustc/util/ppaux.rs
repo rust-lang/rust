@@ -747,8 +747,8 @@ impl Repr for typeck::method_origin {
             &typeck::method_param(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::method_trait(def_id, n) => {
-                fmt!("method_trait(%s, %?)", def_id.repr(tcx), n)
+            &typeck::method_object(ref p) => {
+                p.repr(tcx)
             }
         }
     }
@@ -763,6 +763,16 @@ impl Repr for typeck::method_param {
              self.bound_num)
     }
 }
+
+impl Repr for typeck::method_object {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        fmt!("method_object(%s,%?,%?)",
+             self.trait_id.repr(tcx),
+             self.method_num,
+             self.real_index)
+    }
+}
+
 
 impl Repr for ty::RegionVid {
     fn repr(&self, _tcx: ctxt) -> ~str {

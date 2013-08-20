@@ -59,6 +59,7 @@ pub struct field {
     mt: mt
 }
 
+#[deriving(Clone)]
 pub struct Method {
     ident: ast::ident,
     generics: ty::Generics,
@@ -3136,12 +3137,14 @@ pub fn method_call_type_param_defs(tcx: ctxt,
           typeck::method_param(typeck::method_param {
               trait_id: trt_id,
               method_num: n_mth, _}) |
-          typeck::method_trait(trt_id, n_mth) => {
+          typeck::method_object(typeck::method_object {
+              trait_id: trt_id,
+              method_num: n_mth, _}) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
-                ty::lookup_trait_def(tcx, trt_id).generics.type_param_defs;
+                lookup_trait_def(tcx, trt_id).generics.type_param_defs;
             @vec::append(
                 (*trait_type_param_defs).clone(),
                 *ty::trait_method(tcx,
