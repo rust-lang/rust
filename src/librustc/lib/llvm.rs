@@ -89,11 +89,6 @@ pub enum Attribute {
     ReturnsTwiceAttribute = 1 << 29,
     UWTableAttribute = 1 << 30,
     NonLazyBindAttribute = 1 << 31,
-
-    // Not added to LLVM yet, so may need to stay updated if LLVM changes.
-    // FIXME(#8199): if this changes, be sure to change the relevant constant
-    //               down below
-    // FixedStackSegment = 1 << 41,
 }
 
 // enum for the LLVM IntPredicate type
@@ -847,7 +842,9 @@ pub mod llvm {
         #[fast_ffi]
         pub fn LLVMSetGC(Fn: ValueRef, Name: *c_char);
         #[fast_ffi]
-        pub fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint, HighPA: c_uint);
+        pub fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint);
+        #[fast_ffi]
+        pub fn LLVMAddFunctionAttrString(Fn: ValueRef, Name: *c_char);
         #[fast_ffi]
         pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
         #[fast_ffi]
@@ -2138,23 +2135,7 @@ pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(Fn: ValueRef, attr: Attribute) {
     unsafe {
-        let attr = attr as u64;
-        let lower = attr & 0xffffffff;
-        let upper = (attr >> 32) & 0xffffffff;
-        llvm::LLVMAddFunctionAttr(Fn, lower as c_uint, upper as c_uint);
-    }
-}
-
-// FIXME(#8199): this shouldn't require this hackery. On i686
-//               (FixedStackSegment as u64) will return 0 instead of 1 << 41.
-//               Furthermore, if we use a match of any sort then an LLVM
-//               assertion is generated!
-pub fn SetFixedStackSegmentAttribute(Fn: ValueRef) {
-    unsafe {
-        let attr = 1u64 << 41;
-        let lower = attr & 0xffffffff;
-        let upper = (attr >> 32) & 0xffffffff;
-        llvm::LLVMAddFunctionAttr(Fn, lower as c_uint, upper as c_uint);
+        llvm::LLVMAddFunctionAttr(Fn, attr as c_uint)
     }
 }
 /* Memory-managed object interface to type handles. */
