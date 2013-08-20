@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Passing enums by value
+// xfail-fast
+// aux-build:xc_conditions_2.rs
 
-pub enum void { }
+extern mod xc_conditions_2;
+use xcc = xc_conditions_2;
 
-mod bindgen {
-    use super::void;
-
-    #[nolink]
-    extern {
-        pub fn printf(v: void);
+pub fn main() {
+    do xcc::oops::cond.trap(|_| 1).inside {
+        xcc::oops::cond.raise(1);
     }
 }
-
-pub fn main() { }
