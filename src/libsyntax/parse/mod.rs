@@ -372,7 +372,7 @@ mod test {
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
                                 lifetime: None,
-                                types: ~[],
+                                types: opt_vec::Empty,
                             }
                         ],
                     }),
@@ -391,12 +391,12 @@ mod test {
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
                                     lifetime: None,
-                                    types: ~[],
+                                    types: opt_vec::Empty,
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     lifetime: None,
-                                    types: ~[],
+                                    types: opt_vec::Empty,
                                 }
                             ]
                         }),
@@ -507,48 +507,6 @@ mod test {
                                 None /* no idea */),
                              span: sp(0,1)});
         parser_done(parser);
-    }
-
-    #[test] fn parse_arg () {
-        let parser = string_to_parser(@"b : int");
-        assert_eq!(parser.parse_arg_general(true),
-                   ast::arg{
-                       is_mutbl: false,
-                       ty: ast::Ty{id:3, // fixme
-                                    node: ast::ty_path(ast::Path{
-                                        span:sp(4,4), // this is bizarre...
-                                        // check this in the original parser?
-                                        global:false,
-                                        segments: ~[
-                                            ast::PathSegment {
-                                                identifier:
-                                                    str_to_ident("int"),
-                                                lifetime: None,
-                                                types: opt_vec::Empty,
-                                            }
-                                        ],
-                                    }, None, 2),
-                                    span:sp(4,7)},
-                       pat: @ast::pat{id:1,
-                                      node: ast::pat_ident(
-                                        ast::bind_infer,
-                                        ast::Path {
-                                            span:sp(0,1),
-                                            global:false,
-                                            segments: ~[
-                                                ast::PathSegment {
-                                                    identifier:
-                                                        str_to_ident("b"),
-                                                    lifetime: None,
-                                                    types: opt_vec::Empty,
-                                                }
-                                            ],
-                                        },
-                                        None // no idea
-                                      ),
-                                      span: sp(0,1)},
-                       id: 4 // fixme
-                   })
     }
 
     // check the contents of the tt manually:

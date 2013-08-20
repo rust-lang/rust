@@ -420,6 +420,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_add_bytes_to_bits_tuple_overflow2() {
-        add_bytes_to_bits_tuple::<u64>((Bounded::max_value::<u64>() - 1, 0), 0x8000000000000000);
+        let value: u64 = Bounded::max_value();
+        add_bytes_to_bits_tuple::<u64>((value - 1, 0), 0x8000000000000000);
     }
 }
