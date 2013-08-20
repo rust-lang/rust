@@ -15,6 +15,7 @@ use super::SeekStyle;
 use rt::rtio::{RtioFileDescriptor, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::local::Local;
+use rt::test::*;
 use libc::{O_RDWR, O_RDONLY, O_WRONLY, S_IWUSR, S_IRUSR,
            O_CREAT, O_TRUNC, O_APPEND};
 
@@ -84,6 +85,18 @@ impl FileStream {
             }
         }
     }
+    fn unlink<P: PathLike>(path: &P) {
+        let unlink_result = unsafe {
+            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            (*io).fs_unlink(path)
+        };
+        match unlink_result {
+            Ok(_) => (),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+            }
+        }
+    }
 }
 
 impl Reader for FileStream {
@@ -131,10 +144,9 @@ impl Seek for FileStream {
 }
 
 fn file_test_smoke_test_impl() {
-    use rt::test::*;
     do run_in_newsched_task {
         let message = "it's alright. have a good time";
-        let filename = &Path("rt_io_file_test.txt");
+        let filename = &Path("./rt_io_file_test.txt");
         {
             let mut write_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             write_stream.write(message.as_bytes());
@@ -149,10 +161,48 @@ fn file_test_smoke_test_impl() {
             };
             assert!(read_str == message.to_owned());
         }
+        FileStream::unlink(filename);
     }
 }
 
 #[test]
 fn file_test_smoke_test() {
     file_test_smoke_test_impl();
+}
+
+fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
+    do run_in_newsched_task {
+        let filename = &Path("./file_that_does_not_exist.txt");
+        let mut called = false;
+        do io_error::cond.trap(|_| {
+            called = true;
+        }).inside {
+            let result = FileStream::open(filename, Open, Read);
+            assert!(result.is_none());
+        }
+        assert!(called);
+    }
+}
+#[test]
+fn file_test_invalid_path_opened_without_create_should_raise_condition() {
+    file_test_invalid_path_opened_without_create_should_raise_condition_impl();
+}
+
+fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
+    use io;
+    do run_in_newsched_task {
+        let filename = &Path("./another_file_that_does_not_exist.txt");
+        let mut called = false;
+        do io_error::cond.trap(|e| {
+            io::println(fmt!("condition kind: %?", e.kind));
+            called = true;
+        }).inside {
+            FileStream::unlink(filename);
+        }
+        assert!(called);
+    }
+}
+#[test]
+fn file_test_unlinking_invalid_path_should_raise_condition() {
+    file_test_unlinking_invalid_path_should_raise_condition_impl();
 }
