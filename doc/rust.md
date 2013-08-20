@@ -851,6 +851,38 @@ In this example, the module `quux` re-exports all of the public names defined in
 
 Also note that the paths contained in `use` items are relative to the crate root.
 So, in the previous example, the `use` refers to `quux::foo::*`, and not simply to `foo::*`.
+This also means that top-level module declarations should be at the crate root if direct usage
+of the declared modules within `use` items is desired.  It is also possible to use `self` and `super`
+at the beginning of a `use` item to refer to the current and direct parent modules respectively.
+All rules regarding accessing declared modules in `use` declarations applies to both module declarations
+and `extern mod` declarations.
+
+An example of what will and will not work for `use` items:
+~~~~
+# #[allow(unused_imports)];
+use foo::extra;          // good: foo is at the root of the crate
+use foo::baz::foobaz;    // good: foo is at the root of the crate
+
+mod foo {
+    extern mod extra;
+
+    use foo::extra::list;  // good: foo is at crate root
+//  use extra::*;          // bad:  extra is not at the crate root
+    use self::baz::foobaz; // good: self refers to module 'foo'
+    use foo::bar::foobar;  // good: foo is at crate root
+
+    pub mod bar {
+        pub fn foobar() { }
+    }
+
+    pub mod baz {
+        use super::bar::foobar; // good: super refers to module 'foo'
+        pub fn foobaz() { }
+    }
+}
+
+fn main() {}
+~~~~
 
 ### Functions
 
