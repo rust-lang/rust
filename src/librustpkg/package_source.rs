@@ -54,7 +54,7 @@ impl PkgSrc {
         debug!("Pushing onto root: %s | %s", self.id.path.to_str(), self.root.to_str());
 
         let dirs = pkgid_src_in_workspace(&self.id, &self.root);
-        debug!("Checking dirs: %?", dirs);
+        debug!("Checking dirs: %?", dirs.map(|s| s.to_str()).connect(":"));
         let path = dirs.iter().find(|&d| os::path_exists(d));
 
         let dir = match path {
