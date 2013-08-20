@@ -68,7 +68,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                    body: &ast::Block) {
     debug!("check_loans(body id=%?)", body.id);
 
-    let mut clcx = CheckLoanCtxt {
+    let clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
         move_data: @move_data,

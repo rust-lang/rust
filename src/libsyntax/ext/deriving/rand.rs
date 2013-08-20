@@ -76,7 +76,6 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
 
             let variant_count = cx.expr_uint(span, variants.len());
 
-            let r_ty = cx.ty_ident(span, cx.ident_of("R"));
             let rand_name = cx.path_all(span,
                                         true,
                                         rand_ident.clone(),
