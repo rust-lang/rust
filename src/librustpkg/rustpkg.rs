@@ -94,15 +94,18 @@ impl<'self> PkgScript<'self> {
     /// Given the path name for a package script
     /// and a package ID, parse the package script into
     /// a PkgScript that we can then execute
-    fn parse<'a>(script: Path, workspace: &Path, id: &'a PkgId) -> PkgScript<'a> {
+    fn parse<'a>(sysroot: @Path,
+                 script: Path,
+                 workspace: &Path,
+                 id: &'a PkgId) -> PkgScript<'a> {
         // Get the executable name that was invoked
         let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
-    debug!("pkgscript parse: %?", os::self_exe_path());
+        debug!("pkgscript parse: %s", sysroot.to_str());
         let options = @session::options {
             binary: binary,
-            maybe_sysroot: Some(@os::self_exe_path().unwrap().pop()),
+            maybe_sysroot: Some(sysroot),
             crate_type: session::bin_crate,
             .. (*session::basic_options()).clone()
         };
@@ -113,7 +116,7 @@ impl<'self> PkgScript<'self> {
         let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
-        debug!("Returning package script with id %?", id);
+        debug!("Returning package script with id %s", id.to_str());
 
         PkgScript {
             id: id,
@@ -138,15 +141,13 @@ impl<'self> PkgScript<'self> {
         let crate = util::ready_crate(sess, self.crate);
         debug!("Building output filenames with script name %s",
                driver::source_name(&self.input));
-        let root = filesearch::get_or_default_sysroot().pop().pop(); // :-\
-        debug!("Root is %s, calling compile_rest", root.to_str());
         let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
                                        &self.build_dir,
                                        sess,
                                        crate);
-        debug!("Running program: %s %s %s %s", exe.to_str(),
-               sysroot.to_str(), root.to_str(), "install");
+        debug!("Running program: %s %s %s", exe.to_str(),
+               sysroot.to_str(), "install");
         // FIXME #7401 should support commands besides `install`
         let status = run::process_status(exe.to_str(), [sysroot.to_str(), ~"install"]);
         if status != 0 {
@@ -154,8 +155,8 @@ impl<'self> PkgScript<'self> {
         }
         else {
             debug!("Running program (configs): %s %s %s",
-                   exe.to_str(), root.to_str(), "configs");
-            let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
+                   exe.to_str(), sysroot.to_str(), "configs");
+            let output = run::process_output(exe.to_str(), [sysroot.to_str(), ~"configs"]);
             // Run the configs() function to get the configs
             let cfgs = str::from_bytes_slice(output.output).word_iter()
                 .map(|w| w.to_owned()).collect();
@@ -350,10 +351,11 @@ impl CtxMethods for Ctx {
         debug!("Package source directory = %?", pkg_src_dir);
         let cfgs = match pkg_src_dir.chain_ref(|p| src.package_script_option(p)) {
             Some(package_script_path) => {
-                let pscript = PkgScript::parse(package_script_path,
+                let sysroot = self.sysroot_to_use().expect("custom build needs a sysroot");
+                let pscript = PkgScript::parse(sysroot,
+                                               package_script_path,
                                                workspace,
                                                pkgid);
-                let sysroot = self.sysroot_opt.expect("custom build needs a sysroot");
                 let (cfgs, hook_result) = pscript.run_custom(sysroot);
                 debug!("Command return code = %?", hook_result);
                 if hook_result != 0 {
