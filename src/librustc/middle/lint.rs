@@ -695,7 +695,7 @@ impl Visitor<@mut Context> for WhileTrueLintVisitor {
 }
 
 macro_rules! outer_lint_boilerplate_impl(
-    ($Visitor:ident) => 
+    ($Visitor:ident) =>
     (
         impl OuterLint for $Visitor {
             fn process_item(@mut self, i:@ast::item, e:@mut Context) {
