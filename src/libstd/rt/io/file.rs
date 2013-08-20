@@ -11,16 +11,15 @@
 use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek};
-use super::SeekStyle;
-use rt::rtio::{RtioFileDescriptor, IoFactory, IoFactoryObject};
+use super::{SeekSet, SeekStyle};
+use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::local::Local;
 use rt::test::*;
 use libc::{O_RDWR, O_RDONLY, O_WRONLY, S_IWUSR, S_IRUSR,
            O_CREAT, O_TRUNC, O_APPEND};
 
-/// # FIXME #7785
-/// * Ugh, this is ridiculous. What is the best way to represent these options?
+/// Instructions on how to open a file and return a `FileStream`.
 enum FileMode {
     /// Opens an existing file. IoError if file does not exist.
     Open,
@@ -36,15 +35,29 @@ enum FileMode {
     CreateOrTruncate,
 }
 
+/// How should the file be opened? `FileStream`s opened with `Read` will
+/// raise an `io_error` condition if written to.
 enum FileAccess {
     Read,
     Write,
     ReadWrite
 }
 
+/// Abstraction representing *positional* access to a file. In this case,
+/// *positional* refers to it keeping an encounter *cursor* of where in the
+/// file a subsequent `read` or `write` will begin from. Users of a `FileStream`
+/// can `seek` to move the cursor to a given location *within the bounds of the
+/// file* and can ask to have the `FileStream` `tell` them the location, in
+/// bytes, of the cursor.
+///
+/// This abstraction is roughly modeled on the access workflow as represented
+/// by `open(2)`, `read(2)`, `write(2)` and friends.
+///
+/// The `open` and `unlink` static methods are provided to manage creation/removal
+/// of files. All other methods operatin on an instance of `FileStream`.
 pub struct FileStream {
-    fd: ~RtioFileDescriptor,
-    last_nread: int
+    fd: ~RtioFileStream,
+    last_nread: int,
 }
 
 impl FileStream {
@@ -101,7 +114,7 @@ impl FileStream {
 
 impl Reader for FileStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.fd.read(buf, 0) {
+        match self.fd.read(buf) {
             Ok(read) => {
                 self.last_nread = read;
                 match read {
@@ -126,7 +139,7 @@ impl Reader for FileStream {
 
 impl Writer for FileStream {
     fn write(&mut self, buf: &[u8]) {
-        match self.fd.write(buf, 0) {
+        match self.fd.write(buf) {
             Ok(_) => (),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
@@ -134,13 +147,46 @@ impl Writer for FileStream {
         }
     }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) {
+        match self.fd.flush() {
+            Ok(_) => (),
+            Err(ioerr) => {
+                read_error::cond.raise(ioerr);
+            }
+        }
+    }
 }
 
 impl Seek for FileStream {
-    fn tell(&self) -> u64 { fail!() }
+    fn tell(&self) -> u64 {
+        let res = self.fd.tell();
+        match res {
+            Ok(cursor) => cursor,
+            Err(ioerr) => {
+                read_error::cond.raise(ioerr);
+                return -1;
+            }
+        }
+    }
 
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
+        let whence = match style {
+            SeekSet => SEEK_SET,
+            SeekCur => SEEK_CUR,
+            SeekEnd => SEEK_END
+        } as i64;
+        match self.fd.seek(pos, whence) {
+            Ok(_) => {
+                // successful seek resets EOF indocator
+                self.last_nread = -1;
+                ()
+            },
+            Err(ioerr) => {
+                read_error::cond.raise(ioerr);
+            }
+        }
+    }
 }
 
 fn file_test_smoke_test_impl() {
@@ -166,7 +212,7 @@ fn file_test_smoke_test_impl() {
 }
 
 #[test]
-fn file_test_smoke_test() {
+fn file_test_io_smoke_test() {
     file_test_smoke_test_impl();
 }
 
@@ -184,17 +230,15 @@ fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
     }
 }
 #[test]
-fn file_test_invalid_path_opened_without_create_should_raise_condition() {
+fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
     file_test_invalid_path_opened_without_create_should_raise_condition_impl();
 }
 
 fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
-    use io;
     do run_in_newsched_task {
         let filename = &Path("./another_file_that_does_not_exist.txt");
         let mut called = false;
         do io_error::cond.trap(|e| {
-            io::println(fmt!("condition kind: %?", e.kind));
             called = true;
         }).inside {
             FileStream::unlink(filename);
@@ -203,6 +247,70 @@ fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
     }
 }
 #[test]
-fn file_test_unlinking_invalid_path_should_raise_condition() {
+fn file_test_iounlinking_invalid_path_should_raise_condition() {
     file_test_unlinking_invalid_path_should_raise_condition_impl();
+}
+
+fn file_test_io_non_positional_read_impl() {
+    do run_in_newsched_task {
+        use str;
+        let message = "ten-four";
+        let mut read_mem = [0, .. 8];
+        let filename = &Path("./rt_io_file_test_positional.txt");
+        {
+            let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
+            rw_stream.write(message.as_bytes());
+        }
+        {
+            let mut read_stream = FileStream::open(filename, Open, Read).unwrap();
+            {
+                let read_buf = read_mem.mut_slice(0, 4);
+                read_stream.read(read_buf);
+            }
+            {
+                let read_buf = read_mem.mut_slice(4, 8);
+                read_stream.read(read_buf);
+            }
+        }
+        FileStream::unlink(filename);
+        let read_str = str::from_bytes(read_mem);
+        assert!(read_str == message.to_owned());
+    }
+}
+
+#[test]
+fn file_test_io_non_positional_read() {
+    file_test_io_non_positional_read_impl();
+}
+
+fn file_test_io_seeking_impl() {
+    do run_in_newsched_task {
+        use str;
+        let message = "ten-four";
+        let mut read_mem = [0, .. 4];
+        let set_cursor = 4 as u64;
+        let mut tell_pos_pre_read;
+        let mut tell_pos_post_read;
+        let filename = &Path("./rt_io_file_test_seeking.txt");
+        {
+            let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
+            rw_stream.write(message.as_bytes());
+        }
+        {
+            let mut read_stream = FileStream::open(filename, Open, Read).unwrap();
+            read_stream.seek(set_cursor as i64, SeekSet);
+            tell_pos_pre_read = read_stream.tell();
+            read_stream.read(read_mem);
+            tell_pos_post_read = read_stream.tell();
+        }
+        FileStream::unlink(filename);
+        let read_str = str::from_bytes(read_mem);
+        assert!(read_str == message.slice(4, 8).to_owned());
+        assert!(tell_pos_pre_read == set_cursor);
+        assert!(tell_pos_post_read == message.len() as u64);
+    }
+}
+#[test]
+fn file_test_io_seek_and_tell_smoke_test() {
+    file_test_io_seeking_impl();
 }
