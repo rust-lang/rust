@@ -226,7 +226,7 @@ PIC_CFLAGS='-fPIC -DPIC'
 CTARGET='-o $@'
 LDTARGET='-o $@'
 EXTRA_LDFLAGS=
-MKLIB='ar crus $@'
+MKLIB='$(AR) crus $@'
 CC_MM=1
 
 dnl Platform-specific settings.  abi and RPATH can probably be determined
@@ -256,6 +256,15 @@ case "${host}" in
 	abi="elf"
 	AC_DEFINE([JEMALLOC_PURGE_MADVISE_FREE], [ ])
 	force_lazy_lock="1"
+	;;
+  *-*-linux-android*)
+	CFLAGS="$CFLAGS"
+	CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
+	abi="elf"
+	AC_DEFINE([JEMALLOC_HAS_ALLOCA_H])
+	AC_DEFINE([JEMALLOC_PURGE_MADVISE_DONTNEED], [ ])
+	AC_DEFINE([JEMALLOC_THREADED_INIT], [ ])
+	default_munmap="0"
 	;;
   *-*-linux*)
 	CFLAGS="$CFLAGS"
