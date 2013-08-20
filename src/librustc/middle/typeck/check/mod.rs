@@ -377,7 +377,7 @@ impl Visitor<()> for GatherLocalsVisitor {
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       self.tcx.sess.str_of(path.idents[0]),
+                       self.tcx.sess.str_of(path.segments[0].identifier),
                        self.fcx.infcx().ty_to_str(
                            self.fcx.inh.locals.get_copy(&p.id)));
               }
@@ -3299,7 +3299,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
 
-    let mut ty_param_count = tpt.generics.type_param_defs.len();
+    let ty_param_count = tpt.generics.type_param_defs.len();
     let mut ty_substs_len = 0;
     for segment in pth.segments.iter() {
         ty_substs_len += segment.types.len()
