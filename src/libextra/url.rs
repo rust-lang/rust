@@ -539,7 +539,7 @@ fn get_authority(rawurl: &str) ->
             return Err(~"Non-digit characters in port.");
         }
         host = rawurl.slice(begin, pos).to_owned();
-        port = Some(rawurl.slice(pos+1, end).to_owned());
+        port = Some(rawurl.slice(pos+1, end+1).to_owned());
       }
       Ip6Host | InHost => {
         host = rawurl.slice(begin, end).to_owned();
