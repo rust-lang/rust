@@ -2161,17 +2161,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // def-id.
                 assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
-                type_param_def_to_contents(
-                    cx, cx.ty_param_defs.get(&p.def_id.node))
+                let tp_def = cx.ty_param_defs.get(&p.def_id.node);
+                kind_bounds_to_contents(cx, &tp_def.bounds.builtin_bounds,
+                                        tp_def.bounds.trait_bounds)
             }
 
-            ty_self(_) => {
-                // Currently, self is not bounded, so we must assume the
-                // worst.  But in the future we should examine the super
-                // traits.
-                //
+            ty_self(def_id) => {
                 // FIXME(#4678)---self should just be a ty param
-                TC_ALL
+
+                // Self may be bounded if the associated trait has builtin kinds
+                // for supertraits. If so we can use those bounds.
+                let trait_def = lookup_trait_def(cx, def_id);
+                let traits = [trait_def.trait_ref];
+                kind_bounds_to_contents(cx, &trait_def.bounds, traits)
             }
 
             ty_infer(_) => {
@@ -2315,14 +2317,12 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         st + mt + bt
     }
 
-    fn type_param_def_to_contents(cx: ctxt,
-                                  type_param_def: &TypeParameterDef) -> TypeContents
-    {
-        debug!("type_param_def_to_contents(%s)", type_param_def.repr(cx));
+    fn kind_bounds_to_contents(cx: ctxt, bounds: &BuiltinBounds, traits: &[@TraitRef])
+            -> TypeContents {
         let _i = indenter();
 
         let mut tc = TC_ALL;
-        do each_inherited_builtin_bound(cx, type_param_def.bounds) |bound| {
+        do each_inherited_builtin_bound(cx, bounds, traits) |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
                 BoundStatic => TypeContents::nonstatic(cx),
@@ -2338,13 +2338,13 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         // Iterates over all builtin bounds on the type parameter def, including
         // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound(cx: ctxt, bounds: &ParamBounds,
-                                        f: &fn(BuiltinBound)) {
-            for bound in bounds.builtin_bounds.iter() {
+        fn each_inherited_builtin_bound(cx: ctxt, bounds: &BuiltinBounds,
+                                        traits: &[@TraitRef], f: &fn(BuiltinBound)) {
+            for bound in bounds.iter() {
                 f(bound);
             }
 
-            do each_bound_trait_and_supertraits(cx, bounds.trait_bounds) |trait_ref| {
+            do each_bound_trait_and_supertraits(cx, traits) |trait_ref| {
                 let trait_def = lookup_trait_def(cx, trait_ref.def_id);
                 for bound in trait_def.bounds.iter() {
                     f(bound);
