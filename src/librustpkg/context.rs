@@ -33,6 +33,17 @@ impl Ctx {
             Some(p) => p.to_str()
         }
     }
+
+    // Hack so that rustpkg can run either out of a rustc target dir,
+    // or the host dir
+    pub fn sysroot_to_use(&self) -> Option<@Path> {
+        if !in_target(self.sysroot_opt) {
+            self.sysroot_opt
+        }
+        else {
+            self.sysroot_opt.map(|p| { @p.pop().pop().pop() })
+        }
+    }
 }
 
 /// We assume that if ../../rustc exists, then we're running

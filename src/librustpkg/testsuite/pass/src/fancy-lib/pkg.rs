@@ -38,7 +38,7 @@ pub fn main() {
         return;
     }
 
-    let out_path = Path("build/fancy_lib");
+    let out_path = Path("build/fancy-lib");
     if !os::path_exists(&out_path) {
         assert!(os::make_dir(&out_path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
     }

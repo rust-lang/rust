@@ -27,6 +27,10 @@ pub enum Version {
     NoVersion // user didn't specify a version -- prints as 0.1
 }
 
+// Equality on versions is non-symmetric: if self is NoVersion, it's equal to
+// anything; but if self is a precise version, it's not equal to NoVersion.
+// We should probably make equality symmetric, and use less-than and greater-than
+// where we currently use eq
 impl Eq for Version {
     fn eq(&self, other: &Version) -> bool {
         match (self, other) {
@@ -176,7 +180,7 @@ enum ParseState {
     SawDot
 }
 
-fn try_parsing_version(s: &str) -> Option<Version> {
+pub fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
     debug!("Attempting to parse: %s", s);
     let mut parse_state = Start;
@@ -207,17 +211,16 @@ fn is_url_like(p: &Path) -> bool {
 /// number, return the prefix before the # and the version.
 /// Otherwise, return None.
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
-    split_version_general(s, '#')
+    // Check for extra '#' characters separately
+    if s.split_iter('#').len() > 2 {
+        None
+    }
+    else {
+        split_version_general(s, '#')
+    }
 }
 
 pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Version)> {
-    // reject strings with multiple '#'s
-    for st in s.split_iter(sep) {
-        debug!("whole = %s part = %s", s, st);
-    }
-    if s.split_iter(sep).len() > 2 {
-        return None;
-    }
     match s.rfind(sep) {
         Some(i) => {
             debug!("in %s, i = %?", s, i);
