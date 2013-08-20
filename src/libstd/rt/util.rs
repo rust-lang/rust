@@ -15,8 +15,13 @@ use option::{Some, None};
 use os;
 use str::StrSlice;
 
+#[cfg(target_os="macos")]
+use unstable::running_on_valgrind;
+
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
+    #[fixed_stack_segment]; #[inline(never)];
+
     unsafe {
         return rust_get_num_cpus();
     }
@@ -26,12 +31,35 @@ pub fn num_cpus() -> uint {
     }
 }
 
+/// Valgrind has a fixed-sized array (size around 2000) of segment descriptors wired into it; this
+/// is a hard limit and requires rebuilding valgrind if you want to go beyond it. Normally this is
+/// not a problem, but in some tests, we produce a lot of threads casually. Making lots of threads
+/// alone might not be a problem _either_, except on OSX, the segments produced for new threads
+/// _take a while_ to get reclaimed by the OS. Combined with the fact that libuv schedulers fork off
+/// a separate thread for polling fsevents on OSX, we get a perfect storm of creating "too many
+/// mappings" for valgrind to handle when running certain stress tests in the runtime.
+#[cfg(target_os="macos")]
+pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
+    running_on_valgrind()
+}
+
+#[cfg(not(target_os="macos"))]
+pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
+    false
+}
+
 /// Get's the number of scheduler threads requested by the environment
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
         Some(nstr) => FromStr::from_str(nstr).unwrap(),
-        None => num_cpus()
+        None => {
+            if limit_thread_creation_due_to_osx_and_valgrind() {
+                1
+            } else {
+                num_cpus()
+            }
+        }
     }
 }
 
@@ -94,11 +122,16 @@ memory and partly incapable of presentation to others.",
     rterrln!("%s", "");
     rterrln!("fatal runtime error: %s", msg);
 
-    unsafe { libc::abort(); }
+    abort();
+
+    fn abort() -> ! {
+        #[fixed_stack_segment]; #[inline(never)];
+        unsafe { libc::abort() }
+    }
 }
 
 pub fn set_exit_status(code: int) {
-
+    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         return rust_set_exit_status_newrt(code as libc::uintptr_t);
     }
@@ -109,7 +142,7 @@ pub fn set_exit_status(code: int) {
 }
 
 pub fn get_exit_status() -> int {
-
+    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         return rust_get_exit_status_newrt() as int;
     }

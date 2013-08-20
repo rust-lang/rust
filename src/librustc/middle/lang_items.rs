@@ -26,8 +26,9 @@ use metadata::cstore::iter_crate_data;
 use syntax::ast::{Crate, def_id, MetaItem};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
-use syntax::oldvisit::{default_simple_visitor, mk_simple_visitor};
-use syntax::oldvisit::{SimpleVisitor, visit_crate};
+use syntax::ast::{item};
+use syntax::visit;
+use syntax::visit::Visitor;
 
 use std::hashmap::HashMap;
 
@@ -292,6 +293,27 @@ struct LanguageItemCollector<'self> {
     item_refs: HashMap<@str, uint>,
 }
 
+struct LanguageItemVisitor<'self> {
+    this: *mut LanguageItemCollector<'self>,
+}
+
+impl<'self> Visitor<()> for LanguageItemVisitor<'self> {
+
+    fn visit_item(&mut self, item:@item, _:()) {
+
+                for attribute in item.attrs.iter() {
+                    unsafe {
+                        (*self.this).match_and_collect_meta_item(
+                            local_def(item.id),
+                            attribute.node.value
+                        );
+                    }
+                }
+
+        visit::walk_item(self, item, ());
+    }
+}
+
 impl<'self> LanguageItemCollector<'self> {
     pub fn new<'a>(crate: &'a Crate, session: Session)
                    -> LanguageItemCollector<'a> {
@@ -404,19 +426,8 @@ impl<'self> LanguageItemCollector<'self> {
 
     pub fn collect_local_language_items(&mut self) {
         let this: *mut LanguageItemCollector = &mut *self;
-        visit_crate(self.crate, ((), mk_simple_visitor(@SimpleVisitor {
-            visit_item: |item| {
-                for attribute in item.attrs.iter() {
-                    unsafe {
-                        (*this).match_and_collect_meta_item(
-                            local_def(item.id),
-                            attribute.node.value
-                        );
-                    }
-                }
-            },
-            .. *default_simple_visitor()
-        })));
+        let mut v = LanguageItemVisitor { this: this };
+        visit::walk_crate(&mut v, self.crate, ());
     }
 
     pub fn collect_external_language_items(&mut self) {

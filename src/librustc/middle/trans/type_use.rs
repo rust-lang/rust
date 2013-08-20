@@ -42,7 +42,8 @@ use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;
 use syntax::parse::token;
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 pub type type_uses = uint; // Bitmask
 pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
@@ -50,7 +51,7 @@ pub static use_repr: uint = 1;   /* Dependency on size/alignment/mode and
 pub static use_tydesc: uint = 2; /* Takes the tydesc, or compares */
 pub static use_all: uint = use_repr|use_tydesc;
 
-
+#[deriving(Clone)]
 pub struct Context {
     ccx: @mut CrateContext,
     uses: @mut ~[type_uses]
@@ -416,28 +417,39 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
     }
 }
 
-pub fn handle_body(cx: &Context, body: &Block) {
-    let v = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e, (cx, v)| {
-            oldvisit::visit_expr(e, (cx, v));
+struct TypeUseVisitor;
+
+impl<'self> Visitor<&'self Context> for TypeUseVisitor {
+
+    fn visit_expr<'a>(&mut self, e:@expr, cx: &'a Context) {
+            visit::walk_expr(self, e, cx);
             mark_for_expr(cx, e);
-        },
-        visit_local: |l, (cx, v)| {
-            oldvisit::visit_local(l, (cx, v));
+    }
+
+    fn visit_local<'a>(&mut self, l:@Local, cx: &'a Context) {
+            visit::walk_local(self, l, cx);
             node_type_needs(cx, use_repr, l.id);
-        },
-        visit_pat: |p, (cx, v)| {
-            oldvisit::visit_pat(p, (cx, v));
+    }
+
+    fn visit_pat<'a>(&mut self, p:@pat, cx: &'a Context) {
+            visit::walk_pat(self, p, cx);
             node_type_needs(cx, use_repr, p.id);
-        },
-        visit_block: |b, (cx, v)| {
-            oldvisit::visit_block(b, (cx, v));
+    }
+
+    fn visit_block<'a>(&mut self, b:&Block, cx: &'a Context) {
+            visit::walk_block(self, b, cx);
             for e in b.expr.iter() {
                 node_type_needs(cx, use_repr, e.id);
             }
-        },
-        visit_item: |_i, (_cx, _v)| { },
-        ..*oldvisit::default_visitor()
-    });
-    (v.visit_block)(body, (cx, v));
+    }
+
+    fn visit_item<'a>(&mut self, _:@item, _: &'a Context) {
+        // do nothing
+    }
+
+}
+
+pub fn handle_body(cx: &Context, body: &Block) {
+    let mut v = TypeUseVisitor;
+    v.visit_block(body, cx);
 }

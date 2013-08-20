@@ -892,6 +892,10 @@ impl CheckedMul for uint {
     }
 }
 
+pub trait CheckedDiv: Div<Self, Self> {
+    fn checked_div(&self, v: &Self) -> Option<Self>;
+}
+
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {

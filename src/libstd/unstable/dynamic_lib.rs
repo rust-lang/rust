@@ -145,16 +145,21 @@ mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
         do filename.with_c_str |raw_name| {
             dlopen(raw_name, Lazy as libc::c_int)
         }
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
+
         dlopen(ptr::null(), Lazy as libc::c_int)
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
+        #[fixed_stack_segment]; #[inline(never)];
+
         unsafe {
             do atomically {
                 let _old_error = dlerror();
@@ -172,9 +177,13 @@ mod dl {
     }
 
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
+
         dlsym(handle, symbol)
     }
     pub unsafe fn close(handle: *libc::c_void) {
+        #[fixed_stack_segment]; #[inline(never)];
+
         dlclose(handle); ()
     }
 
@@ -204,18 +213,21 @@ mod dl {
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
         do os::win32::as_utf16_p(filename.to_str()) |raw_name| {
             LoadLibraryW(raw_name)
         }
     }
 
     pub unsafe fn open_internal() -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
         let handle = ptr::null();
         GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
         handle
     }
 
     pub fn check_for_errors_in<T>(f: &fn()->T) -> Result<T, ~str> {
+        #[fixed_stack_segment]; #[inline(never)];
         unsafe {
             do atomically {
                 SetLastError(0);
@@ -232,9 +244,11 @@ mod dl {
         }
     }
     pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
+        #[fixed_stack_segment]; #[inline(never)];
         GetProcAddress(handle, symbol)
     }
     pub unsafe fn close(handle: *libc::c_void) {
+        #[fixed_stack_segment]; #[inline(never)];
         FreeLibrary(handle); ()
     }
 

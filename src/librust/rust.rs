@@ -229,6 +229,8 @@ fn usage() {
 }
 
 pub fn main() {
+    #[fixed_stack_segment]; #[inline(never)];
+
     let os_args = os::args();
 
     if (os_args.len() > 1 && (os_args[1] == ~"-v" || os_args[1] == ~"--version")) {

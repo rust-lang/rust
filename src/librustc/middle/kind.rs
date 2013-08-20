@@ -21,7 +21,8 @@ use syntax::attr;
 use syntax::codemap::span;
 use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
-use syntax::{oldvisit, ast_util};
+use syntax::{visit,ast_util};
+use syntax::visit::Visitor;
 
 // Kind analysis pass.
 //
@@ -58,6 +59,29 @@ pub struct Context {
     current_item: NodeId
 }
 
+struct KindAnalysisVisitor;
+
+impl Visitor<Context> for KindAnalysisVisitor {
+
+    fn visit_expr(&mut self, ex:@expr, e:Context) {
+        check_expr(self, ex, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:Context) {
+        check_fn(self, fk, fd, b, s, n, e);
+    }
+
+    fn visit_ty(&mut self, t:&Ty, e:Context) {
+        check_ty(self, t, e);
+    }
+    fn visit_item(&mut self, i:@item, e:Context) {
+        check_item(self, i, e);
+    }
+    fn visit_block(&mut self, b:&Block, e:Context) {
+        check_block(self, b, e);
+    }
+}
+
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    crate: &Crate) {
@@ -66,15 +90,8 @@ pub fn check_crate(tcx: ty::ctxt,
         method_map: method_map,
         current_item: -1
     };
-    let visit = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: check_expr,
-        visit_fn: check_fn,
-        visit_ty: check_ty,
-        visit_item: check_item,
-        visit_block: check_block,
-        .. *oldvisit::default_visitor()
-    });
-    oldvisit::visit_crate(crate, (ctx, visit));
+    let mut visit = KindAnalysisVisitor;
+    visit::walk_crate(&mut visit, crate, ctx);
     tcx.sess.abort_if_errors();
 }
 
@@ -108,12 +125,13 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(block: &Block,
-               (cx, visitor): (Context, oldvisit::vt<Context>)) {
-    oldvisit::visit_block(block, (cx, visitor));
+fn check_block(visitor: &mut KindAnalysisVisitor,
+               block: &Block,
+               cx: Context) {
+    visit::walk_block(visitor, block, cx);
 }
 
-fn check_item(item: @item, (cx, visitor): (Context, oldvisit::vt<Context>)) {
+fn check_item(visitor: &mut KindAnalysisVisitor, item: @item, cx: Context) {
     // If this is a destructor, check kinds.
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
@@ -153,7 +171,7 @@ fn check_item(item: @item, (cx, visitor): (Context, oldvisit::vt<Context>)) {
     }
 
     let cx = Context { current_item: item.id, ..cx };
-    oldvisit::visit_item(item, (cx, visitor));
+    visit::walk_item(visitor, item, cx);
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -227,13 +245,13 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
-    fk: &oldvisit::fn_kind,
+    v: &mut KindAnalysisVisitor,
+    fk: &visit::fn_kind,
     decl: &fn_decl,
     body: &Block,
     sp: span,
     fn_id: NodeId,
-    (cx, v): (Context,
-              oldvisit::vt<Context>)) {
+    cx: Context) {
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -243,10 +261,10 @@ fn check_fn(
         }
     }
 
-    oldvisit::visit_fn(fk, decl, body, sp, fn_id, (cx, v));
+    visit::walk_fn(v, fk, decl, body, sp, fn_id, cx);
 }
 
-pub fn check_expr(e: @expr, (cx, v): (Context, oldvisit::vt<Context>)) {
+pub fn check_expr(v: &mut KindAnalysisVisitor, e: @expr, cx: Context) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
@@ -311,10 +329,10 @@ pub fn check_expr(e: @expr, (cx, v): (Context, oldvisit::vt<Context>)) {
         }
         _ => {}
     }
-    oldvisit::visit_expr(e, (cx, v));
+    visit::walk_expr(v, e, cx);
 }
 
-fn check_ty(aty: &Ty, (cx, v): (Context, oldvisit::vt<Context>)) {
+fn check_ty(v: &mut KindAnalysisVisitor, aty: &Ty, cx: Context) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
@@ -329,7 +347,7 @@ fn check_ty(aty: &Ty, (cx, v): (Context, oldvisit::vt<Context>)) {
       }
       _ => {}
     }
-    oldvisit::visit_ty(aty, (cx, v));
+    visit::walk_ty(v, aty, cx);
 }
 
 // Calls "any_missing" if any bounds were missing.

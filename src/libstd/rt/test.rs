@@ -18,7 +18,7 @@ use iterator::{Iterator, range};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 use rt::sched::Scheduler;
-use unstable::run_in_bare_thread;
+use unstable::{run_in_bare_thread};
 use rt::thread::Thread;
 use rt::task::Task;
 use rt::uv::uvio::UvEventLoop;
@@ -98,6 +98,8 @@ mod darwin_fd_limit {
     static RLIMIT_NOFILE: libc::c_int = 8;
 
     pub unsafe fn raise_fd_limit() {
+        #[fixed_stack_segment]; #[inline(never)];
+
         // The strategy here is to fetch the current resource limits, read the kern.maxfilesperproc
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
         use ptr::{to_unsafe_ptr, to_mut_unsafe_ptr, mut_null};
@@ -160,10 +162,14 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).unwrap(),
             None => {
-                // Using more threads than cores in test code
-                // to force the OS to preempt them frequently.
-                // Assuming that this help stress test concurrent types.
-                util::num_cpus() * 2
+                if util::limit_thread_creation_due_to_osx_and_valgrind() {
+                    1
+                } else {
+                    // Using more threads than cores in test code
+                    // to force the OS to preempt them frequently.
+                    // Assuming that this help stress test concurrent types.
+                    util::num_cpus() * 2
+                }
             }
         };
 
@@ -305,6 +311,7 @@ pub fn cleanup_task(mut task: ~Task) {
 }
 
 /// Get a port number, starting at 9600, for use in tests
+#[fixed_stack_segment] #[inline(never)]
 pub fn next_test_port() -> u16 {
     unsafe {
         return rust_dbg_next_port(base_port() as libc::uintptr_t) as u16;

@@ -129,7 +129,8 @@ use syntax::opt_vec;
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 use syntax;
 
 pub mod _match;
@@ -296,12 +297,18 @@ impl ExprTyProvider for FnCtxt {
     }
 }
 
+struct CheckItemTypesVisitor { ccx: @mut CrateCtxt }
+
+impl Visitor<()> for CheckItemTypesVisitor {
+    fn visit_item(&mut self, i:@ast::item, _:()) {
+        check_item(self.ccx, i);
+        visit::walk_item(self, i, ());
+    }
+}
+
 pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
-    let visit = oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-        visit_item: |a| check_item(ccx, a),
-        .. *oldvisit::default_simple_visitor()
-    });
-    oldvisit::visit_crate(crate, ((), visit));
+    let mut visit = CheckItemTypesVisitor { ccx: ccx };
+    visit::walk_crate(&mut visit, crate, ());
 }
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
@@ -324,6 +331,76 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
     }
+}
+
+struct GatherLocalsVisitor {
+                     fcx: @mut FnCtxt,
+                     tcx: ty::ctxt,
+}
+
+impl GatherLocalsVisitor {
+    fn assign(&mut self, nid: ast::NodeId, ty_opt: Option<ty::t>) {
+            match ty_opt {
+                None => {
+                    // infer the variable's type
+                    let var_id = self.fcx.infcx().next_ty_var_id();
+                    let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
+                    self.fcx.inh.locals.insert(nid, var_ty);
+                }
+                Some(typ) => {
+                    // take type that the user specified
+                    self.fcx.inh.locals.insert(nid, typ);
+                }
+            }
+    }
+}
+
+impl Visitor<()> for GatherLocalsVisitor {
+        // Add explicitly-declared locals.
+    fn visit_local(&mut self, local:@ast::Local, _:()) {
+            let o_ty = match local.ty.node {
+              ast::ty_infer => None,
+              _ => Some(self.fcx.to_ty(&local.ty))
+            };
+            self.assign(local.id, o_ty);
+            debug!("Local variable %s is assigned type %s",
+                   self.fcx.pat_to_str(local.pat),
+                   self.fcx.infcx().ty_to_str(
+                       self.fcx.inh.locals.get_copy(&local.id)));
+            visit::walk_local(self, local, ());
+
+    }
+        // Add pattern bindings.
+    fn visit_pat(&mut self, p:@ast::pat, _:()) {
+            match p.node {
+              ast::pat_ident(_, ref path, _)
+                  if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
+                self.assign(p.id, None);
+                debug!("Pattern binding %s is assigned to %s",
+                       self.tcx.sess.str_of(path.idents[0]),
+                       self.fcx.infcx().ty_to_str(
+                           self.fcx.inh.locals.get_copy(&p.id)));
+              }
+              _ => {}
+            }
+            visit::walk_pat(self, p, ());
+
+    }
+
+    fn visit_block(&mut self, b:&ast::Block, _:()) {
+            // non-obvious: the `blk` variable maps to region lb, so
+            // we have to keep this up-to-date.  This
+            // is... unfortunate.  It'd be nice to not need this.
+            do self.fcx.with_region_lb(b.id) {
+                visit::walk_block(self, b, ());
+            }
+    }
+
+        // Don't descend into fns and items
+    fn visit_fn(&mut self, _:&visit::fn_kind, _:&ast::fn_decl,
+                _:&ast::Block, _:span, _:ast::NodeId, _:()) { }
+    fn visit_item(&mut self, _:@ast::item, _:()) { }
+
 }
 
 pub fn check_fn(ccx: @mut CrateCtxt,
@@ -429,24 +506,11 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                      opt_self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
 
-        let assign: @fn(ast::NodeId, Option<ty::t>) = |nid, ty_opt| {
-            match ty_opt {
-                None => {
-                    // infer the variable's type
-                    let var_id = fcx.infcx().next_ty_var_id();
-                    let var_ty = ty::mk_var(fcx.tcx(), var_id);
-                    fcx.inh.locals.insert(nid, var_ty);
-                }
-                Some(typ) => {
-                    // take type that the user specified
-                    fcx.inh.locals.insert(nid, typ);
-                }
-            }
-        };
+        let mut visit = GatherLocalsVisitor { fcx: fcx, tcx: tcx, };
 
         // Add the self parameter
         for self_info in opt_self_info.iter() {
-            assign(self_info.self_id, Some(self_info.self_ty));
+            visit.assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
                        fcx.inh.locals.get_copy(&self_info.self_id)));
@@ -457,7 +521,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             // Create type variables for each argument.
             do pat_util::pat_bindings(tcx.def_map, input.pat)
                     |_bm, pat_id, _sp, _path| {
-                assign(pat_id, None);
+                visit.assign(pat_id, None);
             }
 
             // Check the pattern.
@@ -468,66 +532,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             _match::check_pat(&pcx, input.pat, *arg_ty);
         }
 
-        // Add explicitly-declared locals.
-        let visit_local: @fn(@ast::Local, ((), oldvisit::vt<()>)) =
-                |local, (e, v)| {
-            let o_ty = match local.ty.node {
-              ast::ty_infer => None,
-              _ => Some(fcx.to_ty(&local.ty))
-            };
-            assign(local.id, o_ty);
-            debug!("Local variable %s is assigned type %s",
-                   fcx.pat_to_str(local.pat),
-                   fcx.infcx().ty_to_str(
-                       fcx.inh.locals.get_copy(&local.id)));
-            oldvisit::visit_local(local, (e, v));
-        };
-
-        // Add pattern bindings.
-        let visit_pat: @fn(@ast::pat, ((), oldvisit::vt<()>)) = |p, (e, v)| {
-            match p.node {
-              ast::pat_ident(_, ref path, _)
-                  if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
-                assign(p.id, None);
-                debug!("Pattern binding %s is assigned to %s",
-                       tcx.sess.str_of(path.idents[0]),
-                       fcx.infcx().ty_to_str(
-                           fcx.inh.locals.get_copy(&p.id)));
-              }
-              _ => {}
-            }
-            oldvisit::visit_pat(p, (e, v));
-        };
-
-        let visit_block:
-                @fn(&ast::Block, ((), oldvisit::vt<()>)) = |b, (e, v)| {
-            // non-obvious: the `blk` variable maps to region lb, so
-            // we have to keep this up-to-date.  This
-            // is... unfortunate.  It'd be nice to not need this.
-            do fcx.with_region_lb(b.id) {
-                oldvisit::visit_block(b, (e, v));
-            }
-        };
-
-        // Don't descend into fns and items
-        fn visit_fn(_fk: &oldvisit::fn_kind,
-                    _decl: &ast::fn_decl,
-                    _body: &ast::Block,
-                    _sp: span,
-                    _id: ast::NodeId,
-                    (_t,_v): ((), oldvisit::vt<()>)) {
-        }
-        fn visit_item(_i: @ast::item, (_e,_v): ((), oldvisit::vt<()>)) { }
-
-        let visit = oldvisit::mk_vt(
-            @oldvisit::Visitor {visit_local: visit_local,
-                             visit_pat: visit_pat,
-                             visit_fn: visit_fn,
-                             visit_item: visit_item,
-                             visit_block: visit_block,
-                             ..*oldvisit::default_visitor()});
-
-        (visit.visit_block)(body, ((), visit));
+        visit.visit_block(body, ());
     }
 }
 

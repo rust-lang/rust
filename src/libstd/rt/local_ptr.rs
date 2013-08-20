@@ -24,6 +24,8 @@ use unstable::finally::Finally;
 use tls = rt::thread_local_storage;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
+#[fixed_stack_segment]
+#[inline(never)]
 pub fn init_tls_key() {
     unsafe {
         rust_initialize_rt_tls_key();
@@ -124,6 +126,8 @@ fn tls_key() -> tls::Key {
     }
 }
 
+#[fixed_stack_segment]
+#[inline(never)]
 fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
         let key: *mut c_void = rust_get_rt_tls_key();
@@ -149,8 +153,6 @@ fn maybe_tls_key() -> Option<tls::Key> {
     }
 
     extern {
-        #[fast_ffi]
         fn rust_get_rt_tls_key() -> *mut c_void;
     }
-
 }

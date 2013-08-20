@@ -15,9 +15,9 @@ use syntax::ast::{Crate, NodeId, item, item_fn};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::oldvisit::{default_visitor, mk_vt, vt, Visitor, visit_crate};
-use syntax::oldvisit::{visit_item};
 use syntax::parse::token::special_idents;
+use syntax::visit;
+use syntax::visit::Visitor;
 use std::util;
 
 struct EntryContext {
@@ -39,7 +39,13 @@ struct EntryContext {
     non_main_fns: ~[(NodeId, span)],
 }
 
-type EntryVisitor = vt<@mut EntryContext>;
+struct EntryVisitor;
+
+impl Visitor<@mut EntryContext> for EntryVisitor {
+    fn visit_item(&mut self, item:@item, ctxt:@mut EntryContext) {
+        find_item(item, ctxt, self);
+    }
+}
 
 pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
 
@@ -65,15 +71,14 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         non_main_fns: ~[],
     };
 
-    visit_crate(crate, (ctxt, mk_vt(@Visitor {
-        visit_item: |item, (ctxt, visitor)| find_item(item, ctxt, visitor),
-        .. *default_visitor()
-    })));
+    let mut v = EntryVisitor;
+
+    visit::walk_crate(&mut v, crate, ctxt);
 
     configure_main(ctxt);
 }
 
-fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
+fn find_item(item: @item, ctxt: @mut EntryContext, visitor: &mut EntryVisitor) {
     match item.node {
         item_fn(*) => {
             if item.ident == special_idents::main {
@@ -120,7 +125,7 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
         _ => ()
     }
 
-    visit_item(item, (ctxt, visitor));
+    visit::walk_item(visitor, item, ctxt);
 }
 
 fn configure_main(ctxt: @mut EntryContext) {

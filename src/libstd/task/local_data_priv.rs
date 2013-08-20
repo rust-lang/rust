@@ -147,7 +147,7 @@ pub unsafe fn local_pop<T: 'static>(handle: Handle,
                 // above.
                 let data = match util::replace(entry, None) {
                     Some((_, data, _)) => data,
-                    None => libc::abort(),
+                    None => abort(),
                 };
 
                 // Move `data` into transmute to get out the memory that it
@@ -252,7 +252,7 @@ unsafe fn local_get_with<T: 'static, U>(handle: Handle,
                         }
                     }
                 }
-                _ => libc::abort()
+                _ => abort()
             }
 
             // n.b. 'data' and 'loans' are both invalid pointers at the point
@@ -262,12 +262,18 @@ unsafe fn local_get_with<T: 'static, U>(handle: Handle,
             if return_loan {
                 match map[i] {
                     Some((_, _, ref mut loan)) => { *loan = NoLoan; }
-                    None => { libc::abort(); }
+                    None => { abort(); }
                 }
             }
             return ret;
         }
     }
+}
+
+fn abort() -> ! {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    unsafe { libc::abort() }
 }
 
 pub unsafe fn local_set<T: 'static>(handle: Handle,

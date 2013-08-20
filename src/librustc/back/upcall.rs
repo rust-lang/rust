@@ -16,8 +16,6 @@ use lib::llvm::{ModuleRef, ValueRef};
 
 pub struct Upcalls {
     trace: ValueRef,
-    call_shim_on_c_stack: ValueRef,
-    call_shim_on_rust_stack: ValueRef,
     rust_personality: ValueRef,
     reset_stack_limit: ValueRef
 }
@@ -47,9 +45,6 @@ pub fn declare_upcalls(targ_cfg: @session::config, llmod: ModuleRef) -> @Upcalls
 
     @Upcalls {
         trace: upcall!(fn trace(opaque_ptr, opaque_ptr, int_ty) -> Type::void()),
-        call_shim_on_c_stack: upcall!(fn call_shim_on_c_stack(opaque_ptr, opaque_ptr) -> int_ty),
-        call_shim_on_rust_stack:
-            upcall!(fn call_shim_on_rust_stack(opaque_ptr, opaque_ptr) -> int_ty),
         rust_personality: upcall!(nothrow fn rust_personality -> Type::i32()),
         reset_stack_limit: upcall!(nothrow fn reset_stack_limit -> Type::void())
     }

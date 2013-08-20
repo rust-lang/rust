@@ -24,8 +24,8 @@ use syntax::ast_map;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::parse::token;
-use syntax::oldvisit::Visitor;
-use syntax::oldvisit;
+use syntax::visit::Visitor;
+use syntax::visit;
 
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
@@ -94,40 +94,29 @@ struct ReachableContext {
     worklist: @mut ~[NodeId],
 }
 
-impl ReachableContext {
-    // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map)
-           -> ReachableContext {
-        ReachableContext {
-            tcx: tcx,
-            method_map: method_map,
-            reachable_symbols: @mut HashSet::new(),
-            worklist: @mut ~[],
-        }
-    }
+struct ReachableVisitor {
+    reachable_symbols: @mut HashSet<NodeId>,
+    worklist: @mut ~[NodeId],
+}
 
-    // Step 1: Mark all public symbols, and add all public symbols that might
-    // be inlined to a worklist.
-    fn mark_public_symbols(&self, crate: @Crate) {
-        let reachable_symbols = self.reachable_symbols;
-        let worklist = self.worklist;
-        let visitor = oldvisit::mk_vt(@Visitor {
-            visit_item: |item, (privacy_context, visitor):
-                    (PrivacyContext, oldvisit::vt<PrivacyContext>)| {
+impl Visitor<PrivacyContext> for ReachableVisitor {
+
+    fn visit_item(&mut self, item:@item, privacy_context:PrivacyContext) {
+
                 match item.node {
                     item_fn(*) => {
                         if privacy_context == PublicContext {
-                            reachable_symbols.insert(item.id);
+                            self.reachable_symbols.insert(item.id);
                         }
                         if item_might_be_inlined(item) {
-                            worklist.push(item.id)
+                            self.worklist.push(item.id)
                         }
                     }
                     item_struct(ref struct_def, _) => {
                         match struct_def.ctor_id {
                             Some(ctor_id) if
                                     privacy_context == PublicContext => {
-                                reachable_symbols.insert(ctor_id);
+                                self.reachable_symbols.insert(ctor_id);
                             }
                             Some(_) | None => {}
                         }
@@ -135,7 +124,7 @@ impl ReachableContext {
                     item_enum(ref enum_def, _) => {
                         if privacy_context == PublicContext {
                             for variant in enum_def.variants.iter() {
-                                reachable_symbols.insert(variant.node.id);
+                                self.reachable_symbols.insert(variant.node.id);
                             }
                         }
                     }
@@ -155,7 +144,7 @@ impl ReachableContext {
                         // Mark all public methods as reachable.
                         for &method in methods.iter() {
                             if should_be_considered_public(method) {
-                                reachable_symbols.insert(method.id);
+                                self.reachable_symbols.insert(method.id);
                             }
                         }
 
@@ -164,7 +153,7 @@ impl ReachableContext {
                             // symbols to the worklist.
                             for &method in methods.iter() {
                                 if should_be_considered_public(method) {
-                                    worklist.push(method.id)
+                                    self.worklist.push(method.id)
                                 }
                             }
                         } else {
@@ -176,7 +165,7 @@ impl ReachableContext {
                                 if generics_require_inlining(generics) ||
                                         attributes_specify_inlining(*attrs) ||
                                         should_be_considered_public(*method) {
-                                    worklist.push(method.id)
+                                    self.worklist.push(method.id)
                                 }
                             }
                         }
@@ -187,8 +176,8 @@ impl ReachableContext {
                             for trait_method in trait_methods.iter() {
                                 match *trait_method {
                                     provided(method) => {
-                                        reachable_symbols.insert(method.id);
-                                        worklist.push(method.id)
+                                        self.reachable_symbols.insert(method.id);
+                                        self.worklist.push(method.id)
                                     }
                                     required(_) => {}
                                 }
@@ -199,15 +188,97 @@ impl ReachableContext {
                 }
 
                 if item.vis == public && privacy_context == PublicContext {
-                    oldvisit::visit_item(item, (PublicContext, visitor))
+                    visit::walk_item(self, item, PublicContext)
                 } else {
-                    oldvisit::visit_item(item, (PrivateContext, visitor))
+                    visit::walk_item(self, item, PrivateContext)
                 }
-            },
-            .. *oldvisit::default_visitor()
-        });
+    }
 
-        oldvisit::visit_crate(crate, (PublicContext, visitor))
+}
+
+struct MarkSymbolVisitor {
+    worklist: @mut ~[NodeId],
+    method_map: typeck::method_map,
+    tcx: ty::ctxt,
+    reachable_symbols: @mut HashSet<NodeId>,
+}
+
+impl Visitor<()> for MarkSymbolVisitor {
+
+    fn visit_expr(&mut self, expr:@expr, _:()) {
+
+                match expr.node {
+                    expr_path(_) => {
+                        let def = match self.tcx.def_map.find(&expr.id) {
+                            Some(&def) => def,
+                            None => {
+                                self.tcx.sess.span_bug(expr.span,
+                                                  "def ID not in def map?!")
+                            }
+                        };
+
+                        let def_id = def_id_of_def(def);
+                        if ReachableContext::
+                                def_id_represents_local_inlined_item(self.tcx,
+                                                                     def_id) {
+                            self.worklist.push(def_id.node)
+                        }
+                        self.reachable_symbols.insert(def_id.node);
+                    }
+                    expr_method_call(*) => {
+                        match self.method_map.find(&expr.id) {
+                            Some(&typeck::method_map_entry {
+                                origin: typeck::method_static(def_id),
+                                _
+                            }) => {
+                                if ReachableContext::
+                                    def_id_represents_local_inlined_item(
+                                        self.tcx,
+                                        def_id) {
+                                    self.worklist.push(def_id.node)
+                                }
+                                self.reachable_symbols.insert(def_id.node);
+                            }
+                            Some(_) => {}
+                            None => {
+                                self.tcx.sess.span_bug(expr.span,
+                                                  "method call expression \
+                                                   not in method map?!")
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
+                visit::walk_expr(self, expr, ())
+    }
+}
+
+impl ReachableContext {
+    // Creates a new reachability computation context.
+    fn new(tcx: ty::ctxt, method_map: typeck::method_map)
+           -> ReachableContext {
+        ReachableContext {
+            tcx: tcx,
+            method_map: method_map,
+            reachable_symbols: @mut HashSet::new(),
+            worklist: @mut ~[],
+        }
+    }
+
+    // Step 1: Mark all public symbols, and add all public symbols that might
+    // be inlined to a worklist.
+    fn mark_public_symbols(&self, crate: @Crate) {
+        let reachable_symbols = self.reachable_symbols;
+        let worklist = self.worklist;
+
+        let mut visitor = ReachableVisitor {
+            reachable_symbols: reachable_symbols,
+            worklist: worklist,
+        };
+
+
+        visit::walk_crate(&mut visitor, crate, PublicContext);
     }
 
     // Returns true if the given def ID represents a local item that is
@@ -269,63 +340,21 @@ impl ReachableContext {
     }
 
     // Helper function to set up a visitor for `propagate()` below.
-    fn init_visitor(&self) -> oldvisit::vt<()> {
+    fn init_visitor(&self) -> MarkSymbolVisitor {
         let (worklist, method_map) = (self.worklist, self.method_map);
         let (tcx, reachable_symbols) = (self.tcx, self.reachable_symbols);
-        oldvisit::mk_vt(@oldvisit::Visitor {
-            visit_expr: |expr, (_, visitor)| {
-                match expr.node {
-                    expr_path(_) => {
-                        let def = match tcx.def_map.find(&expr.id) {
-                            Some(&def) => def,
-                            None => {
-                                tcx.sess.span_bug(expr.span,
-                                                  "def ID not in def map?!")
-                            }
-                        };
 
-                        let def_id = def_id_of_def(def);
-                        if ReachableContext::
-                                def_id_represents_local_inlined_item(tcx,
-                                                                     def_id) {
-                            worklist.push(def_id.node)
-                        }
-                        reachable_symbols.insert(def_id.node);
-                    }
-                    expr_method_call(*) => {
-                        match method_map.find(&expr.id) {
-                            Some(&typeck::method_map_entry {
-                                origin: typeck::method_static(def_id),
-                                _
-                            }) => {
-                                if ReachableContext::
-                                    def_id_represents_local_inlined_item(
-                                        tcx,
-                                        def_id) {
-                                    worklist.push(def_id.node)
-                                }
-                                reachable_symbols.insert(def_id.node);
-                            }
-                            Some(_) => {}
-                            None => {
-                                tcx.sess.span_bug(expr.span,
-                                                  "method call expression \
-                                                   not in method map?!")
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                oldvisit::visit_expr(expr, ((), visitor))
-            },
-            ..*oldvisit::default_visitor()
-        })
+        MarkSymbolVisitor {
+            worklist: worklist,
+            method_map: method_map,
+            tcx: tcx,
+            reachable_symbols: reachable_symbols,
+        }
     }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     fn propagate(&self) {
-        let visitor = self.init_visitor();
+        let mut visitor = self.init_visitor();
         let mut scanned = HashSet::new();
         while self.worklist.len() > 0 {
             let search_item = self.worklist.pop();
@@ -342,7 +371,7 @@ impl ReachableContext {
                 Some(&ast_map::node_item(item, _)) => {
                     match item.node {
                         item_fn(_, _, _, _, ref search_block) => {
-                            oldvisit::visit_block(search_block, ((), visitor))
+                            visit::walk_block(&mut visitor, search_block, ())
                         }
                         _ => {
                             self.tcx.sess.span_bug(item.span,
@@ -359,12 +388,12 @@ impl ReachableContext {
                                                     worklist?!")
                         }
                         provided(ref method) => {
-                            oldvisit::visit_block(&method.body, ((), visitor))
+                            visit::walk_block(&mut visitor, &method.body, ())
                         }
                     }
                 }
                 Some(&ast_map::node_method(ref method, _, _)) => {
-                    oldvisit::visit_block(&method.body, ((), visitor))
+                    visit::walk_block(&mut visitor, &method.body, ())
                 }
                 Some(_) => {
                     let ident_interner = token::get_ident_interner();

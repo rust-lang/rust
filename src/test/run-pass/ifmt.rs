@@ -25,15 +25,35 @@ pub fn main() {
     macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
 
     // Make sure there's a poly formatter that takes anything
-    t!(ifmt!("{}", 1), "1");
-    t!(ifmt!("{}", A), "{}");
-    t!(ifmt!("{}", ()), "()");
-    t!(ifmt!("{}", @(~1, "foo")), "@(~1, \"foo\")");
+    t!(ifmt!("{:?}", 1), "1");
+    t!(ifmt!("{:?}", A), "{}");
+    t!(ifmt!("{:?}", ()), "()");
+    t!(ifmt!("{:?}", @(~1, "foo")), "@(~1, \"foo\")");
 
     // Various edge cases without formats
     t!(ifmt!(""), "");
     t!(ifmt!("hello"), "hello");
     t!(ifmt!("hello \\{"), "hello {");
+
+    // default formatters should work
+    t!(ifmt!("{}", 1i), "1");
+    t!(ifmt!("{}", 1i8), "1");
+    t!(ifmt!("{}", 1i16), "1");
+    t!(ifmt!("{}", 1i32), "1");
+    t!(ifmt!("{}", 1i64), "1");
+    t!(ifmt!("{}", 1u), "1");
+    t!(ifmt!("{}", 1u8), "1");
+    t!(ifmt!("{}", 1u16), "1");
+    t!(ifmt!("{}", 1u32), "1");
+    t!(ifmt!("{}", 1u64), "1");
+    t!(ifmt!("{}", 1.0f), "1");
+    t!(ifmt!("{}", 1.0f32), "1");
+    t!(ifmt!("{}", 1.0f64), "1");
+    t!(ifmt!("{}", "a"), "a");
+    t!(ifmt!("{}", ~"a"), "a");
+    t!(ifmt!("{}", @"a"), "a");
+    t!(ifmt!("{}", false), "false");
+    t!(ifmt!("{}", 'a'), "a");
 
     // At least exercise all the formats
     t!(ifmt!("{:b}", true), "true");
@@ -45,6 +65,8 @@ pub fn main() {
     t!(ifmt!("{:x}", 10u), "a");
     t!(ifmt!("{:X}", 10u), "A");
     t!(ifmt!("{:s}", "foo"), "foo");
+    t!(ifmt!("{:s}", ~"foo"), "foo");
+    t!(ifmt!("{:s}", @"foo"), "foo");
     t!(ifmt!("{:p}", 0x1234 as *int), "0x1234");
     t!(ifmt!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(ifmt!("{:d}", A), "aloha");
@@ -54,7 +76,7 @@ pub fn main() {
     t!(ifmt!("{foo} {bar}", foo=0, bar=1), "0 1");
     t!(ifmt!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
     t!(ifmt!("{} {0:s}", "a"), "a a");
-    t!(ifmt!("{} {0}", "a"), "\"a\" \"a\"");
+    t!(ifmt!("{} {0}", "a"), "a a");
 
     // Methods should probably work
     t!(ifmt!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");

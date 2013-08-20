@@ -10,7 +10,8 @@
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
-use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
+use middle::trans::cabi::{FnType, LLVMType};
+use middle::trans::context::CrateContext;
 
 use middle::trans::type_::Type;
 
@@ -124,45 +125,37 @@ fn is_reg_ty(ty: Type) -> bool {
     }
 }
 
-enum ARM_ABIInfo { ARM_ABIInfo }
-
-impl ABIInfo for ARM_ABIInfo {
-    fn compute_info(&self,
-                    atys: &[Type],
-                    rty: Type,
-                    ret_def: bool) -> FnType {
-        let mut arg_tys = ~[];
-        let mut attrs = ~[];
-        for &aty in atys.iter() {
-            let (ty, attr) = classify_arg_ty(aty);
-            arg_tys.push(ty);
-            attrs.push(attr);
-        }
-
-        let (ret_ty, ret_attr) = if ret_def {
-            classify_ret_ty(rty)
-        } else {
-            (LLVMType { cast: false, ty: Type::void() }, None)
-        };
-
-        let mut ret_ty = ret_ty;
-
-        let sret = ret_attr.is_some();
-        if sret {
-            arg_tys.unshift(ret_ty);
-            attrs.unshift(ret_attr);
-            ret_ty = LLVMType { cast: false, ty: Type::void() };
-        }
-
-        return FnType {
-            arg_tys: arg_tys,
-            ret_ty: ret_ty,
-            attrs: attrs,
-            sret: sret
-        };
+pub fn compute_abi_info(_ccx: &mut CrateContext,
+                        atys: &[Type],
+                        rty: Type,
+                        ret_def: bool) -> FnType {
+    let mut arg_tys = ~[];
+    let mut attrs = ~[];
+    for &aty in atys.iter() {
+        let (ty, attr) = classify_arg_ty(aty);
+        arg_tys.push(ty);
+        attrs.push(attr);
     }
-}
 
-pub fn abi_info() -> @ABIInfo {
-    return @ARM_ABIInfo as @ABIInfo;
+    let (ret_ty, ret_attr) = if ret_def {
+        classify_ret_ty(rty)
+    } else {
+        (LLVMType { cast: false, ty: Type::void() }, None)
+    };
+
+    let mut ret_ty = ret_ty;
+
+    let sret = ret_attr.is_some();
+    if sret {
+        arg_tys.unshift(ret_ty);
+        attrs.unshift(ret_attr);
+        ret_ty = LLVMType { cast: false, ty: Type::void() };
+    }
+
+    return FnType {
+        arg_tys: arg_tys,
+        ret_ty: ret_ty,
+        attrs: attrs,
+        sret: sret
+    };
 }
