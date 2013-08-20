@@ -19,7 +19,8 @@ TEST_HOST_CRATES = rust rusti rustpkg rustc rustdoc syntax
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
-DOC_TEST_NAMES = tutorial tutorial-ffi tutorial-macros tutorial-borrowed-ptr tutorial-tasks rust
+DOC_TEST_NAMES = tutorial tutorial-ffi tutorial-macros tutorial-borrowed-ptr \
+                 tutorial-tasks tutorial-conditions rust
 
 ######################################################################
 # Environment configuration
