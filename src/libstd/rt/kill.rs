@@ -648,7 +648,9 @@ impl Death {
     #[inline]
     pub fn allow_kill(&mut self, already_failing: bool) {
         if self.unkillable == 0 {
-            fail!("illegal call of rekillable");
+            // we need to decrement the counter before failing.
+            self.unkillable -= 1;
+            fail!("Cannot enter a rekillable() block without a surrounding unkillable()");
         }
         self.unkillable -= 1;
         if self.unkillable == 0 {

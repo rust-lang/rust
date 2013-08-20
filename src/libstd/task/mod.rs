@@ -651,8 +651,8 @@ fn test_kill_unkillable_task() {
     }
 }
 
-#[ignore(reason = "linked failure")]
 #[test]
+#[ignore(cfg(windows))]
 fn test_kill_rekillable_task() {
     use rt::test::*;
 
@@ -672,8 +672,8 @@ fn test_kill_rekillable_task() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 #[should_fail]
+#[ignore(cfg(windows))]
 fn test_rekillable_not_nested() {
     do rekillable {
         // This should fail before
