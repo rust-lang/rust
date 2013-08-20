@@ -238,12 +238,18 @@ impl Visitor<()> for Ctx {
                     self.map.insert(p.ref_id, node_item(i, item_path));
                 }
                 for tm in methods.iter() {
-                    let id = ast_util::trait_method_to_ty_method(tm).id;
+                    let ext = { self.extend(i.ident) };
                     let d_id = ast_util::local_def(i.id);
-                    self.map.insert(id,
-                                    node_trait_method(@(*tm).clone(),
-                                                      d_id,
-                                                      item_path));
+                    match *tm {
+                        required(ref m) => {
+                            let entry =
+                                node_trait_method(@(*tm).clone(), d_id, ext);
+                            self.map.insert(m.id, entry);
+                        }
+                        provided(m) => {
+                            self.map_method(d_id, ext, m, true);
+                        }
+                    }
                 }
             }
             _ => {}
