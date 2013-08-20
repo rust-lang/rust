@@ -908,8 +908,12 @@ delegate!(float to Float)
 delegate!(f32 to Float)
 delegate!(f64 to Float)
 
-impl<T> Default for *const T {
-    fn fmt(me: &*const T, f: &mut Formatter) { Pointer::fmt(me, f) }
+impl<T> Default for *T {
+    fn fmt(me: &*T, f: &mut Formatter) { Pointer::fmt(me, f) }
+}
+
+impl<T> Default for *mut T {
+    fn fmt(me: &*mut T, f: &mut Formatter) { Pointer::fmt(me, f) }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
