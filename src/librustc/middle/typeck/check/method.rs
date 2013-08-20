@@ -90,7 +90,7 @@ use middle::typeck::check::vtable;
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
-use middle::typeck::{method_static, method_trait};
+use middle::typeck::{method_static, method_object};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
@@ -298,7 +298,7 @@ impl<'self> LookupContext<'self> {
         loop {
             match get(self_ty).sty {
                 ty_trait(did, ref substs, _, _, _) => {
-                    self.push_inherent_candidates_from_trait(did, substs);
+                    self.push_inherent_candidates_from_object(did, substs);
                     self.push_inherent_impl_candidates_for_type(did);
                 }
                 ty_enum(did, _) | ty_struct(did, _) => {
@@ -363,28 +363,40 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_inherent_candidates_from_trait(&self,
-                                               did: def_id,
-                                               substs: &ty::substs) {
-        debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
+    // Determine the index of a method in the list of all methods belonging
+    // to a trait and its supertraits.
+    fn get_method_index(&self,
+                        trait_ref: @TraitRef,
+                        subtrait_id: ast::def_id,
+                        n_method: uint) -> uint {
+        let tcx = self.tcx();
+
+        // We need to figure the "real index" of the method in a
+        // listing of all the methods of an object. We do this by
+        // iterating down the supertraits of the object's trait until
+        // we find the trait the method came from, counting up the
+        // methods from them.
+        let mut method_count = 0;
+        do ty::each_bound_trait_and_supertraits(tcx, &[trait_ref])
+            |bound_ref| {
+            if bound_ref.def_id == subtrait_id { false }
+                else {
+                method_count += ty::trait_methods(tcx, bound_ref.def_id).len();
+                true
+            }
+        };
+
+        return method_count + n_method;
+    }
+
+
+    fn push_inherent_candidates_from_object(&self,
+                                            did: def_id,
+                                            substs: &ty::substs) {
+        debug!("push_inherent_candidates_from_object(did=%s, substs=%s)",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
         let _indenter = indenter();
-
-        let tcx = self.tcx();
-        let ms = ty::trait_methods(tcx, did);
-        let index = match ms.iter().position(|m| m.ident == self.m_name) {
-            Some(i) => i,
-            None => { return; } // no method with the right name
-        };
-        let method = ms[index];
-
-        match method.explicit_self {
-            ast::sty_static => {
-                return; // not a method we can call with dot notation
-            }
-            _ => {}
-        }
 
         // It is illegal to invoke a method on a trait instance that
         // refers to the `self` type. An error will be reported by
@@ -392,24 +404,44 @@ impl<'self> LookupContext<'self> {
         // to the `Self` type. Substituting ty_err here allows
         // compiler to soldier on.
         //
-        // NOTE: `confirm_candidate()` also relies upon this substitution
+        // `confirm_candidate()` also relies upon this substitution
         // for Self. (fix)
         let rcvr_substs = substs {
             self_ty: Some(ty::mk_err()),
             ..(*substs).clone()
         };
+        let trait_ref = @TraitRef { def_id: did, substs: rcvr_substs.clone() };
 
-        self.inherent_candidates.push(Candidate {
-            rcvr_match_condition: RcvrMatchesIfObject(did),
-            rcvr_substs: rcvr_substs,
-            method_ty: method,
-            origin: method_trait(did, index)
-        });
+        do self.push_inherent_candidates_from_bounds_inner(&[trait_ref])
+            |trait_ref, m, method_num, _bound_num| {
+            let vtable_index =
+                self.get_method_index(trait_ref, trait_ref.def_id, method_num);
+            // We need to fix up the transformed self type.
+            let transformed_self_ty =
+                self.construct_transformed_self_ty_for_object(
+                    did, &rcvr_substs, m);
+            let m = @Method {
+                transformed_self_ty: Some(transformed_self_ty),
+                .. (*m).clone()
+            };
+
+            Candidate {
+                rcvr_match_condition: RcvrMatchesIfObject(did),
+                rcvr_substs: trait_ref.substs.clone(),
+                method_ty: m,
+                origin: method_object(method_object {
+                        trait_id: trait_ref.def_id,
+                        object_trait_id: did,
+                        method_num: method_num,
+                        real_index: vtable_index
+                    })
+            }
+        };
     }
 
     fn push_inherent_candidates_from_param(&self,
-                                               rcvr_ty: ty::t,
-                                               param_ty: param_ty) {
+                                           rcvr_ty: ty::t,
+                                           param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty=%?)",
                param_ty);
         let _indenter = indenter();
@@ -441,9 +473,34 @@ impl<'self> LookupContext<'self> {
     }
 
     fn push_inherent_candidates_from_bounds(&self,
-                                                self_ty: ty::t,
-                                                bounds: &[@TraitRef],
-                                                param: param_index) {
+                                            self_ty: ty::t,
+                                            bounds: &[@TraitRef],
+                                            param: param_index) {
+        do self.push_inherent_candidates_from_bounds_inner(bounds)
+            |trait_ref, m, method_num, bound_num| {
+            Candidate {
+                rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
+                rcvr_substs: trait_ref.substs.clone(),
+                method_ty: m,
+                origin: method_param(
+                                     method_param {
+                        trait_id: trait_ref.def_id,
+                        method_num: method_num,
+                        param_num: param,
+                        bound_num: bound_num,
+                    })
+            }
+        }
+    }
+
+    // Do a search through a list of bounds, using a callback to actually
+    // create the candidates.
+    fn push_inherent_candidates_from_bounds_inner(
+        &self,
+        bounds: &[@TraitRef],
+        mk_cand: &fn(trait_ref: @TraitRef, m: @ty::Method, method_num: uint,
+                     bound_num: uint) -> Candidate) {
+
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
@@ -459,18 +516,8 @@ impl<'self> LookupContext<'self> {
                 Some(pos) => {
                     let method = trait_methods[pos];
 
-                    let cand = Candidate {
-                        rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
-                        rcvr_substs: bound_trait_ref.substs.clone(),
-                        method_ty: method,
-                        origin: method_param(
-                                             method_param {
-                                trait_id: bound_trait_ref.def_id,
-                                method_num: pos,
-                                param_num: param,
-                                bound_num: this_bound_idx,
-                            })
-                    };
+                    let cand = mk_cand(bound_trait_ref, method,
+                                       pos, this_bound_idx);
 
                     debug!("pushing inherent candidate for param: %?", cand);
                     self.inherent_candidates.push(cand);
@@ -879,7 +926,7 @@ impl<'self> LookupContext<'self> {
     fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
                              -> method_map_entry {
         let tcx = self.tcx();
-        let fty = self.fn_ty_from_origin(&candidate.origin);
+        let fty = ty::mk_bare_fn(tcx, candidate.method_ty.fty.clone());
 
         debug!("confirm_candidate(expr=%s, candidate=%s, fty=%s)",
                self.expr.repr(tcx),
@@ -891,17 +938,9 @@ impl<'self> LookupContext<'self> {
 
         // static methods should never have gotten this far:
         assert!(candidate.method_ty.explicit_self != sty_static);
-
-        let transformed_self_ty = match candidate.origin {
-            method_trait(trait_def_id, _) => {
-                self.construct_transformed_self_ty_for_object(
-                    trait_def_id, candidate)
-            }
-            _ => {
-                let t = candidate.method_ty.transformed_self_ty.unwrap();
-                ty::subst(tcx, &candidate.rcvr_substs, t)
-            }
-        };
+        let transformed_self_ty =
+            ty::subst(tcx, &candidate.rcvr_substs,
+                      candidate.method_ty.transformed_self_ty.unwrap());
 
         // Determine the values for the type parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -992,9 +1031,11 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    fn construct_transformed_self_ty_for_object(&self,
-                                                trait_def_id: ast::def_id,
-                                                candidate: &Candidate) -> ty::t
+    fn construct_transformed_self_ty_for_object(
+        &self,
+        trait_def_id: ast::def_id,
+        rcvr_substs: &ty::substs,
+        method_ty: &ty::Method) -> ty::t
     {
         /*!
          * This is a bit tricky. We have a match against a trait method
@@ -1010,17 +1051,17 @@ impl<'self> LookupContext<'self> {
          * result to be `&'a Foo`. Assuming that `m_method` is being
          * called, we want the result to be `@mut Foo`. Of course,
          * this transformation has already been done as part of
-         * `candidate.method_ty.transformed_self_ty`, but there the
+         * `method_ty.transformed_self_ty`, but there the
          * type is expressed in terms of `Self` (i.e., `&'a Self`, `@mut Self`).
          * Because objects are not standalone types, we can't just substitute
          * `s/Self/Foo/`, so we must instead perform this kind of hokey
          * match below.
          */
 
-        let substs = ty::substs {regions: candidate.rcvr_substs.regions.clone(),
+        let substs = ty::substs {regions: rcvr_substs.regions.clone(),
                                  self_ty: None,
-                                 tps: candidate.rcvr_substs.tps.clone()};
-        match candidate.method_ty.explicit_self {
+                                 tps: rcvr_substs.tps.clone()};
+        match method_ty.explicit_self {
             ast::sty_static => {
                 self.bug(~"static method for object type receiver");
             }
@@ -1029,7 +1070,7 @@ impl<'self> LookupContext<'self> {
             }
             ast::sty_region(*) | ast::sty_box(*) | ast::sty_uniq(*) => {
                 let transformed_self_ty =
-                    candidate.method_ty.transformed_self_ty.clone().unwrap();
+                    method_ty.transformed_self_ty.clone().unwrap();
                 match ty::get(transformed_self_ty).sty {
                     ty::ty_rptr(r, mt) => { // must be sty_region
                         ty::mk_trait(self.tcx(), trait_def_id,
@@ -1072,7 +1113,7 @@ impl<'self> LookupContext<'self> {
             method_static(*) | method_param(*) => {
                 return; // not a call to a trait instance
             }
-            method_trait(*) => {}
+            method_object(*) => {}
         }
 
         match candidate.method_ty.explicit_self {
@@ -1117,7 +1158,7 @@ impl<'self> LookupContext<'self> {
             // XXX: does this properly enforce this on everything now
             // that self has been merged in? -sully
             method_param(method_param { trait_id: trait_id, _ }) |
-            method_trait(trait_id, _) => {
+            method_object(method_object { trait_id: trait_id, _ }) => {
                 bad = self.tcx().destructor_for_type.contains_key(&trait_id);
             }
         }
@@ -1235,27 +1276,6 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    fn fn_ty_from_origin(&self, origin: &method_origin) -> ty::t {
-        return match *origin {
-            method_static(did) => {
-                ty::lookup_item_type(self.tcx(), did).ty
-            }
-            method_param(ref mp) => {
-                type_of_trait_method(self.tcx(), mp.trait_id, mp.method_num)
-            }
-            method_trait(did, idx) => {
-                type_of_trait_method(self.tcx(), did, idx)
-            }
-        };
-
-        fn type_of_trait_method(tcx: ty::ctxt,
-                                trait_did: def_id,
-                                method_num: uint) -> ty::t {
-            let trait_methods = ty::trait_methods(tcx, trait_did);
-            ty::mk_bare_fn(tcx, trait_methods[method_num].fty.clone())
-        }
-    }
-
     fn report_candidate(&self, idx: uint, origin: &method_origin) {
         match *origin {
             method_static(impl_did) => {
@@ -1264,8 +1284,8 @@ impl<'self> LookupContext<'self> {
             method_param(ref mp) => {
                 self.report_param_candidate(idx, (*mp).trait_id)
             }
-            method_trait(trait_did, _) => {
-                self.report_trait_candidate(idx, trait_did)
+            method_object(ref mo) => {
+                self.report_trait_candidate(idx, mo.trait_id)
             }
         }
     }

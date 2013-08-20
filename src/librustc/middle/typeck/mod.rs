@@ -88,7 +88,7 @@ pub enum method_origin {
     method_param(method_param),
 
     // method invoked on a trait instance
-    method_trait(ast::def_id, uint),
+    method_object(method_object),
 
 }
 
@@ -109,6 +109,26 @@ pub struct method_param {
     // index of the bound for this type parameter which specifies the trait
     bound_num: uint,
 }
+
+// details for a method invoked with a receiver whose type is an object
+#[deriving(Clone, Encodable, Decodable)]
+pub struct method_object {
+    // the (super)trait containing the method to be invoked
+    trait_id: ast::def_id,
+
+    // the actual base trait id of the object
+    object_trait_id: ast::def_id,
+
+    // index of the method to be invoked amongst the trait's methods
+    method_num: uint,
+
+    // index into the actual runtime vtable.
+    // the vtable is formed by concatenating together the method lists of
+    // the base object trait and all supertraits;  this is the index into
+    // that vtable
+    real_index: uint,
+}
+
 
 #[deriving(Clone)]
 pub struct method_map_entry {
