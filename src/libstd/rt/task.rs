@@ -370,7 +370,7 @@ impl Coroutine {
 
                 // Again - might work while safe, or it might not.
                 do Local::borrow::<Scheduler,()> |sched| {
-                    (sched).run_cleanup_job();
+                    sched.run_cleanup_job();
                 }
 
                 // To call the run method on a task we need a direct

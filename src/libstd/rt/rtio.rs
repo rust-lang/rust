@@ -24,10 +24,12 @@ pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
 pub type RtioTimerObject = uvio::UvTimer;
+pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
 
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
+    fn pausible_idle_callback(&mut self) -> ~PausibleIdleCallback;
     fn callback_ms(&mut self, ms: u64, ~fn());
     fn remote_callback(&mut self, ~fn()) -> ~RemoteCallbackObject;
     /// The asynchronous I/O services. Not all event loops may provide one
@@ -35,11 +37,12 @@ pub trait EventLoop {
 }
 
 pub trait RemoteCallback {
-    /// Trigger the remote callback. Note that the number of times the callback
-    /// is run is not guaranteed. All that is guaranteed is that, after calling 'fire',
-    /// the callback will be called at least once, but multiple callbacks may be coalesced
-    /// and callbacks may be called more often requested. Destruction also triggers the
-    /// callback.
+    /// Trigger the remote callback. Note that the number of times the
+    /// callback is run is not guaranteed. All that is guaranteed is
+    /// that, after calling 'fire', the callback will be called at
+    /// least once, but multiple callbacks may be coalesced and
+    /// callbacks may be called more often requested. Destruction also
+    /// triggers the callback.
     fn fire(&mut self);
 }
 
