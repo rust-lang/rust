@@ -140,7 +140,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern(&"ifmt"),
-                            builtin_normal_tt(ext::ifmt::expand_syntax_ext));
+                            builtin_normal_tt(ext::ifmt::expand_sprintf));
+    syntax_expanders.insert(intern(&"ifmtf"),
+                            builtin_normal_tt(ext::ifmt::expand_fprintf));
     syntax_expanders.insert(
         intern(&"auto_encode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
