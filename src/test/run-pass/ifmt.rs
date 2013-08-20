@@ -21,8 +21,9 @@ impl fmt::Signed for B {
     fn fmt(_: &B, f: &mut fmt::Formatter) { f.buf.write("adios".as_bytes()); }
 }
 
+macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
+
 pub fn main() {
-    macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
 
     // Make sure there's a poly formatter that takes anything
     t!(ifmt!("{:?}", 1), "1");
@@ -209,5 +210,24 @@ pub fn main() {
     t!(ifmt!("{:10.3f}", 1.0f),   "     1.000");
     t!(ifmt!("{:+10.3f}", 1.0f),  "    +1.000");
     t!(ifmt!("{:+10.3f}", -1.0f), "    -1.000");
+
+    test_ifmtf();
 }
 
+fn test_ifmtf() {
+    use std::rt::io::Decorator;
+    use std::rt::io::mem::MemWriter;
+    use std::rt::io;
+    use std::str;
+
+    let mut buf = MemWriter::new();
+    ifmtf!(&mut buf as &mut io::Writer, "{}", 3);
+    {
+        let w = &mut buf as &mut io::Writer;
+        ifmtf!(w, "{foo}", foo=4);
+        ifmtf!(w, "{:s}", "hello");
+    }
+
+    let s = str::from_bytes_owned(buf.inner());
+    t!(s, "34hello");
+}
