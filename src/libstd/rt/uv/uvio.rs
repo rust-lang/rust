@@ -176,7 +176,7 @@ impl UvPausibleIdleCallback {
         self.pause();
         if !self.closed {
             self.closed = true;
-            self.watcher.close(||());
+            self.watcher.close(||{});
         }
     }
 }
