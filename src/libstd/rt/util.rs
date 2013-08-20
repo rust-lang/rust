@@ -66,8 +66,7 @@ pub fn default_sched_threads() -> uint {
 pub fn dumb_println(s: &str) {
     use io::WriterUtil;
     let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
-    dbg.write_str(s);
-    dbg.write_str("\n");
+    dbg.write_str(s + "\n");
 }
 
 pub fn abort(msg: &str) -> ! {
