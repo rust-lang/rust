@@ -15,10 +15,9 @@
 // each trait in the system to its implementations.
 
 
-use metadata::csearch::{each_path, get_impl_trait};
+use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
 use metadata::cstore::iter_crate_data;
-use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::ty::get;
 use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
@@ -680,9 +679,6 @@ impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         let implementation = @csearch::get_impl(tcx, impl_def_id);
 
-        debug!("coherence: adding impl from external crate: %s",
-               ty::item_path_str(tcx, implementation.did));
-
         // Make sure we don't visit the same implementation multiple times.
         if !impls_seen.insert(implementation.did) {
             // Skip this one.
@@ -752,15 +748,10 @@ impl CoherenceChecker {
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            do each_path(crate_store, crate_number) |_, def_like, _| {
-                match def_like {
-                    dl_impl(def_id) => {
-                        self.add_external_impl(&mut impls_seen, def_id)
-                    }
-                    dl_def(_) | dl_field => (),   // Skip this.
-                }
-                true
-            };
+            do each_impl(crate_store, crate_number) |def_id| {
+                assert_eq!(crate_number, def_id.crate);
+                self.add_external_impl(&mut impls_seen, def_id)
+            }
         }
     }
 

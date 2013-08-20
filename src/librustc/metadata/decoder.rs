@@ -1298,3 +1298,13 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     };
     result
 }
+
+pub fn each_impl(cdata: cmd, callback: &fn(ast::def_id)) {
+    let impls_doc = reader::get_doc(reader::Doc(cdata.data), tag_impls);
+    let _ = do reader::tagged_docs(impls_doc, tag_impls_impl) |impl_doc| {
+        callback(item_def_id(impl_doc, cdata));
+        true
+    };
+}
+
+

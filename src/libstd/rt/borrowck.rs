@@ -38,7 +38,7 @@ pub struct BorrowRecord {
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    do Local::borrow::<Task, Option<~[BorrowRecord]>> |task| {
+    do Local::borrow |task: &mut Task| {
         task.borrow_list.take()
     }
 }
@@ -50,7 +50,7 @@ fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
     };
     let borrows = f(borrows);
     let borrows = Cell::new(borrows);
-    do Local::borrow::<Task, ()> |task| {
+    do Local::borrow |task: &mut Task| {
         task.borrow_list = Some(borrows.take());
     }
 }
