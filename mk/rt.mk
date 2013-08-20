@@ -147,10 +147,10 @@ rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
 rt/$(1)/stage$(2)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)_$(2))
+                        $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)_$(2)) $$(JEMALLOC_LIB_$(1)_$(2))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
-	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)_$(2)) \
+	  $$(JEMALLOC_LIB_$(1)_$(2)) $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(LIBUV_LIB_$(1)_$(2)) \
 	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
 
 # FIXME: For some reason libuv's makefiles can't figure out the
