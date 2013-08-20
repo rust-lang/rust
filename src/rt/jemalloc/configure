@@ -4453,7 +4453,7 @@ PIC_CFLAGS='-fPIC -DPIC'
 CTARGET='-o $@'
 LDTARGET='-o $@'
 EXTRA_LDFLAGS=
-MKLIB='ar crus $@'
+MKLIB='$(AR) crus $@'
 CC_MM=1
 
 default_munmap="1"
