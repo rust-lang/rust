@@ -31,7 +31,8 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token;
-use syntax::{ast, oldvisit, ast_util, visit};
+use syntax::{ast, ast_util, visit};
+use syntax::visit::Visitor;
 
 /**
  * A 'lint' check is a kind of miscellaneous constraint that a user _might_
@@ -300,6 +301,42 @@ pub fn get_lint_dict() -> LintDict {
     return map;
 }
 
+trait OuterLint {
+    fn process_item(@mut self, i:@ast::item, e:@mut Context);
+    fn process_fn(@mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                  b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context);
+
+    // Returned inner variant will not proceed past subitems.
+    // Supports decomposition of simple lints into subitem-traversing
+    // outer lint visitor and subitem-stopping inner lint visitor.
+    fn inner_variant(@mut self) -> @mut InnerLint;
+}
+
+trait InnerLint {
+    fn descend_item(@mut self, i:&ast::item, e:@mut Context);
+    fn descend_crate(@mut self, crate: &ast::Crate, env: @mut Context);
+    fn descend_fn(@mut self,
+                  function_kind: &visit::fn_kind,
+                  function_declaration: &ast::fn_decl,
+                  function_body: &ast::Block,
+                  sp: span,
+                  id: ast::NodeId,
+                  env: @mut Context);
+}
+
+impl<V:Visitor<@mut Context>> InnerLint for V {
+    fn descend_item(@mut self, i:&ast::item, e:@mut Context) {
+        visit::walk_item(self, i, e);
+    }
+    fn descend_crate(@mut self, crate: &ast::Crate, env: @mut Context) {
+        visit::walk_crate(self, crate, env);
+    }
+    fn descend_fn(@mut self, fk: &visit::fn_kind, fd: &ast::fn_decl, fb: &ast::Block,
+                  sp: span, id: ast::NodeId, env: @mut Context) {
+        visit::walk_fn(self, fk, fd, fb, sp, id, env);
+    }
+}
+
 enum AnyVisitor {
     // This is a pair so every visitor can visit every node. When a lint pass
     // is registered, another visitor is created which stops at all items
@@ -308,9 +345,11 @@ enum AnyVisitor {
     // first element. This means that when visiting a node, the original
     // recursive call can use the original visitor's method, although the
     // recursing visitor supplied to the method is the item stopping visitor.
-    OldVisitor(oldvisit::vt<@mut Context>, oldvisit::vt<@mut Context>),
+    OldVisitor(@mut OuterLint, @mut InnerLint),
     NewVisitor(@mut visit::Visitor<()>),
 }
+
+type VCObj = @mut Visitor<@mut Context>;
 
 struct Context {
     // All known lint modes (string versions)
@@ -469,8 +508,8 @@ impl Context {
         }
     }
 
-    fn add_oldvisit_lint(&mut self, v: oldvisit::vt<@mut Context>) {
-        self.visitors.push(OldVisitor(v, item_stopping_visitor(v)));
+    fn add_oldvisit_lint(&mut self, v: @mut OuterLint) {
+        self.visitors.push(OldVisitor(v, v.inner_variant()));
     }
 
     fn add_lint(&mut self, v: @mut visit::Visitor<()>) {
@@ -485,7 +524,8 @@ impl Context {
                 for visitor in self.visitors.iter() {
                     match *visitor {
                         OldVisitor(orig, stopping) => {
-                            (orig.visit_item)(it, (self, stopping));
+                            orig.process_item(it, self);
+                            stopping.descend_item(it, self);
                         }
                         NewVisitor(new_visitor) => {
                             let new_visitor = new_visitor;
@@ -498,7 +538,7 @@ impl Context {
                 for visitor in self.visitors.iter() {
                     match *visitor {
                         OldVisitor(_, stopping) => {
-                            oldvisit::visit_crate(c, (self, stopping))
+                            stopping.descend_crate(c, self)
                         }
                         NewVisitor(new_visitor) => {
                             let mut new_visitor = new_visitor;
@@ -514,15 +554,9 @@ impl Context {
                 for visitor in self.visitors.iter() {
                     match *visitor {
                         OldVisitor(orig, stopping) => {
-                            let fk = oldvisit::fk_method(m.ident,
-                                                         &m.generics,
-                                                         m);
-                            (orig.visit_fn)(&fk,
-                                            &m.decl,
-                                            &m.body,
-                                            m.span,
-                                            m.id,
-                                            (self, stopping));
+                            let fk = visit::fk_method(m.ident, &m.generics, m);
+                            orig.process_fn(&fk, &m.decl, &m.body, m.span, m.id, self);
+                            stopping.descend_fn(&fk, &m.decl, &m.body, m.span, m.id, self);
                         }
                         NewVisitor(new_visitor) => {
                             let fk = visit::fk_method(m.ident,
@@ -575,26 +609,73 @@ pub fn each_lint(sess: session::Session,
     true
 }
 
-// Take a visitor, and modify it so that it will not proceed past subitems.
-// This is used to make the simple visitors used for the lint passes
-// not traverse into subitems, since that is handled by the outer
-// lint visitor.
-fn item_stopping_visitor<E>(outer: oldvisit::vt<E>) -> oldvisit::vt<E> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_item: |_i, (_e, _v)| { },
-        visit_fn: |fk, fd, b, s, id, (e, v)| {
+trait SubitemStoppableVisitor : Visitor<@mut Context> {
+    fn is_running_on_items(&mut self) -> bool;
+
+    fn visit_item_action(&mut self, _i:@ast::item, _e:@mut Context) {
+        // fill in with particular action without recursion if desired
+    }
+
+    fn visit_fn_action(&mut self, _fk:&visit::fn_kind, _fd:&ast::fn_decl,
+                       _b:&ast::Block, _s:span, _n:ast::NodeId, _e:@mut Context) {
+        // fill in with particular action without recursion if desired
+    }
+
+    // The two OVERRIDE methods:
+    //
+    //   OVERRIDE_visit_item
+    //   OVERRIDE_visit_fn
+    //
+    // *must* be included as initial reimplementations of the standard
+    // default behavior of visit_item and visit_fn for every impl of
+    // Visitor, in order to recreate the effect of having two variant
+    // Outer/Inner behaviors of lint visitors.  (See earlier versions
+    // of this module to see what the original encoding was of this
+    // emulated behavior.)
+
+    fn OVERRIDE_visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        if self.is_running_on_items() {
+            self.visit_item_action(i, e);
+            visit::walk_item(self, i, e);
+        }
+    }
+
+    fn OVERRIDE_visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        if self.is_running_on_items() {
+            self.visit_fn_action(fk, fd, b, s, n, e);
+            visit::walk_fn(self, fk, fd, b, s, n, e);
+        } else {
             match *fk {
-                oldvisit::fk_method(*) => {}
-                _ => (outer.visit_fn)(fk, fd, b, s, id, (e, v))
+                visit::fk_method(*) => {}
+                _ => {
+                    self.visit_fn_action(fk, fd, b, s, n, e);
+                    visit::walk_fn(self, fk, fd, b, s, n, e);
+                }
             }
-        },
-    .. **outer})
+        }
+    }
 }
 
-fn lint_while_true() -> oldvisit::vt<@mut Context> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
+struct WhileTrueLintVisitor { stopping_on_items: bool }
+
+
+impl SubitemStoppableVisitor for WhileTrueLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl Visitor<@mut Context> for WhileTrueLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+
             match e.node {
                 ast::expr_while(cond, _) => {
                     match cond.node {
@@ -610,14 +691,41 @@ fn lint_while_true() -> oldvisit::vt<@mut Context> {
                 }
                 _ => ()
             }
-            oldvisit::visit_expr(e, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
+            visit::walk_expr(self, e, cx);
+    }
 }
 
-fn lint_type_limits() -> oldvisit::vt<@mut Context> {
-    fn is_valid<T:cmp::Ord>(binop: ast::binop, v: T,
+macro_rules! outer_lint_boilerplate_impl(
+    ($Visitor:ident) =>
+    (
+        impl OuterLint for $Visitor {
+            fn process_item(@mut self, i:@ast::item, e:@mut Context) {
+                self.visit_item_action(i, e);
+            }
+            fn process_fn(@mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                          b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                self.visit_fn_action(fk, fd, b, s, n, e);
+            }
+            fn inner_variant(@mut self) -> @mut InnerLint {
+                @mut $Visitor { stopping_on_items: true } as @mut InnerLint
+            }
+        }
+    ))
+
+outer_lint_boilerplate_impl!(WhileTrueLintVisitor)
+
+fn lint_while_true() -> @mut OuterLint {
+    @mut WhileTrueLintVisitor{ stopping_on_items: false } as @mut OuterLint
+}
+
+struct TypeLimitsLintVisitor { stopping_on_items: bool }
+
+impl SubitemStoppableVisitor for TypeLimitsLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl TypeLimitsLintVisitor {
+    fn is_valid<T:cmp::Ord>(&mut self, binop: ast::binop, v: T,
             min: T, max: T) -> bool {
         match binop {
             ast::lt => v <= max,
@@ -629,7 +737,7 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
         }
     }
 
-    fn rev_binop(binop: ast::binop) -> ast::binop {
+    fn rev_binop(&mut self, binop: ast::binop) -> ast::binop {
         match binop {
             ast::lt => ast::gt,
             ast::le => ast::ge,
@@ -641,7 +749,7 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
 
     // for int & uint, be conservative with the warnings, so that the
     // warnings are consistent between 32- and 64-bit platforms
-    fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
+    fn int_ty_range(&mut self, int_ty: ast::int_ty) -> (i64, i64) {
         match int_ty {
             ast::ty_i =>    (i64::min_value,        i64::max_value),
             ast::ty_char => (u32::min_value as i64, u32::max_value as i64),
@@ -652,7 +760,7 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
         }
     }
 
-    fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
+    fn uint_ty_range(&mut self, uint_ty: ast::uint_ty) -> (u64, u64) {
         match uint_ty {
             ast::ty_u =>   (u64::min_value,         u64::max_value),
             ast::ty_u8 =>  (u8::min_value   as u64, u8::max_value   as u64),
@@ -662,7 +770,8 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
         }
     }
 
-    fn check_limits(cx: &Context,
+    fn check_limits(&mut self,
+                    cx: &Context,
                     binop: ast::binop,
                     l: @ast::expr,
                     r: @ast::expr)
@@ -675,13 +784,13 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
         // Normalize the binop so that the literal is always on the RHS in
         // the comparison
         let norm_binop = if swap {
-            rev_binop(binop)
+            self.rev_binop(binop)
         } else {
             binop
         };
         match ty::get(ty::expr_ty(cx.tcx, expr)).sty {
             ty::ty_int(int_ty) => {
-                let (min, max) = int_ty_range(int_ty);
+                let (min, max) = self.int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
                     ast::expr_lit(@li) => match li.node {
                         ast::lit_int(v, _) => v,
@@ -691,10 +800,10 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
                     },
                     _ => fail!()
                 };
-                is_valid(norm_binop, lit_val, min, max)
+                self.is_valid(norm_binop, lit_val, min, max)
             }
             ty::ty_uint(uint_ty) => {
-                let (min, max): (u64, u64) = uint_ty_range(uint_ty);
+                let (min, max): (u64, u64) = self.uint_ty_range(uint_ty);
                 let lit_val: u64 = match lit.node {
                     ast::expr_lit(@li) => match li.node {
                         ast::lit_int(v, _) => v as u64,
@@ -704,38 +813,51 @@ fn lint_type_limits() -> oldvisit::vt<@mut Context> {
                     },
                     _ => fail!()
                 };
-                is_valid(norm_binop, lit_val, min, max)
+                self.is_valid(norm_binop, lit_val, min, max)
             }
             _ => true
         }
     }
 
-    fn is_comparison(binop: ast::binop) -> bool {
+    fn is_comparison(&mut self, binop: ast::binop) -> bool {
         match binop {
             ast::eq | ast::lt | ast::le |
             ast::ne | ast::ge | ast::gt => true,
             _ => false
         }
     }
+}
 
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
+impl Visitor<@mut Context> for TypeLimitsLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+
             match e.node {
                 ast::expr_binary(_, ref binop, l, r) => {
-                    if is_comparison(*binop)
-                        && !check_limits(cx, *binop, l, r) {
+                    if self.is_comparison(*binop)
+                        && !self.check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,
                                      "comparison is useless due to type limits");
                     }
                 }
                 _ => ()
             }
-            oldvisit::visit_expr(e, (cx, vt));
-        },
+            visit::walk_expr(self, e, cx);
+    }
+}
 
-        .. *oldvisit::default_visitor()
-    })
+outer_lint_boilerplate_impl!(TypeLimitsLintVisitor)
+
+fn lint_type_limits() -> @mut OuterLint {
+    @mut TypeLimitsLintVisitor{ stopping_on_items: false } as @mut OuterLint
 }
 
 fn check_item_ctypes(cx: &Context, it: &ast::item) {
@@ -841,22 +963,54 @@ fn check_item_heap(cx: &Context, it: &ast::item) {
     }
 }
 
-fn lint_heap() -> oldvisit::vt<@mut Context> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
-            let ty = ty::expr_ty(cx.tcx, e);
-            check_type(cx, e.span, ty);
-            oldvisit::visit_expr(e, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
+struct HeapLintVisitor { stopping_on_items: bool }
+
+impl SubitemStoppableVisitor for HeapLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
 }
 
-fn lint_path_statement() -> oldvisit::vt<@mut Context> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_stmt: |s,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
+impl Visitor<@mut Context> for HeapLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+            let ty = ty::expr_ty(cx.tcx, e);
+            check_type(cx, e.span, ty);
+            visit::walk_expr(self, e, cx);
+    }
+}
+
+outer_lint_boilerplate_impl!(HeapLintVisitor)
+
+fn lint_heap() -> @mut OuterLint {
+    @mut HeapLintVisitor { stopping_on_items: false } as @mut OuterLint
+}
+
+struct PathStatementLintVisitor {
+    stopping_on_items: bool
+}
+
+impl SubitemStoppableVisitor for PathStatementLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl Visitor<@mut Context> for PathStatementLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_stmt(&mut self, s:@ast::stmt, cx:@mut Context) {
             match s.node {
                 ast::stmt_semi(
                     @ast::expr { node: ast::expr_path(_), _ },
@@ -867,10 +1021,15 @@ fn lint_path_statement() -> oldvisit::vt<@mut Context> {
                 }
                 _ => ()
             }
-            oldvisit::visit_stmt(s, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
+            visit::walk_stmt(self, s, cx);
+
+    }
+}
+
+outer_lint_boilerplate_impl!(PathStatementLintVisitor)
+
+fn lint_path_statement() -> @mut OuterLint {
+    @mut PathStatementLintVisitor{ stopping_on_items: false } as @mut OuterLint
 }
 
 fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
@@ -928,10 +1087,24 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
     }
 }
 
-fn lint_unused_unsafe() -> oldvisit::vt<@mut Context> {
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
+struct UnusedUnsafeLintVisitor { stopping_on_items: bool }
+
+impl SubitemStoppableVisitor for UnusedUnsafeLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl Visitor<@mut Context> for UnusedUnsafeLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+
             match e.node {
                 ast::expr_block(ref blk) if blk.rules == ast::UnsafeBlock => {
                     if !cx.tcx.used_unsafe.contains(&blk.id) {
@@ -941,14 +1114,20 @@ fn lint_unused_unsafe() -> oldvisit::vt<@mut Context> {
                 }
                 _ => ()
             }
-            oldvisit::visit_expr(e, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
+            visit::walk_expr(self, e, cx);
+    }
 }
 
-fn lint_unused_mut() -> oldvisit::vt<@mut Context> {
-    fn check_pat(cx: &Context, p: @ast::pat) {
+outer_lint_boilerplate_impl!(UnusedUnsafeLintVisitor)
+
+fn lint_unused_unsafe() -> @mut OuterLint {
+    @mut UnusedUnsafeLintVisitor{ stopping_on_items: false } as @mut OuterLint
+}
+
+struct UnusedMutLintVisitor { stopping_on_items: bool }
+
+impl UnusedMutLintVisitor {
+    fn check_pat(&mut self, cx: &Context, p: @ast::pat) {
         let mut used = false;
         let mut bindings = 0;
         do pat_util::pat_bindings(cx.tcx.def_map, p) |_, id, _, _| {
@@ -965,39 +1144,60 @@ fn lint_unused_mut() -> oldvisit::vt<@mut Context> {
         }
     }
 
-    fn visit_fn_decl(cx: &Context, fd: &ast::fn_decl) {
+    fn visit_fn_decl(&mut self, cx: &Context, fd: &ast::fn_decl) {
         for arg in fd.inputs.iter() {
             if arg.is_mutbl {
-                check_pat(cx, arg.pat);
+                self.check_pat(cx, arg.pat);
             }
         }
     }
+}
 
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_local: |l,
-                      (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
+impl SubitemStoppableVisitor for UnusedMutLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+
+    fn visit_fn_action(&mut self, _a:&visit::fn_kind, fd:&ast::fn_decl,
+                       _b:&ast::Block, _c:span, _d:ast::NodeId, cx:@mut Context) {
+            self.visit_fn_decl(cx, fd);
+    }
+}
+
+impl Visitor<@mut Context> for UnusedMutLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+
+    fn visit_local(&mut self, l:@ast::Local, cx:@mut Context) {
             if l.is_mutbl {
-                check_pat(cx, l.pat);
+                self.check_pat(cx, l.pat);
             }
-            oldvisit::visit_local(l, (cx, vt));
-        },
-        visit_fn: |a, fd, b, c, d, (cx, vt)| {
-            visit_fn_decl(cx, fd);
-            oldvisit::visit_fn(a, fd, b, c, d, (cx, vt));
-        },
-        visit_ty_method: |tm, (cx, vt)| {
-            visit_fn_decl(cx, &tm.decl);
-            oldvisit::visit_ty_method(tm, (cx, vt));
-        },
-        visit_trait_method: |tm, (cx, vt)| {
+            visit::walk_local(self, l, cx);
+    }
+
+    fn visit_ty_method(&mut self, tm:&ast::TypeMethod, cx:@mut Context) {
+            self.visit_fn_decl(cx, &tm.decl);
+            visit::walk_ty_method(self, tm, cx);
+    }
+
+    fn visit_trait_method(&mut self, tm:&ast::trait_method, cx:@mut Context) {
             match *tm {
-                ast::required(ref tm) => visit_fn_decl(cx, &tm.decl),
-                ast::provided(m) => visit_fn_decl(cx, &m.decl)
+                ast::required(ref tm) => self.visit_fn_decl(cx, &tm.decl),
+                ast::provided(m) => self.visit_fn_decl(cx, &m.decl)
             }
-            oldvisit::visit_trait_method(tm, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
+            visit::walk_trait_method(self, tm, cx);
+    }
+}
+
+outer_lint_boilerplate_impl!(UnusedMutLintVisitor)
+
+fn lint_unused_mut() -> @mut OuterLint {
+    @mut UnusedMutLintVisitor{ stopping_on_items: false } as @mut OuterLint
 }
 
 fn lint_session(cx: @mut Context) -> @mut visit::Visitor<()> {
@@ -1013,10 +1213,32 @@ fn lint_session(cx: @mut Context) -> @mut visit::Visitor<()> {
     }, false)
 }
 
-fn lint_unnecessary_allocations() -> oldvisit::vt<@mut Context> {
+struct UnnecessaryAllocationLintVisitor { stopping_on_items: bool }
+
+impl SubitemStoppableVisitor for UnnecessaryAllocationLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl Visitor<@mut Context> for UnnecessaryAllocationLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+            self.check(cx, e);
+            visit::walk_expr(self, e, cx);
+    }
+}
+
+impl UnnecessaryAllocationLintVisitor {
     // Warn if string and vector literals with sigils are immediately borrowed.
     // Those can have the sigil removed.
-    fn check(cx: &Context, e: &ast::expr) {
+    fn check(&mut self, cx: &Context, e: &ast::expr) {
         match e.node {
             ast::expr_vstore(e2, ast::expr_vstore_uniq) |
             ast::expr_vstore(e2, ast::expr_vstore_box) => {
@@ -1042,19 +1264,19 @@ fn lint_unnecessary_allocations() -> oldvisit::vt<@mut Context> {
             _ => ()
         }
     }
-
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: |e,
-                     (cx, vt): (@mut Context, oldvisit::vt<@mut Context>)| {
-            check(cx, e);
-            oldvisit::visit_expr(e, (cx, vt));
-        },
-        .. *oldvisit::default_visitor()
-    })
 }
 
-fn lint_missing_doc() -> oldvisit::vt<@mut Context> {
-    fn check_attrs(cx: @mut Context,
+outer_lint_boilerplate_impl!(UnnecessaryAllocationLintVisitor)
+
+fn lint_unnecessary_allocations() -> @mut OuterLint {
+    @mut UnnecessaryAllocationLintVisitor{ stopping_on_items: false } as @mut OuterLint
+}
+
+struct MissingDocLintVisitor { stopping_on_items: bool }
+
+impl MissingDocLintVisitor {
+    fn check_attrs(&mut self,
+                   cx: @mut Context,
                    attrs: &[ast::Attribute],
                    sp: span,
                    msg: &str) {
@@ -1069,46 +1291,62 @@ fn lint_missing_doc() -> oldvisit::vt<@mut Context> {
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);
     }
+}
 
-    oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_ty_method: |m, (cx, vt)| {
+impl Visitor<@mut Context> for MissingDocLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_ty_method(&mut self, m:&ast::TypeMethod, cx:@mut Context) {
             // All ty_method objects are linted about because they're part of a
             // trait (no visibility)
-            check_attrs(cx, m.attrs, m.span,
+            self.check_attrs(cx, m.attrs, m.span,
                         "missing documentation for a method");
-            oldvisit::visit_ty_method(m, (cx, vt));
-        },
+            visit::walk_ty_method(self, m, cx);
+    }
+}
 
-        visit_fn: |fk, d, b, sp, id, (cx, vt)| {
+impl SubitemStoppableVisitor for MissingDocLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+
+    fn visit_fn_action(&mut self, fk:&visit::fn_kind, _d:&ast::fn_decl,
+                       _b:&ast::Block, sp:span, _id:ast::NodeId, cx:@mut Context) {
+
             // Only warn about explicitly public methods. Soon implicit
             // public-ness will hopefully be going away.
             match *fk {
-                oldvisit::fk_method(_, _, m) if m.vis == ast::public => {
+                visit::fk_method(_, _, m) if m.vis == ast::public => {
                     // If we're in a trait implementation, no need to duplicate
                     // documentation
                     if !cx.in_trait_impl {
-                        check_attrs(cx, m.attrs, sp,
+                        self.check_attrs(cx, m.attrs, sp,
                                     "missing documentation for a method");
                     }
                 }
 
                 _ => {}
             }
-            oldvisit::visit_fn(fk, d, b, sp, id, (cx, vt));
-        },
+    }
 
-        visit_item: |it, (cx, vt)| {
+    fn visit_item_action(&mut self, it:@ast::item, cx:@mut Context) {
+
             match it.node {
                 // Go ahead and match the fields here instead of using
                 // visit_struct_field while we have access to the enclosing
                 // struct's visibility
                 ast::item_struct(sdef, _) if it.vis == ast::public => {
-                    check_attrs(cx, it.attrs, it.span,
+                    self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a struct");
                     for field in sdef.fields.iter() {
                         match field.node.kind {
                             ast::named_field(_, vis) if vis != ast::private => {
-                                check_attrs(cx, field.node.attrs, field.span,
+                                self.check_attrs(cx, field.node.attrs, field.span,
                                             "missing documentation for a field");
                             }
                             ast::unnamed_field | ast::named_field(*) => {}
@@ -1117,23 +1355,77 @@ fn lint_missing_doc() -> oldvisit::vt<@mut Context> {
                 }
 
                 ast::item_trait(*) if it.vis == ast::public => {
-                    check_attrs(cx, it.attrs, it.span,
+                    self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a trait");
                 }
 
                 ast::item_fn(*) if it.vis == ast::public => {
-                    check_attrs(cx, it.attrs, it.span,
+                    self.check_attrs(cx, it.attrs, it.span,
                                 "missing documentation for a function");
                 }
 
                 _ => {}
-            };
+            }
+    }
+}
 
-            oldvisit::visit_item(it, (cx, vt));
-        },
+outer_lint_boilerplate_impl!(MissingDocLintVisitor)
 
-        .. *oldvisit::default_visitor()
-    })
+fn lint_missing_doc() -> @mut OuterLint {
+    @mut MissingDocLintVisitor { stopping_on_items: false } as @mut OuterLint
+}
+
+struct LintCheckVisitor;
+
+impl Visitor<@mut Context> for LintCheckVisitor {
+
+    fn visit_item(&mut self, it:@ast::item, cx: @mut Context) {
+
+                do cx.with_lint_attrs(it.attrs) {
+                    match it.node {
+                        ast::item_impl(_, Some(*), _, _) => {
+                            cx.in_trait_impl = true;
+                        }
+                        _ => {}
+                    }
+                    check_item_ctypes(cx, it);
+                    check_item_non_camel_case_types(cx, it);
+                    check_item_non_uppercase_statics(cx, it);
+                    check_item_heap(cx, it);
+
+                    cx.process(Item(it));
+                    visit::walk_item(self, it, cx);
+                    cx.in_trait_impl = false;
+                }
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, decl:&ast::fn_decl,
+                body:&ast::Block, span:span, id:ast::NodeId, cx:@mut Context) {
+
+                match *fk {
+                    visit::fk_method(_, _, m) => {
+                        do cx.with_lint_attrs(m.attrs) {
+                            cx.process(Method(m));
+                            visit::walk_fn(self,
+                                               fk,
+                                               decl,
+                                               body,
+                                               span,
+                                               id,
+                                               cx);
+                        }
+                    }
+                    _ => {
+                        visit::walk_fn(self,
+                                           fk,
+                                           decl,
+                                           body,
+                                           span,
+                                           id,
+                                           cx);
+                    }
+                }
+    }
 }
 
 pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
@@ -1172,52 +1464,9 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
     do cx.with_lint_attrs(crate.attrs) {
         cx.process(Crate(crate));
 
-        oldvisit::visit_crate(crate, (cx, oldvisit::mk_vt(@oldvisit::Visitor {
-            visit_item: |it,
-                         (cx, vt):
-                            (@mut Context, oldvisit::vt<@mut Context>)| {
-                do cx.with_lint_attrs(it.attrs) {
-                    match it.node {
-                        ast::item_impl(_, Some(*), _, _) => {
-                            cx.in_trait_impl = true;
-                        }
-                        _ => {}
-                    }
-                    check_item_ctypes(cx, it);
-                    check_item_non_camel_case_types(cx, it);
-                    check_item_non_uppercase_statics(cx, it);
-                    check_item_heap(cx, it);
+        let mut visitor = LintCheckVisitor;
 
-                    cx.process(Item(it));
-                    oldvisit::visit_item(it, (cx, vt));
-                    cx.in_trait_impl = false;
-                }
-            },
-            visit_fn: |fk, decl, body, span, id, (cx, vt)| {
-                match *fk {
-                    oldvisit::fk_method(_, _, m) => {
-                        do cx.with_lint_attrs(m.attrs) {
-                            cx.process(Method(m));
-                            oldvisit::visit_fn(fk,
-                                               decl,
-                                               body,
-                                               span,
-                                               id,
-                                               (cx, vt));
-                        }
-                    }
-                    _ => {
-                        oldvisit::visit_fn(fk,
-                                           decl,
-                                           body,
-                                           span,
-                                           id,
-                                           (cx, vt));
-                    }
-                }
-            },
-            .. *oldvisit::default_visitor()
-        })));
+        visit::walk_crate(&mut visitor, crate, cx);
     }
 
     // If we missed any lints added to the session, then there's a bug somewhere
