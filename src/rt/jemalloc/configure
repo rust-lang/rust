@@ -4453,7 +4453,7 @@ PIC_CFLAGS='-fPIC -DPIC'
 CTARGET='-o $@'
 LDTARGET='-o $@'
 EXTRA_LDFLAGS=
-MKLIB='$(AR) crus $@'
+MKLIB='ar crus $@'
 CC_MM=1
 
 default_munmap="1"
@@ -4478,6 +4478,18 @@ case "${host}" in
 	$as_echo "#define JEMALLOC_PURGE_MADVISE_FREE  " >>confdefs.h
 
 	force_lazy_lock="1"
+	;;
+  *-*-linux-android*)
+	CFLAGS="$CFLAGS"
+	CPPFLAGS="$CPPFLAGS -D_GNU_SOURCE"
+	abi="elf"
+	$as_echo "#define JEMALLOC_HAS_ALLOCA_H 1" >>confdefs.h
+
+	$as_echo "#define JEMALLOC_PURGE_MADVISE_DONTNEED  " >>confdefs.h
+
+	$as_echo "#define JEMALLOC_THREADED_INIT  " >>confdefs.h
+
+	default_munmap="0"
 	;;
   *-*-linux*)
 	CFLAGS="$CFLAGS"
