@@ -182,6 +182,9 @@ pub static tag_misc_info_crate_items: uint = 0x80;
 pub static tag_item_method_provided_source: uint = 0x81;
 pub static tag_item_impl_vtables: uint = 0x82;
 
+pub static tag_impls: uint = 0x83;
+pub static tag_impls_impl: uint = 0x84;
+
 pub struct LinkMeta {
     name: @str,
     vers: @str,
