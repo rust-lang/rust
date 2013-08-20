@@ -67,7 +67,7 @@ pub struct CrateContext {
      // Cache computed type parameter uses (see type_use.rs)
      type_use_cache: HashMap<ast::def_id, @~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: HashMap<mono_id, ValueRef>,
+     vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
      const_cstr_cache: HashMap<@str, ValueRef>,
 

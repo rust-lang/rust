@@ -1015,6 +1015,8 @@ pub fn node_vtables(bcx: @mut Block, id: ast::NodeId)
     raw_vtables.map_move(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
+// Apply the typaram substitutions in the FunctionContext to some
+// vtables. This should eliminate any vtable_params.
 pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res)
     -> typeck::vtable_res {
     resolve_vtables_under_param_substs(fcx.ccx.tcx,
@@ -1047,15 +1049,6 @@ pub fn resolve_param_vtables_under_param_substs(
 
 
 
-// Apply the typaram substitutions in the FunctionContext to a vtable. This should
-// eliminate any vtable_params.
-pub fn resolve_vtable_in_fn_ctxt(fcx: &FunctionContext, vt: &typeck::vtable_origin)
-    -> typeck::vtable_origin {
-    resolve_vtable_under_param_substs(fcx.ccx.tcx,
-                                      fcx.param_substs,
-                                      vt)
-}
-
 pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                                          param_substs: Option<@param_substs>,
                                          vt: &typeck::vtable_origin)
@@ -1081,8 +1074,8 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
                 }
                 _ => {
                     tcx.sess.bug(fmt!(
-                        "resolve_vtable_in_fn_ctxt: asked to lookup but \
-                         no vtables in the fn_ctxt!"))
+                        "resolve_vtable_under_param_substs: asked to lookup \
+                         but no vtables in the fn_ctxt!"))
                 }
             }
         }
