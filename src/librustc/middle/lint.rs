@@ -326,7 +326,8 @@ trait InnerLint {
 
 impl<V:Visitor<@mut Context>> InnerLint for V {
     fn descend_item(@mut self, i:&ast::item, e:@mut Context) {
-        visit::walk_item(self, i, e); }
+        visit::walk_item(self, i, e);
+    }
     fn descend_crate(@mut self, crate: &ast::Crate, env: @mut Context) {
         visit::walk_crate(self, crate, env);
     }
