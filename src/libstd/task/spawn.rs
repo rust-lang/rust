@@ -446,8 +446,7 @@ fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
 // Transitionary.
 struct RuntimeGlue;
 impl RuntimeGlue {
-    fn kill_task(handle: KillHandle) {
-        let mut handle = handle;
+    fn kill_task(mut handle: KillHandle) {
         do handle.kill().map_move |killed_task| {
             let killed_task = Cell::new(killed_task);
             do Local::borrow::<Scheduler, ()> |sched| {
@@ -457,44 +456,38 @@ impl RuntimeGlue {
     }
 
     fn with_task_handle_and_failing(blk: &fn(&KillHandle, bool)) {
-        if in_green_task_context() {
-            unsafe {
-                // Can't use safe borrow, because the taskgroup destructor needs to
-                // access the scheduler again to send kill signals to other tasks.
-                let me = Local::unsafe_borrow::<Task>();
-                blk((*me).death.kill_handle.get_ref(), (*me).unwinder.unwinding)
-            }
-        } else {
-            rtabort!("task dying in bad context")
+        rtassert!(in_green_task_context());
+        unsafe {
+            // Can't use safe borrow, because the taskgroup destructor needs to
+            // access the scheduler again to send kill signals to other tasks.
+            let me = Local::unsafe_borrow::<Task>();
+            blk((*me).death.kill_handle.get_ref(), (*me).unwinder.unwinding)
         }
     }
 
     fn with_my_taskgroup<U>(blk: &fn(&Taskgroup) -> U) -> U {
-        if in_green_task_context() {
-            unsafe {
-                // Can't use safe borrow, because creating new hashmaps for the
-                // tasksets requires an rng, which needs to borrow the sched.
-                let me = Local::unsafe_borrow::<Task>();
-                blk(match (*me).taskgroup {
-                    None => {
-                        // First task in its (unlinked/unsupervised) taskgroup.
-                        // Lazily initialize.
-                        let mut members = TaskSet::new();
-                        let my_handle = (*me).death.kill_handle.get_ref().clone();
-                        members.insert(my_handle);
-                        let tasks = Exclusive::new(Some(TaskGroupData {
-                            members: members,
-                            descendants: TaskSet::new(),
-                        }));
-                        let group = Taskgroup(tasks, AncestorList(None), None);
-                        (*me).taskgroup = Some(group);
-                        (*me).taskgroup.get_ref()
-                    }
-                    Some(ref group) => group,
-                })
-            }
-        } else {
-            rtabort!("spawning in bad context")
+        rtassert!(in_green_task_context());
+        unsafe {
+            // Can't use safe borrow, because creating new hashmaps for the
+            // tasksets requires an rng, which needs to borrow the sched.
+            let me = Local::unsafe_borrow::<Task>();
+            blk(match (*me).taskgroup {
+                None => {
+                    // First task in its (unlinked/unsupervised) taskgroup.
+                    // Lazily initialize.
+                    let mut members = TaskSet::new();
+                    let my_handle = (*me).death.kill_handle.get_ref().clone();
+                    members.insert(my_handle);
+                    let tasks = Exclusive::new(Some(TaskGroupData {
+                        members: members,
+                        descendants: TaskSet::new(),
+                    }));
+                    let group = Taskgroup(tasks, AncestorList(None), None);
+                    (*me).taskgroup = Some(group);
+                    (*me).taskgroup.get_ref()
+                }
+                Some(ref group) => group,
+            })
         }
     }
 }
@@ -567,16 +560,10 @@ fn enlist_many(child: &KillHandle, child_arc: &TaskGroupArc,
     result
 }
 
-pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
-    if in_green_task_context() {
-        spawn_raw_newsched(opts, f)
-    } else {
-        fail!("can't spawn from this context")
-    }
-}
-
-fn spawn_raw_newsched(mut opts: TaskOpts, f: ~fn()) {
+pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
+
+    rtassert!(in_green_task_context());
 
     let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
     let indestructible = opts.indestructible;
