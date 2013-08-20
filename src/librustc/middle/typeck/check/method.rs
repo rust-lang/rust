@@ -102,7 +102,7 @@ use std::vec;
 use extra::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, NodeId};
-use syntax::ast::{m_const, m_mutbl, m_imm};
+use syntax::ast::{m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 
@@ -653,7 +653,7 @@ impl<'self> LookupContext<'self> {
             ty_evec(mt, vstore_fixed(_)) => {
                 // First try to borrow to a slice
                 let entry = self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVec, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoBorrowVec, autoderefs, [m_imm, m_mutbl],
                     |m,r| ty::mk_evec(tcx,
                                       ty::mt {ty:mt.ty, mutbl:m},
                                       vstore_slice(r)));
@@ -662,7 +662,7 @@ impl<'self> LookupContext<'self> {
 
                 // Then try to borrow to a slice *and* borrow a pointer.
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVecRef, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoBorrowVecRef, autoderefs, [m_imm, m_mutbl],
                     |m,r| {
                         let slice_ty = ty::mk_evec(tcx,
                                                    ty::mt {ty:mt.ty, mutbl:m},
@@ -697,7 +697,7 @@ impl<'self> LookupContext<'self> {
                 // Coerce ~/@/&Trait instances to &Trait.
 
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowObj, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoBorrowObj, autoderefs, [m_imm, m_mutbl],
                     |trt_mut, reg| {
                         ty::mk_trait(tcx, trt_did, trt_substs.clone(),
                                      RegionTraitStore(reg), trt_mut, b)
@@ -732,7 +732,7 @@ impl<'self> LookupContext<'self> {
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
             ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
+                    AutoPtr, autoderefs, [m_imm, m_mutbl],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
             }
 
@@ -1220,18 +1220,10 @@ impl<'self> LookupContext<'self> {
         }
 
         fn mutability_matches(self_mutbl: ast::mutability,
-                              candidate_mutbl: ast::mutability) -> bool {
+                              candidate_mutbl: ast::mutability)
+                              -> bool {
             //! True if `self_mutbl <: candidate_mutbl`
-
-            match (self_mutbl, candidate_mutbl) {
-                (_, m_const) => true,
-                (m_mutbl, m_mutbl) => true,
-                (m_imm, m_imm) => true,
-                (m_mutbl, m_imm) => false,
-                (m_imm, m_mutbl) => false,
-                (m_const, m_imm) => false,
-                (m_const, m_mutbl) => false,
-            }
+            self_mutbl == candidate_mutbl
         }
     }
 

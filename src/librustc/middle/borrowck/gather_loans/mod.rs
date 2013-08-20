@@ -26,7 +26,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util::id_range;
 use syntax::codemap::span;
@@ -237,7 +236,11 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
         let scope_r = ty_region(tcx, ex.span, ty::expr_ty(tcx, ex));
-        this.guarantee_valid(ex.id, ex.span, base_cmt, mutbl, scope_r);
+        this.guarantee_valid(ex.id,
+                             ex.span,
+                             base_cmt,
+                             LoanMutability::from_ast_mutability(mutbl),
+                             scope_r);
         visit::walk_expr(v, ex, this);
       }
 
@@ -278,7 +281,11 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
           // adjustments).
           let scope_r = ty::re_scope(ex.id);
           let arg_cmt = this.bccx.cat_expr(arg);
-          this.guarantee_valid(arg.id, arg.span, arg_cmt, m_imm, scope_r);
+          this.guarantee_valid(arg.id,
+                               arg.span,
+                               arg_cmt,
+                               ImmutableMutability,
+                               scope_r);
           visit::walk_expr(v, ex, this);
       }
 
@@ -357,18 +364,22 @@ impl GatherLoanCtxt {
 
                 match *autoref {
                     ty::AutoPtr(r, m) => {
+                        let loan_mutability =
+                            LoanMutability::from_ast_mutability(m);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt,
-                                             m,
+                                             loan_mutability,
                                              r)
                     }
                     ty::AutoBorrowVec(r, m) | ty::AutoBorrowVecRef(r, m) => {
                         let cmt_index = mcx.cat_index(expr, cmt, autoderefs+1);
+                        let loan_mutability =
+                            LoanMutability::from_ast_mutability(m);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_index,
-                                             m,
+                                             loan_mutability,
                                              r)
                     }
                     ty::AutoBorrowFn(r) => {
@@ -376,15 +387,17 @@ impl GatherLoanCtxt {
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_deref,
-                                             m_imm,
+                                             ImmutableMutability,
                                              r)
                     }
                     ty::AutoBorrowObj(r, m) => {
                         let cmt_deref = mcx.cat_deref_fn_or_obj(expr, cmt, 0);
+                        let loan_mutability =
+                            LoanMutability::from_ast_mutability(m);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_deref,
-                                             m,
+                                             loan_mutability,
                                              r)
                     }
                     ty::AutoUnsafe(_) => {}
@@ -402,7 +415,7 @@ impl GatherLoanCtxt {
                            borrow_id: ast::NodeId,
                            borrow_span: span,
                            cmt: mc::cmt,
-                           req_mutbl: ast::mutability,
+                           req_mutbl: LoanMutability,
                            loan_region: ty::Region) {
         debug!("guarantee_valid(borrow_id=%?, cmt=%s, \
                 req_mutbl=%?, loan_region=%?)",
@@ -473,7 +486,7 @@ impl GatherLoanCtxt {
                 let kill_scope = self.compute_kill_scope(loan_scope, loan_path);
                 debug!("kill_scope = %?", kill_scope);
 
-                if req_mutbl == m_mutbl {
+                if req_mutbl == MutableMutability {
                     self.mark_loan_path_as_mutated(loan_path);
                 }
 
@@ -516,7 +529,7 @@ impl GatherLoanCtxt {
             //        index: all_loans.len(),
             //        loan_path: loan_path,
             //        cmt: cmt,
-            //        mutbl: m_const,
+            //        mutbl: ConstMutability,
             //        gen_scope: borrow_id,
             //        kill_scope: kill_scope,
             //        span: borrow_span,
@@ -527,29 +540,20 @@ impl GatherLoanCtxt {
         fn check_mutability(bccx: @BorrowckCtxt,
                             borrow_span: span,
                             cmt: mc::cmt,
-                            req_mutbl: ast::mutability) {
+                            req_mutbl: LoanMutability) {
             //! Implements the M-* rules in doc.rs.
 
             match req_mutbl {
-                m_const => {
+                ConstMutability => {
                     // Data of any mutability can be lent as const.
                 }
 
-                m_imm => {
-                    match cmt.mutbl {
-                        mc::McImmutable | mc::McDeclared | mc::McInherited => {
-                            // both imm and mut data can be lent as imm;
-                            // for mutable data, this is a freeze
-                        }
-                        mc::McReadOnly => {
-                            bccx.report(BckError {span: borrow_span,
-                                                  cmt: cmt,
-                                                  code: err_mutbl(req_mutbl)});
-                        }
-                    }
+                ImmutableMutability => {
+                    // both imm and mut data can be lent as imm;
+                    // for mutable data, this is a freeze
                 }
 
-                m_mutbl => {
+                MutableMutability => {
                     // Only mutable data can be lent as mutable.
                     if !cmt.mutbl.is_mutable() {
                         bccx.report(BckError {span: borrow_span,
@@ -561,12 +565,14 @@ impl GatherLoanCtxt {
         }
     }
 
-    pub fn restriction_set(&self, req_mutbl: ast::mutability)
+    pub fn restriction_set(&self, req_mutbl: LoanMutability)
                            -> RestrictionSet {
         match req_mutbl {
-            m_const => RESTR_EMPTY,
-            m_imm   => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
-            m_mutbl => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
+            ConstMutability => RESTR_EMPTY,
+            ImmutableMutability => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
+            MutableMutability => {
+                RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
+            }
         }
     }
 
@@ -582,8 +588,8 @@ impl GatherLoanCtxt {
                 self.mark_loan_path_as_mutated(base);
             }
             LpExtend(_, mc::McDeclared, _) |
-            LpExtend(_, mc::McImmutable, _) |
-            LpExtend(_, mc::McReadOnly, _) => {
+            LpExtend(_, mc::McImmutable, _) => {
+                // Nothing to do.
             }
         }
     }
@@ -701,8 +707,13 @@ impl GatherLoanCtxt {
                             }
                         }
                     };
-                    self.guarantee_valid(pat.id, pat.span,
-                                         cmt_discr, mutbl, scope_r);
+                    let loan_mutability =
+                        LoanMutability::from_ast_mutability(mutbl);
+                    self.guarantee_valid(pat.id,
+                                         pat.span,
+                                         cmt_discr,
+                                         loan_mutability,
+                                         scope_r);
                   }
                   ast::bind_infer => {
                       // No borrows here, but there may be moves
@@ -725,6 +736,8 @@ impl GatherLoanCtxt {
                       self.vec_slice_info(slice_pat, slice_ty);
                   let mcx = self.bccx.mc_ctxt();
                   let cmt_index = mcx.cat_index(slice_pat, cmt, 0);
+                  let slice_loan_mutability =
+                    LoanMutability::from_ast_mutability(slice_mutbl);
 
                   // Note: We declare here that the borrow occurs upon
                   // entering the `[...]` pattern. This implies that
@@ -743,8 +756,11 @@ impl GatherLoanCtxt {
                   // trans do the right thing, and it would only work
                   // for `~` vectors. It seems simpler to just require
                   // that people call `vec.pop()` or `vec.unshift()`.
-                  self.guarantee_valid(pat.id, pat.span,
-                                       cmt_index, slice_mutbl, slice_r);
+                  self.guarantee_valid(pat.id,
+                                       pat.span,
+                                       cmt_index,
+                                       slice_loan_mutability,
+                                       slice_r);
               }
 
               _ => {}

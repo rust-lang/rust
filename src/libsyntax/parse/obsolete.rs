@@ -54,7 +54,6 @@ pub enum ObsoleteSyntax {
     ObsoleteMode,
     ObsoleteImplicitSelf,
     ObsoleteLifetimeNotation,
-    ObsoleteConstManagedPointer,
     ObsoletePurity,
     ObsoleteStaticMethod,
     ObsoleteConstItem,
@@ -66,6 +65,7 @@ pub enum ObsoleteSyntax {
     ObsoleteUnsafeExternFn,
     ObsoletePrivVisibility,
     ObsoleteTraitFuncVisibility,
+    ObsoleteConstPointer,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -209,10 +209,6 @@ impl ParserObsoleteMethods for Parser {
                 "instead of `&foo/bar`, write `&'foo bar`; instead of \
                  `bar/&foo`, write `&bar<'foo>"
             ),
-            ObsoleteConstManagedPointer => (
-                "const `@` pointer",
-                "instead of `@const Foo`, write `@Foo`"
-            ),
             ObsoletePurity => (
                 "pure function",
                 "remove `pure`"
@@ -262,6 +258,11 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteTraitFuncVisibility => (
                 "visibility not necessary",
                 "trait functions inherit the visibility of the trait itself"
+            ),
+            ObsoleteConstPointer => (
+                "const pointer",
+                "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
+                 `@Foo`"
             ),
         };
 

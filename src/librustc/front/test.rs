@@ -16,14 +16,15 @@ use front::config;
 
 use std::vec;
 use syntax::ast_util::*;
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpnInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold;
+use syntax::opt_vec;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
-use syntax::attr::AttrMetaMethods;
 
 type node_id_gen = @fn() -> ast::NodeId;
 
@@ -383,19 +384,27 @@ fn nospan<T>(t: T) -> codemap::spanned<T> {
 }
 
 fn path_node(ids: ~[ast::ident]) -> ast::Path {
-    ast::Path { span: dummy_sp(),
-                global: false,
-                idents: ids,
-                rp: None,
-                types: ~[] }
+    ast::Path {
+        span: dummy_sp(),
+        global: false,
+        segments: ids.move_iter().map(|identifier| ast::PathSegment {
+            identifier: identifier,
+            lifetime: None,
+            types: opt_vec::Empty,
+        }).collect()
+    }
 }
 
 fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
-    ast::Path { span: dummy_sp(),
-                 global: true,
-                 idents: ids,
-                 rp: None,
-                 types: ~[] }
+    ast::Path {
+        span: dummy_sp(),
+        global: true,
+        segments: ids.move_iter().map(|identifier| ast::PathSegment {
+            identifier: identifier,
+            lifetime: None,
+            types: opt_vec::Empty,
+        }).collect()
+    }
 }
 
 #[cfg(stage0)]

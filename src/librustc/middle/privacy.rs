@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// A pass that checks to make sure private fields and methods aren't used
-// outside their scopes.
-
+//! A pass that checks to make sure private fields and methods aren't used
+//! outside their scopes.
 
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
@@ -251,7 +250,9 @@ impl PrivacyVisitor {
         match def {
             def_static_method(method_id, _, _) => {
                 debug!("found static method def, checking it");
-                self.check_method_common(span, method_id, path.idents.last())
+                self.check_method_common(span,
+                                         method_id,
+                                         &path.segments.last().identifier)
             }
             def_fn(def_id, _) => {
                 if def_id.crate == LOCAL_CRATE {
@@ -259,13 +260,19 @@ impl PrivacyVisitor {
                             !self.privileged_items.iter().any(|x| x == &def_id.node) {
                         self.tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               token::ident_to_str(path.idents.last())));
+                                               token::ident_to_str(
+                                                &path.segments
+                                                     .last()
+                                                     .identifier)));
                     }
                 } else if csearch::get_item_visibility(self.tcx.sess.cstore,
                                                        def_id) != public {
                     self.tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           token::ident_to_str(path.idents.last())));
+                                           token::ident_to_str(
+                                                &path.segments
+                                                     .last()
+                                                     .identifier)));
                 }
             }
             _ => {}

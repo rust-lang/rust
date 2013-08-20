@@ -6,5 +6,5 @@ mod a {
 }
 
 fn main() {
-    let _ = a::S::new();    //~ ERROR function `new` is private
+    let _ = a::S::new();    //~ ERROR method `new` is private
 }

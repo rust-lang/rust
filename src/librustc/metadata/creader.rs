@@ -25,7 +25,8 @@ use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
-use syntax::oldvisit;
+use syntax::visit::SimpleVisitor;
+use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -46,13 +47,11 @@ pub fn read_crates(diag: @mut span_handler,
         next_crate_num: 1,
         intr: intr
     };
-    let v =
-        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-            visit_view_item: |a| visit_view_item(e, a),
-            visit_item: |a| visit_item(e, a),
-            .. *oldvisit::default_simple_visitor()});
-    visit_crate(e, crate);
-    oldvisit::visit_crate(crate, ((), v));
+    e.visit_crate(crate);
+    let mut visitor = visit::SimpleVisitorVisitor {
+        simple_visitor: e as @mut SimpleVisitor,
+    };
+    visit::walk_crate(&mut visitor, crate, ());
     dump_crates(*e.crate_cache);
     warn_if_multiple_versions(e, diag, *e.crate_cache);
 }
@@ -115,103 +114,113 @@ struct Env {
     intr: @ident_interner
 }
 
-fn visit_crate(e: &Env, c: &ast::Crate) {
-    let cstore = e.cstore;
+impl Env {
+    fn visit_crate(&self, c: &ast::Crate) {
+        let cstore = self.cstore;
 
-    for a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
-        match a.value_str() {
-          Some(ref linkarg) => {
-            cstore::add_used_link_args(cstore, *linkarg);
-          }
-          None => {/* fallthrough */ }
+        for a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
+            match a.value_str() {
+              Some(ref linkarg) => {
+                cstore::add_used_link_args(cstore, *linkarg);
+              }
+              None => {/* fallthrough */ }
+            }
         }
     }
 }
 
-fn visit_view_item(e: @mut Env, i: &ast::view_item) {
-    match i.node {
-      ast::view_item_extern_mod(ident, path_opt, ref meta_items, id) => {
-          let ident = token::ident_to_str(&ident);
-          let meta_items = match path_opt {
-              None => meta_items.clone(),
-              Some(p) => {
-                  let p_path = Path(p);
-                  match p_path.filestem() {
-                      Some(s) =>
-                          vec::append(
-                              ~[attr::mk_name_value_item_str(@"package_id", p),
-                               attr::mk_name_value_item_str(@"name", s.to_managed())],
-                              *meta_items),
-                      None => e.diag.span_bug(i.span, "Bad package path in `extern mod` item")
-                  }
-            }
-          };
-          debug!("resolving extern mod stmt. ident: %?, meta: %?",
-                 ident, meta_items);
-          let cnum = resolve_crate(e,
-                                   ident,
-                                   meta_items,
-                                   @"",
-                                   i.span);
-          cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
+
+impl SimpleVisitor for Env {
+    fn visit_view_item(&mut self, i: &ast::view_item) {
+        match i.node {
+          ast::view_item_extern_mod(ident, path_opt, ref meta_items, id) => {
+              let ident = token::ident_to_str(&ident);
+              let meta_items = match path_opt {
+                  None => meta_items.clone(),
+                  Some(p) => {
+                      let p_path = Path(p);
+                      match p_path.filestem() {
+                          Some(s) =>
+                              vec::append(
+                                  ~[attr::mk_name_value_item_str(@"package_id", p),
+                                   attr::mk_name_value_item_str(@"name", s.to_managed())],
+                                  *meta_items),
+                          None => {
+                            self.diag.span_bug(i.span,
+                              "bad package path in `extern mod` item")
+                          }
+                      }
+                }
+              };
+              debug!("resolving extern mod stmt. ident: %?, meta: %?",
+                     ident, meta_items);
+              let cnum = resolve_crate(self,
+                                       ident,
+                                       meta_items,
+                                       @"",
+                                       i.span);
+              cstore::add_extern_mod_stmt_cnum(self.cstore, id, cnum);
+          }
+          _ => ()
       }
-      _ => ()
-  }
-}
+    }
 
-fn visit_item(e: &Env, i: @ast::item) {
-    match i.node {
-      ast::item_foreign_mod(ref fm) => {
-        if fm.abis.is_rust() || fm.abis.is_intrinsic() {
-            return;
-        }
+    fn visit_item(&mut self, i: @ast::item) {
+        match i.node {
+          ast::item_foreign_mod(ref fm) => {
+            if fm.abis.is_rust() || fm.abis.is_intrinsic() {
+                return;
+            }
 
-        let cstore = e.cstore;
-        let mut already_added = false;
-        let link_args = i.attrs.iter()
-            .filter_map(|at| if "link_args" == at.name() {Some(at)} else {None})
-            .collect::<~[&ast::Attribute]>();
+            let cstore = self.cstore;
+            let mut already_added = false;
+            let link_args = i.attrs.iter()
+                .filter_map(|at| if "link_args" == at.name() {Some(at)} else {None})
+                .collect::<~[&ast::Attribute]>();
 
-        match fm.sort {
-            ast::named => {
-                let link_name = i.attrs.iter()
-                    .find(|at| "link_name" == at.name())
-                    .chain(|at| at.value_str());
+            match fm.sort {
+                ast::named => {
+                    let link_name = i.attrs.iter()
+                        .find(|at| "link_name" == at.name())
+                        .chain(|at| at.value_str());
 
-                let foreign_name = match link_name {
-                        Some(nn) => {
-                            if nn.is_empty() {
-                                e.diag.span_fatal(
-                                    i.span,
-                                    "empty #[link_name] not allowed; use \
-                                     #[nolink].");
+                    let foreign_name = match link_name {
+                            Some(nn) => {
+                                if nn.is_empty() {
+                                    self.diag.span_fatal(
+                                        i.span,
+                                        "empty #[link_name] not allowed; use \
+                                         #[nolink].");
+                                }
+                                nn
                             }
-                            nn
-                        }
-                        None => token::ident_to_str(&i.ident)
-                    };
-                if !attr::contains_name(i.attrs, "nolink") {
-                    already_added =
-                        !cstore::add_used_library(cstore, foreign_name);
+                            None => token::ident_to_str(&i.ident)
+                        };
+                    if !attr::contains_name(i.attrs, "nolink") {
+                        already_added =
+                            !cstore::add_used_library(cstore, foreign_name);
+                    }
+                    if !link_args.is_empty() && already_added {
+                        self.diag.span_fatal(i.span, ~"library '" +
+                                   foreign_name +
+                                   "' already added: can't specify \
+                                    link_args.");
+                    }
                 }
-                if !link_args.is_empty() && already_added {
-                    e.diag.span_fatal(i.span, ~"library '" + foreign_name +
-                               "' already added: can't specify link_args.");
-                }
+                ast::anonymous => { /* do nothing */ }
             }
-            ast::anonymous => { /* do nothing */ }
-        }
 
-        for m in link_args.iter() {
-            match m.value_str() {
-                Some(linkarg) => {
-                    cstore::add_used_link_args(cstore, linkarg);
+            for m in link_args.iter() {
+                match m.value_str() {
+                    Some(linkarg) => {
+                        cstore::add_used_link_args(cstore, linkarg);
+                    }
+                    None => { /* fallthrough */ }
                 }
-                None => { /* fallthrough */ }
             }
+          }
+          _ => { }
         }
-      }
-      _ => { }
     }
 }
 
@@ -240,7 +249,7 @@ fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
     return None;
 }
 
-fn resolve_crate(e: @mut Env,
+fn resolve_crate(e: &mut Env,
                  ident: @str,
                  metas: ~[@ast::MetaItem],
                  hash: @str,
@@ -308,7 +317,7 @@ fn resolve_crate(e: @mut Env,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: &mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers

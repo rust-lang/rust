@@ -29,16 +29,5 @@ fn has_mut_vec_but_tries_to_change_it() {
     }
 }
 
-fn takes_const_elt(_v: &const int, f: &fn()) {
-    f();
-}
-
-fn has_mut_vec_and_tries_to_change_it() {
-    let mut v = ~[1, 2, 3];
-    do takes_const_elt(&const v[0]) {
-        v[1] = 4;
-    }
-}
-
 fn main() {
 }

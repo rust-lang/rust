@@ -144,13 +144,13 @@ impl<T> ChanOne<T> {
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
-                    do Local::borrow::<Scheduler, ()> |sched| {
+                    do Local::borrow |sched: &mut Scheduler| {
                         rtdebug!("non-rendezvous send");
                         sched.metrics.non_rendezvous_sends += 1;
                     }
                 }
                 STATE_ONE => {
-                    do Local::borrow::<Scheduler, ()> |sched| {
+                    do Local::borrow |sched: &mut Scheduler| {
                         rtdebug!("rendezvous send");
                         sched.metrics.rendezvous_sends += 1;
                     }
@@ -167,7 +167,7 @@ impl<T> ChanOne<T> {
                         };
                     } else {
                         let recvr = Cell::new(recvr);
-                        do Local::borrow::<Scheduler, ()> |sched| {
+                        do Local::borrow |sched: &mut Scheduler| {
                             sched.enqueue_blocked_task(recvr.take());
                         }
                     }
@@ -207,7 +207,7 @@ impl<T> PortOne<T> {
         if !this.optimistic_check() {
             // No data available yet.
             // Switch to the scheduler to put the ~Task into the Packet state.
-            let sched = Local::take::<Scheduler>();
+            let sched: ~Scheduler = Local::take();
             do sched.deschedule_running_task_and_then |sched, task| {
                 this.block_on(sched, task);
             }
@@ -229,7 +229,7 @@ impl<T> SelectInner for PortOne<T> {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
         use rand::{Rand};
-        let actually_check = do Local::borrow::<Scheduler, bool> |sched| {
+        let actually_check = do Local::borrow |sched: &mut Scheduler| {
             Rand::rand(&mut sched.rng)
         };
         if actually_check {
