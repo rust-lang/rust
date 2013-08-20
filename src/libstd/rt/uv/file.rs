@@ -15,7 +15,7 @@ use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf,
              status_to_maybe_uv_error_with_loop};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
-use path::Path;
+use super::super::io::support::PathLike;
 use cast::transmute;
 use libc::{c_int};
 use option::{None, Some, Option};
@@ -97,7 +97,7 @@ impl FileDescriptor {
         FileDescriptor::new(req.get_result())
     }
 
-    fn open_common(loop_: Loop, path: Path, flags: int, mode: int,
+    fn open_common<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int,
                cb: Option<FsCallback>) -> int {
         let complete_cb_ptr = match cb {
             Some(_) => compl_cb,
@@ -105,39 +105,44 @@ impl FileDescriptor {
         };
         let is_sync = cb.is_none();
         let req = FsRequest::new(cb);
-        let result = path.to_str().to_c_str().with_ref(|p| unsafe {
+        let result = path.path_as_str(|p| {
+            p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                           req.native_handle(), p, flags, mode, complete_cb_ptr) as int
+            })
         });
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn open(loop_: Loop, path: Path, flags: int, mode: int,
+    pub fn open<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int,
                cb: FsCallback) -> int {
         FileDescriptor::open_common(loop_, path, flags, mode, Some(cb))
     }
-    pub fn open_sync(loop_: Loop, path: Path, flags: int, mode: int) -> int {
+
+    pub fn open_sync<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int) -> int {
         FileDescriptor::open_common(loop_, path, flags, mode, None)
     }
 
-    fn unlink_common(loop_: Loop, path: Path, cb: Option<FsCallback>) -> int {
+    fn unlink_common<P: PathLike>(loop_: Loop, path: &P, cb: Option<FsCallback>) -> int {
         let complete_cb_ptr = match cb {
             Some(_) => compl_cb,
             None => 0 as *u8
         };
         let is_sync = cb.is_none();
         let req = FsRequest::new(cb);
-        let result = path.to_str().to_c_str().with_ref(|p| unsafe {
-            uvll::fs_unlink(loop_.native_handle(),
-                          req.native_handle(), p, complete_cb_ptr) as int
+        let result = path.path_as_str(|p| {
+            p.to_c_str().with_ref(|p| unsafe {
+                uvll::fs_unlink(loop_.native_handle(),
+                              req.native_handle(), p, complete_cb_ptr) as int
+            })
         });
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn unlink(loop_: Loop, path: Path, cb: FsCallback) -> int {
+    pub fn unlink<P: PathLike>(loop_: Loop, path: &P, cb: FsCallback) -> int {
         FileDescriptor::unlink_common(loop_, path, Some(cb))
     }
-    pub fn unlink_sync(loop_: Loop, path: Path) -> int {
+    pub fn unlink_sync<P: PathLike>(loop_: Loop, path: &P) -> int {
         FileDescriptor::unlink_common(loop_, path, None)
     }
 
@@ -284,7 +289,8 @@ mod test {
             let read_mem = vec::from_elem(read_buf_len, 0u8);
             let read_buf = slice_to_uv_buf(read_mem);
             let read_buf_ptr: *Buf = &read_buf;
-            do FileDescriptor::open(loop_, Path(path_str), create_flags as int, mode as int)
+            let p = Path(path_str);
+            do FileDescriptor::open(loop_, &p, create_flags as int, mode as int)
             |req, uverr| {
                 let loop_ = req.get_loop();
                 assert!(uverr.is_none());
@@ -296,7 +302,7 @@ mod test {
                     do fd.close(loop_) |req, _| {
                         let loop_ = req.get_loop();
                         assert!(uverr.is_none());
-                        do FileDescriptor::open(loop_, Path(path_str), read_flags as int,0)
+                        do FileDescriptor::open(loop_, &Path(path_str), read_flags as int,0)
                             |req, uverr| {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
@@ -319,7 +325,7 @@ mod test {
                                     assert!(read_str == ~"hello");
                                     do FileDescriptor(raw_fd).close(loop_) |_,uverr| {
                                         assert!(uverr.is_none());
-                                        do FileDescriptor::unlink(loop_, Path(path_str))
+                                        do FileDescriptor::unlink(loop_, &Path(path_str))
                                         |_,uverr| {
                                             assert!(uverr.is_none());
                                         };
@@ -350,7 +356,7 @@ mod test {
             let write_val = "hello".as_bytes().to_owned();
             let write_buf = slice_to_uv_buf(write_val);
             // open/create
-            let result = FileDescriptor::open_sync(loop_, Path(path_str),
+            let result = FileDescriptor::open_sync(loop_, &Path(path_str),
                                                    create_flags as int, mode as int);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
@@ -364,7 +370,7 @@ mod test {
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             // re-open
-            let result = FileDescriptor::open_sync(loop_, Path(path_str),
+            let result = FileDescriptor::open_sync(loop_, &Path(path_str),
                                                    read_flags as int,0);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
@@ -388,7 +394,7 @@ mod test {
                 assert!(status_to_maybe_uv_error_with_loop(
                     loop_.native_handle(), result as i32).is_none());
                 // unlink
-                let result = FileDescriptor::unlink_sync(loop_, Path(path_str));
+                let result = FileDescriptor::unlink_sync(loop_, &Path(path_str));
                 assert!(status_to_maybe_uv_error_with_loop(
                     loop_.native_handle(), result as i32).is_none());
             } else { fail!("nread was 0.. wudn't expectin' that."); }
