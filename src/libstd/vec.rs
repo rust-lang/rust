@@ -65,7 +65,7 @@ use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use iterator::*;
 use libc::c_void;
-use num::Zero;
+use num::{Integer, Zero, CheckedAdd, Saturating};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -209,6 +209,7 @@ pub struct SplitIterator<'self, T> {
 }
 
 impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
+    #[inline]
     fn next(&mut self) -> Option<&'self [T]> {
         if self.finished { return None; }
 
@@ -230,6 +231,21 @@ impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.finished {
+            return (0, Some(0))
+        }
+        // if the predicate doesn't match anything, we yield one slice
+        // if it matches every element, we yield N+1 empty slices where
+        // N is either the number of elements or the number of splits.
+        match (self.v.len(), self.n) {
+            (0,_) => (1, Some(1)),
+            (_,0) => (1, Some(1)),
+            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
+        }
+    }
 }
 
 /// An iterator over the slices of a vector separated by elements that
@@ -242,6 +258,7 @@ pub struct RSplitIterator<'self, T> {
 }
 
 impl<'self, T> Iterator<&'self [T]> for RSplitIterator<'self, T> {
+    #[inline]
     fn next(&mut self) -> Option<&'self [T]> {
         if self.finished { return None; }
 
@@ -261,6 +278,18 @@ impl<'self, T> Iterator<&'self [T]> for RSplitIterator<'self, T> {
                 self.n -= 1;
                 ret
             }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.finished {
+            return (0, Some(0))
+        }
+        match (self.v.len(), self.n) {
+            (0,_) => (1, Some(1)),
+            (_,0) => (1, Some(1)),
+            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
         }
     }
 }
@@ -453,6 +482,7 @@ pub struct WindowIter<'self, T> {
 }
 
 impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
+    #[inline]
     fn next(&mut self) -> Option<&'self [T]> {
         if self.size > self.v.len() {
             None
@@ -460,6 +490,16 @@ impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
             let ret = Some(self.v.slice(0, self.size));
             self.v = self.v.slice(1, self.v.len());
             ret
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.size > self.v.len() {
+            (0, Some(0))
+        } else {
+            let x = self.v.len() - self.size;
+            (x.saturating_add(1), x.checked_add(&1u))
         }
     }
 }
@@ -476,6 +516,7 @@ pub struct ChunkIter<'self, T> {
 }
 
 impl<'self, T> Iterator<&'self [T]> for ChunkIter<'self, T> {
+    #[inline]
     fn next(&mut self) -> Option<&'self [T]> {
         if self.v.len() == 0 {
             None
@@ -487,9 +528,21 @@ impl<'self, T> Iterator<&'self [T]> for ChunkIter<'self, T> {
             Some(fst)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.v.len() == 0 {
+            (0, Some(0))
+        } else {
+            let (n, rem) = self.v.len().div_rem(&self.size);
+            let n = if rem > 0 { n+1 } else { n };
+            (n, Some(n))
+        }
+    }
 }
 
 impl<'self, T> DoubleEndedIterator<&'self [T]> for ChunkIter<'self, T> {
+    #[inline]
     fn next_back(&mut self) -> Option<&'self [T]> {
         if self.v.len() == 0 {
             None
@@ -2236,6 +2289,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
         exact
     }
 
+    #[inline]
     fn idx(&self, index: uint) -> Option<&'self T> {
         unsafe {
             if index < self.indexable() {
@@ -2281,6 +2335,7 @@ pub struct MoveIterator<T> {
 }
 
 impl<T> Iterator<T> for MoveIterator<T> {
+    #[inline]
     fn next(&mut self) -> Option<T> {
         // this is peculiar, but is required for safety with respect
         // to dtors. It traverses the first half of the vec, and
@@ -2298,6 +2353,12 @@ impl<T> Iterator<T> for MoveIterator<T> {
 
         self.v.pop_opt()
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let l = self.v.len();
+        (l, Some(l))
+    }
 }
 
 /// An iterator that moves out of a vector in reverse order.
@@ -2307,8 +2368,15 @@ pub struct MoveRevIterator<T> {
 }
 
 impl<T> Iterator<T> for MoveRevIterator<T> {
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.v.pop_opt()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let l = self.v.len();
+        (l, Some(l))
     }
 }
 

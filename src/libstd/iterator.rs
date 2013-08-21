@@ -18,7 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One, Integer, Saturating};
+use num::{Zero, One, Integer, CheckedAdd, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::Ord;
@@ -838,7 +838,7 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Chain<T, U> {
         let lower = a_lower.saturating_add(b_lower);
 
         let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => Some(x.saturating_add(y)),
+            (Some(x), Some(y)) => x.checked_add(&y),
             _ => None
         };
 
@@ -1115,6 +1115,21 @@ impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
         if self.peeked.is_some() { self.peeked.take() }
         else { self.iter.next() }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (lo, hi) = self.iter.size_hint();
+        if self.peeked.is_some() {
+            let lo = lo.saturating_add(1);
+            let hi = match hi {
+                Some(x) => x.checked_add(&1),
+                None => None
+            };
+            (lo, hi)
+        } else {
+            (lo, hi)
+        }
+    }
 }
 
 impl<'self, A, T: Iterator<A>> Peekable<A, T> {
@@ -1122,15 +1137,12 @@ impl<'self, A, T: Iterator<A>> Peekable<A, T> {
     /// or None if the iterator is exhausted.
     #[inline]
     pub fn peek(&'self mut self) -> Option<&'self A> {
+        if self.peeked.is_none() {
+            self.peeked = self.iter.next();
+        }
         match self.peeked {
             Some(ref value) => Some(value),
-            None => {
-                self.peeked = self.iter.next();
-                match self.peeked {
-                    Some(ref value) => Some(value),
-                    None => None,
-                }
-            },
+            None => None,
         }
     }
 }
@@ -1376,7 +1388,7 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for
         let (blo, bhi) = self.backiter.map_default((0, Some(0)), |it| it.size_hint());
         let lo = flo.saturating_add(blo);
         match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (lo, Some(a.saturating_add(b))),
+            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(&b)),
             _ => (lo, None)
         }
     }
@@ -1482,6 +1494,12 @@ impl<'self, A, St> Iterator<A> for Unfoldr<'self, A, St> {
     fn next(&mut self) -> Option<A> {
         (self.f)(&mut self.state)
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // no possible known bounds at this point
+        (0, None)
+    }
 }
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
@@ -1525,6 +1543,9 @@ impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
             None
         }
     }
+
+    // FIXME: #8606 Implement size_hint() on Range
+    // Blocked on #8605 Need numeric trait for converting to `Option<uint>`
 }
 
 impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
