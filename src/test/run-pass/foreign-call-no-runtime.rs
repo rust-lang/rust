@@ -2,7 +2,8 @@ use std::cast;
 use std::libc;
 use std::unstable::run_in_bare_thread;
 
-externfn!(fn rust_dbg_call(cb: *u8, data: libc::uintptr_t) -> libc::uintptr_t)
+externfn!(fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t),
+                           data: libc::uintptr_t) -> libc::uintptr_t)
 
 pub fn main() {
     unsafe {
