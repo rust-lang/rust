@@ -80,7 +80,7 @@ pub struct Scheduler {
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    idle_callback: ~PausibleIdleCallback
+    idle_callback: Option<~PausibleIdleCallback>
 }
 
 impl Scheduler {
@@ -107,9 +107,6 @@ impl Scheduler {
                        friend: Option<SchedHandle>)
         -> Scheduler {
 
-        let mut event_loop = event_loop;
-        let idle_callback = event_loop.pausible_idle_callback();
-
         Scheduler {
             sleeper_list: sleeper_list,
             message_queue: MessageQueue::new(),
@@ -125,7 +122,7 @@ impl Scheduler {
             run_anything: run_anything,
             friend_handle: friend,
             rng: XorShiftRng::new(),
-            idle_callback: idle_callback
+            idle_callback: None
         }
     }
 
@@ -140,6 +137,9 @@ impl Scheduler {
 
         let mut this = self;
 
+        // Build an Idle callback.
+        this.idle_callback = Some(this.event_loop.pausible_idle_callback());
+
         // Initialize the TLS key.
         local_ptr::init_tls_key();
 
@@ -153,7 +153,7 @@ impl Scheduler {
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
-        this.idle_callback.start(Scheduler::run_sched_once);
+        this.idle_callback.get_mut_ref().start(Scheduler::run_sched_once);
 
         // Now, as far as all the scheduler state is concerned, we are
         // inside the "scheduler" context. So we can act like the
@@ -169,6 +169,12 @@ impl Scheduler {
         rtdebug!("starting scheduler %u", sched.sched_id());
         sched.run();
 
+        // Close the idle callback.
+        let mut sched = Local::take::<Scheduler>();
+        sched.idle_callback.get_mut_ref().close();
+        // Make one go through the loop to run the close callback.
+        sched.run();
+
         // Now that we are done with the scheduler, clean up the
         // scheduler task. Do so by removing it from TLS and manually
         // cleaning up the memory it uses. As we didn't actually call
@@ -181,9 +187,6 @@ impl Scheduler {
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
         assert!(message.is_none());
-
-        // Close the idle callback.
-        stask.sched.get_mut_ref().idle_callback.close();
 
         stask.destroyed = true;
     }
@@ -230,7 +233,7 @@ impl Scheduler {
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
-        sched.idle_callback.resume();
+        sched.idle_callback.get_mut_ref().resume();
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
@@ -257,12 +260,12 @@ impl Scheduler {
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
             // Since we are sleeping, deactivate the idle callback.
-            sched.idle_callback.pause();
+            sched.idle_callback.get_mut_ref().pause();
         } else {
             rtdebug!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
             // the idle callback.
-            sched.idle_callback.pause();
+            sched.idle_callback.get_mut_ref().pause();
         }
 
         // Finished a cycle without using the Scheduler. Place it back
@@ -461,7 +464,7 @@ impl Scheduler {
 
         // We push the task onto our local queue clone.
         this.work_queue.push(task);
-        this.idle_callback.resume();
+        this.idle_callback.get_mut_ref().resume();
 
         // We've made work available. Notify a
         // sleeping scheduler.
