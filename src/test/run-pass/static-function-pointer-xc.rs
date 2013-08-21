@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn f(x: int) -> int { -x }
+// xfail-fast
+// aux-build:static-function-pointer-aux.rs
+extern mod aux(name = "static-function-pointer-aux");
 
-pub static F: extern fn(int) -> int = f;
-pub static mut MutF: extern fn(int) -> int = f;
+fn f(x: int) -> int { x }
+
+fn main() {
+    assert_eq!(aux::F(42), -42);
+    unsafe {
+        assert_eq!(aux::MutF(42), -42);
+        aux::MutF = f;
+        assert_eq!(aux::MutF(42), 42);
+        aux::MutF = aux::f;
+        assert_eq!(aux::MutF(42), -42);
+    }
+}
