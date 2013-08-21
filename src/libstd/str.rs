@@ -450,6 +450,97 @@ impl<'self> Iterator<&'self str> for StrSplitIterator<'self> {
     }
 }
 
+// Helper functions used for Unicode normalization
+fn canonical_sort(comb: &mut [(char, u8)]) {
+    use iterator::range;
+    use tuple::CopyableTuple;
+
+    let len = comb.len();
+    for i in range(0, len) {
+        let mut swapped = false;
+        for j in range(1, len-i) {
+            let classA = comb[j-1].second();
+            let classB = comb[j].second();
+            if classA != 0 && classB != 0 && classA > classB {
+                comb.swap(j-1, j);
+                swapped = true;
+            }
+        }
+        if !swapped { break; }
+    }
+}
+
+#[deriving(Clone)]
+enum NormalizationForm {
+    NFD,
+    NFKD
+}
+
+/// External iterator for a string's normalization's characters.
+/// Use with the `std::iterator` module.
+#[deriving(Clone)]
+struct NormalizationIterator<'self> {
+    priv kind: NormalizationForm,
+    priv index: uint,
+    priv string: &'self str,
+    priv buffer: ~[(char, u8)],
+    priv sorted: bool
+}
+
+impl<'self> Iterator<char> for NormalizationIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        use unicode::decompose::canonical_combining_class;
+
+        match self.buffer.head_opt() {
+            Some(&(c, 0)) => {
+                self.sorted = false;
+                self.buffer.shift();
+                return Some(c);
+            }
+            Some(&(c, _)) if self.sorted => {
+                self.buffer.shift();
+                return Some(c);
+            }
+            _ => self.sorted = false
+        }
+
+        let decomposer = match self.kind {
+            NFD => char::decompose_canonical,
+            NFKD => char::decompose_compatible
+        };
+
+        while !self.sorted && self.index < self.string.len() {
+            let CharRange {ch, next} = self.string.char_range_at(self.index);
+            self.index = next;
+            do decomposer(ch) |d| {
+                let class = canonical_combining_class(d);
+                if class == 0 && !self.sorted {
+                    canonical_sort(self.buffer);
+                    self.sorted = true;
+                }
+                self.buffer.push((d, class));
+            }
+        }
+
+        if !self.sorted {
+            canonical_sort(self.buffer);
+            self.sorted = true;
+        }
+
+        match self.buffer.shift_opt() {
+            Some((c, 0)) => {
+                self.sorted = false;
+                Some(c)
+            }
+            Some((c, _)) => Some(c),
+            None => None
+        }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) { (self.string.len(), None) }
+}
+
 /// Replace all occurrences of one string with another
 ///
 /// # Arguments
@@ -1128,6 +1219,8 @@ pub trait StrSlice<'self> {
     fn line_iter(&self) -> CharSplitIterator<'self, char>;
     fn any_line_iter(&self) -> AnyLineIterator<'self>;
     fn word_iter(&self) -> WordIterator<'self>;
+    fn nfd_iter(&self) -> NormalizationIterator<'self>;
+    fn nfkd_iter(&self) -> NormalizationIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
@@ -1341,6 +1434,28 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn word_iter(&self) -> WordIterator<'self> {
         self.split_iter(char::is_whitespace).filter(|s| !s.is_empty())
+    }
+
+    /// Returns the string in Unicode Normalization Form D (canonical decomposition)
+    fn nfd_iter(&self) -> NormalizationIterator<'self> {
+        NormalizationIterator {
+            index: 0,
+            string: *self,
+            buffer: ~[],
+            sorted: false,
+            kind: NFD
+        }
+    }
+
+    /// Returns the string in Unicode Normalization Form KD (compatibility decomposition)
+    fn nfkd_iter(&self) -> NormalizationIterator<'self> {
+        NormalizationIterator {
+            index: 0,
+            string: *self,
+            buffer: ~[],
+            sorted: false,
+            kind: NFKD
+        }
     }
 
     /// Returns true if the string contains only whitespace
@@ -3215,6 +3330,34 @@ mod tests {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
         let words: ~[&str] = data.word_iter().collect();
         assert_eq!(words, ~["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+    }
+
+    #[test]
+    fn test_nfd_iter() {
+        assert_eq!("abc".nfd_iter().collect::<~str>(), ~"abc");
+        assert_eq!("\u1e0b\u01c4".nfd_iter().collect::<~str>(), ~"d\u0307\u01c4");
+        assert_eq!("\u2026".nfd_iter().collect::<~str>(), ~"\u2026");
+        assert_eq!("\u2126".nfd_iter().collect::<~str>(), ~"\u03a9");
+        assert_eq!("\u1e0b\u0323".nfd_iter().collect::<~str>(), ~"d\u0323\u0307");
+        assert_eq!("\u1e0d\u0307".nfd_iter().collect::<~str>(), ~"d\u0323\u0307");
+        assert_eq!("a\u0301".nfd_iter().collect::<~str>(), ~"a\u0301");
+        assert_eq!("\u0301a".nfd_iter().collect::<~str>(), ~"\u0301a");
+        assert_eq!("\ud4db".nfd_iter().collect::<~str>(), ~"\u1111\u1171\u11b6");
+        assert_eq!("\uac1c".nfd_iter().collect::<~str>(), ~"\u1100\u1162");
+    }
+
+    #[test]
+    fn test_nfkd_iter() {
+        assert_eq!("abc".nfkd_iter().collect::<~str>(), ~"abc");
+        assert_eq!("\u1e0b\u01c4".nfkd_iter().collect::<~str>(), ~"d\u0307DZ\u030c");
+        assert_eq!("\u2026".nfkd_iter().collect::<~str>(), ~"...");
+        assert_eq!("\u2126".nfkd_iter().collect::<~str>(), ~"\u03a9");
+        assert_eq!("\u1e0b\u0323".nfkd_iter().collect::<~str>(), ~"d\u0323\u0307");
+        assert_eq!("\u1e0d\u0307".nfkd_iter().collect::<~str>(), ~"d\u0323\u0307");
+        assert_eq!("a\u0301".nfkd_iter().collect::<~str>(), ~"a\u0301");
+        assert_eq!("\u0301a".nfkd_iter().collect::<~str>(), ~"\u0301a");
+        assert_eq!("\ud4db".nfkd_iter().collect::<~str>(), ~"\u1111\u1171\u11b6");
+        assert_eq!("\uac1c".nfkd_iter().collect::<~str>(), ~"\u1100\u1162");
     }
 
     #[test]

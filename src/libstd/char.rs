@@ -13,7 +13,7 @@
 use option::{None, Option, Some};
 use int;
 use str::StrSlice;
-use unicode::{derived_property, general_category};
+use unicode::{derived_property, general_category, decompose};
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -199,6 +199,51 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
         }
     } else {
         None
+    }
+}
+
+// Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
+static S_BASE: uint = 0xAC00;
+static L_BASE: uint = 0x1100;
+static V_BASE: uint = 0x1161;
+static T_BASE: uint = 0x11A7;
+static L_COUNT: uint = 19;
+static V_COUNT: uint = 21;
+static T_COUNT: uint = 28;
+static N_COUNT: uint = (V_COUNT * T_COUNT);
+static S_COUNT: uint = (L_COUNT * N_COUNT);
+
+// Decompose a precomposed Hangul syllable
+fn decompose_hangul(s: char, f: &fn(char)) {
+    let si = s as uint - S_BASE;
+
+    let li = si / N_COUNT;
+    f((L_BASE + li) as char);
+
+    let vi = (si % N_COUNT) / T_COUNT;
+    f((V_BASE + vi) as char);
+
+    let ti = si % T_COUNT;
+    if ti > 0 {
+        f((T_BASE + ti) as char);
+    }
+}
+
+/// Returns the canonical decompostion of a character
+pub fn decompose_canonical(c: char, f: &fn(char)) {
+    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
+        decompose::canonical(c, f);
+    } else {
+        decompose_hangul(c, f);
+    }
+}
+
+/// Returns the compatibility decompostion of a character
+pub fn decompose_compatible(c: char, f: &fn(char)) {
+    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
+        decompose::compatibility(c, f);
+    } else {
+        decompose_hangul(c, f);
     }
 }
 
