@@ -380,35 +380,25 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     f(buf.slice(0, cur))
 }
 
-/// Convert to a string in base 10.
-#[inline]
-pub fn to_str(num: $T) -> ~str {
-    to_str_radix(num, 10u)
-}
-
-/// Convert to a string in a given base.
-#[inline]
-pub fn to_str_radix(num: $T, radix: uint) -> ~str {
-    let mut buf = ~[];
-    do strconv::int_to_str_bytes_common(num, radix, strconv::SignNone) |i| {
-        buf.push(i);
-    }
-    // We know we generated valid utf-8, so we don't need to go through that
-    // check.
-    unsafe { str::raw::from_bytes_owned(buf) }
-}
-
 impl ToStr for $T {
+    /// Convert to a string in base 10.
     #[inline]
     fn to_str(&self) -> ~str {
-        to_str(*self)
+        self.to_str_radix(10u)
     }
 }
 
 impl ToStrRadix for $T {
+    /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
-        to_str_radix(*self, radix)
+        let mut buf = ~[];
+        do strconv::int_to_str_bytes_common(*self, radix, strconv::SignNone) |i| {
+            buf.push(i);
+        }
+        // We know we generated valid utf-8, so we don't need to go through that
+        // check.
+        unsafe { str::raw::from_bytes_owned(buf) }
     }
 }
 
@@ -451,7 +441,6 @@ mod tests {
     use u32;
     use u64;
     use u8;
-    use uint;
 
     #[test]
     fn test_num() {
@@ -536,13 +525,13 @@ mod tests {
 
     #[test]
     pub fn test_to_str() {
-        assert_eq!(to_str_radix(0 as $T, 10u), ~"0");
-        assert_eq!(to_str_radix(1 as $T, 10u), ~"1");
-        assert_eq!(to_str_radix(2 as $T, 10u), ~"2");
-        assert_eq!(to_str_radix(11 as $T, 10u), ~"11");
-        assert_eq!(to_str_radix(11 as $T, 16u), ~"b");
-        assert_eq!(to_str_radix(255 as $T, 16u), ~"ff");
-        assert_eq!(to_str_radix(0xff as $T, 10u), ~"255");
+        assert_eq!((0 as $T).to_str_radix(10u), ~"0");
+        assert_eq!((1 as $T).to_str_radix(10u), ~"1");
+        assert_eq!((2 as $T).to_str_radix(10u), ~"2");
+        assert_eq!((11 as $T).to_str_radix(10u), ~"11");
+        assert_eq!((11 as $T).to_str_radix(16u), ~"b");
+        assert_eq!((255 as $T).to_str_radix(16u), ~"ff");
+        assert_eq!((0xff as $T).to_str_radix(10u), ~"255");
     }
 
     #[test]
@@ -575,28 +564,28 @@ mod tests {
     #[test]
     fn test_uint_to_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8::to_str(u8_val), ~"255");
+        assert_eq!(u8_val.to_str(), ~"255");
 
         u8_val += 1 as u8;
-        assert_eq!(u8::to_str(u8_val), ~"0");
+        assert_eq!(u8_val.to_str(), ~"0");
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16::to_str(u16_val), ~"65535");
+        assert_eq!(u16_val.to_str(), ~"65535");
 
         u16_val += 1 as u16;
-        assert_eq!(u16::to_str(u16_val), ~"0");
+        assert_eq!(u16_val.to_str(), ~"0");
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32::to_str(u32_val), ~"4294967295");
+        assert_eq!(u32_val.to_str(), ~"4294967295");
 
         u32_val += 1 as u32;
-        assert_eq!(u32::to_str(u32_val), ~"0");
+        assert_eq!(u32_val.to_str(), ~"0");
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64::to_str(u64_val), ~"18446744073709551615");
+        assert_eq!(u64_val.to_str(), ~"18446744073709551615");
 
         u64_val += 1 as u64;
-        assert_eq!(u64::to_str(u64_val), ~"0");
+        assert_eq!(u64_val.to_str(), ~"0");
     }
 
     #[test]
@@ -638,14 +627,14 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     pub fn to_str_radix1() {
-        uint::to_str_radix(100u, 1u);
+        100u.to_str_radix(1u);
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
     pub fn to_str_radix37() {
-        uint::to_str_radix(100u, 37u);
+        100u.to_str_radix(37u);
     }
 
     #[test]

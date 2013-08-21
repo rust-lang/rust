@@ -17,7 +17,6 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str, trait_ref_to_str};
 
-use std::uint;
 use syntax::ast;
 
 pub trait InferStr {
@@ -72,7 +71,7 @@ impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
         match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
           Root(ref pt, rk) => fmt!("Root(%s, %s)", pt.inf_str(cx),
-                               uint::to_str_radix(rk, 10u))
+                               rk.to_str_radix(10u))
         }
     }
 }

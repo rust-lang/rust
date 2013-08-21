@@ -525,7 +525,7 @@ impl ToStrRadix for BigUint {
             if v.is_empty() { return ~"0" }
             let mut s = str::with_capacity(v.len() * l);
             for n in v.rev_iter() {
-                let ss = uint::to_str_radix(*n as uint, radix);
+                let ss = (*n as uint).to_str_radix(radix);
                 s.push_str("0".repeat(l - ss.len()));
                 s.push_str(ss);
             }

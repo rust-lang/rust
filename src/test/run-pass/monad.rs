@@ -40,7 +40,7 @@ impl<A> option_monad<A> for Option<A> {
 }
 
 fn transform(x: Option<int>) -> Option<~str> {
-    x.bind(|n| Some(*n + 1) ).bind(|n| Some(int::to_str(*n)) )
+    x.bind(|n| Some(*n + 1) ).bind(|n| Some(n.to_str()) )
 }
 
 pub fn main() {

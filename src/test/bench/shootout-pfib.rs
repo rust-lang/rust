@@ -125,7 +125,7 @@ fn main() {
                 let elapsed = stop - start;
 
                 out.write_line(fmt!("%d\t%d\t%s", n, fibn,
-                                    u64::to_str(elapsed)));
+                                    elapsed.to_str()));
             }
         }
     }

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use std::uint;
 use std::vec;
 
 struct Quad {
@@ -121,7 +120,7 @@ pub fn md4_str(msg: &[u8]) -> ~str {
             if byte <= 16u8 {
                 result.push_char('0')
             }
-            result.push_str(uint::to_str_radix(byte as uint, 16u));
+            result.push_str((byte as uint).to_str_radix(16u));
             i += 1u32;
         }
     }

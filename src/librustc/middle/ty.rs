@@ -33,7 +33,6 @@ use std::ops;
 use std::ptr::to_unsafe_ptr;
 use std::to_bytes;
 use std::to_str::ToStr;
-use std::u32;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
@@ -1944,7 +1943,7 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 
 impl ToStr for TypeContents {
     fn to_str(&self) -> ~str {
-        fmt!("TypeContents(%s)", u32::to_str_radix(self.bits, 2))
+        fmt!("TypeContents(%s)", self.bits.to_str_radix(2))
     }
 }
 

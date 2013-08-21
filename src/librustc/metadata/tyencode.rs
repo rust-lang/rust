@@ -17,7 +17,6 @@ use middle::ty;
 use std::hashmap::HashMap;
 use std::io::WriterUtil;
 use std::io;
-use std::uint;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::*;
@@ -324,7 +323,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
         w.write_char('p');
         w.write_str((cx.ds)(did));
         w.write_char('|');
-        w.write_str(uint::to_str(id));
+        w.write_str(id.to_str());
       }
       ty::ty_self(did) => {
         w.write_char('s');

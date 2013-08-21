@@ -2864,17 +2864,16 @@ the vtable pointer for the `T` implementation of `R`, and the pointer value of `
 An example of an object type:
 
 ~~~~~~~~
-# use std::int;
 trait Printable {
-  fn to_str(&self) -> ~str;
+  fn to_string(&self) -> ~str;
 }
 
 impl Printable for int {
-  fn to_str(&self) -> ~str { int::to_str(*self) }
+  fn to_string(&self) -> ~str { self.to_str() }
 }
 
 fn print(a: @Printable) {
-   println(a.to_str());
+   println(a.to_string());
 }
 
 fn main() {
