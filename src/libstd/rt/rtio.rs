@@ -91,5 +91,5 @@ pub trait RtioUdpSocket : RtioSocket {
 }
 
 pub trait RtioTimer {
-    fn sleep(&self, msecs: u64);
+    fn sleep(&mut self, msecs: u64);
 }

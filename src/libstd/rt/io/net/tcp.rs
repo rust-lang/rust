@@ -88,9 +88,7 @@ impl Writer for TcpStream {
     fn write(&mut self, buf: &[u8]) {
         match (**self).write(buf) {
             Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
+            Err(ioerr) => io_error::cond.raise(ioerr),
         }
     }
 
@@ -129,9 +127,7 @@ impl TcpListener {
 impl Listener<TcpStream> for TcpListener {
     fn accept(&mut self) -> Option<TcpStream> {
         match (**self).accept() {
-            Ok(s) => {
-                Some(TcpStream::new(s))
-            }
+            Ok(s) => Some(TcpStream::new(s)),
             Err(ioerr) => {
                 io_error::cond.raise(ioerr);
                 return None;

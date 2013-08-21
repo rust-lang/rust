@@ -190,9 +190,10 @@ impl StreamWatcher {
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
-            stream_watcher.get_watcher_data().close_cb.take_unwrap()();
+            let cb = stream_watcher.get_watcher_data().close_cb.take_unwrap();
             stream_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
+            cb();
         }
     }
 }
@@ -411,9 +412,10 @@ impl UdpWatcher {
 
         extern fn close_cb(handle: *uvll::uv_udp_t) {
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
-            udp_watcher.get_watcher_data().close_cb.take_unwrap()();
+            let cb = udp_watcher.get_watcher_data().close_cb.take_unwrap();
             udp_watcher.drop_watcher_data();
             unsafe { free_handle(handle as *c_void) }
+            cb();
         }
     }
 }

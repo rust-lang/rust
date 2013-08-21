@@ -17,7 +17,7 @@ use option::{Option, None, Some};
 
 type Port = u16;
 
-#[deriving(Eq, TotalEq)]
+#[deriving(Eq, TotalEq, Clone)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -62,7 +62,7 @@ impl ToStr for IpAddr {
     }
 }
 
-#[deriving(Eq, TotalEq)]
+#[deriving(Eq, TotalEq, Clone)]
 pub struct SocketAddr {
     ip: IpAddr,
     port: Port,
