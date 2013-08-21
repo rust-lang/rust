@@ -57,7 +57,7 @@ trait HomingIO {
         let old_home = Cell::new_empty();
         let old_home_ptr = &old_home;
         do task::unkillable { // FIXME(#8674)
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 // get the old home first
                 do task.wake().map_move |mut task| {
@@ -72,7 +72,7 @@ trait HomingIO {
 
         // unhome home
         do task::unkillable { // FIXME(#8674)
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |scheduler, task| {
                 do task.wake().map_move |mut task| {
                     task.give_home(old_home.take());
@@ -122,7 +122,7 @@ trait HomingIO {
 
 // get a handle for the current scheduler
 macro_rules! get_handle_to_current_scheduler(
-    () => (do Local::borrow::<Scheduler, SchedHandle> |sched| { sched.make_handle() })
+    () => (do Local::borrow |sched: &mut Scheduler| { sched.make_handle() })
 )
 
 enum SocketNameKind {
@@ -765,7 +765,7 @@ impl RtioTcpStream for UvTcpStream {
 
                     unsafe { (*result_cell_ptr).put_back(result); }
 
-                    let scheduler: ~Scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
