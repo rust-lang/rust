@@ -135,6 +135,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
             ast::def_struct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ref_expr.id))
             }
+            ast::def_static(*) |
             ast::def_arg(*) |
             ast::def_local(*) |
             ast::def_binding(*) |
@@ -143,7 +144,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
                 datum_callee(bcx, ref_expr)
             }
             ast::def_mod(*) | ast::def_foreign_mod(*) | ast::def_trait(*) |
-            ast::def_static(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
+            ast::def_ty(*) | ast::def_prim_ty(*) |
             ast::def_use(*) | ast::def_typaram_binder(*) |
             ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) |
             ast::def_self_ty(*) | ast::def_method(*) => {
