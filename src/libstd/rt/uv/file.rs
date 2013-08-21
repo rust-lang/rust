@@ -416,7 +416,7 @@ mod test {
         let stdout = FileDescriptor(STDOUT_FILENO);
         let write_val = input.as_bytes();
         let write_buf = slice_to_uv_buf(write_val);
-        stdout.write_sync(loop_, write_buf, 0);
+        stdout.write_sync(loop_, write_buf, -1);
     }
 
     #[test]
