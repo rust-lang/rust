@@ -788,7 +788,7 @@ extern mod complicated_mod = "some-file/in/the-rust/path";
 ##### Use declarations
 
 ~~~~~~~~ {.ebnf .gram}
-use_decl : "pub"? "use" ident [ '=' path
+use_decl : "pub" ? "use" ident [ '=' path
                           | "::" path_glob ] ;
 
 path_glob : ident [ "::" path_glob ] ?
@@ -1920,7 +1920,7 @@ it is automatically dereferenced to make the field access possible.
 ### Vector expressions
 
 ~~~~~~~~{.ebnf .gram}
-vec_expr : '[' "mut"? vec_elems? ']'
+vec_expr : '[' "mut" ? vec_elems? ']'
 
 vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 ~~~~~~~~
