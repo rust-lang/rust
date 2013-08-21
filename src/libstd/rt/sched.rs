@@ -667,7 +667,7 @@ impl Scheduler {
     }
 
     pub fn run_task(task: ~Task) {
-        let sched = Local::take::<Scheduler>();
+        let sched: ~Scheduler = Local::take();
         sched.process_task(task, Scheduler::switch_task).map_move(Local::put);
     }
 
