@@ -1734,3 +1734,23 @@ fn file_test_uvio_full_simple() {
         file_test_uvio_full_simple_impl();
     }
 }
+
+fn uvio_naive_print(input: &str) {
+    use str::StrSlice;
+    unsafe {
+        use libc::{STDOUT_FILENO};
+        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        {
+            let mut fd = (*io).fs_from_raw_fd(STDOUT_FILENO, false);
+            let write_buf = input.as_bytes();
+            fd.write(write_buf);
+        }
+    }
+}
+
+#[test]
+fn file_test_uvio_write_to_stdout() {
+    do run_in_newsched_task {
+        uvio_naive_print("jubilation\n");
+    }
+}
