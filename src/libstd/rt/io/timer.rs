@@ -41,7 +41,7 @@ impl Timer {
 }
 
 impl RtioTimer for Timer {
-    fn sleep(&self, msecs: u64) {
+    fn sleep(&mut self, msecs: u64) {
         (**self).sleep(msecs);
     }
 }
@@ -50,15 +50,11 @@ impl RtioTimer for Timer {
 mod test {
     use super::*;
     use rt::test::*;
-    use option::{Some, None};
     #[test]
     fn test_io_timer_sleep_simple() {
         do run_in_newsched_task {
             let timer = Timer::new();
-            match timer {
-                Some(t) => t.sleep(1),
-                None => assert!(false)
-            }
+            do timer.map_move |mut t| { t.sleep(1) };
         }
     }
 }

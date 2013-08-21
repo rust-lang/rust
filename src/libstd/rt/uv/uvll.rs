@@ -172,6 +172,7 @@ fn request_sanity_check() {
     }
 }
 
+// XXX Event loops ignore SIGPIPE by default.
 pub unsafe fn loop_new() -> *c_void {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -287,7 +288,7 @@ pub unsafe fn get_udp_handle_from_send_req(send_req: *uv_udp_send_t) -> *uv_udp_
     return rust_uv_get_udp_handle_from_send_req(send_req);
 }
 
-pub unsafe fn udp_get_sockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int {
+pub unsafe fn udp_getsockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_udp_getsockname(handle, name);
