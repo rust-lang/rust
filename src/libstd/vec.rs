@@ -1161,6 +1161,7 @@ pub trait OwnedVector<T> {
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
+    fn shrink_to_fit(&mut self);
 
     fn push(&mut self, t: T);
     unsafe fn push_fast(&mut self, t: T);
@@ -1254,6 +1255,7 @@ impl<T> OwnedVector<T> for ~[T] {
      *
      * * n - The number of elements to reserve space for
      */
+    #[inline]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n));
     }
@@ -1269,6 +1271,17 @@ impl<T> OwnedVector<T> for ~[T] {
                 let repr: **Vec<()> = cast::transmute(self);
                 (**repr).alloc / sys::nonzero_size_of::<T>()
             }
+        }
+    }
+
+    /// Shrink the capacity of the vector to match the length
+    fn shrink_to_fit(&mut self) {
+        unsafe {
+            let ptr: *mut *mut Vec<()> = cast::transmute(self);
+            let alloc = (**ptr).fill;
+            let size = alloc + sys::size_of::<Vec<()>>();
+            *ptr = realloc_raw(*ptr as *mut c_void, size) as *mut Vec<()>;
+            (**ptr).alloc = alloc;
         }
     }
 
@@ -2327,6 +2340,7 @@ mod tests {
     use sys;
     use vec::*;
     use cmp::*;
+    use prelude::*;
 
     fn square(n: uint) -> uint { n * n }
 
@@ -3599,6 +3613,18 @@ mod tests {
             cnt += 1;
         }
         assert!(cnt == 3);
+    }
+
+    #[test]
+    fn test_shrink_to_fit() {
+        let mut xs = ~[0, 1, 2, 3];
+        for i in range(4, 100) {
+            xs.push(i)
+        }
+        assert_eq!(xs.capacity(), 128);
+        xs.shrink_to_fit();
+        assert_eq!(xs.capacity(), 100);
+        assert_eq!(xs, range(0, 100).to_owned_vec());
     }
 }
 

@@ -26,7 +26,6 @@ use util::common::time;
 use util::ppaux;
 
 use std::hashmap::{HashMap,HashSet};
-use std::int;
 use std::io;
 use std::os;
 use std::vec;
@@ -454,21 +453,21 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         match node {
           pprust::node_item(s, item) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(item.id));
+            pprust::synth_comment(s, item.id.to_str());
           }
           pprust::node_block(s, ref blk) => {
             pp::space(s.s);
             pprust::synth_comment(
-                s, ~"block " + int::to_str(blk.id));
+                s, ~"block " + blk.id.to_str());
           }
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(expr.id));
+            pprust::synth_comment(s, expr.id.to_str());
             pprust::pclose(s);
           }
           pprust::node_pat(s, pat) => {
             pp::space(s.s);
-            pprust::synth_comment(s, ~"pat " + int::to_str(pat.id));
+            pprust::synth_comment(s, ~"pat " + pat.id.to_str());
           }
         }
     }

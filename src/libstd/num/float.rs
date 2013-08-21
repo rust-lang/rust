@@ -112,29 +112,6 @@ pub fn to_str_hex(num: float) -> ~str {
 }
 
 ///
-/// Converts a float to a string in a given radix
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * radix - The base to use
-///
-/// # Failure
-///
-/// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
-/// possible misinterpretation of the result at higher bases. If those values
-/// are expected, use `to_str_radix_special()` instead.
-///
-#[inline]
-pub fn to_str_radix(num: float, radix: uint) -> ~str {
-    let (r, special) = strconv::float_to_str_common(
-        num, radix, true, strconv::SignNeg, strconv::DigAll);
-    if special { fail!("number has a special value, \
-                         try to_str_radix_special() if those are expected") }
-    r
-}
-
-///
 /// Converts a float to a string in a given radix, and a flag indicating
 /// whether it's a special value
 ///
@@ -187,9 +164,25 @@ impl to_str::ToStr for float {
 }
 
 impl num::ToStrRadix for float {
+    /// Converts a float to a string in a given radix
+    ///
+    /// # Arguments
+    ///
+    /// * num - The float value
+    /// * radix - The base to use
+    ///
+    /// # Failure
+    ///
+    /// Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+    /// possible misinterpretation of the result at higher bases. If those values
+    /// are expected, use `to_str_radix_special()` instead.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
-        to_str_radix(*self, radix)
+        let (r, special) = strconv::float_to_str_common(
+            *self, radix, true, strconv::SignNeg, strconv::DigAll);
+        if special { fail!("number has a special value, \
+                             try to_str_radix_special() if those are expected") }
+        r
     }
 }
 
@@ -1342,8 +1335,8 @@ mod tests {
 
     #[test]
     pub fn test_to_str_radix() {
-        assert_eq!(to_str_radix(36., 36u), ~"10");
-        assert_eq!(to_str_radix(8.125, 2u), ~"1000.001");
+        assert_eq!(36.0f.to_str_radix(36u), ~"10");
+        assert_eq!(8.125f.to_str_radix(2u), ~"1000.001");
     }
 
     #[test]

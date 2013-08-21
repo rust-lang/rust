@@ -10,8 +10,6 @@
 
 #[allow(missing_doc)];
 
-
-use std::int;
 use std::io;
 use std::num;
 use std::str;
@@ -824,7 +822,7 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
           //'U' {}
           'u' => {
             let i = tm.tm_wday as int;
-            int::to_str(if i == 0 { 7 } else { i })
+            (if i == 0 { 7 } else { i }).to_str()
           }
           //'V' {}
           'v' => {
@@ -834,10 +832,10 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('Y', tm))
           }
           //'W' {}
-          'w' => int::to_str(tm.tm_wday as int),
+          'w' => (tm.tm_wday as int).to_str(),
           //'X' {}
           //'x' {}
-          'Y' => int::to_str(tm.tm_year as int + 1900),
+          'Y' => (tm.tm_year as int + 1900).to_str(),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
           'Z' => tm.tm_zone.clone(),
           'z' => {

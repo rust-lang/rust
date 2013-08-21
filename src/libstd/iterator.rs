@@ -24,6 +24,7 @@ use ops::{Add, Mul, Sub};
 use cmp::Ord;
 use clone::Clone;
 use uint;
+use util;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -580,6 +581,26 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     #[inline]
     fn invert(self) -> Invert<Self> {
         Invert{iter: self}
+    }
+}
+
+/// A double-ended iterator yielding mutable references
+pub trait MutableDoubleEndedIterator {
+    // FIXME: #5898: should be called `reverse`
+    /// Use an iterator to reverse a container in-place
+    fn reverse_(&mut self);
+}
+
+impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator for T {
+    // FIXME: #5898: should be called `reverse`
+    /// Use an iterator to reverse a container in-place
+    fn reverse_(&mut self) {
+        loop {
+            match (self.next(), self.next_back()) {
+                (Some(x), Some(y)) => util::swap(x, y),
+                _ => break
+            }
+        }
     }
 }
 
@@ -1522,6 +1543,52 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
     }
 }
 
+/// A range of numbers from [0, N]
+#[deriving(Clone, DeepClone)]
+pub struct RangeInclusive<A> {
+    priv range: Range<A>,
+    priv done: bool
+}
+
+/// Return an iterator over the range [start, stop]
+#[inline]
+pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> RangeInclusive<A> {
+    RangeInclusive{range: range(start, stop), done: false}
+}
+
+impl<A: Add<A, A> + Ord + Clone> Iterator<A> for RangeInclusive<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        match self.range.next() {
+            Some(x) => Some(x),
+            None => {
+                if self.done {
+                    None
+                } else {
+                    self.done = true;
+                    Some(self.range.stop.clone())
+                }
+            }
+        }
+    }
+}
+
+impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclusive<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        if self.range.stop > self.range.state {
+            let result = self.range.stop.clone();
+            self.range.stop = self.range.stop - self.range.one;
+            Some(result)
+        } else if self.done {
+            None
+        } else {
+            self.done = true;
+            Some(self.range.stop.clone())
+        }
+    }
+}
+
 impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
@@ -2285,5 +2352,18 @@ mod tests {
         for _ in range(10u, 0).invert() {
             fail!("unreachable");
         }
+    }
+
+    #[test]
+    fn test_range_inclusive() {
+        assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
+        assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+    }
+
+    #[test]
+    fn test_reverse() {
+        let mut ys = [1, 2, 3, 4, 5];
+        ys.mut_iter().reverse_();
+        assert_eq!(ys, [5, 4, 3, 2, 1]);
     }
 }
