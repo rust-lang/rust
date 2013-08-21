@@ -26,11 +26,15 @@ def fetch(f):
 def load_unicode_data(f):
     fetch(f)
     gencats = {}
+    combines = []
     canon_decomp = {}
     compat_decomp = {}
     curr_cat = ""
+    curr_combine = ""
     c_lo = 0
     c_hi = 0
+    com_lo = 0
+    com_hi = 0
     for line in fileinput.input(f):
         fields = line.split(";")
         if len(fields) != 15:
@@ -69,7 +73,21 @@ def load_unicode_data(f):
             c_lo = code
             c_hi = code
 
-    return (canon_decomp, compat_decomp, gencats)
+        if curr_combine == "":
+            curr_combine = combine
+            com_lo = code
+            com_hi = code
+
+        if curr_combine == combine:
+            com_hi = code
+        else:
+            if curr_combine != "0":
+                combines.append((com_lo, com_hi, curr_combine))
+            curr_combine = combine
+            com_lo = code
+            com_hi = code
+
+    return (canon_decomp, compat_decomp, gencats, combines)
 
 
 def load_derived_core_properties(f):
@@ -178,50 +196,149 @@ def emit_property_module_old(f, mod, tbl):
         f.write("    }\n\n")
     f.write("}\n")
 
-def emit_decomp_module(f, canon, compat):
+def format_table_content(f, content, indent):
+    line = " "*indent
+    first = True
+    for chunk in content.split(","):
+        if len(line) + len(chunk) < 98:
+            if first:
+                line += chunk
+            else:
+                line += ", " + chunk
+            first = False
+        else:
+            f.write(line + ",\n")
+            line = " "*indent + chunk
+    f.write(line)
+
+def emit_decomp_module(f, canon, compat, combine):
     canon_keys = canon.keys()
     canon_keys.sort()
 
     compat_keys = compat.keys()
     compat_keys.sort()
-    f.write("mod decompose {\n\n");
-    f.write("    export canonical, compatibility;\n\n")
-    f.write("    fn canonical(c: char, i: block(char)) "
-            + "{ d(c, i, false); }\n\n")
-    f.write("    fn compatibility(c: char, i: block(char)) "
-            +"{ d(c, i, true); }\n\n")
-    f.write("    fn d(c: char, i: block(char), k: bool) {\n")
+    f.write("pub mod decompose {\n");
+    f.write("    use option::Option;\n");
+    f.write("    use option::{Some, None};\n");
+    f.write("    use vec::ImmutableVector;\n");
+    f.write("""
+    fn bsearch_table(c: char, r: &'static [(char, &'static [char])]) -> Option<&'static [char]> {
+        use cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(val, _)| {
+            if c == val { Equal }
+            else if val < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, result) = r[idx];
+                Some(result)
+            }
+            None => None
+        }
+    }\n
+""")
 
-    f.write("        if c <= '\\x7f' { i(c); ret; }\n")
+    f.write("""
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
+        use cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(lo, hi, _)| {
+            if lo <= c && c <= hi { Equal }
+            else if hi < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, _, result) = r[idx];
+                result
+            }
+            None => 0
+        }
+    }\n\n
+""")
+
+    f.write("    // Canonical decompositions\n")
+    f.write("    static canonical_table : &'static [(char, &'static [char])] = &[\n")
+    data = ""
+    first = True
+    for char in canon_keys:
+        if not first:
+            data += ","
+        first = False
+        data += "(%s,&[" % escape_char(char)
+        first2 = True
+        for d in canon[char]:
+            if not first2:
+                data += ","
+            first2 = False
+            data += escape_char(d)
+        data += "])"
+    format_table_content(f, data, 8)
+    f.write("\n    ];\n\n")
+
+    f.write("    // Compatibility decompositions\n")
+    f.write("    static compatibility_table : &'static [(char, &'static [char])] = &[\n")
+    data = ""
+    first = True
+    for char in compat_keys:
+        if not first:
+            data += ","
+        first = False
+        data += "(%s,&[" % escape_char(char)
+        first2 = True
+        for d in compat[char]:
+            if not first2:
+                data += ","
+            first2 = False
+            data += escape_char(d)
+        data += "])"
+    format_table_content(f, data, 8)
+    f.write("\n    ];\n\n")
+
+    f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
+    ix = 0
+    for pair in combine:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s, %s)" % (escape_char(pair[0]), escape_char(pair[1]), pair[2]))
+        ix += 1
+    f.write("\n    ];\n")
+
+    f.write("    pub fn canonical(c: char, i: &fn(char)) "
+        + "{ d(c, i, false); }\n\n")
+    f.write("    pub fn compatibility(c: char, i: &fn(char)) "
+            +"{ d(c, i, true); }\n\n")
+    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
+        + "        bsearch_range_value_table(c, combining_class_table)\n"
+        + "    }\n\n")
+    f.write("    fn d(c: char, i: &fn(char), k: bool) {\n")
+    f.write("        use iterator::Iterator;\n");
+
+    f.write("        if c <= '\\x7f' { i(c); return; }\n")
 
     # First check the canonical decompositions
-    f.write("        // Canonical decomposition\n")
-    f.write("        alt c {\n")
-    for char in canon_keys:
-        f.write("          %s {\n" % escape_char(char))
-        for d in canon[char]:
-            f.write("            d(%s, i, k);\n"
-                    % escape_char(d))
-        f.write("          }\n")
-
-    f.write("          _ { }\n")
-    f.write("        }\n\n")
+    f.write("""
+        match bsearch_table(c, canonical_table) {
+            Some(canon) => {
+                for x in canon.iter() {
+                    d(*x, |b| i(b), k);
+                }
+                return;
+            }
+            None => ()
+        }\n\n""")
 
     # Bottom out if we're not doing compat.
-    f.write("        if !k { i(c); ret; }\n\n ")
+    f.write("        if !k { i(c); return; }\n")
 
     # Then check the compatibility decompositions
-    f.write("        // Compatibility decomposition\n")
-    f.write("        alt c {\n")
-    for char in compat_keys:
-        f.write("          %s {\n" % escape_char(char))
-        for d in compat[char]:
-            f.write("            d(%s, i, k);\n"
-                    % escape_char(d))
-        f.write("          }\n")
-
-    f.write("          _ { }\n")
-    f.write("        }\n\n")
+    f.write("""
+        match bsearch_table(c, compatibility_table) {
+            Some(compat) => {
+                for x in compat.iter() {
+                    d(*x, |b| i(b), k);
+                }
+                return;
+            }
+            None => ()
+        }\n\n""")
 
     # Finally bottom out.
     f.write("        i(c);\n")
@@ -234,7 +351,7 @@ for i in [r]:
         os.remove(i);
 rf = open(r, "w")
 
-(canon_decomp, compat_decomp, gencats) = load_unicode_data("UnicodeData.txt")
+(canon_decomp, compat_decomp, gencats, combines) = load_unicode_data("UnicodeData.txt")
 
 # Preamble
 rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
@@ -256,7 +373,7 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 emit_property_module(rf, "general_category", gencats)
 
-#emit_decomp_module(rf, canon_decomp, compat_decomp)
+emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
 derived = load_derived_core_properties("DerivedCoreProperties.txt")
 emit_property_module(rf, "derived_property", derived)
