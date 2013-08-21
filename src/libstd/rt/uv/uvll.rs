@@ -31,6 +31,8 @@
 
 use c_str::ToCStr;
 use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
+#[cfg(not(stage0))]
+use libc::ssize_t;
 use libc::{malloc, free};
 use libc;
 use prelude::*;
@@ -63,6 +65,7 @@ pub type uv_idle_t = c_void;
 pub type uv_tcp_t = c_void;
 pub type uv_udp_t = c_void;
 pub type uv_connect_t = c_void;
+pub type uv_connection_t = c_void;
 pub type uv_write_t = c_void;
 pub type uv_async_t = c_void;
 pub type uv_timer_t = c_void;
@@ -70,10 +73,70 @@ pub type uv_stream_t = c_void;
 pub type uv_fs_t = c_void;
 pub type uv_udp_send_t = c_void;
 
+#[cfg(stage0)]
 pub type uv_idle_cb = *u8;
+#[cfg(stage0)]
 pub type uv_alloc_cb = *u8;
+#[cfg(stage0)]
+pub type uv_read_cb = *u8;
+#[cfg(stage0)]
 pub type uv_udp_send_cb = *u8;
+#[cfg(stage0)]
 pub type uv_udp_recv_cb = *u8;
+#[cfg(stage0)]
+pub type uv_close_cb = *u8;
+#[cfg(stage0)]
+pub type uv_walk_cb = *u8;
+#[cfg(stage0)]
+pub type uv_async_cb = *u8;
+#[cfg(stage0)]
+pub type uv_connect_cb = *u8;
+#[cfg(stage0)]
+pub type uv_connection_cb = *u8;
+#[cfg(stage0)]
+pub type uv_timer_cb = *u8;
+#[cfg(stage0)]
+pub type uv_write_cb = *u8;
+
+#[cfg(not(stage0))]
+pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
+                                    status: c_int);
+#[cfg(not(stage0))]
+pub type uv_alloc_cb = extern "C" fn(stream: *uv_stream_t,
+                                     suggested_size: size_t) -> uv_buf_t;
+#[cfg(not(stage0))]
+pub type uv_read_cb = extern "C" fn(stream: *uv_stream_t,
+                                    nread: ssize_t,
+                                    buf: uv_buf_t);
+#[cfg(not(stage0))]
+pub type uv_udp_send_cb = extern "C" fn(req: *uv_udp_send_t,
+                                        status: c_int);
+#[cfg(not(stage0))]
+pub type uv_udp_recv_cb = extern "C" fn(handle: *uv_udp_t,
+                                        nread: ssize_t,
+                                        buf: uv_buf_t,
+                                        addr: *sockaddr,
+                                        flags: c_uint);
+#[cfg(not(stage0))]
+pub type uv_close_cb = extern "C" fn(handle: *uv_handle_t);
+#[cfg(not(stage0))]
+pub type uv_walk_cb = extern "C" fn(handle: *uv_handle_t,
+                                    arg: *c_void);
+#[cfg(not(stage0))]
+pub type uv_async_cb = extern "C" fn(handle: *uv_async_t,
+                                     status: c_int);
+#[cfg(not(stage0))]
+pub type uv_connect_cb = extern "C" fn(handle: *uv_connect_t,
+                                       status: c_int);
+#[cfg(not(stage0))]
+pub type uv_connection_cb = extern "C" fn(handle: *uv_connection_t,
+                                          status: c_int);
+#[cfg(not(stage0))]
+pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t,
+                                     status: c_int);
+#[cfg(not(stage0))]
+pub type uv_write_cb = extern "C" fn(handle: *uv_write_t,
+                                     status: c_int);
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
@@ -191,13 +254,13 @@ pub unsafe fn run(loop_handle: *c_void) {
     rust_uv_run(loop_handle);
 }
 
-pub unsafe fn close<T>(handle: *T, cb: *u8) {
+pub unsafe fn close<T>(handle: *T, cb: uv_close_cb) {
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_close(handle as *c_void, cb);
 }
 
-pub unsafe fn walk(loop_handle: *c_void, cb: *u8, arg: *c_void) {
+pub unsafe fn walk(loop_handle: *c_void, cb: uv_walk_cb, arg: *c_void) {
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_walk(loop_handle, cb, arg);
@@ -332,14 +395,14 @@ pub unsafe fn tcp_init(loop_handle: *c_void, handle: *uv_tcp_t) -> c_int {
 }
 
 pub unsafe fn tcp_connect(connect_ptr: *uv_connect_t, tcp_handle_ptr: *uv_tcp_t,
-                          addr_ptr: *sockaddr_in, after_connect_cb: *u8) -> c_int {
+                          addr_ptr: *sockaddr_in, after_connect_cb: uv_connect_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr, after_connect_cb, addr_ptr);
 }
 
 pub unsafe fn tcp_connect6(connect_ptr: *uv_connect_t, tcp_handle_ptr: *uv_tcp_t,
-                           addr_ptr: *sockaddr_in6, after_connect_cb: *u8) -> c_int {
+                           addr_ptr: *sockaddr_in6, after_connect_cb: uv_connect_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr, after_connect_cb, addr_ptr);
@@ -387,7 +450,8 @@ pub unsafe fn tcp_simultaneous_accepts(handle: *uv_tcp_t, enable: c_int) -> c_in
     return rust_uv_tcp_simultaneous_accepts(handle, enable);
 }
 
-pub unsafe fn listen<T>(stream: *T, backlog: c_int, cb: *u8) -> c_int {
+pub unsafe fn listen<T>(stream: *T, backlog: c_int,
+                        cb: uv_connection_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_listen(stream as *c_void, backlog, cb);
@@ -399,14 +463,19 @@ pub unsafe fn accept(server: *c_void, client: *c_void) -> c_int {
     return rust_uv_accept(server as *c_void, client as *c_void);
 }
 
-pub unsafe fn write<T>(req: *uv_write_t, stream: *T, buf_in: &[uv_buf_t], cb: *u8) -> c_int {
+pub unsafe fn write<T>(req: *uv_write_t,
+                       stream: *T,
+                       buf_in: &[uv_buf_t],
+                       cb: uv_write_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
     return rust_uv_write(req as *c_void, stream as *c_void, buf_ptr, buf_cnt, cb);
 }
-pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: uv_alloc_cb, on_read: *u8) -> c_int {
+pub unsafe fn read_start(stream: *uv_stream_t,
+                         on_alloc: uv_alloc_cb,
+                         on_read: uv_read_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_read_start(stream as *c_void, on_alloc, on_read);
@@ -435,7 +504,9 @@ pub unsafe fn err_name(err: *uv_err_t) -> *c_char {
     return rust_uv_err_name(err);
 }
 
-pub unsafe fn async_init(loop_handle: *c_void, async_handle: *uv_async_t, cb: *u8) -> c_int {
+pub unsafe fn async_init(loop_handle: *c_void,
+                         async_handle: *uv_async_t,
+                         cb: uv_async_cb) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     return rust_uv_async_init(loop_handle, async_handle, cb);
@@ -460,7 +531,8 @@ pub unsafe fn timer_init(loop_ptr: *c_void, timer_ptr: *uv_timer_t) -> c_int {
 
     return rust_uv_timer_init(loop_ptr, timer_ptr);
 }
-pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: u64,
+pub unsafe fn timer_start(timer_ptr: *uv_timer_t,
+                          cb: uv_timer_cb, timeout: u64,
                           repeat: u64) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -634,8 +706,8 @@ extern {
     fn rust_uv_loop_new() -> *c_void;
     fn rust_uv_loop_delete(lp: *c_void);
     fn rust_uv_run(loop_handle: *c_void);
-    fn rust_uv_close(handle: *c_void, cb: *u8);
-    fn rust_uv_walk(loop_handle: *c_void, cb: *u8, arg: *c_void);
+    fn rust_uv_close(handle: *c_void, cb: uv_close_cb);
+    fn rust_uv_walk(loop_handle: *c_void, cb: uv_walk_cb, arg: *c_void);
 
     fn rust_uv_idle_new() -> *uv_idle_t;
     fn rust_uv_idle_delete(handle: *uv_idle_t);
@@ -644,7 +716,9 @@ extern {
     fn rust_uv_idle_stop(handle: *uv_idle_t) -> c_int;
 
     fn rust_uv_async_send(handle: *uv_async_t);
-    fn rust_uv_async_init(loop_handle: *c_void, async_handle: *uv_async_t, cb: *u8) -> c_int;
+    fn rust_uv_async_init(loop_handle: *c_void,
+                          async_handle: *uv_async_t,
+                          cb: uv_async_cb) -> c_int;
     fn rust_uv_tcp_init(loop_handle: *c_void, handle_ptr: *uv_tcp_t) -> c_int;
     fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8, len: size_t);
     fn rust_uv_last_error(loop_handle: *c_void) -> uv_err_t;
@@ -658,10 +732,12 @@ extern {
     fn rust_uv_ip6_name(src: *sockaddr_in6, dst: *u8, size: size_t) -> c_int;
     fn rust_uv_ip4_port(src: *sockaddr_in) -> c_uint;
     fn rust_uv_ip6_port(src: *sockaddr_in6) -> c_uint;
-    fn rust_uv_tcp_connect(req: *uv_connect_t, handle: *uv_tcp_t, cb: *u8,
+    fn rust_uv_tcp_connect(req: *uv_connect_t, handle: *uv_tcp_t,
+                           cb: uv_connect_cb,
                            addr: *sockaddr_in) -> c_int;
     fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t, addr: *sockaddr_in) -> c_int;
-    fn rust_uv_tcp_connect6(req: *uv_connect_t, handle: *uv_tcp_t, cb: *u8,
+    fn rust_uv_tcp_connect6(req: *uv_connect_t, handle: *uv_tcp_t,
+                            cb: uv_connect_cb,
                             addr: *sockaddr_in6) -> c_int;
     fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t, addr: *sockaddr_in6) -> c_int;
     fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t, name: *sockaddr_storage) -> c_int;
@@ -674,10 +750,12 @@ extern {
     fn rust_uv_udp_bind(server: *uv_udp_t, addr: *sockaddr_in, flags: c_uint) -> c_int;
     fn rust_uv_udp_bind6(server: *uv_udp_t, addr: *sockaddr_in6, flags: c_uint) -> c_int;
     fn rust_uv_udp_send(req: *uv_udp_send_t, handle: *uv_udp_t, buf_in: *uv_buf_t,
-                        buf_cnt: c_int, addr: *sockaddr_in, cb: *u8) -> c_int;
+                        buf_cnt: c_int, addr: *sockaddr_in, cb: uv_udp_send_cb) -> c_int;
     fn rust_uv_udp_send6(req: *uv_udp_send_t, handle: *uv_udp_t, buf_in: *uv_buf_t,
-                         buf_cnt: c_int, addr: *sockaddr_in6, cb: *u8) -> c_int;
-    fn rust_uv_udp_recv_start(server: *uv_udp_t, on_alloc: *u8, on_recv: *u8) -> c_int;
+                         buf_cnt: c_int, addr: *sockaddr_in6, cb: uv_udp_send_cb) -> c_int;
+    fn rust_uv_udp_recv_start(server: *uv_udp_t,
+                              on_alloc: uv_alloc_cb,
+                              on_recv: uv_udp_recv_cb) -> c_int;
     fn rust_uv_udp_recv_stop(server: *uv_udp_t) -> c_int;
     fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
     fn rust_uv_udp_getsockname(handle: *uv_udp_t, name: *sockaddr_storage) -> c_int;
@@ -693,14 +771,17 @@ extern {
     fn rust_uv_malloc_sockaddr_storage() -> *sockaddr_storage;
     fn rust_uv_free_sockaddr_storage(ss: *sockaddr_storage);
 
-    fn rust_uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
+    fn rust_uv_listen(stream: *c_void, backlog: c_int,
+                      cb: uv_connection_cb) -> c_int;
     fn rust_uv_accept(server: *c_void, client: *c_void) -> c_int;
     fn rust_uv_write(req: *c_void, stream: *c_void, buf_in: *uv_buf_t, buf_cnt: c_int,
-                     cb: *u8) -> c_int;
-    fn rust_uv_read_start(stream: *c_void, on_alloc: *u8, on_read: *u8) -> c_int;
+                     cb: uv_write_cb) -> c_int;
+    fn rust_uv_read_start(stream: *c_void,
+                          on_alloc: uv_alloc_cb,
+                          on_read: uv_read_cb) -> c_int;
     fn rust_uv_read_stop(stream: *c_void) -> c_int;
     fn rust_uv_timer_init(loop_handle: *c_void, timer_handle: *uv_timer_t) -> c_int;
-    fn rust_uv_timer_start(timer_handle: *uv_timer_t, cb: *u8, timeout: libc::uint64_t,
+    fn rust_uv_timer_start(timer_handle: *uv_timer_t, cb: uv_timer_cb, timeout: libc::uint64_t,
                            repeat: libc::uint64_t) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 

@@ -16,27 +16,31 @@ use std::libc::{c_char, c_int};
 use std::local_data;
 use std::str;
 
+#[cfg(stage0)]
 pub mod rustrt {
     use std::libc::{c_char, c_int};
 
-    #[cfg(stage0)]
-    mod macro_hack {
-    #[macro_escape];
-    macro_rules! externfn(
-        (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
-            extern {
-                fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
-            }
-        )
-    )
+    extern {
+        fn linenoise(prompt: *c_char) -> *c_char;
+        fn linenoiseHistoryAdd(line: *c_char) -> c_int;
+        fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
+        fn linenoiseHistorySave(file: *c_char) -> c_int;
+        fn linenoiseHistoryLoad(file: *c_char) -> c_int;
+        fn linenoiseSetCompletionCallback(callback: *u8);
+        fn linenoiseAddCompletion(completions: *(), line: *c_char);
     }
+}
+
+#[cfg(not(stage0))]
+pub mod rustrt {
+    use std::libc::{c_char, c_int};
 
     externfn!(fn linenoise(prompt: *c_char) -> *c_char)
     externfn!(fn linenoiseHistoryAdd(line: *c_char) -> c_int)
     externfn!(fn linenoiseHistorySetMaxLen(len: c_int) -> c_int)
     externfn!(fn linenoiseHistorySave(file: *c_char) -> c_int)
     externfn!(fn linenoiseHistoryLoad(file: *c_char) -> c_int)
-    externfn!(fn linenoiseSetCompletionCallback(callback: *u8))
+    externfn!(fn linenoiseSetCompletionCallback(callback: extern "C" fn(*i8, *())))
     externfn!(fn linenoiseAddCompletion(completions: *(), line: *c_char))
 }
 
