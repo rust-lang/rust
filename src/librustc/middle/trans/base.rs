@@ -84,7 +84,6 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
-use syntax::visit;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
@@ -2621,57 +2620,6 @@ pub fn register_method(ccx: @mut CrateContext,
     llfn
 }
 
-// The constant translation pass.
-pub fn trans_constant(ccx: &mut CrateContext, it: @ast::item) {
-    let _icx = push_ctxt("trans_constant");
-    match it.node {
-      ast::item_enum(ref enum_definition, _) => {
-        let vi = ty::enum_variants(ccx.tcx,
-                                   ast::def_id { crate: ast::LOCAL_CRATE,
-                                                 node: it.id });
-        let mut i = 0;
-        let path = item_path(ccx, &it.id);
-        for variant in (*enum_definition).variants.iter() {
-            let p = vec::append(path.clone(), [
-                path_name(variant.node.name),
-                path_name(special_idents::descrim)
-            ]);
-            let s = mangle_exported_name(ccx, p, ty::mk_int()).to_managed();
-            let disr_val = vi[i].disr_val;
-            note_unique_llvm_symbol(ccx, s);
-            let discrim_gvar = do s.with_c_str |buf| {
-                unsafe {
-                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
-                }
-            };
-            unsafe {
-                llvm::LLVMSetInitializer(discrim_gvar, C_uint(ccx, disr_val));
-                llvm::LLVMSetGlobalConstant(discrim_gvar, True);
-            }
-            ccx.discrims.insert(
-                local_def(variant.node.id), discrim_gvar);
-            ccx.discrim_symbols.insert(variant.node.id, s);
-            i += 1;
-        }
-      }
-      _ => ()
-    }
-}
-
-struct TransConstantsVisitor { ccx: @mut CrateContext }
-
-impl visit::Visitor<()> for TransConstantsVisitor {
-    fn visit_item(&mut self, i:@ast::item, _:()) {
-        trans_constant(self.ccx, i);
-        visit::walk_item(self, i, ());
-    }
-}
-
-pub fn trans_constants(ccx: @mut CrateContext, crate: &ast::Crate) {
-    let mut v = TransConstantsVisitor { ccx: ccx };
-    visit::walk_crate(&mut v, crate, ());
-}
-
 pub fn vp2i(cx: @mut Block, v: ValueRef) -> ValueRef {
     let ccx = cx.ccx();
     return PtrToInt(cx, v, ccx.int_type);
@@ -3049,11 +2997,6 @@ pub fn trans_crate(sess: session::Session,
                                      symbol_hasher,
                                      link_meta,
                                      analysis.reachable);
-
-    {
-        let _icx = push_ctxt("data");
-        trans_constants(ccx, crate);
-    }
 
     {
         let _icx = push_ctxt("text");

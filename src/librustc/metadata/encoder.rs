@@ -290,14 +290,6 @@ fn encode_symbol(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_discriminant(ecx: &EncodeContext,
-                       ebml_w: &mut writer::Encoder,
-                       id: NodeId) {
-    ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(ecx.discrim_symbols.get_copy(&id).as_bytes());
-    ebml_w.end_tag();
-}
-
 fn encode_disr_val(_: &EncodeContext,
                    ebml_w: &mut writer::Encoder,
                    disr_val: uint) {
@@ -344,7 +336,6 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             }
             ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {}
         }
-        encode_discriminant(ecx, ebml_w, variant.node.id);
         if vi[i].disr_val != disr_val {
             encode_disr_val(ecx, ebml_w, vi[i].disr_val);
             disr_val = vi[i].disr_val;
