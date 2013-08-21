@@ -93,7 +93,11 @@ symnames = {
 
 "//": "linecomment",
 "/*": "openblockcomment",
-"*/": "closeblockcomment"
+"*/": "closeblockcomment",
+"macro_rules": "macro_rules",
+"=>" : "eg",
+".." : "dotdot",
+","  : "comma"
 }
 
 lines = []
