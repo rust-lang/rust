@@ -25,7 +25,7 @@ fn random_gradient<R:Rng>(r: &mut R) -> Vec2 {
 
 fn gradient(orig: Vec2, grad: Vec2, p: Vec2) -> f32 {
     let sp = Vec2 {x: p.x - orig.x, y: p.y - orig.y};
-    grad.x * sp.x + grad.y + sp.y
+    grad.x * sp.x + grad.y * sp.y
 }
 
 struct Noise2DContext {
