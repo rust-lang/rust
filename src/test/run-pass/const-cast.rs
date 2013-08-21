@@ -12,7 +12,7 @@ use std::libc;
 
 extern fn foo() {}
 
-static x: *u8 = foo;
+static x: extern "C" fn() = foo;
 static y: *libc::c_void = x as *libc::c_void;
 static a: &'static int = &10;
 static b: *int = a as *int;

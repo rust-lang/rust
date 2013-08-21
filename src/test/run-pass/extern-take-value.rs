@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cast::transmute;
+
 extern fn f() {
 }
 
@@ -15,11 +17,12 @@ extern fn g() {
 }
 
 pub fn main() {
-    // extern functions are *u8 types
-    let a: *u8 = f;
-    let b: *u8 = f;
-    let c: *u8 = g;
+    unsafe {
+        let a: extern "C" fn() = f;
+        let b: extern "C" fn() = f;
+        let c: extern "C" fn() = g;
 
-    assert_eq!(a, b);
-    assert!(a != c);
+        assert_eq!(a, b);
+        assert!(a != c);
+    }
 }
