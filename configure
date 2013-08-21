@@ -739,6 +739,7 @@ do
     make_dir $h/test/doc-tutorial-ffi
     make_dir $h/test/doc-tutorial-macros
     make_dir $h/test/doc-tutorial-borrowed-ptr
+    make_dir $h/test/doc-tutorial-container
     make_dir $h/test/doc-tutorial-tasks
     make_dir $h/test/doc-tutorial-conditions
     make_dir $h/test/doc-rust

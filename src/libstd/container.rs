@@ -38,6 +38,7 @@ pub trait Map<K, V>: Container {
     fn find<'a>(&'a self, key: &K) -> Option<&'a V>;
 
     /// Return true if the map contains a value for the specified key
+    #[inline]
     fn contains_key(&self, key: &K) -> bool {
         self.find(key).is_some()
     }

@@ -555,12 +555,11 @@ while cake_amount > 0 {
 `loop` denotes an infinite loop, and is the preferred way of writing `while true`:
 
 ~~~~
-use std::int;
-let mut x = 5;
+let mut x = 5u;
 loop {
     x += x - 3;
     if x % 5 == 0 { break; }
-    println(int::to_str(x));
+    println(x.to_str());
 }
 ~~~~
 

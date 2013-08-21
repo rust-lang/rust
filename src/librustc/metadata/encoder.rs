@@ -25,7 +25,6 @@ use std::hash::HashUtil;
 use std::hashmap::{HashMap, HashSet};
 use std::io;
 use std::str;
-use std::uint;
 use std::vec;
 use extra::flate;
 use extra::serialize::Encodable;
@@ -303,7 +302,7 @@ fn encode_disr_val(_: &EncodeContext,
                    ebml_w: &mut writer::Encoder,
                    disr_val: uint) {
     ebml_w.start_tag(tag_disr_val);
-    let s = uint::to_str(disr_val);
+    let s = disr_val.to_str();
     ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
 }
