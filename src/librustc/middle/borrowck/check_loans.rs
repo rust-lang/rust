@@ -511,6 +511,12 @@ impl<'self> CheckLoanCtxt<'self> {
             // path, and check that the super path was not lent out as
             // mutable or immutable (a const loan is ok).
             //
+            // Mutability of a path can be dependent on the super path
+            // in two ways. First, it might be inherited mutability.
+            // Second, the pointee of an `&mut` pointer can only be
+            // mutated if it is found in an unaliased location, so we
+            // have to check that the owner location is not borrowed.
+            //
             // Note that we are *not* checking for any and all
             // restrictions.  We are only interested in the pointers
             // that the user created, whereas we add restrictions for
@@ -528,9 +534,12 @@ impl<'self> CheckLoanCtxt<'self> {
             let mut loan_path = loan_path;
             loop {
                 match *loan_path {
-                    // Peel back one layer if `loan_path` has
-                    // inherited mutability
-                    LpExtend(lp_base, mc::McInherited, _) => {
+                    // Peel back one layer if, for `loan_path` to be
+                    // mutable, `lp_base` must be mutable. This occurs
+                    // with inherited mutability and with `&mut`
+                    // pointers.
+                    LpExtend(lp_base, mc::McInherited, _) |
+                    LpExtend(lp_base, _, LpDeref(mc::region_ptr(ast::m_mutbl, _))) => {
                         loan_path = lp_base;
                     }
 

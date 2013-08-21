@@ -59,18 +59,18 @@ use syntax::print::pprust;
 
 #[deriving(Eq)]
 pub enum categorization {
-    cat_rvalue(ast::NodeId),          // temporary val, argument is its scope
+    cat_rvalue(ast::NodeId),           // temporary val, argument is its scope
     cat_static_item,
     cat_implicit_self,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from &fn
-    cat_local(ast::NodeId),           // local variable
-    cat_arg(ast::NodeId),             // formal argument
-    cat_deref(cmt, uint, ptr_kind),    // deref of a ptr
+    cat_local(ast::NodeId),            // local variable
+    cat_arg(ast::NodeId),              // formal argument
+    cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (*)
-    cat_discr(cmt, ast::NodeId),      // match discriminant (see preserve())
-    cat_self(ast::NodeId),            // explicit `self`
+    cat_discr(cmt, ast::NodeId),       // match discriminant (see preserve())
+    cat_self(ast::NodeId),             // explicit `self`
 
     // (*) downcast is only required if the enum has more than one variant
 }
@@ -82,8 +82,8 @@ pub struct CopiedUpvar {
 }
 
 // different kinds of pointers:
-#[deriving(Eq)]
-pub enum ptr_kind {
+#[deriving(Eq, IterBytes)]
+pub enum PointerKind {
     uniq_ptr,
     gc_ptr(ast::mutability),
     region_ptr(ast::mutability, ty::Region),
@@ -147,7 +147,7 @@ pub type cmt = @cmt_;
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
 pub enum deref_kind {
-    deref_ptr(ptr_kind),
+    deref_ptr(PointerKind),
     deref_interior(InteriorKind),
 }
 
@@ -1233,7 +1233,7 @@ impl Repr for categorization {
     }
 }
 
-pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
+pub fn ptr_sigil(ptr: PointerKind) -> ~str {
     match ptr {
         uniq_ptr => ~"~",
         gc_ptr(_) => ~"@",
