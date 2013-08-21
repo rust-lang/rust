@@ -13,7 +13,6 @@
 #include <malloc.h>
 #endif
 
-#include <fcntl.h>
 #include "uv.h"
 
 #include "rust_globals.h"
