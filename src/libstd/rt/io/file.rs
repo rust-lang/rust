@@ -238,7 +238,7 @@ fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
     do run_in_newsched_task {
         let filename = &Path("./another_file_that_does_not_exist.txt");
         let mut called = false;
-        do io_error::cond.trap(|e| {
+        do io_error::cond.trap(|_| {
             called = true;
         }).inside {
             FileStream::unlink(filename);
