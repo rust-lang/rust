@@ -859,10 +859,10 @@ pub fn link_binary(sess: Session,
     debug!("output: %s", output.to_str());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug!("%s link args: %s", cc_prog, cc_args.connect(" "));
-    if (sess.opts.debugging_opts & session::print_link_args) != 0 { 
+    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
         io::println(fmt!("%s link args: %s", cc_prog, cc_args.connect(" ")));
     }
-    
+
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
     if 0 != prog.status {
