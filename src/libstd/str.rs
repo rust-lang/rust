@@ -3140,6 +3140,14 @@ mod tests {
     }
 
     #[test]
+    fn test_iterator_clone() {
+        let s = "ศไทย中华Việt Nam";
+        let mut it = s.iter();
+        it.next();
+        assert!(it.zip(it.clone()).all(|(x,y)| x == y));
+    }
+
+    #[test]
     fn test_byte_iterator() {
         let s = ~"ศไทย中华Việt Nam";
         let v = [
