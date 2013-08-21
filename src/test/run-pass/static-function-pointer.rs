@@ -14,7 +14,7 @@ fn g(x: int) -> int { 2 * x }
 static F: extern fn(int) -> int = f;
 static mut G: extern fn(int) -> int = f;
 
-fn main() {
+pub fn main() {
     assert_eq!(F(42), 42);
     unsafe {
         assert_eq!(G(42), 42);
