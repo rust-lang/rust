@@ -238,9 +238,9 @@ impl Integer for $T {
 
     /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
     #[inline]
-    fn mod_floor(&self, other: &$T) -> $T { *self / *other }
+    fn mod_floor(&self, other: &$T) -> $T { *self % *other }
 
-    /// Calculates `div_floor` and `modulo_floor` simultaneously
+    /// Calculates `div_floor` and `mod_floor` simultaneously
     #[inline]
     fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
@@ -456,6 +456,19 @@ mod tests {
         assert_eq!((1 as $T).clamp(&(2 as $T), &(4 as $T)), 2 as $T);
         assert_eq!((8 as $T).clamp(&(2 as $T), &(4 as $T)), 4 as $T);
         assert_eq!((3 as $T).clamp(&(2 as $T), &(4 as $T)), 3 as $T);
+    }
+
+    #[test]
+    fn test_div_mod_floor() {
+        assert_eq!((10 as $T).div_floor(&(3 as $T)), 3 as $T);
+        assert_eq!((10 as $T).mod_floor(&(3 as $T)), 1 as $T);
+        assert_eq!((10 as $T).div_mod_floor(&(3 as $T)), (3 as $T, 1 as $T));
+        assert_eq!((5 as $T).div_floor(&(5 as $T)), 1 as $T);
+        assert_eq!((5 as $T).mod_floor(&(5 as $T)), 0 as $T);
+        assert_eq!((5 as $T).div_mod_floor(&(5 as $T)), (1 as $T, 0 as $T));
+        assert_eq!((3 as $T).div_floor(&(7 as $T)), 0 as $T);
+        assert_eq!((3 as $T).mod_floor(&(7 as $T)), 3 as $T);
+        assert_eq!((3 as $T).div_mod_floor(&(7 as $T)), (0 as $T, 3 as $T));
     }
 
     #[test]
