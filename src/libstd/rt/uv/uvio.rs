@@ -468,7 +468,6 @@ impl IoFactory for UvIoFactory {
 
     fn fs_open<P: PathLike>(&mut self, path: &P, flags: int, mode: int)
         -> Result<~RtioFileStream, IoError> {
-        let loop_ = Loop {handle: self.uv_loop().native_handle()};
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<~RtioFileStream,
                                            IoError>> = &result_cell;
@@ -477,8 +476,9 @@ impl IoFactory for UvIoFactory {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let path = path_cell.take();
-            do file::FsRequest::open(loop_, path, flags, mode) |req,err| {
+            do file::FsRequest::open(self.uv_loop(), path, flags, mode) |req,err| {
                 if err.is_none() {
+                    let loop_ = Loop {handle: req.get_loop().native_handle()};
                     let home = get_handle_to_current_scheduler!();
                     let fd = file::FileDescriptor(req.get_result());
                     let fs = ~UvFileStream::new(
@@ -500,7 +500,6 @@ impl IoFactory for UvIoFactory {
     }
 
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
-        let loop_ = Loop {handle: self.uv_loop().native_handle()};
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let path_cell = Cell::new(path);
@@ -508,7 +507,7 @@ impl IoFactory for UvIoFactory {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let path = path_cell.take();
-            do file::FsRequest::unlink(loop_, path) |_, err| {
+            do file::FsRequest::unlink(self.uv_loop(), path) |_, err| {
                 let res = match err {
                     None => Ok(()),
                     Some(err) => Err(uv_error_to_io_error(err))
@@ -1088,7 +1087,7 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.read(self.loop_, buf, offset) |req, uverr| {
+                do self_.fd.read(&self_.loop_, buf, offset) |req, uverr| {
                     let res = match uverr  {
                         None => Ok(req.get_result() as int),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1110,7 +1109,7 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.write(self.loop_, buf, offset) |_, uverr| {
+                do self_.fd.write(&self_.loop_, buf, offset) |_, uverr| {
                     let res = match uverr  {
                         None => Ok(()),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1133,7 +1132,7 @@ impl Drop for UvFileStream {
                 let scheduler = Local::take::<Scheduler>();
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     let task_cell = Cell::new(task);
-                    do self_.fd.close(self.loop_) |_,_| {
+                    do self_.fd.close(&self.loop_) |_,_| {
                         let scheduler = Local::take::<Scheduler>();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     };
