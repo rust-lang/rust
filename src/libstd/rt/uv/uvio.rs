@@ -21,7 +21,7 @@ use str;
 use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
-use rt::io::{standard_error, OtherIoError};
+use rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur, SeekEnd};
 use rt::local::Local;
 use rt::rtio::*;
 use rt::sched::{Scheduler, SchedHandle};
@@ -31,7 +31,7 @@ use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use unstable::sync::Exclusive;
 use super::super::io::support::PathLike;
-use libc::{lseek, c_long, SEEK_CUR};
+use libc::{lseek, c_long};
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -1122,6 +1122,22 @@ impl UvFileStream {
         };
         result_cell.take()
     }
+    fn seek_common(&mut self, pos: i64, whence: c_int) ->
+        Result<u64, IoError>{
+        #[fixed_stack_segment]; #[inline(never)];
+        unsafe {
+            match lseek((*self.fd), pos as c_long, whence) {
+                -1 => {
+                    Err(IoError {
+                        kind: OtherIoError,
+                        desc: "Failed to lseek.",
+                        detail: None
+                    })
+                },
+                n => Ok(n as u64)
+            }
+        }
+    }
 }
 
 impl Drop for UvFileStream {
@@ -1155,35 +1171,20 @@ impl RtioFileStream for UvFileStream {
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
         self.base_write(buf, offset as i64)
     }
-    fn seek(&mut self, pos: i64, whence: i64) -> Result<(), IoError> {
-        #[fixed_stack_segment]; #[inline(never)];
-        unsafe {
-            match lseek((*self.fd), pos as c_long, whence as c_int) {
-                -1 => {
-                    Err(IoError {
-                        kind: OtherIoError,
-                        desc: "Failed to lseek.",
-                        detail: None
-                    })
-                },
-                _ => Ok(())
-            }
-        }
+    fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError> {
+        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
+        let whence = match whence {
+            SeekSet => SEEK_SET,
+            SeekCur => SEEK_CUR,
+            SeekEnd => SEEK_END
+        };
+        self.seek_common(pos, whence)
     }
     fn tell(&self) -> Result<u64, IoError> {
-        #[fixed_stack_segment]; #[inline(never)];
-        unsafe {
-            match lseek((*self.fd), 0, SEEK_CUR) {
-                -1 => {
-                    Err(IoError {
-                        kind: OtherIoError,
-                        desc: "Failed to lseek, needed to tell().",
-                        detail: None
-                    })
-                },
-                n=> Ok(n as u64)
-            }
-        }
+        use libc::SEEK_CUR;
+        // this is temporary
+        let self_ = unsafe { cast::transmute::<&UvFileStream, &mut UvFileStream>(self) };
+        self_.seek_common(0, SEEK_CUR)
     }
     fn flush(&mut self) -> Result<(), IoError> {
         Ok(())

@@ -170,15 +170,9 @@ impl Seek for FileStream {
     }
 
     fn seek(&mut self, pos: i64, style: SeekStyle) {
-        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
-        let whence = match style {
-            SeekSet => SEEK_SET,
-            SeekCur => SEEK_CUR,
-            SeekEnd => SEEK_END
-        } as i64;
-        match self.fd.seek(pos, whence) {
+        match self.fd.seek(pos, style) {
             Ok(_) => {
-                // successful seek resets EOF indocator
+                // successful seek resets EOF indicator
                 self.last_nread = -1;
                 ()
             },
