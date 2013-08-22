@@ -375,9 +375,21 @@ pub fn get_trait_def(cdata: cmd,
     let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
                                      tag_items_data_item_ty_param_bounds);
     let rp = item_ty_region_param(item_doc);
+    let mut bounds = ty::EmptyBuiltinBounds();
+    // Collect the builtin bounds from the encoded supertraits.
+    // FIXME(#8559): They should be encoded directly.
+    do reader::tagged_docs(item_doc, tag_item_super_trait_ref) |trait_doc| {
+        // NB. Bypasses real supertraits. See get_supertraits() if you wanted them.
+        let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
+        do tcx.lang_items.to_builtin_kind(trait_ref.def_id).map_move |bound| {
+            bounds.add(bound);
+        };
+        true
+    };
     ty::TraitDef {
         generics: ty::Generics {type_param_defs: tp_defs,
                                 region_param: rp},
+        bounds: bounds,
         trait_ref: @item_trait_ref(item_doc, tcx, cdata)
     }
 }
@@ -929,7 +941,13 @@ pub fn get_supertraits(cdata: cmd, id: ast::NodeId, tcx: ty::ctxt)
     let mut results = ~[];
     let item_doc = lookup_item(id, cdata.data);
     do reader::tagged_docs(item_doc, tag_item_super_trait_ref) |trait_doc| {
-        results.push(@doc_trait_ref(trait_doc, tcx, cdata));
+        // NB. Only reads the ones that *aren't* builtin-bounds. See also
+        // get_trait_def() for collecting the builtin bounds.
+        // FIXME(#8559): The builtin bounds shouldn't be encoded in the first place.
+        let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
+        if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_none() {
+            results.push(@trait_ref);
+        }
         true
     };
     return results;

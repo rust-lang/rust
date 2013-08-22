@@ -863,6 +863,7 @@ pub struct ty_param_bounds_and_ty {
 /// As `ty_param_bounds_and_ty` but for a trait ref.
 pub struct TraitDef {
     generics: Generics,
+    bounds: BuiltinBounds,
     trait_ref: @ty::TraitRef,
 }
 
@@ -2160,17 +2161,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // def-id.
                 assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
-                type_param_def_to_contents(
-                    cx, cx.ty_param_defs.get(&p.def_id.node))
+                let tp_def = cx.ty_param_defs.get(&p.def_id.node);
+                kind_bounds_to_contents(cx, &tp_def.bounds.builtin_bounds,
+                                        tp_def.bounds.trait_bounds)
             }
 
-            ty_self(_) => {
-                // Currently, self is not bounded, so we must assume the
-                // worst.  But in the future we should examine the super
-                // traits.
-                //
+            ty_self(def_id) => {
                 // FIXME(#4678)---self should just be a ty param
-                TC_ALL
+
+                // Self may be bounded if the associated trait has builtin kinds
+                // for supertraits. If so we can use those bounds.
+                let trait_def = lookup_trait_def(cx, def_id);
+                let traits = [trait_def.trait_ref];
+                kind_bounds_to_contents(cx, &trait_def.bounds, traits)
             }
 
             ty_infer(_) => {
@@ -2314,14 +2317,12 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         st + mt + bt
     }
 
-    fn type_param_def_to_contents(cx: ctxt,
-                                  type_param_def: &TypeParameterDef) -> TypeContents
-    {
-        debug!("type_param_def_to_contents(%s)", type_param_def.repr(cx));
+    fn kind_bounds_to_contents(cx: ctxt, bounds: &BuiltinBounds, traits: &[@TraitRef])
+            -> TypeContents {
         let _i = indenter();
 
         let mut tc = TC_ALL;
-        for bound in type_param_def.bounds.builtin_bounds.iter() {
+        do each_inherited_builtin_bound(cx, bounds, traits) |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
                 BoundStatic => TypeContents::nonstatic(cx),
@@ -2334,6 +2335,23 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         debug!("result = %s", tc.to_str());
         return tc;
+
+        // Iterates over all builtin bounds on the type parameter def, including
+        // those inherited from traits with builtin-kind-supertraits.
+        fn each_inherited_builtin_bound(cx: ctxt, bounds: &BuiltinBounds,
+                                        traits: &[@TraitRef], f: &fn(BuiltinBound)) {
+            for bound in bounds.iter() {
+                f(bound);
+            }
+
+            do each_bound_trait_and_supertraits(cx, traits) |trait_ref| {
+                let trait_def = lookup_trait_def(cx, trait_ref.def_id);
+                for bound in trait_def.bounds.iter() {
+                    f(bound);
+                }
+                true
+            };
+        }
     }
 }
 
@@ -3725,6 +3743,25 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
     };
     cx.impl_trait_cache.insert(id, ret);
     return ret;
+}
+
+pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::trait_ref) -> ast::def_id {
+    let def = tcx.def_map.find(&tr.ref_id).expect("no def-map entry for trait");
+    ast_util::def_id_of_def(*def)
+}
+
+pub fn try_add_builtin_trait(tcx: ctxt,
+                             trait_def_id: ast::def_id,
+                             builtin_bounds: &mut BuiltinBounds) -> bool {
+    //! Checks whether `trait_ref` refers to one of the builtin
+    //! traits, like `Send`, and adds the corresponding
+    //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
+    //! is a builtin trait.
+
+    match tcx.lang_items.to_builtin_kind(trait_def_id) {
+        Some(bound) => { builtin_bounds.add(bound); true }
+        None => false
+    }
 }
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {

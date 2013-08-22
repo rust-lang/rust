@@ -1066,6 +1066,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
             ebml_w.end_tag();
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        // FIXME(#8559): This should use the tcx's supertrait cache instead of
+        // reading the AST's list, because the former has already filtered out
+        // the builtin-kinds-as-supertraits. See corresponding fixme in decoder.
         for ast_trait_ref in super_traits.iter() {
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
