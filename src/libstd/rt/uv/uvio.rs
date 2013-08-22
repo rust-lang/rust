@@ -477,7 +477,7 @@ impl IoFactory for UvIoFactory {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let path = path_cell.take();
-            do file::FileDescriptor::open(loop_, path, flags, mode) |req,err| {
+            do file::FsRequest::open(loop_, path, flags, mode) |req,err| {
                 if err.is_none() {
                     let home = get_handle_to_current_scheduler!();
                     let fd = file::FileDescriptor(req.get_result());
@@ -508,7 +508,7 @@ impl IoFactory for UvIoFactory {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let path = path_cell.take();
-            do file::FileDescriptor::unlink(loop_, path) |_, err| {
+            do file::FsRequest::unlink(loop_, path) |_, err| {
                 let res = match err {
                     None => Ok(()),
                     Some(err) => Err(uv_error_to_io_error(err))
