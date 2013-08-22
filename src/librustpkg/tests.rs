@@ -1034,6 +1034,18 @@ fn test_extern_mod() {
     assert!(os::path_exists(&exec_file) && is_executable(&exec_file));
 }
 
+#[test]
+fn test_import_rustpkg() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    writeFile(&workspace.push("src").push("foo-0.1").push("pkg.rs"),
+              "extern mod rustpkg; fn main() {}");
+    command_line_test([~"build", ~"foo"], &workspace);
+    debug!("workspace = %s", workspace.to_str());
+    assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
+        os::EXE_SUFFIX))));
+}
+
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
     use std::libc::consts::os::posix88::{S_IXUSR};
