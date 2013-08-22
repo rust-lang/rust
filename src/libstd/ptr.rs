@@ -369,6 +369,47 @@ impl<T> Eq for *const T {
     fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
+// Equality for extern "C" fn pointers
+#[cfg(not(test))]
+mod externfnpointers {
+    use cast;
+    use cmp::Eq;
+
+    impl<_R> Eq for extern "C" fn() -> _R {
+        #[inline]
+        fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
+            let self_: *() = unsafe { cast::transmute(*self) };
+            let other_: *() = unsafe { cast::transmute(*other) };
+            self_ == other_
+        }
+        #[inline]
+        fn ne(&self, other: &extern "C" fn() -> _R) -> bool {
+            !self.eq(other)
+        }
+    }
+    macro_rules! fnptreq(
+        ($($p:ident),*) => {
+            impl<_R,$($p),*> Eq for extern "C" fn($($p),*) -> _R {
+                #[inline]
+                fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
+                    let self_: *() = unsafe { cast::transmute(*self) };
+                    let other_: *() = unsafe { cast::transmute(*other) };
+                    self_ == other_
+                }
+                #[inline]
+                fn ne(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
+                    !self.eq(other)
+                }
+            }
+        }
+    )
+    fnptreq!(A)
+    fnptreq!(A,B)
+    fnptreq!(A,B,C)
+    fnptreq!(A,B,C,D)
+    fnptreq!(A,B,C,D,E)
+}
+
 // Comparison for pointers
 #[cfg(not(test))]
 impl<T> Ord for *const T {

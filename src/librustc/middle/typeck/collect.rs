@@ -1087,13 +1087,13 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(ref decl, purity, _, ref generics, _) => {
+      ast::item_fn(ref decl, purity, abi, ref generics, _) => {
         assert!(rp.is_none());
         let ty_generics = ty_generics(ccx, None, generics, 0);
         let tofd = astconv::ty_of_bare_fn(ccx,
                                           &empty_rscope,
                                           purity,
-                                          AbiSet::Rust(),
+                                          abi,
                                           &generics.lifetimes,
                                           decl);
         let tpt = ty_param_bounds_and_ty {

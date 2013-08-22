@@ -52,6 +52,7 @@ use middle::trans::expr;
 use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
+use middle::trans::llrepr::LlvmRepr;
 use middle::trans::machine;
 use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
@@ -1739,6 +1740,10 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
                             arg_tys: &[ty::t]) -> @mut Block {
+    debug!("copy_args_to_allocas: raw_llargs=%s arg_tys=%s",
+           raw_llargs.llrepr(fcx.ccx),
+           arg_tys.repr(fcx.ccx.tcx));
+
     let _icx = push_ctxt("copy_args_to_allocas");
     let mut bcx = bcx;
 

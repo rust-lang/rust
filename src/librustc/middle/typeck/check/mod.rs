@@ -3099,22 +3099,6 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      ast::def_fn(_, ast::extern_fn) => {
-        // extern functions are just u8 pointers
-        return ty_param_bounds_and_ty {
-            generics: ty::Generics {
-                type_param_defs: @~[],
-                region_param: None
-            },
-            ty: ty::mk_ptr(
-                fcx.ccx.tcx,
-                ty::mt {
-                    ty: ty::mk_mach_uint(ast::ty_u8),
-                    mutbl: ast::m_imm
-                })
-        };
-      }
-
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
       ast::def_static(id, _) | ast::def_variant(_, id) |
       ast::def_struct(id) => {

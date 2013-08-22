@@ -824,56 +824,30 @@ fn trans_def_datum_unadjusted(bcx: @mut Block,
 {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
-    match def {
+    let fn_data = match def {
         ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
-            let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
-            return fn_data_to_datum(bcx, ref_expr, did, fn_data);
+            callee::trans_fn_ref(bcx, did, ref_expr.id)
         }
         ast::def_static_method(impl_did, Some(trait_did), _) => {
-            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
-                                                           trait_did,
-                                                           ref_expr.id);
-            return fn_data_to_datum(bcx, ref_expr, impl_did, fn_data);
+            meth::trans_static_method_callee(bcx, impl_did,
+                                             trait_did,
+                                             ref_expr.id)
         }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, fmt!(
                 "Non-DPS def %? referened by %s",
                 def, bcx.node_id_to_str(ref_expr.id)));
         }
-    }
+    };
 
-    fn fn_data_to_datum(bcx: @mut Block,
-                        ref_expr: &ast::expr,
-                        def_id: ast::def_id,
-                        fn_data: callee::FnData) -> DatumBlock {
-        /*!
-        *
-        * Translates a reference to a top-level fn item into a rust
-        * value.  This is just a fn pointer.
-        */
-
-        let is_extern = {
-            let fn_tpt = ty::lookup_item_type(bcx.tcx(), def_id);
-            ty::ty_fn_purity(fn_tpt.ty) == ast::extern_fn
-        };
-        let (rust_ty, llval) = if is_extern {
-            let rust_ty = ty::mk_ptr(
-                bcx.tcx(),
-                ty::mt {
-                    ty: ty::mk_mach_uint(ast::ty_u8),
-                    mutbl: ast::m_imm
-                }); // *u8
-            (rust_ty, PointerCast(bcx, fn_data.llfn, Type::i8p()))
-        } else {
-            let fn_ty = expr_ty(bcx, ref_expr);
-            (fn_ty, fn_data.llfn)
-        };
-        return DatumBlock {
-            bcx: bcx,
-            datum: Datum {val: llval,
-                          ty: rust_ty,
-                          mode: ByValue}
-        };
+    let fn_ty = expr_ty(bcx, ref_expr);
+    DatumBlock {
+        bcx: bcx,
+        datum: Datum {
+            val: fn_data.llfn,
+            ty: fn_ty,
+            mode: ByValue
+        }
     }
 }
 
@@ -1657,6 +1631,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
         ty::ty_float(*)   => cast_float,
         ty::ty_ptr(*)     => cast_pointer,
         ty::ty_rptr(*)    => cast_pointer,
+        ty::ty_bare_fn(*) => cast_pointer,
         ty::ty_int(*)     => cast_integral,
         ty::ty_uint(*)    => cast_integral,
         ty::ty_bool       => cast_integral,
@@ -1719,10 +1694,16 @@ fn trans_imm_cast(bcx: @mut Block, expr: @ast::expr,
                                               val_ty(lldiscrim_a),
                                               lldiscrim_a, true),
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                    _ => ccx.sess.bug("translating unsupported cast.")
+                    _ => ccx.sess.bug(fmt!("translating unsupported cast: \
+                                           %s (%?) -> %s (%?)",
+                                           t_in.repr(ccx.tcx), k_in,
+                                           t_out.repr(ccx.tcx), k_out))
                 }
             }
-            _ => ccx.sess.bug("translating unsupported cast.")
+            _ => ccx.sess.bug(fmt!("translating unsupported cast: \
+                                   %s (%?) -> %s (%?)",
+                                   t_in.repr(ccx.tcx), k_in,
+                                   t_out.repr(ccx.tcx), k_out))
         };
     return immediate_rvalue_bcx(bcx, newval, t_out);
 }
