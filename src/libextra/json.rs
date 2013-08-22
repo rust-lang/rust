@@ -459,26 +459,24 @@ impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
     }
 }
 
-/// Encodes a json value into a io::writer
-pub fn to_writer(wr: @io::Writer, json: &Json) {
-    let mut encoder = Encoder(wr);
-    json.encode(&mut encoder)
-}
+impl Json{
+    /// Encodes a json value into a io::writer.  Uses a single line.
+    pub fn to_writer(&self, wr: @io::Writer) {
+        let mut encoder = Encoder(wr);
+        self.encode(&mut encoder)
+    }
 
-/// Encodes a json value into a string
-pub fn to_str(json: &Json) -> ~str {
-    io::with_str_writer(|wr| to_writer(wr, json))
-}
+    /// Encodes a json value into a io::writer.
+    /// Pretty-prints in a more readable format.
+    pub fn to_pretty_writer(&self, wr: @io::Writer) {
+        let mut encoder = PrettyEncoder(wr);
+        self.encode(&mut encoder)
+    }
 
-/// Encodes a json value into a io::writer
-pub fn to_pretty_writer(wr: @io::Writer, json: &Json) {
-    let mut encoder = PrettyEncoder(wr);
-    json.encode(&mut encoder)
-}
-
-/// Encodes a json value into a string
-pub fn to_pretty_str(json: &Json) -> ~str {
-    io::with_str_writer(|wr| to_pretty_writer(wr, json))
+    /// Encodes a json value into a string
+    pub fn to_pretty_str(&self) -> ~str {
+        io::with_str_writer(|wr| self.to_pretty_writer(wr))
+    }
 }
 
 pub struct Parser<T> {
@@ -1307,7 +1305,10 @@ impl<A:ToJson> ToJson for Option<A> {
 }
 
 impl to_str::ToStr for Json {
-    fn to_str(&self) -> ~str { to_str(self) }
+    /// Encodes a json value into a string
+    fn to_str(&self) -> ~str {
+      io::with_str_writer(|wr| self.to_writer(wr))
+    }
 }
 
 impl to_str::ToStr for Error {
@@ -1358,69 +1359,67 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert_eq!(to_str(&Null), ~"null");
-        assert_eq!(to_pretty_str(&Null), ~"null");
+        assert_eq!(Null.to_str(), ~"null");
+        assert_eq!(Null.to_pretty_str(), ~"null");
     }
 
 
     #[test]
     fn test_write_number() {
-        assert_eq!(to_str(&Number(3f)), ~"3");
-        assert_eq!(to_pretty_str(&Number(3f)), ~"3");
+        assert_eq!(Number(3f).to_str(), ~"3");
+        assert_eq!(Number(3f).to_pretty_str(), ~"3");
 
-        assert_eq!(to_str(&Number(3.1f)), ~"3.1");
-        assert_eq!(to_pretty_str(&Number(3.1f)), ~"3.1");
+        assert_eq!(Number(3.1f).to_str(), ~"3.1");
+        assert_eq!(Number(3.1f).to_pretty_str(), ~"3.1");
 
-        assert_eq!(to_str(&Number(-1.5f)), ~"-1.5");
-        assert_eq!(to_pretty_str(&Number(-1.5f)), ~"-1.5");
+        assert_eq!(Number(-1.5f).to_str(), ~"-1.5");
+        assert_eq!(Number(-1.5f).to_pretty_str(), ~"-1.5");
 
-        assert_eq!(to_str(&Number(0.5f)), ~"0.5");
-        assert_eq!(to_pretty_str(&Number(0.5f)), ~"0.5");
+        assert_eq!(Number(0.5f).to_str(), ~"0.5");
+        assert_eq!(Number(0.5f).to_pretty_str(), ~"0.5");
     }
 
     #[test]
     fn test_write_str() {
-        assert_eq!(to_str(&String(~"")), ~"\"\"");
-        assert_eq!(to_pretty_str(&String(~"")), ~"\"\"");
+        assert_eq!(String(~"").to_str(), ~"\"\"");
+        assert_eq!(String(~"").to_pretty_str(), ~"\"\"");
 
-        assert_eq!(to_str(&String(~"foo")), ~"\"foo\"");
-        assert_eq!(to_pretty_str(&String(~"foo")), ~"\"foo\"");
+        assert_eq!(String(~"foo").to_str(), ~"\"foo\"");
+        assert_eq!(String(~"foo").to_pretty_str(), ~"\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
-        assert_eq!(to_str(&Boolean(true)), ~"true");
-        assert_eq!(to_pretty_str(&Boolean(true)), ~"true");
+        assert_eq!(Boolean(true).to_str(), ~"true");
+        assert_eq!(Boolean(true).to_pretty_str(), ~"true");
 
-        assert_eq!(to_str(&Boolean(false)), ~"false");
-        assert_eq!(to_pretty_str(&Boolean(false)), ~"false");
+        assert_eq!(Boolean(false).to_str(), ~"false");
+        assert_eq!(Boolean(false).to_pretty_str(), ~"false");
     }
 
     #[test]
     fn test_write_list() {
-        assert_eq!(to_str(&List(~[])), ~"[]");
-        assert_eq!(to_pretty_str(&List(~[])), ~"[]");
+        assert_eq!(List(~[]).to_str(), ~"[]");
+        assert_eq!(List(~[]).to_pretty_str(), ~"[]");
 
-        assert_eq!(to_str(&List(~[Boolean(true)])), ~"[true]");
+        assert_eq!(List(~[Boolean(true)]).to_str(), ~"[true]");
         assert_eq!(
-            to_pretty_str(&List(~[Boolean(true)])),
+            List(~[Boolean(true)]).to_pretty_str(),
             ~"\
             [\n  \
                 true\n\
             ]"
         );
 
-        assert_eq!(to_str(&List(~[
+        let longTestList = List(~[
             Boolean(false),
             Null,
-            List(~[String(~"foo\nbar"), Number(3.5f)])
-        ])), ~"[false,null,[\"foo\\nbar\",3.5]]");
+            List(~[String(~"foo\nbar"), Number(3.5f)])]);
+
+        assert_eq!(longTestList.to_str(),
+            ~"[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
-            to_pretty_str(&List(~[
-                Boolean(false),
-                Null,
-                List(~[String(~"foo\nbar"), Number(3.5f)])
-            ])),
+            longTestList.to_pretty_str(),
             ~"\
             [\n  \
                 false,\n  \
@@ -1435,28 +1434,30 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        assert_eq!(to_str(&mk_object([])), ~"{}");
-        assert_eq!(to_pretty_str(&mk_object([])), ~"{}");
+        assert_eq!(mk_object([]).to_str(), ~"{}");
+        assert_eq!(mk_object([]).to_pretty_str(), ~"{}");
 
         assert_eq!(
-            to_str(&mk_object([(~"a", Boolean(true))])),
+            mk_object([(~"a", Boolean(true))]).to_str(),
             ~"{\"a\":true}"
         );
         assert_eq!(
-            to_pretty_str(&mk_object([(~"a", Boolean(true))])),
+            mk_object([(~"a", Boolean(true))]).to_pretty_str(),
             ~"\
             {\n  \
                 \"a\": true\n\
             }"
         );
 
-        assert_eq!(
-            to_str(&mk_object([
+        let complexObj = mk_object([
                 (~"b", List(~[
                     mk_object([(~"c", String(~"\x0c\r"))]),
                     mk_object([(~"d", String(~""))])
                 ]))
-            ])),
+            ]);
+
+        assert_eq!(
+            complexObj.to_str(),
             ~"{\
                 \"b\":[\
                     {\"c\":\"\\f\\r\"},\
@@ -1465,12 +1466,7 @@ mod tests {
             }"
         );
         assert_eq!(
-            to_pretty_str(&mk_object([
-                (~"b", List(~[
-                    mk_object([(~"c", String(~"\x0c\r"))]),
-                    mk_object([(~"d", String(~""))])
-                ]))
-            ])),
+            complexObj.to_pretty_str(),
             ~"\
             {\n  \
                 \"b\": [\n    \
@@ -1494,8 +1490,8 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(to_str(&a)).unwrap());
-        assert_eq!(a.clone(), from_str(to_pretty_str(&a)).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_str()).unwrap());
+        assert_eq!(a.clone(), from_str(a.to_pretty_str()).unwrap());
     }
 
     #[test]
