@@ -8,10 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+// Constants (static variables) can be used to match in patterns, but mutable
+// statics cannot. This ensures that there's some form of error if this is
+// attempted.
 
-struct T (&'static [int]);
-static t : T = T (&'static [5, 4, 3]);
-fn main () {
-    assert_eq!(t[0], 5);
+use std::libc;
+
+#[nolink]
+extern {
+    static mut debug_static_mut: libc::c_int;
+    pub fn debug_static_mut_check_four();
+    #[cfg(stage37)] //~ ERROR expected item after attributes
 }
+
+pub fn main() {}
