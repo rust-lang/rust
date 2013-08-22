@@ -191,11 +191,11 @@ pub fn describe_debug_flags() {
     }
 }
 
-pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
+pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     ::std::logging::console_off();
 
-    let mut args = (*args).clone();
+    let mut args = args.to_owned();
     let binary = args.shift().to_managed();
 
     if args.is_empty() { usage(binary); return; }
@@ -381,7 +381,12 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
 
 pub fn main() {
     let args = os::args();
+    main_args(args);
+}
+
+pub fn main_args(args: &[~str]) {
+    let owned_args = args.to_owned();
     do monitor |demitter| {
-        run_compiler(&args, demitter);
+        run_compiler(owned_args, demitter);
     }
 }

@@ -45,7 +45,7 @@ impl ValidUsage {
 
 enum Action {
     Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, extern "Rust" fn()),
+    CallMain(&'static str, extern "Rust" fn(&[~str])),
 }
 
 enum UsageSource<'self> {
@@ -69,7 +69,7 @@ static NUM_OF_COMMANDS: uint = 7;
 static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
     Command{
         cmd: "build",
-        action: CallMain("rustc", rustc::main),
+        action: CallMain("rustc", rustc::main_args),
         usage_line: "compile rust source files",
         usage_full: UsgCall(rustc_help),
     },
@@ -95,19 +95,19 @@ static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
     },
     Command{
         cmd: "doc",
-        action: CallMain("rustdoc", rustdoc::main),
+        action: CallMain("rustdoc", rustdoc::main_args),
         usage_line: "generate documentation from doc comments",
         usage_full: UsgCall(rustdoc::config::usage),
     },
     Command{
         cmd: "pkg",
-        action: CallMain("rustpkg", rustpkg::main),
+        action: CallMain("rustpkg", rustpkg::main_args),
         usage_line: "download, build, install rust packages",
         usage_full: UsgCall(rustpkg::usage::general),
     },
     Command{
         cmd: "sketch",
-        action: CallMain("rusti", rusti::main),
+        action: CallMain("rusti", rusti::main_args),
         usage_line: "run a rust interpreter",
         usage_full: UsgStr("\nUsage:\trusti"),
     },
@@ -164,7 +164,7 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
         [ref filename] => {
             let test_exec = Path(*filename).filestem().unwrap() + "test~";
             invoke("rustc", &[~"--test", filename.to_owned(),
-                              ~"-o", test_exec.to_owned()], rustc::main);
+                              ~"-o", test_exec.to_owned()], rustc::main_args);
             let exit_code = run::process_status(~"./" + test_exec, []);
             Valid(exit_code)
         }
@@ -177,7 +177,7 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
         [ref filename, ..prog_args] => {
             let exec = Path(*filename).filestem().unwrap() + "~";
             invoke("rustc", &[filename.to_owned(), ~"-o", exec.to_owned()],
-                   rustc::main);
+                   rustc::main_args);
             let exit_code = run::process_status(~"./"+exec, prog_args);
             Valid(exit_code)
         }
@@ -185,11 +185,10 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
     }
 }
 
-fn invoke(prog: &str, args: &[~str], f: &fn()) {
+fn invoke(prog: &str, args: &[~str], f: &fn(&[~str])) {
     let mut osargs = ~[prog.to_owned()];
     osargs.push_all_move(args.to_owned());
-    os::set_args(osargs);
-    f();
+    f(osargs);
 }
 
 fn do_command(command: &Command, args: &[~str]) -> ValidUsage {

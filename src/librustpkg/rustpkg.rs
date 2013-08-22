@@ -466,8 +466,11 @@ impl CtxMethods for Ctx {
 
 pub fn main() {
     io::println("WARNING: The Rust package manager is experimental and may be unstable");
-
     let args = os::args();
+    main_args(args);
+}
+
+pub fn main_args(args: &[~str]) {
     let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
                  getopts::optflag("j"), getopts::optflag("json"),
                  getopts::optmulti("c"), getopts::optmulti("cfg")];
