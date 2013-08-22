@@ -12,16 +12,18 @@
 // builtin-kinds, e.g., if a trait requires Send to implement, then
 // at usage site of that trait, we know we have the Send capability.
 
+use std::comm;
+
 trait Foo : Send { }
 
 impl <T: Send> Foo for T { }
 
-fn foo<T: Foo>(val: T, chan: std::comm::Chan<T>) {
+fn foo<T: Foo>(val: T, chan: comm::Chan<T>) {
     chan.send(val);
 }
 
 fn main() {
-    let (p,c) = std::comm::stream();
+    let (p,c) = comm::stream();
     foo(31337, c);
     assert!(p.recv() == 31337);
 }

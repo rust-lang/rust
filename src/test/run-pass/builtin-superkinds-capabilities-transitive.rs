@@ -14,18 +14,20 @@
 // a Send. Basically this just makes sure rustc is using
 // each_bound_trait_and_supertraits in type_contents correctly.
 
+use std::comm;
+
 trait Bar : Send { }
 trait Foo : Bar { }
 
 impl <T: Send> Foo for T { }
 impl <T: Send> Bar for T { }
 
-fn foo<T: Foo>(val: T, chan: std::comm::Chan<T>) {
+fn foo<T: Foo>(val: T, chan: comm::Chan<T>) {
     chan.send(val);
 }
 
 fn main() {
-    let (p,c) = std::comm::stream();
+    let (p,c) = comm::stream();
     foo(31337, c);
     assert!(p.recv() == 31337);
 }
