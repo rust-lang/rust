@@ -160,6 +160,18 @@ assert_eq!(sum, 57);
 
 ## For loops
 
+The function `range` (or `range_inclusive`) allows to simply iterate through a given range:
+
+~~~
+for i in range(0, 5) {
+  printf!("%d ", i) // prints "0 1 2 3 4"
+}
+
+for i in std::iterator::range_inclusive(0, 5) { // needs explicit import
+  printf!("%d ", i) // prints "0 1 2 3 4 5"
+}
+~~~
+
 The `for` keyword can be used as sugar for iterating through any iterator:
 
 ~~~
