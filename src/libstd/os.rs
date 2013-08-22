@@ -36,7 +36,6 @@ use iterator::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::FILE;
-use local_data;
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -1188,7 +1187,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-pub fn real_args() -> ~[~str] {
+fn real_args() -> ~[~str] {
     #[fixed_stack_segment]; #[inline(never)];
 
     unsafe {
@@ -1201,7 +1200,7 @@ pub fn real_args() -> ~[~str] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
-pub fn real_args() -> ~[~str] {
+fn real_args() -> ~[~str] {
     use rt;
 
     match rt::args::clone() {
@@ -1211,7 +1210,7 @@ pub fn real_args() -> ~[~str] {
 }
 
 #[cfg(windows)]
-pub fn real_args() -> ~[~str] {
+fn real_args() -> ~[~str] {
     #[fixed_stack_segment]; #[inline(never)];
 
     let mut nArgs: c_int = 0;
@@ -1261,28 +1260,10 @@ struct OverriddenArgs {
     val: ~[~str]
 }
 
-static overridden_arg_key: local_data::Key<@OverriddenArgs> = &local_data::Key;
-
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
-///
-/// The return value of the function can be changed by invoking the
-/// `os::set_args` function.
 pub fn args() -> ~[~str] {
-    match local_data::get(overridden_arg_key, |k| k.map(|&k| *k)) {
-        None => real_args(),
-        Some(args) => args.val.clone()
-    }
-}
-
-/// For the current task, overrides the task-local cache of the arguments this
-/// program had when it started. These new arguments are only available to the
-/// current task via the `os::args` method.
-pub fn set_args(new_args: ~[~str]) {
-    let overridden_args = @OverriddenArgs {
-        val: new_args.clone()
-    };
-    local_data::set(overridden_arg_key, overridden_args);
+    real_args()
 }
 
 // FIXME #6100 we should really use an internal implementation of this - using
@@ -1770,7 +1751,7 @@ mod tests {
     use libc;
     use option::Some;
     use option;
-    use os::{env, getcwd, getenv, make_absolute, real_args};
+    use os::{env, getcwd, getenv, make_absolute, args};
     use os::{remove_file, setenv, unsetenv};
     use os;
     use path::Path;
@@ -1788,7 +1769,7 @@ mod tests {
 
     #[test]
     pub fn test_args() {
-        let a = real_args();
+        let a = args();
         assert!(a.len() >= 1);
     }
 
