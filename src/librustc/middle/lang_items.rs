@@ -23,6 +23,7 @@
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use metadata::cstore::iter_crate_data;
+use middle::ty::{BuiltinBound, BoundFreeze, BoundSend, BoundSized};
 use syntax::ast::{Crate, def_id, MetaItem};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
@@ -155,6 +156,18 @@ impl LanguageItems {
             Some(id) => Ok(id),
             None => Err(fmt!("requires `%s` lang_item",
                              LanguageItems::item_name(it as uint)))
+        }
+    }
+
+    pub fn to_builtin_kind(&self, id: def_id) -> Option<BuiltinBound> {
+        if Some(id) == self.freeze_trait() {
+            Some(BoundFreeze)
+        } else if Some(id) == self.send_trait() {
+            Some(BoundSend)
+        } else if Some(id) == self.sized_trait() {
+            Some(BoundSized)
+        } else {
+            None
         }
     }
 

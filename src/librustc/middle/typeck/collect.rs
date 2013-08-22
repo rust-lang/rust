@@ -398,28 +398,39 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                           sp: codemap::span,
                           rp: Option<ty::region_variance>,
                           ast_trait_refs: &[ast::trait_ref],
-                          generics: &ast::Generics)
+                          generics: &ast::Generics) -> ty::BuiltinBounds
 {
     let tcx = ccx.tcx;
-    if tcx.supertraits.contains_key(&local_def(id)) { return; }
+
+    // Called only the first time trait_def_of_item is called.
+    // Supertraits are ensured at the same time.
+    assert!(!tcx.supertraits.contains_key(&local_def(id)));
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
+    let mut bounds = ty::EmptyBuiltinBounds();
     for ast_trait_ref in ast_trait_refs.iter() {
+        let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, ast_trait_ref);
+        // FIXME(#8559): Need to instantiate the trait_ref whether or not it's a
+        // builtin trait, so that the trait's node id appears in the tcx trait_ref
+        // map. This is only needed for metadata; see the similar fixme in encoder.rs.
         let trait_ref = instantiate_trait_ref(ccx, ast_trait_ref, rp,
                                               generics, self_ty);
+        if !ty::try_add_builtin_trait(ccx.tcx, trait_def_id, &mut bounds) {
 
-        // FIXME(#5527) Could have same trait multiple times
-        if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
-            // This means a trait inherited from the same supertrait more
-            // than once.
-            tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
-            break;
-        } else {
-            ty_trait_refs.push(trait_ref);
+            // FIXME(#5527) Could have same trait multiple times
+            if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
+                // This means a trait inherited from the same supertrait more
+                // than once.
+                tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
+                break;
+            } else {
+                ty_trait_refs.push(trait_ref);
+            }
         }
     }
     tcx.supertraits.insert(local_def(id), @ty_trait_refs);
+    bounds
 }
 
 /**
@@ -869,14 +880,20 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                   &i_ty_generics, generics,
                                   parent_visibility);
         for t in opt_trait_ref.iter() {
+            // Prevent the builtin kind traits from being manually implemented.
+            let trait_def_id = ty::trait_ref_to_def_id(tcx, t);
+            if tcx.lang_items.to_builtin_kind(trait_def_id).is_some() {
+                tcx.sess.span_err(it.span,
+                    "cannot provide an explicit implementation \
+                     for a builtin kind");
+            }
+
             check_methods_against_trait(ccx, generics, rp, selfty, t, cms);
         }
       }
-      ast::item_trait(ref generics, ref supertraits, ref trait_methods) => {
-          let trait_def = trait_def_of_item(ccx, it);
-          tcx.trait_defs.insert(local_def(it.id), trait_def);
+      ast::item_trait(ref generics, _, ref trait_methods) => {
+          let _trait_def = trait_def_of_item(ccx, it);
           ensure_trait_methods(ccx, it.id);
-          ensure_supertraits(ccx, it.id, it.span, rp, *supertraits, generics);
 
           let (_, provided_methods) =
               split_trait_methods(*trait_methods);
@@ -1032,13 +1049,16 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
     }
     let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
     match it.node {
-        ast::item_trait(ref generics, _, _) => {
+        ast::item_trait(ref generics, ref supertraits, _) => {
             let self_ty = ty::mk_self(tcx, def_id);
             let (ty_generics, substs) = mk_item_substs(ccx, generics, rp,
                                                        Some(self_ty));
+            let bounds = ensure_supertraits(ccx, it.id, it.span, rp,
+                                            *supertraits, generics);
             let trait_ref = @ty::TraitRef {def_id: def_id,
                                            substs: substs};
             let trait_def = @ty::TraitDef {generics: ty_generics,
+                                           bounds: bounds,
                                            trait_ref: trait_ref};
             tcx.trait_defs.insert(def_id, trait_def);
             return trait_def;
@@ -1218,7 +1238,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 TraitTyParamBound(ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
-                    if !astconv::try_add_builtin_trait(
+                    if !ty::try_add_builtin_trait(
                         ccx.tcx, trait_ref.def_id,
                         &mut param_bounds.builtin_bounds)
                     {
