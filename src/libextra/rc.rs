@@ -40,8 +40,9 @@ struct RcBox<T> {
 }
 
 /// Immutable reference counted pointer type
-#[unsafe_no_drop_flag]
 #[no_send]
+#[unsafe_no_drop_flag]
+#[unsafe_non_zero_word]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
@@ -167,6 +168,7 @@ struct RcMutBox<T> {
 #[no_send]
 #[no_freeze]
 #[unsafe_no_drop_flag]
+#[unsafe_non_zero_word]
 pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
@@ -255,6 +257,7 @@ impl<T: DeepClone> DeepClone for RcMut<T> {
 #[cfg(test)]
 mod test_rc_mut {
     use super::*;
+    use std::sys::size_of;
 
     #[test]
     fn test_clone() {
@@ -371,5 +374,11 @@ mod test_rc_mut {
             do x.with_borrow |_| {}
             do y.with_mut_borrow |_| {}
         }
+    }
+
+    #[test]
+    fn non_zero_word() {
+        assert_eq!(size_of::<Option<Rc<int>>>(), size_of::<Rc<int>>());
+        assert_eq!(size_of::<Option<RcMut<int>>>(), size_of::<RcMut<int>>());
     }
 }
