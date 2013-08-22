@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * String manipulation
- *
- * Strings are a packed UTF-8 representation of text, stored as null
- * terminated buffers of u8 bytes.  Strings should be indexed in bytes,
- * for efficiency, but UTF-8 unsafe operations should be avoided.
- */
+//! String manipulation
+//!
+//! Strings are a packed UTF-8 representation of text, stored as
+//! buffers of u8 bytes. The buffer is not null terminated.
+//! Strings should be indexed in bytes, for efficiency, but UTF-8 unsafe
+//! operations should be avoided.
 
 use at_vec;
 use cast;
@@ -24,10 +23,10 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::Times;
 use iterator::{Iterator, FromIterator, Extendable};
-use iterator::{Filter, AdditiveIterator, Map};
+use iterator::{Filter, AdditiveIterator, Map, Enumerate};
 use iterator::{Invert, DoubleEndedIterator};
 use libc;
-use num::Zero;
+use num::{Saturating, Zero};
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
@@ -255,56 +254,101 @@ impl<'self, C: CharEq> CharEq for &'self [C] {
 Section: Iterators
 */
 
+/// External iterator for a string's characters.
+/// Use with the `std::iterator` module.
+#[deriving(Clone)]
+pub struct CharIterator<'self> {
+    /// The slice remaining to be iterated
+    priv string: &'self str,
+}
+
+impl<'self> Iterator<char> for CharIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        // Decode the next codepoint, then update
+        // the slice to be just the remaining part
+        if self.string.len() != 0 {
+            let CharRange {ch, next} = self.string.char_range_at(0);
+            unsafe {
+                self.string = raw::slice_unchecked(self.string, next, self.string.len());
+            }
+            Some(ch)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (self.string.len().saturating_add(3)/4, Some(self.string.len()))
+    }
+}
+
+impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        if self.string.len() != 0 {
+            let CharRange {ch, next} = self.string.char_range_at_reverse(self.string.len());
+            unsafe {
+                self.string = raw::slice_unchecked(self.string, 0, next);
+            }
+            Some(ch)
+        } else {
+            None
+        }
+    }
+}
+
+
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iterator` module.
 #[deriving(Clone)]
 pub struct CharOffsetIterator<'self> {
-    priv index_front: uint,
-    priv index_back: uint,
+    /// The original string to be iterated
     priv string: &'self str,
+    priv iter: CharIterator<'self>,
 }
 
 impl<'self> Iterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
-        if self.index_front < self.index_back {
-            let CharRange {ch, next} = self.string.char_range_at(self.index_front);
-            let index = self.index_front;
-            self.index_front = next;
-            Some((index, ch))
-        } else {
-            None
-        }
+        // Compute the byte offset by using the pointer offset between
+        // the original string slice and the iterator's remaining part
+        let offset = do self.string.as_imm_buf |a, _| {
+            do self.iter.string.as_imm_buf |b, _| {
+                b as uint - a as uint
+            }
+        };
+        self.iter.next().map_move(|ch| (offset, ch))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.iter.size_hint()
     }
 }
 
 impl<'self> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'self> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
-        if self.index_front < self.index_back {
-            let CharRange {ch, next} = self.string.char_range_at_reverse(self.index_back);
-            self.index_back = next;
-            Some((next, ch))
-        } else {
-            None
-        }
+        self.iter.next_back().map_move(|ch| {
+            let offset = do self.string.as_imm_buf |a, _| {
+                do self.iter.string.as_imm_buf |b, len| {
+                    b as uint - a as uint + len
+                }
+            };
+            (offset, ch)
+        })
     }
 }
 
-/// External iterator for a string's characters and their byte offsets in reverse order.
-/// Use with the `std::iterator` module.
-pub type CharOffsetRevIterator<'self> =
-    Invert<CharOffsetIterator<'self>>;
-
-/// External iterator for a string's characters.
-/// Use with the `std::iterator` module.
-pub type CharIterator<'self> =
-    Map<'self, (uint, char), char, CharOffsetIterator<'self>>;
-
 /// External iterator for a string's characters in reverse order.
 /// Use with the `std::iterator` module.
-pub type CharRevIterator<'self> =
-    Invert<Map<'self, (uint, char), char, CharOffsetIterator<'self>>>;
+pub type CharRevIterator<'self> = Invert<CharIterator<'self>>;
+
+/// External iterator for a string's characters and their byte offsets in reverse order.
+/// Use with the `std::iterator` module.
+pub type CharOffsetRevIterator<'self> = Invert<CharOffsetIterator<'self>>;
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iterator` module.
@@ -313,12 +357,20 @@ pub type ByteIterator<'self> =
 
 /// External iterator for a string's bytes in reverse order.
 /// Use with the `std::iterator` module.
-pub type ByteRevIterator<'self> =
-    Invert<Map<'self, &'self u8, u8, vec::VecIterator<'self, u8>>>;
+pub type ByteRevIterator<'self> = Invert<ByteIterator<'self>>;
+
+/// An iterator over byte index and either &u8 or char
+#[deriving(Clone)]
+enum OffsetIterator<'self> {
+    // use ByteIterator here when it can be cloned
+    ByteOffset(Enumerate<vec::VecIterator<'self, u8>>),
+    CharOffset(CharOffsetIterator<'self>),
+}
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
 pub struct CharSplitIterator<'self,Sep> {
+    priv iter: OffsetIterator<'self>,
     priv string: &'self str,
     priv position: uint,
     priv sep: Sep,
@@ -327,7 +379,6 @@ pub struct CharSplitIterator<'self,Sep> {
     /// Whether an empty string at the end is allowed
     priv allow_trailing_empty: bool,
     priv finished: bool,
-    priv only_ascii: bool
 }
 
 /// An iterator over the words of a string, separated by an sequence of whitespace
@@ -343,39 +394,39 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> 
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
 
-        let l = self.string.len();
         let start = self.position;
+        let len = self.string.len();
 
-        if self.only_ascii {
-            // this gives a *huge* speed up for splitting on ASCII
-            // characters (e.g. '\n' or ' ')
-            while self.position < l && self.count > 0 {
-                let byte = self.string[self.position];
-
-                if self.sep.matches(byte as char) {
-                    let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
-                    self.position += 1;
-                    self.count -= 1;
-                    return Some(slice);
-                }
-                self.position += 1;
-            }
-        } else {
-            while self.position < l && self.count > 0 {
-                let CharRange {ch, next} = self.string.char_range_at(self.position);
-
-                if self.sep.matches(ch) {
-                    let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
-                    self.position = next;
-                    self.count -= 1;
-                    return Some(slice);
-                }
-                self.position = next;
+        if self.count > 0 {
+            match self.iter {
+                // this gives a *huge* speed up for splitting on ASCII
+                // characters (e.g. '\n' or ' ')
+                ByteOffset(ref mut iter) =>
+                    for (idx, &byte) in *iter {
+                        if self.sep.matches(byte as char) {
+                            self.position = idx + 1;
+                            self.count -= 1;
+                            return Some(unsafe {
+                                raw::slice_bytes(self.string, start, idx)
+                            })
+                        }
+                    },
+                CharOffset(ref mut iter) =>
+                    for (idx, ch) in *iter {
+                        if self.sep.matches(ch) {
+                            // skip over the separator
+                            self.position = self.string.char_range_at(idx).next;
+                            self.count -= 1;
+                            return Some(unsafe {
+                                raw::slice_bytes(self.string, start, idx)
+                            })
+                        }
+                    },
             }
         }
         self.finished = true;
-        if self.allow_trailing_empty || start < l {
-            Some(unsafe { raw::slice_bytes(self.string, start, l) })
+        if self.allow_trailing_empty || start < len {
+            Some(unsafe { raw::slice_bytes(self.string, start, len) })
         } else {
             None
         }
@@ -938,12 +989,21 @@ pub mod raw {
     /// If end is greater than the length of the string.
     #[inline]
     pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        do s.as_imm_buf |sbuf, n| {
-             assert!((begin <= end));
-             assert!((end <= n));
+        assert!(begin <= end);
+        assert!(end <= s.len());
+        slice_unchecked(s, begin, end)
+    }
 
+    /// Takes a bytewise (not UTF-8) slice from a string.
+    ///
+    /// Returns the substring from [`begin`..`end`).
+    ///
+    /// Caller must check slice boundaries!
+    #[inline]
+    pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
+        do s.as_imm_buf |sbuf, _n| {
              cast::transmute(Slice {
-                 data: ptr::offset(sbuf, begin as int),
+                 data: sbuf.offset_inbounds(begin as int),
                  len: end - begin,
              })
         }
@@ -1302,7 +1362,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~
     #[inline]
     fn iter(&self) -> CharIterator<'self> {
-        self.char_offset_iter().map(|(_, c)| c)
+        CharIterator{string: *self}
     }
 
     /// An iterator over the characters of `self`, in reverse order.
@@ -1326,14 +1386,11 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the characters of `self` and their byte offsets.
     #[inline]
     fn char_offset_iter(&self) -> CharOffsetIterator<'self> {
-        CharOffsetIterator {
-            index_front: 0,
-            index_back: self.len(),
-            string: *self
-        }
+        CharOffsetIterator{string: *self, iter: self.iter()}
     }
 
-    /// An iterator over the characters of `self` and their byte offsets.
+    /// An iterator over the characters of `self` and their byte offsets,
+    /// in reverse order.
     #[inline]
     fn char_offset_rev_iter(&self) -> CharOffsetRevIterator<'self> {
         self.char_offset_iter().invert()
@@ -1371,15 +1428,19 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
         -> CharSplitIterator<'self, Sep> {
-        let only_ascii = sep.only_ascii();
+        let iter = if sep.only_ascii() {
+            ByteOffset(self.as_bytes().iter().enumerate())
+        } else {
+            CharOffset(self.char_offset_iter())
+        };
         CharSplitIterator {
+            iter: iter,
             string: *self,
             position: 0,
             sep: sep,
             count: count,
             allow_trailing_empty: allow_trailing_empty,
             finished: false,
-            only_ascii: only_ascii
         }
     }
 
@@ -1481,8 +1542,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// beyond the last character of the string
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'self str {
-        assert!(self.is_char_boundary(begin));
-        assert!(self.is_char_boundary(end));
+        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
 
@@ -1502,7 +1562,8 @@ impl<'self> StrSlice<'self> for &'self str {
     /// out of bounds.
     #[inline]
     fn slice_to(&self, end: uint) -> &'self str {
-        self.slice(0, end)
+        assert!(self.is_char_boundary(end));
+        unsafe { raw::slice_bytes(*self, 0, end) }
     }
 
     /// Returns a slice of the string from the char range
@@ -1512,23 +1573,24 @@ impl<'self> StrSlice<'self> for &'self str {
     /// beyond the last character of the string.
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
         assert!(begin <= end);
-        // not sure how to use the iterators for this nicely.
-        let mut position = 0;
         let mut count = 0;
-        let l = self.len();
-        while count < begin && position < l {
-            position = self.char_range_at(position).next;
-            count += 1;
-        }
-        if count < begin { fail!("Attempted to begin slice_chars beyond end of string") }
-        let start_byte = position;
-        while count < end && position < l {
-            position = self.char_range_at(position).next;
-            count += 1;
-        }
-        if count < end { fail!("Attempted to end slice_chars beyond end of string") }
+        let mut begin_byte = None;
+        let mut end_byte = None;
 
-        self.slice(start_byte, position)
+        // This could be even more efficient by not decoding,
+        // only finding the char boundaries
+        for (idx, _) in self.char_offset_iter() {
+            if count == begin { begin_byte = Some(idx); }
+            if count == end { end_byte = Some(idx); break; }
+            count += 1;
+        }
+        if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
+
+        match (begin_byte, end_byte) {
+            (None, _) => fail!("slice_chars: `begin` is beyond end of string"),
+            (_, None) => fail!("slice_chars: `end` is beyond end of string"),
+            (Some(a), Some(b)) => unsafe { raw::slice_bytes(*self, a, b) }
+        }
     }
 
     /// Returns true if `needle` is a prefix of the string.
@@ -1724,6 +1786,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Returns false if the index points into the middle of a multi-byte
     /// character sequence.
+    #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
         let b = self[index];
@@ -1809,24 +1872,33 @@ impl<'self> StrSlice<'self> for &'self str {
     /// This function can be used to iterate over a unicode string in reverse.
     ///
     /// Returns 0 for next index if called on start index 0.
+    #[inline]
     fn char_range_at_reverse(&self, start: uint) -> CharRange {
         let mut prev = start;
 
-        // while there is a previous byte == 10......
-        while prev > 0u && self[prev - 1u] & 192u8 == TAG_CONT_U8 {
-            prev -= 1u;
+        prev = prev.saturating_sub(1);
+        if self[prev] < 128 { return CharRange{ch: self[prev] as char, next: prev} }
+
+        // Multibyte case is a fn to allow char_range_at_reverse to inline cleanly
+        fn multibyte_char_range_at_rev(s: &str, mut i: uint) -> CharRange {
+            // while there is a previous byte == 10......
+            while i > 0 && s[i] & 192u8 == TAG_CONT_U8 {
+                i -= 1u;
+            }
+
+            let mut val = s[i] as uint;
+            let w = UTF8_CHAR_WIDTH[val] as uint;
+            assert!((w != 0));
+
+            val = utf8_first_byte!(val, w);
+            val = utf8_acc_cont_byte!(val, s[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
+
+            return CharRange {ch: val as char, next: i};
         }
 
-        // now refer to the initial byte of previous char
-        if prev > 0u {
-            prev -= 1u;
-        } else {
-            prev = 0u;
-        }
-
-
-        let ch = self.char_at(prev);
-        return CharRange {ch:ch, next:prev};
+        return multibyte_char_range_at_rev(*self, prev);
     }
 
     /// Plucks the character ending at the `i`th byte of a string
@@ -1836,8 +1908,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /// Work with the byte buffer of a string as a byte slice.
-    ///
-    /// The byte slice does not include the null terminator.
     fn as_bytes(&self) -> &'self [u8] {
         unsafe { cast::transmute(*self) }
     }
@@ -1854,10 +1924,8 @@ impl<'self> StrSlice<'self> for &'self str {
                 if search.matches(b as char) { return Some(i) }
             }
         } else {
-            let mut index = 0;
-            for c in self.iter() {
+            for (index, c) in self.char_offset_iter() {
                 if search.matches(c) { return Some(index); }
-                index += c.len_utf8_bytes();
             }
         }
 
@@ -1871,15 +1939,14 @@ impl<'self> StrSlice<'self> for &'self str {
     /// `Some` containing the byte index of the last matching character
     /// or `None` if there is no match
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
-        let mut index = self.len();
         if search.only_ascii() {
+            let mut index = self.len();
             for b in self.byte_rev_iter() {
                 index -= 1;
                 if search.matches(b as char) { return Some(index); }
             }
         } else {
-            for c in self.rev_iter() {
-                index -= c.len_utf8_bytes();
+            for (index, c) in self.char_offset_rev_iter() {
                 if search.matches(c) { return Some(index); }
             }
         }
@@ -2020,10 +2087,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Work with the byte buffer and length of a slice.
     ///
-    /// The given length is one byte longer than the 'official' indexable
-    /// length of the string. This is to permit probing the byte past the
-    /// indexable area for a null byte, as is the case in slices pointing
-    /// to full strings, or suffixes of them.
+    /// The buffer does not have a null terminator.
     #[inline]
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T {
         let v: &[u8] = unsafe { cast::transmute(*self) };
@@ -2046,12 +2110,10 @@ pub trait OwnedStr {
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
-    /// The given length is one byte longer than the 'official' indexable
-    /// length of the string. This is to permit probing the byte past the
-    /// indexable area for a null byte, as is the case in slices pointing
-    /// to full strings, or suffixes of them.
+    /// The buffer does not have a null terminator.
     ///
-    /// Make sure any mutations to this buffer keep this string valid UTF8.
+    /// The caller must make sure any mutations to this buffer keep the string
+    /// valid UTF-8!
     fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T;
 }
 
@@ -2152,12 +2214,10 @@ impl OwnedStr for ~str {
         new_str
     }
 
-    /// Reserves capacity for exactly `n` bytes in the given string, not including
-    /// the null terminator.
+    /// Reserves capacity for exactly `n` bytes in the given string.
     ///
     /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
+    /// enough to hold a string of length `n`.
     ///
     /// If the capacity for `s` is already equal to or greater than the requested
     /// capacity, then no action is taken.
@@ -2177,8 +2237,7 @@ impl OwnedStr for ~str {
     /// Reserves capacity for at least `n` bytes in the given string.
     ///
     /// Assuming single-byte characters, the resulting string will be large
-    /// enough to hold a string of length `n`. To account for the null terminator,
-    /// the underlying buffer will have the size `n` + 1.
+    /// enough to hold a string of length `n`.
     ///
     /// This function will over-allocate in order to amortize the allocation costs
     /// in scenarios where the caller may need to repeatedly reserve additional
@@ -3211,6 +3270,14 @@ mod tests {
     }
 
     #[test]
+    fn test_iterator_clone() {
+        let s = "ศไทย中华Việt Nam";
+        let mut it = s.iter();
+        it.next();
+        assert!(it.zip(it.clone()).all(|(x,y)| x == y));
+    }
+
+    #[test]
     fn test_byte_iterator() {
         let s = ~"ศไทย中华Việt Nam";
         let v = [
@@ -3425,6 +3492,62 @@ mod tests {
 mod bench {
     use extra::test::BenchHarness;
     use super::*;
+    use prelude::*;
+
+    #[bench]
+    fn char_iterator(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_iterator_ascii(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_iterator_rev(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.rev_iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_offset_iterator(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.char_offset_iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn char_offset_iterator_rev(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let len = s.char_len();
+
+        do bh.iter {
+            assert_eq!(s.char_offset_rev_iter().len(), len);
+        }
+    }
 
     #[bench]
     fn is_utf8_100_ascii(bh: &mut BenchHarness) {
