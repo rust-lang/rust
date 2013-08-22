@@ -147,7 +147,7 @@ impl FileDescriptor {
     }
 
     // as per bnoordhuis in #libuv: offset >= 0 uses prwrite instead of write
-    fn write_common(&self, loop_: Loop, buf: Buf, offset: i64, cb: Option<FsCallback>)
+    fn write_common(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: Option<FsCallback>)
           -> int {
         let complete_cb_ptr = match cb {
             Some(_) => compl_cb,
@@ -166,16 +166,16 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn write(&self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
+    pub fn write(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
           -> int {
         self.write_common(loop_, buf, offset, Some(cb))
     }
-    pub fn write_sync(&self, loop_: Loop, buf: Buf, offset: i64)
+    pub fn write_sync(&mut self, loop_: Loop, buf: Buf, offset: i64)
           -> int {
         self.write_common(loop_, buf, offset, None)
     }
 
-    fn read_common(&self, loop_: Loop, buf: Buf,
+    fn read_common(&mut self, loop_: Loop, buf: Buf,
                    offset: i64, cb: Option<FsCallback>)
           -> int {
         let complete_cb_ptr = match cb {
@@ -194,11 +194,11 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn read(&self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
+    pub fn read(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
           -> int {
         self.read_common(loop_, buf, offset, Some(cb))
     }
-    pub fn read_sync(&self, loop_: Loop, buf: Buf, offset: i64)
+    pub fn read_sync(&mut self, loop_: Loop, buf: Buf, offset: i64)
           -> int {
         self.read_common(loop_, buf, offset, None)
     }
@@ -294,7 +294,7 @@ mod test {
             |req, uverr| {
                 let loop_ = req.get_loop();
                 assert!(uverr.is_none());
-                let fd = FileDescriptor::from_open_req(req);
+                let mut fd = FileDescriptor::from_open_req(req);
                 let raw_fd = fd.native_handle();
                 let buf = unsafe { *write_buf_ptr };
                 do fd.write(loop_, buf, -1) |_, uverr| {
@@ -306,7 +306,7 @@ mod test {
                             |req, uverr| {
                             assert!(uverr.is_none());
                             let loop_ = req.get_loop();
-                            let fd = FileDescriptor::from_open_req(req);
+                            let mut fd = FileDescriptor::from_open_req(req);
                             let raw_fd = fd.native_handle();
                             let read_buf = unsafe { *read_buf_ptr };
                             do fd.read(loop_, read_buf, 0) |req, uverr| {
@@ -360,7 +360,7 @@ mod test {
                                                    create_flags as int, mode as int);
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
-            let fd = FileDescriptor(result as i32);
+            let mut fd = FileDescriptor(result as i32);
             // write
             let result = fd.write_sync(loop_, write_buf, -1);
             assert!(status_to_maybe_uv_error_with_loop(
@@ -375,7 +375,7 @@ mod test {
             assert!(status_to_maybe_uv_error_with_loop(
                 loop_.native_handle(), result as i32).is_none());
             let len = 1028;
-            let fd = FileDescriptor(result as i32);
+            let mut fd = FileDescriptor(result as i32);
             // read
             let read_mem: ~[u8] = vec::from_elem(len, 0u8);
             let buf = slice_to_uv_buf(read_mem);
@@ -413,7 +413,7 @@ mod test {
     }
 
     fn naive_print(loop_: Loop, input: &str) {
-        let stdout = FileDescriptor(STDOUT_FILENO);
+        let mut stdout = FileDescriptor(STDOUT_FILENO);
         let write_val = input.as_bytes();
         let write_buf = slice_to_uv_buf(write_val);
         stdout.write_sync(loop_, write_buf, -1);
