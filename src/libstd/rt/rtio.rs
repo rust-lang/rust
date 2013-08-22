@@ -18,6 +18,7 @@ use rt::uv::uvio;
 use path::Path;
 use super::io::support::PathLike;
 use super::io::{SeekStyle};
+use super::io::{FileMode, FileAccess};
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
@@ -68,7 +69,7 @@ pub trait IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocketObject, IoError>;
     fn timer_init(&mut self) -> Result<~RtioTimerObject, IoError>;
     fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream;
-    fn fs_open<P: PathLike>(&mut self, path: &P, flags: int, mode:int)
+    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
 }

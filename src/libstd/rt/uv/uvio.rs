@@ -31,7 +31,10 @@ use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use unstable::sync::Exclusive;
 use super::super::io::support::PathLike;
-use libc::{lseek, c_long};
+use libc::{lseek, c_long, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
+          S_IRUSR, S_IWUSR};
+use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
+            CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite};
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -466,8 +469,26 @@ impl IoFactory for UvIoFactory {
         ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
     }
 
-    fn fs_open<P: PathLike>(&mut self, path: &P, flags: int, mode: int)
+    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError> {
+        let mut flags = match fm {
+            Open => 0,
+            Create => O_CREAT,
+            OpenOrCreate => O_CREAT,
+            Append => O_APPEND,
+            Truncate => O_TRUNC,
+            CreateOrTruncate => O_TRUNC | O_CREAT
+        };
+        flags = match fa {
+            Read => flags | O_RDONLY,
+            Write => flags | O_WRONLY,
+            ReadWrite => flags | O_RDWR
+        };
+        let create_mode = match fm {
+            Create|OpenOrCreate|CreateOrTruncate =>
+                S_IRUSR | S_IWUSR,
+            _ => 0
+        };
         let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<~RtioFileStream,
                                            IoError>> = &result_cell;
@@ -476,7 +497,8 @@ impl IoFactory for UvIoFactory {
         do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell::new(task);
             let path = path_cell.take();
-            do file::FsRequest::open(self.uv_loop(), path, flags, mode) |req,err| {
+            do file::FsRequest::open(self.uv_loop(), path, flags as int, create_mode as int)
+                  |req,err| {
                 if err.is_none() {
                     let loop_ = Loop {handle: req.get_loop().native_handle()};
                     let home = get_handle_to_current_scheduler!();
@@ -1699,26 +1721,26 @@ fn test_timer_sleep_simple() {
 }
 
 fn file_test_uvio_full_simple_impl() {
-    use libc::{O_CREAT, O_RDWR, O_RDONLY,
-               S_IWUSR, S_IRUSR};
     use str::StrSlice; // why does this have to be explicitly imported to work?
                        // compiler was complaining about no trait for str that
                        // does .as_bytes() ..
     use path::Path;
+    use rt::io::{Open, Create, ReadWrite, Read};
     unsafe {
         let io = Local::unsafe_borrow::<IoFactoryObject>();
-        let create_flags = O_RDWR | O_CREAT;
-        let ro_flags = O_RDONLY;
         let write_val = "hello uvio!";
-        let mode = S_IWUSR | S_IRUSR;
         let path = "./tmp/file_test_uvio_full.txt";
         {
-            let mut fd = (*io).fs_open(&Path(path), create_flags as int, mode as int).unwrap();
+            let create_fm = Create;
+            let create_fa = ReadWrite;
+            let mut fd = (*io).fs_open(&Path(path), create_fm, create_fa).unwrap();
             let write_buf = write_val.as_bytes();
             fd.write(write_buf);
         }
         {
-            let mut fd = (*io).fs_open(&Path(path), ro_flags as int, mode as int).unwrap();
+            let ro_fm = Open;
+            let ro_fa = Read;
+            let mut fd = (*io).fs_open(&Path(path), ro_fm, ro_fa).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec).unwrap();
             let read_val = str::from_bytes(read_vec.slice(0, nread as uint));
