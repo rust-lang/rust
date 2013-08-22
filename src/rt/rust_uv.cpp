@@ -27,7 +27,7 @@ rust_uv_loop_new() {
 // XXX libuv doesn't always ignore SIGPIPE even though we don't need it.
 #ifndef __WIN32__
     signal(SIGPIPE, SIG_IGN);
-#endif 
+#endif
     return (void*)uv_loop_new();
 }
 
