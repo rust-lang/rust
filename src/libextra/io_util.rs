@@ -30,7 +30,7 @@ impl BufReader {
     }
 
     fn as_bytes_reader<A>(&self, f: &fn(&BytesReader) -> A) -> A {
-        // XXX FIXME(#5723)
+        // FIXME(#5723)
         let bytes = ::std::util::id::<&[u8]>(self.buf);
         let bytes: &'static [u8] = unsafe { cast::transmute(bytes) };
         // Recreating the BytesReader state every call since

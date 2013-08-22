@@ -473,13 +473,16 @@ fn test_install_invalid() {
 }
 
 // Tests above should (maybe) be converted to shell out to rustpkg, too
-
+#[test]
 fn test_install_git() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
     let temp_pkg_id = git_repo_pkg();
     let repo = init_git_repo(&temp_pkg_id.path);
-    let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test_pkg");
+    debug!("repo = %s", repo.to_str());
+    let repo_subdir = repo.push("mockgithub.com").push("catamorphism").push("test-pkg");
+    debug!("repo_subdir = %s", repo_subdir.to_str());
+
     writeFile(&repo_subdir.push("main.rs"),
               "fn main() { let _x = (); }");
     writeFile(&repo_subdir.push("lib.rs"),
@@ -494,30 +497,28 @@ fn test_install_git() {
            temp_pkg_id.path.to_str(), repo.to_str());
     // should have test, bench, lib, and main
     command_line_test([~"install", temp_pkg_id.path.to_str()], &repo);
+    let ws = repo.push(".rust");
     // Check that all files exist
-    debug!("Checking for files in %s", repo.to_str());
-    let exec = target_executable_in_workspace(&temp_pkg_id, &repo);
+    debug!("Checking for files in %s", ws.to_str());
+    let exec = target_executable_in_workspace(&temp_pkg_id, &ws);
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
     let _built_lib =
         built_library_in_workspace(&temp_pkg_id,
-                                   &repo).expect("test_install_git: built lib should exist");
-    let lib = target_library_in_workspace(&temp_pkg_id, &repo);
-    debug!("lib = %s", lib.to_str());
-    assert!(os::path_exists(&lib));
-    assert!(is_rwx(&lib));
+                                   &ws).expect("test_install_git: built lib should exist");
+    assert_lib_exists(&ws, temp_pkg_id.short_name, temp_pkg_id.version.clone());
     let built_test = built_test_in_workspace(&temp_pkg_id,
-                         &repo).expect("test_install_git: built test should exist");
+                         &ws).expect("test_install_git: built test should exist");
     assert!(os::path_exists(&built_test));
     let built_bench = built_bench_in_workspace(&temp_pkg_id,
-                          &repo).expect("test_install_git: built bench should exist");
+                          &ws).expect("test_install_git: built bench should exist");
     assert!(os::path_exists(&built_bench));
     // And that the test and bench executables aren't installed
-    let test = target_test_in_workspace(&temp_pkg_id, &repo);
+    let test = target_test_in_workspace(&temp_pkg_id, &ws);
     assert!(!os::path_exists(&test));
     debug!("test = %s", test.to_str());
-    let bench = target_bench_in_workspace(&temp_pkg_id, &repo);
+    let bench = target_bench_in_workspace(&temp_pkg_id, &ws);
     debug!("bench = %s", bench.to_str());
     assert!(!os::path_exists(&bench));
 }
@@ -563,6 +564,7 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
+#[test]
 fn test_package_version() {
     let local_path = "mockgithub.com/catamorphism/test_pkg_version";
     let repo = init_git_repo(&Path(local_path));
@@ -578,28 +580,27 @@ fn test_package_version() {
               "#[bench] pub fn f() { (); }");
     add_git_tag(&repo_subdir, ~"0.4");
 
+    // It won't pick up the 0.4 version because the dir isn't in the RUST_PATH, but...
     let temp_pkg_id = PkgId::new("mockgithub.com/catamorphism/test_pkg_version");
-    match temp_pkg_id.version {
-        ExactRevision(~"0.4") => (),
-        _ => fail!(fmt!("test_package_version: package version was %?, expected Some(0.4)",
-                        temp_pkg_id.version))
-    }
     // This should look at the prefix, clone into a workspace, then build.
     command_line_test([~"install", ~"mockgithub.com/catamorphism/test_pkg_version"],
                       &repo);
+    let ws = repo.push(".rust");
+    // we can still match on the filename to make sure it contains the 0.4 version
     assert!(match built_library_in_workspace(&temp_pkg_id,
-                                             &repo) {
+                                             &ws) {
         Some(p) => p.to_str().ends_with(fmt!("0.4%s", os::consts::DLL_SUFFIX)),
         None    => false
     });
-    assert!(built_executable_in_workspace(&temp_pkg_id, &repo)
-            == Some(repo.push("build").
+    assert!(built_executable_in_workspace(&temp_pkg_id, &ws)
+            == Some(ws.push("build").
                     push("mockgithub.com").
                     push("catamorphism").
                     push("test_pkg_version").
                     push("test_pkg_version")));
 }
 
+#[test]
 fn test_package_request_version() {
     let local_path = "mockgithub.com/catamorphism/test_pkg_version";
     let repo = init_git_repo(&Path(local_path));
@@ -1032,6 +1033,30 @@ fn test_extern_mod() {
               str::from_bytes(outp.error));
     }
     assert!(os::path_exists(&exec_file) && is_executable(&exec_file));
+}
+
+#[test]
+fn test_import_rustpkg() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    writeFile(&workspace.push("src").push("foo-0.1").push("pkg.rs"),
+              "extern mod rustpkg; fn main() {}");
+    command_line_test([~"build", ~"foo"], &workspace);
+    debug!("workspace = %s", workspace.to_str());
+    assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
+        os::EXE_SUFFIX))));
+}
+
+#[test]
+fn test_macro_pkg_script() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    writeFile(&workspace.push("src").push("foo-0.1").push("pkg.rs"),
+              "extern mod rustpkg; fn main() { debug!(\"Hi\"); }");
+    command_line_test([~"build", ~"foo"], &workspace);
+    debug!("workspace = %s", workspace.to_str());
+    assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
+        os::EXE_SUFFIX))));
 }
 
 /// Returns true if p exists and is executable

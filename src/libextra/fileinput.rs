@@ -27,7 +27,7 @@ reset once it has been finished, so attempting to iterate on `[None,
 None]` will only take input once unless `io::stdin().seek(0, SeekSet)`
 is called between.
 
-The `pathify` function handles converting a list of file paths as
+The `make_path_option_vec` function handles converting a list of file paths as
 strings to the appropriate format, including the (optional) conversion
 of `"-"` to `stdin`.
 
@@ -42,7 +42,7 @@ to handle any `FileInput` structs. E.g. a simple `cat` program
 
 or a program that numbers lines after concatenating two files
 
-    for input_vec_state(pathify([~"a.txt", ~"b.txt"])) |line, state| {
+    for input_vec_state(make_path_option_vec([~"a.txt", ~"b.txt"])) |line, state| {
         io::println(fmt!("%u: %s", state.line_num,
                                    line));
     }
@@ -145,8 +145,14 @@ struct FileInput_ {
     previous_was_newline: bool
 }
 
-// XXX: remove this when Reader has &mut self. Should be removable via
-// "self.fi." -> "self." and renaming FileInput_. Documentation above
+
+// FIXME #5723: remove this when Reader has &mut self.
+// Removing it would mean giving read_byte in the Reader impl for
+// FileInput &mut self, which in turn means giving most of the
+// io::Reader trait methods &mut self. That can't be done right now
+// because of io::with_bytes_reader and #5723.
+// Should be removable via
+// "self.fi" -> "self." and renaming FileInput_. Documentation above
 // will likely have to be updated to use `let mut in = ...`.
 pub struct FileInput  {
     fi: @mut FileInput_
@@ -194,7 +200,7 @@ impl FileInput {
     */
     pub fn from_args() -> FileInput {
         let args = os::args();
-        let pathed = pathify(args.tail(), true);
+        let pathed = make_path_option_vec(args.tail(), true);
         FileInput::from_vec(pathed)
     }
 
@@ -351,8 +357,7 @@ Convert a list of strings to an appropriate form for a `FileInput`
 instance. `stdin_hyphen` controls whether `-` represents `stdin` or
 a literal `-`.
 */
-// XXX: stupid, unclear name
-pub fn pathify(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>] {
+pub fn make_path_option_vec(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>] {
     vec.iter().map(|str| {
         if stdin_hyphen && "-" == *str {
             None
@@ -410,7 +415,7 @@ pub fn input_vec_state(files: ~[Option<Path>],
 #[cfg(test)]
 mod test {
 
-    use super::{FileInput, pathify, input_vec, input_vec_state};
+    use super::{FileInput, make_path_option_vec, input_vec, input_vec_state};
 
     use std::io;
     use std::uint;
@@ -426,22 +431,22 @@ mod test {
     }
 
     #[test]
-    fn test_pathify() {
+    fn test_make_path_option_vec() {
         let strs = [~"some/path",
                     ~"some/other/path"];
         let paths = ~[Some(Path("some/path")),
                       Some(Path("some/other/path"))];
 
-        assert_eq!(pathify(strs, true), paths.clone());
-        assert_eq!(pathify(strs, false), paths);
+        assert_eq!(make_path_option_vec(strs, true), paths.clone());
+        assert_eq!(make_path_option_vec(strs, false), paths);
 
-        assert_eq!(pathify([~"-"], true), ~[None]);
-        assert_eq!(pathify([~"-"], false), ~[Some(Path("-"))]);
+        assert_eq!(make_path_option_vec([~"-"], true), ~[None]);
+        assert_eq!(make_path_option_vec([~"-"], false), ~[Some(Path("-"))]);
     }
 
     #[test]
     fn test_fileinput_read_byte() {
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-fileinput-read-byte-%u.tmp", i)), true);
 
@@ -471,7 +476,7 @@ mod test {
 
     #[test]
     fn test_fileinput_read() {
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-fileinput-read-%u.tmp", i)), true);
 
@@ -492,7 +497,7 @@ mod test {
     #[test]
     fn test_input_vec() {
         let mut all_lines = ~[];
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-input-vec-%u.tmp", i)), true);
 
@@ -514,7 +519,7 @@ mod test {
 
     #[test]
     fn test_input_vec_state() {
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-input-vec-state-%u.tmp", i)),true);
 
@@ -536,7 +541,7 @@ mod test {
 
     #[test]
     fn test_empty_files() {
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-empty-files-%u.tmp", i)),true);
 
@@ -583,7 +588,7 @@ mod test {
 
     #[test]
     fn test_next_file() {
-        let filenames = pathify(vec::from_fn(
+        let filenames = make_path_option_vec(vec::from_fn(
             3,
             |i| fmt!("tmp/lib-fileinput-test-next-file-%u.tmp", i)),true);
 
@@ -614,7 +619,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_input_vec_missing_file() {
-        do input_vec(pathify([~"this/file/doesnt/exist"], true)) |line| {
+        do input_vec(make_path_option_vec([~"this/file/doesnt/exist"], true)) |line| {
             println(line);
             true
         };

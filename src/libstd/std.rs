@@ -198,7 +198,7 @@ mod unicode;
 #[path = "num/cmath.rs"]
 mod cmath;
 
-// XXX: This shouldn't be pub, and it should be reexported under 'unstable'
+// FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
 pub mod rt;
 
