@@ -697,6 +697,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 fld.fold_expr(e)
             )
         }
+        ty_typeof(e) => ty_typeof(fld.fold_expr(e)),
         ty_mac(ref mac) => ty_mac(fold_mac(mac))
     }
 }

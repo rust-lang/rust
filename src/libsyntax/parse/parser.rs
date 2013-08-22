@@ -51,7 +51,7 @@ use ast::{struct_variant_kind, subtract};
 use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
-use ast::{TypeField, ty_fixed_length_vec, ty_closure, ty_bare_fn};
+use ast::{TypeField, ty_fixed_length_vec, ty_closure, ty_bare_fn, ty_typeof};
 use ast::{ty_infer, TypeMethod};
 use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, uniq};
@@ -1105,6 +1105,13 @@ impl Parser {
             let result = self.parse_ty_closure(ast::BorrowedSigil, None);
             self.obsolete(*self.last_span, ObsoleteBareFnType);
             result
+        } else if self.eat_keyword(keywords::Typeof) {
+            // TYPEOF
+            // In order to not be ambiguous, the type must be surrounded by parens.
+            self.expect(&token::LPAREN);
+            let e = self.parse_expr();
+            self.expect(&token::RPAREN);
+            ty_typeof(e)
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(self.token) {
             // NAMED TYPE

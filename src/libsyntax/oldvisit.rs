@@ -279,6 +279,9 @@ pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
             (v.visit_ty)(mt.ty, (e.clone(), v));
             (v.visit_expr)(ex, (e.clone(), v));
         },
+        ty_typeof(ex) => {
+            (v.visit_expr)(ex, (e.clone(), v));
+        }
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
     }
 }
