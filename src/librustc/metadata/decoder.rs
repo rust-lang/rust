@@ -39,7 +39,7 @@ use syntax::ast_map;
 use syntax::attr;
 use syntax::parse::token::{ident_interner, special_idents};
 use syntax::print::pprust;
-use syntax::{ast, ast_util};
+use syntax::ast;
 use syntax::codemap;
 use syntax::parse::token;
 
@@ -702,33 +702,114 @@ impl<'self> EachItemContext<'self> {
     }
 }
 
-/// Iterates over all the paths in the given crate.
-pub fn each_path(intr: @ident_interner,
-                 cdata: cmd,
-                 get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like, ast::visibility) -> bool)
-                 -> bool {
-    // FIXME #4572: This function needs to be nuked, as it's impossible to
-    // make fast. It's the source of most of the performance problems when
-    // compiling small crates.
+fn each_child_of_item_or_crate(intr: @ident_interner,
+                               cdata: cmd,
+                               item_doc: ebml::Doc,
+                               get_crate_data: GetCrateDataCb,
+                               callback: &fn(def_like, ast::ident)) {
+    // Iterate over all children.
+    let _ = do reader::tagged_docs(item_doc, tag_mod_child) |child_info_doc| {
+        let child_def_id = reader::with_doc_data(child_info_doc,
+                                                 parse_def_id);
+        let child_def_id = translate_def_id(cdata, child_def_id);
 
+        // This item may be in yet another crate if it was the child of a
+        // reexport.
+        let other_crates_items = if child_def_id.crate == cdata.cnum {
+            reader::get_doc(reader::Doc(cdata.data), tag_items)
+        } else {
+            let crate_data = get_crate_data(child_def_id.crate);
+            reader::get_doc(reader::Doc(crate_data.data), tag_items)
+        };
+
+        // Get the item.
+        match maybe_find_item(child_def_id.node, other_crates_items) {
+            None => {}
+            Some(child_item_doc) => {
+                // Hand off the item to the callback.
+                let child_name = item_name(intr, child_item_doc);
+                let def_like = item_to_def_like(child_item_doc,
+                                                child_def_id,
+                                                cdata.cnum);
+                callback(def_like, child_name);
+            }
+        }
+
+        true
+    };
+
+    // Iterate over all reexports.
+    let _ = do each_reexport(item_doc) |reexport_doc| {
+        let def_id_doc = reader::get_doc(reexport_doc,
+                                         tag_items_data_item_reexport_def_id);
+        let child_def_id = reader::with_doc_data(def_id_doc,
+                                                 parse_def_id);
+        let child_def_id = translate_def_id(cdata, child_def_id);
+
+        let name_doc = reader::get_doc(reexport_doc,
+                                       tag_items_data_item_reexport_name);
+        let name = name_doc.as_str_slice();
+
+        // This reexport may be in yet another crate.
+        let other_crates_items = if child_def_id.crate == cdata.cnum {
+            reader::get_doc(reader::Doc(cdata.data), tag_items)
+        } else {
+            let crate_data = get_crate_data(child_def_id.crate);
+            reader::get_doc(reader::Doc(crate_data.data), tag_items)
+        };
+
+        // Get the item.
+        match maybe_find_item(child_def_id.node, other_crates_items) {
+            None => {}
+            Some(child_item_doc) => {
+                // Hand off the item to the callback.
+                let def_like = item_to_def_like(child_item_doc,
+                                                child_def_id,
+                                                cdata.cnum);
+                callback(def_like, token::str_to_ident(name));
+            }
+        }
+
+        true
+    };
+}
+
+/// Iterates over each child of the given item.
+pub fn each_child_of_item(intr: @ident_interner,
+                          cdata: cmd,
+                          id: ast::NodeId,
+                          get_crate_data: GetCrateDataCb,
+                          callback: &fn(def_like, ast::ident)) {
+    // Find the item.
+    let root_doc = reader::Doc(cdata.data);
+    let items = reader::get_doc(root_doc, tag_items);
+    let item_doc = match maybe_find_item(id, items) {
+        None => return,
+        Some(item_doc) => item_doc,
+    };
+
+    each_child_of_item_or_crate(intr,
+                                cdata,
+                                item_doc,
+                                get_crate_data,
+                                callback)
+}
+
+/// Iterates over all the top-level crate items.
+pub fn each_top_level_item_of_crate(intr: @ident_interner,
+                                    cdata: cmd,
+                                    get_crate_data: GetCrateDataCb,
+                                    callback: &fn(def_like, ast::ident)) {
     let root_doc = reader::Doc(cdata.data);
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
     let crate_items_doc = reader::get_doc(misc_info_doc,
                                           tag_misc_info_crate_items);
 
-    let mut path_builder = ~"";
-
-    let mut context = EachItemContext {
-        intr: intr,
-        cdata: cdata,
-        get_crate_data: get_crate_data,
-        path_builder: &mut path_builder,
-        callback: f,
-    };
-
-    // Iterate over all top-level crate items.
-    context.each_child_of_module_or_crate(crate_items_doc)
+    each_child_of_item_or_crate(intr,
+                                cdata,
+                                crate_items_doc,
+                                get_crate_data,
+                                callback)
 }
 
 pub fn get_item_path(cdata: cmd, id: ast::NodeId) -> ast_map::path {
@@ -1266,21 +1347,6 @@ pub fn get_crate_vers(data: @~[u8]) -> @str {
         Some(ver) => ver,
         None => @"0.0"
     }
-}
-
-fn iter_crate_items(intr: @ident_interner, cdata: cmd,
-                    get_crate_data: GetCrateDataCb,
-                    proc: &fn(path: &str, ast::def_id)) {
-    do each_path(intr, cdata, get_crate_data) |path_string, def_like, _| {
-        match def_like {
-            dl_impl(*) | dl_field => {}
-            dl_def(def) => {
-                proc(path_string,
-                     ast_util::def_id_of_def(def))
-            }
-        }
-        true
-    };
 }
 
 pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],

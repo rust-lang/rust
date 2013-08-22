@@ -10,10 +10,11 @@
 
 
 use driver::session::Session;
-use metadata::csearch::{each_path, get_trait_method_def_ids};
+use metadata::csearch::get_trait_method_def_ids;
 use metadata::csearch::get_method_name_and_explicit_self;
 use metadata::csearch::get_static_methods_if_impl;
 use metadata::csearch::{get_type_name_if_impl, get_struct_fields};
+use metadata::csearch;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -486,7 +487,7 @@ pub fn Module(parent_link: ParentLink,
         anonymous_children: @mut HashMap::new(),
         import_resolutions: @mut HashMap::new(),
         glob_count: 0,
-        resolved_import_count: 0
+        resolved_import_count: 0,
     }
 }
 
@@ -1629,14 +1630,13 @@ impl Resolver {
         visit::walk_block(visitor, block, new_parent);
     }
 
-    pub fn handle_external_def(@mut self,
-                               def: def,
-                               visibility: ast::visibility,
-                               modules: &mut HashMap<def_id, @mut Module>,
-                               child_name_bindings: @mut NameBindings,
-                               final_ident: &str,
-                               ident: ident,
-                               new_parent: ReducedGraphParent) {
+    fn handle_external_def(@mut self,
+                           def: def,
+                           visibility: ast::visibility,
+                           child_name_bindings: @mut NameBindings,
+                           final_ident: &str,
+                           ident: ident,
+                           new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
@@ -1645,7 +1645,6 @@ impl Resolver {
                 debug!("(building reduced graph for external crate) \
                         already created module");
                 module_def.def_id = Some(def_id);
-                modules.insert(def_id, module_def);
               }
               Some(_) | None => {
                 debug!("(building reduced graph for \
@@ -1653,42 +1652,11 @@ impl Resolver {
                         %s", final_ident);
                 let parent_link = self.get_parent_link(new_parent, ident);
 
-                // FIXME (#5074): this should be a match on find
-                if !modules.contains_key(&def_id) {
-                    child_name_bindings.define_module(privacy,
-                                                      parent_link,
-                                                      Some(def_id),
-                                                      NormalModuleKind,
-                                                      dummy_sp());
-                    modules.insert(def_id,
-                                   child_name_bindings.get_module());
-                } else {
-                    let existing_module = *modules.get(&def_id);
-
-                    // Create an import resolution to avoid creating cycles in
-                    // the module graph.
-
-                    let resolution = @mut ImportResolution(Public, 0);
-                    resolution.outstanding_references = 0;
-
-                    match existing_module.parent_link {
-                      NoParentLink |
-                      BlockParentLink(*) => {
-                        fail!("can't happen");
-                      }
-                      ModuleParentLink(parent_module, ident) => {
-                        let name_bindings = parent_module.children.get(
-                            &ident);
-                        resolution.type_target =
-                            Some(Target(parent_module, *name_bindings));
-                      }
-                    }
-
-                    debug!("(building reduced graph for external crate) \
-                            ... creating import resolution");
-
-                    new_parent.import_resolutions.insert(ident, resolution);
-                }
+                child_name_bindings.define_module(privacy,
+                                                  parent_link,
+                                                  Some(def_id),
+                                                  NormalModuleKind,
+                                                  dummy_sp());
               }
             }
           }
@@ -1779,184 +1747,160 @@ impl Resolver {
         }
     }
 
-    /**
-     * Builds the reduced graph rooted at the 'use' directive for an external
-     * crate.
-     */
-    pub fn build_reduced_graph_for_external_crate(@mut self,
-                                                  root: @mut Module) {
-        let mut modules = HashMap::new();
+    /// Builds the reduced graph for a single item in an external crate.
+    fn build_reduced_graph_for_external_crate_def(@mut self,
+                                                  root: @mut Module,
+                                                  def_like: def_like,
+                                                  ident: ident) {
+        match def_like {
+            dl_def(def) => {
+                // Add the new child item, if necessary.
+                let optional_module = match def {
+                    def_foreign_mod(*) => Some(root),
+                    _ => {
+                        let (child_name_bindings, new_parent) =
+                            self.add_child(ident,
+                                           ModuleReducedGraphParent(root),
+                                           OverwriteDuplicates,
+                                           dummy_sp());
 
-        // Create all the items reachable by paths.
-        do each_path(self.session.cstore, root.def_id.unwrap().crate)
-                |path_string, def_like, visibility| {
+                        self.handle_external_def(def,
+                                                 public,
+                                                 child_name_bindings,
+                                                 self.session.str_of(ident),
+                                                 ident,
+                                                 new_parent);
 
-            debug!("(building reduced graph for external crate) found path \
-                        entry: %s (%?)",
-                    path_string, def_like);
+                        /*println(fmt!(">>> child item added: %s",
+                                     self.session.str_of(ident)));*/
 
-            let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
-            let final_ident_str = pieces.pop();
-            let final_ident = self.session.ident_of(final_ident_str);
-
-            // Find the module we need, creating modules along the way if we
-            // need to.
-
-            let mut current_module = root;
-            for ident_str in pieces.iter() {
-                let ident = self.session.ident_of(*ident_str);
-                // Create or reuse a graph node for the child.
-                let (child_name_bindings, new_parent) =
-                    self.add_child(ident,
-                                   ModuleReducedGraphParent(current_module),
-                                   OverwriteDuplicates,
-                                   dummy_sp());
-
-                // Define or reuse the module node.
-                match child_name_bindings.type_def {
-                    None => {
-                        debug!("(building reduced graph for external crate) \
-                                autovivifying missing type def %s",
-                                *ident_str);
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        child_name_bindings.define_module(Public,
-                                                          parent_link,
-                                                          None,
-                                                          NormalModuleKind,
-                                                          dummy_sp());
+                        child_name_bindings.get_module_if_available()
                     }
-                    Some(type_ns_def)
-                            if type_ns_def.module_def.is_none() => {
-                        debug!("(building reduced graph for external crate) \
-                                autovivifying missing module def %s",
-                                *ident_str);
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        child_name_bindings.define_module(Public,
-                                                          parent_link,
-                                                          None,
-                                                          NormalModuleKind,
-                                                          dummy_sp());
-                    }
-                    _ => {} // Fall through.
-                }
+                };
 
-                current_module = child_name_bindings.get_module();
-            }
-
-            match def_like {
-                dl_def(def) => {
-                    // Add the new child item.
-                    let (child_name_bindings, new_parent) =
-                        self.add_child(final_ident,
-                                       ModuleReducedGraphParent(
-                                            current_module),
-                                       OverwriteDuplicates,
-                                       dummy_sp());
-
-                    self.handle_external_def(def,
-                                             visibility,
-                                             &mut modules,
-                                             child_name_bindings,
-                                             self.session.str_of(
-                                                 final_ident),
-                                             final_ident,
-                                             new_parent);
-                }
-                dl_impl(def) => {
-                    // We only process static methods of impls here.
-                    match get_type_name_if_impl(self.session.cstore, def) {
-                        None => {}
-                        Some(final_ident) => {
-                            let static_methods_opt =
-                                get_static_methods_if_impl(
-                                    self.session.cstore, def);
-                            match static_methods_opt {
-                                Some(ref static_methods) if
-                                    static_methods.len() >= 1 => {
-                                    debug!("(building reduced graph for \
-                                            external crate) processing \
-                                            static methods for type name %s",
-                                            self.session.str_of(
-                                                final_ident));
-
-                                    let (child_name_bindings, new_parent) =
-                                        self.add_child(final_ident,
-                                            ModuleReducedGraphParent(
-                                                            current_module),
-                                            OverwriteDuplicates,
-                                            dummy_sp());
-
-                                    // Process the static methods. First,
-                                    // create the module.
-                                    let type_module;
-                                    match child_name_bindings.type_def {
-                                        Some(TypeNsDef {
-                                            module_def: Some(module_def),
-                                            _
-                                        }) => {
-                                            // We already have a module. This
-                                            // is OK.
-                                            type_module = module_def;
-
-                                            // Mark it as an impl module if
-                                            // necessary.
-                                            type_module.kind = ImplModuleKind;
-                                        }
-                                        Some(_) | None => {
-                                            let parent_link =
-                                                self.get_parent_link(
-                                                    new_parent, final_ident);
-                                            child_name_bindings.define_module(
-                                                Public,
-                                                parent_link,
-                                                Some(def),
-                                                ImplModuleKind,
-                                                dummy_sp());
-                                            type_module =
-                                                child_name_bindings.
-                                                    get_module();
-                                        }
-                                    }
-
-                                    // Add each static method to the module.
-                                    let new_parent = ModuleReducedGraphParent(
-                                        type_module);
-                                    for static_method_info in static_methods.iter() {
-                                        let ident = static_method_info.ident;
-                                        debug!("(building reduced graph for \
-                                                 external crate) creating \
-                                                 static method '%s'",
-                                               self.session.str_of(ident));
-
-                                        let (method_name_bindings, _) =
-                                            self.add_child(
-                                                ident,
-                                                new_parent,
-                                                OverwriteDuplicates,
-                                                dummy_sp());
-                                        let def = def_fn(
-                                            static_method_info.def_id,
-                                            static_method_info.purity);
-                                        method_name_bindings.define_value(
-                                            Public, def, dummy_sp());
-                                    }
-                                }
-
-                                // Otherwise, do nothing.
-                                Some(_) | None => {}
-                            }
+                match optional_module {
+                    None => {}
+                    Some(module) => {
+                        do csearch::each_child_of_item(self.session.cstore,
+                                                       def_id_of_def(def))
+                                |def_like, child_ident| {
+                            /*println(fmt!(">>> each_child_of_item: %s %s",
+                                         self.session.str_of(ident),
+                                         self.session.str_of(child_ident)));*/
+                            self.build_reduced_graph_for_external_crate_def(
+                                module,
+                                def_like,
+                                child_ident)
                         }
                     }
                 }
-                dl_field => {
-                    debug!("(building reduced graph for external crate) \
-                            ignoring field");
+            }
+            dl_impl(def) => {
+                // We only process static methods of impls here.
+                match get_type_name_if_impl(self.session.cstore, def) {
+                    None => {}
+                    Some(final_ident) => {
+                        let static_methods_opt =
+                            get_static_methods_if_impl(self.session.cstore,
+                                                       def);
+                        match static_methods_opt {
+                            Some(ref static_methods) if
+                                static_methods.len() >= 1 => {
+                                debug!("(building reduced graph for \
+                                        external crate) processing \
+                                        static methods for type name %s",
+                                        self.session.str_of(
+                                            final_ident));
+
+                                let (child_name_bindings, new_parent) =
+                                    self.add_child(
+                                        final_ident,
+                                        ModuleReducedGraphParent(root),
+                                        OverwriteDuplicates,
+                                        dummy_sp());
+
+                                // Process the static methods. First,
+                                // create the module.
+                                let type_module;
+                                match child_name_bindings.type_def {
+                                    Some(TypeNsDef {
+                                        module_def: Some(module_def),
+                                        _
+                                    }) => {
+                                        // We already have a module. This
+                                        // is OK.
+                                        type_module = module_def;
+
+                                        // Mark it as an impl module if
+                                        // necessary.
+                                        type_module.kind = ImplModuleKind;
+                                    }
+                                    Some(_) | None => {
+                                        let parent_link =
+                                            self.get_parent_link(new_parent,
+                                                                 final_ident);
+                                        child_name_bindings.define_module(
+                                            Public,
+                                            parent_link,
+                                            Some(def),
+                                            ImplModuleKind,
+                                            dummy_sp());
+                                        type_module =
+                                            child_name_bindings.
+                                                get_module();
+                                    }
+                                }
+
+                                // Add each static method to the module.
+                                let new_parent =
+                                    ModuleReducedGraphParent(type_module);
+                                for static_method_info in
+                                        static_methods.iter() {
+                                    let ident = static_method_info.ident;
+                                    debug!("(building reduced graph for \
+                                             external crate) creating \
+                                             static method '%s'",
+                                           self.session.str_of(ident));
+
+                                    let (method_name_bindings, _) =
+                                        self.add_child(ident,
+                                                       new_parent,
+                                                       OverwriteDuplicates,
+                                                       dummy_sp());
+                                    let def = def_fn(
+                                        static_method_info.def_id,
+                                        static_method_info.purity);
+                                    method_name_bindings.define_value(
+                                        Public,
+                                        def,
+                                        dummy_sp());
+                                }
+                            }
+
+                            // Otherwise, do nothing.
+                            Some(_) | None => {}
+                        }
+                    }
                 }
             }
-            true
-        };
+            dl_field => {
+                debug!("(building reduced graph for external crate) \
+                        ignoring field");
+            }
+        }
+    }
+
+    /// Builds the reduced graph rooted at the 'use' directive for an external
+    /// crate.
+    pub fn build_reduced_graph_for_external_crate(@mut self,
+                                                  root: @mut Module) {
+        do csearch::each_top_level_item_of_crate(self.session.cstore,
+                                                 root.def_id.unwrap().crate)
+                |def_like, ident| {
+            self.build_reduced_graph_for_external_crate_def(root,
+                                                            def_like,
+                                                            ident)
+        }
     }
 
     /// Creates and adds an import directive to the given module.
