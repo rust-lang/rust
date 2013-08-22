@@ -64,6 +64,7 @@ pub struct EncodeParams<'self> {
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
     reachable: @mut HashSet<ast::NodeId>,
+    compress: bool
 }
 
 struct Stats {
@@ -1567,7 +1568,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0x75, //'u' as u8,
       0x73, //'s' as u8,
       0x74, //'t' as u8,
-      0, 0, 0, 1 ];
+      0, 0, 0, 2 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let wr = @io::BytesWriter::new();
@@ -1594,6 +1595,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         encode_inlined_item,
         link_meta,
         reachable,
+        compress,
         _
     } = parms;
     let type_abbrevs = @mut HashMap::new();
@@ -1679,9 +1681,17 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
+    let compression_flag = if compress { [1u8] } else { [0u8] };
 
-    metadata_encoding_version.to_owned() +
-        flate::deflate_bytes(*writer_bytes)
+    if compress {
+        metadata_encoding_version.to_owned() +
+            compression_flag.to_owned() +
+            flate::deflate_bytes(*writer_bytes)
+    } else {
+        metadata_encoding_version.to_owned() +
+            compression_flag.to_owned() +
+            *writer_bytes
+    }
 }
 
 // Get the encoded string for a type

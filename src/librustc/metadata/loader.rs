@@ -228,13 +228,26 @@ fn get_metadata_section(os: os,
                 }
                 if !version_ok { return None; }
 
-                let cvbuf1 = ptr::offset(cvbuf, vlen as int);
-                debug!("inflating %u bytes of compressed metadata",
-                       csz - vlen);
-                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
-                    let inflated = flate::inflate_bytes(bytes);
-                    found = Some(@(inflated));
+                assert!(csz >= vlen + 1);
+
+                let must_decompress = *ptr::offset(cvbuf, vlen as int) == 1;
+                let cvbuf1 = ptr::offset(cvbuf, vlen as int + 1);
+
+                do vec::raw::buf_as_slice(cvbuf1, csz-vlen-1) |bytes| {
+                    if must_decompress {
+                        debug!("inflating %u bytes of compressed metadata",
+                               csz - vlen);
+                        let inflated = flate::inflate_bytes(bytes);
+                        found = Some(@(inflated));
+                    } else {
+                        // Copy the byte vector as fast as possible
+                        let mut buf = vec::with_capacity(bytes.len());
+                        vec::raw::set_len(&mut buf, bytes.len());
+                        vec::raw::copy_memory(buf, bytes, bytes.len());
+                        found = Some(@buf)
+                    }
                 }
+
                 if found != None {
                     return found;
                 }
