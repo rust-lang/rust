@@ -59,7 +59,8 @@ impl FsRequest {
         FsRequest::open_common(loop_, path, flags, mode, Some(cb));
     }
 
-    pub fn open_sync<P: PathLike>(loop_: &Loop, path: &P, flags: int, mode: int) -> Result<int, UvError> {
+    pub fn open_sync<P: PathLike>(loop_: &Loop, path: &P, flags: int, mode: int)
+          -> Result<int, UvError> {
         let result = FsRequest::open_common(loop_, path, flags, mode, None);
         sync_cleanup(loop_, result)
     }
