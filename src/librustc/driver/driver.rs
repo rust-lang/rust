@@ -718,6 +718,8 @@ pub fn build_session_options(binary: @str,
     let android_cross_path = getopts::opt_maybe_str(
         matches, "android-cross-path");
 
+    let no_compress_metadata = opt_present(matches, "no-compress-metadata");
+
     let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
         None => ~[],
         Some(s) => {
@@ -752,7 +754,8 @@ pub fn build_session_options(binary: @str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
-        android_cross_path: android_cross_path
+        android_cross_path: android_cross_path,
+        no_compress_metadata: no_compress_metadata
     };
     return sopts;
 }
@@ -870,6 +873,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           for details)", "FEATURE"),
   optopt("", "android-cross-path",
          "The path to the Android NDK", "PATH"),
+  optflag("", "no-compress-metadata",
+          "Do not compress crate metadata (make builds a little faster)"),
   optflagopt("W", "warn",
                         "Set lint warnings", "OPT"),
   optmulti("A", "allow",
