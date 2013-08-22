@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected function but found `*u8`
 extern fn f() {
 }
 
-fn main() {
-    f();
+extern fn call1() {
+    f(); // OK from another extern fn!
 }
+
+fn call2() {
+    f(); //~ ERROR invoking non-Rust fn
+}
+
+
+fn main() {}

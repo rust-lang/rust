@@ -1006,20 +1006,25 @@ code_. They are defined in the same way as any other Rust function,
 except that they have the `extern` modifier.
 
 ~~~
+// Declares an extern fn, the ABI defaults to "C" 
 extern fn new_vec() -> ~[int] { ~[] }
+
+// Declares an extern fn with "stdcall" ABI
+extern "stdcall" fn new_vec_stdcall() -> ~[int] { ~[] }
 ~~~
 
-Extern functions may not be called from Rust code,
-but Rust code may take their value as a raw `u8` pointer.
+Unlike normal functions, extern fns have an `extern "ABI" fn()`.
+This is the same type as the functions declared in an extern
+block.
 
 ~~~
 # extern fn new_vec() -> ~[int] { ~[] }
-let fptr: *u8 = new_vec;
+let fptr: extern "C" fn() -> ~[int] = new_vec;
 ~~~
 
-The primary motivation for extern functions is
-to create callbacks for foreign functions that expect to receive function
-pointers.
+Extern functions may be called from Rust code, but
+caution must be taken with respect to the size of the stack
+segment, just as when calling an extern function normally.
 
 ### Type definitions
 
@@ -1384,14 +1389,13 @@ between the Rust ABI and the foreign ABI.
 A number of [attributes](#attributes) control the behavior of external
 blocks.
 
-By default external blocks assume
-that the library they are calling uses the standard C "cdecl" ABI.
-Other ABIs may be specified using the `abi` attribute as in
+By default external blocks assume that the library they are calling
+uses the standard C "cdecl" ABI.  Other ABIs may be specified using
+an `abi` string, as shown here:
 
 ~~~{.xfail-test}
 // Interface to the Windows API
-#[abi = "stdcall"]
-extern { }
+extern "stdcall" { }
 ~~~
 
 The `link_name` attribute allows the name of the library to be specified.
@@ -1406,6 +1410,12 @@ not to do any linking for the external block.
 This is particularly useful for creating external blocks for libc,
 which tends to not follow standard library naming conventions
 and is linked to all Rust programs anyway.
+
+The type of a function
+declared in an extern block
+is `extern "abi" fn(A1, ..., An) -> R`,
+where `A1...An` are the declared types of its arguments
+and `R` is the decalred return type.
 
 ## Attributes
 

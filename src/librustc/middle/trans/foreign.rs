@@ -21,6 +21,7 @@ use middle::trans::cabi;
 use middle::trans::build::*;
 use middle::trans::builder::noname;
 use middle::trans::common::*;
+use middle::trans::llrepr::LlvmRepr;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
 use middle::ty;
@@ -399,7 +400,29 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
             ccx, vec::append_one((*path).clone(), ast_map::path_name(
                 special_idents::clownshoe_abi
             )));
-        let llty = type_of_fn_from_ty(ccx, t);
+
+        // Compute the LLVM type that the function would have if it
+        // were just a normal Rust function. This will be the type of
+        // the wrappee fn.
+        let llty = match ty::get(t).sty {
+            ty::ty_bare_fn(ref f) => {
+                assert!(!f.abis.is_rust() && !f.abis.is_intrinsic());
+                type_of_rust_fn(ccx, f.sig.inputs, f.sig.output)
+            }
+            _ => {
+                ccx.sess.bug(fmt!("build_rust_fn: extern fn %s has ty %s, \
+                                  expected a bare fn ty",
+                                  path.repr(tcx),
+                                  t.repr(tcx)));
+            }
+        };
+
+        debug!("build_rust_fn: path=%s id=%? t=%s llty=%s",
+               path.repr(tcx),
+               id,
+               t.repr(tcx),
+               llty.llrepr(ccx));
+
         let llfndecl = base::decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         base::trans_fn(ccx,
                        (*path).clone(),
