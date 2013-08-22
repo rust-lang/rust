@@ -76,24 +76,33 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
 
             let variant_count = cx.expr_uint(span, variants.len());
 
-            // need to specify the uint-ness of the random number
-            let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
-            let r_ty = cx.ty_ident(span, cx.ident_of("R"));
             let rand_name = cx.path_all(span,
                                         true,
                                         rand_ident.clone(),
                                         None,
-                                        ~[ uint_ty, r_ty ]);
+                                        ~[]);
             let rand_name = cx.expr_path(rand_name);
 
-            // ::std::rand::Rand::rand::<uint>(rng)
+            // ::std::rand::Rand::rand(rng)
             let rv_call = cx.expr_call(span,
                                        rand_name,
                                        ~[ rng[0].duplicate(cx) ]);
 
+            // need to specify the uint-ness of the random number
+            let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
+            let value_ident = cx.ident_of("__value");
+            let let_statement = cx.stmt_let_typed(span,
+                                                  false,
+                                                  value_ident,
+                                                  uint_ty,
+                                                  rv_call);
+
             // rand() % variants.len()
-            let rand_variant = cx.expr_binary(span, ast::rem,
-                                              rv_call, variant_count);
+            let value_ref = cx.expr_ident(span, value_ident);
+            let rand_variant = cx.expr_binary(span,
+                                              ast::rem,
+                                              value_ref,
+                                              variant_count);
 
             let mut arms = do variants.iter().enumerate().map |(i, id_sum)| {
                 let i_expr = cx.expr_uint(span, i);
@@ -111,7 +120,10 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(span));
 
-            cx.expr_match(span, rand_variant, arms)
+            let match_expr = cx.expr_match(span, rand_variant, arms);
+
+            let block = cx.block(span, ~[ let_statement ], Some(match_expr));
+            cx.expr_block(block)
         }
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };

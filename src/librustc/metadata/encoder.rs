@@ -39,6 +39,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
 use syntax::ast_util;
+use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::parse::token;
 use syntax;
@@ -72,6 +73,7 @@ struct Stats {
     dep_bytes: uint,
     lang_item_bytes: uint,
     link_args_bytes: uint,
+    impl_bytes: uint,
     misc_bytes: uint,
     item_bytes: uint,
     index_bytes: uint,
@@ -635,15 +637,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
     fn encode_mutability(ebml_w: &writer::Encoder,
                          m: ast::mutability) {
         match m {
-            m_imm => {
-                ebml_w.writer.write(&[ 'i' as u8 ]);
-            }
-            m_mutbl => {
-                ebml_w.writer.write(&[ 'm' as u8 ]);
-            }
-            m_const => {
-                ebml_w.writer.write(&[ 'c' as u8 ]);
-            }
+            m_imm => ebml_w.writer.write(&[ 'i' as u8 ]),
+            m_mutbl => ebml_w.writer.write(&[ 'm' as u8 ]),
         }
     }
 }
@@ -995,7 +990,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
-            ast::ty_path(ref path, ref bounds, _) if path.idents.len() == 1 => {
+            ast::ty_path(ref path, ref bounds, _) if path.segments
+                                                         .len() == 1 => {
                 assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
@@ -1227,7 +1223,10 @@ struct EncodeVisitor {
 }
 
 impl visit::Visitor<()> for EncodeVisitor {
-    fn visit_expr(&mut self, ex:@expr, _:()) { my_visit_expr(ex); }
+    fn visit_expr(&mut self, ex:@expr, _:()) {
+        visit::walk_expr(self, ex, ());
+        my_visit_expr(ex);
+    }
     fn visit_item(&mut self, i:@item, _:()) {
         visit::walk_item(self, i, ());
         my_visit_item(i,
@@ -1516,6 +1515,41 @@ fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
+struct ImplVisitor<'self> {
+    ecx: &'self EncodeContext<'self>,
+    ebml_w: &'self mut writer::Encoder,
+}
+
+impl<'self> Visitor<()> for ImplVisitor<'self> {
+    fn visit_item(&mut self, item: @item, _: ()) {
+        match item.node {
+            item_impl(*) => {
+                self.ebml_w.start_tag(tag_impls_impl);
+                encode_def_id(self.ebml_w, local_def(item.id));
+                self.ebml_w.end_tag();
+            }
+            _ => {}
+        }
+        visit::walk_item(self, item, ());
+    }
+}
+
+fn encode_impls(ecx: &EncodeContext,
+                crate: &Crate,
+                ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_impls);
+
+    {
+        let mut visitor = ImplVisitor {
+            ecx: ecx,
+            ebml_w: ebml_w,
+        };
+        visit::walk_crate(&mut visitor, crate, ());
+    }
+
+    ebml_w.end_tag();
+}
+
 fn encode_misc_info(ecx: &EncodeContext,
                     crate: &Crate,
                     ebml_w: &mut writer::Encoder) {
@@ -1580,6 +1614,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         dep_bytes: 0,
         lang_item_bytes: 0,
         link_args_bytes: 0,
+        impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
@@ -1638,6 +1673,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     encode_link_args(&ecx, &mut ebml_w);
     ecx.stats.link_args_bytes = *wr.pos - i;
 
+    // Encode the def IDs of impls, for coherence checking.
+    i = *wr.pos;
+    encode_impls(&ecx, crate, &mut ebml_w);
+    ecx.stats.impl_bytes = *wr.pos - i;
+
     // Encode miscellaneous info.
     i = *wr.pos;
     encode_misc_info(&ecx, crate, &mut ebml_w);
@@ -1670,6 +1710,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         printfln!("       dep bytes: %u", ecx.stats.dep_bytes);
         printfln!(" lang item bytes: %u", ecx.stats.lang_item_bytes);
         printfln!(" link args bytes: %u", ecx.stats.link_args_bytes);
+        printfln!("      impl bytes: %u", ecx.stats.impl_bytes);
         printfln!("      misc bytes: %u", ecx.stats.misc_bytes);
         printfln!("      item bytes: %u", ecx.stats.item_bytes);
         printfln!("     index bytes: %u", ecx.stats.index_bytes);

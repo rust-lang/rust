@@ -49,8 +49,8 @@ impl<T> cat<T> {
 }
 
 impl<T> Container for cat<T> {
-    fn len(&const self) -> uint { self.meows as uint }
-    fn is_empty(&const self) -> bool { self.meows == 0 }
+    fn len(&self) -> uint { self.meows as uint }
+    fn is_empty(&self) -> bool { self.meows == 0 }
 }
 
 impl<T> Mutable for cat<T> {

@@ -825,12 +825,14 @@ fn trans_def_datum_unadjusted(bcx: @mut Block,
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
     match def {
-        ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
+        ast::def_fn(did, _) |
+        ast::def_static_method(did, ast::FromImpl(_), _) => {
             let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
             return fn_data_to_datum(bcx, ref_expr, did, fn_data);
         }
-        ast::def_static_method(impl_did, Some(trait_did), _) => {
-            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
+        ast::def_static_method(impl_did, ast::FromTrait(trait_did), _) => {
+            let fn_data = meth::trans_static_method_callee(bcx,
+                                                           impl_did,
                                                            trait_did,
                                                            ref_expr.id);
             return fn_data_to_datum(bcx, ref_expr, impl_did, fn_data);

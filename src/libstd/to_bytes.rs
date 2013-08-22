@@ -343,7 +343,14 @@ impl<A:IterBytes> IterBytes for ~A {
 
 // NB: raw-pointer IterBytes does _not_ dereference
 // to the target; it just gives you the pointer-bytes.
-impl<A> IterBytes for *const A {
+impl<A> IterBytes for *A {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+
+impl<A> IterBytes for *mut A {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)

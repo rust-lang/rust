@@ -63,7 +63,6 @@ use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
 use std::result;
-use std::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
@@ -150,7 +149,8 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let regions = match (&decl_generics.region_param, &path.rp) {
+    let regions = match (&decl_generics.region_param,
+                         &path.segments.last().lifetime) {
         (&None, &None) => {
             opt_vec::Empty
         }
@@ -169,20 +169,34 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Clone + 'static>(
         }
         (&Some(_), &Some(_)) => {
             opt_vec::with(
-                ast_region_to_region(this, rscope, path.span, &path.rp))
+                ast_region_to_region(this,
+                                     rscope,
+                                     path.span,
+                                     &path.segments.last().lifetime))
         }
     };
 
     // Convert the type parameters supplied by the user.
-    if !vec::same_length(*decl_generics.type_param_defs, path.types) {
+    let supplied_type_parameter_count =
+        path.segments.iter().flat_map(|s| s.types.iter()).len();
+    if decl_generics.type_param_defs.len() != supplied_type_parameter_count {
         this.tcx().sess.span_fatal(
             path.span,
             fmt!("wrong number of type arguments: expected %u but found %u",
-                 decl_generics.type_param_defs.len(), path.types.len()));
+                 decl_generics.type_param_defs.len(),
+                 supplied_type_parameter_count));
     }
-    let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, a_t));
+    let tps = path.segments
+                  .iter()
+                  .flat_map(|s| s.types.iter())
+                  .map(|a_t| ast_ty_to_ty(this, rscope, a_t))
+                  .collect();
 
-    substs {regions:ty::NonerasedRegions(regions), self_ty:self_ty, tps:tps}
+    substs {
+        regions: ty::NonerasedRegions(regions),
+        self_ty: self_ty,
+        tps: tps
+    }
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,
@@ -272,8 +286,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
         match a_seq_ty.ty.node {
             ast::ty_vec(ref mt) => {
                 let mut mt = ast_mt_to_mt(this, rscope, mt);
-                if a_seq_ty.mutbl == ast::m_mutbl ||
-                        a_seq_ty.mutbl == ast::m_const {
+                if a_seq_ty.mutbl == ast::m_mutbl {
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
                 return ty::mk_evec(tcx, mt, vst);
@@ -326,7 +339,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
                        path: &ast::Path,
                        flags: uint) {
         if (flags & NO_TPS) != 0u {
-            if path.types.len() > 0u {
+            if !path.segments.iter().all(|s| s.types.is_empty()) {
                 tcx.sess.span_err(
                     path.span,
                     "type parameters are not allowed on this type");
@@ -334,7 +347,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
         }
 
         if (flags & NO_REGIONS) != 0u {
-            if path.rp.is_some() {
+            if path.segments.last().lifetime.is_some() {
                 tcx.sess.span_err(
                     path.span,
                     "region parameters are not allowed on this type");

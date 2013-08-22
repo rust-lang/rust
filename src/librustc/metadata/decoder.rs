@@ -335,15 +335,19 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::CrateNum)
             let purity = if fam == UnsafeStaticMethod { ast::unsafe_fn } else
                 { ast::impure_fn };
             // def_static_method carries an optional field of its enclosing
-            // *trait*, but not an inclosing Impl (if this is an inherent
-            // static method). So we need to detect whether this is in
-            // a trait or not, which we do through the mildly hacky
-            // way of checking whether there is a trait_method_sort.
-            let trait_did_opt = if reader::maybe_get_doc(
+            // trait or enclosing impl (if this is an inherent static method).
+            // So we need to detect whether this is in a trait or not, which
+            // we do through the mildly hacky way of checking whether there is
+            // a trait_method_sort.
+            let provenance = if reader::maybe_get_doc(
                   item, tag_item_trait_method_sort).is_some() {
-                Some(item_reqd_and_translated_parent_item(cnum, item))
-            } else { None };
-            dl_def(ast::def_static_method(did, trait_did_opt, purity))
+                ast::FromTrait(item_reqd_and_translated_parent_item(cnum,
+                                                                    item))
+            } else {
+                ast::FromImpl(item_reqd_and_translated_parent_item(cnum,
+                                                                   item))
+            };
+            dl_def(ast::def_static_method(did, provenance, purity))
         }
         Type | ForeignType => dl_def(ast::def_ty(did)),
         Mod => dl_def(ast::def_mod(did)),
@@ -804,12 +808,9 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::NodeId,
 fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
     fn get_mutability(ch: u8) -> ast::mutability {
         match ch as char {
-            'i' => { ast::m_imm }
-            'm' => { ast::m_mutbl }
-            'c' => { ast::m_const }
-            _ => {
-                fail!("unknown mutability character: `%c`", ch as char)
-            }
+            'i' => ast::m_imm,
+            'm' => ast::m_mutbl,
+            _ => fail!("unknown mutability character: `%c`", ch as char),
         }
     }
 
@@ -1315,3 +1316,13 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     };
     result
 }
+
+pub fn each_impl(cdata: cmd, callback: &fn(ast::def_id)) {
+    let impls_doc = reader::get_doc(reader::Doc(cdata.data), tag_impls);
+    let _ = do reader::tagged_docs(impls_doc, tag_impls_impl) |impl_doc| {
+        callback(item_def_id(impl_doc, cdata));
+        true
+    };
+}
+
+

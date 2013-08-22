@@ -23,17 +23,17 @@ let x: u64<int>; //~ ERROR type parameters are not allowed on this type
 let x: float<int>; //~ ERROR type parameters are not allowed on this type
 let x: char<int>; //~ ERROR type parameters are not allowed on this type
 
-let x: int<'static>; //~ ERROR region parameters are not allowed on this type
-let x: i8<'static>; //~ ERROR region parameters are not allowed on this type
-let x: i16<'static>; //~ ERROR region parameters are not allowed on this type
-let x: i32<'static>; //~ ERROR region parameters are not allowed on this type
-let x: i64<'static>; //~ ERROR region parameters are not allowed on this type
-let x: uint<'static>; //~ ERROR region parameters are not allowed on this type
-let x: u8<'static>; //~ ERROR region parameters are not allowed on this type
-let x: u16<'static>; //~ ERROR region parameters are not allowed on this type
-let x: u32<'static>; //~ ERROR region parameters are not allowed on this type
-let x: u64<'static>; //~ ERROR region parameters are not allowed on this type
-let x: float<'static>; //~ ERROR region parameters are not allowed on this type
-let x: char<'static>; //~ ERROR region parameters are not allowed on this type
+let x: int<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: i8<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: i16<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: i32<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: i64<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: uint<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: u8<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: u16<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: u32<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: u64<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: float<'static>; //~ ERROR lifetime parameters are not allowed on this type
+let x: char<'static>; //~ ERROR lifetime parameters are not allowed on this type
 
 }

@@ -164,7 +164,7 @@ impl Scheduler {
         // successfully run the input task. Start by running the
         // scheduler. Grab it out of TLS - performing the scheduler
         // action will have given it away.
-        let sched = Local::take::<Scheduler>();
+        let sched: ~Scheduler = Local::take();
 
         rtdebug!("starting scheduler %u", sched.sched_id());
         sched.run();
@@ -180,7 +180,7 @@ impl Scheduler {
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-        let mut stask = Local::take::<Task>();
+        let mut stask: ~Task = Local::take();
 
         rtdebug!("stopping scheduler %u", stask.sched.get_ref().sched_id());
 
@@ -207,7 +207,7 @@ impl Scheduler {
             // Our scheduler must be in the task before the event loop
             // is started.
             let self_sched = Cell::new(self_sched);
-            do Local::borrow::<Task,()> |stask| {
+            do Local::borrow |stask: &mut Task| {
                 stask.sched = Some(self_sched.take());
             };
 
@@ -229,7 +229,7 @@ impl Scheduler {
         // already have a scheduler stored in our local task, so we
         // start off by taking it. This is the only path through the
         // scheduler where we get the scheduler this way.
-        let mut sched = Local::take::<Scheduler>();
+        let mut sched: ~Scheduler = Local::take();
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
@@ -505,7 +505,7 @@ impl Scheduler {
         let mut this = self;
 
         // The current task is grabbed from TLS, not taken as an input.
-        let current_task: ~Task = Local::take::<Task>();
+        let current_task: ~Task = Local::take();
 
         // Check that the task is not in an atomically() section (e.g.,
         // holding a pthread mutex, which could deadlock the scheduler).
@@ -537,7 +537,8 @@ impl Scheduler {
 
             let current_task: &mut Task = match sched.cleanup_job {
                 Some(CleanupJob { task: ref task, _ }) => {
-                    transmute_mut_region(*transmute_mut_unsafe(task))
+                    let task_ptr: *~Task = task;
+                    transmute_mut_region(*transmute_mut_unsafe(task_ptr))
                 }
                 None => {
                     rtabort!("no cleanup job");
@@ -563,11 +564,11 @@ impl Scheduler {
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         unsafe {
-            let sched = Local::unsafe_borrow::<Scheduler>();
+            let sched: *mut Scheduler = Local::unsafe_borrow();
             (*sched).run_cleanup_job();
 
             // Must happen after running the cleanup job (of course).
-            let task = Local::unsafe_borrow::<Task>();
+            let task: *mut Task = Local::unsafe_borrow();
             (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
@@ -669,13 +670,13 @@ impl Scheduler {
     }
 
     pub fn run_task(task: ~Task) {
-        let sched = Local::take::<Scheduler>();
+        let sched: ~Scheduler = Local::take();
         sched.process_task(task, Scheduler::switch_task).map_move(Local::put);
     }
 
     pub fn run_task_later(next_task: ~Task) {
         let next_task = Cell::new(next_task);
-        do Local::borrow::<Scheduler,()> |sched| {
+        do Local::borrow |sched: &mut Scheduler| {
             sched.enqueue_task(next_task.take());
         };
     }
@@ -1007,12 +1008,12 @@ mod test {
         // exit before emptying the work queue
         do run_in_newsched_task {
             do spawntask {
-                let sched = Local::take::<Scheduler>();
+                let sched: ~Scheduler = Local::take();
                 do sched.deschedule_running_task_and_then |sched, task| {
                     let task = Cell::new(task);
                     do sched.event_loop.callback_ms(10) {
                         rtdebug!("in callback");
-                        let mut sched = Local::take::<Scheduler>();
+                        let mut sched: ~Scheduler = Local::take();
                         sched.enqueue_blocked_task(task.take());
                         Local::put(sched);
                     }
