@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern fn f() {
-}
+// Test direct calls to extern fns.
+
+extern fn f(x: uint) -> uint { x * 2 }
 
 fn main() {
-    // extern functions are extern "C" fn
-    let _x: extern "C" fn() = f; // OK
-    let _x: &fn() = f; //~ ERROR mismatched types
+    #[fixed_stack_segment];
+
+    let x = f(22);
+    assert_eq!(x, 44);
 }

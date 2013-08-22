@@ -10,14 +10,16 @@
 
 extern fn foopy() {}
 
-static f: *u8 = foopy;
+static f: extern "C" fn() = foopy;
 static s: S = S { f: foopy };
 
 struct S {
-    f: *u8
+    f: extern "C" fn()
 }
 
 pub fn main() {
-    assert_eq!(foopy, f);
-    assert_eq!(f, s.f);
+    unsafe {
+        assert_eq!(foopy, f);
+        assert_eq!(f, s.f);
+    }
 }

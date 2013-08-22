@@ -45,3 +45,4 @@ pub mod asm;
 pub mod type_;
 pub mod value;
 pub mod basic_block;
+pub mod llrepr;

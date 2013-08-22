@@ -22,6 +22,7 @@ use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
 use std::vec;
 use syntax::codemap::span;
+use std::ptr::is_not_null;
 
 pub struct Builder {
     llbuilder: BuilderRef,
@@ -483,6 +484,7 @@ impl Builder {
         debug!("Store %s -> %s",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
+        assert!(is_not_null(self.llbuilder));
         self.count_insn("store");
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr);
