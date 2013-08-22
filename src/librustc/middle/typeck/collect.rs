@@ -346,9 +346,10 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
         new_type_param_defs.push_all(*substd_type_param_defs);
 
-        debug!("static method %s type_param_defs=%s substs=%s",
+        debug!("static method %s type_param_defs=%s ty=%s, substs=%s",
                m.def_id.repr(tcx),
                new_type_param_defs.repr(tcx),
+               ty.repr(tcx),
                substs.repr(tcx));
 
         tcx.tcache.insert(m.def_id,
@@ -893,8 +894,8 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
       }
       ast::item_trait(ref generics, _, ref trait_methods) => {
           let _trait_def = trait_def_of_item(ccx, it);
-          ensure_trait_methods(ccx, it.id);
 
+          // Run convert_methods on the provided methods.
           let (_, provided_methods) =
               split_trait_methods(*trait_methods);
           let untransformed_rcvr_ty = ty::mk_self(tcx, local_def(it.id));
@@ -904,6 +905,11 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
                                   untransformed_rcvr_ty,
                                   &ty_generics, generics,
                                   it.vis);
+
+          // We need to do this *after* converting methods, since
+          // convert_methods produces a tcache entry that is wrong for
+          // static trait methods. This is somewhat unfortunate.
+          ensure_trait_methods(ccx, it.id);
       }
       ast::item_struct(struct_def, ref generics) => {
         ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
