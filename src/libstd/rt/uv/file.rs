@@ -12,7 +12,7 @@ use prelude::*;
 use ptr::null;
 use libc::c_void;
 use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf,
-             status_to_maybe_uv_error_with_loop};
+             status_to_maybe_uv_error_with_loop, UvError};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use super::super::io::support::PathLike;
@@ -86,12 +86,20 @@ impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
         match self { &FsRequest(ptr) => ptr }
     }
 }
+    fn sync_cleanup(loop_: &Loop, result: int)
+          -> Result<int, UvError> {
+        match status_to_maybe_uv_error_with_loop(loop_.native_handle(), result as i32) {
+            Some(err) => Err(err),
+            None => Ok(result)
+        }
+    }
 
 pub struct FileDescriptor(c_int);
 impl FileDescriptor {
     fn new(fd: c_int) -> FileDescriptor {
         FileDescriptor(fd)
     }
+
 
     pub fn from_open_req(req: &mut FsRequest) -> FileDescriptor {
         FileDescriptor::new(req.get_result())
@@ -115,12 +123,13 @@ impl FileDescriptor {
         result
     }
     pub fn open<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int,
-               cb: FsCallback) -> int {
-        FileDescriptor::open_common(loop_, path, flags, mode, Some(cb))
+               cb: FsCallback) {
+        FileDescriptor::open_common(loop_, path, flags, mode, Some(cb));
     }
 
-    pub fn open_sync<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int) -> int {
-        FileDescriptor::open_common(loop_, path, flags, mode, None)
+    pub fn open_sync<P: PathLike>(loop_: Loop, path: &P, flags: int, mode: int) -> Result<int, UvError> {
+        let result = FileDescriptor::open_common(loop_, path, flags, mode, None);
+        sync_cleanup(&loop_, result)
     }
 
     fn unlink_common<P: PathLike>(loop_: Loop, path: &P, cb: Option<FsCallback>) -> int {
@@ -139,11 +148,13 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn unlink<P: PathLike>(loop_: Loop, path: &P, cb: FsCallback) -> int {
-        FileDescriptor::unlink_common(loop_, path, Some(cb))
+    pub fn unlink<P: PathLike>(loop_: Loop, path: &P, cb: FsCallback) {
+        let result = FileDescriptor::unlink_common(loop_, path, Some(cb));
+        sync_cleanup(&loop_, result);
     }
-    pub fn unlink_sync<P: PathLike>(loop_: Loop, path: &P) -> int {
-        FileDescriptor::unlink_common(loop_, path, None)
+    pub fn unlink_sync<P: PathLike>(loop_: Loop, path: &P) -> Result<int, UvError> {
+        let result = FileDescriptor::unlink_common(loop_, path, None);
+        sync_cleanup(&loop_, result)
     }
 
     // as per bnoordhuis in #libuv: offset >= 0 uses prwrite instead of write
@@ -166,13 +177,13 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn write(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
-          -> int {
-        self.write_common(loop_, buf, offset, Some(cb))
+    pub fn write(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback) {
+        self.write_common(loop_, buf, offset, Some(cb));
     }
     pub fn write_sync(&mut self, loop_: Loop, buf: Buf, offset: i64)
-          -> int {
-        self.write_common(loop_, buf, offset, None)
+          -> Result<int, UvError> {
+        let result = self.write_common(loop_, buf, offset, None);
+        sync_cleanup(&loop_, result)
     }
 
     fn read_common(&mut self, loop_: Loop, buf: Buf,
@@ -194,13 +205,13 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn read(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback)
-          -> int {
-        self.read_common(loop_, buf, offset, Some(cb))
+    pub fn read(&mut self, loop_: Loop, buf: Buf, offset: i64, cb: FsCallback) {
+        self.read_common(loop_, buf, offset, Some(cb));
     }
     pub fn read_sync(&mut self, loop_: Loop, buf: Buf, offset: i64)
-          -> int {
-        self.read_common(loop_, buf, offset, None)
+          -> Result<int, UvError> {
+        let result = self.read_common(loop_, buf, offset, None);
+        sync_cleanup(&loop_, result)
     }
 
     fn close_common(self, loop_: Loop, cb: Option<FsCallback>) -> int {
@@ -217,11 +228,12 @@ impl FileDescriptor {
         if is_sync { req.cleanup_and_delete(); }
         result
     }
-    pub fn close(self, loop_: Loop, cb: FsCallback) -> int {
-        self.close_common(loop_, Some(cb))
+    pub fn close(self, loop_: Loop, cb: FsCallback) {
+        self.close_common(loop_, Some(cb));
     }
-    pub fn close_sync(self, loop_: Loop) -> int {
-        self.close_common(loop_, None)
+    pub fn close_sync(self, loop_: Loop) -> Result<int, UvError> {
+        let result = self.close_common(loop_, None);
+        sync_cleanup(&loop_, result)
     }
 }
 extern fn compl_cb(req: *uv_fs_t) {
@@ -265,8 +277,7 @@ mod test {
     use str;
     use unstable::run_in_bare_thread;
     use path::Path;
-    use rt::uv::{Loop, Buf, slice_to_uv_buf,
-                 status_to_maybe_uv_error_with_loop};
+    use rt::uv::{Loop, Buf, slice_to_uv_buf};
     use libc::{O_CREAT, O_RDWR, O_RDONLY,
                S_IWUSR, S_IRUSR}; //NOTE: need defs for S_**GRP|S_**OTH in libc:: ...
                //S_IRGRP, S_IROTH};
@@ -358,31 +369,26 @@ mod test {
             // open/create
             let result = FileDescriptor::open_sync(loop_, &Path(path_str),
                                                    create_flags as int, mode as int);
-            assert!(status_to_maybe_uv_error_with_loop(
-                loop_.native_handle(), result as i32).is_none());
-            let mut fd = FileDescriptor(result as i32);
+            assert!(result.is_ok());
+            let mut fd = FileDescriptor(result.unwrap() as i32);
             // write
             let result = fd.write_sync(loop_, write_buf, -1);
-            assert!(status_to_maybe_uv_error_with_loop(
-                loop_.native_handle(), result as i32).is_none());
+            assert!(result.is_ok());
             // close
             let result = fd.close_sync(loop_);
-            assert!(status_to_maybe_uv_error_with_loop(
-                loop_.native_handle(), result as i32).is_none());
+            assert!(result.is_ok());
             // re-open
             let result = FileDescriptor::open_sync(loop_, &Path(path_str),
                                                    read_flags as int,0);
-            assert!(status_to_maybe_uv_error_with_loop(
-                loop_.native_handle(), result as i32).is_none());
+            assert!(result.is_ok());
             let len = 1028;
-            let mut fd = FileDescriptor(result as i32);
+            let mut fd = FileDescriptor(result.unwrap() as i32);
             // read
             let read_mem: ~[u8] = vec::from_elem(len, 0u8);
             let buf = slice_to_uv_buf(read_mem);
             let result = fd.read_sync(loop_, buf, 0);
-            assert!(status_to_maybe_uv_error_with_loop(
-                loop_.native_handle(), result as i32).is_none());
-            let nread = result;
+            assert!(result.is_ok());
+            let nread = result.unwrap();
             // nread == 0 would be EOF.. we know it's >= zero because otherwise
             // the above assert would fail
             if nread > 0 {
@@ -391,12 +397,10 @@ mod test {
                 assert!(read_str == ~"hello");
                 // close
                 let result = fd.close_sync(loop_);
-                assert!(status_to_maybe_uv_error_with_loop(
-                    loop_.native_handle(), result as i32).is_none());
+                assert!(result.is_ok());
                 // unlink
                 let result = FileDescriptor::unlink_sync(loop_, &Path(path_str));
-                assert!(status_to_maybe_uv_error_with_loop(
-                    loop_.native_handle(), result as i32).is_none());
+                assert!(result.is_ok());
             } else { fail!("nread was 0.. wudn't expectin' that."); }
             loop_.close();
         }
