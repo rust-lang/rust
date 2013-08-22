@@ -33,7 +33,7 @@ syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:spac
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " reserved
-syn keyword   rustKeyword     be
+syn keyword   rustKeyword     be yield typeof
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str Self
