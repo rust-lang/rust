@@ -126,7 +126,7 @@ impl Local for IoFactoryObject {
     fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
     fn exists() -> bool { rtabort!("unimpl") }
     fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
-    
+
     unsafe fn unsafe_take() -> ~IoFactoryObject { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();

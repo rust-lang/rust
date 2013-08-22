@@ -123,7 +123,7 @@ pub unsafe fn unsafe_borrow<T>() -> *mut T {
     let key = tls_key();
     let mut void_ptr: *mut c_void = tls::get(key);
     if void_ptr.is_null() {
-        rtabort!("thread-local pointer is null. bogus!")        
+        rtabort!("thread-local pointer is null. bogus!")
     }
     let ptr: *mut *mut c_void = &mut void_ptr;
     let ptr: *mut ~T = ptr as *mut ~T;
