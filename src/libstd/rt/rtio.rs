@@ -17,6 +17,7 @@ use super::io::net::ip::{IpAddr, SocketAddr};
 use rt::uv::uvio;
 use path::Path;
 use super::io::support::PathLike;
+use super::io::{SeekStyle};
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
@@ -118,7 +119,7 @@ pub trait RtioFileStream {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError>;
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError>;
-    fn seek(&mut self, pos: i64, whence: i64) -> Result<(), IoError>;
+    fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError>;
     fn tell(&self) -> Result<u64, IoError>;
     fn flush(&mut self) -> Result<(), IoError>;
 }
