@@ -1711,7 +1711,7 @@ fn file_test_uvio_full_simple_impl() {
         let ro_flags = O_RDONLY;
         let write_val = "hello uvio!";
         let mode = S_IWUSR | S_IRUSR;
-        let path = "./file_test_uvio_full.txt";
+        let path = "./tmp/file_test_uvio_full.txt";
         {
             let mut fd = (*io).fs_open(&Path(path), create_flags as int, mode as int).unwrap();
             let write_buf = write_val.as_bytes();

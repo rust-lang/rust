@@ -192,7 +192,7 @@ impl Seek for FileStream {
 fn file_test_smoke_test_impl() {
     do run_in_newsched_task {
         let message = "it's alright. have a good time";
-        let filename = &Path("./rt_io_file_test.txt");
+        let filename = &Path("./tmp/file_rt_io_file_test.txt");
         {
             let mut write_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             write_stream.write(message.as_bytes());
@@ -218,7 +218,7 @@ fn file_test_io_smoke_test() {
 
 fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
     do run_in_newsched_task {
-        let filename = &Path("./file_that_does_not_exist.txt");
+        let filename = &Path("./tmp/file_that_does_not_exist.txt");
         let mut called = false;
         do io_error::cond.trap(|_| {
             called = true;
@@ -236,7 +236,7 @@ fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
 
 fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
     do run_in_newsched_task {
-        let filename = &Path("./another_file_that_does_not_exist.txt");
+        let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
         let mut called = false;
         do io_error::cond.trap(|_| {
             called = true;
@@ -256,7 +256,7 @@ fn file_test_io_non_positional_read_impl() {
         use str;
         let message = "ten-four";
         let mut read_mem = [0, .. 8];
-        let filename = &Path("./rt_io_file_test_positional.txt");
+        let filename = &Path("./tmp/file_rt_io_file_test_positional.txt");
         {
             let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             rw_stream.write(message.as_bytes());
@@ -291,7 +291,7 @@ fn file_test_io_seeking_impl() {
         let set_cursor = 4 as u64;
         let mut tell_pos_pre_read;
         let mut tell_pos_post_read;
-        let filename = &Path("./rt_io_file_test_seeking.txt");
+        let filename = &Path("./tmp/file_rt_io_file_test_seeking.txt");
         {
             let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             rw_stream.write(message.as_bytes());
@@ -324,7 +324,7 @@ fn file_test_io_seek_and_write_impl() {
         let final_msg =     "foo-the-bar!!";
         let seek_idx = 3;
         let mut read_mem = [0, .. 13];
-        let filename = &Path("./rt_io_file_test_seek_and_write.txt");
+        let filename = &Path("./tmp/file_rt_io_file_test_seek_and_write.txt");
         {
             let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             rw_stream.write(initial_msg.as_bytes());
@@ -354,7 +354,7 @@ fn file_test_io_seek_shakedown_impl() {
         let chunk_two = "asdf";
         let chunk_three = "zxcv";
         let mut read_mem = [0, .. 4];
-        let filename = &Path("./rt_io_file_test_seek_shakedown.txt");
+        let filename = &Path("./tmp/file_rt_io_file_test_seek_shakedown.txt");
         {
             let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
             rw_stream.write(initial_msg.as_bytes());

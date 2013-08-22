@@ -281,7 +281,7 @@ mod test {
                 // these aren't defined in std::libc :(
                 //map_mode(S_IRGRP) |
                 //map_mode(S_IROTH);
-            let path_str = "./file_full_simple.txt";
+            let path_str = "./tmp/file_full_simple.txt";
             let write_val = "hello".as_bytes().to_owned();
             let write_buf  = slice_to_uv_buf(write_val);
             let write_buf_ptr: *Buf = &write_buf;
@@ -352,7 +352,7 @@ mod test {
                 S_IRUSR;
                 //S_IRGRP |
                 //S_IROTH;
-            let path_str = "./file_full_simple_sync.txt";
+            let path_str = "./tmp/file_full_simple_sync.txt";
             let write_val = "hello".as_bytes().to_owned();
             let write_buf = slice_to_uv_buf(write_val);
             // open/create
