@@ -142,7 +142,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 1: parse the input and filter it into the program (as necessary)
     //
     debug!("parsing: %s", input);
-    let crate = parse_input(sess, binary);
+    let crate = parse_input(sess, input);
     let mut to_run = ~[];       // statements to run (emitted back into code)
     let new_locals = @mut ~[];  // new locals being defined
     let mut result = None;      // resultant expression (to print via pp)
