@@ -1127,7 +1127,6 @@ impl Parser {
         match *self.token {
             token::LIFETIME(*) => {
                 let lifetime = self.parse_lifetime();
-                self.bump();
                 return self.parse_ty_closure(sigil, Some(lifetime));
             }
 
