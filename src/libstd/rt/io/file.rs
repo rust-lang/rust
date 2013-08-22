@@ -11,7 +11,7 @@
 use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek};
-use super::{SeekSet, SeekStyle};
+use super::{SeekSet, SeekCur, SeekEnd, SeekStyle};
 use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile};
 use rt::local::Local;
@@ -313,4 +313,74 @@ fn file_test_io_seeking_impl() {
 #[test]
 fn file_test_io_seek_and_tell_smoke_test() {
     file_test_io_seeking_impl();
+}
+
+fn file_test_io_seek_and_write_impl() {
+    use io;
+    do run_in_newsched_task {
+        use str;
+        let initial_msg =   "food-is-yummy";
+        let overwrite_msg =    "-the-bar!!";
+        let final_msg =     "foo-the-bar!!";
+        let seek_idx = 3;
+        let mut read_mem = [0, .. 13];
+        let filename = &Path("./rt_io_file_test_seek_and_write.txt");
+        {
+            let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
+            rw_stream.write(initial_msg.as_bytes());
+            rw_stream.seek(seek_idx as i64, SeekSet);
+            rw_stream.write(overwrite_msg.as_bytes());
+        }
+        {
+            let mut read_stream = FileStream::open(filename, Open, Read).unwrap();
+            read_stream.read(read_mem);
+        }
+        FileStream::unlink(filename);
+        let read_str = str::from_bytes(read_mem);
+        io::println(fmt!("read_str: '%?' final_msg: '%?'", read_str, final_msg));
+        assert!(read_str == final_msg.to_owned());
+    }
+}
+#[test]
+fn file_test_io_seek_and_write() {
+    file_test_io_seek_and_write_impl();
+}
+
+fn file_test_io_seek_shakedown_impl() {
+    do run_in_newsched_task {
+        use str;          // 01234567890123
+        let initial_msg =   "qwer-asdf-zxcv";
+        let chunk_one = "qwer";
+        let chunk_two = "asdf";
+        let chunk_three = "zxcv";
+        let mut read_mem = [0, .. 4];
+        let filename = &Path("./rt_io_file_test_seek_shakedown.txt");
+        {
+            let mut rw_stream = FileStream::open(filename, Create, ReadWrite).unwrap();
+            rw_stream.write(initial_msg.as_bytes());
+        }
+        {
+            let mut read_stream = FileStream::open(filename, Open, Read).unwrap();
+
+            read_stream.seek(-4, SeekEnd);
+            read_stream.read(read_mem);
+            let read_str = str::from_bytes(read_mem);
+            assert!(read_str == chunk_three.to_owned());
+
+            read_stream.seek(-9, SeekCur);
+            read_stream.read(read_mem);
+            let read_str = str::from_bytes(read_mem);
+            assert!(read_str == chunk_two.to_owned());
+
+            read_stream.seek(0, SeekSet);
+            read_stream.read(read_mem);
+            let read_str = str::from_bytes(read_mem);
+            assert!(read_str == chunk_one.to_owned());
+        }
+        FileStream::unlink(filename);
+    }
+}
+#[test]
+fn file_test_io_seek_shakedown() {
+    file_test_io_seek_shakedown_impl();
 }
