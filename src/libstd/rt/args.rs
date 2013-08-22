@@ -17,8 +17,8 @@
 //! Only valid to call on linux. Mac and Windows use syscalls to
 //! discover the command line arguments.
 //!
-//! XXX: Would be nice for this to not exist.
-//! XXX: This has a lot of C glue for lack of globals.
+//! FIXME #7756: Would be nice for this to not exist.
+//! FIXME #7756: This has a lot of C glue for lack of globals.
 
 use option::Option;
 

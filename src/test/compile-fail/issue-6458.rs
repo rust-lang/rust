@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+pub struct TypeWithState<State>;
+pub struct MyState;
 
-struct T (&'static [int]);
-static t : T = T (&'static [5, 4, 3]);
-fn main () {
-    assert_eq!(t[0], 5);
+pub fn foo<State>(_: TypeWithState<State>) {}
+
+pub fn bar() {
+   foo(TypeWithState); //~ ERROR: cannot determine a type for this expression: unconstrained type
+}
+
+fn main() {
 }

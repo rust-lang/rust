@@ -564,8 +564,10 @@ pub mod bytepipes {
         }
     }
 
-    // XXX: Remove `@mut` when this module is ported to the new I/O traits,
-    // which use `&mut self` properly.
+    // FIXME #6850: Remove `@mut` when this module is ported to the new I/O traits,
+    // which use `&mut self` properly. (For example, util::comm::GenericPort's try_recv
+    // method doesn't use `&mut self`, so the `try_recv` method in the impl of `BytePort`
+    // for `PipeBytePort` can't have `&mut self` either.)
     pub struct PipeBytePort {
         port: comm::Port<~[u8]>,
         buf: @mut ~[u8]
