@@ -3154,6 +3154,7 @@ mod tests {
         }
     }
 
+    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_map_fail() {
@@ -3168,6 +3169,7 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_flat_map_fail() {
@@ -3182,6 +3184,7 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_rposition_fail() {
@@ -3196,6 +3199,7 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_permute_fail() {
