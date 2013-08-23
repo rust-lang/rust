@@ -153,7 +153,6 @@ CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
-CFG_LLVM_BUILD_ENV_x86_64-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
 CFG_EXE_SUFFIX_x86_64-unknown-linux-gnu =
 CFG_WINDOWSY_x86_64-unknown-linux-gnu :=
 CFG_UNIXY_x86_64-unknown-linux-gnu := 1
@@ -179,7 +178,6 @@ CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_i686-unknown-linux-gnu =
-CFG_LLVM_BUILD_ENV_i686-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
 CFG_EXE_SUFFIX_i686-unknown-linux-gnu =
 CFG_WINDOWSY_i686-unknown-linux-gnu :=
 CFG_UNIXY_i686-unknown-linux-gnu := 1
