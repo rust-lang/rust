@@ -13,7 +13,6 @@
 #include "rust_util.h"
 #include "sync/rust_thread.h"
 #include "sync/lock_and_signal.h"
-#include "rust_abi.h"
 
 // These functions are used in the unit tests for C ABI calls.
 

@@ -15,7 +15,6 @@
 #include "sync/lock_and_signal.h"
 #include "memory_region.h"
 #include "boxed_region.h"
-#include "rust_abi.h"
 #include "rust_rng.h"
 #include "vg/valgrind.h"
 #include "sp.h"
