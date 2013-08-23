@@ -207,45 +207,51 @@ impl TaskBuilder {
 
     /// Decouple the child task's failure from the parent's. If either fails,
     /// the other will not be killed.
-    pub fn unlinked(&mut self) {
+    pub fn unlinked<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.linked = false;
         self.opts.watched = false;
+        self
     }
 
     /// Unidirectionally link the child task's failure with the parent's. The
     /// child's failure will not kill the parent, but the parent's will kill
     /// the child.
-    pub fn supervised(&mut self) {
+    pub fn supervised<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.supervised = true;
         self.opts.linked = false;
         self.opts.watched = false;
+        self
     }
 
     /// Link the child task's and parent task's failures. If either fails, the
     /// other will be killed.
-    pub fn linked(&mut self) {
+    pub fn linked<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.linked = true;
         self.opts.supervised = false;
         self.opts.watched = true;
+        self
     }
 
     /// Cause the parent task to collect the child's exit status (and that of
     /// all transitively-watched grandchildren) before reporting its own.
-    pub fn watched(&mut self) {
+    pub fn watched<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.watched = true;
+        self
     }
 
     /// Allow the child task to outlive the parent task, at the possible cost
     /// of the parent reporting success even if the child task fails later.
-    pub fn unwatched(&mut self) {
+    pub fn unwatched<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.watched = false;
+        self
     }
 
     /// Cause the child task to ignore any kill signals received from linked
     /// failure. This optimizes context switching, at the possible expense of
     /// process hangs in the case of unexpected failure.
-    pub fn indestructible(&mut self) {
+    pub fn indestructible<'a>(&'a mut self) -> &'a mut TaskBuilder {
         self.opts.indestructible = true;
+        self
     }
 
     /**
@@ -286,13 +292,15 @@ impl TaskBuilder {
 
     /// Name the task-to-be. Currently the name is used for identification
     /// only in failure messages.
-    pub fn name(&mut self, name: ~str) {
+    pub fn name<'a>(&'a mut self, name: ~str) -> &'a mut TaskBuilder {
         self.opts.name = Some(name);
+        self
     }
 
     /// Configure a custom scheduler mode for the task.
-    pub fn sched_mode(&mut self, mode: SchedMode) {
+    pub fn sched_mode<'a>(&'a mut self, mode: SchedMode) -> &'a mut TaskBuilder {
         self.opts.sched.mode = mode;
+        self
     }
 
     /**
@@ -307,7 +315,7 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    pub fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
+    pub fn add_wrapper<'a>(&'a mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) -> &'a mut TaskBuilder {
         let prev_gen_body = self.gen_body.take();
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
@@ -325,6 +333,7 @@ impl TaskBuilder {
             f
         };
         self.gen_body = Some(next_gen_body);
+        self
     }
 
     /**
