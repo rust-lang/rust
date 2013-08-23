@@ -20,6 +20,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
+use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
@@ -958,8 +959,15 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::NodeId,
 {
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
+
     let container_id = item_reqd_and_translated_parent_item(cdata.cnum,
                                                             method_doc);
+    let container_doc = lookup_item(container_id.node, cdata.data);
+    let container = match item_family(container_doc) {
+        Trait => TraitContainer(container_id),
+        _ => ImplContainer(container_id),
+    };
+
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
@@ -980,7 +988,7 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::NodeId,
         explicit_self,
         vis,
         def_id,
-        container_id,
+        container,
         provided_source
     )
 }
@@ -1391,4 +1399,56 @@ pub fn each_impl(cdata: cmd, callback: &fn(ast::def_id)) {
     };
 }
 
+pub fn each_implementation_for_type(cdata: cmd,
+                                    id: ast::NodeId,
+                                    callback: &fn(ast::def_id)) {
+    let item_doc = lookup_item(id, cdata.data);
+    /*println(fmt!(">>> reading inherent impls from %s",
+                 token::ident_to_str(&item_name(token::get_ident_interner(),
+                                                item_doc))));*/
+    do reader::tagged_docs(item_doc, tag_items_data_item_inherent_impl)
+            |impl_doc| {
+        let implementation_def_id = item_def_id(impl_doc, cdata);
+        /*println(fmt!(">>>>> read inherent impl: %d:%d",
+                     implementation_def_id.crate,
+                     implementation_def_id.node));*/
+        callback(implementation_def_id);
+        true
+    };
+}
+
+pub fn each_implementation_for_trait(cdata: cmd,
+                                     id: ast::NodeId,
+                                     callback: &fn(ast::def_id)) {
+    let item_doc = lookup_item(id, cdata.data);
+
+    let _ = do reader::tagged_docs(item_doc,
+                                   tag_items_data_item_extension_impl)
+            |impl_doc| {
+        let implementation_def_id = item_def_id(impl_doc, cdata);
+        callback(implementation_def_id);
+        true
+    };
+}
+
+pub fn get_trait_of_method(cdata: cmd, id: ast::NodeId, tcx: ty::ctxt)
+                           -> Option<ast::def_id> {
+    let item_doc = lookup_item(id, cdata.data);
+    let parent_item_id = match item_parent_item(item_doc) {
+        None => return None,
+        Some(item_id) => item_id,
+    };
+    let parent_item_id = translate_def_id(cdata, parent_item_id);
+    let parent_item_doc = lookup_item(parent_item_id.node, cdata.data);
+    match item_family(parent_item_doc) {
+        Trait => Some(item_def_id(parent_item_doc, cdata)),
+        Impl => {
+            do reader::maybe_get_doc(parent_item_doc, tag_item_trait_ref).map
+                    |_| {
+                item_trait_ref(parent_item_doc, tcx, cdata).def_id
+            }
+        }
+        _ => None
+    }
+}
 

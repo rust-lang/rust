@@ -283,6 +283,14 @@ pub fn trans_fn_ref_with_vtables(
                               self_ty: None,
                               tps: /*bad*/ type_params.to_owned() };
 
+    // Load the info for the appropriate trait if necessary.
+    match ty::trait_of_method(tcx, def_id) {
+        None => {}
+        Some(trait_id) => {
+            ty::populate_implementations_for_trait_if_necessary(tcx, trait_id)
+        }
+    }
+
     // We need to do a bunch of special handling for default methods.
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
@@ -303,7 +311,7 @@ pub fn trans_fn_ref_with_vtables(
             // So, what we need to do is find this substitution and
             // compose it with the one we already have.
 
-            let impl_id = ty::method(tcx, def_id).container_id;
+            let impl_id = ty::method(tcx, def_id).container_id();
             let method = ty::method(tcx, source_id);
             let trait_ref = ty::impl_trait_ref(tcx, impl_id)
                 .expect("could not find trait_ref for impl with \

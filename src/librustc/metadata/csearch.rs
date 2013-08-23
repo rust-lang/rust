@@ -272,3 +272,28 @@ pub fn each_impl(cstore: @mut cstore::CStore,
     decoder::each_impl(cdata, callback)
 }
 
+pub fn each_implementation_for_type(cstore: @mut cstore::CStore,
+                                    def_id: ast::def_id,
+                                    callback: &fn(ast::def_id)) {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::each_implementation_for_type(cdata, def_id.node, callback)
+}
+
+pub fn each_implementation_for_trait(cstore: @mut cstore::CStore,
+                                     def_id: ast::def_id,
+                                     callback: &fn(ast::def_id)) {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::each_implementation_for_trait(cdata, def_id.node, callback)
+}
+
+/// If the given def ID describes a method belonging to a trait (either a
+/// default method or an implementation of a trait method), returns the ID of
+/// the trait that the method belongs to. Otherwise, returns `None`.
+pub fn get_trait_of_method(cstore: @mut cstore::CStore,
+                           def_id: ast::def_id,
+                           tcx: ty::ctxt)
+                           -> Option<ast::def_id> {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::get_trait_of_method(cdata, def_id.node, tcx)
+}
+
