@@ -1592,6 +1592,21 @@ impl<A: Add<A, A> + Ord + Clone> Iterator<A> for RangeInclusive<A> {
             }
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (lo, hi) = self.range.size_hint();
+        if self.done {
+            (lo, hi)
+        } else {
+            let lo = lo.saturating_add(1);
+            let hi = match hi {
+                Some(x) => x.checked_add(&1),
+                None => None
+            };
+            (lo, hi)
+        }
+    }
 }
 
 impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclusive<A> {
