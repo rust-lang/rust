@@ -50,6 +50,12 @@ impl<T> Cell<T> {
         this.value.take_unwrap()
     }
 
+    /// Yields the value if the cell is full, or `None` if it is empty.
+    pub fn take_opt(&self) -> Option<T> {
+        let this = unsafe { transmute_mut(self) };
+        this.value.take()
+    }
+
     /// Returns the value, failing if the cell is full.
     pub fn put_back(&self, value: T) {
         let this = unsafe { transmute_mut(self) };

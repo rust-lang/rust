@@ -323,6 +323,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // task tree, shut down the schedulers and set the exit code.
     let handles = Cell::new(handles);
     let on_exit: ~fn(bool) = |exit_success| {
+        assert_once_ever!("last task exiting");
 
         let mut handles = handles.take();
         for handle in handles.mut_iter() {
