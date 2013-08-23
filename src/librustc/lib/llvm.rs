@@ -170,7 +170,6 @@ pub enum AtomicOrdering {
     SequentiallyConsistent = 7
 }
 
-// FIXME: Not used right now, but will be once #2334 is fixed
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 pub enum FileType {
     AssemblyFile = 0,
@@ -190,6 +189,29 @@ pub enum Metadata {
 pub enum AsmDialect {
     AD_ATT   = 0,
     AD_Intel = 1
+}
+
+pub enum CodeGenOptLevel {
+    CodeGenLevelNone = 0,
+    CodeGenLevelLess = 1,
+    CodeGenLevelDefault = 2,
+    CodeGenLevelAggressive = 3,
+}
+
+pub enum RelocMode {
+    RelocDefault = 0,
+    RelocStatic = 1,
+    RelocPIC = 2,
+    RelocDynamicNoPic = 3,
+}
+
+pub enum CodeGenModel {
+    CodeModelDefault = 0,
+    CodeModelJITDefault = 1,
+    CodeModelSmall = 2,
+    CodeModelKernel = 3,
+    CodeModelMedium = 4,
+    CodeModelLarge = 5,
 }
 
 // Opaque pointer types
@@ -223,6 +245,8 @@ pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *SectionIterator_opaque;
 pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
+pub enum TargetMachine_opaque {}
+pub type TargetMachineRef = *TargetMachine_opaque;
 
 pub mod debuginfo {
     use super::{ValueRef};
@@ -266,7 +290,8 @@ pub mod llvm {
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
-    use super::{ValueRef, PassRef};
+    use super::{ValueRef, TargetMachineRef, FileType};
+    use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
     use super::debuginfo::*;
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
@@ -1614,6 +1639,7 @@ pub mod llvm {
         /** Creates a pass manager. */
         #[fast_ffi]
         pub fn LLVMCreatePassManager() -> PassManagerRef;
+
         /** Creates a function-by-function pass manager */
         #[fast_ffi]
         pub fn LLVMCreateFunctionPassManagerForModule(M: ModuleRef)
@@ -1642,15 +1668,6 @@ pub mod llvm {
 
         #[fast_ffi]
         pub fn LLVMInitializePasses();
-
-        #[fast_ffi]
-        pub fn LLVMAddPass(PM: PassManagerRef, P: PassRef);
-
-        #[fast_ffi]
-        pub fn LLVMCreatePass(PassName: *c_char) -> PassRef;
-
-        #[fast_ffi]
-        pub fn LLVMDestroyPass(P: PassRef);
 
         /** Adds a verification pass. */
         #[fast_ffi]
@@ -1808,20 +1825,6 @@ pub mod llvm {
         pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *c_char)
             -> MemoryBufferRef;
 
-        #[fast_ffi]
-        pub fn LLVMRustWriteOutputFile(PM: PassManagerRef,
-                                       M: ModuleRef,
-                                       Triple: *c_char,
-                                       Cpu: *c_char,
-                                       Feature: *c_char,
-                                       Output: *c_char,
-                                       // FIXME: When #2334 is fixed,
-                                       // change c_uint to FileType
-                                       FileType: c_uint,
-                                       OptLevel: c_int,
-                                       EnableSegmentedStacks: bool)
-                                       -> bool;
-
         /** Returns a string describing the last error caused by an LLVMRust*
             call. */
         #[fast_ffi]
@@ -1841,24 +1844,6 @@ pub mod llvm {
                                 M: ModuleRef,
                                 EnableSegmentedStacks: bool)
                                 -> ExecutionEngineRef;
-
-        /** Parses the bitcode in the given memory buffer. */
-        #[fast_ffi]
-        pub fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
-
-        /** Parses LLVM asm in the given file */
-        #[fast_ffi]
-        pub fn LLVMRustParseAssemblyFile(Filename: *c_char, C: ContextRef)
-                                         -> ModuleRef;
-
-        #[fast_ffi]
-        pub fn LLVMRustAddPrintModulePass(PM: PassManagerRef,
-                                          M: ModuleRef,
-                                          Output: *c_char);
-
-        /** Turn on LLVM pass-timing. */
-        #[fast_ffi]
-        pub fn LLVMRustEnableTimePasses();
 
         /// Print the pass timings since static dtors aren't picking them up.
         #[fast_ffi]
@@ -2097,6 +2082,55 @@ pub mod llvm {
                                                         LineNo: c_uint,
                                                         ColumnNo: c_uint)
                                                         -> ValueRef;
+
+        pub fn LLVMInitializeX86TargetInfo();
+        pub fn LLVMInitializeX86Target();
+        pub fn LLVMInitializeX86TargetMC();
+        pub fn LLVMInitializeX86AsmPrinter();
+        pub fn LLVMInitializeX86AsmParser();
+        pub fn LLVMInitializeARMTargetInfo();
+        pub fn LLVMInitializeARMTarget();
+        pub fn LLVMInitializeARMTargetMC();
+        pub fn LLVMInitializeARMAsmPrinter();
+        pub fn LLVMInitializeARMAsmParser();
+        pub fn LLVMInitializeMipsTargetInfo();
+        pub fn LLVMInitializeMipsTarget();
+        pub fn LLVMInitializeMipsTargetMC();
+        pub fn LLVMInitializeMipsAsmPrinter();
+        pub fn LLVMInitializeMipsAsmParser();
+
+        pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: *c_char) -> bool;
+        pub fn LLVMRustCreateTargetMachine(Triple: *c_char,
+                                           CPU: *c_char,
+                                           Features: *c_char,
+                                           Model: CodeGenModel,
+                                           Reloc: RelocMode,
+                                           Level: CodeGenOptLevel,
+                                           EnableSegstk: bool) -> TargetMachineRef;
+        pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
+        pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef,
+                                         PM: PassManagerRef,
+                                         M: ModuleRef);
+        pub fn LLVMRustAddBuilderLibraryInfo(PMB: PassManagerBuilderRef,
+                                             M: ModuleRef);
+        pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef, M: ModuleRef);
+        pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: ModuleRef);
+        pub fn LLVMRustWriteOutputFile(T: TargetMachineRef,
+                                       PM: PassManagerRef,
+                                       M: ModuleRef,
+                                       Output: *c_char,
+                                       FileType: FileType) -> bool;
+        pub fn LLVMRustPrintModule(PM: PassManagerRef,
+                                   M: ModuleRef,
+                                   Output: *c_char);
+        pub fn LLVMRustSetLLVMOptions(PrintPasses: bool,
+                                      VectorizeLoops: bool,
+                                      VectorizeSLP: bool,
+                                      TimePasses: bool);
+        pub fn LLVMRustPrintPasses();
+        pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *c_char);
+        pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef,
+                                           AddLifetimes: bool);
     }
 }
 
@@ -2243,7 +2277,6 @@ impl TypeNames {
         }
     }
 }
-
 
 /* Memory-managed interface to target data. */
 
