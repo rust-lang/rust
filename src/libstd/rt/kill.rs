@@ -20,6 +20,7 @@ observed by the parent of a task::try task that itself spawns child tasks
 (such as any #[test] function). In both cases the data structures live in
 KillHandle.
 
+
 I. Task killing.
 
 The model for killing involves two atomic flags, the "kill flag" and the
@@ -60,9 +61,92 @@ killer does perform both writes, it means it saw a KILL_RUNNING in the
 unkillable flag, which means an unkillable task will see KILL_KILLED and fail
 immediately (rendering the subsequent write to the kill flag unnecessary).
 
+
 II. Exit code propagation.
 
-FIXME(#7544): Decide on the ultimate model for this and document it.
+The basic model for exit code propagation, which is used with the "watched"
+spawn mode (on by default for linked spawns, off for supervised and unlinked
+spawns), is that a parent will wait for all its watched children to exit
+before reporting whether it succeeded or failed. A watching parent will only
+report success if it succeeded and all its children also reported success;
+otherwise, it will report failure. This is most useful for writing test cases:
+
+~~~
+#[test]
+fn test_something_in_another_task {
+    do spawn {
+        assert!(collatz_conjecture_is_false());
+    }
+}
+~~~
+
+Here, as the child task will certainly outlive the parent task, we might miss
+the failure of the child when deciding whether or not the test case passed.
+The watched spawn mode avoids this problem.
+
+In order to propagate exit codes from children to their parents, any
+'watching' parent must wait for all of its children to exit before it can
+report its final exit status. We achieve this by using an UnsafeArc, using the
+reference counting to track how many children are still alive, and using the
+unwrap() operation in the parent's exit path to wait for all children to exit.
+The UnsafeArc referred to here is actually the KillHandle itself.
+
+This also works transitively, as if a "middle" watched child task is itself
+watching a grandchild task, the "middle" task will do unwrap() on its own
+KillHandle (thereby waiting for the grandchild to exit) before dropping its
+reference to its watching parent (which will alert the parent).
+
+While UnsafeArc::unwrap() accomplishes the synchronization, there remains the
+matter of reporting the exit codes themselves. This is easiest when an exiting
+watched task has no watched children of its own:
+
+- If the task with no watched children exits successfully, it need do nothing.
+- If the task with no watched children has failed, it sets a flag in the
+  parent's KillHandle ("any_child_failed") to false. It then stays false forever.
+
+However, if a "middle" watched task with watched children of its own exits
+before its child exits, we need to ensure that the grandparent task may still
+see a failure from the grandchild task. While we could achieve this by having
+each intermediate task block on its handle, this keeps around the other resources
+the task was using. To be more efficient, this is accomplished via "tombstones".
+
+A tombstone is a closure, ~fn() -> bool, which will perform any waiting necessary
+to collect the exit code of descendant tasks. In its environment is captured
+the KillHandle of whichever task created the tombstone, and perhaps also any
+tombstones that that task itself had, and finally also another tombstone,
+effectively creating a lazy-list of heap closures.
+
+When a child wishes to exit early and leave tombstones behind for its parent,
+it must use a LittleLock (pthread mutex) to synchronize with any possible
+sibling tasks which are trying to do the same thing with the same parent.
+However, on the other side, when the parent is ready to pull on the tombstones,
+it need not use this lock, because the unwrap() serves as a barrier that ensures
+no children will remain with references to the handle.
+
+The main logic for creating and assigning tombstones can be found in the
+function reparent_children_to() in the impl for KillHandle.
+
+
+IIA. Issues with exit code propagation.
+
+There are two known issues with the current scheme for exit code propagation.
+
+- As documented in issue #8136, the structure mandates the possibility for stack
+  overflow when collecting tombstones that are very deeply nested. This cannot
+  be avoided with the closure representation, as tombstones end up structured in
+  a sort of tree. However, notably, the tombstones do not actually need to be
+  collected in any particular order, and so a doubly-linked list may be used.
+  However we do not do this yet because DList is in libextra.
+
+- A discussion with Graydon made me realize that if we decoupled the exit code
+  propagation from the parents-waiting action, this could result in a simpler
+  implementation as the exit codes themselves would not have to be propagated,
+  and could instead be propagated implicitly through the taskgroup mechanism
+  that we already have. The tombstoning scheme would still be required. I have
+  not implemented this because currently we can't receive a linked failure kill
+  signal during the task cleanup activity, as that is currently "unkillable",
+  and occurs outside the task's unwinder's "try" block, so would require some
+  restructuring.
 
 */
 
