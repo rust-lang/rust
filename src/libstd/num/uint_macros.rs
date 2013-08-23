@@ -638,14 +638,12 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     pub fn to_str_radix1() {
         100u.to_str_radix(1u);
     }
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     pub fn to_str_radix37() {
         100u.to_str_radix(37u);
     }
@@ -697,13 +695,11 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_range_step_zero_step_up() {
         do range_step(0,10,0) |_i| { true };
     }
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_range_step_zero_step_down() {
         do range_step(0,-10,0) |_i| { true };
     }

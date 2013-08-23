@@ -97,7 +97,7 @@
 #endif
 .globl MORESTACK
 
-// FIXME: What about _WIN32?
+// FIXME: What about __WIN32__?
 #if defined(__linux__) || defined(__FreeBSD__)
 	.hidden MORESTACK
 #else
@@ -111,7 +111,7 @@
 #endif
 
 MORESTACK:
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_startproc
 #endif
 
@@ -130,7 +130,7 @@ MORESTACK:
 	// __morestack, and an extra return address.
 
 	pushl %ebp
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	// The CFA is 20 bytes above the register that it is
 	// associated with for this frame (which will be %ebp)
 	.cfi_def_cfa_offset 20
@@ -138,7 +138,7 @@ MORESTACK:
 	.cfi_offset %ebp, -20
 #endif
 	movl %esp, %ebp
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	// Calculate the CFA as an offset from %ebp
 	.cfi_def_cfa_register %ebp
 #endif
@@ -232,7 +232,7 @@ MORESTACK:
 
 	jmpl *%eax
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_endproc
 #endif
 

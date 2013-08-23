@@ -481,7 +481,7 @@ mod tests {
         }
     }
 
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn exclusive_new_poison() {
         unsafe {
             // Tests that if one task fails inside of an Exclusive::new, subsequent
@@ -599,7 +599,7 @@ mod tests {
         res.unwrap().recv();
     }
 
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn exclusive_new_unwrap_conflict() {
         let x = Exclusive::new(~~"hello");
         let x2 = Cell::new(x.clone());
@@ -615,7 +615,7 @@ mod tests {
         assert!(res.unwrap().recv() == task::Success);
     }
 
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn exclusive_new_unwrap_deadlock() {
         // This is not guaranteed to get to the deadlock before being killed,
         // but it will show up sometimes, and if the deadlock were not there,

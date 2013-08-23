@@ -212,7 +212,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(target_os = "win32"))]
     fn test_futurefail() {
         let mut f = spawn(|| fail!());
         let _x: ~str = f.get();

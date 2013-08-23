@@ -612,7 +612,7 @@ mod tests {
         }
     }
 
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_arc_condvar_poison() {
         unsafe {
             let arc = ~MutexArc::new(1);
@@ -636,7 +636,7 @@ mod tests {
             }
         }
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_mutex_arc_poison() {
         unsafe {
             let arc = ~MutexArc::new(1);
@@ -651,7 +651,7 @@ mod tests {
             }
         }
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     pub fn test_mutex_arc_unwrap_poison() {
         let arc = MutexArc::new(1);
         let arc2 = ~(&arc).clone();
@@ -668,7 +668,7 @@ mod tests {
         let one = arc.unwrap();
         assert!(one == 1);
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_rw_arc_poison_wr() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
@@ -681,7 +681,7 @@ mod tests {
             assert_eq!(*one, 1);
         }
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_rw_arc_poison_ww() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
@@ -694,7 +694,7 @@ mod tests {
             assert_eq!(*one, 1);
         }
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_rw_arc_poison_dw() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
@@ -709,7 +709,7 @@ mod tests {
             assert_eq!(*one, 1);
         }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rw_arc_no_poison_rr() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
@@ -722,7 +722,7 @@ mod tests {
             assert_eq!(*one, 1);
         }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rw_arc_no_poison_rw() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();
@@ -735,7 +735,7 @@ mod tests {
             assert_eq!(*one, 1);
         }
     }
-    #[test] #[ignore(cfg(windows))]
+    #[test]
     fn test_rw_arc_no_poison_dr() {
         let arc = ~RWArc::new(1);
         let arc2 = (*arc).clone();

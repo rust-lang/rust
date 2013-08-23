@@ -10,7 +10,6 @@
 
 // xfail-test linked failure
 // xfail-fast
-// xfail-win32 #7999
 
 use std::comm;
 use std::task;

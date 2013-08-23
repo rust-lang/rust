@@ -83,7 +83,6 @@ fn test_success() {
 }
 
 #[test]
-#[ignore(cfg(windows))]
 #[should_fail]
 fn test_fail() {
     let mut i = 0;

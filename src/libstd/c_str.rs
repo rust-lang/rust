@@ -283,7 +283,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_with_ref_empty_fail() {
         let c_str = unsafe { CString::new(ptr::null(), false) };
         c_str.with_ref(|_| ());
@@ -306,7 +305,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     fn test_to_c_str_fail() {
         use c_str::null_byte::cond;
 

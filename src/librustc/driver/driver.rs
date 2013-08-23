@@ -333,21 +333,31 @@ pub fn phase_5_run_llvm_passes(sess: Session,
                                trans: &CrateTranslation,
                                outputs: &OutputFilenames) {
 
-    // NB: Android hack
-    if sess.targ_cfg.os == session::os_android &&
+    // On Windows, LLVM integrated assembler emits bad stack unwind tables when
+    // segmented stacks are enabled.  However, unwind info directives in assembly
+    // output are OK, so we generate assembly first and then run it through
+    // an external assembler.
+    // Same for Android.
+    if (sess.targ_cfg.os == session::os_android ||
+        sess.targ_cfg.os == session::os_win32) &&
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
-        let obj_filename = outputs.obj_filename.with_filetype("s");
+        let asm_filename = outputs.obj_filename.with_filetype("s");
 
         time(sess.time_passes(), ~"LLVM passes", ||
             link::write::run_passes(sess,
                                     trans.context,
                                     trans.module,
                                     output_type,
-                                    &obj_filename));
+                                    &asm_filename));
 
-        link::write::run_ndk(sess, &obj_filename, &outputs.obj_filename);
+        link::write::run_assembler(sess, &asm_filename, &outputs.obj_filename);
+
+        // Remove assembly source unless --save-temps was specified
+        if !sess.opts.save_temps {
+            os::remove_file(&asm_filename);
+        }
     } else {
         time(sess.time_passes(), ~"LLVM passes", ||
             link::write::run_passes(sess,

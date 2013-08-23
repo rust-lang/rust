@@ -12,7 +12,7 @@
 
 	.text
 
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__) || defined(__WIN32__)
 .globl ___morestack
 ___morestack:
 #else
@@ -21,20 +21,20 @@ ___morestack:
 __morestack:
 #endif
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_startproc
 #endif
 
 	pushl %ebp
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_def_cfa_offset 8
 	.cfi_offset %ebp, -8
 #endif
 
 	movl %esp,%ebp          // save esp
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_def_cfa_register %ebp
 #endif
 
@@ -47,6 +47,6 @@ __morestack:
 
 	ret
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__WIN32__)
 	.cfi_endproc
 #endif

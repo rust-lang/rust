@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test linked failure
-// xfail-win32
 
 // Create a task that is supervised by another task, join the supervised task
 // from the supervising task, then fail the supervised task. The supervised
