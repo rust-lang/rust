@@ -517,3 +517,39 @@ extern "C" uintptr_t
 rust_uv_req_type_max() {
   return UV_REQ_TYPE_MAX;
 }
+
+extern "C" int
+rust_uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+                int mode, uv_fs_cb cb) {
+  return uv_fs_open(loop, req, path, flags, mode, cb);
+}
+extern "C" int
+rust_uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  return uv_fs_unlink(loop, req, path, cb);
+}
+extern "C" int
+rust_uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+                 size_t len, int64_t offset, uv_fs_cb cb) {
+  return uv_fs_write(loop, req, fd, buf, len, offset, cb);
+}
+extern "C" int
+rust_uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+                 size_t len, int64_t offset, uv_fs_cb cb) {
+  return uv_fs_read(loop, req, fd, buf, len, offset, cb);
+}
+extern "C" int
+rust_uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
+  return uv_fs_close(loop, req, fd, cb);
+}
+extern "C" void
+rust_uv_fs_req_cleanup(uv_fs_t* req) {
+  uv_fs_req_cleanup(req);
+}
+extern "C" int
+rust_uv_get_result_from_fs_req(uv_fs_t* req) {
+  return req->result;
+}
+extern "C" uv_loop_t*
+rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
+  return req->loop;
+}

@@ -108,6 +108,14 @@ rust_uv_idle_delete
 rust_uv_idle_init
 rust_uv_idle_start
 rust_uv_idle_stop
+rust_uv_fs_open
+rust_uv_fs_unlink
+rust_uv_fs_write
+rust_uv_fs_read
+rust_uv_fs_close
+rust_uv_get_result_from_fs_req
+rust_uv_get_loop_from_fs_req
+rust_uv_fs_req_cleanup
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
