@@ -31,7 +31,7 @@ use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use unstable::sync::Exclusive;
 use super::super::io::support::PathLike;
-use libc::{lseek, c_long, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
+use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
           S_IRUSR, S_IWUSR};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
             CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite};
@@ -1148,7 +1148,7 @@ impl UvFileStream {
         Result<u64, IoError>{
         #[fixed_stack_segment]; #[inline(never)];
         unsafe {
-            match lseek((*self.fd), pos as c_long, whence) {
+            match lseek((*self.fd), pos as off_t, whence) {
                 -1 => {
                     Err(IoError {
                         kind: OtherIoError,
