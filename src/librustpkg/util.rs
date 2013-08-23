@@ -20,9 +20,10 @@ use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, bin_crate};
 use context::{Ctx, in_target};
 use package_id::PkgId;
-use search::find_library_in_search_path;
+use search::{find_library_in_search_path, find_installed_library_in_rust_path};
 use path_util::{target_library_in_workspace, U_RWX};
 pub use target::{OutputType, Main, Lib, Bench, Test};
+use version::NoVersion;
 
 // It would be nice to have the list of commands in just one place -- for example,
 // you could update the match in rustpkg.rc but forget to update this list. I think
@@ -360,18 +361,32 @@ pub fn find_and_install_dependencies(ctxt: &Ctx,
                         debug!("It exists: %s", installed_path.to_str());
                     }
                     None => {
-                        // Try to install it
-                        let pkg_id = PkgId::new(lib_name);
-                        my_ctxt.install(&my_workspace, &pkg_id);
-                        // Also, add an additional search path
-                        debug!("let installed_path...")
-                        let installed_path = target_library_in_workspace(&pkg_id,
+                        // FIXME #8711: need to parse version out of path_opt
+                        match find_installed_library_in_rust_path(lib_name, &NoVersion) {
+                            Some(installed_path) => {
+                               debug!("Found library %s, not rebuilding it",
+                                      installed_path.to_str());
+                               // Once workcache is implemented, we'll actually check
+                               // whether or not the library at installed_path is fresh
+                               save(installed_path.pop());
+                            }
+                            None => {
+                               debug!("Trying to install library %s, rebuilding it",
+                                      lib_name.to_str());
+                               // Try to install it
+                               let pkg_id = PkgId::new(lib_name);
+                               my_ctxt.install(&my_workspace, &pkg_id);
+                               // Also, add an additional search path
+                               debug!("let installed_path...")
+                               let installed_path = target_library_in_workspace(&pkg_id,
                                                                          &my_workspace).pop();
-                        debug!("Great, I installed %s, and it's in %s",
-                               lib_name, installed_path.to_str());
-                        save(installed_path);
+                               debug!("Great, I installed %s, and it's in %s",
+                                   lib_name, installed_path.to_str());
+                               save(installed_path);
+                           }
                     }
                 }
+              }
             }
             // Ignore `use`s
             _ => ()
