@@ -3571,6 +3571,19 @@ impl Parser {
             self.bump();
             sty_value
           }
+          token::BINOP(token::STAR) => {
+            // Possibly "*self" or "*mut self" -- not supported. Try to avoid
+            // emitting cryptic "unexpected token" errors.
+            self.bump();
+            if self.token_is_mutability(self.token) {
+                self.bump();
+            }
+            if self.is_self_ident() {
+                self.span_err(*self.span, "cannot pass self by unsafe pointer");
+                self.bump();
+            }
+            sty_value
+          }
           _ => {
             sty_static
           }
