@@ -26,7 +26,6 @@ use middle::trans::type_of;
 use middle::trans::type_use;
 use middle::trans::intrinsic;
 use middle::ty;
-use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::{Repr,ty_to_str};
 
@@ -34,8 +33,6 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
-use syntax::opt_vec;
-use syntax::abi::AbiSet;
 
 pub fn monomorphic_fn(ccx: @mut CrateContext,
                       fn_id: ast::def_id,
@@ -61,17 +58,10 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     let _icx = push_ctxt("monomorphic_fn");
     let mut must_cast = false;
 
-    let do_normalize = |t: &ty::t| {
-        match normalize_for_monomorphization(ccx.tcx, *t) {
-          Some(t) => { must_cast = true; t }
-          None => *t
-        }
-    };
-
     let psubsts = @param_substs {
-        tys: real_substs.tps.map(|x| do_normalize(x)),
+        tys: real_substs.tps.to_owned(),
         vtables: vtables,
-        self_ty: real_substs.self_ty.map(|x| do_normalize(x)),
+        self_ty: real_substs.self_ty.clone(),
         self_vtables: self_vtables
     };
 
@@ -303,61 +293,6 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     debug!("leaving monomorphic fn %s", ty::item_path_str(ccx.tcx, fn_id));
     (lldecl, must_cast)
-}
-
-pub fn normalize_for_monomorphization(tcx: ty::ctxt,
-                                      ty: ty::t) -> Option<ty::t> {
-    // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
-    return match ty::get(ty).sty {
-        ty::ty_box(*) => {
-            Some(ty::mk_opaque_box(tcx))
-        }
-        ty::ty_bare_fn(_) => {
-            Some(ty::mk_bare_fn(
-                tcx,
-                ty::BareFnTy {
-                    purity: ast::impure_fn,
-                    abis: AbiSet::Rust(),
-                    sig: FnSig {bound_lifetime_names: opt_vec::Empty,
-                                inputs: ~[],
-                                output: ty::mk_nil()}}))
-        }
-        ty::ty_closure(ref fty) => {
-            Some(normalized_closure_ty(tcx, fty.sigil))
-        }
-        ty::ty_trait(_, _, ref store, _, _) => {
-            let sigil = match *store {
-                ty::UniqTraitStore => ast::OwnedSigil,
-                ty::BoxTraitStore => ast::ManagedSigil,
-                ty::RegionTraitStore(_) => ast::BorrowedSigil,
-            };
-
-            // Traits have the same runtime representation as closures.
-            Some(normalized_closure_ty(tcx, sigil))
-        }
-        ty::ty_ptr(_) => {
-            Some(ty::mk_uint())
-        }
-        _ => {
-            None
-        }
-    };
-
-    fn normalized_closure_ty(tcx: ty::ctxt,
-                             sigil: ast::Sigil) -> ty::t
-    {
-        ty::mk_closure(
-            tcx,
-            ty::ClosureTy {
-                purity: ast::impure_fn,
-                sigil: sigil,
-                onceness: ast::Many,
-                region: ty::re_static,
-                bounds: ty::EmptyBuiltinBounds(),
-                sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
-                                inputs: ~[],
-                                output: ty::mk_nil()}})
-    }
 }
 
 pub fn make_mono_id(ccx: @mut CrateContext,
