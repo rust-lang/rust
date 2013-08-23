@@ -92,7 +92,6 @@ pub mod back {
     pub mod x86_64;
     pub mod rpath;
     pub mod target_strs;
-    pub mod passes;
 }
 
 pub mod metadata;
@@ -232,7 +231,7 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
     }
 
     if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
-        back::passes::list_passes();
+        unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
 
