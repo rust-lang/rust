@@ -2521,7 +2521,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_head_empty() {
         let a: ~[int] = ~[];
         a.head();
@@ -2547,7 +2546,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_tail_empty() {
         let a: ~[int] = ~[];
         a.tail();
@@ -2563,7 +2561,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_tailn_empty() {
         let a: ~[int] = ~[];
         a.tailn(2);
@@ -2579,7 +2576,6 @@ mod tests {
 
     #[init]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_init_empty() {
         let a: ~[int] = ~[];
         a.init();
@@ -2595,7 +2591,6 @@ mod tests {
 
     #[init]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_initn_empty() {
         let a: ~[int] = ~[];
         a.initn(2);
@@ -2611,7 +2606,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_last_empty() {
         let a: ~[int] = ~[];
         a.last();
@@ -3079,7 +3073,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_insert_oob() {
         let mut a = ~[1, 2, 3];
@@ -3102,7 +3095,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_remove_oob() {
         let mut a = ~[1, 2, 3];
@@ -3130,7 +3122,6 @@ mod tests {
 
 
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_from_fn_fail() {
         do from_fn(100) |v| {
@@ -3140,7 +3131,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_build_fail() {
         do build |push| {
@@ -3153,7 +3143,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_grow_fn_fail() {
         let mut v = ~[];
@@ -3165,8 +3154,8 @@ mod tests {
         }
     }
 
+    #[ignore] // FIXME #8698
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3180,8 +3169,8 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_flat_map_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3195,8 +3184,8 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_rposition_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3210,8 +3199,8 @@ mod tests {
         };
     }
 
+    #[ignore] // FIXME #8698
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3226,7 +3215,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(windows)]
     #[should_fail]
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3236,7 +3224,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_mut_buf_fail() {
         let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -3247,7 +3234,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_copy_memory_oob() {
         unsafe {
             let mut a = [1, 2, 3, 4];
@@ -3469,7 +3455,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_window_iterator_0() {
         let v = &[1i,2,3,4];
         let _it = v.window_iter(0);
@@ -3494,7 +3479,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_chunk_iterator_0() {
         let v = &[1i,2,3,4];
         let _it = v.chunk_iter(0);

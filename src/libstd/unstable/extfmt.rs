@@ -441,14 +441,12 @@ pub mod ct {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_parse_type_missing() {
         parse_type("", 0, 0, die);
     }
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_parse_type_unknown() {
         parse_type("!", 0, 1, die);
     }

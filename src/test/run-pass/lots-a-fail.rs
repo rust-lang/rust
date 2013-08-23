@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-test linked failure
-// xfail-win32 leaks
 extern mod extra;
 
 use std::task;

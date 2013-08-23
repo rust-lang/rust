@@ -479,7 +479,7 @@ mod tests {
         assert_eq!(y2, 5);
         assert!(y.is_none());
     }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail]
     fn test_option_too_much_dance() {
         let mut y = Some(util::NonCopyable);
         let _y2 = y.take_unwrap();

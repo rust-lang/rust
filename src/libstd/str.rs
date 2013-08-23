@@ -2451,7 +2451,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_pop_char_fail() {
         let mut data = ~"";
         let _cc3 = data.pop_char();
@@ -2767,7 +2766,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_slice_fail() {
         "中华Việt Nam".slice(0u, 2u);
     }
@@ -2933,7 +2931,6 @@ mod tests {
 
 
     #[test]
-    #[ignore(cfg(windows))]
     fn test_from_bytes_fail() {
         use str::not_utf8::cond;
 
@@ -2983,7 +2980,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_bytes_fail() {
         // Don't double free. (I'm not sure if this exercises the

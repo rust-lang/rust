@@ -2017,7 +2017,6 @@ mod tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_read_buffer_too_small() {
         let path = &Path("tmp/lib-io-test-read-buffer-too-small.tmp");
         // ensure the file exists

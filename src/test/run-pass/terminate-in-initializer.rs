@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 leaks
 // Issue #787
 // Don't try to clean up uninitialized locals
 
