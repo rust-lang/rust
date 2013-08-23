@@ -528,11 +528,9 @@ rust_initialize_rt_tls_key() {
 }
 
 extern "C" CDECL memory_region*
-rust_new_memory_region(uintptr_t synchronized,
-                       uintptr_t detailed_leaks,
+rust_new_memory_region(uintptr_t detailed_leaks,
                        uintptr_t poison_on_free) {
-    return new memory_region((bool)synchronized,
-                             (bool)detailed_leaks,
+    return new memory_region((bool)detailed_leaks,
                              (bool)poison_on_free);
 }
 
