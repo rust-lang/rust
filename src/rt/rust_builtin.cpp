@@ -653,21 +653,6 @@ rust_get_global_args_ptr() {
     return &global_args_ptr;
 }
 
-static lock_and_signal exit_status_lock;
-static uintptr_t exit_status = 0;
-
-extern "C" CDECL void
-rust_set_exit_status_newrt(uintptr_t code) {
-    scoped_lock with(exit_status_lock);
-    exit_status = code;
-}
-
-extern "C" CDECL uintptr_t
-rust_get_exit_status_newrt() {
-    scoped_lock with(exit_status_lock);
-    return exit_status;
-}
-
 static lock_and_signal change_dir_lock;
 
 extern "C" CDECL void

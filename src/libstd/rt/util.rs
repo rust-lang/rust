@@ -14,6 +14,7 @@ use libc;
 use option::{Some, None};
 use os;
 use str::StrSlice;
+use unstable::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
 #[cfg(target_os="macos")]
 use unstable::running_on_valgrind;
@@ -129,24 +130,12 @@ memory and partly incapable of presentation to others.",
     }
 }
 
-pub fn set_exit_status(code: int) {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        return rust_set_exit_status_newrt(code as libc::uintptr_t);
-    }
+static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
 
-    extern {
-        fn rust_set_exit_status_newrt(code: libc::uintptr_t);
-    }
+pub fn set_exit_status(code: int) {
+    unsafe { EXIT_STATUS.store(code, SeqCst) }
 }
 
 pub fn get_exit_status() -> int {
-    #[fixed_stack_segment]; #[inline(never)];
-    unsafe {
-        return rust_get_exit_status_newrt() as int;
-    }
-
-    extern {
-        fn rust_get_exit_status_newrt() -> libc::uintptr_t;
-    }
+    unsafe { EXIT_STATUS.load(SeqCst) }
 }
