@@ -799,6 +799,38 @@ fn should_inline(attrs: &[Attribute]) -> bool {
     }
 }
 
+// Encodes the inherent implementations of a structure, enumeration, or trait.
+fn encode_inherent_implementations(ecx: &EncodeContext,
+                                   ebml_w: &mut writer::Encoder,
+                                   def_id: def_id) {
+    match ecx.tcx.inherent_impls.find(&def_id) {
+        None => {}
+        Some(&implementations) => {
+            for implementation in implementations.iter() {
+                ebml_w.start_tag(tag_items_data_item_inherent_impl);
+                encode_def_id(ebml_w, implementation.did);
+                ebml_w.end_tag();
+            }
+        }
+    }
+}
+
+// Encodes the implementations of a trait defined in this crate.
+fn encode_extension_implementations(ecx: &EncodeContext,
+                                    ebml_w: &mut writer::Encoder,
+                                    trait_def_id: def_id) {
+    match ecx.tcx.trait_impls.find(&trait_def_id) {
+        None => {}
+        Some(&implementations) => {
+            for implementation in implementations.iter() {
+                ebml_w.start_tag(tag_items_data_item_extension_impl);
+                encode_def_id(ebml_w, implementation.did);
+                ebml_w.end_tag();
+            }
+        }
+    }
+}
+
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
@@ -902,6 +934,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
+
+        // Encode inherent implementations for this enumeration.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
+
         ebml_w.end_tag();
 
         encode_enum_variant_info(ecx,
@@ -953,6 +989,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 }
             }
         }
+
+        // Encode inherent implementations for this structure.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
 
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx);
@@ -1069,6 +1108,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
         }
+
+        // Encode the implementations of this trait.
+        encode_extension_implementations(ecx, ebml_w, def_id);
+
         ebml_w.end_tag();
 
         // Now output the method info for each method.
@@ -1130,6 +1173,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             ebml_w.end_tag();
         }
+
+        // Encode inherent implementations for this trait.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
       }
       item_mac(*) => fail!("item macros unimplemented")
     }
@@ -1523,10 +1569,19 @@ struct ImplVisitor<'self> {
 impl<'self> Visitor<()> for ImplVisitor<'self> {
     fn visit_item(&mut self, item: @item, _: ()) {
         match item.node {
-            item_impl(*) => {
-                self.ebml_w.start_tag(tag_impls_impl);
-                encode_def_id(self.ebml_w, local_def(item.id));
-                self.ebml_w.end_tag();
+            item_impl(_, Some(ref trait_ref), _, _) => {
+                let def_map = self.ecx.tcx.def_map;
+                let trait_def = def_map.get_copy(&trait_ref.ref_id);
+                let def_id = ast_util::def_id_of_def(trait_def);
+
+                // Load eagerly if this is an implementation of the Drop trait
+                // or if the trait is not defined in this crate.
+                if def_id == self.ecx.tcx.lang_items.drop_trait().unwrap() ||
+                        def_id.crate != LOCAL_CRATE {
+                    self.ebml_w.start_tag(tag_impls_impl);
+                    encode_def_id(self.ebml_w, local_def(item.id));
+                    self.ebml_w.end_tag();
+                }
             }
             _ => {}
         }
@@ -1534,6 +1589,16 @@ impl<'self> Visitor<()> for ImplVisitor<'self> {
     }
 }
 
+/// Encodes implementations that are eagerly loaded.
+///
+/// None of this is necessary in theory; we can load all implementations
+/// lazily. However, in two cases the optimizations to lazily load
+/// implementations are not yet implemented. These two cases, which require us
+/// to load implementations eagerly, are:
+///
+/// * Destructors (implementations of the Drop trait).
+///
+/// * Implementations of traits not defined in this crate.
 fn encode_impls(ecx: &EncodeContext,
                 crate: &Crate,
                 ebml_w: &mut writer::Encoder) {

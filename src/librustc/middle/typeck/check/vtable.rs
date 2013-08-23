@@ -136,6 +136,9 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
         // ...and here trait_ref is each bound that was declared on A,
         // expressed in terms of the type parameters.
 
+        ty::populate_implementations_for_trait_if_necessary(tcx,
+                                                            trait_ref.def_id);
+
         // Substitute the values of the type parameters that may
         // appear in the bound.
         let trait_ref = substs.map_default(trait_ref, |substs| {
@@ -320,6 +323,10 @@ fn search_for_vtable(vcx: &VtableContext,
 
     let mut found = ~[];
     let mut impls_seen = HashSet::new();
+
+    // Load the implementations from external metadata if necessary.
+    ty::populate_implementations_for_trait_if_necessary(tcx,
+                                                        trait_ref.def_id);
 
     // XXX: this is a bad way to do this, since we do
     // pointless allocations.

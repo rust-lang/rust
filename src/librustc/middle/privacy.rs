@@ -225,7 +225,7 @@ impl PrivacyVisitor {
 
         if method_id.crate == LOCAL_CRATE {
             let is_private = self.method_is_private(span, method_id.node);
-            let container_id = ty::method(self.tcx, method_id).container_id;
+            let container_id = ty::method(self.tcx, method_id).container_id();
             if is_private &&
                     (container_id.crate != LOCAL_CRATE ||
                      !self.privileged_items.iter().any(|x| x == &(container_id.node))) {

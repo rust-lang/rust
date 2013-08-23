@@ -350,6 +350,10 @@ impl<'self> LookupContext<'self> {
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for applicable_traits in opt_applicable_traits.iter() {
             for trait_did in applicable_traits.iter() {
+                ty::populate_implementations_for_trait_if_necessary(
+                    self.tcx(),
+                    *trait_did);
+
                 // Look for explicit implementations.
                 let opt_impl_infos = self.tcx().trait_impls.find(trait_did);
                 for impl_infos in opt_impl_infos.iter() {
@@ -534,6 +538,10 @@ impl<'self> LookupContext<'self> {
 
 
     fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
+        // Read the inherent implementation candidates for this type from the
+        // metadata if necessary.
+        ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
+
         let opt_impl_infos = self.tcx().inherent_impls.find(&did);
         for impl_infos in opt_impl_infos.iter() {
             for impl_info in impl_infos.iter() {
