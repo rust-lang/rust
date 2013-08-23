@@ -137,6 +137,13 @@ fn fcx_has_nonzero_span(fcx: &FunctionContext) -> bool {
     }
 }
 
+fn span_is_empty(opt_span: &Option<span>) -> bool {
+    match *opt_span {
+        None => true,
+        Some(span) => *span.lo == 0 && *span.hi == 0
+    }
+}
+
 struct StatRecorder<'self> {
     ccx: @mut CrateContext,
     name: &'self str,
@@ -1624,6 +1631,13 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
         }
     };
     let uses_outptr = type_of::return_uses_outptr(ccx.tcx, substd_output_type);
+
+    let debug_context = if id != -1 && ccx.sess.opts.debuginfo && !span_is_empty(&sp) {
+        Some(debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl))
+    } else {
+        None
+    };
+
     let fcx = @mut FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
@@ -1644,7 +1658,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
           span: sp,
           path: path,
           ccx: ccx,
-          debug_context: None,
+          debug_context: debug_context,
     };
     fcx.llenv = unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
@@ -1877,16 +1891,13 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                param_substs,
                                body.info(),
                                Some(body.span));
+
     let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
     if attr::contains_name(attributes, "fixed_stack_segment") {
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
-    }
-
-    if ccx.sess.opts.debuginfo && fcx_has_nonzero_span(fcx) {
-        debuginfo::create_function_metadata(fcx);
     }
 
     // Create the first basic block in the function and keep a handle on it to
@@ -1899,6 +1910,11 @@ pub fn trans_closure(ccx: @mut CrateContext,
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
     maybe_load_env(fcx);
+
+    // Up until here, IR instructions for this function have explicitly not been annotated with
+    // source code location, so we don't step into call setup code. From here on, source location
+    // emitting should be enabled.
+    debuginfo::start_emitting_source_locations(fcx);
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
