@@ -445,9 +445,8 @@ prefer using raw pointers (`*`) if that's needed because the compiler can't make
 about them.
 
 Vectors and strings share the same basic memory layout, and utilities are available in the `vec` and
-`str` modules for working with C APIs. Strings are terminated with `\0` for interoperability with C,
-but it should not be assumed because a slice will not always be nul-terminated. Instead, the
-`str::as_c_str` function should be used.
+`str` modules for working with C APIs. However, strings are not terminated with `\0`. If you need a
+NUL-terminated string for interoperability with C, you should use the `c_str::to_c_str` function.
 
 The standard library includes type aliases and function definitions for the C standard library in
 the `libc` module, and Rust links against `libc` and `libm` by default.
