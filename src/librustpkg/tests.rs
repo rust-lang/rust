@@ -678,6 +678,7 @@ fn rustpkg_local_pkg() {
 }
 
 #[test]
+#[ignore (reason = "test makes bogus assumptions about build directory layout: issue #8690")]
 fn package_script_with_default_build() {
     let dir = create_local_package(&PkgId::new("fancy-lib"));
     debug!("dir = %s", dir.to_str());

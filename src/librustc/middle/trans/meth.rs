@@ -577,20 +577,23 @@ fn emit_vtable_methods(bcx: @mut Block,
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
     do trait_method_def_ids.map |method_def_id| {
-        let im = ty::method(tcx, *method_def_id);
+        let ident = ty::method(tcx, *method_def_id).ident;
+        // The substitutions we have are on the impl, so we grab
+        // the method type from the impl to substitute into.
+        let m_id = method_with_name(ccx, impl_id, ident);
+        let m = ty::method(tcx, m_id);
+        debug!("(making impl vtable) emitting method %s at subst %s",
+               m.repr(tcx),
+               substs.repr(tcx));
         let fty = ty::subst_tps(tcx,
                                 substs,
                                 None,
-                                ty::mk_bare_fn(tcx, im.fty.clone()));
-        if im.generics.has_type_params() || ty::type_has_self(fty) {
+                                ty::mk_bare_fn(tcx, m.fty.clone()));
+        if m.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
-                   tcx.sess.str_of(im.ident));
+                   tcx.sess.str_of(ident));
             C_null(Type::nil().ptr_to())
         } else {
-            debug!("(making impl vtable) adding method to vtable: %s",
-                   tcx.sess.str_of(im.ident));
-            let m_id = method_with_name(ccx, impl_id, im.ident);
-
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn
         }

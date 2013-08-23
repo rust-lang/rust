@@ -938,9 +938,18 @@ impl<'self> LookupContext<'self> {
 
         // static methods should never have gotten this far:
         assert!(candidate.method_ty.explicit_self != sty_static);
-        let transformed_self_ty =
-            ty::subst(tcx, &candidate.rcvr_substs,
-                      candidate.method_ty.transformed_self_ty.unwrap());
+
+        let transformed_self_ty = match candidate.origin {
+            method_object(*) => {
+                // For annoying reasons, we've already handled the
+                // substitution for object calls.
+                candidate.method_ty.transformed_self_ty.unwrap()
+            }
+            _ => {
+                ty::subst(tcx, &candidate.rcvr_substs,
+                          candidate.method_ty.transformed_self_ty.unwrap())
+            }
+        };
 
         // Determine the values for the type parameters of the method.
         // If they were not explicitly supplied, just construct fresh
