@@ -53,7 +53,7 @@ use rt::io::IoError;
 
 //#[cfg(test)] use unstable::run_in_bare_thread;
 
-pub use self::file::FsRequest;
+pub use self::file::{FsRequest};
 pub use self::net::{StreamWatcher, TcpWatcher, UdpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
@@ -125,7 +125,7 @@ pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
 pub type NullCallback = ~fn();
 pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
 pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
-pub type FsCallback = ~fn(FsRequest, Option<UvError>);
+pub type FsCallback = ~fn(&mut FsRequest, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
 pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option<UvError>);
@@ -282,6 +282,20 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
 }
 
 /// Given a uv handle, convert a callback status to a UvError
+pub fn status_to_maybe_uv_error_with_loop(
+    loop_: *uvll::uv_loop_t,
+    status: c_int) -> Option<UvError> {
+    if status != -1 {
+        None
+    } else {
+        unsafe {
+            rtdebug!("loop: %x", loop_ as uint);
+            let err = uvll::last_error(loop_);
+            Some(UvError(err))
+        }
+    }
+}
+/// Given a uv handle, convert a callback status to a UvError
 pub fn status_to_maybe_uv_error<T, U: Watcher + NativeHandle<*T>>(handle: U,
                                                                  status: c_int) -> Option<UvError> {
     if status != -1 {
@@ -290,9 +304,7 @@ pub fn status_to_maybe_uv_error<T, U: Watcher + NativeHandle<*T>>(handle: U,
         unsafe {
             rtdebug!("handle: %x", handle.native_handle() as uint);
             let loop_ = uvll::get_loop_for_uv_handle(handle.native_handle());
-            rtdebug!("loop: %x", loop_ as uint);
-            let err = uvll::last_error(loop_);
-            Some(UvError(err))
+            status_to_maybe_uv_error_with_loop(loop_, status)
         }
     }
 }

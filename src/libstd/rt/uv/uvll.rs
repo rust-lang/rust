@@ -617,7 +617,54 @@ pub unsafe fn ip6_port(addr: *sockaddr_in6) -> c_uint {
     return rust_uv_ip6_port(addr);
 }
 
+pub unsafe fn fs_open(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char, flags: int, mode: int,
+                cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_open(loop_ptr, req, path, flags as c_int, mode as c_int, cb)
+}
+
+pub unsafe fn fs_unlink(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_unlink(loop_ptr, req, path, cb)
+}
+pub unsafe fn fs_write(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
+                       len: uint, offset: i64, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_write(loop_ptr, req, fd, buf, len as c_uint, offset, cb)
+}
+pub unsafe fn fs_read(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
+                       len: uint, offset: i64, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_read(loop_ptr, req, fd, buf, len as c_uint, offset, cb)
+}
+pub unsafe fn fs_close(loop_ptr: *uv_loop_t, req: *uv_fs_t, fd: c_int,
+                cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_close(loop_ptr, req, fd, cb)
+}
+pub unsafe fn fs_req_cleanup(req: *uv_fs_t) {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_req_cleanup(req);
+}
+
 // data access helpers
+pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_get_result_from_fs_req(req)
+}
+pub unsafe fn get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_get_loop_from_fs_req(req)
+}
 pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *c_void {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -784,6 +831,19 @@ extern {
     fn rust_uv_timer_start(timer_handle: *uv_timer_t, cb: uv_timer_cb, timeout: libc::uint64_t,
                            repeat: libc::uint64_t) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
+    fn rust_uv_fs_open(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                       flags: c_int, mode: c_int, cb: *u8) -> c_int;
+    fn rust_uv_fs_unlink(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                       cb: *u8) -> c_int;
+    fn rust_uv_fs_write(loop_ptr: *c_void, req: *uv_fs_t, fd: c_int,
+                       buf: *c_void, len: c_uint, offset: i64, cb: *u8) -> c_int;
+    fn rust_uv_fs_read(loop_ptr: *c_void, req: *uv_fs_t, fd: c_int,
+                       buf: *c_void, len: c_uint, offset: i64, cb: *u8) -> c_int;
+    fn rust_uv_fs_close(loop_ptr: *c_void, req: *uv_fs_t, fd: c_int,
+                        cb: *u8) -> c_int;
+    fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
+    fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
+    fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
 
     fn rust_uv_get_stream_handle_from_connect_req(connect_req: *uv_connect_t) -> *uv_stream_t;
     fn rust_uv_get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t;

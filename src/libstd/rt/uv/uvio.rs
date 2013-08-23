@@ -17,10 +17,11 @@ use libc::{c_int, c_uint, c_void};
 use ops::Drop;
 use option::*;
 use ptr;
+use str;
 use result::*;
 use rt::io::IoError;
 use rt::io::net::ip::{SocketAddr, IpAddr};
-use rt::io::{standard_error, OtherIoError};
+use rt::io::{standard_error, OtherIoError, SeekStyle, SeekSet, SeekCur, SeekEnd};
 use rt::local::Local;
 use rt::rtio::*;
 use rt::sched::{Scheduler, SchedHandle};
@@ -29,6 +30,11 @@ use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
 use unstable::sync::Exclusive;
+use super::super::io::support::PathLike;
+use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
+          S_IRUSR, S_IWUSR};
+use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
+            CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite};
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -454,6 +460,87 @@ impl IoFactory for UvIoFactory {
         let watcher = TimerWatcher::new(self.uv_loop());
         let home = get_handle_to_current_scheduler!();
         Ok(~UvTimer::new(watcher, home))
+    }
+
+    fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream {
+        let loop_ = Loop {handle: self.uv_loop().native_handle()};
+        let fd = file::FileDescriptor(fd);
+        let home = get_handle_to_current_scheduler!();
+        ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
+    }
+
+    fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
+        -> Result<~RtioFileStream, IoError> {
+        let mut flags = match fm {
+            Open => 0,
+            Create => O_CREAT,
+            OpenOrCreate => O_CREAT,
+            Append => O_APPEND,
+            Truncate => O_TRUNC,
+            CreateOrTruncate => O_TRUNC | O_CREAT
+        };
+        flags = match fa {
+            Read => flags | O_RDONLY,
+            Write => flags | O_WRONLY,
+            ReadWrite => flags | O_RDWR
+        };
+        let create_mode = match fm {
+            Create|OpenOrCreate|CreateOrTruncate =>
+                S_IRUSR | S_IWUSR,
+            _ => 0
+        };
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<~RtioFileStream,
+                                           IoError>> = &result_cell;
+        let path_cell = Cell::new(path);
+        let scheduler = Local::take::<Scheduler>();
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let task_cell = Cell::new(task);
+            let path = path_cell.take();
+            do file::FsRequest::open(self.uv_loop(), path, flags as int, create_mode as int)
+                  |req,err| {
+                if err.is_none() {
+                    let loop_ = Loop {handle: req.get_loop().native_handle()};
+                    let home = get_handle_to_current_scheduler!();
+                    let fd = file::FileDescriptor(req.get_result());
+                    let fs = ~UvFileStream::new(
+                        loop_, fd, true, home) as ~RtioFileStream;
+                    let res = Ok(fs);
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler = Local::take::<Scheduler>();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                } else {
+                    let res = Err(uv_error_to_io_error(err.unwrap()));
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler = Local::take::<Scheduler>();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                }
+            };
+        };
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
+    }
+
+    fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+        let path_cell = Cell::new(path);
+        let scheduler = Local::take::<Scheduler>();
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let task_cell = Cell::new(task);
+            let path = path_cell.take();
+            do file::FsRequest::unlink(self.uv_loop(), path) |_, err| {
+                let res = match err {
+                    None => Ok(()),
+                    Some(err) => Err(uv_error_to_io_error(err))
+                };
+                unsafe { (*result_cell_ptr).put_back(res); }
+                let scheduler = Local::take::<Scheduler>();
+                scheduler.resume_blocked_task_immediately(task_cell.take());
+            };
+        };
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
     }
 }
 
@@ -992,6 +1079,140 @@ impl RtioTimer for UvTimer {
     }
 }
 
+pub struct UvFileStream {
+    loop_: Loop,
+    fd: file::FileDescriptor,
+    close_on_drop: bool,
+    home: SchedHandle
+}
+
+impl HomingIO for UvFileStream {
+    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+}
+
+impl UvFileStream {
+    fn new(loop_: Loop, fd: file::FileDescriptor, close_on_drop: bool,
+           home: SchedHandle) -> UvFileStream {
+        UvFileStream {
+            loop_: loop_,
+            fd: fd,
+            close_on_drop: close_on_drop,
+            home: home
+        }
+    }
+    fn base_read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<int, IoError>> = &result_cell;
+        let buf_ptr: *&mut [u8] = &buf;
+        do self.home_for_io |self_| {
+            let scheduler = Local::take::<Scheduler>();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
+                let task_cell = Cell::new(task);
+                do self_.fd.read(&self_.loop_, buf, offset) |req, uverr| {
+                    let res = match uverr  {
+                        None => Ok(req.get_result() as int),
+                        Some(err) => Err(uv_error_to_io_error(err))
+                    };
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler = Local::take::<Scheduler>();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                };
+            };
+        };
+        result_cell.take()
+    }
+    fn base_write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+        let buf_ptr: *&[u8] = &buf;
+        do self.home_for_io |self_| {
+            let scheduler = Local::take::<Scheduler>();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
+                let task_cell = Cell::new(task);
+                do self_.fd.write(&self_.loop_, buf, offset) |_, uverr| {
+                    let res = match uverr  {
+                        None => Ok(()),
+                        Some(err) => Err(uv_error_to_io_error(err))
+                    };
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler = Local::take::<Scheduler>();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                };
+            };
+        };
+        result_cell.take()
+    }
+    fn seek_common(&mut self, pos: i64, whence: c_int) ->
+        Result<u64, IoError>{
+        #[fixed_stack_segment]; #[inline(never)];
+        unsafe {
+            match lseek((*self.fd), pos as off_t, whence) {
+                -1 => {
+                    Err(IoError {
+                        kind: OtherIoError,
+                        desc: "Failed to lseek.",
+                        detail: None
+                    })
+                },
+                n => Ok(n as u64)
+            }
+        }
+    }
+}
+
+impl Drop for UvFileStream {
+    fn drop(&self) {
+        let self_ = unsafe { transmute::<&UvFileStream, &mut UvFileStream>(self) };
+        if self.close_on_drop {
+            do self_.home_for_io |self_| {
+                let scheduler = Local::take::<Scheduler>();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    let task_cell = Cell::new(task);
+                    do self_.fd.close(&self.loop_) |_,_| {
+                        let scheduler = Local::take::<Scheduler>();
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                    };
+                };
+            }
+        }
+    }
+}
+
+impl RtioFileStream for UvFileStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError> {
+        self.base_read(buf, -1)
+    }
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+        self.base_write(buf, -1)
+    }
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
+        self.base_read(buf, offset as i64)
+    }
+    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
+        self.base_write(buf, offset as i64)
+    }
+    fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError> {
+        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
+        let whence = match whence {
+            SeekSet => SEEK_SET,
+            SeekCur => SEEK_CUR,
+            SeekEnd => SEEK_END
+        };
+        self.seek_common(pos, whence)
+    }
+    fn tell(&self) -> Result<u64, IoError> {
+        use libc::SEEK_CUR;
+        // this is temporary
+        let self_ = unsafe { cast::transmute::<&UvFileStream, &mut UvFileStream>(self) };
+        self_.seek_common(0, SEEK_CUR)
+    }
+    fn flush(&mut self) -> Result<(), IoError> {
+        Ok(())
+    }
+}
+
 #[test]
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
@@ -1496,5 +1717,62 @@ fn test_timer_sleep_simple() {
             let timer = (*io).timer_init();
             do timer.map_move |mut t| { t.sleep(1) };
         }
+    }
+}
+
+fn file_test_uvio_full_simple_impl() {
+    use str::StrSlice; // why does this have to be explicitly imported to work?
+                       // compiler was complaining about no trait for str that
+                       // does .as_bytes() ..
+    use path::Path;
+    use rt::io::{Open, Create, ReadWrite, Read};
+    unsafe {
+        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let write_val = "hello uvio!";
+        let path = "./tmp/file_test_uvio_full.txt";
+        {
+            let create_fm = Create;
+            let create_fa = ReadWrite;
+            let mut fd = (*io).fs_open(&Path(path), create_fm, create_fa).unwrap();
+            let write_buf = write_val.as_bytes();
+            fd.write(write_buf);
+        }
+        {
+            let ro_fm = Open;
+            let ro_fa = Read;
+            let mut fd = (*io).fs_open(&Path(path), ro_fm, ro_fa).unwrap();
+            let mut read_vec = [0, .. 1028];
+            let nread = fd.read(read_vec).unwrap();
+            let read_val = str::from_bytes(read_vec.slice(0, nread as uint));
+            assert!(read_val == write_val.to_owned());
+        }
+        (*io).fs_unlink(&Path(path));
+    }
+}
+
+#[test]
+fn file_test_uvio_full_simple() {
+    do run_in_newsched_task {
+        file_test_uvio_full_simple_impl();
+    }
+}
+
+fn uvio_naive_print(input: &str) {
+    use str::StrSlice;
+    unsafe {
+        use libc::{STDOUT_FILENO};
+        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        {
+            let mut fd = (*io).fs_from_raw_fd(STDOUT_FILENO, false);
+            let write_buf = input.as_bytes();
+            fd.write(write_buf);
+        }
+    }
+}
+
+#[test]
+fn file_test_uvio_write_to_stdout() {
+    do run_in_newsched_task {
+        uvio_naive_print("jubilation\n");
     }
 }
