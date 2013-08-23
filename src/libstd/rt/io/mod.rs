@@ -461,6 +461,7 @@ pub enum SeekStyle {
 /// # XXX
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
+    /// Return position of file cursor in the stream
     fn tell(&self) -> u64;
 
     /// Seek to an offset in a stream
@@ -538,4 +539,28 @@ pub fn placeholder_error() -> IoError {
         desc: "Placeholder error. You shouldn't be seeing this",
         detail: None
     }
+}
+
+/// Instructions on how to open a file and return a `FileStream`.
+pub enum FileMode {
+    /// Opens an existing file. IoError if file does not exist.
+    Open,
+    /// Creates a file. IoError if file exists.
+    Create,
+    /// Opens an existing file or creates a new one.
+    OpenOrCreate,
+    /// Opens an existing file or creates a new one, positioned at EOF.
+    Append,
+    /// Opens an existing file, truncating it to 0 bytes.
+    Truncate,
+    /// Opens an existing file or creates a new one, truncating it to 0 bytes.
+    CreateOrTruncate,
+}
+
+/// Access permissions with which the file should be opened.
+/// `FileStream`s opened with `Read` will raise an `io_error` condition if written to.
+pub enum FileAccess {
+    Read,
+    Write,
+    ReadWrite
 }
