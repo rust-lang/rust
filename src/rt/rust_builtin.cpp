@@ -292,7 +292,7 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
 
     if (zone != NULL) {
         size_t size = strlen(zone);
-        reserve_vec_exact(&out_tm->tm_zone, size);
+        assert(out_tm->tm_zone->alloc >= size);
         memcpy(out_tm->tm_zone->data, zone, size);
         out_tm->tm_zone->fill = size;
     }
