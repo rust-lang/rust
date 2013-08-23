@@ -63,7 +63,6 @@ endif
 endif
 
 RUNTIME_CXXS_$(1)_$(2) := \
-              rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
               rt/rust_builtin.cpp \
