@@ -17,6 +17,7 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, INIT};
+use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::type_of::*;
@@ -317,6 +318,11 @@ pub fn load_environment(fcx: @mut FunctionContext,
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
         fcx.llupvars.insert(def_id.node, upvarptr);
+
+        if fcx.ccx.sess.opts.extra_debuginfo {
+            debuginfo::create_captured_var_metadata(bcx, def_id.node, upvarptr, cap_var.span);
+        }
+
         i += 1u;
     }
 }
