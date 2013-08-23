@@ -43,7 +43,7 @@ use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use source_control::is_git_dir;
-use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, in_workspace, cwd_to_workspace};
+use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
 use context::Ctx;
 use package_id::PkgId;
 use package_source::PkgSrc;
@@ -190,11 +190,10 @@ impl CtxMethods for Ctx {
         match cmd {
             "build" => {
                 if args.len() < 1 {
-                    if !in_workspace(|| { usage::build() } ) {
-                        return;
+                    match cwd_to_workspace() {
+                        None => { usage::build(); return }
+                        Some((ws, pkgid)) => self.build(&ws, &pkgid)
                     }
-                    let (workspace, pkgid) = cwd_to_workspace();
-                    self.build(&workspace, &pkgid);
                 }
                 else {
                     // The package id is presumed to be the first command-line
@@ -210,13 +209,12 @@ impl CtxMethods for Ctx {
             }
             "clean" => {
                 if args.len() < 1 {
-                    if !in_workspace(|| { usage::clean() } ) {
-                        return;
+                    match cwd_to_workspace() {
+                        None => { usage::clean(); return }
+                        // tjc: Maybe clean should clean all the packages in the
+                        // current workspace, though?
+                        Some((ws, pkgid)) => self.clean(&ws, &pkgid)
                     }
-                    // tjc: Maybe clean should clean all the packages in the
-                    // current workspace, though?
-                    let (workspace, pkgid) = cwd_to_workspace();
-                    self.clean(&workspace, &pkgid);
 
                 }
                 else {
@@ -239,11 +237,10 @@ impl CtxMethods for Ctx {
             }
             "install" => {
                 if args.len() < 1 {
-                    if !in_workspace(|| { usage::install() }) {
-                        return;
+                    match cwd_to_workspace() {
+                        None => { usage::install(); return }
+                        Some((ws, pkgid)) => self.install(&ws, &pkgid)
                     }
-                    let (workspace, pkgid) = cwd_to_workspace();
-                    self.install(&workspace, &pkgid);
                 }
                 else {
                     // The package id is presumed to be the first command-line
