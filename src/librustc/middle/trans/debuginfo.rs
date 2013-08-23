@@ -96,11 +96,9 @@ pub struct DebugContext {
     priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
-    priv curr_loc: (uint, uint),
+    priv curr_loc: DebugLocation,
     priv created_files: HashMap<~str, DIFile>,
-    priv created_functions: HashMap<FunctionCacheKey, DISubprogram>,
-    priv created_blocks: HashMap<ast::NodeId, DILexicalBlock>,
-    priv created_types: HashMap<uint, DIType>
+    priv created_types: HashMap<uint, DIType>,
 }
 
 impl DebugContext {
@@ -113,32 +111,18 @@ impl DebugContext {
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
-            curr_loc: (0, 0),
+            curr_loc: UnknownLocation,
             created_files: HashMap::new(),
-            created_functions: HashMap::new(),
-            created_blocks: HashMap::new(),
-            created_types: HashMap::new()
+            created_types: HashMap::new(),
         };
-    }
-}
-
-#[deriving(Eq,IterBytes)]
-struct FunctionCacheKey {
-    // Use the address of the llvm function (FunctionContext::llfn) as key for the cache. This
-    // nicely takes care of monomorphization, where two specializations will have the same
-    // ast::NodeId but different llvm functions (each needing its own debug description).
-    priv llfn: ValueRef
-}
-
-impl FunctionCacheKey {
-    fn for_function_context(fcx: &FunctionContext) -> FunctionCacheKey {
-        FunctionCacheKey { llfn: fcx.llfn }
     }
 }
 
 pub struct FunctionDebugContext {
     priv scope_map: HashMap<ast::NodeId, DIScope>,
+    priv fn_metadata: DISubprogram,
     priv argument_counter: uint,
+    priv source_locations_enabled: bool,
 }
 
 /// Create any deferred debug metadata nodes
@@ -194,7 +178,14 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let scope = create_function_metadata(bcx.fcx);
+    let scope = bcx.fcx.debug_context.get_ref().fn_metadata;
+
+    let argument_index = {
+        let counter = &mut bcx.fcx.debug_context.get_mut_ref().argument_counter;
+        let argument_index = *counter;
+        *counter += 1;
+        argument_index as c_uint
+    };
 
     let var_metadata = do cx.sess.str_of(special_idents::self_).to_c_str().with_ref |name| {
         unsafe {
@@ -208,11 +199,11 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
                 type_metadata,
                 false,
                 0,
-                1)
+                argument_index)
         }
     };
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -222,6 +213,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
     }
+    set_debug_location(cx, UnknownLocation);
 }
 
 /// Creates debug information for the given function argument.
@@ -243,7 +235,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
 
     let def_map = cx.tcx.def_map;
     let file_metadata = file_metadata(cx, filename);
-    let scope = create_function_metadata(fcx);
+    let scope = bcx.fcx.debug_context.get_ref().fn_metadata;//create_function_metadata(fcx);
 
     do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
 
@@ -284,7 +276,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
-        set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+        set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
         unsafe {
             let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
                 DIB(cx),
@@ -294,6 +286,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
 
             llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
         }
+        set_debug_location(cx, UnknownLocation);
     }
 }
 
@@ -301,50 +294,52 @@ pub fn create_argument_metadata(bcx: @mut Block,
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id parameter is used to
 /// reliably find the correct visibility scope for the code position.
-pub fn update_source_pos(fcx: &FunctionContext,
-                         node_id: ast::NodeId,
-                         span: span) {
+pub fn set_source_location(fcx: &FunctionContext,
+                           node_id: ast::NodeId,
+                           span: span) {
     let cx: &mut CrateContext = fcx.ccx;
 
     if !cx.sess.opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
 
-    debug!("update_source_pos: %s", cx.sess.codemap.span_to_str(span));
+    debug!("set_source_location: %s", cx.sess.codemap.span_to_str(span));
 
-    let loc = span_start(cx, span);
-    let scope = scope_metadata(fcx, node_id, span);
+    if fcx.debug_context.get_ref().source_locations_enabled {
+        let loc = span_start(cx, span);
+        let scope = scope_metadata(fcx, node_id, span);
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+        set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
+    } else {
+        set_debug_location(cx, UnknownLocation);
+    }
 }
 
-/// Creates debug information for the given function.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-/// The return value should be ignored if called from outside of the debuginfo module.
-pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
-    let cx = fcx.ccx;
-    let cache_key = FunctionCacheKey::for_function_context(fcx);
-
-    match dbg_cx(cx).created_functions.find_copy(&cache_key) {
-        Some(fn_metadata) => {
-            assert!(fcx.debug_context.is_some());
-            return fn_metadata;
-        }
-        None => { /* fallthrough */}
+pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
+    for debug_context in fcx.debug_context.mut_iter() {
+        debug_context.source_locations_enabled = true;
     }
+}
+
+pub fn create_function_debug_context(cx: &mut CrateContext,
+                                     fn_ast_id: ast::NodeId,
+                                     param_substs: Option<@param_substs>,
+                                     llfn: ValueRef) -> ~FunctionDebugContext {
+    assert!(fn_ast_id != -1);
 
     let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
-    let fnitem = cx.tcx.items.get_copy(&fcx.id);
-    let (ident, fn_decl, generics, span) = match fnitem {
+    let fnitem = cx.tcx.items.get_copy(&fn_ast_id);
+    let (ident, fn_decl, generics, top_level_block, span) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
-                ast::item_fn(ref fn_decl, _, _, ref generics, _) => {
-                    (item.ident, fn_decl, generics, item.span)
+                ast::item_fn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
+                    (item.ident, fn_decl, generics, Some(top_level_block), item.span)
                 }
-                _ => fcx.ccx.sess.span_bug(item.span,
-                                           "create_function_metadata: item bound to non-function")
+                _ => {
+                    cx.sess.span_bug(item.span,
+                        "create_function_debug_context: item bound to non-function");
+                }
             }
         }
         ast_map::node_method(
@@ -352,25 +347,27 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 decl: ref fn_decl,
                 ident: ident,
                 generics: ref generics,
+                body: ref top_level_block,
                 span: span,
                 _
             },
             _,
             _) => {
-            (ident, fn_decl, generics, span)
+            (ident, fn_decl, generics, Some(top_level_block), span)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
-                ast::expr_fn_block(ref fn_decl, _) => {
+                ast::expr_fn_block(ref fn_decl, ref top_level_block) => {
                     let name = gensym_name("fn");
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
                         &empty_generics,
+                        Some(top_level_block),
                         expr.span)
                 }
-                _ => fcx.ccx.sess.span_bug(expr.span,
-                        "create_function_metadata: expected an expr_fn_block here")
+                _ => cx.sess.span_bug(expr.span,
+                        "create_function_debug_context: expected an expr_fn_block here")
             }
         }
         ast_map::node_trait_method(
@@ -379,34 +376,45 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                     decl: ref fn_decl,
                     ident: ident,
                     generics: ref generics,
+                    body: ref top_level_block,
                     span: span,
                     _
                 }),
             _,
             _) => {
-            (ident, fn_decl, generics, span)
+            (ident, fn_decl, generics, Some(top_level_block), span)
         }
-        _ => fcx.ccx.sess.bug(fmt!("create_function_metadata: unexpected sort of node: %?", fnitem))
+        ast_map::node_foreign_item(@ast::foreign_item {
+                ident: ident,
+                node: ast::foreign_item_fn(ref fn_decl, ref generics),
+                span: span,
+                _
+            },
+            _,
+            _,
+            _) => {
+            (ident, fn_decl, generics, None, span)
+        }
+        _ => cx.sess.bug(fmt!("create_function_debug_context: unexpected sort of node: %?", fnitem))
     };
-
-    debug!("create_function_metadata: %s, %s",
-           cx.sess.str_of(ident),
-           cx.sess.codemap.span_to_str(span));
 
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
     let function_type_metadata = unsafe {
-        let fn_signature = get_function_signature(fcx, fn_decl);
+        let fn_signature = get_function_signature(cx, fn_ast_id, fn_decl, param_substs);
         llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
     let mut function_name = cx.sess.str_of(ident).to_owned();
-    let template_parameters = get_template_parameters(fcx,
-                                                      generics,
-                                                      file_metadata,
-                                                      &mut function_name);
+    let template_parameters = if cx.sess.opts.extra_debuginfo {
+        get_template_parameters(cx, generics, param_substs, file_metadata, &mut function_name)
+    } else {
+        ptr::null()
+    };
+
+    let scope_line = get_scope_line(cx, top_level_block, loc.line);
 
     let fn_metadata = do function_name.to_c_str().with_ref |function_name| {
         unsafe {
@@ -420,50 +428,32 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 function_type_metadata,
                 false,
                 true,
-                loc.line as c_uint,
+                scope_line as c_uint,
                 FlagPrototyped as c_uint,
                 cx.sess.opts.optimize != session::No,
-                fcx.llfn,
+                llfn,
                 template_parameters,
                 ptr::null())
         }
     };
 
-    dbg_cx(cx).created_functions.insert(cache_key, fn_metadata);
-
     // Initialize fn debug context (including scope map)
-    {
-        assert!(fcx.debug_context.is_none());
+    let mut fn_debug_context = ~FunctionDebugContext {
+        scope_map: HashMap::new(),
+        fn_metadata: fn_metadata,
+        argument_counter: 1,
+        source_locations_enabled: false,
+    };
 
-        let mut fn_debug_context = ~FunctionDebugContext {
-            scope_map: HashMap::new(),
-            argument_counter: if fcx.llself.is_some() { 2 } else { 1 }
-        };
+    let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
+    populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
 
-        let entry_block_id = fcx.entry_bcx.get_ref().node_info.get_ref().id;
-        let entry_block = cx.tcx.items.get(&entry_block_id);
+    return fn_debug_context;
 
-        match *entry_block {
-            ast_map::node_block(ref block) => {
-                let scope_map = &mut fn_debug_context.scope_map;
-                let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
-
-                populate_scope_map(cx, arg_pats, block, fn_metadata, scope_map);
-            }
-            _ => cx.sess.span_bug(span,
-                    fmt!("debuginfo::create_function_metadata() - \
-                         FunctionContext::entry_bcx::node_info points to wrong type of ast_map \
-                         entry. Expected: ast_map::node_block, actual: %?", *entry_block))
-        }
-
-        fcx.debug_context = Some(fn_debug_context);
-    }
-
-    return fn_metadata;
-
-    fn get_function_signature(fcx: &FunctionContext, fn_decl: &ast::fn_decl) -> DIArray {
-        let cx = fcx.ccx;
-
+    fn get_function_signature(cx: &mut CrateContext,
+                              fn_ast_id: ast::NodeId,
+                              fn_decl: &ast::fn_decl,
+                              param_substs: Option<@param_substs>) -> DIArray {
         if !cx.sess.opts.extra_debuginfo {
             return create_DIArray(DIB(cx), []);
         }
@@ -476,8 +466,8 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
                 signature.push(ptr::null());
             }
             _ => {
-                let return_type = ty::node_id_to_type(cx.tcx, fcx.id);
-                let return_type = match fcx.param_substs {
+                let return_type = ty::node_id_to_type(cx.tcx, fn_ast_id);
+                let return_type = match param_substs {
                     None => return_type,
                     Some(substs) => {
                         ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, return_type)
@@ -491,7 +481,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         // arguments types
         for arg in fn_decl.inputs.iter() {
             let arg_type = ty::node_id_to_type(cx.tcx, arg.pat.id);
-            let arg_type = match fcx.param_substs {
+            let arg_type = match param_substs {
                 None => arg_type,
                 Some(substs) => {
                     ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, arg_type)
@@ -504,14 +494,13 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         return create_DIArray(DIB(cx), signature);
     }
 
-    fn get_template_parameters(fcx: &FunctionContext,
+    fn get_template_parameters(cx: &mut CrateContext,
                                generics: &ast::Generics,
+                               param_substs: Option<@param_substs>,
                                file_metadata: DIFile,
                                name_to_append_suffix_to: &mut ~str)
                             -> DIArray {
-        let cx = fcx.ccx;
-
-        let self_type = match fcx.param_substs {
+        let self_type = match param_substs {
             Some(@param_substs{ self_ty: self_type, _ }) => self_type,
             _ => None
         };
@@ -561,7 +550,7 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
         }
 
         // Handle other generic parameters
-        let actual_types = match fcx.param_substs {
+        let actual_types = match param_substs {
             Some(@param_substs { tys: ref types, _ }) => types,
             None => {
                 return create_DIArray(DIB(cx), template_params);
@@ -600,10 +589,22 @@ pub fn create_function_metadata(fcx: &mut FunctionContext) -> DISubprogram {
 
         return create_DIArray(DIB(cx), template_params);
     }
+
+    fn get_scope_line(cx: &CrateContext,
+                      top_level_block: Option<&ast::Block>,
+                      default: uint)
+                   -> uint {
+        match top_level_block {
+            Some(&ast::Block { stmts: ref statements, _ }) if statements.len() > 0 => {
+                span_start(cx, statements[0].span).line
+            }
+            Some(&ast::Block { expr: Some(@ref expr), _ }) => {
+                span_start(cx, expr.span).line
+            }
+            _ => default
+        }
+    }
 }
-
-
-
 
 //=-------------------------------------------------------------------------------------------------
 // Module-Internal debug info creation functions
@@ -676,7 +677,7 @@ fn declare_local(bcx: @mut Block,
         }
     };
 
-    set_debug_location(cx, scope, loc.line, loc.col.to_uint());
+    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -1424,29 +1425,62 @@ fn type_metadata(cx: &mut CrateContext,
         ty::ty_tup(ref elements) => {
             tuple_metadata(cx, t, *elements, span)
         },
-        _ => cx.sess.bug("debuginfo: unexpected type in type_metadata")
+        ty::ty_opaque_box => {
+            cx.sess.span_note(span, "debuginfo for ty_opaque_box NYI");
+            unimplemented_type_metadata(cx, t)
+        }
+        _ => cx.sess.bug(fmt!("debuginfo: unexpected type in type_metadata: %?", sty))
     };
 
     dbg_cx(cx).created_types.insert(type_id, type_metadata);
     return type_metadata;
 }
 
-fn set_debug_location(cx: &mut CrateContext, scope: DIScope, line: uint, col: uint) {
-    if dbg_cx(cx).curr_loc == (line, col) {
+#[deriving(Eq)]
+enum DebugLocation {
+    KnownLocation { scope: DIScope, line: uint, col: uint },
+    UnknownLocation
+}
+
+impl DebugLocation {
+    fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {
+        KnownLocation {
+            scope: scope,
+            line: line,
+            col: col,
+        }
+    }
+}
+
+fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
+    if debug_location == dbg_cx(cx).curr_loc {
         return;
     }
-    debug!("setting debug location to %u %u", line, col);
-    dbg_cx(cx).curr_loc = (line, col);
 
-    let elems = ~[C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+
+    let metadata_node;
+
+    match debug_location {
+        KnownLocation { scope, line, col } => {
+            debug!("setting debug location to %u %u", line, col);
+            let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+            unsafe {
+                metadata_node = llvm::LLVMMDNodeInContext(dbg_cx(cx).llcontext,
+                                                          vec::raw::to_ptr(elements),
+                                                          elements.len() as c_uint);
+            }
+        }
+        UnknownLocation => {
+            debug!("clearing debug location ");
+            metadata_node = ptr::null();
+        }
+    };
+
     unsafe {
-        let dbg_loc = llvm::LLVMMDNodeInContext(
-                dbg_cx(cx).llcontext,
-                vec::raw::to_ptr(elems),
-                elems.len() as c_uint);
-
-        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
+        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, metadata_node);
     }
+
+    dbg_cx(cx).curr_loc = debug_location;
 }
 
 //=-------------------------------------------------------------------------------------------------
@@ -1498,7 +1532,7 @@ fn assert_fcx_has_span(fcx: &FunctionContext) {
 // shadowing.
 fn populate_scope_map(cx: &mut CrateContext,
                       arg_pats: &[@ast::pat],
-                      fn_entry_block: &ast::Block,
+                      fn_entry_block: Option<&ast::Block>,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
     let def_map = cx.tcx.def_map;
@@ -1519,7 +1553,10 @@ fn populate_scope_map(cx: &mut CrateContext,
         }
     }
 
-    walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
+    for &fn_entry_block in fn_entry_block.iter() {
+        walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
+    }
+
 
     // local helper functions for walking the AST.
 
@@ -1898,7 +1935,9 @@ fn populate_scope_map(cx: &mut CrateContext,
                     do with_new_scope(cx, arm_span, scope_stack, scope_map) |cx,
                                                                              scope_stack,
                                                                              scope_map| {
-                        walk_pattern(cx, arm_ref.pats[0], scope_stack, scope_map);
+                        for &pat in arm_ref.pats.iter() {
+                            walk_pattern(cx, pat, scope_stack, scope_map);
+                        }
 
                         for &@ref guard_exp in arm_ref.guard.iter() {
                             walk_expr(cx, guard_exp, scope_stack, scope_map)
