@@ -40,3 +40,39 @@ macro_rules! rtabort(
     } )
 )
 
+macro_rules! assert_once_ever(
+    ($( $msg:expr),+) => ( {
+        // FIXME(#8472) extra function should not be needed to hide unsafe
+        fn assert_once_ever() {
+            unsafe {
+                static mut already_happened: int = 0;
+                // Double-check lock to avoid a swap in the common case.
+                if already_happened != 0 ||
+                    ::unstable::intrinsics::atomic_xchg_relaxed(&mut already_happened, 1) != 0 {
+                        fail!(fmt!("assert_once_ever happened twice: %s", fmt!($($msg),+)));
+                }
+            }
+        }
+        assert_once_ever();
+    } )
+)
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_assert_once_ever_ok() {
+        assert_once_ever!("help i'm stuck in an");
+        assert_once_ever!("assertion error message");
+    }
+
+    #[test] #[ignore(cfg(windows))] #[should_fail]
+    fn test_assert_once_ever_fail() {
+        use task;
+
+        fn f() { assert_once_ever!("if you're seeing this... good!") }
+
+        // linked & watched, naturally
+        task::spawn(f);
+        task::spawn(f);
+    }
+}

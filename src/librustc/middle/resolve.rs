@@ -4814,9 +4814,13 @@ impl Resolver {
                                         DontAllowCapturingSelf) {
                         Some(dl_def(def)) => return Some(def),
                         _ => {
-                            self.session.span_bug(span,
-                                                  "self wasn't mapped to a \
-                                                   def?!")
+                            if self.session.has_errors() {
+                                // May happen inside a nested fn item, cf #6642.
+                                return None;
+                            } else {
+                                self.session.span_bug(span,
+                                        "self wasn't mapped to a def?!")
+                            }
                         }
                     }
                 }

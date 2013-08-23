@@ -499,13 +499,14 @@ impl<T> GenericPort<T> for Port<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        let pone = self.next.take();
-        match pone.try_recv() {
-            Some(StreamPayload { val, next }) => {
-                self.next.put_back(next);
-                Some(val)
+        do self.next.take_opt().map_move_default(None) |pone| {
+            match pone.try_recv() {
+                Some(StreamPayload { val, next }) => {
+                    self.next.put_back(next);
+                    Some(val)
+                }
+                None => None
             }
-            None => None
         }
     }
 }
