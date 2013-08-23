@@ -10,12 +10,12 @@
 
 // rustpkg utilities having to do with workspaces
 
-use std::os;
+use std::{os,util};
 use std::path::Path;
 use path_util::workspace_contains_package_id;
 use package_id::PkgId;
 
-use rustc::metadata::filesearch::rust_path;
+use path_util::rust_path;
 
 pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
@@ -42,23 +42,22 @@ pub fn pkg_parent_workspaces(pkgid: &PkgId) -> ~[Path] {
         .collect()
 }
 
-pub fn in_workspace(complain: &fn()) -> bool {
-    let dir_part = os::getcwd().pop().components.clone();
-    if  *(dir_part.last()) != ~"src" {
-        complain();
-        false
-    }
-    else {
-        true
-    }
-}
-
 /// Construct a workspace and package-ID name based on the current directory.
 /// This gets used when rustpkg gets invoked without a package-ID argument.
-pub fn cwd_to_workspace() -> (Path, PkgId) {
+pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {
     let cwd = os::getcwd();
-    let ws = cwd.pop().pop();
-    let cwd_ = cwd.clone();
-    let pkgid = cwd_.components.last().to_str();
-    (ws, PkgId::new(pkgid))
+    for path in rust_path().move_iter() {
+        let srcpath = path.push("src");
+        if srcpath.is_ancestor_of(&cwd) {
+            // I'd love to use srcpath.get_relative_to(cwd) but it behaves wrong
+            // I'd say broken, but it has tests enforcing the wrong behavior.
+            // instead, just hack up the components vec
+            let mut pkgid = cwd;
+            pkgid.is_absolute = false;
+            let comps = util::replace(&mut pkgid.components, ~[]);
+            pkgid.components = comps.move_iter().skip(srcpath.components.len()).collect();
+            return Some((path, PkgId::new(pkgid.components.connect("/"))))
+        }
+    }
+    None
 }
