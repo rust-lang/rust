@@ -1,7 +1,7 @@
-debug_abi_1
-debug_abi_2
-debug_static_mut
-debug_static_mut_check_four
+rust_dbg_abi_1
+rust_dbg_abi_2
+rust_dbg_static_mut
+rust_dbg_static_mut_check_four
 get_time
 rust_tzset
 rust_gmtime
