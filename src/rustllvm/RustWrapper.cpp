@@ -724,3 +724,39 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateTemplateTypeParameter(
       LineNo,
       ColumnNo));
 }
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateOpDeref(LLVMTypeRef IntTy)
+{
+    return LLVMConstInt(IntTy, DIBuilder::OpDeref, true);
+}
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateOpPlus(LLVMTypeRef IntTy)
+{
+    return LLVMConstInt(IntTy, DIBuilder::OpPlus, true);
+}
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateComplexVariable(
+    DIBuilderRef Builder,
+    unsigned Tag,
+    LLVMValueRef Scope,
+    const char *Name,
+    LLVMValueRef File,
+    unsigned LineNo,
+    LLVMValueRef Ty,
+    LLVMValueRef* AddrOps,
+    unsigned AddrOpsCount,
+    unsigned ArgNo)
+{
+    llvm::ArrayRef<llvm::Value*> addr_ops((llvm::Value**)AddrOps, AddrOpsCount);
+
+    return wrap(Builder->createComplexVariable(
+        Tag,
+        unwrapDI<DIDescriptor>(Scope),
+        Name,
+        unwrapDI<DIFile>(File),
+        LineNo,
+        unwrapDI<DIType>(Ty),
+        addr_ops,
+        ArgNo
+    ));
+}
