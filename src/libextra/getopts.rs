@@ -501,6 +501,7 @@ pub enum FailType {
 pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
+    use std::str;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
@@ -691,7 +692,7 @@ pub mod groups {
 
             // FIXME: #5516
             // here we just need to indent the start of the description
-            let rowlen = row.len();
+            let rowlen = str::count_chars(row, 0, row.len());
             if rowlen < 24 {
                 do (24 - rowlen).times {
                     row.push_char(' ')
@@ -798,7 +799,7 @@ pub mod groups {
             cont
         };
 
-        ss.iter().enumerate().advance(|x| machine(x));
+        ss.char_offset_iter().advance(|x| machine(x));
 
         // Let the automaton 'run out' by supplying trailing whitespace
         while cont && match state { B | C => true, A => false } {
