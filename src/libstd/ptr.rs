@@ -711,7 +711,6 @@ pub mod ptr_tests {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_ptr_array_each_with_len_null_ptr() {
         unsafe {
             array_each_with_len(0 as **libc::c_char, 1, |e| {
@@ -721,7 +720,6 @@ pub mod ptr_tests {
     }
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn test_ptr_array_each_null_ptr() {
         unsafe {
             array_each(0 as **libc::c_char, |e| {

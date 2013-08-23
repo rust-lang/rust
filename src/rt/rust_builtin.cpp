@@ -559,11 +559,7 @@ rust_try(rust_try_fn f, void *fptr, void *env) {
 
 extern "C" CDECL void
 rust_begin_unwind(uintptr_t token) {
-#ifndef __WIN32__
     throw token;
-#else
-    abort();
-#endif
 }
 
 extern "C" CDECL uintptr_t

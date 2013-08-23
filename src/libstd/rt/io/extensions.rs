@@ -751,7 +751,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn push_bytes_fail_reset_len() {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
@@ -806,7 +805,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
     fn read_to_end_error() {
         let mut reader = MockReader::new();
         let count = Cell::new(0);
