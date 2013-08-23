@@ -42,7 +42,6 @@ LLVMAddDestination
 LLVMAddEarlyCSEPass
 LLVMAddFunction
 LLVMAddFunctionAttr
-LLVMAddFunctionAttrString
 LLVMAddFunctionAttrsPass
 LLVMAddFunctionInliningPass
 LLVMAddGVNPass
