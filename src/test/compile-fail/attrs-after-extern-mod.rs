@@ -16,8 +16,8 @@ use std::libc;
 
 #[nolink]
 extern {
-    static mut debug_static_mut: libc::c_int;
-    pub fn debug_static_mut_check_four();
+    static mut rust_dbg_static_mut: libc::c_int;
+    pub fn rust_dbg_static_mut_check_four();
     #[cfg(stage37)] //~ ERROR expected item after attributes
 }
 
