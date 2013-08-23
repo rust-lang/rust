@@ -26,10 +26,7 @@ endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_OSTYPE_VAR,$(t))))
 $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 
-# FIXME: no-omit-frame-pointer is just so that task_start_wrapper
-# has a frame pointer and the stack walker can understand it. Turning off
-# frame pointers everywhere is overkill
-CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer -DUSE_UTF8
+CFG_GCCISH_CFLAGS += -DUSE_UTF8
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets

@@ -342,7 +342,6 @@ LLVMRustBuildJIT(void* mem,
   std::string Err;
   TargetOptions Options;
   Options.JITEmitDebugInfo = true;
-  Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
   RustMCJITMemoryManager* MM = (RustMCJITMemoryManager*) mem;
   assert(MM);
@@ -393,7 +392,6 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   }
 
   TargetOptions Options;
-  Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
   Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
 
