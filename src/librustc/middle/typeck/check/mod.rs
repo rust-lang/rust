@@ -3092,7 +3092,6 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
                                       sp: span,
                                       defn: ast::def)
                                    -> ty_param_bounds_and_ty {
-
     match defn {
       ast::def_arg(nid, _) | ast::def_local(nid, _) | ast::def_self(nid, _) |
       ast::def_binding(nid, _) => {
@@ -3149,7 +3148,8 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     let ty_param_count = tpt.generics.type_param_defs.len();
     let ty_substs_len = pth.types.len();
 
-    debug!("ty_param_count=%? ty_substs_len=%?",
+    debug!("tpt=%s ty_param_count=%? ty_substs_len=%?",
+           tpt.repr(fcx.tcx()),
            ty_param_count,
            ty_substs_len);
 
