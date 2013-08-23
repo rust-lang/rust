@@ -59,7 +59,6 @@ private:
     array_list<alloc_header *> _allocation_list;
     const bool _detailed_leaks;
     const bool _poison_on_free;
-    const bool _synchronized;
     lock_and_signal _lock;
 
     void add_alloc();
@@ -77,8 +76,7 @@ private:
     memory_region& operator=(const memory_region& rhs);
 
 public:
-    memory_region(bool synchronized,
-                  bool detailed_leaks, bool poison_on_free);
+    memory_region(bool detailed_leaks, bool poison_on_free);
     memory_region(memory_region *parent);
     void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
