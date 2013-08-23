@@ -68,6 +68,11 @@ pub struct config {
     // Percent change in metrics to consider noise
     ratchet_noise_percent: Option<f64>,
 
+    // "Shard" of the testsuite to run: this has the form of
+    // two numbers (a,b), and causes only those tests with
+    // positional order equal to a mod b to run.
+    test_shard: Option<(uint,uint)>,
+
     // A command line to prefix program execution with,
     // for running under valgrind
     runtool: Option<~str>,
