@@ -787,7 +787,7 @@ mod bench {
     pub fn parse_str(bh: &mut BenchHarness) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
         do bh.iter {
-            let u = Uuid::parse_string(s);
+            Uuid::parse_string(s);
         }
     }
 }
