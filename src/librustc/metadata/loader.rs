@@ -14,7 +14,7 @@
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
 use metadata::encoder;
-use metadata::filesearch::FileSearch;
+use metadata::filesearch::{FileSearch, FileMatch, FileMatches, FileDoesntMatch};
 use metadata::filesearch;
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
@@ -92,10 +92,10 @@ fn find_library_crate_aux(
     // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
     let prefix = fmt!("%s%s-", prefix, crate_name);
     let mut matches = ~[];
-    filesearch::search(filesearch, |path| -> Option<()> {
+    filesearch::search(filesearch, |path| -> FileMatch {
       let path_str = path.filename();
       match path_str {
-          None => None,
+          None => FileDoesntMatch,
           Some(path_str) =>
               if path_str.starts_with(prefix) && path_str.ends_with(suffix) {
                   debug!("%s is a candidate", path.to_str());
@@ -104,20 +104,20 @@ fn find_library_crate_aux(
                           if !crate_matches(cvec, cx.metas, cx.hash) {
                               debug!("skipping %s, metadata doesn't match",
                                   path.to_str());
-                              None
+                              FileDoesntMatch
                           } else {
                               debug!("found %s with matching metadata", path.to_str());
                               matches.push((path.to_str(), cvec));
-                              None
+                              FileMatches
                           },
                       _ => {
                           debug!("could not load metadata for %s", path.to_str());
-                          None
+                          FileDoesntMatch
                       }
                   }
                }
                else {
-                   None
+                   FileDoesntMatch
                }
       }
     });
