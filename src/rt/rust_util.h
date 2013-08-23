@@ -14,8 +14,6 @@
 #include <limits.h>
 #include "rust_type.h"
 
-extern struct type_desc str_body_tydesc;
-
 // Inline fn used regularly elsewhere.
 
 // Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
