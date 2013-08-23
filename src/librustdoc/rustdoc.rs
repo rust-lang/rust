@@ -59,7 +59,10 @@ pub mod prune_private_pass;
 
 pub fn main() {
     let args = os::args();
+    main_args(args);
+}
 
+pub fn main_args(args: &[~str]) {
     if args.iter().any(|x| "-h" == *x) || args.iter().any(|x| "--help" == *x) {
         config::usage();
         return;
