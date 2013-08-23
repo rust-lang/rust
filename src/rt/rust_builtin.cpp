@@ -11,7 +11,6 @@
 /* Foreign builtins. */
 
 #include "rust_util.h"
-#include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "sync/lock_and_signal.h"
 #include "memory_region.h"
@@ -25,6 +24,7 @@
 
 #ifdef __APPLE__
 #include <crt_externs.h>
+#include <mach/mach_time.h>
 #endif
 
 #if !defined(__WIN32__)
@@ -242,10 +242,33 @@ get_time(int64_t *sec, int32_t *nsec) {
 }
 #endif
 
+const uint64_t ns_per_s = 1000000000LL;
+
 extern "C" CDECL void
 precise_time_ns(uint64_t *ns) {
-    timer t;
-    *ns = t.time_ns();
+
+#ifdef __APPLE__
+    uint64_t time = mach_absolute_time();
+    mach_timebase_info_data_t info = {0, 0};
+    if (info.denom == 0) {
+        mach_timebase_info(&info);
+    }
+    uint64_t time_nano = time * (info.numer / info.denom);
+    *ns = time_nano;
+#elif __WIN32__
+    uint64_t ticks_per_s;
+    QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_s);
+    if (ticks_per_s == 0LL) {
+        ticks_per_s = 1LL;
+    }
+    uint64_t ticks;
+    QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
+    *ns = ((ticks * ns_per_s) / ticks_per_s);
+#else
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    *ns = (ts.tv_sec * ns_per_s + ts.tv_nsec);
+#endif
 }
 
 struct rust_tm {
