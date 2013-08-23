@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-#include "sync/sync.h"
 #include "memory_region.h"
 
 #if RUSTRT_TRACK_ALLOCATIONS >= 3
