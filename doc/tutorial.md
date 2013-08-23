@@ -1864,7 +1864,7 @@ so you could not apply `head` to a type
 that does not implement `Clone`.
 
 While most traits can be defined and implemented by user code,
-two traits are automatically derived and implemented
+three traits are automatically derived and implemented
 for all applicable types by the compiler,
 and may not be overridden:
 
@@ -1876,6 +1876,12 @@ unless they contain managed boxes, managed closures, or borrowed pointers.
 These are types that do not contain anything intrinsically mutable.
 Intrinsically mutable values include `@mut`
 and `Cell` in the standard library.
+
+* `'static` - Non-borrowed types.
+These are types that do not contain any data whose lifetime is bound to
+a particular stack frame. These are types that do not contain any
+borrowed pointers, or types where the only contained borrowed pointers
+have the `'static` lifetime.
 
 > ***Note:*** These two traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
@@ -2134,6 +2140,30 @@ time, it uses a lookup table (also known as a vtable or dictionary) to
 select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
+
+By default, each of the three storage classes for traits enforce a
+particular set of built-in kinds that their contents must fulfill in
+order to be packaged up in a trait object of that storage class.
+
+* The contents of owned traits (`~Trait`) must fulfill the `Send` bound.
+* The contents of managed traits (`@Trait`) must fulfill the `'static` bound.
+* The contents of borrowed traits (`&Trait`) are not constrained by any bound.
+
+Consequently, the trait objects themselves automatically fulfill their
+respective kind bounds. However, this default behavior can be overridden by
+specifying a list of bounds on the trait type, for example, by writing `~Trait:`
+(which indicates that the contents of the owned trait need not fulfill any
+bounds), or by writing `~Trait:Send+Freeze`, which indicates that in addition
+to fulfilling `Send`, contents must also fulfill `Freeze`, and as a consequence,
+the trait itself fulfills `Freeze`.
+
+* `~Trait:Send` is equivalent to `~Trait`.
+* `@Trait:'static` is equivalent to `@Trait`.
+* `&Trait:` is equivalent to `&Trait`.
+
+Builtin kind bounds can also be specified on closure types in the same way (for
+example, by writing `fn:Freeze()`), and the default behaviours are the same as
+for traits of the same storage class.
 
 ## Trait inheritance
 
