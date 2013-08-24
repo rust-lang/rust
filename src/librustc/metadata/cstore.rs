@@ -15,6 +15,7 @@
 
 use metadata::cstore;
 use metadata::decoder;
+use metadata::loader::MetadataSection;
 
 use std::hashmap::HashMap;
 use extra;
@@ -29,7 +30,7 @@ pub type cnum_map = @mut HashMap<ast::CrateNum, ast::CrateNum>;
 
 pub struct crate_metadata {
     name: @str,
-    data: @~[u8],
+    data: MetadataSection,
     cnum_map: cnum_map,
     cnum: ast::CrateNum
 }

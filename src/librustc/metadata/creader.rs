@@ -15,6 +15,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
+use metadata::loader::MetadataSection;
 
 use std::hashmap::HashMap;
 use syntax::ast;
@@ -308,7 +309,7 @@ fn resolve_crate(e: @mut Env,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: @mut Env, cdata: MetadataSection) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
