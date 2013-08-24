@@ -15,33 +15,68 @@ use container::Container;
 use vec::OwnedVector;
 use option::{Option, Some, None};
 use cell::Cell;
-use unstable::sync::Exclusive;
+use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
 use rt::sched::SchedHandle;
 use clone::Clone;
 
 pub struct SleeperList {
-    priv stack: ~Exclusive<~[SchedHandle]>
+    priv state: UnsafeAtomicRcBox<State>
+}
+
+struct State {
+    count: uint,
+    stack: ~[SchedHandle],
+    lock: LittleLock
 }
 
 impl SleeperList {
     pub fn new() -> SleeperList {
         SleeperList {
-            stack: ~Exclusive::new(~[])
+            state: UnsafeAtomicRcBox::new(State {
+                count: 0,
+                stack: ~[],
+                lock: LittleLock::new()
+            })
         }
     }
 
     pub fn push(&mut self, handle: SchedHandle) {
         let handle = Cell::new(handle);
         unsafe {
-            self.stack.with(|s| s.push(handle.take()));
+            let state = self.state.get();
+            do (*state).lock.lock {
+                (*state).count += 1;
+                (*state).stack.push(handle.take());
+            }
         }
     }
 
     pub fn pop(&mut self) -> Option<SchedHandle> {
         unsafe {
-            do self.stack.with |s| {
-                if !s.is_empty() {
-                    Some(s.pop())
+            let state = self.state.get();
+            do (*state).lock.lock {
+                if !(*state).stack.is_empty() {
+                    (*state).count -= 1;
+                    Some((*state).stack.pop())
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// A pop that may sometimes miss enqueued elements, but is much faster
+    /// to give up without doing any synchronization
+    pub fn casual_pop(&mut self) -> Option<SchedHandle> {
+        unsafe {
+            let state = self.state.get();
+            // NB: Unsynchronized check
+            if (*state).count == 0 { return None; }
+            do (*state).lock.lock {
+                if !(*state).stack.is_empty() {
+                    // NB: count is also protected by the lock
+                    (*state).count -= 1;
+                    Some((*state).stack.pop())
                 } else {
                     None
                 }
@@ -53,7 +88,7 @@ impl SleeperList {
 impl Clone for SleeperList {
     fn clone(&self) -> SleeperList {
         SleeperList {
-            stack: self.stack.clone()
+            state: self.state.clone()
         }
     }
 }

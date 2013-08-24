@@ -27,8 +27,10 @@ macro_rules! rtdebug (
 
 macro_rules! rtassert (
     ( $arg:expr ) => ( {
-        if !$arg {
-            rtabort!("assertion failed: %s", stringify!($arg));
+        if ::rt::util::ENFORCE_SANITY {
+            if !$arg {
+                rtabort!("assertion failed: %s", stringify!($arg));
+            }
         }
     } )
 )
