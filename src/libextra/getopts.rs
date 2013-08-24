@@ -690,7 +690,7 @@ pub mod groups {
                 }
             }
 
-            // FIXME: #5516
+            // FIXME: #5516 should be graphemes not codepoints
             // here we just need to indent the start of the description
             let rowlen = str::count_chars(row, 0, row.len());
             if rowlen < 24 {
@@ -708,14 +708,14 @@ pub mod groups {
                 desc_normalized_whitespace.push_char(' ');
             }
 
-            // FIXME: #5516
+            // FIXME: #5516 should be graphemes not codepoints
             let mut desc_rows = ~[];
             do each_split_within(desc_normalized_whitespace, 54) |substr| {
                 desc_rows.push(substr.to_owned());
                 true
             };
 
-            // FIXME: #5516
+            // FIXME: #5516 should be graphemes not codepoints
             // wrapped description
             row.push_str(desc_rows.connect(desc_sep));
 
@@ -1573,6 +1573,33 @@ Options:
     -k --kiwi           This is a long description which won't be wrapped..+..
     -a --apple          This is a long description which _will_ be
                         wrapped..+..
+";
+
+        let usage = groups::usage("Usage: fruits", optgroups);
+
+        debug!("expected: <<%s>>", expected);
+        debug!("generated: <<%s>>", usage);
+        assert!(usage == expected)
+    }
+
+    #[test]
+    fn test_groups_usage_description_multibyte_handling() {
+        let optgroups = ~[
+            groups::optflag("k", "k\u2013w\u2013",
+                "The word kiwi is normally spelled with two i's"),
+            groups::optflag("a", "apple",
+                "This \u201Cdescription\u201D has some characters that could \
+confuse the line wrapping; an apple costs 0.51€ in some parts of Europe."),
+        ];
+
+        let expected =
+~"Usage: fruits
+
+Options:
+    -k --k–w–           The word kiwi is normally spelled with two i's
+    -a --apple          This “description” has some characters that could
+                        confuse the line wrapping; an apple costs 0.51€ in
+                        some parts of Europe.
 ";
 
         let usage = groups::usage("Usage: fruits", optgroups);
