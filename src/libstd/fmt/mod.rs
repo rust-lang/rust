@@ -12,33 +12,33 @@
 
 # The Formatting Module
 
-This module contains the runtime support for the `ifmt!` syntax extension. This
+This module contains the runtime support for the `format!` syntax extension. This
 macro is implemented in the compiler to emit calls to this module in order to
 format arguments at runtime into strings and streams.
 
 The functions contained in this module should not normally be used in everyday
-use cases of `ifmt!`. The assumptions made by these functions are unsafe for all
+use cases of `format!`. The assumptions made by these functions are unsafe for all
 inputs, and the compiler performs a large amount of validation on the arguments
-to `ifmt!` in order to ensure safety at runtime. While it is possible to call
+to `format!` in order to ensure safety at runtime. While it is possible to call
 these functions directly, it is not recommended to do so in the general case.
 
 ## Usage
 
-The `ifmt!` macro is intended to be familiar to those coming from C's
-printf/sprintf functions or Python's `str.format` function. In its current
-revision, the `ifmt!` macro returns a `~str` type which is the result of the
+The `format!` macro is intended to be familiar to those coming from C's
+printf/fprintf functions or Python's `str.format` function. In its current
+revision, the `format!` macro returns a `~str` type which is the result of the
 formatting. In the future it will also be able to pass in a stream to format
 arguments directly while performing minimal allocations.
 
-Some examples of the `ifmt!` extension are:
+Some examples of the `format!` extension are:
 
 ~~~{.rust}
-ifmt!("Hello")                  // => ~"Hello"
-ifmt!("Hello, {:s}!", "world")  // => ~"Hello, world!"
-ifmt!("The number is {:d}", 1)  // => ~"The number is 1"
-ifmt!("{}", ~[3, 4])            // => ~"~[3, 4]"
-ifmt!("{value}", value=4)       // => ~"4"
-ifmt!("{} {}", 1, 2)            // => ~"1 2"
+format!("Hello")                  // => ~"Hello"
+format!("Hello, {:s}!", "world")  // => ~"Hello, world!"
+format!("The number is {:d}", 1)  // => ~"The number is 1"
+format!("{}", ~[3, 4])            // => ~"~[3, 4]"
+format!("{value}", value=4)       // => ~"4"
+format!("{} {}", 1, 2)            // => ~"1 2"
 ~~~
 
 From these, you can see that the first argument is a format string. It is
@@ -62,7 +62,7 @@ format string, although it must always be referred to with the same type.
 ### Named parameters
 
 Rust itself does not have a Python-like equivalent of named parameters to a
-function, but the `ifmt!` macro is a syntax extension which allows it to
+function, but the `format!` macro is a syntax extension which allows it to
 leverage named parameters. Named parameters are listed at the end of the
 argument list and have the syntax:
 
@@ -146,7 +146,7 @@ helper methods.
 
 ## Internationalization
 
-The formatting syntax supported by the `ifmt!` extension supports
+The formatting syntax supported by the `format!` extension supports
 internationalization by providing "methods" which execute various different
 outputs depending on the input. The syntax and methods provided are similar to
 other internationalization systems, so again nothing should seem alien.
@@ -164,7 +164,7 @@ to reference the string value of the argument which was selected upon. As an
 example:
 
 ~~~
-ifmt!("{0, select, other{#}}", "hello") // => ~"hello"
+format!("{0, select, other{#}}", "hello") // => ~"hello"
 ~~~
 
 This example is the equivalent of `{0:s}` essentially.
@@ -399,11 +399,11 @@ pub trait Pointer { fn fmt(&Self, &mut Formatter); }
 #[allow(missing_doc)]
 pub trait Float { fn fmt(&Self, &mut Formatter); }
 
-/// The fprintf function takes an output stream, a precompiled format string,
+/// The `write` function takes an output stream, a precompiled format string,
 /// and a list of arguments. The arguments will be formatted according to the
 /// specified format string into the output stream provided.
 ///
-/// See the documentation for `sprintf` for why this function is unsafe and care
+/// See the documentation for `format` for why this function is unsafe and care
 /// should be taken if calling it manually.
 ///
 /// Thankfully the rust compiler provides the macro `fmtf!` which will perform
@@ -419,8 +419,8 @@ pub trait Float { fn fmt(&Self, &mut Formatter); }
 ///
 /// Note that this function assumes that there are enough arguments for the
 /// format string.
-pub unsafe fn fprintf(output: &mut io::Writer,
-                      fmt: &[rt::Piece], args: &[Argument]) {
+pub unsafe fn write(output: &mut io::Writer,
+                    fmt: &[rt::Piece], args: &[Argument]) {
     let mut formatter = Formatter {
         flags: 0,
         width: None,
@@ -436,7 +436,7 @@ pub unsafe fn fprintf(output: &mut io::Writer,
     }
 }
 
-/// The sprintf function takes a precompiled format string and a list of
+/// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
 /// This is currently an unsafe function because the types of all arguments
@@ -446,7 +446,7 @@ pub unsafe fn fprintf(output: &mut io::Writer,
 /// for formatting the right type value. Because of this, the function is marked
 /// as `unsafe` if this is being called manually.
 ///
-/// Thankfully the rust compiler provides the macro `ifmt!` which will perform
+/// Thankfully the rust compiler provides the macro `format!` which will perform
 /// all of this validation at compile-time and provides a safe interface for
 /// invoking this function.
 ///
@@ -458,9 +458,9 @@ pub unsafe fn fprintf(output: &mut io::Writer,
 ///
 /// Note that this function assumes that there are enough arguments for the
 /// format string.
-pub unsafe fn sprintf(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
+pub unsafe fn format(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
-    fprintf(&mut output as &mut io::Writer, fmt, args);
+    write(&mut output as &mut io::Writer, fmt, args);
     return str::from_bytes_owned(output.inner());
 }
 
@@ -468,7 +468,7 @@ impl<'self> Formatter<'self> {
 
     // First up is the collection of functions used to execute a format string
     // at runtime. This consumes all of the compile-time statics generated by
-    // the ifmt! syntax extension.
+    // the format! syntax extension.
 
     fn run(&mut self, piece: &rt::Piece, cur: Option<&str>) {
         let setcount = |slot: &mut Option<uint>, cnt: &parse::Count| {
@@ -732,7 +732,7 @@ impl<'self> Formatter<'self> {
 }
 
 /// This is a function which calls are emitted to by the compiler itself to
-/// create the Argument structures that are passed into the `sprintf` function.
+/// create the Argument structures that are passed into the `format` function.
 #[doc(hidden)]
 pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter),
                        t: &'a T) -> Argument<'a> {
