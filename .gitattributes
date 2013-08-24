@@ -8,3 +8,6 @@ src/rt/msvc/* -whitespace
 src/rt/vg/* -whitespace
 src/rt/linenoise/* -whitespace
 src/rt/jemalloc/**/* -whitespace
+src/rt/jemalloc/include/jemalloc/jemalloc.h.in text eol=lf
+src/rt/jemalloc/include/jemalloc/jemalloc_defs.h.in text eol=lf
+src/rt/jemalloc/include/jemalloc/internal/jemalloc_internal.h.in text eol=lf
