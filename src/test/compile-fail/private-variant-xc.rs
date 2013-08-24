@@ -1,4 +1,5 @@
 // aux-build:private_variant_xc.rs
+// xfail-test
 
 extern mod private_variant_xc;
 

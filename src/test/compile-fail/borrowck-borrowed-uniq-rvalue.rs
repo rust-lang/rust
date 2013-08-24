@@ -13,8 +13,7 @@
 use std::hashmap::HashMap;
 
 fn main() {
-    let mut buggy_map :HashMap<uint, &uint> =
-      HashMap::new::<uint, &uint>();
+    let mut buggy_map: HashMap<uint, &uint> = HashMap::new();
     buggy_map.insert(42, &*~1); //~ ERROR borrowed value does not live long enough
 
     // but it is ok if we use a temporary

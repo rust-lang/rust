@@ -733,6 +733,56 @@ fn each_child_of_item_or_crate(intr: @ident_interner,
                                                 child_def_id,
                                                 cdata.cnum);
                 callback(def_like, child_name);
+
+            }
+        }
+
+        true
+    };
+
+    // As a special case, iterate over all static methods of
+    // associated implementations too. This is a bit of a botch.
+    // --pcwalton
+    let _ = do reader::tagged_docs(item_doc,
+                                   tag_items_data_item_inherent_impl)
+            |inherent_impl_def_id_doc| {
+        let inherent_impl_def_id = item_def_id(inherent_impl_def_id_doc,
+                                               cdata);
+        let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
+        match maybe_find_item(inherent_impl_def_id.node, items) {
+            None => {}
+            Some(inherent_impl_doc) => {
+                let _ = do reader::tagged_docs(inherent_impl_doc,
+                                               tag_item_impl_method)
+                        |impl_method_def_id_doc| {
+                    let impl_method_def_id =
+                        reader::with_doc_data(impl_method_def_id_doc,
+                                              parse_def_id);
+                    let impl_method_def_id =
+                        translate_def_id(cdata, impl_method_def_id);
+                    match maybe_find_item(impl_method_def_id.node, items) {
+                        None => {}
+                        Some(impl_method_doc) => {
+                            match item_family(impl_method_doc) {
+                                StaticMethod | UnsafeStaticMethod => {
+                                    // Hand off the static method
+                                    // to the callback.
+                                    let static_method_name =
+                                        item_name(intr, impl_method_doc);
+                                    let static_method_def_like =
+                                        item_to_def_like(impl_method_doc,
+                                                         impl_method_def_id,
+                                                         cdata.cnum);
+                                    callback(static_method_def_like,
+                                             static_method_name);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    true
+                };
             }
         }
 
@@ -1403,15 +1453,9 @@ pub fn each_implementation_for_type(cdata: cmd,
                                     id: ast::NodeId,
                                     callback: &fn(ast::def_id)) {
     let item_doc = lookup_item(id, cdata.data);
-    /*println(fmt!(">>> reading inherent impls from %s",
-                 token::ident_to_str(&item_name(token::get_ident_interner(),
-                                                item_doc))));*/
     do reader::tagged_docs(item_doc, tag_items_data_item_inherent_impl)
             |impl_doc| {
         let implementation_def_id = item_def_id(impl_doc, cdata);
-        /*println(fmt!(">>>>> read inherent impl: %d:%d",
-                     implementation_def_id.crate,
-                     implementation_def_id.node));*/
         callback(implementation_def_id);
         true
     };

@@ -1303,7 +1303,9 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         };
 
         let test_function: ~fn() = || {
-            let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
+            let io: *mut IoFactoryObject = unsafe {
+                Local::unsafe_borrow()
+            };
             let addr = next_test_ip4();
             let maybe_socket = unsafe { (*io).udp_bind(addr) };
             // this socket is bound to this event loop
@@ -1311,7 +1313,7 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
 
             // block self on sched1
             do task::unkillable { // FIXME(#8674)
-                let scheduler = Local::take::<Scheduler>();
+                let scheduler: ~Scheduler = Local::take();
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     // unblock task
                     do task.wake().map_move |task| {
@@ -1377,7 +1379,9 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         let chan = Cell::new(chan);
 
         let body1: ~fn() = || {
-            let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
+            let io: *mut IoFactoryObject = unsafe {
+                Local::unsafe_borrow()
+            };
             let addr = next_test_ip4();
             let socket = unsafe { (*io).udp_bind(addr) };
             assert!(socket.is_ok());
@@ -1489,7 +1493,9 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         };
 
         let server_fn: ~fn() = || {
-            let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
+            let io: *mut IoFactoryObject = unsafe {
+                Local::unsafe_borrow()
+            };
             let mut listener = unsafe { (*io).tcp_bind(server_addr).unwrap() };
             let mut stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
@@ -1501,7 +1507,9 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         };
 
         let client_fn: ~fn() = || {
-            let io = unsafe { Local::unsafe_borrow::<IoFactoryObject>() };
+            let io: *mut IoFactoryObject = unsafe {
+                Local::unsafe_borrow()
+            };
             let mut stream = unsafe { (*io).tcp_connect(client_addr) };
             while stream.is_err() {
                 stream = unsafe { (*io).tcp_connect(client_addr) };
