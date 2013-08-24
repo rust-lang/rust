@@ -1,7 +1,7 @@
-debug_abi_1
-debug_abi_2
-debug_static_mut
-debug_static_mut_check_four
+rust_dbg_abi_1
+rust_dbg_abi_2
+rust_dbg_static_mut
+rust_dbg_static_mut_check_four
 get_time
 rust_tzset
 rust_gmtime
@@ -130,8 +130,6 @@ rust_lock_little_lock
 rust_unlock_little_lock
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
-rust_gc_metadata
-rust_update_gc_metadata
 rust_uv_ip4_port
 rust_uv_ip6_port
 rust_uv_tcp_getpeername
@@ -191,8 +189,6 @@ rust_get_num_cpus
 rust_get_global_args_ptr
 rust_take_global_args_lock
 rust_drop_global_args_lock
-rust_set_exit_status_newrt
-rust_get_exit_status_newrt
 rust_take_change_dir_lock
 rust_drop_change_dir_lock
 rust_get_test_int

@@ -224,10 +224,7 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
         args::init(argc, argv);
         env::init();
         logging::init(crate_map);
-        rust_update_gc_metadata(crate_map);
     }
-
-    externfn!(fn rust_update_gc_metadata(crate_map: *u8));
 }
 
 /// One-time runtime cleanup.
