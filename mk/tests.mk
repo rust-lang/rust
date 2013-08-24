@@ -73,14 +73,22 @@ TEST_RATCHET_NOISE_PERCENT=10.0
 
 # Whether to ratchet or merely save benchmarks
 ifdef CFG_RATCHET_BENCH
-CRATE_TEST_BENCH_ARGS=\
+CRATE_TEST_EXTRA_ARGS=\
   --test $(TEST_BENCH) \
   --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
   --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
 else
-CRATE_TEST_BENCH_ARGS=\
+CRATE_TEST_EXTRA_ARGS=\
   --test $(TEST_BENCH) \
   --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
+endif
+
+# If we're sharding the testsuite between parallel testers,
+# pass this argument along to the compiletest and crate test
+# invocations.
+ifdef TEST_SHARD
+  CTEST_TESTARGS += --test-shard=$(TEST_SHARD)
+  CRATE_TEST_EXTRA_ARGS += --test-shard=$(TEST_SHARD)
 endif
 
 define DEF_TARGET_COMMANDS
@@ -401,7 +409,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
-	$$(call CRATE_TEST_BENCH_ARGS,$(1),$(2),$(3),$(4)) \
+	$$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) \
 	&& touch $$@
 endef
 
@@ -415,7 +423,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	@$(CFG_ADB) shell '(cd $(CFG_ADB_TEST_DIR); LD_LIBRARY_PATH=. \
 		./$$(notdir $$<) \
 		--logfile $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log \
-		$$(call CRATE_TEST_BENCH_ARGS,$(1),$(2),$(3),$(4)))' \
+		$$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)))' \
 		> tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
 	@cat tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
 	@touch tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log

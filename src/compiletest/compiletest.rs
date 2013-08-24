@@ -75,6 +75,7 @@ pub fn parse_config(args: ~[~str]) -> config {
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
+          optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
           optflag("h", "help", "show this message"),
          ];
 
@@ -148,6 +149,7 @@ pub fn parse_config(args: ~[~str]) -> config {
                     ~"") { true }
                 else { false }
             } else { false },
+        test_shard: test::opt_shard(getopts::opt_maybe_str(matches, "test-shard")),
         verbose: getopts::opt_present(matches, "verbose")
     }
 }
@@ -172,6 +174,10 @@ pub fn log_config(config: &config) {
     logv(c, fmt!("adb_path: %s", config.adb_path));
     logv(c, fmt!("adb_test_dir: %s", config.adb_test_dir));
     logv(c, fmt!("adb_device_status: %b", config.adb_device_status));
+    match config.test_shard {
+        None => logv(c, ~"test_shard: (all)"),
+        Some((a,b)) => logv(c, fmt!("test_shard: %u.%u", a, b))
+    }
     logv(c, fmt!("verbose: %b", config.verbose));
     logv(c, fmt!("\n"));
 }
@@ -234,6 +240,7 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         ratchet_metrics: config.ratchet_metrics.clone(),
         ratchet_noise_percent: config.ratchet_noise_percent.clone(),
         save_metrics: config.save_metrics.clone(),
+        test_shard: config.test_shard.clone()
     }
 }
 
