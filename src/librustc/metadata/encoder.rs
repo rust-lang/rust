@@ -513,8 +513,12 @@ fn encode_reexports(ecx: &EncodeContext,
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
             for exp in exports.iter() {
-                debug!("(encoding info for module) reexport '%s' for %d",
-                       exp.name, id);
+                debug!("(encoding info for module) reexport '%s' (%d/%d) for \
+                        %d",
+                       exp.name,
+                       exp.def_id.crate,
+                       exp.def_id.node,
+                       id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
                 ebml_w.start_tag(tag_items_data_item_reexport_def_id);
                 ebml_w.wr_str(def_to_str(exp.def_id));

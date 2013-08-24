@@ -1658,7 +1658,8 @@ impl Resolver {
                            new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
         match def {
-          def_mod(def_id) | def_foreign_mod(def_id) => {
+          def_mod(def_id) | def_foreign_mod(def_id) | def_struct(def_id) |
+          def_ty(def_id) => {
             match child_name_bindings.type_def {
               Some(TypeNsDef { module_def: Some(module_def), _ }) => {
                 debug!("(building reduced graph for external crate) \
@@ -1680,6 +1681,11 @@ impl Resolver {
               }
             }
           }
+          _ => {}
+        }
+
+        match def {
+          def_mod(_) | def_foreign_mod(_) => {}
           def_variant(*) => {
             debug!("(building reduced graph for external crate) building \
                     variant %s",
@@ -1691,7 +1697,7 @@ impl Resolver {
           }
           def_fn(*) | def_static_method(*) | def_static(*) => {
             debug!("(building reduced graph for external \
-                    crate) building value %s", final_ident);
+                    crate) building value (fn/static) %s", final_ident);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
           def_trait(def_id) => {
@@ -1903,13 +1909,21 @@ impl Resolver {
 
     /// Builds the reduced graph rooted at the given external module.
     fn populate_external_module(@mut self, module: @mut Module) {
+        debug!("(populating external module) attempting to populate %s",
+               self.module_to_str(module));
+
         let def_id = match module.def_id {
-            None => return,
+            None => {
+                debug!("(populating external module) ... no def ID!");
+                return
+            }
             Some(def_id) => def_id,
         };
 
         do csearch::each_child_of_item(self.session.cstore, def_id)
                 |def_like, child_ident| {
+            debug!("(populating external module) ... found ident: %s",
+                   token::ident_to_str(&child_ident));
             self.build_reduced_graph_for_external_crate_def(module,
                                                             def_like,
                                                             child_ident)
@@ -3871,7 +3885,7 @@ impl Resolver {
                           generics: &Generics,
                           fields: &[@struct_field],
                           visitor: &mut ResolveVisitor) {
-        let mut ident_map = HashMap::new::<ast::ident, @struct_field>();
+        let mut ident_map: HashMap<ast::ident,@struct_field> = HashMap::new();
         for &field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
