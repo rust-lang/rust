@@ -96,7 +96,8 @@ ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
   CFG_RUSTC_FLAGS +=
 else
-  CFG_RUSTC_FLAGS += -O
+  # The rtopt cfg turns off runtime sanity checks
+  CFG_RUSTC_FLAGS += -O --cfg rtopt
 endif
 
 ifdef CFG_ENABLE_DEBUG

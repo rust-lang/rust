@@ -1401,7 +1401,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let self_len = self.len();
         let rhs_len = rhs.len();
         let new_len = self_len + rhs_len;
-        self.reserve(new_len);
+        self.reserve_at_least(new_len);
         unsafe { // Note: infallible.
             let self_p = vec::raw::to_mut_ptr(*self);
             let rhs_p = vec::raw::to_ptr(rhs);
