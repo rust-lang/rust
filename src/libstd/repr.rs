@@ -590,7 +590,7 @@ fn test_repr() {
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
-    exact_test(&(@mut 10), "@10"); // FIXME: #4210: incorrect
+    exact_test(&(@mut 10), "@mut 10");
     exact_test(&((@mut 10, 2)), "(@mut 10, 2)");
     exact_test(&(~10), "~10");
     exact_test(&(&10), "&10");
