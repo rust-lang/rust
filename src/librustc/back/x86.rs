@@ -14,7 +14,7 @@ use driver::session::sess_os_to_meta_os;
 use driver::session;
 use metadata::loader::meta_section_name;
 
-pub fn get_target_strs(target_os: session::os) -> target_strs::t {
+pub fn get_target_strs(target_triple: ~str, target_os: session::os) -> target_strs::t {
     return target_strs::t {
         module_asm: ~"",
 
@@ -44,13 +44,7 @@ pub fn get_target_strs(target_os: session::os) -> target_strs::t {
           }
         },
 
-        target_triple: match target_os {
-          session::os_macos => ~"i686-apple-darwin",
-          session::os_win32 => ~"i686-pc-mingw32",
-          session::os_linux => ~"i686-unknown-linux-gnu",
-          session::os_android => ~"i686-unknown-android-gnu",
-          session::os_freebsd => ~"i686-unknown-freebsd"
-        },
+        target_triple: target_triple,
 
         cc_args: ~[~"-m32"]
     };
