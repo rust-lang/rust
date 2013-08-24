@@ -940,6 +940,7 @@ pub fn std_macros() -> @str {
         );
     )
 
+    // NOTE(acrichto): start removing this after the next snapshot
     macro_rules! printf (
         ($arg:expr) => (
             print(fmt!(\"%?\", $arg))
@@ -949,6 +950,7 @@ pub fn std_macros() -> @str {
         )
     )
 
+    // NOTE(acrichto): start removing this after the next snapshot
     macro_rules! printfln (
         ($arg:expr) => (
             println(fmt!(\"%?\", $arg))
@@ -956,6 +958,21 @@ pub fn std_macros() -> @str {
         ($( $arg:expr ),+) => (
             println(fmt!($($arg),+))
         )
+    )
+
+    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
+    //              allocation but should rather delegate to an invocation of
+    //              write! instead of format!
+    macro_rules! print (
+        () => ();
+        ($arg:expr) => ( ::std::io::print(format!(\"{}\", $arg)));
+        ($fmt:expr, $($arg:tt)+) => ( ::std::io::print(format!($fmt, $($arg)+)))
+    )
+
+    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
+    //              allocation but should rather delegate to an io::Writer
+    macro_rules! println (
+        ($($arg:tt)*) => ({ print!($($arg)*); ::std::io::println(\"\"); })
     )
 
     // NOTE: use this after a snapshot lands to abstract the details

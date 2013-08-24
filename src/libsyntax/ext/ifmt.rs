@@ -697,19 +697,24 @@ impl Context {
     }
 }
 
-pub fn expand_sprintf(ecx: @ExtCtxt, sp: span,
-                      tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, false, "sprintf")
+pub fn expand_format(ecx: @ExtCtxt, sp: span,
+                     tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, false, false, "format")
 }
 
-pub fn expand_fprintf(ecx: @ExtCtxt, sp: span,
-                      tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, "fprintf")
+pub fn expand_write(ecx: @ExtCtxt, sp: span,
+                    tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, true, false, "write")
 }
 
+pub fn expand_writeln(ecx: @ExtCtxt, sp: span,
+                      tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, true, true, "write")
+}
 
 fn expand_ifmt(ecx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
-               leading_arg: bool, function: &str) -> base::MacResult {
+               leading_arg: bool, append_newline: bool,
+               function: &str) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
         args: ~[],
@@ -730,6 +735,7 @@ fn expand_ifmt(ecx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
                           "format argument must be a string literal.");
+    let fmt = if append_newline { fmt + "\n" } else { fmt.to_owned() };
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {

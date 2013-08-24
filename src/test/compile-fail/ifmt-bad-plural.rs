@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    ifmt!("{0, plural, other{}}", "a");
+    format!("{0, plural, other{}}", "a");
     //~^ ERROR: expected uint but found
 }
