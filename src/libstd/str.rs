@@ -2107,6 +2107,7 @@ pub trait OwnedStr {
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
+    fn truncate(&mut self, len: uint);
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
@@ -2263,6 +2264,15 @@ impl OwnedStr for ~str {
             buf.capacity()
         }
     }
+
+    /// Shorten a string to the specified length (which must be <= the current length)
+    #[inline]
+    fn truncate(&mut self, len: uint) {
+        assert!(len <= self.len());
+        assert!(self.is_char_boundary(len));
+        unsafe { raw::set_len(self, len); }
+    }
+
 
     #[inline]
     fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
@@ -3481,6 +3491,38 @@ mod tests {
         assert_eq!(5, sum_len([@"01", @"2", @"34", @""]));
         assert_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
         assert_eq!(5, sum_len([s.as_slice()]));
+    }
+
+    #[test]
+    fn test_str_truncate() {
+        let mut s = ~"12345";
+        s.truncate(5);
+        assert_eq!(s.as_slice(), "12345");
+        s.truncate(3);
+        assert_eq!(s.as_slice(), "123");
+        s.truncate(0);
+        assert_eq!(s.as_slice(), "");
+
+        let mut s = ~"12345";
+        let p = s.as_imm_buf(|p,_| p);
+        s.truncate(3);
+        s.push_str("6");
+        let p_ = s.as_imm_buf(|p,_| p);
+        assert_eq!(p_, p);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_str_truncate_invalid_len() {
+        let mut s = ~"12345";
+        s.truncate(6);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_str_truncate_split_codepoint() {
+        let mut s = ~"\u00FC"; // ü
+        s.truncate(1);
     }
 }
 
