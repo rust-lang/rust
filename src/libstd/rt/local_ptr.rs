@@ -23,14 +23,16 @@ use option::{Option, Some, None};
 use unstable::finally::Finally;
 use tls = rt::thread_local_storage;
 
+static mut RT_TLS_KEY: tls::Key = -1;
+
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
 #[fixed_stack_segment]
 #[inline(never)]
 pub fn init_tls_key() {
     unsafe {
-        rust_initialize_rt_tls_key();
+        rust_initialize_rt_tls_key(&mut RT_TLS_KEY);
         extern {
-            fn rust_initialize_rt_tls_key();
+            fn rust_initialize_rt_tls_key(key: *mut tls::Key);
         }
     }
 }
@@ -40,6 +42,7 @@ pub fn init_tls_key() {
 /// # Safety note
 ///
 /// Does not validate the pointer type.
+#[inline]
 pub unsafe fn put<T>(sched: ~T) {
     let key = tls_key();
     let void_ptr: *mut c_void = cast::transmute(sched);
@@ -51,6 +54,7 @@ pub unsafe fn put<T>(sched: ~T) {
 /// # Safety note
 ///
 /// Does not validate the pointer type.
+#[inline]
 pub unsafe fn take<T>() -> ~T {
     let key = tls_key();
     let void_ptr: *mut c_void = tls::get(key);
@@ -59,6 +63,23 @@ pub unsafe fn take<T>() -> ~T {
     }
     let ptr: ~T = cast::transmute(void_ptr);
     tls::set(key, ptr::mut_null());
+    return ptr;
+}
+
+/// Take ownership of a pointer from thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+/// Leaves the old pointer in TLS for speed.
+#[inline]
+pub unsafe fn unsafe_take<T>() -> ~T {
+    let key = tls_key();
+    let void_ptr: *mut c_void = tls::get(key);
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!");
+    }
+    let ptr: ~T = cast::transmute(void_ptr);
     return ptr;
 }
 
@@ -99,10 +120,15 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 /// Because this leaves the value in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
 pub unsafe fn unsafe_borrow<T>() -> *mut T {
-    match try_unsafe_borrow() {
-        Some(p) => p,
-        None => rtabort!("thread-local pointer is null. bogus!")
+    let key = tls_key();
+    let mut void_ptr: *mut c_void = tls::get(key);
+    if void_ptr.is_null() {
+        rtabort!("thread-local pointer is null. bogus!");
     }
+    let ptr: *mut *mut c_void = &mut void_ptr;
+    let ptr: *mut ~T = ptr as *mut ~T;
+    let ptr: *mut T = &mut **ptr;
+    return ptr;
 }
 
 pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
@@ -119,6 +145,7 @@ pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
     }
 }
 
+#[inline]
 fn tls_key() -> tls::Key {
     match maybe_tls_key() {
         Some(key) => key,
@@ -126,15 +153,10 @@ fn tls_key() -> tls::Key {
     }
 }
 
-#[fixed_stack_segment]
-#[inline(never)]
-fn maybe_tls_key() -> Option<tls::Key> {
+#[inline]
+#[cfg(not(test))]
+pub fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
-        let key: *mut c_void = rust_get_rt_tls_key();
-        let key: &mut tls::Key = cast::transmute(key);
-        let key = *key;
-        // Check that the key has been initialized.
-
         // NB: This is a little racy because, while the key is
         // initalized under a mutex and it's assumed to be initalized
         // in the Scheduler ctor by any thread that needs to use it,
@@ -145,14 +167,19 @@ fn maybe_tls_key() -> Option<tls::Key> {
         // another thread. I think this is fine since the only action
         // they could take if it was initialized would be to check the
         // thread-local value and see that it's not set.
-        if key != -1 {
-            return Some(key);
+        if RT_TLS_KEY != -1 {
+            return Some(RT_TLS_KEY);
         } else {
             return None;
         }
     }
+}
 
-    extern {
-        fn rust_get_rt_tls_key() -> *mut c_void;
-    }
+// XXX: The boundary between the running runtime and the testing runtime
+// seems to be fuzzy at the moment, and trying to use two different keys
+// results in disaster. This should not be necessary.
+#[inline]
+#[cfg(test)]
+pub fn maybe_tls_key() -> Option<tls::Key> {
+    unsafe { ::cast::transmute(::realstd::rt::local_ptr::maybe_tls_key()) }
 }

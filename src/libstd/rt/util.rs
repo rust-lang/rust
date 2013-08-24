@@ -19,6 +19,10 @@ use unstable::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 #[cfg(target_os="macos")]
 use unstable::running_on_valgrind;
 
+// Indicates whether we should perform expensive sanity checks, including rtassert!
+// XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
+pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
+
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
     #[fixed_stack_segment]; #[inline(never)];

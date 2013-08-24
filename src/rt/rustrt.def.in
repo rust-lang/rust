@@ -143,7 +143,6 @@ linenoiseHistoryLoad
 rust_raw_thread_start
 rust_raw_thread_join
 rust_raw_thread_delete
-rust_get_rt_tls_key
 swap_registers
 rust_readdir
 rust_opendir
