@@ -949,7 +949,7 @@ fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
     use io;
-    use libc::{c_int, uintptr_t};
+    use libc::c_int;
     use option::{Option, None, Some};
     use os;
     use path::Path;
