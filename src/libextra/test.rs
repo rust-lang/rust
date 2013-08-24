@@ -38,6 +38,7 @@ use std::task;
 use std::to_str::ToStr;
 use std::f64;
 use std::os;
+use std::uint;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -164,6 +165,7 @@ pub struct TestOpts {
     ratchet_metrics: Option<Path>,
     ratchet_noise_percent: Option<f64>,
     save_metrics: Option<Path>,
+    test_shard: Option<(uint,uint)>,
     logfile: Option<Path>
 }
 
@@ -184,7 +186,9 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
                      "Tests within N% of the recorded metrics will be \
                       considered as passing", "PERCENTAGE"),
       groups::optopt("", "logfile", "Write logs to the specified file instead \
-                          of stdout", "PATH")]
+                          of stdout", "PATH"),
+      groups::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
+                     "A.B")]
 }
 
 fn usage(binary: &str, helpstr: &str) -> ! {
@@ -255,6 +259,9 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
     let save_metrics = save_metrics.map_move(|s| Path(s));
 
+    let test_shard = getopts::opt_maybe_str(&matches, "test-shard");
+    let test_shard = opt_shard(test_shard);
+
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
@@ -263,11 +270,28 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         ratchet_metrics: ratchet_metrics,
         ratchet_noise_percent: ratchet_noise_percent,
         save_metrics: save_metrics,
+        test_shard: test_shard,
         logfile: logfile
     };
 
     either::Left(test_opts)
 }
+
+pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
+    match maybestr {
+        None => None,
+        Some(s) => {
+            match s.split_iter('.').to_owned_vec() {
+                [a, b] => match (uint::from_str(a), uint::from_str(b)) {
+                    (Some(a), Some(b)) => Some((a,b)),
+                    _ => None
+                },
+                _ => None
+            }
+        }
+    }
+}
+
 
 #[deriving(Clone, Eq)]
 pub struct BenchSamples {
@@ -772,7 +796,15 @@ pub fn filter_tests(
     }
     sort::quick_sort(filtered, lteq);
 
-    filtered
+    // Shard the remaining tests, if sharding requested.
+    match opts.test_shard {
+        None => filtered,
+        Some((a,b)) =>
+            filtered.move_iter().enumerate()
+            .filter(|&(i,_)| i % b == a)
+            .map(|(_,t)| t)
+            .to_owned_vec()
+    }
 }
 
 struct TestFuture {
@@ -1234,6 +1266,7 @@ mod tests {
             ratchet_noise_percent: None,
             ratchet_metrics: None,
             save_metrics: None,
+            test_shard: None
         };
 
         let tests = ~[
@@ -1272,6 +1305,7 @@ mod tests {
             ratchet_noise_percent: None,
             ratchet_metrics: None,
             save_metrics: None,
+            test_shard: None
         };
 
         let names =
