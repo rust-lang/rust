@@ -1710,7 +1710,8 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
                                  self_arg: self_arg,
-                                 args: &[ast::arg])
+                                 args: &[ast::arg],
+                                 arg_tys: &[ty::t])
                               -> ~[ValueRef] {
     let _icx = push_ctxt("create_llargs_for_fn_args");
 
@@ -1727,26 +1728,31 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
 
     // Return an array containing the ValueRefs that we get from
     // llvm::LLVMGetParam for each argument.
-    vec::from_fn(args.len(), |i| {
-        unsafe {
-            let arg_n = cx.arg_pos(i);
-            let arg = &args[i];
-            let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
+    do vec::from_fn(args.len()) |i| {
+        let arg_n = cx.arg_pos(i);
+        let arg_ty = arg_tys[i];
+        let llarg = unsafe {llvm::LLVMGetParam(cx.llfn, arg_n as c_uint) };
 
-            // FIXME #7260: aliasing should be determined by monomorphized ty::t
-            match arg.ty.node {
-                // `~` pointers never alias other parameters, because ownership was transferred
-                ast::ty_uniq(_) => {
-                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+        match ty::get(arg_ty).sty {
+            // `~` pointers never alias other parameters, because
+            // ownership was transferred
+            ty::ty_uniq(*) |
+            ty::ty_evec(_, ty::vstore_uniq) |
+            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
+                unsafe {
+                    llvm::LLVMAddAttribute(
+                        llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
-                // FIXME: #6785: `&mut` can only alias `&const` and `@mut`, we should check for
-                // those in the other parameters and then mark it as `noalias` if there aren't any
-                _ => {}
             }
-
-            llarg
+            // FIXME: #6785: `&mut` can only alias `&const` and
+            // `@mut`, we should check for those in the other
+            // parameters and then mark it as `noalias` if there
+            // aren't any
+            _ => {}
         }
-    })
+
+        llarg
+    }
 }
 
 pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
@@ -1881,7 +1887,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
     debug!("trans_closure(..., param_substs=%s)",
            param_substs.repr(ccx.tcx));
 
-    // Set up arguments to the function.
     let fcx = new_fn_ctxt_w_id(ccx,
                                path,
                                llfndecl,
@@ -1892,7 +1897,16 @@ pub fn trans_closure(ccx: @mut CrateContext,
                                body.info(),
                                Some(body.span));
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
+    // Create the first basic block in the function and keep a handle on it to
+    //  pass to finish_fn later.
+    let bcx_top = fcx.entry_bcx.unwrap();
+    let mut bcx = bcx_top;
+    let block_ty = node_id_type(bcx, body.id);
+
+    // Set up arguments to the function.
+    let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
+    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg,
+                                               decl.inputs, arg_tys);
 
     // Set the fixed stack segment flag if necessary.
     if attr::contains_name(attributes, "fixed_stack_segment") {
@@ -1900,13 +1914,6 @@ pub fn trans_closure(ccx: @mut CrateContext,
         set_fixed_stack_segment(fcx.llfn);
     }
 
-    // Create the first basic block in the function and keep a handle on it to
-    //  pass to finish_fn later.
-    let bcx_top = fcx.entry_bcx.unwrap();
-    let mut bcx = bcx_top;
-    let block_ty = node_id_type(bcx, body.id);
-
-    let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
     maybe_load_env(fcx);
@@ -2108,10 +2115,11 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                                None,
                                None);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let arg_tys = ty::ty_fn_args(ctor_ty);
+
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args, arg_tys);
 
     let bcx = fcx.entry_bcx.unwrap();
-    let arg_tys = ty::ty_fn_args(ctor_ty);
 
     insert_synthetic_type_entries(bcx, fn_args, arg_tys);
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
