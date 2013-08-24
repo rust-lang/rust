@@ -240,7 +240,7 @@ fn test_write() {
 // Just make sure that the macros are defined, there's not really a lot that we
 // can do with them just yet (to test the output)
 fn test_print() {
-    print!(1);
+    print!("hi");
     print!("{:?}", ~[0u8]);
     println!("hello");
     println!("this is a {}", "test");
