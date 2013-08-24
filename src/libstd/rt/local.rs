@@ -21,12 +21,15 @@ pub trait Local {
     fn take() -> ~Self;
     fn exists() -> bool;
     fn borrow<T>(f: &fn(&mut Self) -> T) -> T;
+    unsafe fn unsafe_take() -> ~Self;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
 
 impl Local for Task {
+    #[inline]
     fn put(value: ~Task) { unsafe { local_ptr::put(value) } }
+    #[inline]
     fn take() -> ~Task { unsafe { local_ptr::take() } }
     fn exists() -> bool { local_ptr::exists() }
     fn borrow<T>(f: &fn(&mut Task) -> T) -> T {
@@ -43,7 +46,11 @@ impl Local for Task {
             None => { rtabort!("function failed in local_borrow") }
         }
     }
+    #[inline]
+    unsafe fn unsafe_take() -> ~Task { local_ptr::unsafe_take() }
+    #[inline]
     unsafe fn unsafe_borrow() -> *mut Task { local_ptr::unsafe_borrow() }
+    #[inline]
     unsafe fn try_unsafe_borrow() -> Option<*mut Task> {
         local_ptr::try_unsafe_borrow()
     }
@@ -57,12 +64,12 @@ impl Local for Scheduler {
             task.sched = Some(value.take());
         };
     }
+    #[inline]
     fn take() -> ~Scheduler {
-        do Local::borrow::<Task,~Scheduler> |task| {
-            let sched = task.sched.take_unwrap();
-            let task = task;
-            task.sched = None;
-            sched
+        unsafe {
+            // XXX: Unsafe for speed
+            let task = Local::unsafe_borrow::<Task>();
+            (*task).sched.take_unwrap()
         }
     }
     fn exists() -> bool {
@@ -85,6 +92,7 @@ impl Local for Scheduler {
             }
         }
     }
+    unsafe fn unsafe_take() -> ~Scheduler { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut Scheduler {
         match (*Local::unsafe_borrow::<Task>()).sched {
             Some(~ref mut sched) => {
@@ -97,10 +105,17 @@ impl Local for Scheduler {
         }
     }
     unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> {
-        if Local::exists::<Scheduler>() {
-            Some(Local::unsafe_borrow())
-        } else {
-            None
+        match Local::try_unsafe_borrow::<Task>() {
+            Some(task) => {
+                match (*task).sched {
+                    Some(~ref mut sched) => {
+                        let s: *mut Scheduler = &mut *sched;
+                        Some(s)
+                    }
+                    None => None
+                }
+            }
+            None => None
         }
     }
 }
@@ -111,6 +126,7 @@ impl Local for IoFactoryObject {
     fn take() -> ~IoFactoryObject { rtabort!("unimpl") }
     fn exists() -> bool { rtabort!("unimpl") }
     fn borrow<T>(_f: &fn(&mut IoFactoryObject) -> T) -> T { rtabort!("unimpl") }
+    unsafe fn unsafe_take() -> ~IoFactoryObject { rtabort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
         let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();

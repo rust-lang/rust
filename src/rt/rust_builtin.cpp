@@ -447,19 +447,14 @@ rust_readdir() {
 #endif
 
 #ifndef _WIN32
-pthread_key_t rt_key = -1;
+typedef pthread_key_t tls_key;
 #else
-DWORD rt_key = -1;
+typedef DWORD tls_key;
 #endif
-
-extern "C" void*
-rust_get_rt_tls_key() {
-    return &rt_key;
-}
 
 // Initialize the TLS key used by the new scheduler
 extern "C" CDECL void
-rust_initialize_rt_tls_key() {
+rust_initialize_rt_tls_key(tls_key *key) {
 
     static lock_and_signal init_lock;
     static bool initialized = false;
@@ -469,10 +464,10 @@ rust_initialize_rt_tls_key() {
     if (!initialized) {
 
 #ifndef _WIN32
-        assert(!pthread_key_create(&rt_key, NULL));
+        assert(!pthread_key_create(key, NULL));
 #else
-        rt_key = TlsAlloc();
-        assert(rt_key != TLS_OUT_OF_INDEXES);
+        *key = TlsAlloc();
+        assert(*key != TLS_OUT_OF_INDEXES);
 #endif
 
         initialized = true;
