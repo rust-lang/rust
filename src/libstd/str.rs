@@ -2108,6 +2108,7 @@ pub trait OwnedStr {
     fn reserve_at_least(&mut self, n: uint);
     fn capacity(&self) -> uint;
     fn truncate(&mut self, len: uint);
+    fn into_bytes(self) -> ~[u8];
 
     /// Work with the mutable byte buffer and length of a slice.
     ///
@@ -2273,6 +2274,13 @@ impl OwnedStr for ~str {
         unsafe { raw::set_len(self, len); }
     }
 
+    /// Consumes the string, returning the underlying byte buffer.
+    ///
+    /// The buffer does not have a null terminator.
+    #[inline]
+    fn into_bytes(self) -> ~[u8] {
+        unsafe { cast::transmute(self) }
+    }
 
     #[inline]
     fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
@@ -2356,7 +2364,7 @@ mod tests {
     use ptr;
     use str::*;
     use vec;
-    use vec::{ImmutableVector, CopyableVector};
+    use vec::{Vector, ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
 
     #[test]
@@ -2522,6 +2530,13 @@ mod tests {
         assert_eq!("", data.as_slice());
         data.push_char('华');
         assert_eq!("华", data.as_slice());
+    }
+
+    #[test]
+    fn test_into_bytes() {
+        let data = ~"asdf";
+        let buf = data.into_bytes();
+        assert_eq!(bytes!("asdf"), buf.as_slice());
     }
 
     #[test]
