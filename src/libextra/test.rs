@@ -907,7 +907,7 @@ impl MetricMap {
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) {
         let f = io::file_writer(p, [io::Create, io::Truncate]).unwrap();
-        json::to_pretty_writer(f, &self.to_json());
+        self.to_json().to_pretty_writer(f);
     }
 
     /// Compare against another MetricMap. Optionally compare all
