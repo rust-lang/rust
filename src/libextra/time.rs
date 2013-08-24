@@ -121,6 +121,9 @@ pub struct Tm {
 }
 
 pub fn empty_tm() -> Tm {
+    // 64 is the max size of the timezone buffer allocated on windows
+    // in rust_localtime. In glibc the max timezone size is supposedly 3.
+    let zone = str::with_capacity(64);
     Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -132,7 +135,7 @@ pub fn empty_tm() -> Tm {
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
         tm_gmtoff: 0_i32,
-        tm_zone: ~"",
+        tm_zone: zone,
         tm_nsec: 0_i32,
     }
 }

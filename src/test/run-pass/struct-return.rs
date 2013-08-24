@@ -16,8 +16,8 @@ mod rustrt {
 
     #[nolink]
     extern {
-        pub fn debug_abi_1(q: Quad) -> Quad;
-        pub fn debug_abi_2(f: Floats) -> Floats;
+        pub fn rust_dbg_abi_1(q: Quad) -> Quad;
+        pub fn rust_dbg_abi_2(f: Floats) -> Floats;
     }
 }
 
@@ -28,7 +28,7 @@ fn test1() {
                  b: 0xbbbb_bbbb_bbbb_bbbb_u64,
                  c: 0xcccc_cccc_cccc_cccc_u64,
                  d: 0xdddd_dddd_dddd_dddd_u64 };
-        let qq = rustrt::debug_abi_1(q);
+        let qq = rustrt::rust_dbg_abi_1(q);
         error!("a: %x", qq.a as uint);
         error!("b: %x", qq.b as uint);
         error!("c: %x", qq.c as uint);
@@ -48,7 +48,7 @@ fn test2() {
         let f = Floats { a: 1.234567890e-15_f64,
                  b: 0b_1010_1010_u8,
                  c: 1.0987654321e-15_f64 };
-        let ff = rustrt::debug_abi_2(f);
+        let ff = rustrt::rust_dbg_abi_2(f);
         error!("a: %f", ff.a as float);
         error!("b: %u", ff.b as uint);
         error!("c: %f", ff.c as float);

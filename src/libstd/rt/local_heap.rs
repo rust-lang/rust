@@ -40,12 +40,10 @@ impl LocalHeap {
     #[fixed_stack_segment] #[inline(never)]
     pub fn new() -> LocalHeap {
         unsafe {
-            // Don't need synchronization for the single-threaded local heap
-            let synchronized = false as uintptr_t;
             // XXX: These usually come from the environment
             let detailed_leaks = false as uintptr_t;
             let poison_on_free = false as uintptr_t;
-            let region = rust_new_memory_region(synchronized, detailed_leaks, poison_on_free);
+            let region = rust_new_memory_region(detailed_leaks, poison_on_free);
             assert!(region.is_not_null());
             let boxed = rust_new_boxed_region(region, poison_on_free);
             assert!(boxed.is_not_null());
@@ -109,8 +107,7 @@ pub fn live_allocs() -> *raw::Box<()> {
 
 extern {
     #[fast_ffi]
-    fn rust_new_memory_region(synchronized: uintptr_t,
-                               detailed_leaks: uintptr_t,
+    fn rust_new_memory_region(detailed_leaks: uintptr_t,
                                poison_on_free: uintptr_t) -> *MemoryRegion;
     #[fast_ffi]
     fn rust_delete_memory_region(region: *MemoryRegion);

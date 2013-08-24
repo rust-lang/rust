@@ -63,7 +63,6 @@ endif
 endif
 
 RUNTIME_CXXS_$(1)_$(2) := \
-              rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
               rt/rust_builtin.cpp \
@@ -72,13 +71,9 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_crate_map.cpp \
-              rt/rust_gc_metadata.cpp \
-              rt/rust_util.cpp \
               rt/rust_log.cpp \
-              rt/rust_exchange_alloc.cpp \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
-              rt/rust_abi.cpp \
               rt/memory_region.cpp \
               rt/boxed_region.cpp \
               rt/arch/$$(HOST_$(1))/context.cpp \

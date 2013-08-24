@@ -11,12 +11,10 @@
 /* Foreign builtins. */
 
 #include "rust_util.h"
-#include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "sync/lock_and_signal.h"
 #include "memory_region.h"
 #include "boxed_region.h"
-#include "rust_abi.h"
 #include "rust_rng.h"
 #include "vg/valgrind.h"
 #include "sp.h"
@@ -25,6 +23,7 @@
 
 #ifdef __APPLE__
 #include <crt_externs.h>
+#include <mach/mach_time.h>
 #endif
 
 #if !defined(__WIN32__)
@@ -97,53 +96,6 @@ rand_next(rust_rng *rng) {
 extern "C" CDECL void
 rand_free(rust_rng *rng) {
     free(rng);
-}
-
-
-/* Debug helpers strictly to verify ABI conformance.
- *
- * FIXME (#2665): move these into a testcase when the testsuite
- * understands how to have explicit C files included.
- */
-
-struct quad {
-    uint64_t a;
-    uint64_t b;
-    uint64_t c;
-    uint64_t d;
-};
-
-struct floats {
-    double a;
-    uint8_t b;
-    double c;
-};
-
-extern "C" quad
-debug_abi_1(quad q) {
-    quad qq = { q.c + 1,
-                q.d - 1,
-                q.a + 1,
-                q.b - 1 };
-    return qq;
-}
-
-extern "C" floats
-debug_abi_2(floats f) {
-    floats ff = { f.c + 1.0,
-                  0xff,
-                  f.a - 1.0 };
-    return ff;
-}
-
-extern "C" int
-debug_static_mut;
-
-int debug_static_mut = 3;
-
-extern "C" void
-debug_static_mut_check_four() {
-    assert(debug_static_mut == 4);
 }
 
 extern "C" CDECL char*
@@ -242,10 +194,33 @@ get_time(int64_t *sec, int32_t *nsec) {
 }
 #endif
 
+const uint64_t ns_per_s = 1000000000LL;
+
 extern "C" CDECL void
 precise_time_ns(uint64_t *ns) {
-    timer t;
-    *ns = t.time_ns();
+
+#ifdef __APPLE__
+    uint64_t time = mach_absolute_time();
+    mach_timebase_info_data_t info = {0, 0};
+    if (info.denom == 0) {
+        mach_timebase_info(&info);
+    }
+    uint64_t time_nano = time * (info.numer / info.denom);
+    *ns = time_nano;
+#elif __WIN32__
+    uint64_t ticks_per_s;
+    QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_s);
+    if (ticks_per_s == 0LL) {
+        ticks_per_s = 1LL;
+    }
+    uint64_t ticks;
+    QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
+    *ns = ((ticks * ns_per_s) / ticks_per_s);
+#else
+    timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    *ns = (ts.tv_sec * ns_per_s + ts.tv_nsec);
+#endif
 }
 
 struct rust_tm {
@@ -292,7 +267,7 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
 
     if (zone != NULL) {
         size_t size = strlen(zone);
-        reserve_vec_exact(&out_tm->tm_zone, size);
+        assert(out_tm->tm_zone->alloc >= size);
         memcpy(out_tm->tm_zone->data, zone, size);
         out_tm->tm_zone->fill = size;
     }
@@ -505,11 +480,9 @@ rust_initialize_rt_tls_key() {
 }
 
 extern "C" CDECL memory_region*
-rust_new_memory_region(uintptr_t synchronized,
-                       uintptr_t detailed_leaks,
+rust_new_memory_region(uintptr_t detailed_leaks,
                        uintptr_t poison_on_free) {
-    return new memory_region((bool)synchronized,
-                             (bool)detailed_leaks,
+    return new memory_region((bool)detailed_leaks,
                              (bool)poison_on_free);
 }
 
@@ -630,21 +603,6 @@ rust_drop_global_args_lock() {
 extern "C" CDECL uintptr_t*
 rust_get_global_args_ptr() {
     return &global_args_ptr;
-}
-
-static lock_and_signal exit_status_lock;
-static uintptr_t exit_status = 0;
-
-extern "C" CDECL void
-rust_set_exit_status_newrt(uintptr_t code) {
-    scoped_lock with(exit_status_lock);
-    exit_status = code;
-}
-
-extern "C" CDECL uintptr_t
-rust_get_exit_status_newrt() {
-    scoped_lock with(exit_status_lock);
-    return exit_status;
 }
 
 static lock_and_signal change_dir_lock;

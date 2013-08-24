@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-#include "sync/sync.h"
 #include "memory_region.h"
 
 #if RUSTRT_TRACK_ALLOCATIONS >= 3
@@ -42,30 +41,25 @@ inline void memory_region::maybe_print_backtrace(const alloc_header *header) con
 #   endif
 }
 
-memory_region::memory_region(bool synchronized,
-                             bool detailed_leaks,
+memory_region::memory_region(bool detailed_leaks,
                              bool poison_on_free) :
     _parent(NULL), _live_allocations(0),
     _detailed_leaks(detailed_leaks),
-    _poison_on_free(poison_on_free),
-    _synchronized(synchronized) {
+    _poison_on_free(poison_on_free) {
 }
 
 memory_region::memory_region(memory_region *parent) :
     _parent(parent), _live_allocations(0),
     _detailed_leaks(parent->_detailed_leaks),
-    _poison_on_free(parent->_poison_on_free),
-    _synchronized(parent->_synchronized) {
+    _poison_on_free(parent->_poison_on_free) {
 }
 
 void memory_region::add_alloc() {
-    //_live_allocations++;
-    sync::increment(_live_allocations);
+    _live_allocations++;
 }
 
 void memory_region::dec_alloc() {
-    //_live_allocations--;
-    sync::decrement(_live_allocations);
+    _live_allocations--;
 }
 
 void memory_region::free(void *mem) {
@@ -112,7 +106,6 @@ memory_region::realloc(void *mem, size_t orig_size) {
 #   endif
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
-    if (_synchronized) { _lock.lock(); }
     if (_allocation_list[newMem->index] != alloc) {
         printf("at index %d, found %p, expected %p\n",
                alloc->index, _allocation_list[alloc->index], alloc);
@@ -125,7 +118,6 @@ memory_region::realloc(void *mem, size_t orig_size) {
         // printf("realloc: stored %p at index %d, replacing %p\n",
         //        newMem, index, mem);
     }
-    if (_synchronized) { _lock.unlock(); }
 #   endif
 
     return get_data(newMem);
@@ -160,9 +152,7 @@ memory_region::malloc(size_t size, const char *tag) {
 }
 
 memory_region::~memory_region() {
-    if (_synchronized) { _lock.lock(); }
     if (_live_allocations == 0 && !_detailed_leaks) {
-        if (_synchronized) { _lock.unlock(); }
         return;
     }
     char msg[128];
@@ -193,7 +183,6 @@ memory_region::~memory_region() {
         fprintf(stderr, "%s\n", msg);
         assert(false);
     }
-    if (_synchronized) { _lock.unlock(); }
 }
 
 void
@@ -204,7 +193,6 @@ memory_region::release_alloc(void *mem) {
 #   endif
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
-    if (_synchronized) { _lock.lock(); }
     if (((size_t) alloc->index) >= _allocation_list.size()) {
         printf("free: ptr 0x%" PRIxPTR " (%s) index %d is beyond allocation_list of size %zu\n",
                (uintptr_t) get_data(alloc), alloc->tag, alloc->index, _allocation_list.size());
@@ -222,7 +210,6 @@ memory_region::release_alloc(void *mem) {
         _allocation_list[alloc->index] = NULL;
         alloc->index = -1;
     }
-    if (_synchronized) { _lock.unlock(); }
 #   endif
 
     dec_alloc();
@@ -236,9 +223,7 @@ memory_region::claim_alloc(void *mem) {
 #   endif
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 2
-    if (_synchronized) { _lock.lock(); }
     alloc->index = _allocation_list.append(alloc);
-    if (_synchronized) { _lock.unlock(); }
 #   endif
 
 #   if RUSTRT_TRACK_ALLOCATIONS >= 3

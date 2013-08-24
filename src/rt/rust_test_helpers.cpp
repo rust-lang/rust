@@ -11,10 +11,8 @@
 // Helper functions used only in tests
 
 #include "rust_util.h"
-#include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "sync/lock_and_signal.h"
-#include "rust_abi.h"
 
 // These functions are used in the unit tests for C ABI calls.
 
@@ -178,4 +176,50 @@ rust_dbg_next_port(uintptr_t base_port) {
 extern "C" CDECL intptr_t
 rust_get_test_int() {
   return 1;
+}
+
+/* Debug helpers strictly to verify ABI conformance.
+ *
+ * FIXME (#2665): move these into a testcase when the testsuite
+ * understands how to have explicit C files included.
+ */
+
+struct quad {
+    uint64_t a;
+    uint64_t b;
+    uint64_t c;
+    uint64_t d;
+};
+
+struct floats {
+    double a;
+    uint8_t b;
+    double c;
+};
+
+extern "C" quad
+rust_dbg_abi_1(quad q) {
+    quad qq = { q.c + 1,
+                q.d - 1,
+                q.a + 1,
+                q.b - 1 };
+    return qq;
+}
+
+extern "C" floats
+rust_dbg_abi_2(floats f) {
+    floats ff = { f.c + 1.0,
+                  0xff,
+                  f.a - 1.0 };
+    return ff;
+}
+
+extern "C" int
+rust_dbg_static_mut;
+
+int rust_dbg_static_mut = 3;
+
+extern "C" void
+rust_dbg_static_mut_check_four() {
+    assert(rust_dbg_static_mut == 4);
 }
