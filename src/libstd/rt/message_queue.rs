@@ -16,33 +16,66 @@ use kinds::Send;
 use vec::OwnedVector;
 use cell::Cell;
 use option::*;
-use unstable::sync::Exclusive;
+use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
 use clone::Clone;
 
 pub struct MessageQueue<T> {
-    // XXX: Another mystery bug fixed by boxing this lock
-    priv queue: ~Exclusive<~[T]>
+    priv state: UnsafeAtomicRcBox<State<T>>
+}
+
+struct State<T> {
+    count: uint,
+    queue: ~[T],
+    lock: LittleLock
 }
 
 impl<T: Send> MessageQueue<T> {
     pub fn new() -> MessageQueue<T> {
         MessageQueue {
-            queue: ~Exclusive::new(~[])
+            state: UnsafeAtomicRcBox::new(State {
+                count: 0,
+                queue: ~[],
+                lock: LittleLock::new()
+            })
         }
     }
 
     pub fn push(&mut self, value: T) {
         unsafe {
             let value = Cell::new(value);
-            self.queue.with(|q| q.push(value.take()) );
+            let state = self.state.get();
+            do (*state).lock.lock {
+                (*state).count += 1;
+                (*state).queue.push(value.take());
+            }
         }
     }
 
     pub fn pop(&mut self) -> Option<T> {
         unsafe {
-            do self.queue.with |q| {
-                if !q.is_empty() {
-                    Some(q.shift())
+            let state = self.state.get();
+            do (*state).lock.lock {
+                if !(*state).queue.is_empty() {
+                    (*state).count += 1;
+                    Some((*state).queue.shift())
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// A pop that may sometimes miss enqueued elements, but is much faster
+    /// to give up without doing any synchronization
+    pub fn casual_pop(&mut self) -> Option<T> {
+        unsafe {
+            let state = self.state.get();
+            // NB: Unsynchronized check
+            if (*state).count == 0 { return None; }
+            do (*state).lock.lock {
+                if !(*state).queue.is_empty() {
+                    (*state).count += 1;
+                    Some((*state).queue.shift())
                 } else {
                     None
                 }
@@ -51,10 +84,10 @@ impl<T: Send> MessageQueue<T> {
     }
 }
 
-impl<T> Clone for MessageQueue<T> {
+impl<T: Send> Clone for MessageQueue<T> {
     fn clone(&self) -> MessageQueue<T> {
         MessageQueue {
-            queue: self.queue.clone()
+            state: self.state.clone()
         }
     }
 }

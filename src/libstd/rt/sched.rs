@@ -24,7 +24,6 @@ use rt::kill::BlockedTask;
 use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
-use rt::metrics::SchedMetrics;
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, RngUtil};
@@ -71,7 +70,6 @@ pub struct Scheduler {
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     cleanup_job: Option<CleanupJob>,
-    metrics: SchedMetrics,
     /// Should this scheduler run any task, or only pinned tasks?
     run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
@@ -81,6 +79,14 @@ pub struct Scheduler {
     rng: XorShiftRng,
     /// A toggleable idle callback
     idle_callback: Option<~PausibleIdleCallback>
+}
+
+/// An indication of how hard to work on a given operation, the difference
+/// mainly being whether memory is synchronized or not
+#[deriving(Eq)]
+enum EffortLevel {
+    DontTryTooHard,
+    GiveItYourBest
 }
 
 impl Scheduler {
@@ -118,7 +124,6 @@ impl Scheduler {
             stack_pool: StackPool::new(),
             sched_task: None,
             cleanup_job: None,
-            metrics: SchedMetrics::new(),
             run_anything: run_anything,
             friend_handle: friend,
             rng: XorShiftRng::new(),
@@ -186,7 +191,7 @@ impl Scheduler {
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
-        assert!(message.is_none());
+        rtassert!(message.is_none());
 
         stask.destroyed = true;
     }
@@ -237,14 +242,21 @@ impl Scheduler {
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
-        let sched = match sched.interpret_message_queue() {
+        let sched = match sched.interpret_message_queue(DontTryTooHard) {
             Some(sched) => sched,
             None => return
         };
 
         // This helper will use a randomized work-stealing algorithm
         // to find work.
-        let mut sched = match sched.do_work() {
+        let sched = match sched.do_work() {
+            Some(sched) => sched,
+            None => return
+        };
+
+        // Now, before sleeping we need to find out if there really
+        // were any messages. Give it your best!
+        let mut sched = match sched.interpret_message_queue(GiveItYourBest) {
             Some(sched) => sched,
             None => return
         };
@@ -252,10 +264,8 @@ impl Scheduler {
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
-        sched.metrics.wasted_turns += 1;
         if !sched.sleepy && !sched.no_sleep {
             rtdebug!("scheduler has no work to do, going to sleep");
-            sched.metrics.sleepy_times += 1;
             sched.sleepy = true;
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
@@ -277,10 +287,18 @@ impl Scheduler {
     // returns the still-available scheduler. At this point all
     // message-handling will count as a turn of work, and as a result
     // return None.
-    fn interpret_message_queue(~self) -> Option<~Scheduler> {
+    fn interpret_message_queue(~self, effort: EffortLevel) -> Option<~Scheduler> {
 
         let mut this = self;
-        match this.message_queue.pop() {
+
+        let msg = if effort == DontTryTooHard {
+            // Do a cheap check that may miss messages
+            this.message_queue.casual_pop()
+        } else {
+            this.message_queue.pop()
+        };
+
+        match msg {
             Some(PinnedTask(task)) => {
                 let mut task = task;
                 task.give_home(Sched(this.make_handle()));
@@ -469,10 +487,7 @@ impl Scheduler {
         // We've made work available. Notify a
         // sleeping scheduler.
 
-        // XXX: perf. Check for a sleeper without
-        // synchronizing memory.  It's not critical
-        // that we always find it.
-        match this.sleeper_list.pop() {
+        match this.sleeper_list.casual_pop() {
             Some(handle) => {
                         let mut handle = handle;
                 handle.send(Wake)
@@ -505,7 +520,9 @@ impl Scheduler {
         let mut this = self;
 
         // The current task is grabbed from TLS, not taken as an input.
-        let current_task: ~Task = Local::take::<Task>();
+        // Doing an unsafe_take to avoid writing back a null pointer -
+        // We're going to call `put` later to do that.
+        let current_task: ~Task = unsafe { Local::unsafe_take::<Task>() };
 
         // Check that the task is not in an atomically() section (e.g.,
         // holding a pthread mutex, which could deadlock the scheduler).
@@ -563,11 +580,10 @@ impl Scheduler {
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         unsafe {
-            let sched = Local::unsafe_borrow::<Scheduler>();
-            (*sched).run_cleanup_job();
+            let task = Local::unsafe_borrow::<Task>();
+            (*task).sched.get_mut_ref().run_cleanup_job();
 
             // Must happen after running the cleanup job (of course).
-            let task = Local::unsafe_borrow::<Task>();
             (*task).death.check_killed((*task).unwinder.unwinding);
         }
     }
