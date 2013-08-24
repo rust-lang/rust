@@ -27,7 +27,8 @@ use syntax::diagnostic::expect;
 pub struct StaticMethodInfo {
     ident: ast::ident,
     def_id: ast::def_id,
-    purity: ast::purity
+    purity: ast::purity,
+    vis: ast::visibility,
 }
 
 pub fn get_symbol(cstore: @mut cstore::CStore, def: ast::def_id) -> ~str {

@@ -525,7 +525,8 @@ impl<'self> EachItemContext<'self> {
     fn process_item_and_pop_name(&mut self,
                                  doc: ebml::Doc,
                                  def_id: ast::def_id,
-                                 old_len: uint)
+                                 old_len: uint,
+                                 vis: ast::visibility)
                                  -> bool {
         let def_like = item_to_def_like(doc, def_id, self.cdata.cnum);
         match def_like {
@@ -543,8 +544,6 @@ impl<'self> EachItemContext<'self> {
                        def_id.node);
             }
         }
-
-        let vis = item_visibility(doc);
 
         let mut continue = (self.callback)(*self.path_builder, def_like, vis);
 
@@ -634,9 +633,12 @@ impl<'self> EachItemContext<'self> {
                         self.push_name(token::ident_to_str(&child_name));
 
                     // Process this item.
+
+                    let vis = item_visibility(child_item_doc);
                     continue = self.process_item_and_pop_name(child_item_doc,
                                                               child_def_id,
-                                                              old_len);
+                                                              old_len,
+                                                              vis);
                 }
             }
             continue
@@ -682,12 +684,13 @@ impl<'self> EachItemContext<'self> {
 
             // Get the item.
             match maybe_find_item(def_id.node, other_crates_items) {
-                None => {}
+                None => { self.pop_name(old_len); }
                 Some(reexported_item_doc) => {
                     continue = self.process_item_and_pop_name(
                         reexported_item_doc,
                         def_id,
-                        old_len);
+                        old_len,
+                        ast::public);
                 }
             }
 
@@ -1007,7 +1010,8 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
                 static_impl_methods.push(StaticMethodInfo {
                     ident: item_name(intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
-                    purity: purity
+                    purity: purity,
+                    vis: item_visibility(impl_method_doc),
                 });
             }
             _ => {}

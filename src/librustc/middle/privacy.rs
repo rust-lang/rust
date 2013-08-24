@@ -261,12 +261,12 @@ impl PrivacyVisitor {
                                           fmt!("function `%s` is private",
                                                token::ident_to_str(path.idents.last())));
                     }
-                } else if csearch::get_item_visibility(self.tcx.sess.cstore,
-                                                       def_id) != public {
-                    self.tcx.sess.span_err(span,
-                                      fmt!("function `%s` is private",
-                                           token::ident_to_str(path.idents.last())));
                 }
+                // If this is a function from a non-local crate, then the
+                // privacy check is enforced during resolve. All public items
+                // will be tagged as such in the crate metadata and then usage
+                // of the private items will be blocked during resolve. Hence,
+                // if this isn't from the local crate, nothing to check.
             }
             _ => {}
         }
