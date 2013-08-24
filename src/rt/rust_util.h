@@ -12,10 +12,7 @@
 #define RUST_UTIL_H
 
 #include <limits.h>
-#include "rust_exchange_alloc.h"
 #include "rust_type.h"
-
-extern struct type_desc str_body_tydesc;
 
 // Inline fn used regularly elsewhere.
 
@@ -55,16 +52,6 @@ template <typename T>
 inline T *
 vec_data(rust_vec *v) {
     return reinterpret_cast<T*>(v->data);
-}
-
-inline void reserve_vec_exact(rust_vec** vpp,
-                              size_t size) {
-    if (size > (*vpp)->alloc) {
-        rust_exchange_alloc exchange_alloc;
-        *vpp = (rust_vec*)exchange_alloc
-            .realloc(*vpp, size + sizeof(rust_vec));
-        (*vpp)->alloc = size;
-    }
 }
 
 typedef rust_vec rust_str;
