@@ -1022,7 +1022,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                      tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
         do self.read_opaque |_, doc| {
             tydecode::parse_ty_data(
-                *doc.data,
+                doc.data.as_slice(),
                 cdata.cnum,
                 doc.start,
                 tcx,
@@ -1044,7 +1044,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
         return do self.read_opaque |this, doc| {
             let ty = tydecode::parse_ty_data(
-                *doc.data,
+                doc.data.as_slice(),
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
@@ -1060,7 +1060,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
             for i in range(doc.start, doc.end) {
-                str.push_char(doc.data[i] as char);
+                str.push_char(doc.data.as_slice()[i] as char);
             }
             str
         }
@@ -1074,7 +1074,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                            -> ty::TypeParameterDef {
         do self.read_opaque |this, doc| {
             tydecode::parse_type_param_def_data(
-                *doc.data,
+                doc.data.as_slice(),
                 doc.start,
                 xcx.dcx.cdata.cnum,
                 xcx.dcx.tcx,
