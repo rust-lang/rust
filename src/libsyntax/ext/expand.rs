@@ -758,32 +758,32 @@ pub fn std_macros() -> @str {
         )
     )
 
-    // conditionally define debug!, but keep it type checking even
-    // in non-debug builds.
-    macro_rules! __debug (
+    macro_rules! debug (
         ($arg:expr) => (
-            __log(4u32, fmt!( \"%?\", $arg ))
+            if cfg!(debug) { __log(4u32, fmt!( \"%?\", $arg )) }
         );
         ($( $arg:expr ),+) => (
-            __log(4u32, fmt!( $($arg),+ ))
+            if cfg!(debug) { __log(4u32, fmt!( $($arg),+ )) }
         )
     )
 
-    #[cfg(debug)]
-    #[macro_escape]
-    mod debug_macro {
-        macro_rules! debug (($($arg:expr),*) => {
-            __debug!($($arg),*)
-        })
-    }
+    macro_rules! error2 (
+        ($($arg:tt)*) => ( __log(1u32, format!($($arg)*)))
+    )
 
-    #[cfg(not(debug))]
-    #[macro_escape]
-    mod debug_macro {
-        macro_rules! debug (($($arg:expr),*) => {
-            if false { __debug!($($arg),*) }
-        })
-    }
+    macro_rules! warn2 (
+        ($($arg:tt)*) => ( __log(2u32, format!($($arg)*)))
+    )
+
+    macro_rules! info2 (
+        ($($arg:tt)*) => ( __log(3u32, format!($($arg)*)))
+    )
+
+    macro_rules! debug2 (
+        ($($arg:tt)*) => (
+            if cfg!(debug) { __log(4u32, format!($($arg)*)) }
+        )
+    )
 
     macro_rules! fail(
         () => (
@@ -794,6 +794,15 @@ pub fn std_macros() -> @str {
         );
         ($( $arg:expr ),+) => (
             ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+        )
+    )
+
+    macro_rules! fail2(
+        () => (
+            fail!(\"explicit failure\")
+        );
+        ($($arg:tt)+) => (
+            ::std::sys::FailWithCause::fail_with(format!($($arg)+), file!(), line!())
         )
     )
 
@@ -940,6 +949,7 @@ pub fn std_macros() -> @str {
         );
     )
 
+    // NOTE(acrichto): start removing this after the next snapshot
     macro_rules! printf (
         ($arg:expr) => (
             print(fmt!(\"%?\", $arg))
@@ -949,6 +959,7 @@ pub fn std_macros() -> @str {
         )
     )
 
+    // NOTE(acrichto): start removing this after the next snapshot
     macro_rules! printfln (
         ($arg:expr) => (
             println(fmt!(\"%?\", $arg))
@@ -956,6 +967,19 @@ pub fn std_macros() -> @str {
         ($( $arg:expr ),+) => (
             println(fmt!($($arg),+))
         )
+    )
+
+    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
+    //              allocation but should rather delegate to an invocation of
+    //              write! instead of format!
+    macro_rules! print (
+        ($($arg:tt)+) => ( ::std::io::print(format!($($arg)+)))
+    )
+
+    // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
+    //              allocation but should rather delegate to an io::Writer
+    macro_rules! println (
+        ($($arg:tt)+) => ({ print!($($arg)+); ::std::io::println(\"\"); })
     )
 
     // NOTE: use this after a snapshot lands to abstract the details

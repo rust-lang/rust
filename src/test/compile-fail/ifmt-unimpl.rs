@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    ifmt!("{:d}", "3");
+    format!("{:d}", "3");
     //~^ ERROR: failed to find an implementation of trait std::fmt::Signed
 }
