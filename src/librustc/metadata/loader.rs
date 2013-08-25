@@ -32,7 +32,6 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::vec;
-use extra::flate;
 
 pub enum os {
     os_macos,
@@ -56,7 +55,8 @@ pub struct Context {
 
 #[deriving(Clone)]
 pub enum MetadataSection {
-    CopiedSection(@~[u8]),
+    // A pointer to the object file metadata section, along with
+    // the ObjectFile handle that keeps it from being destructed
     UnsafeSection(@ObjectFile, *u8, uint)
 }
 
@@ -221,7 +221,6 @@ fn get_metadata_section(os: os,
             if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
-                let mut found = None;
                 let cvbuf: *u8 = cast::transmute(cbuf);
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking %u bytes of metadata-version stamp",
@@ -234,25 +233,9 @@ fn get_metadata_section(os: os,
                 }
                 if !version_ok { return None; }
 
-                assert!(csz >= vlen + 1);
+                let cvbuf1 = ptr::offset(cvbuf, vlen as int);
 
-                let must_decompress = *ptr::offset(cvbuf, vlen as int) == 1;
-                let cvbuf1 = ptr::offset(cvbuf, vlen as int + 1);
-
-                if must_decompress {
-                    do vec::raw::buf_as_slice(cvbuf1, csz-vlen-1) |bytes| {
-                        debug!("inflating %u bytes of compressed metadata",
-                               csz - vlen);
-                        let inflated = flate::inflate_bytes(bytes);
-                        found = Some(CopiedSection(@inflated));
-                    }
-                } else {
-                    found = Some(UnsafeSection(of, cvbuf1, csz-vlen-1))
-                }
-
-                if !found.is_none() {
-                    return found;
-                }
+                return Some(UnsafeSection(of, cvbuf1, csz-vlen))
             }
             llvm::LLVMMoveToNextSection(si.llsi);
         }

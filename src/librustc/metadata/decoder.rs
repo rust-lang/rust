@@ -20,7 +20,7 @@ use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
-use metadata::loader::{MetadataSection, CopiedSection, UnsafeSection};
+use metadata::loader::{MetadataSection, UnsafeSection};
 use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
@@ -1195,7 +1195,6 @@ pub fn get_crate_attributes(data: MetadataSection) -> ~[ast::Attribute] {
 
 pub fn section_to_ebml_doc(data: MetadataSection) -> ebml::Doc {
     match data {
-        CopiedSection(data) => reader::Doc(data),
         UnsafeSection(_, buf, len) => reader::unsafe_Doc(buf, len)
     }
 }

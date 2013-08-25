@@ -107,12 +107,6 @@ else
   CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 endif
 
-ifndef CFG_ENABLE_COMPRESS_METADATA
-  # XXX: After snapshots extend this to all stages
-  RUSTFLAGS_STAGE1 += --no-compress-metadata
-  RUSTFLAGS_STAGE2 += --no-compress-metadata
-endif
-
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
