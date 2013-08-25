@@ -88,14 +88,10 @@ pub struct BigUint {
 }
 
 impl Eq for BigUint {
-
     fn eq(&self, other: &BigUint) -> bool { self.equals(other) }
-
-    fn ne(&self, other: &BigUint) -> bool { !self.equals(other) }
 }
 
 impl TotalEq for BigUint {
-
     fn equals(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
     }
@@ -105,18 +101,6 @@ impl Ord for BigUint {
 
     fn lt(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Less => true, _ => false}
-    }
-
-    fn le(&self, other: &BigUint) -> bool {
-        match self.cmp(other) { Less | Equal => true, _ => false }
-    }
-
-    fn ge(&self, other: &BigUint) -> bool {
-        match self.cmp(other) { Greater | Equal => true, _ => false }
-    }
-
-    fn gt(&self, other: &BigUint) -> bool {
-        match self.cmp(other) { Greater => true, _ => false }
     }
 }
 
@@ -710,18 +694,6 @@ impl Ord for Sign {
     fn lt(&self, other: &Sign) -> bool {
         match self.cmp(other) { Less => true, _ => false}
     }
-
-    fn le(&self, other: &Sign) -> bool {
-        match self.cmp(other) { Less | Equal => true, _ => false }
-    }
-
-    fn ge(&self, other: &Sign) -> bool {
-        match self.cmp(other) { Greater | Equal => true, _ => false }
-    }
-
-    fn gt(&self, other: &Sign) -> bool {
-        match self.cmp(other) { Greater => true, _ => false }
-    }
 }
 
 impl TotalEq for Sign {
@@ -762,8 +734,6 @@ pub struct BigInt {
 impl Eq for BigInt {
 
     fn eq(&self, other: &BigInt) -> bool { self.equals(other) }
-
-    fn ne(&self, other: &BigInt) -> bool { !self.equals(other) }
 }
 
 impl TotalEq for BigInt {
@@ -777,18 +747,6 @@ impl Ord for BigInt {
 
     fn lt(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Less => true, _ => false}
-    }
-
-    fn le(&self, other: &BigInt) -> bool {
-        match self.cmp(other) { Less | Equal => true, _ => false }
-    }
-
-    fn ge(&self, other: &BigInt) -> bool {
-        match self.cmp(other) { Greater | Equal => true, _ => false }
-    }
-
-    fn gt(&self, other: &BigInt) -> bool {
-        match self.cmp(other) { Greater => true, _ => false }
     }
 }
 
