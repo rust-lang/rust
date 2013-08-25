@@ -32,9 +32,7 @@ A BigDigit is a BigUint's composing element.
 
 A BigDigit is half the size of machine word size.
 */
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "arm")]
-#[cfg(target_arch = "mips")]
+#[cfg(target_word_size = "32")]
 pub type BigDigit = u16;
 
 /**
@@ -42,7 +40,7 @@ A BigDigit is a BigUint's composing element.
 
 A BigDigit is half the size of machine word size.
 */
-#[cfg(target_arch = "x86_64")]
+#[cfg(target_word_size = "64")]
 pub type BigDigit = u32;
 
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
@@ -50,12 +48,10 @@ pub static ZERO_BIG_DIGIT: BigDigit = 0;
 pub mod BigDigit {
     use bigint::BigDigit;
 
-    #[cfg(target_arch = "x86")]
-    #[cfg(target_arch = "arm")]
-    #[cfg(target_arch = "mips")]
+    #[cfg(target_word_size = "32")]
     pub static bits: uint = 16;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(target_word_size = "64")]
     pub static bits: uint = 32;
 
     pub static base: uint = 1 << bits;
@@ -659,8 +655,7 @@ impl BigUint {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
-
+#[cfg(target_word_size = "64")]
 fn get_radix_base(radix: uint) -> (uint, uint) {
     assert!(1 < radix && radix <= 16);
     match radix {
@@ -683,10 +678,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
     }
 }
 
-#[cfg(target_arch = "arm")]
-#[cfg(target_arch = "x86")]
-#[cfg(target_arch = "mips")]
-
+#[cfg(target_word_size = "32")]
 fn get_radix_base(radix: uint) -> (uint, uint) {
     assert!(1 < radix && radix <= 16);
     match radix {
@@ -1233,7 +1225,7 @@ mod biguint_tests {
 
         test_shl_bits();
 
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_word_size = "64")]
         fn test_shl_bits() {
             check(~[0x7654_3210, 0xfedc_ba98,
                     0x7654_3210, 0xfedc_ba98], 4,
@@ -1245,9 +1237,7 @@ mod biguint_tests {
                     0x5555_4444, 0x7777_6666, 0x8888]);
         }
 
-        #[cfg(target_arch = "arm")]
-        #[cfg(target_arch = "x86")]
-        #[cfg(target_arch = "mips")]
+        #[cfg(target_word_size = "32")]
         fn test_shl_bits() {
             check(~[0x3210, 0x7654, 0xba98, 0xfedc,
                     0x3210, 0x7654, 0xba98, 0xfedc], 4,
@@ -1262,9 +1252,7 @@ mod biguint_tests {
     }
 
     #[test]
-    #[ignore(cfg(target_arch = "x86"))]
-    #[ignore(cfg(target_arch = "arm"))]
-    #[ignore(cfg(target_arch = "mips"))]
+    #[ignore(cfg(target_word_size = "32"))]
     fn test_shr() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
             assert_eq!(BigUint::new(v) >> shift, BigUint::new(ans));
@@ -1279,7 +1267,7 @@ mod biguint_tests {
         check(~[0, 1], 1, ~[0x80000000]);
         test_shr_bits();
 
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_word_size = "64")]
         fn test_shr_bits() {
             check(~[0x6543_2100, 0xedcb_a987,
                     0x6543_210f, 0xedcb_a987, 0xf], 4,
@@ -1291,9 +1279,7 @@ mod biguint_tests {
                     0x6666_5555, 0x8888_7777]);
         }
 
-        #[cfg(target_arch = "arm")]
-        #[cfg(target_arch = "x86")]
-        #[cfg(target_arch = "mips")]
+        #[cfg(target_word_size = "32")]
         fn test_shr_bits() {
             check(~[0x2100, 0x6543, 0xa987, 0xedcb,
                     0x210f, 0x6543, 0xa987, 0xedcb, 0xf], 4,
