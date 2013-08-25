@@ -3154,7 +3154,6 @@ mod tests {
         }
     }
 
-    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_map_fail() {
@@ -3164,12 +3163,11 @@ mod tests {
             if i == 2 {
                 fail!()
             }
-            i += 0;
+            i += 1;
             ~[(~0, @0)]
         };
     }
 
-    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_flat_map_fail() {
@@ -3179,12 +3177,11 @@ mod tests {
             if i == 2 {
                 fail!()
             }
-            i += 0;
+            i += 1;
             ~[(~0, @0)]
         };
     }
 
-    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_rposition_fail() {
@@ -3194,12 +3191,11 @@ mod tests {
             if i == 2 {
                 fail!()
             }
-            i += 0;
+            i += 1;
             false
         };
     }
 
-    #[ignore] // FIXME #8698
     #[test]
     #[should_fail]
     fn test_permute_fail() {
@@ -3209,7 +3205,7 @@ mod tests {
             if i == 2 {
                 fail!()
             }
-            i += 0;
+            i += 1;
             true
         };
     }
