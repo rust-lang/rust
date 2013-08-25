@@ -54,20 +54,32 @@ impl Context {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other fmt! expressions.
     fn parse_args(&mut self, sp: span,
-                  tts: &[ast::token_tree]) -> Option<@ast::expr> {
+                  leading_expr: bool,
+                  tts: &[ast::token_tree]) -> (Option<@ast::expr>,
+                                               Option<@ast::expr>) {
         let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
                                              self.ecx.cfg(),
                                              tts.to_owned());
+        // If we want a leading expression (for ifmtf), parse it here
+        let extra = if leading_expr {
+            let e = Some(p.parse_expr());
+            if !p.eat(&token::COMMA) {
+                self.ecx.span_err(sp, "expected token: `,`");
+                return (e, None);
+            }
+            e
+        } else { None };
+
         if *p.token == token::EOF {
-            self.ecx.span_err(sp, "ifmt! expects at least one argument");
-            return None;
+            self.ecx.span_err(sp, "requires at least a format string argument");
+            return (extra, None);
         }
         let fmtstr = p.parse_expr();
         let mut named = false;
         while *p.token != token::EOF {
             if !p.eat(&token::COMMA) {
                 self.ecx.span_err(sp, "expected token: `,`");
-                return None;
+                return (extra, None);
             }
             if named || (token::is_ident(p.token) &&
                          p.look_ahead(1, |t| *t == token::EQ)) {
@@ -81,14 +93,14 @@ impl Context {
                         self.ecx.span_err(*p.span,
                                           "expected ident, positional arguments \
                                            cannot follow named arguments");
-                        return None;
+                        return (extra, None);
                     }
                     _ => {
                         self.ecx.span_err(*p.span,
                                           fmt!("expected ident for named \
                                                 argument, but found `%s`",
                                                p.this_token_to_str()));
-                        return None;
+                        return (extra, None);
                     }
                 };
                 let name = self.ecx.str_of(ident);
@@ -110,7 +122,7 @@ impl Context {
                 self.arg_types.push(None);
             }
         }
-        return Some(fmtstr);
+        return (extra, Some(fmtstr));
     }
 
     /// Verifies one piece of a parse string. All errors are not emitted as
@@ -530,7 +542,7 @@ impl Context {
 
     /// Actually builds the expression which the ifmt! block will be expanded
     /// to
-    fn to_expr(&self) -> @ast::expr {
+    fn to_expr(&self, extra: Option<@ast::expr>, f: &str) -> @ast::expr {
         let mut lets = ~[];
         let mut locals = ~[];
         let mut names = vec::from_fn(self.name_positions.len(), |_| None);
@@ -596,15 +608,18 @@ impl Context {
         let args = names.move_iter().map(|a| a.unwrap());
         let mut args = locals.move_iter().chain(args);
 
-        // Next, build up the actual call to the sprintf function.
+        let mut fmt_args = match extra {
+            Some(e) => ~[e], None => ~[]
+        };
+        fmt_args.push(self.ecx.expr_ident(self.fmtsp, static_name));
+        fmt_args.push(self.ecx.expr_vec(self.fmtsp, args.collect()));
+
+        // Next, build up the actual call to the {s,f}printf function.
         let result = self.ecx.expr_call_global(self.fmtsp, ~[
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("fmt"),
-                self.ecx.ident_of("sprintf"),
-            ], ~[
-                self.ecx.expr_ident(self.fmtsp, static_name),
-                self.ecx.expr_vec(self.fmtsp, args.collect()),
-            ]);
+                self.ecx.ident_of(f),
+            ], fmt_args);
 
         // sprintf is unsafe, but we just went through a lot of work to
         // validate that our call is save, so inject the unsafe block for the
@@ -682,8 +697,24 @@ impl Context {
     }
 }
 
-pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
-                         tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_format(ecx: @ExtCtxt, sp: span,
+                     tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, false, false, "format")
+}
+
+pub fn expand_write(ecx: @ExtCtxt, sp: span,
+                    tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, true, false, "write")
+}
+
+pub fn expand_writeln(ecx: @ExtCtxt, sp: span,
+                      tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, true, true, "write")
+}
+
+fn expand_ifmt(ecx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
+               leading_arg: bool, append_newline: bool,
+               function: &str) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
         args: ~[],
@@ -697,13 +728,14 @@ pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
         method_statics: ~[],
         fmtsp: sp,
     };
-    let efmt = match cx.parse_args(sp, tts) {
-        Some(e) => e,
-        None => { return MRExpr(ecx.expr_uint(sp, 2)); }
+    let (extra, efmt) = match cx.parse_args(sp, leading_arg, tts) {
+        (extra, Some(e)) => (extra, e),
+        (_, None) => { return MRExpr(ecx.expr_uint(sp, 2)); }
     };
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
-                          "first argument to ifmt! must be a string literal.");
+                          "format argument must be a string literal.");
+    let fmt = if append_newline { fmt + "\n" } else { fmt.to_owned() };
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {
@@ -734,5 +766,5 @@ pub fn expand_syntax_ext(ecx: @ExtCtxt, sp: span,
         }
     }
 
-    MRExpr(cx.to_expr())
+    MRExpr(cx.to_expr(extra, function))
 }

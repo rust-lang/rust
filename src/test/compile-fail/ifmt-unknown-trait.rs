@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    ifmt!("{:notimplemented}", "3");
+    format!("{:notimplemented}", "3");
     //~^ ERROR: unknown format trait `notimplemented`
 }
