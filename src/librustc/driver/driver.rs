@@ -570,11 +570,12 @@ pub fn build_target_config(sopts: @session::options,
       abi::Arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
       abi::Mips => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
     };
+    let target_triple = sopts.target_triple.clone();
     let target_strs = match arch {
-      abi::X86 => x86::get_target_strs(os),
-      abi::X86_64 => x86_64::get_target_strs(os),
-      abi::Arm => arm::get_target_strs(os),
-      abi::Mips => mips::get_target_strs(os)
+      abi::X86 => x86::get_target_strs(target_triple, os),
+      abi::X86_64 => x86_64::get_target_strs(target_triple, os),
+      abi::Arm => arm::get_target_strs(target_triple, os),
+      abi::Mips => mips::get_target_strs(target_triple, os)
     };
     let target_cfg = @session::config {
         os: os,

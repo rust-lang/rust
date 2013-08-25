@@ -391,19 +391,23 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
     cl::ParseCommandLineOptions(argc, argv);
   }
 
+  Triple Trip(Triple::normalize(triple));
+
   TargetOptions Options;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
   Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
+  Options.FloatABIType =
+      (Trip.getEnvironment() == Triple::GNUEABIHF) ? FloatABI::Hard :
+                                                     FloatABI::Default;
 
   PassManager *PM = unwrap<PassManager>(PMR);
 
   std::string Err;
-  std::string Trip(Triple::normalize(triple));
   std::string FeaturesStr(feature);
   std::string CPUStr(cpu);
-  const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
+  const Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(), Err);
   TargetMachine *Target =
-    TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
+    TheTarget->createTargetMachine(Trip.getTriple(), CPUStr, FeaturesStr,
            Options, Reloc::PIC_,
            CodeModel::Default, OptLevel);
   Target->addAnalysisPasses(*PM);
