@@ -13,7 +13,7 @@ use driver::session::sess_os_to_meta_os;
 use driver::session;
 use metadata::loader::meta_section_name;
 
-pub fn get_target_strs(target_os: session::os) -> target_strs::t {
+pub fn get_target_strs(target_triple: ~str, target_os: session::os) -> target_strs::t {
     return target_strs::t {
         module_asm: ~"",
 
@@ -61,13 +61,7 @@ pub fn get_target_strs(target_os: session::os) -> target_strs::t {
           }
         },
 
-        target_triple: match target_os {
-          session::os_macos => ~"arm-apple-darwin",
-          session::os_win32 => ~"arm-pc-mingw32",
-          session::os_linux => ~"arm-unknown-linux-gnueabihf",
-          session::os_android => ~"arm-linux-androideabi",
-          session::os_freebsd => ~"arm-unknown-freebsd"
-        },
+        target_triple: target_triple,
 
         cc_args: ~[~"-marm"]
     };
