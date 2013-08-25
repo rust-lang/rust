@@ -501,7 +501,6 @@ pub enum FailType {
 pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
-    use std::str;
 
     /** one group of options, e.g., both -h and --help, along with
      * their shared description and properties
@@ -692,7 +691,7 @@ pub mod groups {
 
             // FIXME: #5516 should be graphemes not codepoints
             // here we just need to indent the start of the description
-            let rowlen = str::count_chars(row, 0, row.len());
+            let rowlen = row.char_len();
             if rowlen < 24 {
                 do (24 - rowlen).times {
                     row.push_char(' ')
