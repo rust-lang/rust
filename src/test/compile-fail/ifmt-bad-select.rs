@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    ifmt!("{0, select, other{}}", 2);
+    format!("{0, select, other{}}", 2);
     //~^ ERROR: expected &str but found integral
 }

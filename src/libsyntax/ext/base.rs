@@ -139,8 +139,12 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                                 ext::tt::macro_rules::add_new_extension));
     syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert(intern(&"ifmt"),
-                            builtin_normal_tt(ext::ifmt::expand_syntax_ext));
+    syntax_expanders.insert(intern(&"format"),
+                            builtin_normal_tt(ext::ifmt::expand_format));
+    syntax_expanders.insert(intern(&"write"),
+                            builtin_normal_tt(ext::ifmt::expand_write));
+    syntax_expanders.insert(intern(&"writeln"),
+                            builtin_normal_tt(ext::ifmt::expand_writeln));
     syntax_expanders.insert(
         intern(&"auto_encode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
