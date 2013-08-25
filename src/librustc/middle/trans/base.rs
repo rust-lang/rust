@@ -2907,7 +2907,6 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
             cstore: cx.sess.cstore,
             encode_inlined_item: ie,
             reachable: cx.reachable,
-            compress: !cx.sess.opts.no_compress_metadata
         }
 }
 

@@ -26,7 +26,6 @@ use std::hashmap::{HashMap, HashSet};
 use std::io;
 use std::str;
 use std::vec;
-use extra::flate;
 use extra::serialize::Encodable;
 use extra;
 use syntax::abi::AbiSet;
@@ -64,7 +63,6 @@ pub struct EncodeParams<'self> {
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
     reachable: @mut HashSet<ast::NodeId>,
-    compress: bool
 }
 
 struct Stats {
@@ -1595,7 +1593,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         encode_inlined_item,
         link_meta,
         reachable,
-        compress,
         _
     } = parms;
     let type_abbrevs = @mut HashMap::new();
@@ -1681,17 +1678,8 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
-    let compression_flag = if compress { [1u8] } else { [0u8] };
 
-    if compress {
-        metadata_encoding_version.to_owned() +
-            compression_flag.to_owned() +
-            flate::deflate_bytes(*writer_bytes)
-    } else {
-        metadata_encoding_version.to_owned() +
-            compression_flag.to_owned() +
-            *writer_bytes
-    }
+    return metadata_encoding_version.to_owned() + *writer_bytes;
 }
 
 // Get the encoded string for a type

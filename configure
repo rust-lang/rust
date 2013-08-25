@@ -383,7 +383,6 @@ opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-patched
  kernels)"
-opt compress-metadata 0 "compress crate metadata"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"

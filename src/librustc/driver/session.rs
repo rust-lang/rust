@@ -166,7 +166,6 @@ pub struct options {
     no_trans: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
-    no_compress_metadata: bool
 }
 
 pub struct crate_metadata {
@@ -351,7 +350,6 @@ pub fn basic_options() -> @options {
         no_trans: false,
         debugging_opts: 0u,
         android_cross_path: None,
-        no_compress_metadata: false
     }
 }
 
