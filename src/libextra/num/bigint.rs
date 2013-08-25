@@ -1983,3 +1983,47 @@ mod bigint_tests {
         assert_eq!(-Zero::zero::<BigInt>(), Zero::zero::<BigInt>());
     }
 }
+
+#[cfg(test)]
+mod bench {
+    use super::*;
+    use std::{iterator, util};
+    use std::num::{Zero, One};
+    use extra::test::BenchHarness;
+
+    fn factorial(n: uint) -> BigUint {
+        let mut f = One::one::<BigUint>();
+        for i in iterator::range_inclusive(1, n) {
+            f = f * BigUint::from_uint(i);
+        }
+        f
+    }
+
+    fn fib(n: uint) -> BigUint {
+        let mut f0 = Zero::zero::<BigUint>();
+        let mut f1 = One::one::<BigUint>();
+        for _ in range(0, n) {
+            let f2 = f0 + f1;
+            f0 = util::replace(&mut f1, f2);
+        }
+        f0
+    }
+
+    #[bench]
+    fn factorial_100(bh: &mut BenchHarness) {
+        do bh.iter { factorial(100);  }
+    }
+
+    #[bench]
+    fn fib_500(bh: &mut BenchHarness) {
+        do bh.iter { fib(100); }
+    }
+
+    #[bench]
+    fn to_str(bh: &mut BenchHarness) {
+        let fac = factorial(100);
+        let fib = fib(100);
+        do bh.iter { fac.to_str(); }
+        do bh.iter { fib.to_str(); }
+    }
+}
