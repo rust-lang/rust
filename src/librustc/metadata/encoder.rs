@@ -26,7 +26,6 @@ use std::hashmap::{HashMap, HashSet};
 use std::io;
 use std::str;
 use std::vec;
-use extra::flate;
 use extra::serialize::Encodable;
 use extra;
 use syntax::abi::AbiSet;
@@ -1570,7 +1569,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0x75, //'u' as u8,
       0x73, //'s' as u8,
       0x74, //'t' as u8,
-      0, 0, 0, 1 ];
+      0, 0, 0, 2 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let wr = @io::BytesWriter::new();
@@ -1683,8 +1682,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
 
-    metadata_encoding_version.to_owned() +
-        flate::deflate_bytes(*writer_bytes)
+    return metadata_encoding_version.to_owned() + *writer_bytes;
 }
 
 // Get the encoded string for a type
