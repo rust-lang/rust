@@ -56,12 +56,23 @@ Section: Creating a string
 pub fn from_bytes(vv: &[u8]) -> ~str {
     use str::not_utf8::cond;
 
-    if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
-        cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
-                        first_bad_byte as uint))
+    match from_bytes_opt(vv) {
+        None => {
+            let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
+            cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
+                            first_bad_byte as uint))
+        }
+        Some(s) => s
+    }
+}
+
+/// Convert a vector of bytes to a new UTF-8 string, if possible.
+/// Returns None if the vector contains invalid UTF-8.
+pub fn from_bytes_opt(vv: &[u8]) -> Option<~str> {
+    if is_utf8(vv) {
+        Some(unsafe { raw::from_bytes(vv) })
     } else {
-        return unsafe { raw::from_bytes(vv) }
+        None
     }
 }
 
@@ -78,7 +89,17 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     } else {
-        return unsafe { raw::from_bytes_owned(vv) }
+        unsafe { raw::from_bytes_owned(vv) }
+    }
+}
+
+/// Consumes a vector of bytes to create a new utf-8 string.
+/// Returns None if the vector contains invalid UTF-8.
+pub fn from_bytes_owned_opt(vv: ~[u8]) -> Option<~str> {
+    if is_utf8(vv) {
+        Some(unsafe { raw::from_bytes_owned(vv) })
+    } else {
+        None
     }
 }
 
@@ -91,8 +112,16 @@ pub fn from_bytes_owned(vv: ~[u8]) -> ~str {
 ///
 /// Fails if invalid UTF-8
 pub fn from_bytes_slice<'a>(v: &'a [u8]) -> &'a str {
-    assert!(is_utf8(v));
-    unsafe { cast::transmute(v) }
+    from_bytes_slice_opt(v).expect("from_bytes_slice: not utf-8")
+}
+
+/// Converts a vector to a string slice without performing any allocations.
+///
+/// Returns None if the slice is not utf-8.
+pub fn from_bytes_slice_opt<'a>(v: &'a [u8]) -> Option<&'a str> {
+    if is_utf8(v) {
+        Some(unsafe { cast::transmute(v) })
+    } else { None }
 }
 
 impl ToStr for ~str {
@@ -2358,7 +2387,7 @@ impl Zero for @str {
 #[cfg(test)]
 mod tests {
     use container::Container;
-    use option::Some;
+    use option::{None, Some};
     use libc::c_char;
     use libc;
     use ptr;
@@ -3538,6 +3567,76 @@ mod tests {
     fn test_str_truncate_split_codepoint() {
         let mut s = ~"\u00FC"; // ü
         s.truncate(1);
+    }
+
+    #[test]
+    fn test_str_from_bytes_slice() {
+        let xs = bytes!("hello");
+        assert_eq!(from_bytes_slice(xs), "hello");
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_bytes_slice(xs), "ศไทย中华Việt Nam");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_str_from_bytes_slice_invalid() {
+        let xs = bytes!("hello", 0xff);
+        let _ = from_bytes_slice(xs);
+    }
+
+    #[test]
+    fn test_str_from_bytes_slice_opt() {
+        let xs = bytes!("hello");
+        assert_eq!(from_bytes_slice_opt(xs), Some("hello"));
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_bytes_slice_opt(xs), Some("ศไทย中华Việt Nam"));
+
+        let xs = bytes!("hello", 0xff);
+        assert_eq!(from_bytes_slice_opt(xs), None);
+    }
+
+    #[test]
+    fn test_str_from_bytes() {
+        let xs = bytes!("hello");
+        assert_eq!(from_bytes(xs), ~"hello");
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_bytes(xs), ~"ศไทย中华Việt Nam");
+    }
+
+    #[test]
+    fn test_str_from_bytes_opt() {
+        let xs = bytes!("hello").to_owned();
+        assert_eq!(from_bytes_opt(xs), Some(~"hello"));
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_bytes_opt(xs), Some(~"ศไทย中华Việt Nam"));
+
+        let xs = bytes!("hello", 0xff);
+        assert_eq!(from_bytes_opt(xs), None);
+    }
+
+    #[test]
+    fn test_str_from_bytes_owned() {
+        let xs = bytes!("hello").to_owned();
+        assert_eq!(from_bytes_owned(xs), ~"hello");
+
+        let xs = bytes!("ศไทย中华Việt Nam").to_owned();
+        assert_eq!(from_bytes_owned(xs), ~"ศไทย中华Việt Nam");
+    }
+
+    #[test]
+    fn test_str_from_bytes_owned_opt() {
+        let xs = bytes!("hello").to_owned();
+        assert_eq!(from_bytes_owned_opt(xs), Some(~"hello"));
+
+        let xs = bytes!("ศไทย中华Việt Nam").to_owned();
+        assert_eq!(from_bytes_owned_opt(xs), Some(~"ศไทย中华Việt Nam"));
+
+        let xs = bytes!("hello", 0xff).to_owned();
+        assert_eq!(from_bytes_owned_opt(xs), None);
     }
 }
 
