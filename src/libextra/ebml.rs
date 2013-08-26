@@ -12,8 +12,6 @@
 
 
 use std::str;
-use std::cast;
-use std::vec;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
@@ -32,41 +30,8 @@ struct EbmlState {
 }
 
 #[deriving(Clone)]
-pub enum EbmlData {
-    SafeData(@~[u8]),
-    UnsafeData(*u8, uint)
-}
-
-impl EbmlData {
-    #[inline]
-    pub fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [u8] {
-        match *self {
-            SafeData(@ref v) => v.slice(start, end),
-            UnsafeData(buf, len) => unsafe {
-                do vec::raw::buf_as_slice(buf, len) |s| {
-                    cast::transmute(s.slice(start, end))
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        self.slice(0, self.len())
-    }
-
-    #[inline]
-    pub fn len(&self) -> uint {
-        match *self {
-            SafeData(@ref v) => v.len(),
-            UnsafeData(_, len) => len
-        }
-    }
-}
-
-#[deriving(Clone)]
 pub struct Doc {
-    data: EbmlData,
+    data: @~[u8],
     start: uint,
     end: uint,
 }
@@ -220,28 +185,24 @@ pub mod reader {
     }
 
     pub fn Doc(data: @~[u8]) -> Doc {
-        Doc { data: SafeData(data), start: 0u, end: data.len() }
+        Doc { data: data, start: 0u, end: data.len() }
     }
 
-    pub fn unsafe_Doc(buf: *u8, len: uint) -> Doc {
-        Doc { data: UnsafeData(buf, len), start: 0u, end: len }
-    }
-
-    pub fn doc_at(data: &EbmlData, start: uint) -> TaggedDoc {
-        let elt_tag = vuint_at(data.as_slice(), start);
-        let elt_size = vuint_at(data.as_slice(), elt_tag.next);
+    pub fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
+        let elt_tag = vuint_at(*data, start);
+        let elt_size = vuint_at(*data, elt_tag.next);
         let end = elt_size.next + elt_size.val;
         TaggedDoc {
             tag: elt_tag.val,
-            doc: Doc { data: data.clone(), start: elt_size.next, end: end }
+            doc: Doc { data: data, start: elt_size.next, end: end }
         }
     }
 
     pub fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = vuint_at(d.data.as_slice(), pos);
-            let elt_size = vuint_at(d.data.as_slice(), elt_tag.next);
+            let elt_tag = vuint_at(*d.data, pos);
+            let elt_size = vuint_at(*d.data, elt_tag.next);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
                 return Some(Doc { data: d.data, start: elt_size.next,
@@ -264,8 +225,8 @@ pub mod reader {
     pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = vuint_at(d.data.as_slice(), pos);
-            let elt_size = vuint_at(d.data.as_slice(), elt_tag.next);
+            let elt_tag = vuint_at(*d.data, pos);
+            let elt_size = vuint_at(*d.data, elt_tag.next);
             pos = elt_size.next + elt_size.val;
             let doc = Doc { data: d.data, start: elt_size.next, end: pos };
             if !it(elt_tag.val, doc) {
@@ -278,8 +239,8 @@ pub mod reader {
     pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = vuint_at(d.data.as_slice(), pos);
-            let elt_size = vuint_at(d.data.as_slice(), elt_tag.next);
+            let elt_tag = vuint_at(*d.data, pos);
+            let elt_size = vuint_at(*d.data, elt_tag.next);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
                 let doc = Doc { data: d.data, start: elt_size.next,
@@ -299,22 +260,22 @@ pub mod reader {
 
     pub fn doc_as_u8(d: Doc) -> u8 {
         assert_eq!(d.end, d.start + 1u);
-        d.data.as_slice()[d.start]
+        (*d.data)[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
         assert_eq!(d.end, d.start + 2u);
-        io::u64_from_be_bytes(d.data.as_slice(), d.start, 2u) as u16
+        io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
         assert_eq!(d.end, d.start + 4u);
-        io::u64_from_be_bytes(d.data.as_slice(), d.start, 4u) as u32
+        io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
         assert_eq!(d.end, d.start + 8u);
-        io::u64_from_be_bytes(d.data.as_slice(), d.start, 8u)
+        io::u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
     pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
@@ -337,7 +298,8 @@ pub mod reader {
     impl Decoder {
         fn _check_label(&mut self, lbl: &str) {
             if self.pos < self.parent.end {
-                let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(&self.parent.data, self.pos);
+                let TaggedDoc { tag: r_tag, doc: r_doc } =
+                    doc_at(self.parent.data, self.pos);
 
                 if r_tag == (EsLabel as uint) {
                     self.pos = r_doc.end;
@@ -354,7 +316,8 @@ pub mod reader {
             if self.pos >= self.parent.end {
                 fail!("no more documents in current node!");
             }
-            let TaggedDoc { tag: r_tag, doc: r_doc } = doc_at(&self.parent.data, self.pos);
+            let TaggedDoc { tag: r_tag, doc: r_doc } =
+                doc_at(self.parent.data, self.pos);
             debug!("self.parent=%?-%? self.pos=%? r_tag=%? r_doc=%?-%?",
                    self.parent.start,
                    self.parent.end,

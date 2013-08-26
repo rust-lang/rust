@@ -763,7 +763,7 @@ pub fn build_session_options(binary: @str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
-        android_cross_path: android_cross_path,
+        android_cross_path: android_cross_path
     };
     return sopts;
 }
