@@ -24,8 +24,6 @@ struct E { a: int, b: int }
 
 #[deriving(Zero)]
 struct Lots {
-    a: ~str,
-    b: @str,
     c: Option<util::NonCopyable>,
     d: u8,
     e: char,
