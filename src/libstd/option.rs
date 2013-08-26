@@ -43,7 +43,6 @@ let unwrapped_msg = match msg {
 
 use clone::Clone;
 use cmp::{Eq,Ord};
-use ops::Add;
 use util;
 use num::Zero;
 use iterator;
@@ -74,18 +73,6 @@ impl<T: Eq + Ord> Ord for Option<T> {
 
     fn gt(&self, other: &Option<T>) -> bool {
         iterator::order::gt(self.iter(), other.iter())
-    }
-}
-
-impl<T: Add<T, T>> Add<Option<T>, Option<T>> for Option<T> {
-    #[inline]
-    fn add(&self, other: &Option<T>) -> Option<T> {
-        match (&*self, &*other) {
-            (&None, &None) => None,
-            (_, &None) => None,
-            (&None, _) => None,
-            (&Some(ref lhs), &Some(ref rhs)) => Some(*lhs + *rhs)
-        }
     }
 }
 
