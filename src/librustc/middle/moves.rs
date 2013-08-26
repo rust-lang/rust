@@ -139,8 +139,8 @@ use std::at_vec;
 use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
-use syntax::oldvisit;
-use syntax::oldvisit::vt;
+use syntax::visit;
+use syntax::visit::Visitor;
 use syntax::codemap::span;
 
 #[deriving(Encodable, Decodable)]
@@ -190,16 +190,26 @@ enum UseMode {
     Read         // Read no matter what the type.
 }
 
+struct ComputeModesVisitor;
+
+impl visit::Visitor<VisitContext> for ComputeModesVisitor {
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
+                b:&Block, s:span, n:NodeId, e:VisitContext) {
+        compute_modes_for_fn(*self, fk, fd, b, s, n, e);
+    }
+    fn visit_expr(&mut self, ex:@expr, e:VisitContext) {
+        compute_modes_for_expr(*self, ex, e);
+    }
+    fn visit_local(&mut self, l:@Local, e:VisitContext) {
+        compute_modes_for_local(*self, l, e);
+    }
+}
+
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
                      crate: &Crate) -> MoveMaps
 {
-    let visitor = oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_fn: compute_modes_for_fn,
-        visit_expr: compute_modes_for_expr,
-        visit_local: compute_modes_for_local,
-        .. *oldvisit::default_visitor()
-    });
+    let mut visitor = ComputeModesVisitor;
     let visit_cx = VisitContext {
         tcx: tcx,
         method_map: method_map,
@@ -209,7 +219,7 @@ pub fn compute_moves(tcx: ty::ctxt,
             moved_variables_set: @mut HashSet::new()
         }
     };
-    oldvisit::visit_crate(crate, (visit_cx, visitor));
+    visit::walk_crate(&mut visitor, crate, visit_cx);
     return visit_cx.move_maps;
 }
 
@@ -227,43 +237,44 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<NodeId> {
 ///////////////////////////////////////////////////////////////////////////
 // Expressions
 
-fn compute_modes_for_local<'a>(local: @Local,
-                               (cx, v): (VisitContext,
-                                         vt<VisitContext>)) {
+fn compute_modes_for_local<'a>(v: ComputeModesVisitor,
+                               local: @Local,
+                               cx: VisitContext) {
     cx.use_pat(local.pat);
     for &init in local.init.iter() {
         cx.use_expr(init, Read, v);
     }
 }
 
-fn compute_modes_for_fn(fk: &oldvisit::fn_kind,
+fn compute_modes_for_fn(v: ComputeModesVisitor,
+                        fk: &visit::fn_kind,
                         decl: &fn_decl,
                         body: &Block,
                         span: span,
                         id: NodeId,
-                        (cx, v): (VisitContext,
-                                  vt<VisitContext>)) {
+                        cx: VisitContext) {
+    let mut v = v;
     for a in decl.inputs.iter() {
         cx.use_pat(a.pat);
     }
-    oldvisit::visit_fn(fk, decl, body, span, id, (cx, v));
+    visit::walk_fn(&mut v, fk, decl, body, span, id, cx);
 }
 
-fn compute_modes_for_expr(expr: @expr,
-                          (cx, v): (VisitContext,
-                                    vt<VisitContext>))
+fn compute_modes_for_expr(v: ComputeModesVisitor,
+                          expr: @expr,
+                          cx: VisitContext)
 {
     cx.consume_expr(expr, v);
 }
 
 impl VisitContext {
-    pub fn consume_exprs(&self, exprs: &[@expr], visitor: vt<VisitContext>) {
+    pub fn consume_exprs(&self, exprs: &[@expr], visitor: ComputeModesVisitor) {
         for expr in exprs.iter() {
             self.consume_expr(*expr, visitor);
         }
     }
 
-    pub fn consume_expr(&self, expr: @expr, visitor: vt<VisitContext>) {
+    pub fn consume_expr(&self, expr: @expr, visitor: ComputeModesVisitor) {
         /*!
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -281,7 +292,7 @@ impl VisitContext {
         };
     }
 
-    pub fn consume_block(&self, blk: &Block, visitor: vt<VisitContext>) {
+    pub fn consume_block(&self, blk: &Block, visitor: ComputeModesVisitor) {
         /*!
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -290,7 +301,8 @@ impl VisitContext {
         debug!("consume_block(blk.id=%?)", blk.id);
 
         for stmt in blk.stmts.iter() {
-            (visitor.visit_stmt)(*stmt, (*self, visitor));
+            let mut v = visitor;
+            v.visit_stmt(*stmt, *self);
         }
 
         for tail_expr in blk.expr.iter() {
@@ -301,7 +313,7 @@ impl VisitContext {
     pub fn use_expr(&self,
                     expr: @expr,
                     expr_mode: UseMode,
-                    visitor: vt<VisitContext>) {
+                    visitor: ComputeModesVisitor) {
         /*!
          * Indicates that `expr` is used with a given mode.  This will
          * in turn trigger calls to the subcomponents of `expr`.
@@ -570,7 +582,7 @@ impl VisitContext {
                                    expr: &expr,
                                    receiver_expr: @expr,
                                    arg_exprs: &[@expr],
-                                   visitor: vt<VisitContext>)
+                                   visitor: ComputeModesVisitor)
                                    -> bool {
         if !self.method_map.contains_key(&expr.id) {
             return false;
@@ -587,7 +599,7 @@ impl VisitContext {
         return true;
     }
 
-    pub fn consume_arm(&self, arm: &arm, visitor: vt<VisitContext>) {
+    pub fn consume_arm(&self, arm: &arm, visitor: ComputeModesVisitor) {
         for pat in arm.pats.iter() {
             self.use_pat(*pat);
         }
@@ -630,21 +642,21 @@ impl VisitContext {
 
     pub fn use_receiver(&self,
                         receiver_expr: @expr,
-                        visitor: vt<VisitContext>) {
+                        visitor: ComputeModesVisitor) {
         self.use_fn_arg(receiver_expr, visitor);
     }
 
     pub fn use_fn_args(&self,
                        _: NodeId,
                        arg_exprs: &[@expr],
-                       visitor: vt<VisitContext>) {
+                       visitor: ComputeModesVisitor) {
         //! Uses the argument expressions.
         for arg_expr in arg_exprs.iter() {
             self.use_fn_arg(*arg_expr, visitor);
         }
     }
 
-    pub fn use_fn_arg(&self, arg_expr: @expr, visitor: vt<VisitContext>) {
+    pub fn use_fn_arg(&self, arg_expr: @expr, visitor: ComputeModesVisitor) {
         //! Uses the argument.
         self.consume_expr(arg_expr, visitor)
     }

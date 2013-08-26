@@ -29,7 +29,8 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
-use syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 
 // vtable resolution looks for places where trait bounds are
 // substituted in and figures out which vtable is used. There is some
@@ -712,11 +713,11 @@ pub fn early_resolve_expr(ex: @ast::expr,
     }
 }
 
-fn resolve_expr(ex: @ast::expr,
-                (fcx, v): (@mut FnCtxt,
-                           oldvisit::vt<@mut FnCtxt>)) {
+fn resolve_expr(v: &mut VtableResolveVisitor,
+                ex: @ast::expr,
+                fcx: @mut FnCtxt) {
     early_resolve_expr(ex, fcx, false);
-    oldvisit::visit_expr(ex, (fcx, v));
+    visit::walk_expr(v, ex, fcx);
 }
 
 pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
@@ -763,12 +764,20 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
     }
 }
 
+struct VtableResolveVisitor;
+
+impl visit::Visitor<@mut FnCtxt> for VtableResolveVisitor {
+    fn visit_expr(&mut self, ex:@ast::expr, e:@mut FnCtxt) {
+        resolve_expr(self, ex, e);
+    }
+    fn visit_item(&mut self, _:@ast::item, _:@mut FnCtxt) {
+        // no-op
+    }
+}
+
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::Block) {
-    oldvisit::visit_block(bl, (fcx, oldvisit::mk_vt(@oldvisit::Visitor {
-        visit_expr: resolve_expr,
-        visit_item: |_,_| {},
-        .. *oldvisit::default_visitor()
-    })));
+    let mut visitor = VtableResolveVisitor;
+    visit::walk_block(&mut visitor, bl, fcx);
 }

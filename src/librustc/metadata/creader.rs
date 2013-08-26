@@ -25,7 +25,7 @@ use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
-use syntax::oldvisit;
+use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -46,15 +46,23 @@ pub fn read_crates(diag: @mut span_handler,
         next_crate_num: 1,
         intr: intr
     };
-    let v =
-        oldvisit::mk_simple_visitor(@oldvisit::SimpleVisitor {
-            visit_view_item: |a| visit_view_item(e, a),
-            visit_item: |a| visit_item(e, a),
-            .. *oldvisit::default_simple_visitor()});
+    let mut v = ReadCrateVisitor{ e:e };
     visit_crate(e, crate);
-    oldvisit::visit_crate(crate, ((), v));
+    visit::walk_crate(&mut v, crate, ());
     dump_crates(*e.crate_cache);
     warn_if_multiple_versions(e, diag, *e.crate_cache);
+}
+
+struct ReadCrateVisitor { e:@mut Env }
+impl visit::Visitor<()> for ReadCrateVisitor {
+    fn visit_view_item(&mut self, a:&ast::view_item, _:()) {
+        visit_view_item(self.e, a);
+        visit::walk_view_item(self, a, ());
+    }
+    fn visit_item(&mut self, a:@ast::item, _:()) {
+        visit_item(self.e, a);
+        visit::walk_item(self, a, ());
+    }
 }
 
 #[deriving(Clone)]
