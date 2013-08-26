@@ -686,7 +686,7 @@ fn package_script_with_default_build() {
         push("testsuite").push("pass").push("src").push("fancy-lib").push("pkg.rs");
     debug!("package_script_with_default_build: %s", source.to_str());
     if !os::copy_file(&source,
-                      & dir.push("src").push("fancy-lib-0.1").push("pkg.rs")) {
+                      &dir.push("src").push("fancy-lib-0.1").push("pkg.rs")) {
         fail!("Couldn't copy file");
     }
     command_line_test([~"install", ~"fancy-lib"], &dir);
@@ -890,20 +890,28 @@ fn no_rebuilding_dep() {
     assert!(bar_date < foo_date);
 }
 
+// n.b. The following two tests are ignored; they worked "accidentally" before,
+// when the behavior was "always rebuild libraries" (now it's "never rebuild
+// libraries if they already exist"). They can be un-ignored once #7075 is done.
 #[test]
+#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn do_rebuild_dep_dates_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
+    let bar_lib_name = lib_output_file_name(&workspace, "build", "bar");
+    let bar_date = datestamp(&bar_lib_name);
+    debug!("Datestamp on %s is %?", bar_lib_name.to_str(), bar_date);
     touch_source_file(&workspace, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let new_bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
+    let new_bar_date = datestamp(&bar_lib_name);
+    debug!("Datestamp on %s is %?", bar_lib_name.to_str(), new_bar_date);
     assert!(new_bar_date > bar_date);
 }
 
 #[test]
+#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn do_rebuild_dep_only_contents_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
@@ -1058,6 +1066,23 @@ fn test_macro_pkg_script() {
     debug!("workspace = %s", workspace.to_str());
     assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
         os::EXE_SUFFIX))));
+}
+
+#[test]
+fn multiple_workspaces() {
+// Make a package foo; build/install in directory A
+// Copy the exact same package into directory B and install it
+// Set the RUST_PATH to A:B
+// Make a third package that uses foo, make sure we can build/install it
+    let a_loc = mk_temp_workspace(&Path("foo"), &NoVersion).pop().pop();
+    let b_loc = mk_temp_workspace(&Path("foo"), &NoVersion).pop().pop();
+    debug!("Trying to install foo in %s", a_loc.to_str());
+    command_line_test([~"install", ~"foo"], &a_loc);
+    debug!("Trying to install foo in %s", b_loc.to_str());
+    command_line_test([~"install", ~"foo"], &b_loc);
+    let env = Some(~[(~"RUST_PATH", fmt!("%s:%s", a_loc.to_str(), b_loc.to_str()))]);
+    let c_loc = create_local_package_with_dep(&PkgId::new("bar"), &PkgId::new("foo"));
+    command_line_test_with_env([~"install", ~"bar"], &c_loc, env);
 }
 
 /// Returns true if p exists and is executable

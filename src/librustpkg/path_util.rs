@@ -49,6 +49,9 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 /// True if there's a directory in <workspace> with
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
+    debug!("Checking in src dir of %s for %s",
+           workspace.to_str(), pkgid.to_str());
+
     let src_dir = workspace.push("src");
 
     let mut found = false;
@@ -81,6 +84,9 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
         }
         true
     };
+
+    debug!(if found { fmt!("Found %s in %s", pkgid.to_str(), workspace.to_str()) }
+           else     { fmt!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str()) });
     found
 }
 

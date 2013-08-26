@@ -13,13 +13,15 @@ use std::option;
 use std::os;
 use std::hashmap::HashSet;
 
+pub enum FileMatch { FileMatches, FileDoesntMatch }
+
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
 /// Functions with type `pick` take a parent directory as well as
 /// a file found in that directory.
-pub type pick<'self, T> = &'self fn(path: &Path) -> Option<T>;
+pub type pick<'self> = &'self fn(path: &Path) -> FileMatch;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
     if path.file_path() == file {
@@ -31,7 +33,7 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 
 pub trait FileSearch {
     fn sysroot(&self) -> @Path;
-    fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool;
+    fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch);
     fn get_target_lib_path(&self) -> Path;
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
@@ -47,13 +49,17 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
-        fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool {
+        fn for_each_lib_search_path(&self, f: &fn(&Path) -> FileMatch) {
             let mut visited_dirs = HashSet::new();
+            let mut found = false;
 
             debug!("filesearch: searching additional lib search paths [%?]",
                    self.addl_lib_search_paths.len());
             for path in self.addl_lib_search_paths.iter() {
-                f(path);
+                match f(path) {
+                    FileMatches => found = true,
+                    FileDoesntMatch => ()
+                }
                 visited_dirs.insert(path.to_str());
             }
 
@@ -61,20 +67,33 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             let tlib_path = make_target_lib_path(self.sysroot,
                                         self.target_triple);
             if !visited_dirs.contains(&tlib_path.to_str()) {
-                if !f(&tlib_path) {
-                    return false;
+                match f(&tlib_path) {
+                    FileMatches => found = true,
+                    FileDoesntMatch => ()
                 }
             }
             visited_dirs.insert(tlib_path.to_str());
             // Try RUST_PATH
-            let rustpath = rust_path();
-            for path in rustpath.iter() {
+            if !found {
+                let rustpath = rust_path();
+                for path in rustpath.iter() {
+                    debug!("is %s in visited_dirs? %?",
+                            path.push("lib").to_str(),
+                            visited_dirs.contains(&path.push("lib").to_str()));
+
                     if !visited_dirs.contains(&path.push("lib").to_str()) {
-                        f(&path.push("lib"));
                         visited_dirs.insert(path.push("lib").to_str());
+                        // Don't keep searching the RUST_PATH if one match turns up --
+                        // if we did, we'd get a "multiple matching crates" error
+                        match f(&path.push("lib")) {
+                           FileMatches => {
+                               break;
+                           }
+                           FileDoesntMatch => ()
+                        }
                     }
+                }
             }
-            true
         }
         fn get_target_lib_path(&self) -> Path {
             make_target_lib_path(self.sysroot, self.target_triple)
@@ -93,28 +112,26 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     } as @FileSearch
 }
 
-pub fn search<T>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
-    let mut rslt = None;
+pub fn search(filesearch: @FileSearch, pick: pick) {
     do filesearch.for_each_lib_search_path() |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
         let r = os::list_dir_path(lib_search_path);
+        let mut rslt = FileDoesntMatch;
         for path in r.iter() {
             debug!("testing %s", path.to_str());
             let maybe_picked = pick(path);
             match maybe_picked {
-                Some(_) => {
+                FileMatches => {
                     debug!("picked %s", path.to_str());
-                    rslt = maybe_picked;
-                    break;
+                    rslt = FileMatches;
                 }
-                None => {
+                FileDoesntMatch => {
                     debug!("rejected %s", path.to_str());
                 }
             }
         }
-        rslt.is_none()
+        rslt
     };
-    return rslt;
 }
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
