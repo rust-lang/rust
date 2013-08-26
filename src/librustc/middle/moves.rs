@@ -193,7 +193,8 @@ enum UseMode {
 struct ComputeModesVisitor;
 
 impl visit::Visitor<VisitContext> for ComputeModesVisitor {
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:VisitContext) {
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
+                b:&Block, s:span, n:NodeId, e:VisitContext) {
         compute_modes_for_fn(*self, fk, fd, b, s, n, e);
     }
     fn visit_expr(&mut self, ex:@expr, e:VisitContext) {
