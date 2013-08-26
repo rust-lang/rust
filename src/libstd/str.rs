@@ -21,7 +21,6 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use either::{Left, Right};
 use iter::Times;
 use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
@@ -411,36 +410,30 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> 
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
 
-        let len = self.string.len();
-        let mut iter = match self.only_ascii {
-            true => Left(self.string.byte_iter().enumerate()),
-            false => Right(self.string.char_offset_iter())
-        };
-
-        loop {
-            let (idx, next) = match iter {
-                // this gives a *huge* speed up for splitting on ASCII
-                // characters (e.g. '\n' or ' ')
-                Left(ref mut it) => match it.next() {
-                    Some((idx, byte)) if byte < 128u8 && self.sep.matches(byte as char) =>
-                        (idx, idx + 1),
-                    Some(*) => loop,
-                    None => break,
-                },
-                Right(ref mut it) => match it.next() {
-                    Some((idx, ch)) if self.sep.matches(ch) =>
-                        (idx, self.string.char_range_at(idx).next),
-                    Some(*) => loop,
-                    None => break,
+        let mut next_split = None;
+        if self.only_ascii {
+            for (idx, byte) in self.string.byte_iter().enumerate() {
+                if self.sep.matches(byte as char) && byte < 128u8 {
+                    next_split = Some((idx, idx + 1));
+                    break;
                 }
-            };
-            unsafe {
-                let elt = raw::slice_bytes(self.string, 0, idx);
-                self.string = raw::slice_bytes(self.string, next, len);
-                return Some(elt)
+            }
+        } else {
+            for (idx, ch) in self.string.char_offset_iter() {
+                if self.sep.matches(ch) {
+                    next_split = Some((idx, self.string.char_range_at(idx).next));
+                    break;
+                }
             }
         }
-        self.get_end()
+        match next_split {
+            Some((a, b)) => unsafe {
+                let elt = raw::slice_unchecked(self.string, 0, a);
+                self.string = raw::slice_unchecked(self.string, b, self.string.len());
+                Some(elt)
+            },
+            None => self.get_end(),
+        }
     }
 }
 
@@ -458,36 +451,32 @@ for CharSplitIterator<'self, Sep> {
             }
         }
         let len = self.string.len();
-        let mut iter = match self.only_ascii {
-            true => Left(self.string.byte_rev_iter().enumerate()),
-            false => Right(self.string.char_offset_iter())
-        };
+        let mut next_split = None;
 
-        loop {
-            let (idx, next) = match iter {
-                Left(ref mut it) => match it.next() {
-                    Some((j, byte)) if byte < 128u8 && self.sep.matches(byte as char) => {
-                        let idx = self.string.len() - j - 1;
-                        (idx, idx + 1)
-                    },
-                    Some(*) => loop,
-                    None => break,
-                },
-                Right(ref mut it) => match it.next_back() {
-                    Some((idx, ch)) if self.sep.matches(ch) =>
-                        (idx, self.string.char_range_at(idx).next),
-                    Some(*) => loop,
-                    None => break,
+        if self.only_ascii {
+            for (j, byte) in self.string.byte_rev_iter().enumerate() {
+                if self.sep.matches(byte as char) && byte < 128u8 {
+                    let idx = len - j - 1;
+                    next_split = Some((idx, idx + 1));
+                    break;
                 }
-            };
-            unsafe {
-                let elt = raw::slice_bytes(self.string, next, len);
-                self.string = raw::slice_bytes(self.string, 0, idx);
-                return Some(elt)
+            }
+        } else {
+            for (idx, ch) in self.string.char_offset_rev_iter() {
+                if self.sep.matches(ch) {
+                    next_split = Some((idx, self.string.char_range_at(idx).next));
+                    break;
+                }
             }
         }
-        self.finished = true;
-        Some(self.string)
+        match next_split {
+            Some((a, b)) => unsafe {
+                let elt = raw::slice_unchecked(self.string, b, len);
+                self.string = raw::slice_unchecked(self.string, 0, a);
+                Some(elt)
+            },
+            None => { self.finished = true; Some(self.string) }
+        }
     }
 }
 
