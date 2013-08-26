@@ -64,6 +64,6 @@ pub fn main() {
         // because `inner`s alignment was 4.
         assert_eq!(sys::size_of::<Outer>(), m::size());
 
-        assert_eq!(y, ~"{c8: 22, t: {c64: 44}}");
+        assert_eq!(y, ~"{c8: 22u8, t: {c64: 44u32}}");
     }
 }
