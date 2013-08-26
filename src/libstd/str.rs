@@ -3763,6 +3763,89 @@ mod bench {
     }
 
     #[bench]
+    fn split_iter_unicode_ascii(bh: &mut BenchHarness) {
+        let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
+
+        do bh.iter {
+            assert_eq!(s.split_iter('V').len(), 3);
+        }
+    }
+
+    #[bench]
+    fn split_iter_unicode_not_ascii(bh: &mut BenchHarness) {
+        struct NotAscii(char);
+        impl CharEq for NotAscii {
+            fn matches(&self, c: char) -> bool {
+                **self == c
+            }
+            fn only_ascii(&self) -> bool { false }
+        }
+        let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
+
+        do bh.iter {
+            assert_eq!(s.split_iter(NotAscii('V')).len(), 3);
+        }
+    }
+
+
+    #[bench]
+    fn split_iter_ascii(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(' ').len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_not_ascii(bh: &mut BenchHarness) {
+        struct NotAscii(char);
+        impl CharEq for NotAscii {
+            #[inline]
+            fn matches(&self, c: char) -> bool { **self == c }
+            fn only_ascii(&self) -> bool { false }
+        }
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(NotAscii(' ')).len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_extern_fn(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+        fn pred(c: char) -> bool { c == ' ' }
+
+        do bh.iter {
+            assert_eq!(s.split_iter(pred).len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_closure(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(|c: char| c == ' ').len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_slice(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(&[' ']).len(), len);
+        }
+    }
+
+    #[bench]
     fn is_utf8_100_ascii(bh: &mut BenchHarness) {
 
         let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
