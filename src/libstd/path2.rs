@@ -898,108 +898,257 @@ mod tests {
     use vec::Vector;
 
     macro_rules! t(
-        ($path:expr, $exp:expr) => (
+        (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
                 assert_eq!(path.as_str(), Some($exp));
             }
+        );
+        (v: $path:expr, $exp:expr) => (
+            {
+                let path = $path;
+                assert_eq!(path.as_vec(), $exp);
+            }
+        )
+    )
+
+    macro_rules! b(
+        ($($arg:expr),+) => (
+            bytes!($($arg),+)
         )
     )
 
     #[test]
     fn test_posix_paths() {
-        t!(PosixPath::from_str(""), ".");
-        t!(PosixPath::from_str("/"), "/");
-        t!(PosixPath::from_str("hi"), "hi");
-        t!(PosixPath::from_str("/lib"), "/lib");
-        t!(PosixPath::from_str("hi/there"), "hi/there");
-        t!(PosixPath::from_str("hi/there.txt"), "hi/there.txt");
+        t!(v: PosixPath::new([]), b!("."));
+        t!(v: PosixPath::new(b!("/")), b!("/"));
+        t!(v: PosixPath::new(b!("a/b/c")), b!("a/b/c"));
+        t!(v: PosixPath::new(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
+        t!(v: PosixPath::new(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
+        let p = PosixPath::new(b!("a/b/c", 0xff));
+        assert_eq!(p.as_str(), None);
 
-        t!(PosixPath::from_str("hi/there/"), "hi/there");
-        t!(PosixPath::from_str("hi/../there"), "there");
-        t!(PosixPath::from_str("../hi/there"), "../hi/there");
-        t!(PosixPath::from_str("/../hi/there"), "/hi/there");
-        t!(PosixPath::from_str("foo/.."), ".");
-        t!(PosixPath::from_str("/foo/.."), "/");
-        t!(PosixPath::from_str("/foo/../.."), "/");
-        t!(PosixPath::from_str("/foo/../../bar"), "/bar");
-        t!(PosixPath::from_str("/./hi/./there/."), "/hi/there");
-        t!(PosixPath::from_str("/./hi/./there/./.."), "/hi");
-        t!(PosixPath::from_str("foo/../.."), "..");
-        t!(PosixPath::from_str("foo/../../.."), "../..");
-        t!(PosixPath::from_str("foo/../../bar"), "../bar");
+        t!(s: PosixPath::from_str(""), ".");
+        t!(s: PosixPath::from_str("/"), "/");
+        t!(s: PosixPath::from_str("hi"), "hi");
+        t!(s: PosixPath::from_str("/lib"), "/lib");
+        t!(s: PosixPath::from_str("hi/there"), "hi/there");
+        t!(s: PosixPath::from_str("hi/there.txt"), "hi/there.txt");
 
+        t!(s: PosixPath::from_str("hi/there/"), "hi/there");
+        t!(s: PosixPath::from_str("hi/../there"), "there");
+        t!(s: PosixPath::from_str("../hi/there"), "../hi/there");
+        t!(s: PosixPath::from_str("/../hi/there"), "/hi/there");
+        t!(s: PosixPath::from_str("foo/.."), ".");
+        t!(s: PosixPath::from_str("/foo/.."), "/");
+        t!(s: PosixPath::from_str("/foo/../.."), "/");
+        t!(s: PosixPath::from_str("/foo/../../bar"), "/bar");
+        t!(s: PosixPath::from_str("/./hi/./there/."), "/hi/there");
+        t!(s: PosixPath::from_str("/./hi/./there/./.."), "/hi");
+        t!(s: PosixPath::from_str("foo/../.."), "..");
+        t!(s: PosixPath::from_str("foo/../../.."), "../..");
+        t!(s: PosixPath::from_str("foo/../../bar"), "../bar");
+
+        assert_eq!(PosixPath::new(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
+        assert_eq!(PosixPath::new(b!("/foo/../../bar")).into_vec(),
+                   b!("/bar").to_owned());
         assert_eq!(PosixPath::from_str("foo/bar").into_str(), Some(~"foo/bar"));
         assert_eq!(PosixPath::from_str("/foo/../../bar").into_str(), Some(~"/bar"));
+
+        let p = PosixPath::new(b!("foo/bar", 0x80));
+        assert_eq!(p.as_str(), None);
+        assert_eq!(PosixPath::new(b!("foo", 0xff, "/bar")).into_str(), None);
+    }
+
+    #[test]
+    fn test_posix_null_byte() {
+        use super::null_byte::cond;
+
+        let mut handled = false;
+        let mut p = do cond.trap(|v| {
+            handled = true;
+            assert_eq!(v.as_slice(), b!("foo/bar", 0));
+            (b!("/bar").to_owned())
+        }).inside {
+            PosixPath::new(b!("foo/bar", 0))
+        };
+        assert!(handled);
+        assert_eq!(p.as_vec(), b!("/bar"));
+
+        handled = false;
+        do cond.trap(|v| {
+            handled = true;
+            assert_eq!(v.as_slice(), b!("f", 0, "o"));
+            (b!("foo").to_owned())
+        }).inside {
+            p.set_filename(b!("f", 0, "o"))
+        };
+        assert!(handled);
+        assert_eq!(p.as_vec(), b!("/foo"));
+
+        handled = false;
+        do cond.trap(|v| {
+            handled = true;
+            assert_eq!(v.as_slice(), b!("null/", 0, "/byte"));
+            (b!("null/byte").to_owned())
+        }).inside {
+            p.set_dirname(b!("null/", 0, "/byte"));
+        };
+        assert!(handled);
+        assert_eq!(p.as_vec(), b!("null/byte/foo"));
+
+        handled = false;
+        do cond.trap(|v| {
+            handled = true;
+            assert_eq!(v.as_slice(), b!("f", 0, "o"));
+            (b!("foo").to_owned())
+        }).inside {
+            p.push(b!("f", 0, "o"));
+        };
+        assert!(handled);
+        assert_eq!(p.as_vec(), b!("null/byte/foo/foo"));
+    }
+
+    #[test]
+    fn test_posix_null_byte_fail() {
+        use super::null_byte::cond;
+        use task;
+
+        macro_rules! t(
+            ($name:expr => $code:block) => (
+                {
+                    let mut t = task::task();
+                    t.supervised();
+                    t.name($name);
+                    let res = do t.try $code;
+                    assert!(res.is_err());
+                }
+            )
+        )
+
+        t!(~"new() w/nul" => {
+            do cond.trap(|_| {
+                (b!("null", 0).to_owned())
+            }).inside {
+                PosixPath::new(b!("foo/bar", 0))
+            };
+        })
+
+        t!(~"set_filename w/nul" => {
+            let mut p = PosixPath::new(b!("foo/bar"));
+            do cond.trap(|_| {
+                (b!("null", 0).to_owned())
+            }).inside {
+                p.set_filename(b!("foo", 0))
+            };
+        })
+
+        t!(~"set_dirname w/nul" => {
+            let mut p = PosixPath::new(b!("foo/bar"));
+            do cond.trap(|_| {
+                (b!("null", 0).to_owned())
+            }).inside {
+                p.set_dirname(b!("foo", 0))
+            };
+        })
+
+        t!(~"push w/nul" => {
+            let mut p = PosixPath::new(b!("foo/bar"));
+            do cond.trap(|_| {
+                (b!("null", 0).to_owned())
+            }).inside {
+                p.push(b!("foo", 0))
+            };
+        })
     }
 
     #[test]
     fn test_posix_components() {
         macro_rules! t(
-            ($path:expr, $op:ident, $exp:expr) => (
+            (s: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = PosixPath::from_str($path);
                     assert_eq!(path.$op(), ($exp).as_bytes());
                 }
             );
-            ($path:expr, $op:ident, $exp:expr, opt) => (
+            (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = PosixPath::from_str($path);
                     let left = path.$op().map(|&x| str::from_bytes_slice(x));
                     assert_eq!(left, $exp);
                 }
+            );
+            (v: $path:expr, $op:ident, $exp:expr) => (
+                {
+                    let path = PosixPath::new($path);
+                    assert_eq!(path.$op(), $exp);
+                }
             )
         )
 
-        t!("a/b/c", filename, "c");
-        t!("/a/b/c", filename, "c");
-        t!("a", filename, "a");
-        t!("/a", filename, "a");
-        t!(".", filename, "");
-        t!("/", filename, "");
-        t!("..", filename, "");
-        t!("../..", filename, "");
+        t!(v: b!("a/b/c"), filename, b!("c"));
+        t!(v: b!("a/b/c", 0xff), filename, b!("c", 0xff));
+        t!(v: b!("a/b", 0xff, "/c"), filename, b!("c"));
+        t!(s: "a/b/c", filename, "c");
+        t!(s: "/a/b/c", filename, "c");
+        t!(s: "a", filename, "a");
+        t!(s: "/a", filename, "a");
+        t!(s: ".", filename, "");
+        t!(s: "/", filename, "");
+        t!(s: "..", filename, "");
+        t!(s: "../..", filename, "");
 
-        t!("a/b/c", dirname, "a/b");
-        t!("/a/b/c", dirname, "/a/b");
-        t!("a", dirname, ".");
-        t!("/a", dirname, "/");
-        t!(".", dirname, ".");
-        t!("/", dirname, "/");
-        t!("..", dirname, "..");
-        t!("../..", dirname, "../..");
+        t!(v: b!("a/b/c"), dirname, b!("a/b"));
+        t!(v: b!("a/b/c", 0xff), dirname, b!("a/b"));
+        t!(v: b!("a/b", 0xff, "/c"), dirname, b!("a/b", 0xff));
+        t!(s: "a/b/c", dirname, "a/b");
+        t!(s: "/a/b/c", dirname, "/a/b");
+        t!(s: "a", dirname, ".");
+        t!(s: "/a", dirname, "/");
+        t!(s: ".", dirname, ".");
+        t!(s: "/", dirname, "/");
+        t!(s: "..", dirname, "..");
+        t!(s: "../..", dirname, "../..");
 
-        t!("hi/there.txt", filestem, "there");
-        t!("hi/there", filestem, "there");
-        t!("there.txt", filestem, "there");
-        t!("there", filestem, "there");
-        t!(".", filestem, "");
-        t!("/", filestem, "");
-        t!("foo/.bar", filestem, ".bar");
-        t!(".bar", filestem, ".bar");
-        t!("..bar", filestem, ".");
-        t!("hi/there..txt", filestem, "there.");
-        t!("..", filestem, "");
-        t!("../..", filestem, "");
+        t!(v: b!("hi/there.txt"), filestem, b!("there"));
+        t!(v: b!("hi/there", 0x80, ".txt"), filestem, b!("there", 0x80));
+        t!(v: b!("hi/there.t", 0x80, "xt"), filestem, b!("there"));
+        t!(s: "hi/there.txt", filestem, "there");
+        t!(s: "hi/there", filestem, "there");
+        t!(s: "there.txt", filestem, "there");
+        t!(s: "there", filestem, "there");
+        t!(s: ".", filestem, "");
+        t!(s: "/", filestem, "");
+        t!(s: "foo/.bar", filestem, ".bar");
+        t!(s: ".bar", filestem, ".bar");
+        t!(s: "..bar", filestem, ".");
+        t!(s: "hi/there..txt", filestem, "there.");
+        t!(s: "..", filestem, "");
+        t!(s: "../..", filestem, "");
 
-        t!("hi/there.txt", extension, Some("txt"), opt);
-        t!("hi/there", extension, None, opt);
-        t!("there.txt", extension, Some("txt"), opt);
-        t!("there", extension, None, opt);
-        t!(".", extension, None, opt);
-        t!("/", extension, None, opt);
-        t!("foo/.bar", extension, None, opt);
-        t!(".bar", extension, None, opt);
-        t!("..bar", extension, Some("bar"), opt);
-        t!("hi/there..txt", extension, Some("txt"), opt);
-        t!("..", extension, None, opt);
-        t!("../..", extension, None, opt);
+        t!(v: b!("hi/there.txt"), extension, Some(b!("txt")));
+        t!(v: b!("hi/there", 0x80, ".txt"), extension, Some(b!("txt")));
+        t!(v: b!("hi/there.t", 0x80, "xt"), extension, Some(b!("t", 0x80, "xt")));
+        t!(v: b!("hi/there"), extension, None);
+        t!(v: b!("hi/there", 0x80), extension, None);
+        t!(s: "hi/there.txt", extension, Some("txt"), opt);
+        t!(s: "hi/there", extension, None, opt);
+        t!(s: "there.txt", extension, Some("txt"), opt);
+        t!(s: "there", extension, None, opt);
+        t!(s: ".", extension, None, opt);
+        t!(s: "/", extension, None, opt);
+        t!(s: "foo/.bar", extension, None, opt);
+        t!(s: ".bar", extension, None, opt);
+        t!(s: "..bar", extension, Some("bar"), opt);
+        t!(s: "hi/there..txt", extension, Some("txt"), opt);
+        t!(s: "..", extension, None, opt);
+        t!(s: "../..", extension, None, opt);
     }
 
     #[test]
     fn test_posix_push() {
         macro_rules! t(
-            ($path:expr, $join:expr) => (
+            (s: $path:expr, $join:expr) => (
                 {
                     let path = ($path);
                     let join = ($join);
@@ -1011,16 +1160,16 @@ mod tests {
             )
         )
 
-        t!("a/b/c", "..");
-        t!("/a/b/c", "d");
-        t!("a/b", "c/d");
-        t!("a/b", "/c/d");
+        t!(s: "a/b/c", "..");
+        t!(s: "/a/b/c", "d");
+        t!(s: "a/b", "c/d");
+        t!(s: "a/b", "/c/d");
     }
 
     #[test]
     fn test_posix_push_path() {
         macro_rules! t(
-            ($path:expr, $push:expr, $exp:expr) => (
+            (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = PosixPath::from_str($path);
                     let push = PosixPath::from_str($push);
@@ -1030,48 +1179,79 @@ mod tests {
             )
         )
 
-        t!("a/b/c", "d", "a/b/c/d");
-        t!("/a/b/c", "d", "/a/b/c/d");
-        t!("a/b", "c/d", "a/b/c/d");
-        t!("a/b", "/c/d", "/c/d");
-        t!("a/b", ".", "a/b");
-        t!("a/b", "../c", "a/c");
+        t!(s: "a/b/c", "d", "a/b/c/d");
+        t!(s: "/a/b/c", "d", "/a/b/c/d");
+        t!(s: "a/b", "c/d", "a/b/c/d");
+        t!(s: "a/b", "/c/d", "/c/d");
+        t!(s: "a/b", ".", "a/b");
+        t!(s: "a/b", "../c", "a/c");
     }
 
     #[test]
     fn test_posix_pop() {
         macro_rules! t(
-            ($path:expr, $left:expr, $right:expr) => (
+            (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let mut p = PosixPath::from_str($path);
                     let file = p.pop_opt_str();
                     assert_eq!(p.as_str(), Some($left));
                     assert_eq!(file.map(|s| s.as_slice()), $right);
                 }
+            );
+            (v: [$($path:expr),+], [$($left:expr),+], Some($($right:expr),+)) => (
+                {
+                    let mut p = PosixPath::new(b!($($path),+));
+                    let file = p.pop_opt();
+                    assert_eq!(p.as_vec(), b!($($left),+));
+                    assert_eq!(file.map(|v| v.as_slice()), Some(b!($($right),+)));
+                }
+            );
+            (v: [$($path:expr),+], [$($left:expr),+], None) => (
+                {
+                    let mut p = PosixPath::new(b!($($path),+));
+                    let file = p.pop_opt();
+                    assert_eq!(p.as_vec(), b!($($left),+));
+                    assert_eq!(file, None);
+                }
             )
         )
 
-        t!("a/b/c", "a/b", Some("c"));
-        t!("a", ".", Some("a"));
-        t!(".", ".", None);
-        t!("/a", "/", Some("a"));
-        t!("/", "/", None);
+        t!(v: ["a/b/c"], ["a/b"], Some("c"));
+        t!(v: ["a"], ["."], Some("a"));
+        t!(v: ["."], ["."], None);
+        t!(v: ["/a"], ["/"], Some("a"));
+        t!(v: ["/"], ["/"], None);
+        t!(v: ["a/b/c", 0x80], ["a/b"], Some("c", 0x80));
+        t!(v: ["a/b", 0x80, "/c"], ["a/b", 0x80], Some("c"));
+        t!(v: [0xff], ["."], Some(0xff));
+        t!(v: ["/", 0xff], ["/"], Some(0xff));
+        t!(s: "a/b/c", "a/b", Some("c"));
+        t!(s: "a", ".", Some("a"));
+        t!(s: ".", ".", None);
+        t!(s: "/a", "/", Some("a"));
+        t!(s: "/", "/", None);
+
+        assert_eq!(PosixPath::new(b!("foo/bar", 0x80)).pop_opt_str(), None);
+        assert_eq!(PosixPath::new(b!("foo", 0x80, "/bar")).pop_opt_str(), Some(~"bar"));
     }
 
     #[test]
     fn test_posix_join() {
-        t!(PosixPath::from_str("a/b/c").join_str(".."), "a/b");
-        t!(PosixPath::from_str("/a/b/c").join_str("d"), "/a/b/c/d");
-        t!(PosixPath::from_str("a/b").join_str("c/d"), "a/b/c/d");
-        t!(PosixPath::from_str("a/b").join_str("/c/d"), "/c/d");
-        t!(PosixPath::from_str(".").join_str("a/b"), "a/b");
-        t!(PosixPath::from_str("/").join_str("a/b"), "/a/b");
+        t!(v: PosixPath::new(b!("a/b/c")).join(b!("..")), b!("a/b"));
+        t!(v: PosixPath::new(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
+        t!(v: PosixPath::new(b!("a/", 0x80, "/c")).join(b!(0xff)), b!("a/", 0x80, "/c/", 0xff));
+        t!(s: PosixPath::from_str("a/b/c").join_str(".."), "a/b");
+        t!(s: PosixPath::from_str("/a/b/c").join_str("d"), "/a/b/c/d");
+        t!(s: PosixPath::from_str("a/b").join_str("c/d"), "a/b/c/d");
+        t!(s: PosixPath::from_str("a/b").join_str("/c/d"), "/c/d");
+        t!(s: PosixPath::from_str(".").join_str("a/b"), "a/b");
+        t!(s: PosixPath::from_str("/").join_str("a/b"), "/a/b");
     }
 
     #[test]
     fn test_posix_join_path() {
         macro_rules! t(
-            ($path:expr, $join:expr, $exp:expr) => (
+            (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = PosixPath::from_str($path);
                     let join = PosixPath::from_str($join);
@@ -1081,152 +1261,251 @@ mod tests {
             )
         )
 
-        t!("a/b/c", "..", "a/b");
-        t!("/a/b/c", "d", "/a/b/c/d");
-        t!("a/b", "c/d", "a/b/c/d");
-        t!("a/b", "/c/d", "/c/d");
-        t!(".", "a/b", "a/b");
-        t!("/", "a/b", "/a/b");
+        t!(s: "a/b/c", "..", "a/b");
+        t!(s: "/a/b/c", "d", "/a/b/c/d");
+        t!(s: "a/b", "c/d", "a/b/c/d");
+        t!(s: "a/b", "/c/d", "/c/d");
+        t!(s: ".", "a/b", "a/b");
+        t!(s: "/", "a/b", "/a/b");
     }
 
     #[test]
     fn test_posix_with_helpers() {
-        t!(PosixPath::from_str("a/b/c").with_dirname_str("d"), "d/c");
-        t!(PosixPath::from_str("a/b/c").with_dirname_str("d/e"), "d/e/c");
-        t!(PosixPath::from_str("a/b/c").with_dirname_str(""), "c");
-        t!(PosixPath::from_str("a/b/c").with_dirname_str("/"), "/c");
-        t!(PosixPath::from_str("a/b/c").with_dirname_str("."), "c");
-        t!(PosixPath::from_str("a/b/c").with_dirname_str(".."), "../c");
-        t!(PosixPath::from_str("/").with_dirname_str("foo"), "foo");
-        t!(PosixPath::from_str("/").with_dirname_str(""), ".");
-        t!(PosixPath::from_str("/foo").with_dirname_str("bar"), "bar/foo");
-        t!(PosixPath::from_str("..").with_dirname_str("foo"), "foo");
-        t!(PosixPath::from_str("../..").with_dirname_str("foo"), "foo");
-        t!(PosixPath::from_str("foo").with_dirname_str(".."), "../foo");
-        t!(PosixPath::from_str("foo").with_dirname_str("../.."), "../../foo");
+        t!(v: PosixPath::new(b!("a/b/c")).with_dirname(b!("d")), b!("d/c"));
+        t!(v: PosixPath::new(b!("a/b/c")).with_dirname(b!("d/e")), b!("d/e/c"));
+        t!(v: PosixPath::new(b!("a/", 0x80, "b/c")).with_dirname(b!(0xff)), b!(0xff, "/c"));
+        t!(v: PosixPath::new(b!("a/b/", 0x80)).with_dirname(b!("/", 0xcd)),
+              b!("/", 0xcd, "/", 0x80));
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str("d"), "d/c");
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str("d/e"), "d/e/c");
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str(""), "c");
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str("/"), "/c");
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str("."), "c");
+        t!(s: PosixPath::from_str("a/b/c").with_dirname_str(".."), "../c");
+        t!(s: PosixPath::from_str("/").with_dirname_str("foo"), "foo");
+        t!(s: PosixPath::from_str("/").with_dirname_str(""), ".");
+        t!(s: PosixPath::from_str("/foo").with_dirname_str("bar"), "bar/foo");
+        t!(s: PosixPath::from_str("..").with_dirname_str("foo"), "foo");
+        t!(s: PosixPath::from_str("../..").with_dirname_str("foo"), "foo");
+        t!(s: PosixPath::from_str("foo").with_dirname_str(".."), "../foo");
+        t!(s: PosixPath::from_str("foo").with_dirname_str("../.."), "../../foo");
 
-        t!(PosixPath::from_str("a/b/c").with_filename_str("d"), "a/b/d");
-        t!(PosixPath::from_str(".").with_filename_str("foo"), "foo");
-        t!(PosixPath::from_str("/a/b/c").with_filename_str("d"), "/a/b/d");
-        t!(PosixPath::from_str("/").with_filename_str("foo"), "/foo");
-        t!(PosixPath::from_str("/a").with_filename_str("foo"), "/foo");
-        t!(PosixPath::from_str("foo").with_filename_str("bar"), "bar");
-        t!(PosixPath::from_str("a/b/c").with_filename_str(""), "a/b");
-        t!(PosixPath::from_str("a/b/c").with_filename_str("."), "a/b");
-        t!(PosixPath::from_str("a/b/c").with_filename_str(".."), "a");
-        t!(PosixPath::from_str("/a").with_filename_str(""), "/");
-        t!(PosixPath::from_str("foo").with_filename_str(""), ".");
-        t!(PosixPath::from_str("a/b/c").with_filename_str("d/e"), "a/b/d/e");
-        t!(PosixPath::from_str("a/b/c").with_filename_str("/d"), "a/b/d");
-        t!(PosixPath::from_str("..").with_filename_str("foo"), "../foo");
-        t!(PosixPath::from_str("../..").with_filename_str("foo"), "../../foo");
+        t!(v: PosixPath::new(b!("a/b/c")).with_filename(b!("d")), b!("a/b/d"));
+        t!(v: PosixPath::new(b!("a/b/c", 0xff)).with_filename(b!(0x80)), b!("a/b/", 0x80));
+        t!(v: PosixPath::new(b!("/", 0xff, "/foo")).with_filename(b!(0xcd)),
+              b!("/", 0xff, "/", 0xcd));
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str("d"), "a/b/d");
+        t!(s: PosixPath::from_str(".").with_filename_str("foo"), "foo");
+        t!(s: PosixPath::from_str("/a/b/c").with_filename_str("d"), "/a/b/d");
+        t!(s: PosixPath::from_str("/").with_filename_str("foo"), "/foo");
+        t!(s: PosixPath::from_str("/a").with_filename_str("foo"), "/foo");
+        t!(s: PosixPath::from_str("foo").with_filename_str("bar"), "bar");
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str(""), "a/b");
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str("."), "a/b");
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str(".."), "a");
+        t!(s: PosixPath::from_str("/a").with_filename_str(""), "/");
+        t!(s: PosixPath::from_str("foo").with_filename_str(""), ".");
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str("d/e"), "a/b/d/e");
+        t!(s: PosixPath::from_str("a/b/c").with_filename_str("/d"), "a/b/d");
+        t!(s: PosixPath::from_str("..").with_filename_str("foo"), "../foo");
+        t!(s: PosixPath::from_str("../..").with_filename_str("foo"), "../../foo");
 
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str("here"), "hi/here.txt");
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str(""), "hi/.txt");
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str("."), "hi/..txt");
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str(".."), "hi/...txt");
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str("/"), "hi/.txt");
-        t!(PosixPath::from_str("hi/there.txt").with_filestem_str("foo/bar"), "hi/foo/bar.txt");
-        t!(PosixPath::from_str("hi/there.foo.txt").with_filestem_str("here"), "hi/here.txt");
-        t!(PosixPath::from_str("hi/there").with_filestem_str("here"), "hi/here");
-        t!(PosixPath::from_str("hi/there").with_filestem_str(""), "hi");
-        t!(PosixPath::from_str("hi").with_filestem_str(""), ".");
-        t!(PosixPath::from_str("/hi").with_filestem_str(""), "/");
-        t!(PosixPath::from_str("hi/there").with_filestem_str(".."), ".");
-        t!(PosixPath::from_str("hi/there").with_filestem_str("."), "hi");
-        t!(PosixPath::from_str("hi/there.").with_filestem_str("foo"), "hi/foo.");
-        t!(PosixPath::from_str("hi/there.").with_filestem_str(""), "hi");
-        t!(PosixPath::from_str("hi/there.").with_filestem_str("."), ".");
-        t!(PosixPath::from_str("hi/there.").with_filestem_str(".."), "hi/...");
-        t!(PosixPath::from_str("/").with_filestem_str("foo"), "/foo");
-        t!(PosixPath::from_str(".").with_filestem_str("foo"), "foo");
-        t!(PosixPath::from_str("hi/there..").with_filestem_str("here"), "hi/here.");
-        t!(PosixPath::from_str("hi/there..").with_filestem_str(""), "hi");
+        t!(v: PosixPath::new(b!("hi/there", 0x80, ".txt")).with_filestem(b!(0xff)),
+              b!("hi/", 0xff, ".txt"));
+        t!(v: PosixPath::new(b!("hi/there.txt", 0x80)).with_filestem(b!(0xff)),
+              b!("hi/", 0xff, ".txt", 0x80));
+        t!(v: PosixPath::new(b!("hi/there", 0xff)).with_filestem(b!(0x80)), b!("hi/", 0x80));
+        t!(v: PosixPath::new(b!("hi", 0x80, "/there")).with_filestem([]), b!("hi", 0x80));
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str("here"), "hi/here.txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str(""), "hi/.txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str("."), "hi/..txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str(".."), "hi/...txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str("/"), "hi/.txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_filestem_str("foo/bar"), "hi/foo/bar.txt");
+        t!(s: PosixPath::from_str("hi/there.foo.txt").with_filestem_str("here"), "hi/here.txt");
+        t!(s: PosixPath::from_str("hi/there").with_filestem_str("here"), "hi/here");
+        t!(s: PosixPath::from_str("hi/there").with_filestem_str(""), "hi");
+        t!(s: PosixPath::from_str("hi").with_filestem_str(""), ".");
+        t!(s: PosixPath::from_str("/hi").with_filestem_str(""), "/");
+        t!(s: PosixPath::from_str("hi/there").with_filestem_str(".."), ".");
+        t!(s: PosixPath::from_str("hi/there").with_filestem_str("."), "hi");
+        t!(s: PosixPath::from_str("hi/there.").with_filestem_str("foo"), "hi/foo.");
+        t!(s: PosixPath::from_str("hi/there.").with_filestem_str(""), "hi");
+        t!(s: PosixPath::from_str("hi/there.").with_filestem_str("."), ".");
+        t!(s: PosixPath::from_str("hi/there.").with_filestem_str(".."), "hi/...");
+        t!(s: PosixPath::from_str("/").with_filestem_str("foo"), "/foo");
+        t!(s: PosixPath::from_str(".").with_filestem_str("foo"), "foo");
+        t!(s: PosixPath::from_str("hi/there..").with_filestem_str("here"), "hi/here.");
+        t!(s: PosixPath::from_str("hi/there..").with_filestem_str(""), "hi");
 
-        t!(PosixPath::from_str("hi/there.txt").with_extension_str("exe"), "hi/there.exe");
-        t!(PosixPath::from_str("hi/there.txt").with_extension_str(""), "hi/there");
-        t!(PosixPath::from_str("hi/there.txt").with_extension_str("."), "hi/there..");
-        t!(PosixPath::from_str("hi/there.txt").with_extension_str(".."), "hi/there...");
-        t!(PosixPath::from_str("hi/there").with_extension_str("txt"), "hi/there.txt");
-        t!(PosixPath::from_str("hi/there").with_extension_str("."), "hi/there..");
-        t!(PosixPath::from_str("hi/there").with_extension_str(".."), "hi/there...");
-        t!(PosixPath::from_str("hi/there.").with_extension_str("txt"), "hi/there.txt");
-        t!(PosixPath::from_str("hi/.foo").with_extension_str("txt"), "hi/.foo.txt");
-        t!(PosixPath::from_str("hi/there.txt").with_extension_str(".foo"), "hi/there..foo");
-        t!(PosixPath::from_str("/").with_extension_str("txt"), "/");
-        t!(PosixPath::from_str("/").with_extension_str("."), "/");
-        t!(PosixPath::from_str("/").with_extension_str(".."), "/");
-        t!(PosixPath::from_str(".").with_extension_str("txt"), ".");
+        t!(v: PosixPath::new(b!("hi/there", 0x80, ".txt")).with_extension(b!("exe")),
+              b!("hi/there", 0x80, ".exe"));
+        t!(v: PosixPath::new(b!("hi/there.txt", 0x80)).with_extension(b!(0xff)),
+              b!("hi/there.", 0xff));
+        t!(v: PosixPath::new(b!("hi/there", 0x80)).with_extension(b!(0xff)),
+              b!("hi/there", 0x80, ".", 0xff));
+        t!(v: PosixPath::new(b!("hi/there.", 0xff)).with_extension([]), b!("hi/there"));
+        t!(s: PosixPath::from_str("hi/there.txt").with_extension_str("exe"), "hi/there.exe");
+        t!(s: PosixPath::from_str("hi/there.txt").with_extension_str(""), "hi/there");
+        t!(s: PosixPath::from_str("hi/there.txt").with_extension_str("."), "hi/there..");
+        t!(s: PosixPath::from_str("hi/there.txt").with_extension_str(".."), "hi/there...");
+        t!(s: PosixPath::from_str("hi/there").with_extension_str("txt"), "hi/there.txt");
+        t!(s: PosixPath::from_str("hi/there").with_extension_str("."), "hi/there..");
+        t!(s: PosixPath::from_str("hi/there").with_extension_str(".."), "hi/there...");
+        t!(s: PosixPath::from_str("hi/there.").with_extension_str("txt"), "hi/there.txt");
+        t!(s: PosixPath::from_str("hi/.foo").with_extension_str("txt"), "hi/.foo.txt");
+        t!(s: PosixPath::from_str("hi/there.txt").with_extension_str(".foo"), "hi/there..foo");
+        t!(s: PosixPath::from_str("/").with_extension_str("txt"), "/");
+        t!(s: PosixPath::from_str("/").with_extension_str("."), "/");
+        t!(s: PosixPath::from_str("/").with_extension_str(".."), "/");
+        t!(s: PosixPath::from_str(".").with_extension_str("txt"), ".");
     }
 
     #[test]
     fn test_posix_setters() {
         macro_rules! t(
-            ($path:expr, $set:ident, $with:ident, $arg:expr) => (
+            (s: $path:expr, $set:ident, $with:ident, $arg:expr) => (
                 {
-                    let path = ($path);
-                    let arg = ($arg);
+                    let path = $path;
+                    let arg = $arg;
                     let mut p1 = PosixPath::from_str(path);
                     p1.$set(arg);
                     let p2 = PosixPath::from_str(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
+            );
+            (v: $path:expr, $set:ident, $with:ident, $arg:expr) => (
+                {
+                    let path = $path;
+                    let arg = $arg;
+                    let mut p1 = PosixPath::new(path);
+                    p1.$set(arg);
+                    let p2 = PosixPath::new(path);
+                    assert_eq!(p1, p2.$with(arg));
+                }
             )
         )
 
-        t!("a/b/c", set_dirname_str, with_dirname_str, "d");
-        t!("a/b/c", set_dirname_str, with_dirname_str, "d/e");
-        t!("/", set_dirname_str, with_dirname_str, "foo");
-        t!("/foo", set_dirname_str, with_dirname_str, "bar");
-        t!("a/b/c", set_dirname_str, with_dirname_str, "");
-        t!("../..", set_dirname_str, with_dirname_str, "x");
-        t!("foo", set_dirname_str, with_dirname_str, "../..");
+        t!(v: b!("a/b/c"), set_dirname, with_dirname, b!("d"));
+        t!(v: b!("a/b/c"), set_dirname, with_dirname, b!("d/e"));
+        t!(v: b!("a/", 0x80, "/c"), set_dirname, with_dirname, b!(0xff));
+        t!(s: "a/b/c", set_dirname_str, with_dirname_str, "d");
+        t!(s: "a/b/c", set_dirname_str, with_dirname_str, "d/e");
+        t!(s: "/", set_dirname_str, with_dirname_str, "foo");
+        t!(s: "/foo", set_dirname_str, with_dirname_str, "bar");
+        t!(s: "a/b/c", set_dirname_str, with_dirname_str, "");
+        t!(s: "../..", set_dirname_str, with_dirname_str, "x");
+        t!(s: "foo", set_dirname_str, with_dirname_str, "../..");
 
-        t!("a/b/c", set_filename_str, with_filename_str, "d");
-        t!("/", set_filename_str, with_filename_str, "foo");
-        t!(".", set_filename_str, with_filename_str, "foo");
-        t!("a/b", set_filename_str, with_filename_str, "");
-        t!("a", set_filename_str, with_filename_str, "");
+        t!(v: b!("a/b/c"), set_filename, with_filename, b!("d"));
+        t!(v: b!("/"), set_filename, with_filename, b!("foo"));
+        t!(v: b!(0x80), set_filename, with_filename, b!(0xff));
+        t!(s: "a/b/c", set_filename_str, with_filename_str, "d");
+        t!(s: "/", set_filename_str, with_filename_str, "foo");
+        t!(s: ".", set_filename_str, with_filename_str, "foo");
+        t!(s: "a/b", set_filename_str, with_filename_str, "");
+        t!(s: "a", set_filename_str, with_filename_str, "");
 
-        t!("hi/there.txt", set_filestem_str, with_filestem_str, "here");
-        t!("hi/there.", set_filestem_str, with_filestem_str, "here");
-        t!("hi/there", set_filestem_str, with_filestem_str, "here");
-        t!("hi/there.txt", set_filestem_str, with_filestem_str, "");
-        t!("hi/there", set_filestem_str, with_filestem_str, "");
+        t!(v: b!("hi/there.txt"), set_filestem, with_filestem, b!("here"));
+        t!(v: b!("hi/there", 0x80, ".txt"), set_filestem, with_filestem, b!("here", 0xff));
+        t!(s: "hi/there.txt", set_filestem_str, with_filestem_str, "here");
+        t!(s: "hi/there.", set_filestem_str, with_filestem_str, "here");
+        t!(s: "hi/there", set_filestem_str, with_filestem_str, "here");
+        t!(s: "hi/there.txt", set_filestem_str, with_filestem_str, "");
+        t!(s: "hi/there", set_filestem_str, with_filestem_str, "");
 
-        t!("hi/there.txt", set_extension_str, with_extension_str, "exe");
-        t!("hi/there.", set_extension_str, with_extension_str, "txt");
-        t!("hi/there", set_extension_str, with_extension_str, "txt");
-        t!("hi/there.txt", set_extension_str, with_extension_str, "");
-        t!("hi/there", set_extension_str, with_extension_str, "");
-        t!(".", set_extension_str, with_extension_str, "txt");
+        t!(v: b!("hi/there.txt"), set_extension, with_extension, b!("exe"));
+        t!(v: b!("hi/there.t", 0x80, "xt"), set_extension, with_extension, b!("exe", 0xff));
+        t!(s: "hi/there.txt", set_extension_str, with_extension_str, "exe");
+        t!(s: "hi/there.", set_extension_str, with_extension_str, "txt");
+        t!(s: "hi/there", set_extension_str, with_extension_str, "txt");
+        t!(s: "hi/there.txt", set_extension_str, with_extension_str, "");
+        t!(s: "hi/there", set_extension_str, with_extension_str, "");
+        t!(s: ".", set_extension_str, with_extension_str, "txt");
+    }
+
+    #[test]
+    fn test_posix_getters() {
+        macro_rules! t(
+            (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
+                {
+                    let path = $path;
+                    assert_eq!(path.filename_str(), $filename);
+                    assert_eq!(path.dirname_str(), $dirname);
+                    assert_eq!(path.filestem_str(), $filestem);
+                    assert_eq!(path.extension_str(), $ext);
+                }
+            );
+            (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
+                {
+                    let path = $path;
+                    assert_eq!(path.filename(), $filename);
+                    assert_eq!(path.dirname(), $dirname);
+                    assert_eq!(path.filestem(), $filestem);
+                    assert_eq!(path.extension(), $ext);
+                }
+            )
+        )
+
+        t!(v: PosixPath::new(b!("a/b/c")), b!("c"), b!("a/b"), b!("c"), None);
+        t!(v: PosixPath::new(b!("a/b/", 0xff)), b!(0xff), b!("a/b"), b!(0xff), None);
+        t!(v: PosixPath::new(b!("hi/there.", 0xff)), b!("there.", 0xff), b!("hi"),
+              b!("there"), Some(b!(0xff)));
+        t!(s: PosixPath::from_str("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
+        t!(s: PosixPath::from_str("."), Some(""), Some("."), Some(""), None);
+        t!(s: PosixPath::from_str("/"), Some(""), Some("/"), Some(""), None);
+        t!(s: PosixPath::from_str(".."), Some(""), Some(".."), Some(""), None);
+        t!(s: PosixPath::from_str("../.."), Some(""), Some("../.."), Some(""), None);
+        t!(s: PosixPath::from_str("hi/there.txt"), Some("there.txt"), Some("hi"),
+              Some("there"), Some("txt"));
+        t!(s: PosixPath::from_str("hi/there"), Some("there"), Some("hi"), Some("there"), None);
+        t!(s: PosixPath::from_str("hi/there."), Some("there."), Some("hi"),
+              Some("there"), Some(""));
+        t!(s: PosixPath::from_str("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
+        t!(s: PosixPath::from_str("hi/..there"), Some("..there"), Some("hi"),
+              Some("."), Some("there"));
+        t!(s: PosixPath::new(b!("a/b/", 0xff)), None, Some("a/b"), None, None);
+        t!(s: PosixPath::new(b!("a/b/", 0xff, ".txt")), None, Some("a/b"), None, Some("txt"));
+        t!(s: PosixPath::new(b!("a/b/c.", 0x80)), None, Some("a/b"), Some("c"), None);
+        t!(s: PosixPath::new(b!(0xff, "/b")), Some("b"), None, Some("b"), None);
     }
 
     #[test]
     fn test_posix_dir_file_path() {
-        t!(PosixPath::from_str("hi/there").dir_path(), "hi");
-        t!(PosixPath::from_str("hi").dir_path(), ".");
-        t!(PosixPath::from_str("/hi").dir_path(), "/");
-        t!(PosixPath::from_str("/").dir_path(), "/");
-        t!(PosixPath::from_str("..").dir_path(), "..");
-        t!(PosixPath::from_str("../..").dir_path(), "../..");
+        t!(v: PosixPath::new(b!("hi/there", 0x80)).dir_path(), b!("hi"));
+        t!(v: PosixPath::new(b!("hi", 0xff, "/there")).dir_path(), b!("hi", 0xff));
+        t!(s: PosixPath::from_str("hi/there").dir_path(), "hi");
+        t!(s: PosixPath::from_str("hi").dir_path(), ".");
+        t!(s: PosixPath::from_str("/hi").dir_path(), "/");
+        t!(s: PosixPath::from_str("/").dir_path(), "/");
+        t!(s: PosixPath::from_str("..").dir_path(), "..");
+        t!(s: PosixPath::from_str("../..").dir_path(), "../..");
 
         macro_rules! t(
-            ($path:expr, $exp:expr) => (
+            (s: $path:expr, $exp:expr) => (
                 {
                     let path = $path;
                     let left = path.chain_ref(|p| p.as_str());
                     assert_eq!(left, $exp);
                 }
+            );
+            (v: $path:expr, $exp:expr) => (
+                {
+                    let path = $path;
+                    let left = path.map(|p| p.as_vec());
+                    assert_eq!(left, $exp);
+                }
             )
         )
 
-        t!(PosixPath::from_str("hi/there").file_path(), Some("there"));
-        t!(PosixPath::from_str("hi").file_path(), Some("hi"));
-        t!(PosixPath::from_str(".").file_path(), None);
-        t!(PosixPath::from_str("/").file_path(), None);
-        t!(PosixPath::from_str("..").file_path(), None);
-        t!(PosixPath::from_str("../..").file_path(), None);
+        t!(v: PosixPath::new(b!("hi/there", 0x80)).file_path(), Some(b!("there", 0x80)));
+        t!(v: PosixPath::new(b!("hi", 0xff, "/there")).file_path(), Some(b!("there")));
+        t!(s: PosixPath::from_str("hi/there").file_path(), Some("there"));
+        t!(s: PosixPath::from_str("hi").file_path(), Some("hi"));
+        t!(s: PosixPath::from_str(".").file_path(), None);
+        t!(s: PosixPath::from_str("/").file_path(), None);
+        t!(s: PosixPath::from_str("..").file_path(), None);
+        t!(s: PosixPath::from_str("../..").file_path(), None);
     }
 
     #[test]
@@ -1244,7 +1523,7 @@ mod tests {
     #[test]
     fn test_posix_is_ancestor_of() {
         macro_rules! t(
-            ($path:expr, $dest:expr, $exp:expr) => (
+            (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
                     let path = PosixPath::from_str($path);
                     let dest = PosixPath::from_str($dest);
@@ -1253,32 +1532,32 @@ mod tests {
             )
         )
 
-        t!("a/b/c", "a/b/c/d", true);
-        t!("a/b/c", "a/b/c", true);
-        t!("a/b/c", "a/b", false);
-        t!("/a/b/c", "/a/b/c", true);
-        t!("/a/b", "/a/b/c", true);
-        t!("/a/b/c/d", "/a/b/c", false);
-        t!("/a/b", "a/b/c", false);
-        t!("a/b", "/a/b/c", false);
-        t!("a/b/c", "a/b/d", false);
-        t!("../a/b/c", "a/b/c", false);
-        t!("a/b/c", "../a/b/c", false);
-        t!("a/b/c", "a/b/cd", false);
-        t!("a/b/cd", "a/b/c", false);
-        t!("../a/b", "../a/b/c", true);
-        t!(".", "a/b", true);
-        t!(".", ".", true);
-        t!("/", "/", true);
-        t!("/", "/a/b", true);
-        t!("..", "a/b", true);
-        t!("../..", "a/b", true);
+        t!(s: "a/b/c", "a/b/c/d", true);
+        t!(s: "a/b/c", "a/b/c", true);
+        t!(s: "a/b/c", "a/b", false);
+        t!(s: "/a/b/c", "/a/b/c", true);
+        t!(s: "/a/b", "/a/b/c", true);
+        t!(s: "/a/b/c/d", "/a/b/c", false);
+        t!(s: "/a/b", "a/b/c", false);
+        t!(s: "a/b", "/a/b/c", false);
+        t!(s: "a/b/c", "a/b/d", false);
+        t!(s: "../a/b/c", "a/b/c", false);
+        t!(s: "a/b/c", "../a/b/c", false);
+        t!(s: "a/b/c", "a/b/cd", false);
+        t!(s: "a/b/cd", "a/b/c", false);
+        t!(s: "../a/b", "../a/b/c", true);
+        t!(s: ".", "a/b", true);
+        t!(s: ".", ".", true);
+        t!(s: "/", "/", true);
+        t!(s: "/", "/a/b", true);
+        t!(s: "..", "a/b", true);
+        t!(s: "../..", "a/b", true);
     }
 
     #[test]
     fn test_posix_path_relative_from() {
         macro_rules! t(
-            ($path:expr, $other:expr, $exp:expr) => (
+            (s: $path:expr, $other:expr, $exp:expr) => (
                 {
                     let path = PosixPath::from_str($path);
                     let other = PosixPath::from_str($other);
@@ -1288,42 +1567,42 @@ mod tests {
             )
         )
 
-        t!("a/b/c", "a/b", Some("c"));
-        t!("a/b/c", "a/b/d", Some("../c"));
-        t!("a/b/c", "a/b/c/d", Some(".."));
-        t!("a/b/c", "a/b/c", Some("."));
-        t!("a/b/c", "a/b/c/d/e", Some("../.."));
-        t!("a/b/c", "a/d/e", Some("../../b/c"));
-        t!("a/b/c", "d/e/f", Some("../../../a/b/c"));
-        t!("a/b/c", "/a/b/c", None);
-        t!("/a/b/c", "a/b/c", Some("/a/b/c"));
-        t!("/a/b/c", "/a/b/c/d", Some(".."));
-        t!("/a/b/c", "/a/b", Some("c"));
-        t!("/a/b/c", "/a/b/c/d/e", Some("../.."));
-        t!("/a/b/c", "/a/d/e", Some("../../b/c"));
-        t!("/a/b/c", "/d/e/f", Some("../../../a/b/c"));
-        t!("hi/there.txt", "hi/there", Some("../there.txt"));
-        t!(".", "a", Some(".."));
-        t!(".", "a/b", Some("../.."));
-        t!(".", ".", Some("."));
-        t!("a", ".", Some("a"));
-        t!("a/b", ".", Some("a/b"));
-        t!("..", ".", Some(".."));
-        t!("a/b/c", "a/b/c", Some("."));
-        t!("/a/b/c", "/a/b/c", Some("."));
-        t!("/", "/", Some("."));
-        t!("/", ".", Some("/"));
-        t!("../../a", "b", Some("../../../a"));
-        t!("a", "../../b", None);
-        t!("../../a", "../../b", Some("../a"));
-        t!("../../a", "../../a/b", Some(".."));
-        t!("../../a/b", "../../a", Some("b"));
+        t!(s: "a/b/c", "a/b", Some("c"));
+        t!(s: "a/b/c", "a/b/d", Some("../c"));
+        t!(s: "a/b/c", "a/b/c/d", Some(".."));
+        t!(s: "a/b/c", "a/b/c", Some("."));
+        t!(s: "a/b/c", "a/b/c/d/e", Some("../.."));
+        t!(s: "a/b/c", "a/d/e", Some("../../b/c"));
+        t!(s: "a/b/c", "d/e/f", Some("../../../a/b/c"));
+        t!(s: "a/b/c", "/a/b/c", None);
+        t!(s: "/a/b/c", "a/b/c", Some("/a/b/c"));
+        t!(s: "/a/b/c", "/a/b/c/d", Some(".."));
+        t!(s: "/a/b/c", "/a/b", Some("c"));
+        t!(s: "/a/b/c", "/a/b/c/d/e", Some("../.."));
+        t!(s: "/a/b/c", "/a/d/e", Some("../../b/c"));
+        t!(s: "/a/b/c", "/d/e/f", Some("../../../a/b/c"));
+        t!(s: "hi/there.txt", "hi/there", Some("../there.txt"));
+        t!(s: ".", "a", Some(".."));
+        t!(s: ".", "a/b", Some("../.."));
+        t!(s: ".", ".", Some("."));
+        t!(s: "a", ".", Some("a"));
+        t!(s: "a/b", ".", Some("a/b"));
+        t!(s: "..", ".", Some(".."));
+        t!(s: "a/b/c", "a/b/c", Some("."));
+        t!(s: "/a/b/c", "/a/b/c", Some("."));
+        t!(s: "/", "/", Some("."));
+        t!(s: "/", ".", Some("/"));
+        t!(s: "../../a", "b", Some("../../../a"));
+        t!(s: "a", "../../b", None);
+        t!(s: "../../a", "../../b", Some("../a"));
+        t!(s: "../../a", "../../a/b", Some(".."));
+        t!(s: "../../a/b", "../../a", Some("b"));
     }
 
     #[test]
     fn test_posix_component_iter() {
         macro_rules! t(
-            ($path:expr, $exp:expr) => (
+            (s: $path:expr, $exp:expr) => (
                 {
                     let path = PosixPath::from_str($path);
                     let comps = path.component_iter().to_owned_vec();
@@ -1331,19 +1610,30 @@ mod tests {
                     let exps = exp.iter().map(|x| x.as_bytes()).to_owned_vec();
                     assert_eq!(comps, exps);
                 }
+            );
+            (v: [$($arg:expr),+], [$([$($exp:expr),*]),*]) => (
+                {
+                    let path = PosixPath::new(b!($($arg),+));
+                    let comps = path.component_iter().to_owned_vec();
+                    let exp: &[&[u8]] = [$(b!($($exp),*)),*];
+                    assert_eq!(comps.as_slice(), exp);
+                }
             )
         )
 
-        t!("a/b/c", ["a", "b", "c"]);
-        t!("a/b/d", ["a", "b", "d"]);
-        t!("a/b/cd", ["a", "b", "cd"]);
-        t!("/a/b/c", ["a", "b", "c"]);
-        t!("a", ["a"]);
-        t!("/a", ["a"]);
-        t!("/", []);
-        t!(".", ["."]);
-        t!("..", [".."]);
-        t!("../..", ["..", ".."]);
-        t!("../../foo", ["..", "..", "foo"]);
+        t!(v: ["a/b/c"], [["a"], ["b"], ["c"]]);
+        t!(v: ["/", 0xff, "/a/", 0x80], [[0xff], ["a"], [0x80]]);
+        t!(v: ["../../foo", 0xcd, "bar"], [[".."], [".."], ["foo", 0xcd, "bar"]]);
+        t!(s: "a/b/c", ["a", "b", "c"]);
+        t!(s: "a/b/d", ["a", "b", "d"]);
+        t!(s: "a/b/cd", ["a", "b", "cd"]);
+        t!(s: "/a/b/c", ["a", "b", "c"]);
+        t!(s: "a", ["a"]);
+        t!(s: "/a", ["a"]);
+        t!(s: "/", []);
+        t!(s: ".", ["."]);
+        t!(s: "..", [".."]);
+        t!(s: "../..", ["..", ".."]);
+        t!(s: "../../foo", ["..", "..", "foo"]);
     }
 }
