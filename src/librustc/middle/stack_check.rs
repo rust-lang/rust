@@ -22,7 +22,8 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::span;
-use visit = syntax::oldvisit;
+use syntax::visit;
+use syntax::visit::Visitor;
 use util::ppaux::Repr;
 
 #[deriving(Clone)]
@@ -31,44 +32,56 @@ struct Context {
     safe_stack: bool
 }
 
+struct StackCheckVisitor;
+
+impl Visitor<Context> for StackCheckVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:Context) {
+        stack_check_item(*self, i, e);
+    }
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:span, n:ast::NodeId, e:Context) {
+        stack_check_fn(*self, fk, fd, b, s, n, e);
+    }
+    fn visit_expr(&mut self, ex:@ast::expr, e:Context) {
+        stack_check_expr(*self, ex, e);
+    }
+}
+
 pub fn stack_check_crate(tcx: ty::ctxt,
                          crate: &ast::Crate) {
     let new_cx = Context {
         tcx: tcx,
         safe_stack: false
     };
-    let visitor = visit::mk_vt(@visit::Visitor {
-        visit_item: stack_check_item,
-        visit_fn: stack_check_fn,
-        visit_expr: stack_check_expr,
-        ..*visit::default_visitor()
-    });
-    visit::visit_crate(crate, (new_cx, visitor));
+    let mut visitor = StackCheckVisitor;
+    visit::walk_crate(&mut visitor, crate, new_cx);
 }
 
-fn stack_check_item(item: @ast::item,
-                    (in_cx, v): (Context, visit::vt<Context>)) {
+fn stack_check_item(v: StackCheckVisitor,
+                    item: @ast::item,
+                    in_cx: Context) {
+    let mut v = v;
     match item.node {
         ast::item_fn(_, ast::extern_fn, _, _, _) => {
             // an extern fn is already being called from C code...
             let new_cx = Context {safe_stack: true, ..in_cx};
-            visit::visit_item(item, (new_cx, v));
+            visit::walk_item(&mut v, item, new_cx);
         }
         ast::item_fn(*) => {
             let safe_stack = fixed_stack_segment(item.attrs);
             let new_cx = Context {safe_stack: safe_stack, ..in_cx};
-            visit::visit_item(item, (new_cx, v));
+            visit::walk_item(&mut v, item, new_cx);
         }
         ast::item_impl(_, _, _, ref methods) => {
             // visit_method() would make this nicer
             for &method in methods.iter() {
                 let safe_stack = fixed_stack_segment(method.attrs);
                 let new_cx = Context {safe_stack: safe_stack, ..in_cx};
-                visit::visit_method_helper(method, (new_cx, v));
+                visit::walk_method_helper(&mut v, method, new_cx);
             }
         }
         _ => {
-            visit::visit_item(item, (in_cx, v));
+            visit::walk_item(&mut v, item, in_cx);
         }
     }
 
@@ -77,12 +90,13 @@ fn stack_check_item(item: @ast::item,
     }
 }
 
-fn stack_check_fn<'a>(fk: &visit::fn_kind,
+fn stack_check_fn<'a>(v: StackCheckVisitor,
+                      fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
                       sp: span,
                       id: ast::NodeId,
-                      (in_cx, v): (Context, visit::vt<Context>)) {
+                      in_cx: Context) {
     let safe_stack = match *fk {
         visit::fk_method(*) | visit::fk_item_fn(*) => {
             in_cx.safe_stack // see stack_check_item above
@@ -102,11 +116,13 @@ fn stack_check_fn<'a>(fk: &visit::fn_kind,
     };
     let new_cx = Context {safe_stack: safe_stack, ..in_cx};
     debug!("stack_check_fn(safe_stack=%b, id=%?)", safe_stack, id);
-    visit::visit_fn(fk, decl, body, sp, id, (new_cx, v));
+    let mut v = v;
+    visit::walk_fn(&mut v, fk, decl, body, sp, id, new_cx);
 }
 
-fn stack_check_expr<'a>(expr: @ast::expr,
-                        (cx, v): (Context, visit::vt<Context>)) {
+fn stack_check_expr<'a>(v: StackCheckVisitor,
+                        expr: @ast::expr,
+                        cx: Context) {
     debug!("stack_check_expr(safe_stack=%b, expr=%s)",
            cx.safe_stack, expr.repr(cx.tcx));
     if !cx.safe_stack {
@@ -126,7 +142,8 @@ fn stack_check_expr<'a>(expr: @ast::expr,
             _ => {}
         }
     }
-    visit::visit_expr(expr, (cx, v));
+    let mut v = v;
+    visit::walk_expr(&mut v, expr, cx);
 }
 
 fn call_to_extern_fn(cx: Context, callee: @ast::expr) {

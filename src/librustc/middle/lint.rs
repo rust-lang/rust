@@ -56,7 +56,7 @@ use syntax::visit::Visitor;
  * lint attributes.
  *
  * At each node of the ast which can modify lint attributes, all known lint
- * passes are also applied.  Each lint pass is an oldvisit::vt<()> structure.
+ * passes are also applied.  Each lint pass is a visit::Visitor implementator.
  * The visitors are constructed via the lint_*() functions below. There are
  * also some lint checks which operate directly on ast nodes (such as
  * @ast::item), and those are organized as check_item_*(). Each visitor added
@@ -508,7 +508,7 @@ impl Context {
         }
     }
 
-    fn add_oldvisit_lint(&mut self, v: @mut OuterLint) {
+    fn add_old_lint(&mut self, v: @mut OuterLint) {
         self.visitors.push(OldVisitor(v, v.inner_variant()));
     }
 
@@ -547,7 +547,7 @@ impl Context {
                     }
                 }
             }
-            // Can't use oldvisit::visit_method_helper because the
+            // Can't use visit::walk_method_helper because the
             // item_stopping_visitor has overridden visit_fn(&fk_method(... ))
             // to be a no-op, so manually invoke visit_fn.
             Method(m) => {
@@ -1450,14 +1450,14 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
     }
 
     // Register each of the lint passes with the context
-    cx.add_oldvisit_lint(lint_while_true());
-    cx.add_oldvisit_lint(lint_path_statement());
-    cx.add_oldvisit_lint(lint_heap());
-    cx.add_oldvisit_lint(lint_type_limits());
-    cx.add_oldvisit_lint(lint_unused_unsafe());
-    cx.add_oldvisit_lint(lint_unused_mut());
-    cx.add_oldvisit_lint(lint_unnecessary_allocations());
-    cx.add_oldvisit_lint(lint_missing_doc());
+    cx.add_old_lint(lint_while_true());
+    cx.add_old_lint(lint_path_statement());
+    cx.add_old_lint(lint_heap());
+    cx.add_old_lint(lint_type_limits());
+    cx.add_old_lint(lint_unused_unsafe());
+    cx.add_old_lint(lint_unused_mut());
+    cx.add_old_lint(lint_unnecessary_allocations());
+    cx.add_old_lint(lint_missing_doc());
     cx.add_lint(lint_session(cx));
 
     // Actually perform the lint checks (iterating the ast)
