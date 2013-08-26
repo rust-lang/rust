@@ -23,7 +23,7 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::Times;
 use iterator::{Iterator, FromIterator, Extendable};
-use iterator::{Filter, AdditiveIterator, Map, Enumerate};
+use iterator::{Filter, AdditiveIterator, Map};
 use iterator::{Invert, DoubleEndedIterator};
 use libc;
 use num::{Saturating, Zero};
@@ -388,26 +388,30 @@ pub type ByteIterator<'self> =
 /// Use with the `std::iterator` module.
 pub type ByteRevIterator<'self> = Invert<ByteIterator<'self>>;
 
-/// An iterator over byte index and either &u8 or char
-#[deriving(Clone)]
-enum OffsetIterator<'self> {
-    // use ByteIterator here when it can be cloned
-    ByteOffset(Enumerate<vec::VecIterator<'self, u8>>),
-    CharOffset(CharOffsetIterator<'self>),
-}
-
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
-pub struct CharSplitIterator<'self,Sep> {
-    priv iter: OffsetIterator<'self>,
+pub struct CharSplitIterator<'self, Sep> {
+    /// The slice remaining to be iterated
     priv string: &'self str,
-    priv position: uint,
     priv sep: Sep,
-    /// The number of splits remaining
-    priv count: uint,
     /// Whether an empty string at the end is allowed
     priv allow_trailing_empty: bool,
+    priv only_ascii: bool,
     priv finished: bool,
+}
+
+/// An iterator over the substrings of a string, separated by `sep`,
+/// starting from the back of the string.
+pub type CharRSplitIterator<'self, Sep> = Invert<CharSplitIterator<'self, Sep>>;
+
+/// An iterator over the substrings of a string, separated by `sep`,
+/// splitting at most `count` times.
+#[deriving(Clone)]
+pub struct CharSplitNIterator<'self, Sep> {
+    priv iter: CharSplitIterator<'self, Sep>,
+    /// The number of splits remaining
+    priv count: uint,
+    priv invert: bool,
 }
 
 /// An iterator over the words of a string, separated by an sequence of whitespace
@@ -418,46 +422,101 @@ pub type WordIterator<'self> =
 pub type AnyLineIterator<'self> =
     Map<'self, &'self str, &'self str, CharSplitIterator<'self, char>>;
 
+impl<'self, Sep> CharSplitIterator<'self, Sep> {
+    #[inline]
+    fn get_end(&mut self) -> Option<&'self str> {
+        if !self.finished && (self.allow_trailing_empty || self.string.len() > 0) {
+            self.finished = true;
+            Some(self.string)
+        } else {
+            None
+        }
+    }
+}
+
 impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitIterator<'self, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
 
-        let start = self.position;
-        let len = self.string.len();
-
-        if self.count > 0 {
-            match self.iter {
-                // this gives a *huge* speed up for splitting on ASCII
-                // characters (e.g. '\n' or ' ')
-                ByteOffset(ref mut iter) =>
-                    for (idx, &byte) in *iter {
-                        if self.sep.matches(byte as char) {
-                            self.position = idx + 1;
-                            self.count -= 1;
-                            return Some(unsafe {
-                                raw::slice_bytes(self.string, start, idx)
-                            })
-                        }
-                    },
-                CharOffset(ref mut iter) =>
-                    for (idx, ch) in *iter {
-                        if self.sep.matches(ch) {
-                            // skip over the separator
-                            self.position = self.string.char_range_at(idx).next;
-                            self.count -= 1;
-                            return Some(unsafe {
-                                raw::slice_bytes(self.string, start, idx)
-                            })
-                        }
-                    },
+        let mut next_split = None;
+        if self.only_ascii {
+            for (idx, byte) in self.string.byte_iter().enumerate() {
+                if self.sep.matches(byte as char) && byte < 128u8 {
+                    next_split = Some((idx, idx + 1));
+                    break;
+                }
+            }
+        } else {
+            for (idx, ch) in self.string.char_offset_iter() {
+                if self.sep.matches(ch) {
+                    next_split = Some((idx, self.string.char_range_at(idx).next));
+                    break;
+                }
             }
         }
-        self.finished = true;
-        if self.allow_trailing_empty || start < len {
-            Some(unsafe { raw::slice_bytes(self.string, start, len) })
+        match next_split {
+            Some((a, b)) => unsafe {
+                let elt = raw::slice_unchecked(self.string, 0, a);
+                self.string = raw::slice_unchecked(self.string, b, self.string.len());
+                Some(elt)
+            },
+            None => self.get_end(),
+        }
+    }
+}
+
+impl<'self, Sep: CharEq> DoubleEndedIterator<&'self str>
+for CharSplitIterator<'self, Sep> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'self str> {
+        if self.finished { return None }
+
+        if !self.allow_trailing_empty {
+            self.allow_trailing_empty = true;
+            match self.next_back() {
+                Some(elt) if !elt.is_empty() => return Some(elt),
+                _ => if self.finished { return None }
+            }
+        }
+        let len = self.string.len();
+        let mut next_split = None;
+
+        if self.only_ascii {
+            for (j, byte) in self.string.byte_rev_iter().enumerate() {
+                if self.sep.matches(byte as char) && byte < 128u8 {
+                    let idx = len - j - 1;
+                    next_split = Some((idx, idx + 1));
+                    break;
+                }
+            }
         } else {
-            None
+            for (idx, ch) in self.string.char_offset_rev_iter() {
+                if self.sep.matches(ch) {
+                    next_split = Some((idx, self.string.char_range_at(idx).next));
+                    break;
+                }
+            }
+        }
+        match next_split {
+            Some((a, b)) => unsafe {
+                let elt = raw::slice_unchecked(self.string, b, len);
+                self.string = raw::slice_unchecked(self.string, 0, a);
+                Some(elt)
+            },
+            None => { self.finished = true; Some(self.string) }
+        }
+    }
+}
+
+impl<'self, Sep: CharEq> Iterator<&'self str> for CharSplitNIterator<'self, Sep> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self str> {
+        if self.count != 0 {
+            self.count -= 1;
+            if self.invert { self.iter.next_back() } else { self.iter.next() }
+        } else {
+            self.iter.get_end()
         }
     }
 }
@@ -1300,9 +1359,10 @@ pub trait StrSlice<'self> {
     fn char_offset_iter(&self) -> CharOffsetIterator<'self>;
     fn char_offset_rev_iter(&self) -> CharOffsetRevIterator<'self>;
     fn split_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep>;
-    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitIterator<'self, Sep>;
-    fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
-        -> CharSplitIterator<'self, Sep>;
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'self, Sep>;
+    fn split_terminator_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep>;
+    fn rsplit_iter<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'self, Sep>;
+    fn rsplitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'self, Sep>;
     fn matches_index_iter(&self, sep: &'self str) -> MatchesIndexIterator<'self>;
     fn split_str_iter(&self, &'self str) -> StrSplitIterator<'self>;
     fn line_iter(&self) -> CharSplitIterator<'self, char>;
@@ -1439,39 +1499,77 @@ impl<'self> StrSlice<'self> for &'self str {
     /// ~~~
     #[inline]
     fn split_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep> {
-        self.split_options_iter(sep, self.len(), true)
+        CharSplitIterator {
+            string: *self,
+            only_ascii: sep.only_ascii(),
+            sep: sep,
+            allow_trailing_empty: true,
+            finished: false,
+        }
     }
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, restricted to splitting at most `count`
     /// times.
     #[inline]
-    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitIterator<'self, Sep> {
-        self.split_options_iter(sep, count, true)
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint)
+        -> CharSplitNIterator<'self, Sep> {
+        CharSplitNIterator {
+            iter: self.split_iter(sep),
+            count: count,
+            invert: false,
+        }
     }
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, splitting at most `count` times, and
-    /// possibly not including the trailing empty substring, if it
-    /// exists.
+    /// matched by `sep`.
+    ///
+    /// Equivalent to `split_iter`, except that the trailing substring
+    /// is skipped if empty (terminator semantics).
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let v: ~[&str] = "A.B.".split_terminator_iter('.').collect();
+    /// assert_eq!(v, ~["A", "B"]);
+    /// ~~~
     #[inline]
-    fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
+    fn split_terminator_iter<Sep: CharEq>(&self, sep: Sep)
         -> CharSplitIterator<'self, Sep> {
-        let iter = if sep.only_ascii() {
-            ByteOffset(self.as_bytes().iter().enumerate())
-        } else {
-            CharOffset(self.char_offset_iter())
-        };
         CharSplitIterator {
-            iter: iter,
-            string: *self,
-            position: 0,
-            sep: sep,
-            count: count,
-            allow_trailing_empty: allow_trailing_empty,
-            finished: false,
+            allow_trailing_empty: false,
+            ..self.split_iter(sep)
         }
     }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, in reverse order
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let v: ~[&str] = "Mary had a little lamb".rsplit_iter(' ').collect();
+    /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
+    /// ~~~
+    #[inline]
+    fn rsplit_iter<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'self, Sep> {
+        self.split_iter(sep).invert()
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, starting from the end of the string.
+    /// Restricted to splitting at most `count` times.
+    #[inline]
+    fn rsplitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint)
+        -> CharSplitNIterator<'self, Sep> {
+        CharSplitNIterator {
+            iter: self.split_iter(sep),
+            count: count,
+            invert: true,
+        }
+    }
+
+
 
     /// An iterator over the start and end indices of each match of
     /// `sep` within `self`.
@@ -1506,7 +1604,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// by `\n`).
     #[inline]
     fn line_iter(&self) -> CharSplitIterator<'self, char> {
-        self.split_options_iter('\n', self.len(), false)
+        self.split_terminator_iter('\n')
     }
 
     /// An iterator over the lines of a string, separated by either
@@ -3400,17 +3498,33 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.split_iter(' ').collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        let mut rsplit: ~[&str] = data.rsplit_iter(' ').collect();
+        rsplit.reverse();
+        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let split: ~[&str] = data.split_iter(|c: char| c == ' ').collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        let mut rsplit: ~[&str] = data.rsplit_iter(|c: char| c == ' ').collect();
+        rsplit.reverse();
+        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
         let split: ~[&str] = data.split_iter('ä').collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+
+        let mut rsplit: ~[&str] = data.rsplit_iter('ä').collect();
+        rsplit.reverse();
+        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let split: ~[&str] = data.split_iter(|c: char| c == 'ä').collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+
+        let mut rsplit: ~[&str] = data.rsplit_iter(|c: char| c == 'ä').collect();
+        rsplit.reverse();
+        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
@@ -3432,13 +3546,48 @@ mod tests {
     }
 
     #[test]
+    fn test_rsplitn_char_iterator() {
+        let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+        let mut split: ~[&str] = data.rsplitn_iter(' ', 3).collect();
+        split.reverse();
+        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        let mut split: ~[&str] = data.rsplitn_iter(|c: char| c == ' ', 3).collect();
+        split.reverse();
+        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        // Unicode
+        let mut split: ~[&str] = data.rsplitn_iter('ä', 3).collect();
+        split.reverse();
+        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+
+        let mut split: ~[&str] = data.rsplitn_iter(|c: char| c == 'ä', 3).collect();
+        split.reverse();
+        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+    }
+
+    #[test]
     fn test_split_char_iterator_no_trailing() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let split: ~[&str] = data.split_options_iter('\n', 1000, true).collect();
+        let split: ~[&str] = data.split_iter('\n').collect();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
 
-        let split: ~[&str] = data.split_options_iter('\n', 1000, false).collect();
+        let split: ~[&str] = data.split_terminator_iter('\n').collect();
+        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+    }
+
+    #[test]
+    fn test_rev_split_char_iterator_no_trailing() {
+        let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+        let mut split: ~[&str] = data.split_iter('\n').invert().collect();
+        split.reverse();
+        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+
+        let mut split: ~[&str] = data.split_terminator_iter('\n').invert().collect();
+        split.reverse();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
@@ -3698,6 +3847,89 @@ mod bench {
 
         do bh.iter {
             assert_eq!(s.char_offset_rev_iter().len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_unicode_ascii(bh: &mut BenchHarness) {
+        let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
+
+        do bh.iter {
+            assert_eq!(s.split_iter('V').len(), 3);
+        }
+    }
+
+    #[bench]
+    fn split_iter_unicode_not_ascii(bh: &mut BenchHarness) {
+        struct NotAscii(char);
+        impl CharEq for NotAscii {
+            fn matches(&self, c: char) -> bool {
+                **self == c
+            }
+            fn only_ascii(&self) -> bool { false }
+        }
+        let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
+
+        do bh.iter {
+            assert_eq!(s.split_iter(NotAscii('V')).len(), 3);
+        }
+    }
+
+
+    #[bench]
+    fn split_iter_ascii(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(' ').len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_not_ascii(bh: &mut BenchHarness) {
+        struct NotAscii(char);
+        impl CharEq for NotAscii {
+            #[inline]
+            fn matches(&self, c: char) -> bool { **self == c }
+            fn only_ascii(&self) -> bool { false }
+        }
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(NotAscii(' ')).len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_extern_fn(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+        fn pred(c: char) -> bool { c == ' ' }
+
+        do bh.iter {
+            assert_eq!(s.split_iter(pred).len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_closure(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(|c: char| c == ' ').len(), len);
+        }
+    }
+
+    #[bench]
+    fn split_iter_slice(bh: &mut BenchHarness) {
+        let s = "Mary had a little lamb, Little lamb, little-lamb.";
+        let len = s.split_iter(' ').len();
+
+        do bh.iter {
+            assert_eq!(s.split_iter(&[' ']).len(), len);
         }
     }
 
