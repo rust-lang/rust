@@ -764,6 +764,172 @@ pub mod types {
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
             }
         }
+
+        #[cfg(target_arch = "x86_64")]
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u64;
+                pub type ptrdiff_t = i64;
+                pub type clock_t = i32;
+                pub type time_t = i64;
+                pub type wchar_t = u16;
+            }
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = int;
+                pub type uintptr_t = uint;
+            }
+            pub mod posix88 {
+                pub type off_t = i32; // XXX unless _FILE_OFFSET_BITS == 64
+                pub type dev_t = u32;
+                pub type ino_t = i16;
+                pub type pid_t = i64;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i64;
+            }
+            pub mod posix01 {
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
+                use ptr;
+                use libc::types::common::c95::c_void;
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+                use libc::types::os::arch::c95::{c_ulong};
+                use libc::types::os::arch::c95::{wchar_t};
+                use libc::types::os::arch::c99::{c_ulonglong};
+
+                pub type BOOL = c_int;
+                pub type BYTE = u8;
+                pub type CCHAR = c_char;
+                pub type CHAR = c_char;
+
+                pub type DWORD = c_ulong;
+                pub type DWORDLONG = c_ulonglong;
+
+                pub type HANDLE = LPVOID;
+                pub type HMODULE = c_uint;
+
+                pub type LONG_PTR = i64; // changed
+
+                pub type LPCWSTR = *WCHAR;
+                pub type LPCSTR = *CHAR;
+                pub type LPCTSTR = *CHAR;
+                pub type LPTCH = *CHAR;
+
+                pub type LPWSTR = *mut WCHAR;
+                pub type LPSTR = *mut CHAR;
+                pub type LPTSTR = *mut CHAR;
+
+                // Not really, but opaque to us.
+                pub type LPSECURITY_ATTRIBUTES = LPVOID;
+
+                pub type LPVOID = *mut c_void;
+                pub type LPCVOID = *c_void;
+                pub type LPBYTE = *mut BYTE;
+                pub type LPWORD = *mut WORD;
+                pub type LPDWORD = *mut DWORD;
+                pub type LPHANDLE = *mut HANDLE;
+
+                pub type LRESULT = LONG_PTR;
+                pub type PBOOL = *mut BOOL;
+                pub type WCHAR = wchar_t;
+                pub type WORD = u16;
+                pub type SIZE_T = size_t;
+
+                pub type time64_t = i64;
+                pub type int64 = i64;
+
+                pub struct STARTUPINFO {
+                    cb: DWORD,
+                    lpReserved: LPTSTR,
+                    lpDesktop: LPTSTR,
+                    lpTitle: LPTSTR,
+                    dwX: DWORD,
+                    dwY: DWORD,
+                    dwXSize: DWORD,
+                    dwYSize: DWORD,
+                    dwXCountChars: DWORD,
+                    dwYCountCharts: DWORD,
+                    dwFillAttribute: DWORD,
+                    dwFlags: DWORD,
+                    wShowWindow: WORD,
+                    cbReserved2: WORD,
+                    lpReserved2: LPBYTE,
+                    hStdInput: HANDLE,
+                    hStdOutput: HANDLE,
+                    hStdError: HANDLE
+                }
+                pub type LPSTARTUPINFO = *mut STARTUPINFO;
+
+                pub struct PROCESS_INFORMATION {
+                    hProcess: HANDLE,
+                    hThread: HANDLE,
+                    dwProcessId: DWORD,
+                    dwThreadId: DWORD
+                }
+                pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
+
+                pub struct SYSTEM_INFO {
+                    wProcessorArchitecture: WORD,
+                    wReserved: WORD,
+                    dwPageSize: DWORD,
+                    lpMinimumApplicationAddress: LPVOID,
+                    lpMaximumApplicationAddress: LPVOID,
+                    dwActiveProcessorMask: DWORD,
+                    dwNumberOfProcessors: DWORD,
+                    dwProcessorType: DWORD,
+                    dwAllocationGranularity: DWORD,
+                    wProcessorLevel: WORD,
+                    wProcessorRevision: WORD
+                }
+                pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
+
+                impl SYSTEM_INFO {
+                    pub fn new() -> SYSTEM_INFO {
+                        SYSTEM_INFO {
+                            wProcessorArchitecture: 0,
+                            wReserved: 0,
+                            dwPageSize: 0,
+                            lpMinimumApplicationAddress: ptr::mut_null(),
+                            lpMaximumApplicationAddress: ptr::mut_null(),
+                            dwActiveProcessorMask: 0,
+                            dwNumberOfProcessors: 0,
+                            dwProcessorType: 0,
+                            dwAllocationGranularity: 0,
+                            wProcessorLevel: 0,
+                            wProcessorRevision: 0
+                        }
+                    }
+                }
+
+                pub struct MEMORY_BASIC_INFORMATION {
+                    BaseAddress: LPVOID,
+                    AllocationBase: LPVOID,
+                    AllocationProtect: DWORD,
+                    RegionSize: SIZE_T,
+                    State: DWORD,
+                    Protect: DWORD,
+                    Type: DWORD
+                }
+                pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
+            }
+        }
     }
 
     #[cfg(target_os = "macos")]
@@ -3093,8 +3259,114 @@ pub mod funcs {
                                                LPSYSTEM_INFO};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
+            #[cfg(target_arch = "x86")]
             #[abi = "stdcall"]
             extern "stdcall" {
+                pub fn GetEnvironmentVariableW(n: LPCWSTR,
+                                               v: LPWSTR,
+                                               nsize: DWORD)
+                                               -> DWORD;
+                pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
+                                               -> BOOL;
+                pub fn GetEnvironmentStringsA() -> LPTCH;
+                pub fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
+                pub fn GetModuleFileNameW(hModule: HMODULE,
+                                          lpFilename: LPWSTR,
+                                          nSize: DWORD)
+                                          -> DWORD;
+                pub fn CreateDirectoryW(lpPathName: LPCWSTR,
+                                        lpSecurityAttributes:
+                                        LPSECURITY_ATTRIBUTES)
+                                        -> BOOL;
+                pub fn CopyFileW(lpExistingFileName: LPCWSTR,
+                                        lpNewFileName: LPCWSTR,
+                                        bFailIfExists: BOOL)
+                                        -> BOOL;
+                pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                pub fn GetLastError() -> DWORD;
+                pub fn FindFirstFileW(fileName: *u16, findFileData: HANDLE)
+                                      -> HANDLE;
+                pub fn FindNextFileW(findFile: HANDLE, findFileData: HANDLE)
+                                     -> BOOL;
+                pub fn FindClose(findFile: HANDLE) -> BOOL;
+                pub fn DuplicateHandle(hSourceProcessHandle: HANDLE,
+                                       hSourceHandle: HANDLE,
+                                       hTargetProcessHandle: HANDLE,
+                                       lpTargetHandle: LPHANDLE,
+                                       dwDesiredAccess: DWORD,
+                                       bInheritHandle: BOOL,
+                                       dwOptions: DWORD)
+                                       -> BOOL;
+                pub fn CloseHandle(hObject: HANDLE) -> BOOL;
+                pub fn OpenProcess(dwDesiredAccess: DWORD,
+                                   bInheritHandle: BOOL,
+                                   dwProcessId: DWORD)
+                                   -> HANDLE;
+                pub fn GetCurrentProcess() -> HANDLE;
+                pub fn CreateProcessA(lpApplicationName: LPCTSTR,
+                                      lpCommandLine: LPTSTR,
+                                      lpProcessAttributes:
+                                      LPSECURITY_ATTRIBUTES,
+                                      lpThreadAttributes:
+                                      LPSECURITY_ATTRIBUTES,
+                                      bInheritHandles: BOOL,
+                                      dwCreationFlags: DWORD,
+                                      lpEnvironment: LPVOID,
+                                      lpCurrentDirectory: LPCTSTR,
+                                      lpStartupInfo: LPSTARTUPINFO,
+                                      lpProcessInformation:
+                                      LPPROCESS_INFORMATION)
+                                      -> BOOL;
+                pub fn WaitForSingleObject(hHandle: HANDLE,
+                                           dwMilliseconds: DWORD)
+                                           -> DWORD;
+                pub fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint)
+                                        -> BOOL;
+                pub fn GetExitCodeProcess(hProcess: HANDLE,
+                                          lpExitCode: LPDWORD)
+                                          -> BOOL;
+                pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
+                pub fn VirtualAlloc(lpAddress: LPVOID,
+                                    dwSize: SIZE_T,
+                                    flAllocationType: DWORD,
+                                    flProtect: DWORD)
+                                    -> LPVOID;
+                pub fn VirtualFree(lpAddress: LPVOID,
+                                   dwSize: SIZE_T,
+                                   dwFreeType: DWORD)
+                                   -> BOOL;
+                pub fn VirtualLock(lpAddress: LPVOID, dwSize: SIZE_T) -> BOOL;
+                pub fn VirtualUnlock(lpAddress: LPVOID, dwSize: SIZE_T)
+                                     -> BOOL;
+                pub fn VirtualProtect(lpAddress: LPVOID,
+                                      dwSize: SIZE_T,
+                                      flNewProtect: DWORD,
+                                      lpflOldProtect: LPDWORD)
+                                      -> BOOL;
+                pub fn VirtualQuery(lpAddress: LPCVOID,
+                                    lpBuffer: LPMEMORY_BASIC_INFORMATION,
+                                    dwLength: SIZE_T)
+                                    -> SIZE_T;
+                pub fn CreateFileMappingW(hFile: HANDLE,
+                                          lpAttributes: LPSECURITY_ATTRIBUTES,
+                                          flProtect: DWORD,
+                                          dwMaximumSizeHigh: DWORD,
+                                          dwMaximumSizeLow: DWORD,
+                                          lpName: LPCTSTR)
+                                          -> HANDLE;
+                pub fn MapViewOfFile(hFileMappingObject: HANDLE,
+                                     dwDesiredAccess: DWORD,
+                                     dwFileOffsetHigh: DWORD,
+                                     dwFileOffsetLow: DWORD,
+                                     dwNumberOfBytesToMap: SIZE_T)
+                                     -> LPVOID;
+                pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
+            }
+
+            #[cfg(target_arch = "x86_64")]
+            extern {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
                                                v: LPWSTR,
                                                nsize: DWORD)
