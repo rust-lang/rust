@@ -11,7 +11,7 @@
 //! Finds crate binaries and loads their metadata
 
 
-use lib::llvm::{False, llvm, mk_object_file, mk_section_iter, ObjectFile};
+use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::FileSearch;
@@ -32,6 +32,7 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::vec;
+use extra::flate;
 
 pub enum os {
     os_macos,
@@ -53,14 +54,7 @@ pub struct Context {
     intr: @ident_interner
 }
 
-#[deriving(Clone)]
-pub enum MetadataSection {
-    // A pointer to the object file metadata section, along with
-    // the ObjectFile handle that keeps it from being destructed
-    UnsafeSection(@ObjectFile, *u8, uint)
-}
-
-pub fn load_library_crate(cx: &Context) -> (~str, MetadataSection) {
+pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
       Some(t) => t,
       None => {
@@ -71,7 +65,7 @@ pub fn load_library_crate(cx: &Context) -> (~str, MetadataSection) {
     }
 }
 
-fn find_library_crate(cx: &Context) -> Option<(~str, MetadataSection)> {
+fn find_library_crate(cx: &Context) -> Option<(~str, @~[u8])> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
@@ -93,7 +87,7 @@ fn find_library_crate_aux(
     cx: &Context,
     (prefix, suffix): (~str, ~str),
     filesearch: @filesearch::FileSearch
-) -> Option<(~str, MetadataSection)> {
+) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
     // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
     let prefix = fmt!("%s%s-", prefix, crate_name);
@@ -177,7 +171,7 @@ pub fn note_linkage_attrs(intr: @ident_interner,
     }
 }
 
-fn crate_matches(crate_data: MetadataSection,
+fn crate_matches(crate_data: @~[u8],
                  metas: &[@ast::MetaItem],
                  hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
@@ -203,17 +197,17 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
 }
 
 fn get_metadata_section(os: os,
-                        filename: &Path) -> Option<MetadataSection> {
+                        filename: &Path) -> Option<@~[u8]> {
     unsafe {
         let mb = do filename.with_c_str |buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
         };
-        if mb as int == 0 { return None; }
-        let of = @match mk_object_file(mb) {
+        if mb as int == 0 { return option::None::<@~[u8]>; }
+        let of = match mk_object_file(mb) {
             option::Some(of) => of,
-            _ => return None
+            _ => return option::None::<@~[u8]>
         };
-        let si = mk_section_iter((*of).llof);
+        let si = mk_section_iter(of.llof);
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
             let name = str::raw::from_c_str(name_buf);
@@ -221,6 +215,7 @@ fn get_metadata_section(os: os,
             if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
+                let mut found = None;
                 let cvbuf: *u8 = cast::transmute(cbuf);
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking %u bytes of metadata-version stamp",
@@ -234,12 +229,19 @@ fn get_metadata_section(os: os,
                 if !version_ok { return None; }
 
                 let cvbuf1 = ptr::offset(cvbuf, vlen as int);
-
-                return Some(UnsafeSection(of, cvbuf1, csz-vlen))
+                debug!("inflating %u bytes of compressed metadata",
+                       csz - vlen);
+                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
+                    let inflated = flate::inflate_bytes(bytes);
+                    found = Some(@(inflated));
+                }
+                if found != None {
+                    return found;
+                }
             }
             llvm::LLVMMoveToNextSection(si.llsi);
         }
-        return None;
+        return option::None::<@~[u8]>;
     }
 }
 
