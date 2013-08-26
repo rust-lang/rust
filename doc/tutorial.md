@@ -2553,6 +2553,7 @@ tutorials on individual topics.
 * [Macros][macros]
 * [The foreign function interface][ffi]
 * [Containers and iterators](tutorial-container.html)
+* [Error-handling and Conditions](tutorial-conditions.html)
 
 There is further documentation on the [wiki].
 
