@@ -2015,7 +2015,7 @@ mod bench {
     }
 
     #[bench]
-    fn fib_500(bh: &mut BenchHarness) {
+    fn fib_100(bh: &mut BenchHarness) {
         do bh.iter { fib(100); }
     }
 
