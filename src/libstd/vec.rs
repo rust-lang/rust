@@ -75,6 +75,7 @@ use rt::global_heap::realloc_raw;
 use sys;
 use sys::size_of;
 use uint;
+use unstable::finally::Finally;
 use unstable::intrinsics;
 use unstable::intrinsics::{get_tydesc, contains_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
@@ -97,11 +98,14 @@ pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> ~[T] {
         let mut v = with_capacity(n_elts);
         let p = raw::to_mut_ptr(v);
         let mut i: uint = 0u;
-        while i < n_elts {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
-            i += 1u;
+        do (|| {
+            while i < n_elts {
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
+                i += 1u;
+            }
+        }).finally {
+            raw::set_len(&mut v, i);
         }
-        raw::set_len(&mut v, n_elts);
         v
     }
 }
