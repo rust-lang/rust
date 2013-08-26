@@ -144,13 +144,10 @@ impl TyVisitor for MyVisitor {
 
 
     fn visit_trait(&self) -> bool { true }
-    fn visit_var(&self) -> bool { true }
-    fn visit_var_integral(&self) -> bool { true }
     fn visit_param(&self, _i: uint) -> bool { true }
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
     fn visit_opaque_box(&self) -> bool { true }
-    fn visit_constr(&self, _inner: *TyDesc) -> bool { true }
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
