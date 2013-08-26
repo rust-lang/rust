@@ -317,7 +317,7 @@ impl Reflector {
                 for (i, v) in variants.iter().enumerate() {
                     let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
-                                         this.c_uint(v.disr_val),
+                                         C_integral(self.bcx.ccx().int_type, v.disr_val, false),
                                          this.c_uint(v.args.len()),
                                          this.c_slice(name)];
                     do this.bracketed("enum_variant", variant_args) |this| {

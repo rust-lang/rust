@@ -292,7 +292,7 @@ fn encode_symbol(ecx: &EncodeContext,
 
 fn encode_disr_val(_: &EncodeContext,
                    ebml_w: &mut writer::Encoder,
-                   disr_val: uint) {
+                   disr_val: ty::Disr) {
     ebml_w.start_tag(tag_disr_val);
     let s = disr_val.to_str();
     ebml_w.writer.write(s.as_bytes());

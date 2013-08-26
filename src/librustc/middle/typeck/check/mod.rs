@@ -83,7 +83,7 @@ use middle::pat_util;
 use middle::lint::unreachable_code;
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{substs, param_ty, ExprTyProvider};
+use middle::ty::{substs, param_ty, Disr, ExprTyProvider};
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -3000,8 +3000,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
         let mut variants: ~[@ty::VariantInfo] = ~[];
-        let mut disr_vals: ~[uint] = ~[];
-        let mut prev_disr_val: Option<uint> = None;
+        let mut disr_vals: ~[ty::Disr] = ~[];
+        let mut prev_disr_val: Option<ty::Disr> = None;
 
         for v in vs.iter() {
 
@@ -3024,8 +3024,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                     // handle, so we may still get an internal compiler error
 
                     match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
-                        Ok(const_eval::const_int(val)) => current_disr_val = val as uint,
-                        Ok(const_eval::const_uint(val)) => current_disr_val = val as uint,
+                        Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
+                        Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
                         Ok(_) => {
                             ccx.tcx.sess.span_err(e.span, "expected signed integer constant");
                         }
