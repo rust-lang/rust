@@ -250,6 +250,8 @@ impl CtxMethods for Ctx {
                     // argument
                     let pkgid = PkgId::new(args[0]);
                     let workspaces = pkg_parent_workspaces(&pkgid);
+                    debug!("package ID = %s, found it in %? workspaces",
+                           pkgid.to_str(), workspaces.len());
                     if workspaces.is_empty() {
                         let rp = rust_path();
                         assert!(!rp.is_empty());

@@ -213,11 +213,9 @@ fn is_url_like(p: &Path) -> bool {
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
     // Check for extra '#' characters separately
     if s.split_iter('#').len() > 2 {
-        None
+        return None;
     }
-    else {
-        split_version_general(s, '#')
-    }
+    split_version_general(s, '#')
 }
 
 pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Version)> {
