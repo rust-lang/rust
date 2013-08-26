@@ -282,12 +282,14 @@ impl TyVisitor for ReprVisitor {
             self.write_escaped_slice(*s);
         }
     }
+
     fn visit_estr_uniq(&self) -> bool {
         do self.get::<~str> |s| {
             self.writer.write_char('~');
             self.write_escaped_slice(*s);
         }
     }
+
     fn visit_estr_slice(&self) -> bool {
         do self.get::<&str> |s| {
             self.write_escaped_slice(*s);
@@ -322,10 +324,20 @@ impl TyVisitor for ReprVisitor {
         }
     }
 
+    #[cfg(stage0)]
     fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
         do self.get::<*c_void> |p| {
             self.writer.write_str(fmt!("(0x%x as *())",
                                        *p as uint));
+        }
+    }
+
+    #[cfg(not(stage0))]
+    fn visit_ptr(&self, mtbl: uint, _inner: *TyDesc) -> bool {
+        do self.get::<*c_void> |p| {
+            self.writer.write_str(fmt!("(0x%x as *", *p as uint));
+            self.write_mut_qualifier(mtbl);
+            self.writer.write_str("())");
         }
     }
 
@@ -612,6 +624,9 @@ fn test_repr() {
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");
     exact_test(&(@mut [1, 2]), "@mut [1, 2]");
+
+    exact_test(&(0 as *()), "(0x0 as *())");
+    exact_test(&(0 as *mut ()), "(0x0 as *mut ())");
 
     exact_test(&(1,), "(1,)");
     exact_test(&(@[1,2,3,4,5,6,7,8]),
