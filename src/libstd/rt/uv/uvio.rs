@@ -32,11 +32,13 @@ use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr, accum_sockaddrs};
 use rt::uv::addrinfo::GetAddrInfoRequest;
 use unstable::sync::Exclusive;
+use path::Path;
 use super::super::io::support::PathLike;
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
           S_IRUSR, S_IWUSR};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
-            CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite};
+             CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
+             FileStat};
 use task;
 
 #[cfg(test)] use container::Container;
@@ -516,7 +518,6 @@ impl IoFactory for UvIoFactory {
 
     fn fs_from_raw_fd(&mut self, fd: c_int, close_on_drop: bool) -> ~RtioFileStream {
         let loop_ = Loop {handle: self.uv_loop().native_handle()};
-        let fd = file::FileDescriptor(fd);
         let home = get_handle_to_current_scheduler!();
         ~UvFileStream::new(loop_, fd, close_on_drop, home) as ~RtioFileStream
     }
@@ -547,15 +548,16 @@ impl IoFactory for UvIoFactory {
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
+            let open_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                do file::FsRequest::open(self.uv_loop(), path, flags as int, create_mode as int)
+                do open_req.open(self.uv_loop(), path, flags as int, create_mode as int)
                       |req,err| {
                     if err.is_none() {
                         let loop_ = Loop {handle: req.get_loop().native_handle()};
                         let home = get_handle_to_current_scheduler!();
-                        let fd = file::FileDescriptor(req.get_result());
+                        let fd = req.get_result() as c_int;
                         let fs = ~UvFileStream::new(
                             loop_, fd, true, home) as ~RtioFileStream;
                         let res = Ok(fs);
@@ -570,7 +572,7 @@ impl IoFactory for UvIoFactory {
                     }
                 };
             };
-        }
+        };
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
@@ -581,10 +583,11 @@ impl IoFactory for UvIoFactory {
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
+            let unlink_req = FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
-                do file::FsRequest::unlink(self.uv_loop(), path) |_, err| {
+                do unlink_req.unlink(self.uv_loop(), path) |_, err| {
                     let res = match err {
                         None => Ok(()),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -593,8 +596,45 @@ impl IoFactory for UvIoFactory {
                     let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
-            };
+            }
         }
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
+    }
+    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError> {
+        use str::StrSlice;
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<FileStat,
+                                           IoError>> = &result_cell;
+        let path_cell = Cell::new(path);
+        do task::unkillable { // FIXME(#8674)
+            let scheduler: ~Scheduler = Local::take();
+            let stat_req = file::FsRequest::new();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                let path = path_cell.take();
+                let path_str = path.path_as_str(|p| p.to_owned());
+                do stat_req.stat(self.uv_loop(), path)
+                      |req,err| {
+                    if err.is_none() {
+                        let stat = req.get_stat();
+                        let res = Ok(FileStat {
+                            path: Path(path_str),
+                            is_file: stat.is_file(),
+                            is_dir: stat.is_dir()
+                        });
+                        unsafe { (*result_cell_ptr).put_back(res); }
+                        let scheduler: ~Scheduler = Local::take();
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                    } else {
+                        let res = Err(uv_error_to_io_error(err.unwrap()));
+                        unsafe { (*result_cell_ptr).put_back(res); }
+                        let scheduler: ~Scheduler = Local::take();
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                    }
+                };
+            };
+        };
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
@@ -629,6 +669,9 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
+    //fn fs_fstat(&mut self, _fd: c_int) -> Result<FileStat, IoError> {
+    //    Ok(FileStat)
+    //}
 }
 
 pub struct UvTcpListener {
@@ -1173,7 +1216,7 @@ impl RtioTimer for UvTimer {
 
 pub struct UvFileStream {
     loop_: Loop,
-    fd: file::FileDescriptor,
+    fd: c_int,
     close_on_drop: bool,
     home: SchedHandle
 }
@@ -1183,7 +1226,7 @@ impl HomingIO for UvFileStream {
 }
 
 impl UvFileStream {
-    fn new(loop_: Loop, fd: file::FileDescriptor, close_on_drop: bool,
+    fn new(loop_: Loop, fd: c_int, close_on_drop: bool,
            home: SchedHandle) -> UvFileStream {
         UvFileStream {
             loop_: loop_,
@@ -1200,7 +1243,8 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.read(&self_.loop_, buf, offset) |req, uverr| {
+                let read_req = file::FsRequest::new();
+                do read_req.read(&self_.loop_, self_.fd, buf, offset) |req, uverr| {
                     let res = match uverr  {
                         None => Ok(req.get_result() as int),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1221,7 +1265,8 @@ impl UvFileStream {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let task_cell = Cell::new(task);
-                do self_.fd.write(&self_.loop_, buf, offset) |_, uverr| {
+                let write_req = file::FsRequest::new();
+                do write_req.write(&self_.loop_, self_.fd, buf, offset) |_, uverr| {
                     let res = match uverr  {
                         None => Ok(()),
                         Some(err) => Err(uv_error_to_io_error(err))
@@ -1238,7 +1283,7 @@ impl UvFileStream {
         Result<u64, IoError>{
         #[fixed_stack_segment]; #[inline(never)];
         unsafe {
-            match lseek((*self.fd), pos as off_t, whence) {
+            match lseek(self.fd, pos as off_t, whence) {
                 -1 => {
                     Err(IoError {
                         kind: OtherIoError,
@@ -1259,7 +1304,8 @@ impl Drop for UvFileStream {
             do self_.home_for_io_with_sched |self_, scheduler| {
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     let task_cell = Cell::new(task);
-                    do self_.fd.close(&self.loop_) |_,_| {
+                    let close_req = file::FsRequest::new();
+                    do close_req.close(&self.loop_, self_.fd) |_,_| {
                         let scheduler: ~Scheduler = Local::take();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     };
