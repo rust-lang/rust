@@ -54,8 +54,18 @@ upcall_call_shim_on_rust_stack(void *args, void *fn_ptr) {
 
 /**********************************************************************/
 
+#ifdef __SEH__
+#  define PERSONALITY_FUNC __gxx_personality_seh0
+#else
+#  ifdef __USING_SJLJ_EXCEPTIONS__
+#    define PERSONALITY_FUNC __gxx_personality_sjlj
+#  else
+#    define PERSONALITY_FUNC __gxx_personality_v0
+#  endif
+#endif
+
 extern "C" _Unwind_Reason_Code
-__gxx_personality_v0(int version,
+PERSONALITY_FUNC(int version,
                      _Unwind_Action actions,
                      uint64_t exception_class,
                      _Unwind_Exception *ue_header,
@@ -72,11 +82,11 @@ struct s_rust_personality_args {
 
 extern "C" void
 upcall_s_rust_personality(s_rust_personality_args *args) {
-    args->retval = __gxx_personality_v0(args->version,
-                                        args->actions,
-                                        args->exception_class,
-                                        args->ue_header,
-                                        args->context);
+    args->retval = PERSONALITY_FUNC(args->version,
+                                    args->actions,
+                                    args->exception_class,
+                                    args->ue_header,
+                                    args->context);
 }
 
 /**

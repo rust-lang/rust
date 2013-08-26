@@ -111,6 +111,7 @@
 #undef PLAT_x86_darwin
 #undef PLAT_amd64_darwin
 #undef PLAT_x86_win32
+#undef PLAT_amd64_win64
 #undef PLAT_x86_linux
 #undef PLAT_amd64_linux
 #undef PLAT_ppc32_linux
@@ -125,7 +126,11 @@
 #  define PLAT_amd64_darwin 1
 #elif defined(__MINGW32__) || defined(__CYGWIN32__) \
       || (defined(_WIN32) && defined(_M_IX86))
-#  define PLAT_x86_win32 1
+#  if defined(__x86_64__)
+#    define PLAT_amd64_win64 1
+#  elif defined(__i386__)
+#    define PLAT_x86_win32 1
+#  endif
 #elif defined(__linux__) && defined(__i386__)
 #  define PLAT_x86_linux 1
 #elif defined(__linux__) && defined(__x86_64__)
@@ -349,7 +354,8 @@ valgrind_do_client_request_expr(uintptr_t _zzq_default, uintptr_t _zzq_request,
 
 /* ------------------------ amd64-{linux,darwin} --------------- */
 
-#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin)
+#if defined(PLAT_amd64_linux)  ||  defined(PLAT_amd64_darwin) \
+    || defined(PLAT_amd64_win64)
 
 typedef
    struct { 
@@ -3716,14 +3722,14 @@ VALGRIND_PRINTF(const char *format, ...)
 #if defined(NVALGRIND)
    return 0;
 #else /* NVALGRIND */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(PLAT_amd64_win64)
    uintptr_t _qzz_res;
 #else
    unsigned long _qzz_res;
 #endif
    va_list vargs;
    va_start(vargs, format);
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(PLAT_amd64_win64)
    _qzz_res = VALGRIND_DO_CLIENT_REQUEST_EXPR(0,
                               VG_USERREQ__PRINTF_VALIST_BY_REF,
                               (uintptr_t)format,
@@ -3754,14 +3760,14 @@ VALGRIND_PRINTF_BACKTRACE(const char *format, ...)
 #if defined(NVALGRIND)
    return 0;
 #else /* NVALGRIND */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(PLAT_amd64_win64)
    uintptr_t _qzz_res;
 #else
    unsigned long _qzz_res;
 #endif
    va_list vargs;
    va_start(vargs, format);
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(PLAT_amd64_win64)
    _qzz_res = VALGRIND_DO_CLIENT_REQUEST_EXPR(0,
                               VG_USERREQ__PRINTF_BACKTRACE_VALIST_BY_REF,
                               (uintptr_t)format,
