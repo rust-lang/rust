@@ -245,6 +245,7 @@ Out of scope
 use prelude::*;
 use to_str::ToStr;
 use str::{StrSlice, OwnedStr};
+use path::Path;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -595,4 +596,27 @@ pub enum FileAccess {
     Read,
     Write,
     ReadWrite
+}
+
+pub struct FileStat {
+    /// A `Path` object containing information about the `PathInfo`'s location
+    path: Path,
+    /// `true` if the file pointed at by the `PathInfo` is a regular file
+    is_file: bool,
+    /// `true` if the file pointed at by the `PathInfo` is a directory
+    is_dir: bool
+    // `true` if the file pointed at by the `PathInfo` is a link (what this means
+    // is platform dependant)
+    /*
+    /// The file pointed at by the `PathInfo`'s size in bytes
+    size: u64,
+    /// The file pointed at by the `PathInfo`'s time date in platform-dependent msecs
+    created: u64,
+    /// The file pointed at by the `PathInfo`'s last-modification time in
+    /// platform-dependent msecs
+    modified: u64,
+    /// The file pointed at by the `PathInfo`'s last-accessd time (e.g. read) in
+    /// platform-dependent msecs
+    accessed: u64,
+    */
 }

@@ -18,7 +18,7 @@ use rt::uv::uvio;
 use path::Path;
 use super::io::support::PathLike;
 use super::io::{SeekStyle};
-use super::io::{FileMode, FileAccess};
+use super::io::{FileMode, FileAccess, FileStat};
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
@@ -74,6 +74,13 @@ pub trait IoFactory {
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError>;
+    fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError>;
+    //fn fs_fstat(&mut self, fd: c_int) -> Result<FileStat, IoError>;
+}
+
+pub trait RtioStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
