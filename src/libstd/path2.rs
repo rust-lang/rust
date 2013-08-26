@@ -18,10 +18,11 @@ use from_str::FromStr;
 use iterator::{AdditiveIterator, Extendable, Iterator};
 use option::{Option, None, Some};
 use str;
-use str::{OwnedStr, Str, StrSlice, StrVector};
+use str::{OwnedStr, Str, StrSlice};
 use util;
 use vec;
-use vec::{ImmutableVector, OwnedVector};
+use vec::{CopyableVector, OwnedCopyableVector, OwnedVector};
+use vec::{ImmutableEqVector, ImmutableVector, Vector, VectorVector};
 
 /// Typedef for the platform-native path type
 #[cfg(unix)]
@@ -38,7 +39,7 @@ pub type ComponentIter<'self> = PosixComponentIter<'self>;
 //pub type ComponentIter<'self> = WindowsComponentIter<'self>;
 
 /// Iterator that yields successive components of a PosixPath
-type PosixComponentIter<'self> = str::CharSplitIterator<'self, char>;
+type PosixComponentIter<'self> = vec::SplitIterator<'self, u8>;
 
 // Condition that is raised when a NUL is found in a byte vector given to a Path function
 condition! {
@@ -541,142 +542,142 @@ impl ToCStr for PosixPath {
     }
 }
 
-impl GenericPath for PosixPath {
-    #[inline]
-    fn from_str(s: &str) -> PosixPath {
-        PosixPath::new(s)
+impl GenericPathUnsafe for PosixPath {
+    unsafe fn from_vec_unchecked(path: &[u8]) -> PosixPath {
+        let path = PosixPath::normalize(path);
+        assert!(!path.is_empty());
+        let idx = path.rposition_elem(&posix::sep);
+        PosixPath{ repr: path, sepidx: idx }
     }
 
-    #[inline]
-    fn as_str<'a>(&'a self) -> &'a str {
-        self.repr.as_slice()
-    }
-
-    fn dirname<'a>(&'a self) -> &'a str {
+    unsafe fn set_dirname_unchecked(&mut self, dirname: &[u8]) {
         match self.sepidx {
-            None if ".." == self.repr => "..",
-            None => ".",
-            Some(0) => self.repr.slice_to(1),
-            Some(idx) if self.repr.slice_from(idx+1) == ".." => self.repr.as_slice(),
-            Some(idx) => self.repr.slice_to(idx)
-        }
-    }
-
-    fn filename<'a>(&'a self) -> &'a str {
-        match self.sepidx {
-            None if "." == self.repr || ".." == self.repr => "",
-            None => self.repr.as_slice(),
-            Some(idx) if self.repr.slice_from(idx+1) == ".." => "",
-            Some(idx) => self.repr.slice_from(idx+1)
-        }
-    }
-
-    fn set_dirname(&mut self, dirname: &str) {
-        match self.sepidx {
-            None if "." == self.repr || ".." == self.repr => {
+            None if bytes!(".") == self.repr || bytes!("..") == self.repr => {
                 self.repr = PosixPath::normalize(dirname);
             }
             None => {
-                let mut s = str::with_capacity(dirname.len() + self.repr.len() + 1);
-                s.push_str(dirname);
-                s.push_char(posix::sep);
-                s.push_str(self.repr);
-                self.repr = PosixPath::normalize(s);
+                let mut v = vec::with_capacity(dirname.len() + self.repr.len() + 1);
+                v.push_all(dirname);
+                v.push(posix::sep);
+                v.push_all(self.repr);
+                self.repr = PosixPath::normalize(v);
             }
-            Some(0) if self.repr.len() == 1 && self.repr[0] == posix::sep as u8 => {
+            Some(0) if self.repr.len() == 1 && self.repr[0] == posix::sep => {
                 self.repr = PosixPath::normalize(dirname);
             }
-            Some(idx) if dirname == "" => {
-                let s = PosixPath::normalize(self.repr.slice_from(idx+1));
-                self.repr = s;
+            Some(idx) if dirname.is_empty() => {
+                let v = PosixPath::normalize(self.repr.slice_from(idx+1));
+                self.repr = v;
             }
-            Some(idx) if self.repr.slice_from(idx+1) == ".." => {
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
                 self.repr = PosixPath::normalize(dirname);
             }
             Some(idx) => {
-                let mut s = str::with_capacity(dirname.len() + self.repr.len() - idx);
-                s.push_str(dirname);
-                s.push_str(self.repr.slice_from(idx));
-                self.repr = PosixPath::normalize(s);
+                let mut v = vec::with_capacity(dirname.len() + self.repr.len() - idx);
+                v.push_all(dirname);
+                v.push_all(self.repr.slice_from(idx));
+                self.repr = PosixPath::normalize(v);
             }
         }
-        self.sepidx = self.repr.rfind(posix::sep);
+        self.sepidx = self.repr.rposition_elem(&posix::sep);
     }
 
-    fn set_filename(&mut self, filename: &str) {
+    unsafe fn set_filename_unchecked(&mut self, filename: &[u8]) {
         match self.sepidx {
-            None if ".." == self.repr => {
-                let mut s = str::with_capacity(3 + filename.len());
-                s.push_str("..");
-                s.push_char(posix::sep);
-                s.push_str(filename);
-                self.repr = PosixPath::normalize(s);
+            None if bytes!("..") == self.repr => {
+                let mut v = vec::with_capacity(3 + filename.len());
+                v.push_all(dot_dot_static);
+                v.push(posix::sep);
+                v.push_all(filename);
+                self.repr = PosixPath::normalize(v);
             }
             None => {
                 self.repr = PosixPath::normalize(filename);
             }
-            Some(idx) if self.repr.slice_from(idx+1) == ".." => {
-                let mut s = str::with_capacity(self.repr.len() + 1 + filename.len());
-                s.push_str(self.repr);
-                s.push_char(posix::sep);
-                s.push_str(filename);
-                self.repr = PosixPath::normalize(s);
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
+                let mut v = vec::with_capacity(self.repr.len() + 1 + filename.len());
+                v.push_all(self.repr);
+                v.push(posix::sep);
+                v.push_all(filename);
+                self.repr = PosixPath::normalize(v);
             }
             Some(idx) => {
-                let mut s = str::with_capacity(self.repr.len() - idx + filename.len());
-                s.push_str(self.repr.slice_to(idx+1));
-                s.push_str(filename);
-                self.repr = PosixPath::normalize(s);
+                let mut v = vec::with_capacity(self.repr.len() - idx + filename.len());
+                v.push_all(self.repr.slice_to(idx+1));
+                v.push_all(filename);
+                self.repr = PosixPath::normalize(v);
             }
         }
-        self.sepidx = self.repr.rfind(posix::sep);
+        self.sepidx = self.repr.rposition_elem(&posix::sep);
     }
 
-    fn push(&mut self, path: &str) {
+    unsafe fn push_unchecked(&mut self, path: &[u8]) {
         if !path.is_empty() {
-            if path[0] == posix::sep as u8 {
+            if path[0] == posix::sep {
                 self.repr = PosixPath::normalize(path);
             }  else {
-                let mut s = str::with_capacity(self.repr.len() + path.len() + 1);
-                s.push_str(self.repr);
-                s.push_char(posix::sep);
-                s.push_str(path);
-                self.repr = PosixPath::normalize(s);
+                let mut v = vec::with_capacity(self.repr.len() + path.len() + 1);
+                v.push_all(self.repr);
+                v.push(posix::sep);
+                v.push_all(path);
+                self.repr = PosixPath::normalize(v);
             }
-            self.sepidx = self.repr.rfind(posix::sep);
+            self.sepidx = self.repr.rposition_elem(&posix::sep);
+        }
+    }
+}
+
+impl GenericPath for PosixPath {
+    #[inline]
+    fn as_vec<'a>(&'a self) -> &'a [u8] {
+        self.repr.as_slice()
+    }
+
+    fn dirname<'a>(&'a self) -> &'a [u8] {
+        match self.sepidx {
+            None if bytes!("..") == self.repr => self.repr.as_slice(),
+            None => dot_static,
+            Some(0) => self.repr.slice_to(1),
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => self.repr.as_slice(),
+            Some(idx) => self.repr.slice_to(idx)
         }
     }
 
-    fn push_path(&mut self, path: &PosixPath) {
-        self.push(path.as_str());
+    fn filename<'a>(&'a self) -> &'a [u8] {
+        match self.sepidx {
+            None if bytes!(".") == self.repr || bytes!("..") == self.repr => &[],
+            None => self.repr.as_slice(),
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => &[],
+            Some(idx) => self.repr.slice_from(idx+1)
+        }
     }
 
-    fn pop_opt(&mut self) -> Option<~str> {
+    fn pop_opt(&mut self) -> Option<~[u8]> {
         match self.sepidx {
-            None if "." == self.repr => None,
+            None if bytes!(".") == self.repr => None,
             None => {
-                let mut s = ~".";
-                util::swap(&mut s, &mut self.repr);
+                let mut v = ~['.' as u8];
+                util::swap(&mut v, &mut self.repr);
                 self.sepidx = None;
-                Some(s)
+                Some(v)
             }
-            Some(0) if "/" == self.repr => None,
+            Some(0) if bytes!("/") == self.repr => None,
             Some(idx) => {
-                let s = self.repr.slice_from(idx+1).to_owned();
+                let v = self.repr.slice_from(idx+1).to_owned();
                 if idx == 0 {
                     self.repr.truncate(idx+1);
                 } else {
                     self.repr.truncate(idx);
                 }
-                self.sepidx = self.repr.rfind(posix::sep);
-                Some(s)
+                self.sepidx = self.repr.rposition_elem(&posix::sep);
+                Some(v)
             }
         }
     }
 
     #[inline]
     fn is_absolute(&self) -> bool {
-        self.repr[0] == posix::sep as u8
+        self.repr[0] == posix::sep
     }
 
     fn is_ancestor_of(&self, other: &PosixPath) -> bool {
@@ -685,19 +686,16 @@ impl GenericPath for PosixPath {
         } else {
             let mut ita = self.component_iter();
             let mut itb = other.component_iter();
-            if "." == self.repr {
-                return match itb.next() {
-                    Some("..") => false,
-                    _ => true
-                };
+            if bytes!(".") == self.repr {
+                return itb.next() != Some(bytes!(".."));
             }
             loop {
                 match (ita.next(), itb.next()) {
                     (None, _) => break,
                     (Some(a), Some(b)) if a == b => { loop },
-                    (Some(".."), _) => {
+                    (Some(a), _) if a == bytes!("..") => {
                         // if ita contains only .. components, it's an ancestor
-                        return ita.all(|x| x == "..");
+                        return ita.all(|x| x == bytes!(".."));
                     }
                     _ => return false
                 }
@@ -725,14 +723,14 @@ impl GenericPath for PosixPath {
                         comps.extend(&mut ita);
                         break;
                     }
-                    (None, _) => comps.push(".."),
+                    (None, _) => comps.push(dot_dot_static),
                     (Some(a), Some(b)) if comps.is_empty() && a == b => (),
-                    (Some(a), Some(".")) => comps.push(a),
-                    (Some(_), Some("..")) => return None,
+                    (Some(a), Some(b)) if b == bytes!(".") => comps.push(a),
+                    (Some(_), Some(b)) if b == bytes!("..") => return None,
                     (Some(a), Some(_)) => {
-                        comps.push("..");
+                        comps.push(dot_dot_static);
                         for _ in itb {
-                            comps.push("..");
+                            comps.push(dot_dot_static);
                         }
                         comps.push(a);
                         comps.extend(&mut ita);
@@ -740,61 +738,77 @@ impl GenericPath for PosixPath {
                     }
                 }
             }
-            Some(PosixPath::new(comps.connect(str::from_char(posix::sep))))
+            Some(PosixPath::new(comps.connect_vec(&posix::sep)))
         }
     }
 }
 
 impl PosixPath {
-    /// Returns a new PosixPath from a string
-    pub fn new(s: &str) -> PosixPath {
-        let s = PosixPath::normalize(s);
-        assert!(!s.is_empty());
-        let idx = s.rfind(posix::sep);
-        PosixPath{ repr: s, sepidx: idx }
+    /// Returns a new PosixPath from a byte vector
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the vector contains a NUL.
+    #[inline]
+    pub fn new(v: &[u8]) -> PosixPath {
+        GenericPath::from_vec(v)
     }
 
-    /// Converts the PosixPath into an owned string
-    pub fn into_str(self) -> ~str {
+    /// Returns a new PosixPath from a string
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the str contains a NUL.
+    #[inline]
+    pub fn from_str(s: &str) -> PosixPath {
+        GenericPath::from_str(s)
+    }
+
+    /// Converts the PosixPath into an owned byte vector
+    pub fn into_vec(self) -> ~[u8] {
         self.repr
     }
 
-    /// Returns a normalized string representation of a path, by removing all empty
+    /// Converts the PosixPath into an owned string, if possible
+    pub fn into_str(self) -> Option<~str> {
+        str::from_bytes_owned_opt(self.repr)
+    }
+
+    /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    pub fn normalize<S: Str>(s: S) -> ~str {
+    pub fn normalize<V: Vector<u8>+CopyableVector<u8>>(v: V) -> ~[u8] {
         // borrowck is being very picky
         let val = {
-            let is_abs = !s.as_slice().is_empty() && s.as_slice()[0] == posix::sep as u8;
-            let s_ = if is_abs { s.as_slice().slice_from(1) } else { s.as_slice() };
-            let comps = normalize_helper(s_, is_abs, posix::sep);
+            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == posix::sep;
+            let v_ = if is_abs { v.as_slice().slice_from(1) } else { v.as_slice() };
+            let comps = normalize_helper(v_, is_abs, posix::is_sep);
             match comps {
                 None => None,
                 Some(comps) => {
-                    let sepstr = str::from_char(posix::sep);
                     if is_abs && comps.is_empty() {
-                        Some(sepstr)
+                        Some(~[posix::sep])
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
-                                comps.iter().map(|s| s.len()).sum();
-                        let mut s = str::with_capacity(n);
+                                comps.iter().map(|v| v.len()).sum();
+                        let mut v = vec::with_capacity(n);
                         let mut it = comps.move_iter();
                         if !is_abs {
                             match it.next() {
                                 None => (),
-                                Some(comp) => s.push_str(comp)
+                                Some(comp) => v.push_all(comp)
                             }
                         }
                         for comp in it {
-                            s.push_str(sepstr);
-                            s.push_str(comp);
+                            v.push(posix::sep);
+                            v.push_all(comp);
                         }
-                        Some(s)
+                        Some(v)
                     }
                 }
             }
         };
         match val {
-            None => s.into_owned(),
+            None => v.into_owned(),
             Some(val) => val
         }
     }
@@ -804,11 +818,11 @@ impl PosixPath {
     /// /a/b/c and a/b/c yield the same set of components.
     /// A path of "/" yields no components. A path of "." yields one component.
     pub fn component_iter<'a>(&'a self) -> PosixComponentIter<'a> {
-        let s = if self.repr[0] == posix::sep as u8 {
+        let v = if self.repr[0] == posix::sep {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
-        let mut ret = s.split_iter(posix::sep);
-        if s.is_empty() {
+        let mut ret = v.split_iter(posix::is_sep);
+        if v.is_empty() {
             // consume the empty "" component
             ret.next();
         }
@@ -816,36 +830,38 @@ impl PosixPath {
     }
 }
 
-// None result means the string didn't need normalizing
-fn normalize_helper<'a, Sep: str::CharEq>(s: &'a str, is_abs: bool, sep: Sep) -> Option<~[&'a str]> {
-    if is_abs && s.as_slice().is_empty() {
+// None result means the byte vector didn't need normalizing
+fn normalize_helper<'a>(v: &'a [u8], is_abs: bool, f: &'a fn(&u8) -> bool) -> Option<~[&'a [u8]]> {
+    if is_abs && v.as_slice().is_empty() {
         return None;
     }
-    let mut comps: ~[&'a str] = ~[];
+    let mut comps: ~[&'a [u8]] = ~[];
     let mut n_up = 0u;
     let mut changed = false;
-    for comp in s.split_iter(sep) {
-        match comp {
-            "" => { changed = true; }
-            "." => { changed = true; }
-            ".." if is_abs && comps.is_empty() => { changed = true; }
-            ".." if comps.len() == n_up => { comps.push(".."); n_up += 1; }
-            ".." => { comps.pop_opt(); changed = true; }
-            x => comps.push(x)
-        }
+    for comp in v.split_iter(f) {
+        if comp.is_empty() { changed = true }
+        else if comp == bytes!(".") { changed = true }
+        else if comp == bytes!("..") {
+            if is_abs && comps.is_empty() { changed = true }
+            else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
+            else { comps.pop_opt(); changed = true }
+        } else { comps.push(comp) }
     }
     if changed {
         if comps.is_empty() && !is_abs {
-            if s == "." {
+            if v == bytes!(".") {
                 return None;
             }
-            comps.push(".");
+            comps.push(dot_static);
         }
         Some(comps)
     } else {
         None
     }
 }
+
+static dot_static: &'static [u8] = &'static ['.' as u8];
+static dot_dot_static: &'static [u8] = &'static ['.' as u8, '.' as u8];
 
 /// Various POSIX helpers
 pub mod posix {
