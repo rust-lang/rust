@@ -16,5 +16,5 @@ pub fn main() {
     let arr = [1,2,3];
     let struc = Struc {a: 13u8, b: arr, c: 42};
     let s = sys::log_str(&struc);
-    assert_eq!(s, ~"{a: 13, b: [1, 2, 3], c: 42}");
+    assert_eq!(s, ~"{a: 13u8, b: [1, 2, 3], c: 42}");
 }

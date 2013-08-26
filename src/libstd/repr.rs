@@ -75,35 +75,50 @@ impl Repr for bool {
     }
 }
 
-macro_rules! int_repr(($ty:ident) => (impl Repr for $ty {
+impl Repr for int {
+    fn write_repr(&self, writer: @Writer) {
+        do ::int::to_str_bytes(*self, 10u) |bits| {
+            writer.write(bits);
+        }
+    }
+}
+
+macro_rules! int_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
     fn write_repr(&self, writer: @Writer) {
         do ::$ty::to_str_bytes(*self, 10u) |bits| {
             writer.write(bits);
+            writer.write(bytes!($suffix));
         }
     }
 }))
 
-int_repr!(int)
-int_repr!(i8)
-int_repr!(i16)
-int_repr!(i32)
-int_repr!(i64)
-int_repr!(uint)
-int_repr!(u8)
-int_repr!(u16)
-int_repr!(u32)
-int_repr!(u64)
+int_repr!(i8, "i8")
+int_repr!(i16, "i16")
+int_repr!(i32, "i32")
+int_repr!(i64, "i64")
+int_repr!(uint, "u")
+int_repr!(u8, "u8")
+int_repr!(u16, "u16")
+int_repr!(u32, "u32")
+int_repr!(u64, "u64")
 
-macro_rules! num_repr(($ty:ident) => (impl Repr for $ty {
+impl Repr for float {
     fn write_repr(&self, writer: @Writer) {
         let s = self.to_str();
         writer.write(s.as_bytes());
     }
+}
+
+macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
+    fn write_repr(&self, writer: @Writer) {
+        let s = self.to_str();
+        writer.write(s.as_bytes());
+        writer.write(bytes!($suffix));
+    }
 }))
 
-num_repr!(float)
-num_repr!(f32)
-num_repr!(f64)
+num_repr!(f32, "f32")
+num_repr!(f64, "f64")
 
 // New implementation using reflect::MovePtr
 
@@ -602,7 +617,7 @@ fn test_repr() {
     exact_test(&(@[1,2,3,4,5,6,7,8]),
                "@[1, 2, 3, 4, 5, 6, 7, 8]");
     exact_test(&(@[1u8,2u8,3u8,4u8]),
-               "@[1, 2, 3, 4]");
+               "@[1u8, 2u8, 3u8, 4u8]");
     exact_test(&(@["hi", "there"]),
                "@[\"hi\", \"there\"]");
     exact_test(&(~["hi", "there"]),
@@ -615,14 +630,14 @@ fn test_repr() {
                "@{a: 10, b: 1.234}");
     exact_test(&(~P{a:10, b:1.234}),
                "~{a: 10, b: 1.234}");
-    exact_test(&(10_u8, ~"hello"),
-               "(10, ~\"hello\")");
-    exact_test(&(10_u16, ~"hello"),
-               "(10, ~\"hello\")");
-    exact_test(&(10_u32, ~"hello"),
-               "(10, ~\"hello\")");
-    exact_test(&(10_u64, ~"hello"),
-               "(10, ~\"hello\")");
+    exact_test(&(10u8, ~"hello"),
+               "(10u8, ~\"hello\")");
+    exact_test(&(10u16, ~"hello"),
+               "(10u16, ~\"hello\")");
+    exact_test(&(10u32, ~"hello"),
+               "(10u32, ~\"hello\")");
+    exact_test(&(10u64, ~"hello"),
+               "(10u64, ~\"hello\")");
 
     struct Foo;
     exact_test(&(~[Foo, Foo, Foo]), "~[{}, {}, {}]");

@@ -19,7 +19,7 @@ enum bar {
 }
 
 pub fn main() {
-    assert_eq!(~"a(22)", fmt!("%?", a(22u)));
+    assert_eq!(~"a(22u)", fmt!("%?", a(22u)));
     assert_eq!(~"b(~\"hi\")", fmt!("%?", b(~"hi")));
     assert_eq!(~"c", fmt!("%?", c));
     assert_eq!(~"d", fmt!("%?", d));

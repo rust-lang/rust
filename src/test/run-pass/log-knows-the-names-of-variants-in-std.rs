@@ -25,7 +25,7 @@ fn check_log<T>(exp: ~str, v: T) {
 
 pub fn main() {
     let x = list::from_vec([a(22u), b(~"hi")]);
-    let exp = ~"@Cons(a(22), @Cons(b(~\"hi\"), @Nil))";
+    let exp = ~"@Cons(a(22u), @Cons(b(~\"hi\"), @Nil))";
     let act = fmt!("%?", x);
     assert!(act == exp);
     check_log(exp, x);
