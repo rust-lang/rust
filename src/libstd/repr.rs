@@ -563,8 +563,6 @@ impl TyVisitor for ReprVisitor {
 
 
     fn visit_trait(&self) -> bool { true }
-    fn visit_var(&self) -> bool { true }
-    fn visit_var_integral(&self) -> bool { true }
     fn visit_param(&self, _i: uint) -> bool { true }
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
@@ -576,9 +574,6 @@ impl TyVisitor for ReprVisitor {
             self.visit_ptr_inner(p, b.type_desc);
         }
     }
-
-    // Type no longer exists, vestigial function.
-    fn visit_constr(&self, _inner: *TyDesc) -> bool { fail!(); }
 
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
