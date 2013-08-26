@@ -59,7 +59,7 @@ And much, much more.
 #[warn(non_camel_case_types)];
 
 use cast;
-use clone::Clone;
+use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
@@ -2199,10 +2199,17 @@ pub mod bytes {
     }
 }
 
-impl<A:Clone> Clone for ~[A] {
+impl<A: Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
         self.iter().map(|item| item.clone()).collect()
+    }
+}
+
+impl<A: DeepClone> DeepClone for ~[A] {
+    #[inline]
+    fn deep_clone(&self) -> ~[A] {
+        self.iter().map(|item| item.deep_clone()).collect()
     }
 }
 
