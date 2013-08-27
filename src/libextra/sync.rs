@@ -135,9 +135,7 @@ impl<Q:Send> Sem<Q> {
         do task::unkillable {
             do (|| {
                 self.acquire();
-                unsafe {
-                    do task::rekillable { blk() }
-                }
+                do task::rekillable { blk() }
             }).finally {
                 self.release();
             }
@@ -234,10 +232,8 @@ impl<'self> Condvar<'self> {
                 // signaller already sent -- I mean 'unconditionally' in contrast
                 // with acquire().)
                 do (|| {
-                    unsafe {
-                        do task::rekillable {
-                            let _ = WaitEnd.take_unwrap().recv();
-                        }
+                    do task::rekillable {
+                        let _ = WaitEnd.take_unwrap().recv();
                     }
                 }).finally {
                     // Reacquire the condvar. Note this is back in the unkillable
@@ -516,14 +512,12 @@ impl RWLock {
      * 'write' from other tasks will run concurrently with this one.
      */
     pub fn write<U>(&self, blk: &fn() -> U) -> U {
-        unsafe {
-            do task::unkillable {
-                (&self.order_lock).acquire();
-                do (&self.access_lock).access {
-                    (&self.order_lock).release();
-                    do task::rekillable {
-                        blk()
-                    }
+        do task::unkillable {
+            (&self.order_lock).acquire();
+            do (&self.access_lock).access {
+                (&self.order_lock).release();
+                do task::rekillable {
+                    blk()
                 }
             }
         }
@@ -562,16 +556,14 @@ impl RWLock {
         // which can't happen until T2 finishes the downgrade-read entirely.
         // The astute reader will also note that making waking writers use the
         // order_lock is better for not starving readers.
-        unsafe {
-            do task::unkillable {
-                (&self.order_lock).acquire();
-                do (&self.access_lock).access_cond |cond| {
-                    (&self.order_lock).release();
-                    do task::rekillable {
-                        let opt_lock = Just(&self.order_lock);
-                        blk(&Condvar { sem: cond.sem, order: opt_lock,
-                                       token: NonCopyable::new() })
-                    }
+        do task::unkillable {
+            (&self.order_lock).acquire();
+            do (&self.access_lock).access_cond |cond| {
+                (&self.order_lock).release();
+                do task::rekillable {
+                    let opt_lock = Just(&self.order_lock);
+                    blk(&Condvar { sem: cond.sem, order: opt_lock,
+                                   token: NonCopyable::new() })
                 }
             }
         }
@@ -606,10 +598,8 @@ impl RWLock {
             (&self.access_lock).acquire();
             (&self.order_lock).release();
             do (|| {
-                unsafe {
-                    do task::rekillable {
-                        blk(RWLockWriteMode { lock: self, token: NonCopyable::new() })
-                    }
+                do task::rekillable {
+                    blk(RWLockWriteMode { lock: self, token: NonCopyable::new() })
                 }
             }).finally {
                 let writer_or_last_reader;

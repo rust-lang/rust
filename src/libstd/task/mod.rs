@@ -597,21 +597,36 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
     }
 }
 
-/// The inverse of unkillable. Only ever to be used nested in unkillable().
-pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
+/**
+ * Makes killable a task marked as unkillable. This
+ * is meant to be used only nested in unkillable.
+ *
+ * # Example
+ *
+ * ~~~
+ * do task::unkillable {
+ *     do task::rekillable {
+ *          // Task is killable
+ *     }
+ *    // Task is unkillable again
+ * }
+ */
+pub fn rekillable<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
 
-    if in_green_task_context() {
-        let t = Local::unsafe_borrow::<Task>();
-        do (|| {
-            (*t).death.allow_kill((*t).unwinder.unwinding);
+    unsafe {
+        if in_green_task_context() {
+            let t = Local::unsafe_borrow::<Task>();
+            do (|| {
+                (*t).death.allow_kill((*t).unwinder.unwinding);
+                f()
+            }).finally {
+                (*t).death.inhibit_kill((*t).unwinder.unwinding);
+            }
+        } else {
+            // FIXME(#3095): As in unkillable().
             f()
-        }).finally {
-            (*t).death.inhibit_kill((*t).unwinder.unwinding);
         }
-    } else {
-        // FIXME(#3095): As in unkillable().
-        f()
     }
 }
 
@@ -636,8 +651,8 @@ fn test_kill_unkillable_task() {
     }
 }
 
-#[ignore(reason = "linked failure")]
 #[test]
+#[ignore(cfg(windows))]
 fn test_kill_rekillable_task() {
     use rt::test::*;
 
@@ -646,11 +661,9 @@ fn test_kill_rekillable_task() {
     do run_in_newsched_task {
         do task::try {
             do task::unkillable {
-                unsafe {
-                    do task::rekillable {
-                        do task::spawn {
-                            fail!();
-                        }
+                do task::rekillable {
+                    do task::spawn {
+                        fail!();
                     }
                 }
             }
@@ -658,7 +671,39 @@ fn test_kill_rekillable_task() {
     }
 }
 
-#[test] #[should_fail]
+#[test]
+#[should_fail]
+#[ignore(cfg(windows))]
+fn test_rekillable_not_nested() {
+    do rekillable {
+        // This should fail before
+        // receiving anything since
+        // this block should be nested
+        // into a unkillable block.
+        deschedule();
+    }
+}
+
+
+#[test]
+#[ignore(cfg(windows))]
+fn test_rekillable_nested_failure() {
+
+    let result = do task::try {
+        do unkillable {
+            do rekillable {
+                let (port,chan) = comm::stream();
+                do task::spawn { chan.send(()); fail!(); }
+                port.recv(); // wait for child to exist
+                port.recv(); // block forever, expect to get killed.
+            }
+        }
+    };
+    assert!(result.is_err());
+}
+
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_cant_dup_task_builder() {
     let mut builder = task();
     builder.unlinked();
