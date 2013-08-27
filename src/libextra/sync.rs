@@ -21,7 +21,7 @@ use std::comm;
 use std::comm::SendDeferred;
 use std::comm::{GenericPort, Peekable};
 use std::task;
-use std::unstable::sync::{Exclusive, UnsafeAtomicRcBox};
+use std::unstable::sync::{Exclusive, UnsafeArc};
 use std::unstable::atomics;
 use std::unstable::finally::Finally;
 use std::util;
@@ -444,7 +444,7 @@ struct RWLockInner {
 pub struct RWLock {
     priv order_lock:  Semaphore,
     priv access_lock: Sem<~[WaitQueue]>,
-    priv state:       UnsafeAtomicRcBox<RWLockInner>,
+    priv state:       UnsafeArc<RWLockInner>,
 }
 
 impl RWLock {
@@ -456,7 +456,7 @@ impl RWLock {
     * Similar to mutex_with_condvars.
     */
     pub fn new_with_condvars(num_condvars: uint) -> RWLock {
-        let state = UnsafeAtomicRcBox::new(RWLockInner {
+        let state = UnsafeArc::new(RWLockInner {
             read_mode:  false,
             read_count: atomics::AtomicUint::new(0),
         });

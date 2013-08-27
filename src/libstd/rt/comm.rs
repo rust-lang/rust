@@ -21,7 +21,7 @@ use rt::local::Local;
 use rt::select::{SelectInner, SelectPortInner};
 use select::{Select, SelectPort};
 use unstable::atomics::{AtomicUint, AtomicOption, Acquire, Relaxed, SeqCst};
-use unstable::sync::UnsafeAtomicRcBox;
+use unstable::sync::UnsafeArc;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
@@ -567,14 +567,14 @@ impl<'self, T> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
     // Just like Chan, but a shared AtomicOption instead of Cell
-    priv next: UnsafeAtomicRcBox<AtomicOption<StreamChanOne<T>>>
+    priv next: UnsafeArc<AtomicOption<StreamChanOne<T>>>
 }
 
 impl<T> SharedChan<T> {
     pub fn new(chan: Chan<T>) -> SharedChan<T> {
         let next = chan.next.take();
         let next = AtomicOption::new(~next);
-        SharedChan { next: UnsafeAtomicRcBox::new(next) }
+        SharedChan { next: UnsafeArc::new(next) }
     }
 }
 
@@ -620,7 +620,7 @@ impl<T> Clone for SharedChan<T> {
 
 pub struct SharedPort<T> {
     // The next port on which we will receive the next port on which we will receive T
-    priv next_link: UnsafeAtomicRcBox<AtomicOption<PortOne<StreamPortOne<T>>>>
+    priv next_link: UnsafeArc<AtomicOption<PortOne<StreamPortOne<T>>>>
 }
 
 impl<T> SharedPort<T> {
@@ -630,7 +630,7 @@ impl<T> SharedPort<T> {
         let (next_link_port, next_link_chan) = oneshot();
         next_link_chan.send(next_data_port);
         let next_link = AtomicOption::new(~next_link_port);
-        SharedPort { next_link: UnsafeAtomicRcBox::new(next_link) }
+        SharedPort { next_link: UnsafeArc::new(next_link) }
     }
 }
 

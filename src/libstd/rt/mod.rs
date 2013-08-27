@@ -74,7 +74,7 @@ use rt::thread::Thread;
 use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, SeqCst};
-use unstable::sync::UnsafeAtomicRcBox;
+use unstable::sync::UnsafeArc;
 use vec::{OwnedVector, MutableVector};
 
 /// The global (exchange) heap.
@@ -311,7 +311,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // Create a shared cell for transmitting the process exit
     // code from the main task to this function.
-    let exit_code = UnsafeAtomicRcBox::new(AtomicInt::new(0));
+    let exit_code = UnsafeArc::new(AtomicInt::new(0));
     let exit_code_clone = exit_code.clone();
 
     // When the main task exits, after all the tasks in the main

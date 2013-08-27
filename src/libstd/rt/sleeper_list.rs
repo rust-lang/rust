@@ -15,12 +15,12 @@ use container::Container;
 use vec::OwnedVector;
 use option::{Option, Some, None};
 use cell::Cell;
-use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
+use unstable::sync::{UnsafeArc, LittleLock};
 use rt::sched::SchedHandle;
 use clone::Clone;
 
 pub struct SleeperList {
-    priv state: UnsafeAtomicRcBox<State>
+    priv state: UnsafeArc<State>
 }
 
 struct State {
@@ -32,7 +32,7 @@ struct State {
 impl SleeperList {
     pub fn new() -> SleeperList {
         SleeperList {
-            state: UnsafeAtomicRcBox::new(State {
+            state: UnsafeArc::new(State {
                 count: 0,
                 stack: ~[],
                 lock: LittleLock::new()
