@@ -27,7 +27,6 @@ use std::char;
 use std::hash::Streaming;
 use std::hash;
 use std::io;
-use std::libc::{c_int, c_uint};
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::os;
 use std::ptr;
@@ -67,37 +66,19 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
     }
 }
 
-pub fn WriteOutputFile(sess: Session,
-        PM: lib::llvm::PassManagerRef, M: ModuleRef,
-        Triple: &str,
-        Cpu: &str,
-        Feature: &str,
+pub fn WriteOutputFile(
+        sess: Session,
+        Target: lib::llvm::TargetMachineRef,
+        PM: lib::llvm::PassManagerRef,
+        M: ModuleRef,
         Output: &str,
-        // FIXME: When #2334 is fixed, change
-        // c_uint to FileType
-        FileType: c_uint,
-        OptLevel: c_int,
-        EnableSegmentedStacks: bool) {
+        FileType: lib::llvm::FileType) {
     unsafe {
-        do Triple.with_c_str |Triple| {
-            do Cpu.with_c_str |Cpu| {
-                do Feature.with_c_str |Feature| {
-                    do Output.with_c_str |Output| {
-                        let result = llvm::LLVMRustWriteOutputFile(
-                                PM,
-                                M,
-                                Triple,
-                                Cpu,
-                                Feature,
-                                Output,
-                                FileType,
-                                OptLevel,
-                                EnableSegmentedStacks);
-                        if (!result) {
-                            llvm_err(sess, ~"Could not write output");
-                        }
-                    }
-                }
+        do Output.with_c_str |Output| {
+            let result = llvm::LLVMRustWriteOutputFile(
+                    Target, PM, M, Output, FileType);
+            if !result {
+                llvm_err(sess, ~"Could not write output");
             }
         }
     }
@@ -231,24 +212,14 @@ pub mod write {
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
-    use lib::llvm::{ContextRef};
+    use lib::llvm::{ModuleRef, ContextRef};
     use lib;
 
-    use back::passes;
-
     use std::c_str::ToCStr;
-    use std::libc::{c_int, c_uint};
+    use std::libc::c_uint;
     use std::path::Path;
     use std::run;
     use std::str;
-
-    pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
-        match ot {
-            output_type_assembly | output_type_object | output_type_exe => true,
-            _ => false
-        }
-    }
 
     pub fn run_passes(sess: Session,
                       llcx: ContextRef,
@@ -258,163 +229,178 @@ pub mod write {
         unsafe {
             llvm::LLVMInitializePasses();
 
-            let opts = sess.opts;
-            if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
-            let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let pm = mk_pass_manager();
-            llvm::LLVMAddTargetData(td.lltd, pm.llpm);
+            // Only initialize the platforms supported by Rust here, because
+            // using --llvm-root will have multiple platforms that rustllvm
+            // doesn't actually link to and it's pointless to put target info
+            // into the registry that Rust can not generate machine code for.
+            llvm::LLVMInitializeX86TargetInfo();
+            llvm::LLVMInitializeX86Target();
+            llvm::LLVMInitializeX86TargetMC();
+            llvm::LLVMInitializeX86AsmPrinter();
+            llvm::LLVMInitializeX86AsmParser();
 
-            // Generate a pre-optimization intermediate file if -save-temps
-            // was specified.
-            if opts.save_temps {
-                match output_type {
-                  output_type_bitcode => {
-                    if opts.optimize != session::No {
-                        let filename = output.with_filetype("no-opt.bc");
-                        do filename.with_c_str |buf| {
-                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                        }
-                    }
-                  }
-                  _ => {
-                    let filename = output.with_filetype("bc");
-                    do filename.with_c_str |buf| {
-                        llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                    }
-                  }
-                }
-            }
+            llvm::LLVMInitializeARMTargetInfo();
+            llvm::LLVMInitializeARMTarget();
+            llvm::LLVMInitializeARMTargetMC();
+            llvm::LLVMInitializeARMAsmPrinter();
+            llvm::LLVMInitializeARMAsmParser();
 
-            let mut mpm = passes::PassManager::new(td.lltd);
+            llvm::LLVMInitializeMipsTargetInfo();
+            llvm::LLVMInitializeMipsTarget();
+            llvm::LLVMInitializeMipsTargetMC();
+            llvm::LLVMInitializeMipsAsmPrinter();
+            llvm::LLVMInitializeMipsAsmParser();
 
-            if !sess.no_verify() {
-                mpm.add_pass_from_name("verify");
-            }
-
-            let passes = if sess.opts.custom_passes.len() > 0 {
-                sess.opts.custom_passes.clone()
-            } else {
-                if sess.lint_llvm() {
-                    mpm.add_pass_from_name("lint");
-                }
-                passes::create_standard_passes(opts.optimize)
-            };
-
-
-            debug!("Passes: %?", passes);
-            passes::populate_pass_manager(sess, &mut mpm, passes);
-
-            debug!("Running Module Optimization Pass");
-            mpm.run(llmod);
-
-            if opts.jit {
-                // If we are using JIT, go ahead and create and execute the
-                // engine now.  JIT execution takes ownership of the module and
-                // context, so don't dispose and return.
-                jit::exec(sess, llcx, llmod, true);
-
-                if sess.time_llvm_passes() {
-                    llvm::LLVMRustPrintPassTimings();
-                }
-                return;
-            } else if is_object_or_assembly_or_exe(output_type) {
-                let LLVMOptNone       = 0 as c_int; // -O0
-                let LLVMOptLess       = 1 as c_int; // -O1
-                let LLVMOptDefault    = 2 as c_int; // -O2, -Os
-                let LLVMOptAggressive = 3 as c_int; // -O3
-
-                let CodeGenOptLevel = match opts.optimize {
-                  session::No => LLVMOptNone,
-                  session::Less => LLVMOptLess,
-                  session::Default => LLVMOptDefault,
-                  session::Aggressive => LLVMOptAggressive
-                };
-
-                let FileType = match output_type {
-                    output_type_object | output_type_exe => lib::llvm::ObjectFile,
-                    _ => lib::llvm::AssemblyFile
-                };
-
-                // Write optimized bitcode if --save-temps was on.
-
-                if opts.save_temps {
-                    // Always output the bitcode file with --save-temps
-
-                    let filename = output.with_filetype("opt.bc");
-                    do filename.with_c_str |buf| {
-                        llvm::LLVMWriteBitcodeToFile(llmod, buf)
-                    };
-                    // Save the assembly file if -S is used
-                    if output_type == output_type_assembly {
-                        WriteOutputFile(
-                            sess,
-                            pm.llpm,
-                            llmod,
-                            sess.targ_cfg.target_strs.target_triple,
-                            opts.target_cpu,
-                            opts.target_feature,
-                            output.to_str(),
-                            lib::llvm::AssemblyFile as c_uint,
-                            CodeGenOptLevel,
-                            true);
-                    }
-
-                    // Save the object file for -c or --save-temps alone
-                    // This .o is needed when an exe is built
-                    if output_type == output_type_object ||
-                           output_type == output_type_exe {
-                        WriteOutputFile(
-                            sess,
-                            pm.llpm,
-                            llmod,
-                            sess.targ_cfg.target_strs.target_triple,
-                            opts.target_cpu,
-                            opts.target_feature,
-                            output.to_str(),
-                            lib::llvm::ObjectFile as c_uint,
-                            CodeGenOptLevel,
-                            true);
-                    }
-                } else {
-                    // If we aren't saving temps then just output the file
-                    // type corresponding to the '-c' or '-S' flag used
-                    WriteOutputFile(
-                        sess,
-                        pm.llpm,
-                        llmod,
-                        sess.targ_cfg.target_strs.target_triple,
-                        opts.target_cpu,
-                        opts.target_feature,
-                        output.to_str(),
-                        FileType as c_uint,
-                        CodeGenOptLevel,
-                        true);
-                }
-                // Clean up and return
-
-                llvm::LLVMDisposeModule(llmod);
-                llvm::LLVMContextDispose(llcx);
-                if sess.time_llvm_passes() {
-                    llvm::LLVMRustPrintPassTimings();
-                }
-                return;
-            }
-
-            if output_type == output_type_llvm_assembly {
-                // Given options "-S --emit-llvm": output LLVM assembly
-                do output.with_c_str |buf_o| {
-                    llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o);
-                }
-            } else {
-                // If only a bitcode file is asked for by using the
-                // '--emit-llvm' flag, then output it here
-                do output.with_c_str |buf| {
+            if sess.opts.save_temps {
+                do output.with_filetype("no-opt.bc").with_c_str |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 }
             }
 
-            llvm::LLVMDisposeModule(llmod);
-            llvm::LLVMContextDispose(llcx);
+            // Copy what clan does by turning on loop vectorization at O2 and
+            // slp vectorization at O3
+            let vectorize_loop = !sess.no_vectorize_loops() &&
+                                 (sess.opts.optimize == session::Default ||
+                                  sess.opts.optimize == session::Aggressive);
+            let vectorize_slp = !sess.no_vectorize_slp() &&
+                                sess.opts.optimize == session::Aggressive;
+            llvm::LLVMRustSetLLVMOptions(sess.print_llvm_passes(),
+                                         vectorize_loop,
+                                         vectorize_slp,
+                                         sess.time_llvm_passes());
+
+            let OptLevel = match sess.opts.optimize {
+              session::No => lib::llvm::CodeGenLevelNone,
+              session::Less => lib::llvm::CodeGenLevelLess,
+              session::Default => lib::llvm::CodeGenLevelDefault,
+              session::Aggressive => lib::llvm::CodeGenLevelAggressive,
+            };
+
+            let tm = do sess.targ_cfg.target_strs.target_triple.with_c_str |T| {
+                do sess.opts.target_cpu.with_c_str |CPU| {
+                    do sess.opts.target_feature.with_c_str |Features| {
+                        llvm::LLVMRustCreateTargetMachine(
+                            T, CPU, Features,
+                            lib::llvm::CodeModelDefault,
+                            lib::llvm::RelocPIC,
+                            OptLevel,
+                            true
+                        )
+                    }
+                }
+            };
+
+            // Create the two optimizing pass managers. These mirror what clang
+            // does, and are by populated by LLVM's default PassManagerBuilder.
+            // Each manager has a different set of passes, but they also share
+            // some common passes. Each one is initialized with the analyis
+            // passes the target requires, and then further passes are added.
+            let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
+            let mpm = llvm::LLVMCreatePassManager();
+            llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+            llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+
+            // If we're verifying or linting, add them to the function pass
+            // manager.
+            let addpass = |pass: &str| {
+                do pass.with_c_str |s| { llvm::LLVMRustAddPass(fpm, s) }
+            };
+            if !sess.no_verify() { assert!(addpass("verify")); }
+            if sess.lint_llvm()  { assert!(addpass("lint"));   }
+
+            // Create the PassManagerBuilder for LLVM. We configure it with
+            // reasonable defaults and prepare it to actually populate the pass
+            // manager.
+            let builder = llvm::LLVMPassManagerBuilderCreate();
+            match sess.opts.optimize {
+                session::No => {
+                    // Don't add lifetime intrinsics add O0
+                    llvm::LLVMRustAddAlwaysInlinePass(builder, false);
+                }
+                // numeric values copied from clang
+                session::Less => {
+                    llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                                                                        225);
+                }
+                session::Default | session::Aggressive => {
+                    llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                                                                        275);
+                }
+            }
+            llvm::LLVMPassManagerBuilderSetOptLevel(builder, OptLevel as c_uint);
+            llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod);
+
+            // Use the builder to populate the function/module pass managers.
+            llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
+            llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
+            llvm::LLVMPassManagerBuilderDispose(builder);
+
+            for pass in sess.opts.custom_passes.iter() {
+                do pass.with_c_str |s| {
+                    if !llvm::LLVMRustAddPass(mpm, s) {
+                        sess.warn(fmt!("Unknown pass %s, ignoring", *pass));
+                    }
+                }
+            }
+
+            // Finally, run the actual optimization passes
+            llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
+            llvm::LLVMRunPassManager(mpm, llmod);
+
+            // Deallocate managers that we're now done with
+            llvm::LLVMDisposePassManager(fpm);
+            llvm::LLVMDisposePassManager(mpm);
+
+            if sess.opts.save_temps {
+                do output.with_filetype("bc").with_c_str |buf| {
+                    llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                }
+            }
+
+            if sess.opts.jit {
+                // If we are using JIT, go ahead and create and execute the
+                // engine now. JIT execution takes ownership of the module and
+                // context, so don't dispose
+                jit::exec(sess, llcx, llmod, true);
+            } else {
+                // Create a codegen-specific pass manager to emit the actual
+                // assembly or object files. This may not end up getting used,
+                // but we make it anyway for good measure.
+                let cpm = llvm::LLVMCreatePassManager();
+                llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+                llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+
+                match output_type {
+                    output_type_none => {}
+                    output_type_bitcode => {
+                        do output.with_c_str |buf| {
+                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                        }
+                    }
+                    output_type_llvm_assembly => {
+                        do output.with_c_str |output| {
+                            llvm::LLVMRustPrintModule(cpm, llmod, output)
+                        }
+                    }
+                    output_type_assembly => {
+                        WriteOutputFile(sess, tm, cpm, llmod, output.to_str(),
+                                        lib::llvm::AssemblyFile);
+                    }
+                    output_type_exe | output_type_object => {
+                        WriteOutputFile(sess, tm, cpm, llmod, output.to_str(),
+                                        lib::llvm::ObjectFile);
+                    }
+                }
+
+                llvm::LLVMDisposePassManager(cpm);
+            }
+
+            llvm::LLVMRustDisposeTargetMachine(tm);
+            // the jit takes ownership of these two items
+            if !sess.opts.jit {
+                llvm::LLVMDisposeModule(llmod);
+                llvm::LLVMContextDispose(llcx);
+            }
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }

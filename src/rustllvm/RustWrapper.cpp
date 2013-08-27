@@ -20,9 +20,7 @@
 using namespace llvm;
 using namespace llvm::sys;
 
-static const char *LLVMRustError;
-
-extern cl::opt<bool> EnableARMEHABI;
+const char *LLVMRustError;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
@@ -34,62 +32,6 @@ LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
 
 extern "C" const char *LLVMRustGetLastError(void) {
   return LLVMRustError;
-}
-
-extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
-
-extern "C" void LLVMRustAddPrintModulePass(LLVMPassManagerRef PMR,
-                                           LLVMModuleRef M,
-                                           const char* path) {
-  PassManager *PM = unwrap<PassManager>(PMR);
-  std::string ErrorInfo;
-  raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_Binary);
-  formatted_raw_ostream FOS(OS);
-  PM->add(createPrintModulePass(&FOS));
-  PM->run(*unwrap(M));
-}
-
-void LLVMInitializeX86TargetInfo();
-void LLVMInitializeX86Target();
-void LLVMInitializeX86TargetMC();
-void LLVMInitializeX86AsmPrinter();
-void LLVMInitializeX86AsmParser();
-
-
-void LLVMInitializeARMTargetInfo();
-void LLVMInitializeARMTarget();
-void LLVMInitializeARMTargetMC();
-void LLVMInitializeARMAsmPrinter();
-void LLVMInitializeARMAsmParser();
-
-void LLVMInitializeMipsTargetInfo();
-void LLVMInitializeMipsTarget();
-void LLVMInitializeMipsTargetMC();
-void LLVMInitializeMipsAsmPrinter();
-void LLVMInitializeMipsAsmParser();
-// Only initialize the platforms supported by Rust here,
-// because using --llvm-root will have multiple platforms
-// that rustllvm doesn't actually link to and it's pointless to put target info
-// into the registry that Rust can not generate machine code for.
-
-void LLVMRustInitializeTargets() {
-  LLVMInitializeX86TargetInfo();
-  LLVMInitializeX86Target();
-  LLVMInitializeX86TargetMC();
-  LLVMInitializeX86AsmPrinter();
-  LLVMInitializeX86AsmParser();
-
-  LLVMInitializeARMTargetInfo();
-  LLVMInitializeARMTarget();
-  LLVMInitializeARMTargetMC();
-  LLVMInitializeARMAsmPrinter();
-  LLVMInitializeARMAsmParser();
-
-  LLVMInitializeMipsTargetInfo();
-  LLVMInitializeMipsTarget();
-  LLVMInitializeMipsTargetMC();
-  LLVMInitializeMipsAsmPrinter();
-  LLVMInitializeMipsAsmParser();
 }
 
 // Custom memory manager for MCJITting. It needs special features
@@ -367,85 +309,9 @@ LLVMRustBuildJIT(void* mem,
   return wrap(EE);
 }
 
-extern "C" bool
-LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
-                        LLVMModuleRef M,
-                        const char *triple,
-                        const char *cpu,
-                        const char *feature,
-                        const char *path,
-                        TargetMachine::CodeGenFileType FileType,
-                        CodeGenOpt::Level OptLevel,
-      bool EnableSegmentedStacks) {
-
-  LLVMRustInitializeTargets();
-
-  // Initializing the command-line options more than once is not
-  // allowed. So, check if they've already been initialized.
-  // (This could happen if we're being called from rustpkg, for
-  // example.)
-  if (!EnableARMEHABI) {
-    int argc = 3;
-    const char* argv[] = {"rustc", "-arm-enable-ehabi",
-        "-arm-enable-ehabi-descriptors"};
-    cl::ParseCommandLineOptions(argc, argv);
-  }
-
-  Triple Trip(Triple::normalize(triple));
-
-  TargetOptions Options;
-  Options.EnableSegmentedStacks = EnableSegmentedStacks;
-  Options.FixedStackSegmentSize = 2 * 1024 * 1024;  // XXX: This is too big.
-  Options.FloatABIType =
-      (Trip.getEnvironment() == Triple::GNUEABIHF) ? FloatABI::Hard :
-                                                     FloatABI::Default;
-
-  PassManager *PM = unwrap<PassManager>(PMR);
-
-  std::string Err;
-  std::string FeaturesStr(feature);
-  std::string CPUStr(cpu);
-  const Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(), Err);
-  TargetMachine *Target =
-    TheTarget->createTargetMachine(Trip.getTriple(), CPUStr, FeaturesStr,
-           Options, Reloc::PIC_,
-           CodeModel::Default, OptLevel);
-  Target->addAnalysisPasses(*PM);
-
-  bool NoVerify = false;
-  std::string ErrorInfo;
-  raw_fd_ostream OS(path, ErrorInfo,
-                    sys::fs::F_Binary);
-  if (ErrorInfo != "") {
-    LLVMRustError = ErrorInfo.c_str();
-    return false;
-  }
-  formatted_raw_ostream FOS(OS);
-
-  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType, NoVerify);
-  assert(!foo);
-  (void)foo;
-  PM->run(*unwrap(M));
-  delete Target;
-  return true;
-}
-
-extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(LLVMContextRef C,
-                                                   const char *Filename) {
-  SMDiagnostic d;
-  Module *m = ParseAssemblyFile(Filename, d, *unwrap(C));
-  if (m) {
-    return wrap(m);
-  } else {
-    LLVMRustError = d.getMessage().str().c_str();
-    return NULL;
-  }
-}
-
-extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {
-  LLVMModuleRef M;
-  return LLVMParseBitcode(MemBuf, &M, const_cast<char **>(&LLVMRustError))
-         ? NULL : M;
+extern "C" void
+LLVMRustSetNormalizedTarget(LLVMModuleRef M, const char *triple) {
+    unwrap(M)->setTargetTriple(Triple::normalize(triple));
 }
 
 extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
@@ -461,11 +327,6 @@ extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy,
   N <<= 32;
   N |= N_lo;
   return LLVMConstInt(IntTy, N, SignExtend);
-}
-
-extern bool llvm::TimePassesIsEnabled;
-extern "C" void LLVMRustEnableTimePasses() {
-  TimePassesIsEnabled = true;
 }
 
 extern "C" void LLVMRustPrintPassTimings() {
