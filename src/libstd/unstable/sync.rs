@@ -27,7 +27,7 @@ use vec;
 ///
 /// Enforces no shared-memory safety.
 pub struct UnsafeArc<T> {
-    data: *mut libc::c_void,
+    data: *mut ArcData<T>,
 }
 
 struct ArcData<T> {
@@ -41,7 +41,7 @@ struct ArcData<T> {
     data: Option<T>,
 }
 
-unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut libc::c_void {
+unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
     let data = ~ArcData { count: AtomicUint::new(refcount),
                           unwrapper: AtomicOption::empty(),
                           data: Some(data) };
@@ -79,12 +79,11 @@ impl<T: Send> UnsafeArc<T> {
             ~[] // The "num_handles - 1" trick (below) fails in the 0 case.
         } else {
             unsafe {
-                let mut data: ~ArcData<T> = cast::transmute(self.data);
                 // Minus one because we are recycling the given handle's refcount.
-                let old_count = data.count.fetch_add(num_handles - 1, Acquire);
-                // let old_count = data.count.fetch_add(num_handles, Acquire);
+                let old_count = (*self.data).count.fetch_add(num_handles - 1, Acquire);
+                // let old_count = (*self.data).count.fetch_add(num_handles, Acquire);
                 assert!(old_count >= 1);
-                let ptr = cast::transmute(data);
+                let ptr = self.data;
                 cast::forget(self); // Don't run the destructor on this handle.
                 vec::from_fn(num_handles, |_| UnsafeArc { data: ptr })
             }
@@ -94,10 +93,8 @@ impl<T: Send> UnsafeArc<T> {
     #[inline]
     pub fn get(&self) -> *mut T {
         unsafe {
-            let mut data: ~ArcData<T> = cast::transmute(self.data);
-            assert!(data.count.load(Relaxed) > 0);
-            let r: *mut T = data.data.get_mut_ref();
-            cast::forget(data);
+            assert!((*self.data).count.load(Relaxed) > 0);
+            let r: *mut T = (*self.data).data.get_mut_ref();
             return r;
         }
     }
@@ -105,10 +102,8 @@ impl<T: Send> UnsafeArc<T> {
     #[inline]
     pub fn get_immut(&self) -> *T {
         unsafe {
-            let data: ~ArcData<T> = cast::transmute(self.data);
-            assert!(data.count.load(Relaxed) > 0);
-            let r: *T = data.data.get_ref();
-            cast::forget(data);
+            assert!((*self.data).count.load(Relaxed) > 0);
+            let r: *T = (*self.data).data.get_ref();
             return r;
         }
     }
@@ -122,6 +117,7 @@ impl<T: Send> UnsafeArc<T> {
         do task::unkillable {
             unsafe {
                 let mut this = this.take();
+                // The ~ dtor needs to run if this code succeeds.
                 let mut data: ~ArcData<T> = cast::transmute(this.data);
                 // Set up the unwrap protocol.
                 let (p1,c1) = comm::oneshot(); // ()
@@ -186,6 +182,7 @@ impl<T: Send> UnsafeArc<T> {
     pub fn try_unwrap(self) -> Either<UnsafeArc<T>, T> {
         unsafe {
             let mut this = self; // FIXME(#4330) mutable self
+            // The ~ dtor needs to run if this code succeeds.
             let mut data: ~ArcData<T> = cast::transmute(this.data);
             // This can of course race with anybody else who has a handle, but in
             // such a case, the returned count will always be at least 2. If we
@@ -212,11 +209,9 @@ impl<T: Send> UnsafeArc<T> {
 impl<T: Send> Clone for UnsafeArc<T> {
     fn clone(&self) -> UnsafeArc<T> {
         unsafe {
-            let mut data: ~ArcData<T> = cast::transmute(self.data);
             // This barrier might be unnecessary, but I'm not sure...
-            let old_count = data.count.fetch_add(1, Acquire);
+            let old_count = (*self.data).count.fetch_add(1, Acquire);
             assert!(old_count >= 1);
-            cast::forget(data);
             return UnsafeArc { data: self.data };
         }
     }
