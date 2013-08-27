@@ -45,6 +45,7 @@ pub fn is_sep(u: &u8) -> bool {
 }
 
 impl Eq for Path {
+    #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.repr == other.repr
     }
@@ -134,7 +135,7 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v);
             }
             Some(idx) => {
-                let mut v = vec::with_capacity(self.repr.len() - idx + filename.len());
+                let mut v = vec::with_capacity(idx + 1 + filename.len());
                 v.push_all(self.repr.slice_to(idx+1));
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
@@ -313,7 +314,7 @@ impl Path {
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == sep;
             let v_ = if is_abs { v.as_slice().slice_from(1) } else { v.as_slice() };
-            let comps = normalize_helper(v_, is_abs, is_sep);
+            let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
                 Some(comps) => {
@@ -363,15 +364,14 @@ impl Path {
 }
 
 // None result means the byte vector didn't need normalizing
-// FIXME (#8169): Pull this into parent module once visibility works
-fn normalize_helper<'a>(v: &'a [u8], is_abs: bool, f: &'a fn(&u8) -> bool) -> Option<~[&'a [u8]]> {
+fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
     if is_abs && v.as_slice().is_empty() {
         return None;
     }
     let mut comps: ~[&'a [u8]] = ~[];
     let mut n_up = 0u;
     let mut changed = false;
-    for comp in v.split_iter(f) {
+    for comp in v.split_iter(is_sep) {
         if comp.is_empty() { changed = true }
         else if comp == bytes!(".") { changed = true }
         else if comp == bytes!("..") {
