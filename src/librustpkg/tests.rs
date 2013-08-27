@@ -18,12 +18,11 @@ use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use package_id::{PkgId};
 use version::{ExactRevision, NoVersion, Version, Tagged};
-use path_util::{target_executable_in_workspace, target_library_in_workspace,
-               target_test_in_workspace, target_bench_in_workspace,
-               make_dir_rwx, U_RWX, library_in_workspace,
+use path_util::{target_executable_in_workspace, target_test_in_workspace,
+               target_bench_in_workspace, make_dir_rwx, U_RWX,
+               library_in_workspace, installed_library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
-               built_library_in_workspace, built_executable_in_workspace,
-                installed_library_in_workspace};
+               built_library_in_workspace, built_executable_in_workspace};
 use rustc::metadata::filesearch::rust_path;
 use rustc::driver::driver::host_triple;
 use target::*;
