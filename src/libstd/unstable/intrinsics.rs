@@ -161,13 +161,10 @@ pub trait TyVisitor {
                       n_inputs: uint, retstyle: uint) -> bool;
 
     fn visit_trait(&self) -> bool;
-    fn visit_var(&self) -> bool;
-    fn visit_var_integral(&self) -> bool;
     fn visit_param(&self, i: uint) -> bool;
     fn visit_self(&self) -> bool;
     fn visit_type(&self) -> bool;
     fn visit_opaque_box(&self) -> bool;
-    fn visit_constr(&self, inner: *TyDesc) -> bool;
     fn visit_closure_ptr(&self, ck: uint) -> bool;
 }
 
