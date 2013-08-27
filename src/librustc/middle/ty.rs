@@ -3476,18 +3476,18 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_ptr_mutability => ~"pointers differ in mutability",
         terr_ref_mutability => ~"references differ in mutability",
         terr_ty_param_size(values) => {
-            fmt!("expected a type with %? type params \
-                  but found one with %? type params",
+            fmt!("expected a type with %u type params \
+                  but found one with %u type params",
                  values.expected, values.found)
         }
         terr_tuple_size(values) => {
-            fmt!("expected a tuple with %? elements \
-                  but found one with %? elements",
+            fmt!("expected a tuple with %u elements \
+                  but found one with %u elements",
                  values.expected, values.found)
         }
         terr_record_size(values) => {
-            fmt!("expected a record with %? fields \
-                  but found one with %? fields",
+            fmt!("expected a record with %u fields \
+                  but found one with %u fields",
                  values.expected, values.found)
         }
         terr_record_mutability => {
