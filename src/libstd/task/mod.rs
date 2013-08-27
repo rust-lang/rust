@@ -680,7 +680,7 @@ fn test_rekillable_not_nested() {
         // receiving anything since
         // this block should be nested
         // into a unkillable block.
-        yield();
+        deschedule();
     }
 }
 
