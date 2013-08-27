@@ -284,8 +284,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     match cmt.cat {
         mc::cat_rvalue(*) |
         mc::cat_static_item |
-        mc::cat_copied_upvar(_) |
-        mc::cat_implicit_self => {
+        mc::cat_copied_upvar(_) => {
             None
         }
 
