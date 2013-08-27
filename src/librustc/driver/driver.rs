@@ -848,8 +848,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optopt("", "opt-level",
                         "Optimize with possible levels 0-3", "LEVEL"),
   optopt("", "passes", "Comma or space separated list of pass names to use. \
-                        Overrides the default passes for optimization levels,\n\
-                        a value of \"list\" will list the available passes.", "NAMES"),
+                        Appends to the default list of passes to run for the \
+                        specified current optimization level. A value of \
+                        \"list\" will list all of the available passes", "NAMES"),
   optopt( "",  "out-dir",
                         "Write output to compiler-chosen filename
                           in <dir>", "DIR"),

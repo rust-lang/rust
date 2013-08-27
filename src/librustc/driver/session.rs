@@ -76,6 +76,9 @@ pub static print_link_args:         uint = 1 << 23;
 pub static no_debug_borrows:        uint = 1 << 24;
 pub static lint_llvm:               uint = 1 << 25;
 pub static once_fns:                uint = 1 << 26;
+pub static print_llvm_passes:       uint = 1 << 27;
+pub static no_vectorize_loops:      uint = 1 << 28;
+pub static no_vectorize_slp:        uint = 1 << 29;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -120,6 +123,15 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"once-fns",
       ~"Allow 'once fn' closures to deinitialize captured variables",
       once_fns),
+     (~"print-llvm-passes",
+      ~"Prints the llvm optimization passes being run",
+      print_llvm_passes),
+     (~"no-vectorize-loops",
+      ~"Don't run the loop vectorization optimization passes",
+      no_vectorize_loops),
+     (~"no-vectorize-slp",
+      ~"Don't run LLVM's SLP vectorization passes",
+      no_vectorize_slp),
     ]
 }
 
@@ -305,6 +317,15 @@ impl Session_ {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
     pub fn once_fns(@self) -> bool { self.debugging_opt(once_fns) }
+    pub fn print_llvm_passes(@self) -> bool {
+        self.debugging_opt(print_llvm_passes)
+    }
+    pub fn no_vectorize_loops(@self) -> bool {
+        self.debugging_opt(no_vectorize_loops)
+    }
+    pub fn no_vectorize_slp(@self) -> bool {
+        self.debugging_opt(no_vectorize_slp)
+    }
 
     // pointless function, now...
     pub fn str_of(@self, id: ast::ident) -> @str {

@@ -1,5 +1,4 @@
 LLVMRustCreateMemoryBufferWithContentsOfFile
-LLVMRustEnableTimePasses
 LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustConstSmallInt
@@ -7,8 +6,6 @@ LLVMRustConstInt
 LLVMRustLoadCrate
 LLVMRustPrepareJIT
 LLVMRustBuildJIT
-LLVMRustParseBitcode
-LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
 LLVMRustStartMultithreading
 LLVMCreateObjectFile
@@ -28,7 +25,6 @@ LLVMAddAlias
 LLVMAddArgumentPromotionPass
 LLVMAddAttribute
 LLVMAddBasicAliasAnalysisPass
-LLVMRustAddPrintModulePass
 LLVMAddCFGSimplificationPass
 LLVMAddCase
 LLVMAddClause
@@ -589,9 +585,6 @@ LLVMStructCreateNamed
 LLVMStructSetBody
 LLVMInlineAsm
 LLVMInitializePasses
-LLVMAddPass
-LLVMCreatePass
-LLVMDestroyPass
 LLVMDIBuilderCreate
 LLVMDIBuilderDispose
 LLVMDIBuilderFinalize
@@ -616,3 +609,15 @@ LLVMDIBuilderCreateEnumerationType
 LLVMDIBuilderCreateUnionType
 LLVMDIBuilderCreateTemplateTypeParameter
 LLVMSetUnnamedAddr
+LLVMRustAddPass
+LLVMRustAddAnalysisPasses
+LLVMRustAddLibraryInfo
+LLVMRustCreateTargetMachine
+LLVMRustRunFunctionPassManager
+LLVMRustPrintModule
+LLVMRustDisposeTargetMachine
+LLVMRustAddBuilderLibraryInfo
+LLVMRustSetLLVMOptions
+LLVMRustPrintPasses
+LLVMRustSetNormalizedTarget
+LLVMRustAddAlwaysInlinePass
