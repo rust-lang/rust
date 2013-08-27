@@ -229,7 +229,7 @@ The initializer is `DEFAULT-TAB-WIDTH'.")
 ;; regexp (which is broken on a few edge cases), add our own 'rust
 ;; compilation error regexp and use it instead.
 (defvar rustc-compilation-regexps
-  (let ((file "^\\([^\n]+\\)")
+  (let ((file "\\([^\n]+\\)")
         (start-line "\\([0-9]+\\)")
         (start-col  "\\([0-9]+\\)")
         (end-line   "\\([0-9]+\\)")
