@@ -26,6 +26,7 @@ pub type EventLoopObject = uvio::UvEventLoop;
 pub type RemoteCallbackObject = uvio::UvRemoteCallback;
 pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
+pub type RtioTcpAcceptorObject = uvio::UvTcpAcceptor;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
 pub type RtioTimerObject = uvio::UvTimer;
@@ -75,6 +76,10 @@ pub trait IoFactory {
 }
 
 pub trait RtioTcpListener : RtioSocket {
+    fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError>;
+}
+
+pub trait RtioTcpAcceptor : RtioSocket {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
     fn accept_simultaneously(&mut self) -> Result<(), IoError>;
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;

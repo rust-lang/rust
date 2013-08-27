@@ -40,6 +40,12 @@ impl UnixListener {
     }
 }
 
-impl Listener<UnixStream> for UnixListener {
+impl Listener<UnixStream, UnixAcceptor> for UnixListener {
+    fn listen(self) -> Option<UnixAcceptor> { fail!() }
+}
+
+pub struct UnixAcceptor;
+
+impl Acceptor<UnixStream> for UnixAcceptor {
     fn accept(&mut self) -> Option<UnixStream> { fail!() }
 }
