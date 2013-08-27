@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
-
 // Caveats - gdb prints any 8-bit value (meaning rust i8 and u8 values)
 // as its numerical value along with its associated ASCII char, there
 // doesn't seem to be any way around this. Also, gdb doesn't know

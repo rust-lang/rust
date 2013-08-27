@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
-
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
