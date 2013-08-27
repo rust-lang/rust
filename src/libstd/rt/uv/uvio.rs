@@ -26,6 +26,7 @@ use rt::local::Local;
 use rt::rtio::*;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::tube::Tube;
+use rt::task::SchedHome;
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
@@ -47,76 +48,80 @@ use task;
 // XXX we should not be calling uvll functions in here.
 
 trait HomingIO {
+
     fn home<'r>(&'r mut self) -> &'r mut SchedHandle;
+
     /* XXX This will move pinned tasks to do IO on the proper scheduler
      * and then move them back to their home.
      */
-    fn home_for_io<A>(&mut self, io: &fn(&mut Self) -> A) -> A {
-        use rt::sched::{PinnedTask, TaskFromFriend};
-        // go home
-        let old_home = Cell::new_empty();
-        let old_home_ptr = &old_home;
+    fn go_to_IO_home(&mut self) -> SchedHome {
+        use rt::sched::PinnedTask;
+
         do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                // get the old home first
-                do task.wake().map_move |mut task| {
-                    old_home_ptr.put_back(task.take_unwrap_home());
-                    self.home().send(PinnedTask(task));
-                };
+            let mut old = None;
+            {
+                let ptr = &mut old;
+                let scheduler: ~Scheduler = Local::take();
+                do scheduler.deschedule_running_task_and_then |_, task| {
+                    /* FIXME(#8674) if the task was already killed then wake
+                     * will return None. In that case, the home pointer will never be set.
+                     *
+                     * RESOLUTION IDEA: Since the task is dead, we should just abort the IO action.
+                     */
+                    do task.wake().map_move |mut task| {
+                        *ptr = Some(task.take_unwrap_home());
+                        self.home().send(PinnedTask(task));
+                    };
+                }
             }
+            old.expect("No old home because task had already been killed.")
         }
+    }
 
-        // do IO
-        let a = io(self);
+    // XXX dummy self param
+    fn restore_original_home(_dummy_self: Option<Self>, old: SchedHome) {
+        use rt::sched::TaskFromFriend;
 
-        // unhome home
+        let old = Cell::new(old);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |scheduler, task| {
+                /* FIXME(#8674) if the task was already killed then wake
+                 * will return None. In that case, the home pointer will never be restored.
+                 *
+                 * RESOLUTION IDEA: Since the task is dead, we should just abort the IO action.
+                 */
                 do task.wake().map_move |mut task| {
-                    task.give_home(old_home.take());
+                    task.give_home(old.take());
                     scheduler.make_handle().send(TaskFromFriend(task));
                 };
             }
         }
+    }
 
-        // return the result of the IO
-        a
+    fn home_for_io<A>(&mut self, io: &fn(&mut Self) -> A) -> A {
+        let home = self.go_to_IO_home();
+        let a = io(self); // do IO
+        HomingIO::restore_original_home(None::<Self> /* XXX dummy self */, home);
+        a // return the result of the IO
+    }
+
+    fn home_for_io_consume<A>(self, io: &fn(Self) -> A) -> A {
+        let mut this = self;
+        let home = this.go_to_IO_home();
+        let a = io(this); // do IO
+        HomingIO::restore_original_home(None::<Self> /* XXX dummy self */, home);
+        a // return the result of the IO
     }
 
     fn home_for_io_with_sched<A>(&mut self, io_sched: &fn(&mut Self, ~Scheduler) -> A) -> A {
-        use rt::sched::{PinnedTask, TaskFromFriend};
-
-        do task::unkillable { // FIXME(#8674)
-            // go home
-            let old_home = Cell::new_empty();
-            let old_home_ptr = &old_home;
+        let home = self.go_to_IO_home();
+        let a = do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                // get the old home first
-                do task.wake().map_move |mut task| {
-                    old_home_ptr.put_back(task.take_unwrap_home());
-                    self.home().send(PinnedTask(task));
-                };
-            }
-
-            // do IO
-            let scheduler: ~Scheduler = Local::take();
-            let a = io_sched(self, scheduler);
-
-            // unhome home
-            let scheduler: ~Scheduler = Local::take();
-            do scheduler.deschedule_running_task_and_then |scheduler, task| {
-                do task.wake().map_move |mut task| {
-                    task.give_home(old_home.take());
-                    scheduler.make_handle().send(TaskFromFriend(task));
-                };
-            }
-
-            // return the result of the IO
-            a
-        }
+            io_sched(self, scheduler) // do IO and scheduling action
+        };
+        HomingIO::restore_original_home(None::<Self> /* XXX dummy self */, home);
+        a // return result of IO
     }
 }
 
