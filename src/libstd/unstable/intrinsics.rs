@@ -73,7 +73,7 @@ pub struct TyDesc {
 pub enum Opaque { }
 
 #[lang="ty_visitor"]
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 pub trait TyVisitor {
     fn visit_bot(&self) -> bool;
     fn visit_nil(&self) -> bool;
@@ -169,6 +169,105 @@ pub trait TyVisitor {
     fn visit_opaque_box(&self) -> bool;
     fn visit_constr(&self, inner: *TyDesc) -> bool;
     fn visit_closure_ptr(&self, ck: uint) -> bool;
+}
+
+#[lang="ty_visitor"]
+#[cfg(not(test), not(stage0))]
+pub trait TyVisitor {
+    fn visit_bot(&mut self) -> bool;
+    fn visit_nil(&mut self) -> bool;
+    fn visit_bool(&mut self) -> bool;
+
+    fn visit_int(&mut self) -> bool;
+    fn visit_i8(&mut self) -> bool;
+    fn visit_i16(&mut self) -> bool;
+    fn visit_i32(&mut self) -> bool;
+    fn visit_i64(&mut self) -> bool;
+
+    fn visit_uint(&mut self) -> bool;
+    fn visit_u8(&mut self) -> bool;
+    fn visit_u16(&mut self) -> bool;
+    fn visit_u32(&mut self) -> bool;
+    fn visit_u64(&mut self) -> bool;
+
+    fn visit_float(&mut self) -> bool;
+    fn visit_f32(&mut self) -> bool;
+    fn visit_f64(&mut self) -> bool;
+
+    fn visit_char(&mut self) -> bool;
+
+    fn visit_estr_box(&mut self) -> bool;
+    fn visit_estr_uniq(&mut self) -> bool;
+    fn visit_estr_slice(&mut self) -> bool;
+    fn visit_estr_fixed(&mut self, n: uint, sz: uint, align: uint) -> bool;
+
+    fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+
+    fn visit_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
+                        mtbl: uint, inner: *TyDesc) -> bool;
+
+    fn visit_enter_rec(&mut self, n_fields: uint,
+                       sz: uint, align: uint) -> bool;
+    fn visit_rec_field(&mut self, i: uint, name: &str,
+                       mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_leave_rec(&mut self, n_fields: uint,
+                       sz: uint, align: uint) -> bool;
+
+    fn visit_enter_class(&mut self, n_fields: uint,
+                         sz: uint, align: uint) -> bool;
+    fn visit_class_field(&mut self, i: uint, name: &str,
+                         mtbl: uint, inner: *TyDesc) -> bool;
+    fn visit_leave_class(&mut self, n_fields: uint,
+                         sz: uint, align: uint) -> bool;
+
+    fn visit_enter_tup(&mut self, n_fields: uint,
+                       sz: uint, align: uint) -> bool;
+    fn visit_tup_field(&mut self, i: uint, inner: *TyDesc) -> bool;
+    fn visit_leave_tup(&mut self, n_fields: uint,
+                       sz: uint, align: uint) -> bool;
+
+    fn visit_enter_enum(&mut self, n_variants: uint,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        sz: uint, align: uint) -> bool;
+    fn visit_enter_enum_variant(&mut self, variant: uint,
+                                disr_val: int,
+                                n_fields: uint,
+                                name: &str) -> bool;
+    fn visit_enum_variant_field(&mut self, i: uint, offset: uint, inner: *TyDesc) -> bool;
+    fn visit_leave_enum_variant(&mut self, variant: uint,
+                                disr_val: int,
+                                n_fields: uint,
+                                name: &str) -> bool;
+    fn visit_leave_enum(&mut self, n_variants: uint,
+                        get_disr: extern unsafe fn(ptr: *Opaque) -> int,
+                        sz: uint, align: uint) -> bool;
+
+    fn visit_enter_fn(&mut self, purity: uint, proto: uint,
+                      n_inputs: uint, retstyle: uint) -> bool;
+    fn visit_fn_input(&mut self, i: uint, mode: uint, inner: *TyDesc) -> bool;
+    fn visit_fn_output(&mut self, retstyle: uint, inner: *TyDesc) -> bool;
+    fn visit_leave_fn(&mut self, purity: uint, proto: uint,
+                      n_inputs: uint, retstyle: uint) -> bool;
+
+    fn visit_trait(&mut self) -> bool;
+    fn visit_var(&mut self) -> bool;
+    fn visit_var_integral(&mut self) -> bool;
+    fn visit_param(&mut self, i: uint) -> bool;
+    fn visit_self(&mut self) -> bool;
+    fn visit_type(&mut self) -> bool;
+    fn visit_opaque_box(&mut self) -> bool;
+    fn visit_constr(&mut self, inner: *TyDesc) -> bool;
+    fn visit_closure_ptr(&mut self, ck: uint) -> bool;
 }
 
 #[abi = "rust-intrinsic"]
@@ -288,12 +387,6 @@ extern "rust-intrinsic" {
     /// elements.
     pub fn size_of<T>() -> uint;
 
-    /// Move a value to a memory location containing a value.
-    ///
-    /// Drop glue is run on the destination, which must contain a
-    /// valid Rust value.
-    pub fn move_val<T>(dst: &mut T, src: T);
-
     /// Move a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.
@@ -328,26 +421,18 @@ extern "rust-intrinsic" {
     /// Returns `true` if a type is managed (will be allocated on the local heap)
     pub fn contains_managed<T>() -> bool;
 
+    #[cfg(stage0)]
     pub fn visit_tydesc(td: *TyDesc, tv: &TyVisitor);
-
-    pub fn frame_address(f: &once fn(*u8));
-
-    /// Get the address of the `__morestack` stack growth function.
-    pub fn morestack_addr() -> *();
-
-    /// Calculates the offset from a pointer.
-    ///
-    /// This is implemented as an intrinsic to avoid converting to and from an
-    /// integer, since the conversion would throw away aliasing information.
-    pub fn offset<T>(dst: *T, offset: int) -> *T;
+    #[cfg(not(stage0))]
+    pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
 
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also
     /// undefined behaviour.
     ///
-    /// This intrinsic should be preferred over `offset` when the guarantee can
-    /// be satisfied, to enable better optimization.
-    pub fn offset_inbounds<T>(dst: *T, offset: int) -> *T;
+    /// This is implemented as an intrinsic to avoid converting to and from an
+    /// integer, since the conversion would throw away aliasing information.
+    pub fn offset<T>(dst: *T, offset: int) -> *T;
 
     /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
@@ -370,67 +455,7 @@ extern "rust-intrinsic" {
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
 
-    pub fn sqrtf32(x: f32) -> f32;
-    pub fn sqrtf64(x: f64) -> f64;
-
-    pub fn powif32(a: f32, x: i32) -> f32;
-    pub fn powif64(a: f64, x: i32) -> f64;
-
-    // the following kill the stack canary without
-    // `fixed_stack_segment`. This possibly only affects the f64
-    // variants, but it's hard to be sure since it seems to only
-    // occur with fairly specific arguments.
-    #[fixed_stack_segment]
-    pub fn sinf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn sinf64(x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn cosf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn cosf64(x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn powf32(a: f32, x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn powf64(a: f64, x: f64) -> f64;
-
-    #[fixed_stack_segment]
-    pub fn expf32(x: f32) -> f32;
-    #[fixed_stack_segment]
-    pub fn expf64(x: f64) -> f64;
-
-    pub fn exp2f32(x: f32) -> f32;
-    pub fn exp2f64(x: f64) -> f64;
-
-    pub fn logf32(x: f32) -> f32;
-    pub fn logf64(x: f64) -> f64;
-
-    pub fn log10f32(x: f32) -> f32;
-    pub fn log10f64(x: f64) -> f64;
-
-    pub fn log2f32(x: f32) -> f32;
-    pub fn log2f64(x: f64) -> f64;
-
-    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-
-    pub fn fabsf32(x: f32) -> f32;
-    pub fn fabsf64(x: f64) -> f64;
-
-    pub fn floorf32(x: f32) -> f32;
-    pub fn floorf64(x: f64) -> f64;
-
-    pub fn ceilf32(x: f32) -> f32;
-    pub fn ceilf64(x: f64) -> f64;
-
-    pub fn truncf32(x: f32) -> f32;
-    pub fn truncf64(x: f64) -> f64;
-
-    pub fn ctpop8(x: i8) -> i8;
-    pub fn ctpop16(x: i16) -> i16;
-    pub fn ctpop32(x: i32) -> i32;
-    pub fn ctpop64(x: i64) -> i64;
+    // These are not listed below because they take a second `i1` argument
 
     pub fn ctlz8(x: i8) -> i8;
     pub fn ctlz16(x: i16) -> i16;
@@ -442,9 +467,7 @@ extern "rust-intrinsic" {
     pub fn cttz32(x: i32) -> i32;
     pub fn cttz64(x: i64) -> i64;
 
-    pub fn bswap16(x: i16) -> i16;
-    pub fn bswap32(x: i32) -> i32;
-    pub fn bswap64(x: i64) -> i64;
+    // Sadly these return i1 which rust does not understand
 
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
@@ -475,6 +498,106 @@ extern "rust-intrinsic" {
     pub fn u16_mul_with_overflow(x: u16, y: u16) -> (u16, bool);
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
+}
+
+// Some LLVM intrinsics can be exposed as just calling the corresponding LLVM
+// function directly. The nice part about this is that it's fewer hardcoded
+// things in the compiler, and we should get the same performance
+// characteristics out of it!
+extern {
+    #[link_name = "llvm.sqrt.f32"] #[rust_stack] #[inline]
+    pub fn sqrtf32(x: f32) -> f32;
+    #[link_name = "llvm.sqrt.f64"] #[rust_stack] #[inline]
+    pub fn sqrtf64(x: f64) -> f64;
+
+    #[link_name = "llvm.powi.f32"] #[rust_stack] #[inline]
+    pub fn powif32(a: f32, x: i32) -> f32;
+    #[link_name = "llvm.powi.f64"] #[rust_stack] #[inline]
+    pub fn powif64(a: f64, x: i32) -> f64;
+
+    // the following kill the stack canary without `fast_ffi`. This possibly
+    // only affects the f64 variants, but it's hard to be sure since it seems to
+    // only occur with fairly specific arguments.
+    #[link_name = "llvm.sin.f32"] #[fast_ffi]
+    pub fn sinf32(x: f32) -> f32;
+    #[link_name = "llvm.sin.f64"] #[fast_ffi]
+    pub fn sinf64(x: f64) -> f64;
+
+    #[link_name = "llvm.cos.f32"] #[fast_ffi]
+    pub fn cosf32(x: f32) -> f32;
+    #[link_name = "llvm.cos.f64"] #[fast_ffi]
+    pub fn cosf64(x: f64) -> f64;
+
+    #[link_name = "llvm.pow.f32"] #[fast_ffi]
+    pub fn powf32(a: f32, x: f32) -> f32;
+    #[link_name = "llvm.pow.f64"] #[fast_ffi]
+    pub fn powf64(a: f64, x: f64) -> f64;
+
+    #[link_name = "llvm.exp.f32"] #[fast_ffi]
+    pub fn expf32(x: f32) -> f32;
+    #[link_name = "llvm.exp.f64"] #[fast_ffi]
+    pub fn expf64(x: f64) -> f64;
+
+    #[link_name = "llvm.exp2.f32"] #[rust_stack] #[inline]
+    pub fn exp2f32(x: f32) -> f32;
+    #[link_name = "llvm.exp2.f64"] #[rust_stack] #[inline]
+    pub fn exp2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log.f32"] #[rust_stack] #[inline]
+    pub fn logf32(x: f32) -> f32;
+    #[link_name = "llvm.log.f64"] #[rust_stack] #[inline]
+    pub fn logf64(x: f64) -> f64;
+
+    #[link_name = "llvm.log10.f32"] #[rust_stack] #[inline]
+    pub fn log10f32(x: f32) -> f32;
+    #[link_name = "llvm.log10.f64"] #[rust_stack] #[inline]
+    pub fn log10f64(x: f64) -> f64;
+
+    #[link_name = "llvm.log2.f32"] #[rust_stack] #[inline]
+    pub fn log2f32(x: f32) -> f32;
+    #[link_name = "llvm.log2.f64"] #[rust_stack] #[inline]
+    pub fn log2f64(x: f64) -> f64;
+
+    #[link_name = "llvm.fma.f32"] #[rust_stack] #[inline]
+    pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+    #[link_name = "llvm.fma.f64"] #[rust_stack] #[inline]
+    pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+
+    #[link_name = "llvm.fabs.f32"] #[rust_stack] #[inline]
+    pub fn fabsf32(x: f32) -> f32;
+    #[link_name = "llvm.fabs.f64"] #[rust_stack] #[inline]
+    pub fn fabsf64(x: f64) -> f64;
+
+    #[link_name = "llvm.floor.f32"] #[rust_stack] #[inline]
+    pub fn floorf32(x: f32) -> f32;
+    #[link_name = "llvm.floor.f64"] #[rust_stack] #[inline]
+    pub fn floorf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ceil.f32"] #[rust_stack] #[inline]
+    pub fn ceilf32(x: f32) -> f32;
+    #[link_name = "llvm.ceil.f64"] #[rust_stack] #[inline]
+    pub fn ceilf64(x: f64) -> f64;
+
+    #[link_name = "llvm.trunc.f32"] #[rust_stack] #[inline]
+    pub fn truncf32(x: f32) -> f32;
+    #[link_name = "llvm.trunc.f64"] #[rust_stack] #[inline]
+    pub fn truncf64(x: f64) -> f64;
+
+    #[link_name = "llvm.ctpop.i8"] #[rust_stack] #[inline]
+    pub fn ctpop8(x: i8) -> i8;
+    #[link_name = "llvm.ctpop.i16"] #[rust_stack] #[inline]
+    pub fn ctpop16(x: i16) -> i16;
+    #[link_name = "llvm.ctpop.i32"] #[rust_stack] #[inline]
+    pub fn ctpop32(x: i32) -> i32;
+    #[link_name = "llvm.ctpop.i64"] #[rust_stack] #[inline]
+    pub fn ctpop64(x: i64) -> i64;
+
+    #[link_name = "llvm.bswap.i16"] #[rust_stack] #[inline]
+    pub fn bswap16(x: i16) -> i16;
+    #[link_name = "llvm.bswap.i32"] #[rust_stack] #[inline]
+    pub fn bswap32(x: i32) -> i32;
+    #[link_name = "llvm.bswap.i64"] #[rust_stack] #[inline]
+    pub fn bswap64(x: i64) -> i64;
 }
 
 #[cfg(target_endian = "little")] pub fn to_le16(x: i16) -> i16 { x }

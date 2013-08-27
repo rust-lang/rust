@@ -17,27 +17,27 @@ use option::{Option, Some, None};
 use unstable::intrinsics;
 use util::swap;
 
-#[cfg(not(test))] use ops::{Add,Sub};
-#[cfg(not(test))] use num::Int;
-
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
-/// Calculate the offset from a pointer
+/// Calculate the offset from a pointer. The count *must* be in bounds or
+/// otherwise the loads of this address are undefined.
 #[inline]
-pub fn offset<T>(ptr: *T, count: int) -> *T {
-    unsafe { intrinsics::offset(ptr, count) }
+pub unsafe fn offset<T>(ptr: *T, count: int) -> *T {
+    intrinsics::offset(ptr, count)
 }
 
-/// Calculate the offset from a const pointer
+/// Calculate the offset from a const pointer. The count *must* be in bounds or
+/// otherwise the loads of this address are undefined.
 #[inline]
-pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
-    unsafe { intrinsics::offset(ptr as *T, count) }
+pub unsafe fn const_offset<T>(ptr: *const T, count: int) -> *const T {
+    intrinsics::offset(ptr as *T, count)
 }
 
-/// Calculate the offset from a mut pointer
+/// Calculate the offset from a mut pointer. The count *must* be in bounds or
+/// otherwise the loads of this address are undefined.
 #[inline]
-pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    unsafe { intrinsics::offset(ptr as *T, count) as *mut T }
+pub unsafe fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+    intrinsics::offset(ptr as *T, count) as *mut T
 }
 
 /// Return the offset of the first null pointer in `buf`.
@@ -272,8 +272,7 @@ pub trait RawPtr<T> {
     fn is_null(&self) -> bool;
     fn is_not_null(&self) -> bool;
     unsafe fn to_option(&self) -> Option<&T>;
-    fn offset(&self, count: int) -> Self;
-    unsafe fn offset_inbounds(self, count: int) -> Self;
+    unsafe fn offset(self, count: int) -> Self;
 }
 
 /// Extension methods for immutable pointers
@@ -303,16 +302,10 @@ impl<T> RawPtr<T> for *T {
         }
     }
 
-    /// Calculates the offset from a pointer.
-    #[inline]
-    fn offset(&self, count: int) -> *T { offset(*self, count) }
-
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end.
     #[inline]
-    unsafe fn offset_inbounds(self, count: int) -> *T {
-        intrinsics::offset_inbounds(self, count)
-    }
+    unsafe fn offset(self, count: int) -> *T { offset(self, count) }
 }
 
 /// Extension methods for mutable pointers
@@ -342,10 +335,6 @@ impl<T> RawPtr<T> for *mut T {
         }
     }
 
-    /// Calculates the offset from a mutable pointer.
-    #[inline]
-    fn offset(&self, count: int) -> *mut T { mut_offset(*self, count) }
-
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also
     /// undefined behaviour.
@@ -353,9 +342,7 @@ impl<T> RawPtr<T> for *mut T {
     /// This method should be preferred over `offset` when the guarantee can be
     /// satisfied, to enable better optimization.
     #[inline]
-    unsafe fn offset_inbounds(self, count: int) -> *mut T {
-        intrinsics::offset_inbounds(self as *T, count) as *mut T
-    }
+    unsafe fn offset(self, count: int) -> *mut T { mut_offset(self, count) }
 }
 
 // Equality for pointers
@@ -428,46 +415,6 @@ impl<T> Ord for *const T {
     #[inline]
     fn gt(&self, other: &*const T) -> bool {
         (*self as uint) > (*other as uint)
-    }
-}
-
-#[cfg(not(test))]
-impl<T, I: Int> Add<I, *T> for *T {
-    /// Add an integer value to a pointer to get an offset pointer.
-    /// Is calculated according to the size of the type pointed to.
-    #[inline]
-    fn add(&self, rhs: &I) -> *T {
-        self.offset(rhs.to_int() as int)
-    }
-}
-
-#[cfg(not(test))]
-impl<T, I: Int> Sub<I, *T> for *T {
-    /// Subtract an integer value from a pointer to get an offset pointer.
-    /// Is calculated according to the size of the type pointed to.
-    #[inline]
-    fn sub(&self, rhs: &I) -> *T {
-        self.offset(-rhs.to_int() as int)
-    }
-}
-
-#[cfg(not(test))]
-impl<T, I: Int> Add<I, *mut T> for *mut T {
-    /// Add an integer value to a pointer to get an offset pointer.
-    /// Is calculated according to the size of the type pointed to.
-    #[inline]
-    fn add(&self, rhs: &I) -> *mut T {
-        self.offset(rhs.to_int() as int)
-    }
-}
-
-#[cfg(not(test))]
-impl<T, I: Int> Sub<I, *mut T> for *mut T {
-    /// Subtract an integer value from a pointer to get an offset pointer.
-    /// Is calculated according to the size of the type pointed to.
-    #[inline]
-    fn sub(&self, rhs: &I) -> *mut T {
-        self.offset(-rhs.to_int() as int)
     }
 }
 
@@ -553,7 +500,7 @@ pub mod ptr_tests {
         assert!(p.is_null());
         assert!(!p.is_not_null());
 
-        let q = offset(p, 1);
+        let q = unsafe { offset(p, 1) };
         assert!(!q.is_null());
         assert!(q.is_not_null());
 
@@ -561,7 +508,7 @@ pub mod ptr_tests {
         assert!(mp.is_null());
         assert!(!mp.is_not_null());
 
-        let mq = mp.offset(1);
+        let mq = unsafe { mp.offset(1) };
         assert!(!mq.is_null());
         assert!(mq.is_not_null());
     }
@@ -590,20 +537,20 @@ pub mod ptr_tests {
         unsafe {
             let xs = ~[5, ..16];
             let mut ptr = to_ptr(xs);
-            let end = ptr + 16;
+            let end = ptr.offset(16);
 
             while ptr < end {
                 assert_eq!(*ptr, 5);
-                ptr = ptr + 1u;
+                ptr = ptr.offset(1);
             }
 
             let mut xs_mut = xs.clone();
             let mut m_ptr = to_mut_ptr(xs_mut);
-            let m_end = m_ptr + 16i16;
+            let m_end = m_ptr.offset(16);
 
             while m_ptr < m_end {
                 *m_ptr += 5;
-                m_ptr = m_ptr + 1u8;
+                m_ptr = m_ptr.offset(1);
             }
 
             assert_eq!(xs_mut, ~[10, ..16]);
@@ -620,17 +567,17 @@ pub mod ptr_tests {
             let ptr = to_ptr(xs);
 
             while idx >= 0i8 {
-                assert_eq!(*(ptr + idx), idx as int);
+                assert_eq!(*(ptr.offset(idx as int)), idx as int);
                 idx = idx - 1i8;
             }
 
             let mut xs_mut = xs.clone();
             let m_start = to_mut_ptr(xs_mut);
-            let mut m_ptr = m_start + 9u32;
+            let mut m_ptr = m_start.offset(9);
 
             while m_ptr >= m_start {
                 *m_ptr += *m_ptr;
-                m_ptr = m_ptr - 1i8;
+                m_ptr = m_ptr.offset(-1);
             }
 
             assert_eq!(xs_mut, ~[0,2,4,6,8,10,12,14,16,18]);

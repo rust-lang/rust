@@ -41,17 +41,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
-        assert!(num_args <= 4);
-        let mut args = [0 as ValueRef, ..4];
-        let first_real_arg = bcx.fcx.arg_pos(0u);
-        for i in range(0u, num_args) {
-            args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
-        }
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, args.slice(0, num_args)));
-    }
-
     fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
@@ -218,20 +207,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             Ret(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)));
         }
-        "move_val" => {
-            // Create a datum reflecting the value being moved.
-            // Use `appropriate_mode` so that the datum is by ref
-            // if the value is non-immediate. Note that, with
-            // intrinsics, there are no argument cleanups to
-            // concern ourselves with.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx.tcx, tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, DROP_EXISTING,
-                              get_param(decl, first_real_arg));
-            RetVoid(bcx);
-        }
         "move_val_init" => {
             // See comments for `"move_val"`.
             let tp_ty = substs.tys[0];
@@ -364,49 +339,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                                         abi::tydesc_field_visit_glue, None);
             RetVoid(bcx);
         }
-        "frame_address" => {
-            let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
-            let star_u8 = ty::mk_imm_ptr(
-                bcx.tcx(),
-                ty::mk_mach_uint(ast::ty_u8));
-            let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
-                purity: ast::impure_fn,
-                sigil: ast::BorrowedSigil,
-                onceness: ast::Many,
-                region: ty::re_bound(ty::br_anon(0)),
-                bounds: ty::EmptyBuiltinBounds(),
-                sig: FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
-                    inputs: ~[ star_u8 ],
-                    output: ty::mk_nil()
-                }
-            });
-            let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef(ZeroMem), ty: fty};
-            let arg_vals = ~[frameaddress_val];
-            bcx = trans_call_inner(
-                bcx, None, fty, ty::mk_nil(),
-                |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(arg_vals), Some(Ignore), DontAutorefArg).bcx;
-            RetVoid(bcx);
-        }
-        "morestack_addr" => {
-            // XXX This is a hack to grab the address of this particular
-            // native function. There should be a general in-language
-            // way to do this
-            let llfty = type_of_rust_fn(bcx.ccx(), [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(
-                bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
-            Ret(bcx, morestack_addr);
-        }
         "offset" => {
-            let ptr = get_param(decl, first_real_arg);
-            let offset = get_param(decl, first_real_arg + 1);
-            Ret(bcx, GEP(bcx, ptr, [offset]));
-        }
-        "offset_inbounds" => {
             let ptr = get_param(decl, first_real_arg);
             let offset = get_param(decl, first_real_arg + 1);
             Ret(bcx, InBoundsGEP(bcx, ptr, [offset]));
@@ -417,40 +350,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "memmove64" => memcpy_intrinsic(bcx, "llvm.memmove.p0i8.p0i8.i64", substs.tys[0], 64),
         "memset32" => memset_intrinsic(bcx, "llvm.memset.p0i8.i32", substs.tys[0], 32),
         "memset64" => memset_intrinsic(bcx, "llvm.memset.p0i8.i64", substs.tys[0], 64),
-        "sqrtf32" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f32", 1),
-        "sqrtf64" => simple_llvm_intrinsic(bcx, "llvm.sqrt.f64", 1),
-        "powif32" => simple_llvm_intrinsic(bcx, "llvm.powi.f32", 2),
-        "powif64" => simple_llvm_intrinsic(bcx, "llvm.powi.f64", 2),
-        "sinf32" => simple_llvm_intrinsic(bcx, "llvm.sin.f32", 1),
-        "sinf64" => simple_llvm_intrinsic(bcx, "llvm.sin.f64", 1),
-        "cosf32" => simple_llvm_intrinsic(bcx, "llvm.cos.f32", 1),
-        "cosf64" => simple_llvm_intrinsic(bcx, "llvm.cos.f64", 1),
-        "powf32" => simple_llvm_intrinsic(bcx, "llvm.pow.f32", 2),
-        "powf64" => simple_llvm_intrinsic(bcx, "llvm.pow.f64", 2),
-        "expf32" => simple_llvm_intrinsic(bcx, "llvm.exp.f32", 1),
-        "expf64" => simple_llvm_intrinsic(bcx, "llvm.exp.f64", 1),
-        "exp2f32" => simple_llvm_intrinsic(bcx, "llvm.exp2.f32", 1),
-        "exp2f64" => simple_llvm_intrinsic(bcx, "llvm.exp2.f64", 1),
-        "logf32" => simple_llvm_intrinsic(bcx, "llvm.log.f32", 1),
-        "logf64" => simple_llvm_intrinsic(bcx, "llvm.log.f64", 1),
-        "log10f32" => simple_llvm_intrinsic(bcx, "llvm.log10.f32", 1),
-        "log10f64" => simple_llvm_intrinsic(bcx, "llvm.log10.f64", 1),
-        "log2f32" => simple_llvm_intrinsic(bcx, "llvm.log2.f32", 1),
-        "log2f64" => simple_llvm_intrinsic(bcx, "llvm.log2.f64", 1),
-        "fmaf32" => simple_llvm_intrinsic(bcx, "llvm.fma.f32", 3),
-        "fmaf64" => simple_llvm_intrinsic(bcx, "llvm.fma.f64", 3),
-        "fabsf32" => simple_llvm_intrinsic(bcx, "llvm.fabs.f32", 1),
-        "fabsf64" => simple_llvm_intrinsic(bcx, "llvm.fabs.f64", 1),
-        "floorf32" => simple_llvm_intrinsic(bcx, "llvm.floor.f32", 1),
-        "floorf64" => simple_llvm_intrinsic(bcx, "llvm.floor.f64", 1),
-        "ceilf32" => simple_llvm_intrinsic(bcx, "llvm.ceil.f32", 1),
-        "ceilf64" => simple_llvm_intrinsic(bcx, "llvm.ceil.f64", 1),
-        "truncf32" => simple_llvm_intrinsic(bcx, "llvm.trunc.f32", 1),
-        "truncf64" => simple_llvm_intrinsic(bcx, "llvm.trunc.f64", 1),
-        "ctpop8" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i8", 1),
-        "ctpop16" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i16", 1),
-        "ctpop32" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i32", 1),
-        "ctpop64" => simple_llvm_intrinsic(bcx, "llvm.ctpop.i64", 1),
         "ctlz8" => count_zeros_intrinsic(bcx, "llvm.ctlz.i8"),
         "ctlz16" => count_zeros_intrinsic(bcx, "llvm.ctlz.i16"),
         "ctlz32" => count_zeros_intrinsic(bcx, "llvm.ctlz.i32"),
@@ -459,9 +358,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "cttz16" => count_zeros_intrinsic(bcx, "llvm.cttz.i16"),
         "cttz32" => count_zeros_intrinsic(bcx, "llvm.cttz.i32"),
         "cttz64" => count_zeros_intrinsic(bcx, "llvm.cttz.i64"),
-        "bswap16" => simple_llvm_intrinsic(bcx, "llvm.bswap.i16", 1),
-        "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
-        "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
 
         "i8_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8"),
         "i16_add_with_overflow" => with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i16"),

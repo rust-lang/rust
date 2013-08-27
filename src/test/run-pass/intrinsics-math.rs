@@ -1,5 +1,3 @@
-// xfail-fast
-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -10,46 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod rusti {
-    #[abi = "rust-intrinsic"]
-    extern "rust-intrinsic" {
-        pub fn sqrtf32(x: f32) -> f32;
-        pub fn sqrtf64(x: f64) -> f64;
-        pub fn powif32(a: f32, x: i32) -> f32;
-        pub fn powif64(a: f64, x: i32) -> f64;
-        pub fn sinf32(x: f32) -> f32;
-        pub fn sinf64(x: f64) -> f64;
-        pub fn cosf32(x: f32) -> f32;
-        pub fn cosf64(x: f64) -> f64;
-        pub fn powf32(a: f32, x: f32) -> f32;
-        pub fn powf64(a: f64, x: f64) -> f64;
-        pub fn expf32(x: f32) -> f32;
-        pub fn expf64(x: f64) -> f64;
-        pub fn exp2f32(x: f32) -> f32;
-        pub fn exp2f64(x: f64) -> f64;
-        pub fn logf32(x: f32) -> f32;
-        pub fn logf64(x: f64) -> f64;
-        pub fn log10f32(x: f32) -> f32;
-        pub fn log10f64(x: f64) -> f64;
-        pub fn log2f32(x: f32) -> f32;
-        pub fn log2f64(x: f64) -> f64;
-        pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-        pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-        pub fn fabsf32(x: f32) -> f32;
-        pub fn fabsf64(x: f64) -> f64;
-        pub fn floorf32(x: f32) -> f32;
-        pub fn floorf64(x: f64) -> f64;
-        pub fn ceilf32(x: f32) -> f32;
-        pub fn ceilf64(x: f64) -> f64;
-        pub fn truncf32(x: f32) -> f32;
-        pub fn truncf64(x: f64) -> f64;
-    }
-}
-
 pub fn main() {
     unsafe {
-        use rusti::*;
-
+        use std::unstable::intrinsics::*;
         use std::f32;
         use std::f64;
 

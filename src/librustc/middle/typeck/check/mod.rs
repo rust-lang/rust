@@ -3390,7 +3390,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "uninit" => (1u, ~[], param(ccx, 0u)),
             "forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
             "transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-            "move_val" | "move_val_init" => {
+            "move_val_init" => {
                 (1u,
                  ~[
                     ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
@@ -3439,39 +3439,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               });
               (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
             }
-            "frame_address" => {
-              let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
-                  purity: ast::impure_fn,
-                  sigil: ast::BorrowedSigil,
-                  onceness: ast::Once,
-                  region: ty::re_bound(ty::br_anon(0)),
-                  bounds: ty::EmptyBuiltinBounds(),
-                  sig: ty::FnSig {
-                      bound_lifetime_names: opt_vec::Empty,
-                      inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
-                      output: ty::mk_nil()
-                  }
-              });
-              (0u, ~[fty], ty::mk_nil())
-            }
-            "morestack_addr" => {
-              (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
-            }
             "offset" => {
-              (1,
-               ~[
-                  ty::mk_ptr(tcx, ty::mt {
-                      ty: param(ccx, 0),
-                      mutbl: ast::m_imm
-                  }),
-                  ty::mk_int()
-               ],
-               ty::mk_ptr(tcx, ty::mt {
-                   ty: param(ccx, 0),
-                   mutbl: ast::m_imm
-               }))
-            }
-            "offset_inbounds" => {
               (1,
                ~[
                   ty::mk_ptr(tcx, ty::mt {
@@ -3569,64 +3537,6 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
                ],
                ty::mk_nil())
             }
-            "sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "powif32" => {
-               (0,
-                ~[ ty::mk_f32(), ty::mk_i32() ],
-                ty::mk_f32())
-            }
-            "powif64" => {
-               (0,
-                ~[ ty::mk_f64(), ty::mk_i32() ],
-                ty::mk_f64())
-            }
-            "sinf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "sinf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "cosf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "cosf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "powf32" => {
-               (0,
-                ~[ ty::mk_f32(), ty::mk_f32() ],
-                ty::mk_f32())
-            }
-            "powf64" => {
-               (0,
-                ~[ ty::mk_f64(), ty::mk_f64() ],
-                ty::mk_f64())
-            }
-            "expf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "expf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "exp2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "exp2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "logf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "logf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "log10f32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "log10f64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "log2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "log2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "fmaf32" => {
-                (0,
-                 ~[ ty::mk_f32(), ty::mk_f32(), ty::mk_f32() ],
-                 ty::mk_f32())
-            }
-            "fmaf64" => {
-                (0,
-                 ~[ ty::mk_f64(), ty::mk_f64(), ty::mk_f64() ],
-                 ty::mk_f64())
-            }
-            "fabsf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "fabsf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "floorf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "floorf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "ceilf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "ceilf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "truncf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-            "truncf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-            "ctpop8"   => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
-            "ctpop16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-            "ctpop32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-            "ctpop64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
             "ctlz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
             "ctlz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
             "ctlz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
@@ -3635,9 +3545,6 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             "cttz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
             "cttz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
             "cttz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
-            "bswap16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-            "bswap32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-            "bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
 
             "i8_add_with_overflow" | "i8_sub_with_overflow" | "i8_mul_with_overflow" =>
                 (0, ~[ty::mk_i8(), ty::mk_i8()],

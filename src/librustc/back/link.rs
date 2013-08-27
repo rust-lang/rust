@@ -95,7 +95,6 @@ pub mod jit {
     use std::c_str::ToCStr;
     use std::cast;
     use std::local_data;
-    use std::unstable::intrinsics;
 
     struct LLVMJITData {
         ee: ExecutionEngineRef,
@@ -114,12 +113,18 @@ pub mod jit {
         }
     }
 
+    // This symbol is actually defined in libmorestack, we just need to get the
+    // address of it to pass to the jit functions.
+    extern {
+        static __morestack: ();
+    }
+
     pub fn exec(sess: Session,
                 c: ContextRef,
                 m: ModuleRef,
                 stacks: bool) {
         unsafe {
-            let manager = llvm::LLVMRustPrepareJIT(intrinsics::morestack_addr());
+            let manager = llvm::LLVMRustPrepareJIT(&__morestack as *());
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.

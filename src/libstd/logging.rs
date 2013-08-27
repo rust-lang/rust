@@ -41,16 +41,10 @@ pub fn console_off() {
 #[lang="log_type"]
 #[allow(missing_doc)]
 pub fn log_type<T>(_level: u32, object: &T) {
-    use io;
-    use repr;
-    use str;
-
-    let bytes = do io::with_bytes_writer |writer| {
-        repr::write_repr(writer, object);
-    };
+    use sys;
 
     // XXX: Bad allocation
-    let msg = str::from_bytes(bytes);
+    let msg = sys::log_str(object);
     newsched_log_str(msg);
 }
 
