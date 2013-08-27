@@ -28,16 +28,16 @@ pub mod windows;
 /// See `posix::Path` for more info.
 pub type PosixPath = posix::Path;
 
-// /// Typedef for Windows file paths.
-// /// See `windows::Path` for more info.
-// pub type WindowsPath = windows::Path;
+/// Typedef for Windows file paths.
+/// See `windows::Path` for more info.
+pub type WindowsPath = windows::Path;
 
 /// Typedef for the platform-native path type
 #[cfg(unix)]
 pub type Path = PosixPath;
-// /// Typedef for the platform-native path type
-//#[cfg(windows)]
-//pub type Path = WindowsPath;
+/// Typedef for the platform-native path type
+#[cfg(windows)]
+pub type Path = WindowsPath;
 
 /// Typedef for the POSIX path component iterator.
 /// See `posix::ComponentIter` for more info.
@@ -68,6 +68,8 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the path contains a NUL.
+    ///
+    /// See individual Path impls for additional restrictions.
     #[inline]
     fn from_vec(path: &[u8]) -> Self {
         if contains_nul(path) {
@@ -87,11 +89,18 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Raises the `null_byte` condition if the path contains a NUL.
     #[inline]
     fn from_str(path: &str) -> Self {
-        GenericPath::from_vec(path.as_bytes())
+        let v = path.as_bytes();
+        if contains_nul(v) {
+            GenericPath::from_vec(path.as_bytes()) // let from_vec handle the condition
+        } else {
+            unsafe { GenericPathUnsafe::from_str_unchecked(path) }
+        }
     }
 
     /// Creates a new Path from a CString.
     /// The resulting Path will always be normalized.
+    ///
+    /// See individual Path impls for potential restrictions.
     #[inline]
     fn from_c_str(path: CString) -> Self {
         // CStrings can't contain NULs
@@ -186,7 +195,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_dirname` for details.
     #[inline]
     fn set_dirname_str(&mut self, dirname: &str) {
-        self.set_dirname(dirname.as_bytes())
+        if contains_nul(dirname.as_bytes()) {
+            self.set_dirname(dirname.as_bytes()) // triggers null_byte condition
+        } else {
+            unsafe { self.set_dirname_str_unchecked(dirname) }
+        }
     }
     /// Replaces the filename portion of the path with the given byte vector.
     /// If the replacement name is [], this is equivalent to popping the path.
@@ -208,7 +221,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_filename` for details.
     #[inline]
     fn set_filename_str(&mut self, filename: &str) {
-        self.set_filename(filename.as_bytes())
+        if contains_nul(filename.as_bytes()) {
+            self.set_filename(filename.as_bytes()) // triggers null_byte condition
+        } else {
+            unsafe { self.set_filename_str_unchecked(filename) }
+        }
     }
     /// Replaces the filestem with the given byte vector.
     /// If there is no extension in `self` (or `self` has no filename), this is equivalent
@@ -340,7 +357,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_dirname` for details.
     #[inline]
     fn with_dirname_str(&self, dirname: &str) -> Self {
-        self.with_dirname(dirname.as_bytes())
+        let mut p = self.clone();
+        p.set_dirname_str(dirname);
+        p
     }
     /// Returns a new Path constructed by replacing the filename with the given byte vector.
     /// See `set_filename` for details.
@@ -358,7 +377,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_filename` for details.
     #[inline]
     fn with_filename_str(&self, filename: &str) -> Self {
-        self.with_filename(filename.as_bytes())
+        let mut p = self.clone();
+        p.set_filename_str(filename);
+        p
     }
     /// Returns a new Path constructed by setting the filestem to the given byte vector.
     /// See `set_filestem` for details.
@@ -376,7 +397,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_filestem` for details.
     #[inline]
     fn with_filestem_str(&self, filestem: &str) -> Self {
-        self.with_filestem(filestem.as_bytes())
+        let mut p = self.clone();
+        p.set_filestem_str(filestem);
+        p
     }
     /// Returns a new Path constructed by setting the extension to the given byte vector.
     /// See `set_extension` for details.
@@ -394,20 +417,24 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `set_extension` for details.
     #[inline]
     fn with_extension_str(&self, extension: &str) -> Self {
-        self.with_extension(extension.as_bytes())
+        let mut p = self.clone();
+        p.set_extension_str(extension);
+        p
     }
 
     /// Returns the directory component of `self`, as a Path.
     /// If `self` represents the root of the filesystem hierarchy, returns `self`.
     fn dir_path(&self) -> Self {
-        GenericPath::from_vec(self.dirname())
+        // self.dirname() returns a NUL-free vector
+        unsafe { GenericPathUnsafe::from_vec_unchecked(self.dirname()) }
     }
     /// Returns the file component of `self`, as a relative Path.
     /// If `self` represents the root of the filesystem hierarchy, returns None.
     fn file_path(&self) -> Option<Self> {
+        // self.filename() returns a NUL-free vector
         match self.filename() {
             [] => None,
-            v => Some(GenericPath::from_vec(v))
+            v => Some(unsafe { GenericPathUnsafe::from_vec_unchecked(v) })
         }
     }
 
@@ -431,7 +458,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `push` for details.
     #[inline]
     fn push_str(&mut self, path: &str) {
-        self.push(path.as_bytes())
+        if contains_nul(path.as_bytes()) {
+            self.push(path.as_bytes()) // triggers null_byte condition
+        } else {
+            unsafe { self.push_str_unchecked(path) }
+        }
     }
     /// Pushes a Path onto `self`.
     /// If the argument represents an absolute path, it replaces `self`.
@@ -466,7 +497,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `join` for details.
     #[inline]
     fn join_str(&self, path: &str) -> Self {
-        self.join(path.as_bytes())
+        let mut p = self.clone();
+        p.push_str(path);
+        p
     }
     /// Returns a new Path constructed by joining `self` with the given path.
     /// If the given path is absolute, the new Path will represent just that.
@@ -478,6 +511,8 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     }
 
     /// Returns whether `self` represents an absolute path.
+    /// An absolute path is defined as one that, when joined to another path, will
+    /// yield back the same absolute path.
     fn is_absolute(&self) -> bool;
 
     /// Returns whether `self` is equal to, or is an ancestor of, the given path.
@@ -498,19 +533,49 @@ pub trait GenericPathUnsafe {
     /// The resulting Path will always be normalized.
     unsafe fn from_vec_unchecked(path: &[u8]) -> Self;
 
+    /// Creates a new Path from a str without checking for null bytes.
+    /// The resulting Path will always be normalized.
+    #[inline]
+    unsafe fn from_str_unchecked(path: &str) -> Self {
+        GenericPathUnsafe::from_vec_unchecked(path.as_bytes())
+    }
+
     /// Replaces the directory portion of the path with the given byte vector without
     /// checking for null bytes.
     /// See `set_dirname` for details.
     unsafe fn set_dirname_unchecked(&mut self, dirname: &[u8]);
+
+    /// Replaces the directory portion of the path with the given str without
+    /// checking for null bytes.
+    /// See `set_dirname_str` for details.
+    #[inline]
+    unsafe fn set_dirname_str_unchecked(&mut self, dirname: &str) {
+        self.set_dirname_unchecked(dirname.as_bytes())
+    }
 
     /// Replaces the filename portion of the path with the given byte vector without
     /// checking for null bytes.
     /// See `set_filename` for details.
     unsafe fn set_filename_unchecked(&mut self, filename: &[u8]);
 
-    /// Pushes a path onto `self` without checking for null bytes.
+    /// Replaces the filename portion of the path with the given str without
+    /// checking for null bytes.
+    /// See `set_filename_str` for details.
+    #[inline]
+    unsafe fn set_filename_str_unchecked(&mut self, filename: &str) {
+        self.set_filename_unchecked(filename.as_bytes())
+    }
+
+    /// Pushes a byte vector onto `self` without checking for null bytes.
     /// See `push` for details.
     unsafe fn push_unchecked(&mut self, path: &[u8]);
+
+    /// Pushes a str onto `self` without checking for null bytes.
+    /// See `push_str` for details.
+    #[inline]
+    unsafe fn push_str_unchecked(&mut self, path: &str) {
+        self.push_unchecked(path.as_bytes())
+    }
 }
 
 #[inline(always)]
