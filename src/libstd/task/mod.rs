@@ -696,7 +696,7 @@ fn test_rekillable_nested_failure() {
                 do task::spawn { chan.send(()); fail!(); }
                 port.recv(); // wait for child to exist
                 port.recv(); // block forever, expect to get killed.
-            } 
+            }
         }
     };
     assert!(result.is_err());
