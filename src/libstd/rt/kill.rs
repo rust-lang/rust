@@ -159,7 +159,7 @@ use rt::task::Task;
 use task::spawn::Taskgroup;
 use to_bytes::IterBytes;
 use unstable::atomics::{AtomicUint, Relaxed};
-use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
+use unstable::sync::{UnsafeArc, LittleLock};
 use util;
 
 static KILLED_MSG: &'static str = "killed by linked failure";
@@ -170,7 +170,7 @@ static KILL_KILLED:     uint = 1;
 static KILL_UNKILLABLE: uint = 2;
 
 struct KillFlag(AtomicUint);
-type KillFlagHandle = UnsafeAtomicRcBox<KillFlag>;
+type KillFlagHandle = UnsafeArc<KillFlag>;
 
 /// A handle to a blocked task. Usually this means having the ~Task pointer by
 /// ownership, but if the task is killable, a killer can steal it at any time.
@@ -211,7 +211,7 @@ struct KillHandleInner {
 
 /// State shared between tasks used for task killing during linked failure.
 #[deriving(Clone)]
-pub struct KillHandle(UnsafeAtomicRcBox<KillHandleInner>);
+pub struct KillHandle(UnsafeArc<KillHandleInner>);
 
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
@@ -317,7 +317,7 @@ impl BlockedTask {
         let handles = match self {
             Unkillable(task) => {
                 let flag = unsafe { KillFlag(AtomicUint::new(cast::transmute(task))) };
-                UnsafeAtomicRcBox::newN(flag, num_handles)
+                UnsafeArc::newN(flag, num_handles)
             }
             Killable(flag_arc) => flag_arc.cloneN(num_handles),
         };
@@ -380,8 +380,8 @@ impl Eq for KillHandle {
 impl KillHandle {
     pub fn new() -> (KillHandle, KillFlagHandle) {
         let (flag, flag_clone) =
-            UnsafeAtomicRcBox::new2(KillFlag(AtomicUint::new(KILL_RUNNING)));
-        let handle = KillHandle(UnsafeAtomicRcBox::new(KillHandleInner {
+            UnsafeArc::new2(KillFlag(AtomicUint::new(KILL_RUNNING)));
+        let handle = KillHandle(UnsafeArc::new(KillHandleInner {
             // Linked failure fields
             killed:     flag,
             unkillable: AtomicUint::new(KILL_RUNNING),
@@ -460,7 +460,7 @@ impl KillHandle {
     pub fn notify_immediate_failure(&mut self) {
         // A benign data race may happen here if there are failing sibling
         // tasks that were also spawned-watched. The refcount's write barriers
-        // in UnsafeAtomicRcBox ensure that this write will be seen by the
+        // in UnsafeArc ensure that this write will be seen by the
         // unwrapper/destructor, whichever task may unwrap it.
         unsafe { (*self.get()).any_child_failed = true; }
     }
