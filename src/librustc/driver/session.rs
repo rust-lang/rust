@@ -166,6 +166,9 @@ pub struct options {
     no_trans: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
+    // Destroying the LLVM module takes significant time. Standalone rustc
+    // will just leak it to save precious seconds.
+    leak_llvm: bool
 }
 
 pub struct crate_metadata {
@@ -350,6 +353,7 @@ pub fn basic_options() -> @options {
         no_trans: false,
         debugging_opts: 0u,
         android_cross_path: None,
+        leak_llvm: false
     }
 }
 

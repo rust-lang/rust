@@ -392,8 +392,12 @@ pub mod write {
                 }
                 // Clean up and return
 
-                llvm::LLVMDisposeModule(llmod);
-                llvm::LLVMContextDispose(llcx);
+                // Save some time by not destroying the LLVM module
+                if !sess.opts.leak_llvm {
+                    llvm::LLVMDisposeModule(llmod);
+                    llvm::LLVMContextDispose(llcx);
+                }
+
                 if sess.time_llvm_passes() {
                     llvm::LLVMRustPrintPassTimings();
                 }
@@ -413,8 +417,12 @@ pub mod write {
                 }
             }
 
-            llvm::LLVMDisposeModule(llmod);
-            llvm::LLVMContextDispose(llcx);
+            // Save some time by not destroying the LLVM module
+            if !sess.opts.leak_llvm {
+                llvm::LLVMDisposeModule(llmod);
+                llvm::LLVMContextDispose(llcx);
+            }
+
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }
