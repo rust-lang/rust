@@ -171,7 +171,7 @@ pub enum def {
     def_static_method(/* method */ def_id,
                       /* trait */  Option<def_id>,
                       purity),
-    def_self(NodeId, bool /* is_implicit */),
+    def_self(NodeId),
     def_self_ty(/* trait id */ NodeId),
     def_mod(def_id),
     def_foreign_mod(def_id),

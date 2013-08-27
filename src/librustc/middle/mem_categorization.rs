@@ -61,7 +61,6 @@ use syntax::print::pprust;
 pub enum categorization {
     cat_rvalue(ast::NodeId),           // temporary val, argument is its scope
     cat_static_item,
-    cat_implicit_self,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from &fn
     cat_local(ast::NodeId),            // local variable
@@ -493,17 +492,11 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_self(self_id, is_implicit) => {
-            let cat = if is_implicit {
-                cat_implicit_self
-            } else {
-                cat_self(self_id)
-            };
-
+          ast::def_self(self_id) => {
             @cmt_ {
                 id:id,
                 span:span,
-                cat:cat,
+                cat:cat_self(self_id),
                 mutbl: McImmutable,
                 ty:expr_ty
             }
@@ -1016,9 +1009,6 @@ impl mem_categorization_ctxt {
           cat_static_item => {
               ~"static item"
           }
-          cat_implicit_self => {
-              ~"self reference"
-          }
           cat_copied_upvar(_) => {
               ~"captured outer variable in a heap closure"
           }
@@ -1121,7 +1111,6 @@ impl cmt_ {
         match self.cat {
             cat_rvalue(*) |
             cat_static_item |
-            cat_implicit_self |
             cat_copied_upvar(*) |
             cat_local(*) |
             cat_self(*) |
@@ -1167,8 +1156,7 @@ impl cmt_ {
             }
 
             cat_copied_upvar(CopiedUpvar {onceness: ast::Many, _}) |
-            cat_static_item(*) |
-            cat_implicit_self(*) => {
+            cat_static_item(*) => {
                 Some(AliasableOther)
             }
 
@@ -1206,7 +1194,6 @@ impl Repr for categorization {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             cat_static_item |
-            cat_implicit_self |
             cat_rvalue(*) |
             cat_copied_upvar(*) |
             cat_local(*) |

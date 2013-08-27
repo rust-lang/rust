@@ -115,7 +115,6 @@ impl RestrictionsContext {
 
             mc::cat_copied_upvar(*) | // FIXME(#2152) allow mutation of upvars
             mc::cat_static_item(*) |
-            mc::cat_implicit_self(*) |
             mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_imm)) => {
                 // R-Deref-Imm-Borrowed

@@ -352,7 +352,6 @@ impl<'self> CheckLoanCtxt<'self> {
 
                     mc::cat_rvalue(*) |
                     mc::cat_static_item |
-                    mc::cat_implicit_self |
                     mc::cat_copied_upvar(*) |
                     mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
                     mc::cat_deref(_, _, mc::gc_ptr(*)) |
@@ -435,7 +434,6 @@ impl<'self> CheckLoanCtxt<'self> {
                     mc::cat_self(*) |
                     mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
                     mc::cat_static_item(*) |
-                    mc::cat_implicit_self(*) |
                     mc::cat_deref(_, _, mc::gc_ptr(_)) |
                     mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
                     mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) => {

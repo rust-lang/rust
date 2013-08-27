@@ -100,7 +100,6 @@ fn check_is_legal_to_move_from(bccx: @BorrowckCtxt,
                                cmt0: mc::cmt,
                                cmt: mc::cmt) -> bool {
     match cmt.cat {
-        mc::cat_implicit_self(*) |
         mc::cat_deref(_, _, mc::region_ptr(*)) |
         mc::cat_deref(_, _, mc::gc_ptr(*)) |
         mc::cat_deref(_, _, mc::unsafe_ptr(*)) => {

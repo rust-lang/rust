@@ -383,7 +383,7 @@ impl tr for ast::def {
             ast::def_method(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
           }
           ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
-          ast::def_self(nid, i) => { ast::def_self(xcx.tr_id(nid), i) }
+          ast::def_self(nid) => { ast::def_self(xcx.tr_id(nid)) }
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
           ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
           ast::def_static(did, m) => { ast::def_static(did.tr(xcx), m) }
