@@ -2251,237 +2251,665 @@ The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
 `IterBytes`, `Rand`, `Zero`, and `ToStr`.
 
-# Modules and crates
+# Crates and the module system
 
-The Rust namespace is arranged in a hierarchy of modules. Each source
-(.rs) file represents a single module and may in turn contain
-additional modules.
+Rust's module system is very powerful, but because of that also somewhat complex.
+Nevertheless, this section will try to explain every important aspect of it.
+
+## Crates
+
+In order to speak about the module system, we first need to define the medium it exists in:
+
+Let's say you've written a program or a library, compiled it, and got the resulting binary.
+In Rust, the content of all source code that the compiler directly had to compile in order to end up with
+that binary is collectively called a 'crate'.
+
+For example, for a simple hello world program your crate only consists of this code:
 
 ~~~~
+// main.rs
+fn main() {
+    println("Hello world!");
+}
+~~~~
+
+A crate is also the unit of independent compilation in Rust: `rustc` always compiles a single crate at a time,
+from which it produces either a library or an executable.
+
+Note that merely using an already compiled library in your code does not make it part of your crate.
+
+## The module hierarchy
+
+For every crate, all the code in it is arranged in a hierarchy of modules starting with a single
+root module. That root module is called the 'crate root'.
+
+All modules in a crate below the crate root are declared with the `mod` keyword:
+
+~~~~
+// This is the crate root
+
 mod farm {
-    pub fn chicken() -> &str { "cluck cluck" }
-    pub fn cow() -> &str { "mooo" }
+    // This is the body of module 'farm' declared in the crate root.
+
+    fn chicken() { println("cluck cluck"); }
+    fn cow() { println("mooo"); }
+
+    mod barn {
+        // Body of module 'barn'
+
+        fn hay() { println("..."); }
+    }
 }
 
 fn main() {
-    println(farm::chicken());
+    println("Hello farm!");
 }
 ~~~~
 
-The contents of modules can be imported into the current scope
-with the `use` keyword, optionally giving it an alias. `use`
-may appear at the beginning of crates, `mod`s, `fn`s, and other
-blocks.
+As you can see, your module hierarchy is now three modules deep: There is the crate root, which contains your `main()`
+function, and the module `farm`. The module `farm` also contains two functions and a third module `barn`,
+which contains a function `hay`.
 
-~~~
-# mod farm { pub fn chicken() { } }
-# fn main() {
-// Bring `chicken` into scope
-use farm::chicken;
+(In case you already stumbled over `extern mod`: It isn't directly related to a bare `mod`, we'll get to it later. )
 
-fn chicken_farmer() {
-    // The same, but name it `my_chicken`
-    use my_chicken = farm::chicken;
-    ...
-# my_chicken();
+## Paths and visibility
+
+We've now defined a nice module hierarchy. But how do we access the items in it from our `main` function?
+One way to do it is to simply fully qualifying it:
+
+~~~~ {.xfail-test}
+mod farm {
+    fn chicken() { println("cluck cluck"); }
+    // ...
 }
-# chicken();
-# }
-~~~
 
-These farm animal functions have a new keyword, `pub`, attached to
-them. The `pub` keyword modifies an item's visibility, making it
-visible outside its containing module. An expression with `::`, like
-`farm::chicken`, can name an item outside of its containing
-module. Items, such as those declared with `fn`, `struct`, `enum`,
-`type`, or `static`, are module-private by default.
+fn main() {
+    println("Hello chicken!");
+
+    ::farm::chicken(); // Won't compile yet, see further down
+}
+~~~~
+
+The `::farm::chicken` construct is what we call a 'path'.
+
+Because it's starting with a `::`, it's also a 'global path',
+which qualifies an item by its full path in the module hierarchy
+relative to the crate root.
+
+If the path were to start with a regular identifier, like `farm::chicken`, it would be
+a 'local path' instead. We'll get to them later.
+
+Now, if you actually tried to compile this code example, you'll notice
+that you get a `unresolved name: 'farm::chicken'` error. That's because per default,
+items (`fn`, `struct`, `static`, `mod`, ...) are only visible inside the module
+they are defined in.
+
+To make them visible outside their containing modules, you need to mark them _public_ with `pub`:
+
+~~~~
+mod farm {
+    pub fn chicken() { println("cluck cluck"); }
+    pub fn cow() { println("mooo"); }
+    // ...
+}
+
+fn main() {
+    println("Hello chicken!");
+    ::farm::chicken(); // This compiles now
+}
+~~~~
 
 Visibility restrictions in Rust exist only at module boundaries. This
 is quite different from most object-oriented languages that also
 enforce restrictions on objects themselves. That's not to say that
 Rust doesn't support encapsulation: both struct fields and methods can
 be private. But this encapsulation is at the module level, not the
-struct level. Note that fields and methods are _public_ by default.
+struct level.
+
+For convenience, fields are _public_ by default, and can be made _private_ with the `priv` keyword:
 
 ~~~
-pub mod farm {
+mod farm {
 # pub type Chicken = int;
-# type Cow = int;
 # struct Human(int);
 # impl Human { fn rest(&self) { } }
-# pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
+# pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv chickens: ~[Chicken],
-        priv cows: ~[Cow],
         farmer: Human
     }
 
     impl Farm {
         fn feed_chickens(&self) { ... }
-        fn feed_cows(&self) { ... }
         pub fn add_chicken(&self, c: Chicken) { ... }
     }
 
     pub fn feed_animals(farm: &Farm) {
         farm.feed_chickens();
-        farm.feed_cows();
     }
 }
 
 fn main() {
-     let f = make_me_a_farm();
-     f.add_chicken(make_me_a_chicken());
-     farm::feed_animals(&f);
-     f.farmer.rest();
+    let f = make_me_a_farm();
+    f.add_chicken(make_me_a_chicken());
+    farm::feed_animals(&f);
+    f.farmer.rest();
+
+    // This wouldn't compile because both are private:
+    // f.feed_chickens();
+    // let chicken_counter = f.chickens.len();
 }
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
 # fn make_me_a_chicken() -> farm::Chicken { 0 }
 ~~~
 
-## Crates
+> ***Note:*** Visibility rules are currently buggy and not fully defined, you might have to add or remove `pub` along a path until it works.
 
-The unit of independent compilation in Rust is the crate: rustc
-compiles a single crate at a time, from which it produces either a
-library or an executable.
+## Files and modules
 
-When compiling a single `.rs` source file, the file acts as the whole crate.
-You can compile it with the `--lib` compiler switch to create a shared
-library, or without, provided that your file contains a `fn main`
-somewhere, to create an executable.
+One important aspect about Rusts module system is that source files are not important:
+You define a module hierarchy, populate it with all your definitions, define visibility,
+maybe put in a `fn main()`, and that's it: No need to think about source files.
 
-Larger crates typically span multiple files and are, by convention,
-compiled from a source file with the `.rc` extension, called a *crate file*.
-The crate file extension distinguishes source files that represent
-crates from those that do not, but otherwise source files and crate files are identical.
+The only file that's relevant is the one that contains the body of your crate root,
+and it's only relevant because you have to pass that file to `rustc` to compile your crate.
 
-A typical crate file declares attributes associated with the crate that
-may affect how the compiler processes the source.
-Crate attributes specify metadata used for locating and linking crates,
-the type of crate (library or executable),
-and control warning and error behavior,
-among other things.
-Crate files additionally declare the external crates they depend on
-as well as any modules loaded from other files.
+And in principle, that's all you need: You can write any Rust program as one giant source file that contains your
+crate root and everything below it in `mod ... { ... }` declarations.
 
-~~~~ { .xfail-test }
+However, in practice you usually want to split you code up into multiple source files to make it more manageable.
+In order to do that, Rust allows you to move the body of any module into it's own source file, which works like this:
+
+If you declare a module without its body, like `mod foo;`, the compiler will look for the
+files `foo.rs` and `foo/mod.rs`. If it finds either, it uses the content of that file as the body of the module.
+If it finds both, that's a compile error.
+
+So, if we want to move the content of `mod farm` into it's own file, it would look like this:
+
+~~~~ {.ignore}
+// main.rs - contains body of the crate root
+mod farm; // Compiler will look for 'farm.rs' and 'farm/mod.rs'
+
+fn main() {
+    println("Hello farm!");
+    ::farm::cow();
+}
+~~~~
+
+~~~~
+// farm.rs - contains body of module 'farm' in the crate root
+pub fn chicken() { println("cluck cluck"); }
+pub fn cow() { println("mooo"); }
+
+pub mod barn {
+    pub fn hay() { println("..."); }
+}
+# fn main() { }
+~~~~
+
+So, in short `mod foo;` is just syntactic sugar for `mod foo { /* include content of foo.rs or foo/mod.rs here */ }`.
+
+This also means that having two or more identical `mod foo;` somewhere
+in your crate hierarchy is generally a bad idea,
+just like copy-and-paste-ing a module into two or more places is one.
+Both will result in duplicate and mutually incompatible definitions.
+
+The directory the compiler looks in for those two files is determined by starting with
+the same directory as the source file that contains the `mod foo;` declaration, and concatenating to that a
+path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;` is contained in, if any.
+
+For example, given a file with this module body:
+
+~~~ {.ignore}
+// src/main.rs
+mod plants;
+mod fungi;
+mod animals {
+    mod fish;
+    mod mammals {
+        mod humans;
+    }
+}
+~~~
+
+The compiler would then try all these files:
+
+~~~ {.notrust}
+src/plants.rs
+src/plants/mod.rs
+
+src/fungi.rs
+src/fungi/mod.rs
+
+src/animals/fish.rs
+src/animals/fish/mod.rs
+
+src/animals/mammals/humans.rs
+src/animals/mammals/humans/mod.rs
+~~~
+
+These rules per default result in any directory structure mirroring
+the crates's module hierarchy, and allow you to have both small modules that only need
+to consist of one source file, and big modules that group the source files of submodules together.
+
+If you need to circumvent those defaults, you can also overwrite the path a `mod foo;` would take:
+
+~~~ {.ignore}
+#[path="../../area51/classified.rs"]
+mod alien;
+~~~
+
+## Importing names into the local scope
+
+Always referring to definitions in other modules with their global
+path gets old really fast, so Rust has a way to import
+them into the local scope of your module: `use`-statements.
+
+They work like this: At the beginning of any module body, `fn` body, or any other block
+you can write a list of `use`-statements, consisting of the keyword `use` and a __global path__ to an item
+without the `::` prefix. For example, this imports `cow` into the local scope:
+
+~~~
+use farm::cow;
+# mod farm { pub fn cow() { println("I'm a hidden ninja cow!") } }
+# fn main() { cow() }
+~~~
+
+The path you give to `use` is per default global, meaning relative to the crate root,
+no matter how deep the module hierarchy is, or whether the module body it's written in
+is contained in its own file (remember: files are irrelevant).
+
+This is different to other languages, where you often only find a single import construct that combines the semantic
+of `mod foo;` and `use`-statements, and which tend to work relative to the source file or use an absolute file path
+- Rubys `require` or C/C++'s `#include` come to mind.
+
+However, it's also possible to import things relative to the module of the `use`-statement:
+Adding a `super::` in front of the path will start in the parent module,
+while adding a `self::` prefix will start in the current module:
+
+~~~
+# mod workaround {
+# pub fn some_parent_item(){ println("...") }
+# mod foo {
+use super::some_parent_item;
+use self::some_child_module::some_item;
+# pub fn bar() { some_parent_item(); some_item() }
+# pub mod some_child_module { pub fn some_item() {} }
+# }
+# }
+~~~
+
+Again - relative to the module, not to the file.
+
+Imports are also shadowed by local definitions:
+For each name you mention in a module/block, `rust`
+will first look at all items that are defined locally,
+and only if that results in no match look at items you brought in
+scope with corresponding `use` statements.
+
+~~~ {.ignore}
+# // XXX: Allow unused import in doc test
+use farm::cow;
+// ...
+# mod farm { pub fn cow() { println("Hidden ninja cow is hidden.") } }
+fn cow() { println("Mooo!") }
+
+fn main() {
+    cow() // resolves to the locally defined cow() function
+}
+~~~
+
+To make this behavior more obvious, the rule has been made that `use`-statement always need to be written
+before any declaration, like in the example above. This is a purely artificial rule introduced
+because people always assumed they shadowed each other based on order, despite the fact that all items in rust are
+mutually recursive, order independent definitions.
+
+One odd consequence of that rule is that `use` statements also go in front of any `mod` declaration,
+even if they refer to things inside them:
+
+~~~
+use farm::cow;
+mod farm {
+    pub fn cow() { println("Moooooo?") }
+}
+
+fn main() { cow() }
+~~~
+
+This is what our `farm` example looks like with `use` statements:
+
+~~~~
+use farm::chicken;
+use farm::cow;
+use farm::barn;
+
+mod farm {
+    pub fn chicken() { println("cluck cluck"); }
+    pub fn cow() { println("mooo"); }
+
+    pub mod barn {
+        pub fn hay() { println("..."); }
+    }
+}
+
+fn main() {
+    println("Hello farm!");
+
+    // Can now refer to those names directly:
+    chicken();
+    cow();
+    barn::hay();
+}
+~~~~
+
+And here an example with multiple files:
+~~~{.ignore}
+// a.rs - crate root
+use b::foo;
+mod b;
+fn main() { foo(); }
+~~~
+~~~{.ignore}
+// b.rs
+use b::c::bar;
+pub mod c;
+pub fn foo() { bar(); }
+~~~
+~~~
+// c.rs
+pub fn bar() { println("Baz!"); }
+~~~
+
+There also exist two short forms for importing multiple names at once:
+
+1. Explicit mention multiple names as the last element of an `use` path:
+~~~
+use farm::{chicken, cow};
+# mod farm {
+#     pub fn cow() { println("Did I already mention how hidden and ninja I am?") }
+#     pub fn chicken() { println("I'm Bat-chicken, guardian of the hidden tutorial code.") }
+# }
+# fn main() { cow(); chicken() }
+~~~
+
+2. Import everything in a module with a wildcard:
+~~~
+use farm::*;
+# mod farm {
+#     pub fn cow() { println("Bat-chicken? What a stupid name!") }
+#     pub fn chicken() { println("Says the 'hidden ninja' cow.") }
+# }
+# fn main() { cow(); chicken() }
+~~~
+
+However, that's not all. You can also rename an item while you're bringing it into scope:
+
+~~~
+use egg_layer = farm::chicken;
+# mod farm { pub fn chicken() { println("Laying eggs is fun!")  } }
+// ...
+
+fn main() {
+    egg_layer();
+}
+~~~
+
+In general, `use` creates an local alias:
+An alternate path and a possibly different name to access the same item,
+whiteout touching the original, and with both being interchangeable.
+
+## Reexporting names
+
+It is also possible to reexport items to be accessible under your module.
+
+For that, you write `pub use`:
+
+~~~
+mod farm {
+    pub use self::barn::hay;
+
+    pub fn chicken() { println("cluck cluck"); }
+    pub fn cow() { println("mooo"); }
+
+    mod barn {
+        pub fn hay() { println("..."); }
+    }
+}
+
+fn main() {
+    farm::chicken();
+    farm::cow();
+    farm::hay();
+}
+~~~
+
+Just like in normal `use` statements, the exported names
+merely represent an alias to the same thing and can also be renamed.
+
+The above example also demonstrate what you can use `pub use` for:
+The nested `barn` module is private, but the `pub use` allows users
+of the module `farm` to access a function from `barn` without needing
+to know that `barn` exists.
+
+In other words, you can use them to decouple an public api from their internal implementation.
+
+## Using libraries
+
+So far we've only talked about how to define and structure your own crate.
+
+However, most code out there will want to use preexisting libraries,
+as there really is no reason to start from scratch each time you start a new project.
+
+In Rust terminology, we need a way to refer to other crates.
+
+For that, Rust offers you the `extern mod` declaration:
+
+~~~
+extern mod extra;
+// extra ships with Rust, you'll find more details further down.
+
+fn main() {
+    // The rational number '1/2':
+    let one_half = ::extra::rational::Ratio::new(1, 2);
+}
+~~~
+
+Despite its name, `extern mod` is a distinct construct from regular `mod` declarations:
+A statement of the form `extern mod foo;` will cause `rustc` to search for the crate `foo`,
+and if it finds a matching binary it lets you use it from inside your crate.
+
+The effect it has on your module hierarchy mirrors aspects of both `mod` and `use`:
+
+- Like `mod`, it causes `rustc` to actually emit code:
+  The linkage information the binary needs to use the library `foo`.
+
+- But like `use`, all `extern mod` statements that refer to the same library are interchangeable,
+  as each one really just presents an alias to an external module (the crate root of the library your linking against).
+
+Remember how `use`-statements have to go before local declarations because the latter shadows the former?
+Well, `extern mod` statements also have their own rules in that regard:
+Both `use` and local declarations can shadow them, so the rule is that `extern mod` has to go in front
+of both `use` and local declarations.
+
+Which can result in something like this:
+
+~~~
+extern mod extra;
+
+use farm::dog;
+use extra::rational::Ratio;
+
+mod farm {
+    pub fn dog() { println("woof"); }
+}
+
+fn main() {
+    farm::dog();
+    let a_third = Ratio::new(1, 3);
+}
+~~~
+
+It's a bit weird, but it's the result of shadowing rules that have been set that way because
+they model most closely what people expect to shadow.
+
+## Package ids
+
+If you use `extern mod`, per default `rustc` will look for libraries in the the library search path (which you can
+extend with the `-L` switch).
+
+However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
+libraries if you use it for building your crate. How it works is explained [here][rustpkg],
+but for this tutorial it's only important to know that you can optionally annotate an
+`extern mod` statement with an package id that rustpkg can use to identify it:
+
+~~~ {.ignore}
+extern mod rust = "github.com/mozilla/rust"; // pretend Rust is an simple library
+~~~
+
+[rustpkg]: rustpkg.html
+
+## Crate metadata and settings
+
+For every crate you can define a number of metadata items, such as link name, version or author.
+You can also toggle settings that have crate-global consequences. Both mechanism
+work by providing attributes in the crate root.
+
+For example, Rust uniquely identifies crates by their link metadate, which includes
+the link name and the version. It also hashes the filename and the symbols in a binary
+based on the link metadata, allowing you to use two different versions of the same library in a crate
+without conflict.
+
+Therefor, if you plan to compile your crate as a library, you should annotate it with that information:
+
+~~~~
+// lib.rs
+
+# #[crate_type = "lib"];
 // Crate linkage metadata
-#[link(name = "farm", vers = "2.5", author = "mjh")];
+#[link(name = "farm", vers = "2.5")];
 
-// Make a library ("bin" is the default)
+// ...
+# pub fn farm() {}
+~~~~
+
+You can also in turn require in a `extern mod` statement that certain link metadata items match some criteria.
+For that, Rust currently parses a comma-separated list of name/value pairs that appear after
+it, and ensures that they match the attributes provided in the `link` attribute of a crate file.
+This enables you to, eg, pick a a crate based on it's version number, or to link an library under an
+different name. For example, this two mod statements would both accept and select the crate define above:
+
+~~~~ {.xfail-test}
+extern mod farm(vers = "2.5");
+extern mod my_farm(name = "farm", vers = "2.5");
+~~~~
+
+Other crate settings and metadata include things like enabling/disabling certain errors or warnings,
+or setting the crate type (library or executable) explicitly:
+
+~~~~
+// lib.rs
+// ...
+
+// This crate is a library ("bin" is the default)
 #[crate_type = "lib"];
 
 // Turn on a warning
 #[warn(non_camel_case_types)]
-
-// Link to the standard library
-extern mod std;
-
-// Load some modules from other files
-mod cow;
-mod chicken;
-mod horse;
-
-fn main() {
-    ...
-}
+# pub fn farm() {}
 ~~~~
 
-Compiling this file will cause `rustc` to look for files named
-`cow.rs`, `chicken.rs`, and `horse.rs` in the same directory as the
-`.rc` file, compile them all together, and, based on the presence of
-the `crate_type = "lib"` attribute, output a shared library or an
-executable. (If the line `#[crate_type = "lib"];` was omitted,
-`rustc` would create an executable.)
+If you're compiling your crate with `rustpkg`,
+link annotations will not be necessary, because they get
+inferred by `rustpkg` based on the Package id and naming conventions.
 
-The `#[link(...)]` attribute provides meta information about the
-module, which other crates can use to load the right module. More
-about that later.
 
-To have a nested directory structure for your source files, you can
-nest mods:
-
-~~~~ {.ignore}
-mod poultry {
-    mod chicken;
-    mod turkey;
-}
-~~~~
-
-The compiler will now look for `poultry/chicken.rs` and
-`poultry/turkey.rs`, and export their content in `poultry::chicken`
-and `poultry::turkey`. You can also provide a `poultry.rs` to add
-content to the `poultry` module itself.
-
-## Using other crates
-
-The `extern mod` directive lets you use a crate (once it's been
-compiled into a library) from inside another crate. `extern mod` can
-appear at the top of a crate file or at the top of modules. It will
-cause the compiler to look in the library search path (which you can
-extend with the `-L` switch) for a compiled Rust library with the
-right name, then add a module with that crate's name into the local
-scope.
-
-For example, `extern mod std` links the [standard library].
-
-[standard library]: std/index.html
-
-When a comma-separated list of name/value pairs appears after `extern
-mod`, the compiler front-end matches these pairs against the
-attributes provided in the `link` attribute of the crate file. The
-front-end will only select this crate for use if the actual pairs
-match the declared attributes. You can provide a `name` value to
-override the name used to search for the crate.
-
-Our example crate declared this set of `link` attributes:
-
-~~~~
-#[link(name = "farm", vers = "2.5", author = "mjh")];
-~~~~
-
-Which you can then link with any (or all) of the following:
-
-~~~~ {.xfail-test}
-extern mod farm;
-extern mod my_farm (name = "farm", vers = "2.5");
-extern mod my_auxiliary_farm (name = "farm", author = "mjh");
-~~~~
-
-If any of the requested metadata do not match, then the crate
-will not be compiled successfully.
+> ***Note:*** The rules regarding link metadata, both as attributes and on `extern mod`,
+              as well as their interaction with `rustpkg`
+              are currently not clearly defined and will likely change in the future.
 
 ## A minimal example
 
-Now for something that you can actually compile yourself, we have
-these two files:
+Now for something that you can actually compile yourself.
+
+We define two crates, and use one of them as a library in the other.
 
 ~~~~
 // world.rs
-#[link(name = "world", vers = "1.0")];
-pub fn explore() -> &str { "world" }
+#[link(name = "world", vers = "0.42")];
+pub fn explore() -> &'static str { "world" }
 ~~~~
 
 ~~~~ {.xfail-test}
 // main.rs
 extern mod world;
-fn main() { println(~"hello " + world::explore()); }
+fn main() { println("hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
 
 ~~~~ {.notrust}
-> rustc --lib world.rs  # compiles libworld-94839cbfe144198-1.0.so
+> rustc --lib world.rs  # compiles libworld-<HASH>-0.42.so
 > rustc main.rs -L .    # compiles main
 > ./main
 "hello world"
 ~~~~
 
-Notice that the library produced contains the version in the filename
-as well as an inscrutable string of alphanumerics. These are both
-part of Rust's library versioning scheme. The alphanumerics are
-a hash representing the crate metadata.
+Notice that the library produced contains the version in the file name
+as well as an inscrutable string of alphanumerics. As explained in the previous paragraph,
+these are both part of Rust's library versioning scheme. The alphanumerics are
+a hash representing the crates link metadata.
 
-## The standard library
+## The standard library and the prelude
+
+While reading the examples in this tutorial, you might have asked yourself where all
+those magical predefined items like `println()` are coming from.
+
+The truth is, there's nothing magical about them: They are all defined normally
+in the `std` library, which is a crate that ships with Rust.
+
+The only magical thing that happens is that `rustc` automatically inserts this line into your crate root:
+
+~~~ {.ignore}
+extern mod std;
+~~~
+
+As well as this line into every module body:
+
+~~~ {.ignore}
+use std::prelude::*;
+~~~
+
+The role of the `prelude` module is to re-exports common definitions from `std`.
+
+This allows you to use common types and functions like `Option<T>` or `println`
+without needing to import them. And if you need something from `std` that's not in the prelude,
+you just have to import it with an `use` statement.
+
+For example, it re-exports `println` which is defined in `std::io::println`:
+
+~~~
+use puts = std::io::println;
+
+fn main() {
+    println("println is imported per default.");
+    puts("Doesn't hinder you from importing it under an different name yourself.");
+    ::std::io::println("Or from not using the automatic import.");
+}
+~~~
+
+Both auto-insertions can be disabled with an attribute if necessary:
+
+~~~
+// In the crate root:
+#[no_std];
+~~~
+
+~~~
+// In any module:
+#[no_implicit_prelude];
+~~~
+
+## The standard library in detail
 
 The Rust standard library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
@@ -2499,24 +2927,9 @@ I/O abstractions ([`io`]), [containers] like [`hashmap`],
 common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
 [`to_str`], [`clone`]), and complete bindings to the C standard library ([`libc`]).
 
-### Standard Library injection and the Rust prelude
+The full documentation for `std` can be found here: [standard library].
 
-`std` is imported at the topmost level of every crate by default, as
-if the first line of each crate was
-
-    extern mod std;
-
-This means that the contents of std can be accessed from from any context
-with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
-etc.
-
-Additionally, `std` contains a `prelude` module that reexports many of the
-most common standard modules, types and traits. The contents of the prelude are
-imported into every *module* by default.  Implicitly, all modules behave as if
-they contained the following prologue:
-
-    use std::prelude::*;
-
+[standard library]: std/index.html
 [`std`]: std/index.html
 [`bool`]: std/bool.html
 [tuples]: std/tuple.html
@@ -2543,6 +2956,18 @@ they contained the following prologue:
 [`clone`]: std/clone.html
 [`libc`]: std/libc.html
 
+## The extra library
+
+Rust also ships with the [extra library], an accumulation of
+useful things, that are however not important enough
+to deserve a place in the standard library.
+You can use them by linking to `extra` with an `extern mod extra;`.
+
+[extra library]: extra/index.html
+
+Right now `extra` contains those definitions directly, but in the future it will likely just
+re-export a bunch of 'officially blessed' crates that get managed with `rustpkg`.
+
 # What next?
 
 Now that you know the essentials, check out any of the additional
@@ -2555,7 +2980,7 @@ tutorials on individual topics.
 * [Containers and iterators](tutorial-container.html)
 * [Error-handling and Conditions](tutorial-conditions.html)
 
-There is further documentation on the [wiki].
+There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 
 [borrow]: tutorial-borrowed-ptr.html
 [tasks]: tutorial-tasks.html
