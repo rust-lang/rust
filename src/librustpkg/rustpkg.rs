@@ -475,7 +475,8 @@ pub fn main() {
 pub fn main_args(args: &[~str]) {
     let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
                  getopts::optflag("j"), getopts::optflag("json"),
-                 getopts::optmulti("c"), getopts::optmulti("cfg")];
+                 getopts::optmulti("c"), getopts::optmulti("cfg"),
+                 getopts::optflag("v"), getopts::optflag("version")];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
@@ -488,6 +489,13 @@ pub fn main_args(args: &[~str]) {
                getopts::opt_present(matches, "help");
     let json = getopts::opt_present(matches, "j") ||
                getopts::opt_present(matches, "json");
+
+    if getopts::opt_present(matches, "v") ||
+       getopts::opt_present(matches, "version") {
+        rustc::version(args[0]);
+        return;
+    }
+
     let mut args = matches.free.clone();
 
     args.shift();
