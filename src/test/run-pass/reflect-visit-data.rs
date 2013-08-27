@@ -436,16 +436,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_var(&self) -> bool {
-        if ! self.inner.visit_var() { return false; }
-        true
-    }
-
-    fn visit_var_integral(&self) -> bool {
-        if ! self.inner.visit_var_integral() { return false; }
-        true
-    }
-
     fn visit_param(&self, i: uint) -> bool {
         if ! self.inner.visit_param(i) { return false; }
         true
@@ -467,11 +457,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         self.align_to::<@u8>();
         if ! self.inner.visit_opaque_box() { return false; }
         self.bump_past::<@u8>();
-        true
-    }
-
-    fn visit_constr(&self, inner: *TyDesc) -> bool {
-        if ! self.inner.visit_constr(inner) { return false; }
         true
     }
 
@@ -633,13 +618,10 @@ impl TyVisitor for my_visitor {
 
 
     fn visit_trait(&self) -> bool { true }
-    fn visit_var(&self) -> bool { true }
-    fn visit_var_integral(&self) -> bool { true }
     fn visit_param(&self, _i: uint) -> bool { true }
     fn visit_self(&self) -> bool { true }
     fn visit_type(&self) -> bool { true }
     fn visit_opaque_box(&self) -> bool { true }
-    fn visit_constr(&self, _inner: *TyDesc) -> bool { true }
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 

@@ -460,16 +460,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_var(&self) -> bool {
-        if ! self.inner.visit_var() { return false; }
-        true
-    }
-
-    fn visit_var_integral(&self) -> bool {
-        if ! self.inner.visit_var_integral() { return false; }
-        true
-    }
-
     fn visit_param(&self, i: uint) -> bool {
         if ! self.inner.visit_param(i) { return false; }
         true
@@ -491,11 +481,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         self.align_to::<@u8>();
         if ! self.inner.visit_opaque_box() { return false; }
         self.bump_past::<@u8>();
-        true
-    }
-
-    fn visit_constr(&self, inner: *TyDesc) -> bool {
-        if ! self.inner.visit_constr(inner) { return false; }
         true
     }
 
