@@ -44,7 +44,7 @@ use sync;
 use sync::{Mutex, RWLock};
 
 use std::cast;
-use std::unstable::sync::UnsafeAtomicRcBox;
+use std::unstable::sync::UnsafeArc;
 use std::task;
 use std::borrow;
 
@@ -108,7 +108,7 @@ impl<'self> Condvar<'self> {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-pub struct Arc<T> { priv x: UnsafeAtomicRcBox<T> }
+pub struct Arc<T> { priv x: UnsafeArc<T> }
 
 
 /**
@@ -118,7 +118,7 @@ pub struct Arc<T> { priv x: UnsafeAtomicRcBox<T> }
 impl<T:Freeze+Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
     pub fn new(data: T) -> Arc<T> {
-        Arc { x: UnsafeAtomicRcBox::new(data) }
+        Arc { x: UnsafeArc::new(data) }
     }
 
     pub fn get<'a>(&'a self) -> &'a T {
@@ -160,7 +160,7 @@ impl<T:Freeze + Send> Clone for Arc<T> {
 #[doc(hidden)]
 struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
 /// An Arc with mutable data protected by a blocking mutex.
-struct MutexArc<T> { priv x: UnsafeAtomicRcBox<MutexArcInner<T>> }
+struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
 
 
 impl<T:Send> Clone for MutexArc<T> {
@@ -187,7 +187,7 @@ impl<T:Send> MutexArc<T> {
             lock: Mutex::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        MutexArc { x: UnsafeAtomicRcBox::new(data) }
+        MutexArc { x: UnsafeArc::new(data) }
     }
 
     /**
@@ -309,7 +309,7 @@ struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
  */
 #[no_freeze]
 struct RWArc<T> {
-    priv x: UnsafeAtomicRcBox<RWArcInner<T>>,
+    priv x: UnsafeArc<RWArcInner<T>>,
 }
 
 impl<T:Freeze + Send> Clone for RWArc<T> {
@@ -335,7 +335,7 @@ impl<T:Freeze + Send> RWArc<T> {
             lock: RWLock::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        RWArc { x: UnsafeAtomicRcBox::new(data), }
+        RWArc { x: UnsafeArc::new(data), }
     }
 
     /**
