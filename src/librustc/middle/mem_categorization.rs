@@ -1146,9 +1146,10 @@ impl cmt_ {
     }
 
     pub fn freely_aliasable(&self) -> Option<AliasableReason> {
-        //! True if this lvalue resides in an area that is
-        //! freely aliasable, meaning that rustc cannot track
-        //! the alias//es with precision.
+        /*!
+         * Returns `Some(_)` if this lvalue represents a freely aliasable
+         * pointer type.
+         */
 
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
@@ -1180,12 +1181,12 @@ impl cmt_ {
                 Some(AliasableBorrowed(m))
             }
 
-            cat_downcast(b) |
-            cat_stack_upvar(b) |
-            cat_deref(b, _, uniq_ptr) |
-            cat_interior(b, _) |
-            cat_discr(b, _) => {
-                b.freely_aliasable()
+            cat_downcast(*) |
+            cat_stack_upvar(*) |
+            cat_deref(_, _, uniq_ptr) |
+            cat_interior(*) |
+            cat_discr(*) => {
+                None
             }
         }
     }

@@ -391,15 +391,7 @@ impl<'self> CheckLoanCtxt<'self> {
                 mc::cat_deref(b, _, mc::region_ptr(m_mutbl, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
 
-                    match b.freely_aliasable() {
-                        None => {}
-                        Some(cause) => {
-                            this.bccx.report_aliasability_violation(
-                                expr.span,
-                                MutabilityViolation,
-                                cause);
-                        }
-                    }
+                    check_for_aliasability_violation(this, expr, b);
                 }
 
                 mc::cat_deref(_, deref_count, mc::gc_ptr(ast::m_mutbl)) => {
@@ -417,6 +409,52 @@ impl<'self> CheckLoanCtxt<'self> {
             }
 
             return true; // no errors reported
+        }
+
+        fn check_for_aliasability_violation(this: &CheckLoanCtxt,
+                                            expr: @ast::expr,
+                                            cmt: mc::cmt) -> bool {
+            let mut cmt = cmt;
+
+            loop {
+                match cmt.cat {
+                    mc::cat_deref(b, _, mc::region_ptr(m_mutbl, _)) |
+                    mc::cat_downcast(b) |
+                    mc::cat_stack_upvar(b) |
+                    mc::cat_deref(b, _, mc::uniq_ptr) |
+                    mc::cat_interior(b, _) |
+                    mc::cat_discr(b, _) => {
+                        // Aliasability depends on base cmt
+                        cmt = b;
+                    }
+
+                    mc::cat_copied_upvar(_) |
+                    mc::cat_rvalue(*) |
+                    mc::cat_local(*) |
+                    mc::cat_arg(_) |
+                    mc::cat_self(*) |
+                    mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
+                    mc::cat_static_item(*) |
+                    mc::cat_implicit_self(*) |
+                    mc::cat_deref(_, _, mc::gc_ptr(_)) |
+                    mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
+                    mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) => {
+                        // Aliasability is independent of base cmt
+                        match cmt.freely_aliasable() {
+                            None => {
+                                return true;
+                            }
+                            Some(cause) => {
+                                this.bccx.report_aliasability_violation(
+                                    expr.span,
+                                    MutabilityViolation,
+                                    cause);
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         fn check_for_assignment_to_restricted_or_frozen_location(
