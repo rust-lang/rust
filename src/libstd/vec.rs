@@ -125,11 +125,14 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut v = with_capacity(n_elts);
         let p = raw::to_mut_ptr(v);
         let mut i = 0u;
-        while i < n_elts {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
-            i += 1u;
+        do (|| {
+            while i < n_elts {
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
+                i += 1u;
+            }
+        }).finally {
+            raw::set_len(&mut v, i);
         }
-        raw::set_len(&mut v, n_elts);
         v
     }
 }
@@ -3132,6 +3135,29 @@ mod tests {
             if v == 50 { fail!() }
             (~0, @0)
         };
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_from_elem_fail() {
+        use cast;
+
+        struct S {
+            f: int,
+            boxes: (~int, @int)
+        }
+
+        impl Clone for S {
+            fn clone(&self) -> S {
+                let s = unsafe { cast::transmute_mut(self) };
+                s.f += 1;
+                if s.f == 10 { fail!() }
+                S { f: s.f, boxes: s.boxes.clone() }
+            }
+        }
+
+        let s = S { f: 0, boxes: (~0, @0) };
+        let _ = from_elem(100, s);
     }
 
     #[test]
