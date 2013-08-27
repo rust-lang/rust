@@ -137,7 +137,7 @@ impl CrateContext {
                 llvm::LLVMSetDataLayout(llmod, buf)
             };
             do targ_triple.with_c_str |buf| {
-                llvm::LLVMSetTarget(llmod, buf)
+                llvm::LLVMRustSetNormalizedTarget(llmod, buf)
             };
             let targ_cfg = sess.targ_cfg;
 
