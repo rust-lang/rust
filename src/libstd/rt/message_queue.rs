@@ -16,11 +16,11 @@ use kinds::Send;
 use vec::OwnedVector;
 use cell::Cell;
 use option::*;
-use unstable::sync::{UnsafeAtomicRcBox, LittleLock};
+use unstable::sync::{UnsafeArc, LittleLock};
 use clone::Clone;
 
 pub struct MessageQueue<T> {
-    priv state: UnsafeAtomicRcBox<State<T>>
+    priv state: UnsafeArc<State<T>>
 }
 
 struct State<T> {
@@ -32,7 +32,7 @@ struct State<T> {
 impl<T: Send> MessageQueue<T> {
     pub fn new() -> MessageQueue<T> {
         MessageQueue {
-            state: UnsafeAtomicRcBox::new(State {
+            state: UnsafeArc::new(State {
                 count: 0,
                 queue: ~[],
                 lock: LittleLock::new()
