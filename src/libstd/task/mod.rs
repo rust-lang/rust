@@ -52,7 +52,6 @@ use util;
 #[cfg(test)] use ptr;
 #[cfg(test)] use task;
 
-mod local_data_priv;
 pub mod spawn;
 
 /**

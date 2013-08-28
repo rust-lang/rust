@@ -16,8 +16,8 @@
 use borrow;
 use cast::transmute;
 use cleanup;
+use local_data;
 use libc::{c_void, uintptr_t};
-use ptr;
 use prelude::*;
 use option::{Option, Some, None};
 use rt::borrowck;
@@ -80,7 +80,7 @@ pub enum SchedHome {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(*c_void, Option<extern "Rust" fn(*c_void)>);
+pub struct LocalStorage(Option<local_data::Map>);
 
 pub struct Unwinder {
     unwinding: bool,
@@ -130,7 +130,7 @@ impl Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
-            storage: LocalStorage(ptr::null(), None),
+            storage: LocalStorage(None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
@@ -164,7 +164,7 @@ impl Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
-            storage: LocalStorage(ptr::null(), None),
+            storage: LocalStorage(None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
@@ -186,7 +186,7 @@ impl Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
-            storage: LocalStorage(ptr::null(), None),
+            storage: LocalStorage(None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
             taskgroup: None,
@@ -233,15 +233,8 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             do f.finally {
-
-                // Destroy task-local storage. This may run user dtors.
-                match self.storage {
-                    LocalStorage(ptr, Some(ref dtor)) => {
-                        (*dtor)(ptr)
-                    }
-                    _ => ()
-                }
-
+                // First, destroy task-local storage. This may run user dtors.
+                //
                 // FIXME #8302: Dear diary. I'm so tired and confused.
                 // There's some interaction in rustc between the box
                 // annihilator and the TLS dtor by which TLS is
@@ -253,7 +246,13 @@ impl Task {
                 // TLS would be reinitialized but never destroyed,
                 // but somehow this works. I have no idea what's going
                 // on but this seems to make things magically work. FML.
-                self.storage = LocalStorage(ptr::null(), None);
+                //
+                // (added after initial comment) A possible interaction here is
+                // that the destructors for the objects in TLS themselves invoke
+                // TLS, or possibly some destructors for those objects being
+                // annihilated invoke TLS. Sadly these two operations seemed to
+                // be intertwined, and miraculously work for now...
+                self.storage.take();
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }

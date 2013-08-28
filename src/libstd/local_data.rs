@@ -39,11 +39,11 @@ magic.
 
 */
 
+use cast;
+use libc;
 use prelude::*;
-
-use task::local_data_priv::*;
-
-#[cfg(test)] use task;
+use rt::task::{Task, LocalStorage};
+use util;
 
 /**
  * Indexes a task-local data slot. This pointer is used for comparison to
@@ -60,263 +60,509 @@ pub type Key<T> = &'static KeyValue<T>;
 
 pub enum KeyValue<T> { Key }
 
-/**
- * Remove a task-local data value from the table, returning the
- * reference that was originally created to insert it.
- */
+trait LocalData {}
+impl<T: 'static> LocalData for T {}
+
+// The task-local-map stores all TLS information for the currently running task.
+// It is stored as an owned pointer into the runtime, and it's only allocated
+// when TLS is used for the first time. This map must be very carefully
+// constructed because it has many mutable loans unsoundly handed out on it to
+// the various invocations of TLS requests.
+//
+// One of the most important operations is loaning a value via `get` to a
+// caller. In doing so, the slot that the TLS entry is occupying cannot be
+// invalidated because upon returning it's loan state must be updated. Currently
+// the TLS map is a vector, but this is possibly dangerous because the vector
+// can be reallocated/moved when new values are pushed onto it.
+//
+// This problem currently isn't solved in a very elegant way. Inside the `get`
+// function, it internally "invalidates" all references after the loan is
+// finished and looks up into the vector again. In theory this will prevent
+// pointers from being moved under our feet so long as LLVM doesn't go too crazy
+// with the optimizations.
+//
+// n.b. If TLS is used heavily in future, this could be made more efficient with
+//      a proper map.
+#[doc(hidden)]
+pub type Map = ~[Option<(*libc::c_void, TLSValue, LoanState)>];
+type TLSValue = ~LocalData;
+
+// Gets the map from the runtime. Lazily initialises if not done so already.
+unsafe fn get_local_map() -> &mut Map {
+    use rt::local::Local;
+
+    let task: *mut Task = Local::unsafe_borrow();
+    match &mut (*task).storage {
+        // If the at_exit function is already set, then we just need to take
+        // a loan out on the TLS map stored inside
+        &LocalStorage(Some(ref mut map_ptr)) => {
+            return map_ptr;
+        }
+        // If this is the first time we've accessed TLS, perform similar
+        // actions to the oldsched way of doing things.
+        &LocalStorage(ref mut slot) => {
+            *slot = Some(~[]);
+            match *slot {
+                Some(ref mut map_ptr) => { return map_ptr }
+                None => abort()
+            }
+        }
+    }
+}
+
+#[deriving(Eq)]
+enum LoanState {
+    NoLoan, ImmLoan, MutLoan
+}
+
+impl LoanState {
+    fn describe(&self) -> &'static str {
+        match *self {
+            NoLoan => "no loan",
+            ImmLoan => "immutable",
+            MutLoan => "mutable"
+        }
+    }
+}
+
+fn key_to_key_value<T: 'static>(key: Key<T>) -> *libc::c_void {
+    unsafe { cast::transmute(key) }
+}
+
+/// Removes a task-local value from task-local storage. This will return
+/// Some(value) if the key was present in TLS, otherwise it will return None.
+///
+/// A runtime assertion will be triggered it removal of TLS value is attempted
+/// while the value is still loaned out via `get` or `get_mut`.
 pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
-    unsafe { local_pop(Handle::new(), key) }
+    let map = unsafe { get_local_map() };
+    let key_value = key_to_key_value(key);
+
+    for entry in map.mut_iter() {
+        match *entry {
+            Some((k, _, loan)) if k == key_value => {
+                if loan != NoLoan {
+                    fail!("TLS value cannot be removed because it is currently \
+                          borrowed as %s", loan.describe());
+                }
+                // Move the data out of the `entry` slot via util::replace.
+                // This is guaranteed to succeed because we already matched
+                // on `Some` above.
+                let data = match util::replace(entry, None) {
+                    Some((_, data, _)) => data,
+                    None => abort()
+                };
+
+                // Move `data` into transmute to get out the memory that it
+                // owns, we must free it manually later.
+                let (_vtable, box): (uint, ~~T) = unsafe {
+                    cast::transmute(data)
+                };
+
+                // Now that we own `box`, we can just move out of it as we would
+                // with any other data.
+                return Some(**box);
+            }
+            _ => {}
+        }
+    }
+    return None;
 }
 
-/**
- * Retrieve a task-local data value. It will also be kept alive in the
- * table until explicitly removed.
- */
+/// Retrieves a value from TLS. The closure provided is yielded `Some` of a
+/// reference to the value located in TLS if one exists, or `None` if the key
+/// provided is not present in TLS currently.
+///
+/// It is considered a runtime error to attempt to get a value which is already
+/// on loan via the `get_mut` method provided.
 pub fn get<T: 'static, U>(key: Key<T>, f: &fn(Option<&T>) -> U) -> U {
-    unsafe { local_get(Handle::new(), key, f) }
+    get_with(key, ImmLoan, f)
 }
 
-/**
- * Retrieve a mutable borrowed pointer to a task-local data value.
- */
+/// Retrieves a mutable value from TLS. The closure provided is yielded `Some`
+/// of a reference to the mutable value located in TLS if one exists, or `None`
+/// if the key provided is not present in TLS currently.
+///
+/// It is considered a runtime error to attempt to get a value which is already
+/// on loan via this or the `get` methods. This is similar to how it's a runtime
+/// error to take two mutable loans on an `@mut` box.
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: &fn(Option<&mut T>) -> U) -> U {
-    unsafe { local_get_mut(Handle::new(), key, f) }
+    do get_with(key, MutLoan) |x| {
+        match x {
+            None => f(None),
+            // We're violating a lot of compiler guarantees with this
+            // invocation of `transmute_mut`, but we're doing runtime checks to
+            // ensure that it's always valid (only one at a time).
+            //
+            // there is no need to be upset!
+            Some(x) => { f(Some(unsafe { cast::transmute_mut(x) })) }
+        }
+    }
 }
 
-/**
- * Store a value in task-local data. If this key already has a value,
- * that value is overwritten (and its destructor is run).
- */
+fn get_with<T: 'static, U>(key: Key<T>,
+                           state: LoanState,
+                           f: &fn(Option<&T>) -> U) -> U {
+    // This function must be extremely careful. Because TLS can store owned
+    // values, and we must have some form of `get` function other than `pop`,
+    // this function has to give a `&` reference back to the caller.
+    //
+    // One option is to return the reference, but this cannot be sound because
+    // the actual lifetime of the object is not known. The slot in TLS could not
+    // be modified until the object goes out of scope, but the TLS code cannot
+    // know when this happens.
+    //
+    // For this reason, the reference is yielded to a specified closure. This
+    // way the TLS code knows exactly what the lifetime of the yielded pointer
+    // is, allowing callers to acquire references to owned data. This is also
+    // sound so long as measures are taken to ensure that while a TLS slot is
+    // loaned out to a caller, it's not modified recursively.
+    let map = unsafe { get_local_map() };
+    let key_value = key_to_key_value(key);
+
+    let pos = map.iter().position(|entry| {
+        match *entry {
+            Some((k, _, _)) if k == key_value => true, _ => false
+        }
+    });
+    match pos {
+        None => { return f(None); }
+        Some(i) => {
+            let ret;
+            let mut return_loan = false;
+            match map[i] {
+                Some((_, ref data, ref mut loan)) => {
+                    match (state, *loan) {
+                        (_, NoLoan) => {
+                            *loan = state;
+                            return_loan = true;
+                        }
+                        (ImmLoan, ImmLoan) => {}
+                        (want, cur) => {
+                            fail!("TLS slot cannot be borrowed as %s because \
+                                   it is already borrowed as %s",
+                                  want.describe(), cur.describe());
+                        }
+                    }
+                    // data was created with `~~T as ~LocalData`, so we extract
+                    // pointer part of the trait, (as ~~T), and then use
+                    // compiler coercions to achieve a '&' pointer.
+                    unsafe {
+                        match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data){
+                            (_vtable, ref box) => {
+                                let value: &T = **box;
+                                ret = f(Some(value));
+                            }
+                        }
+                    }
+                }
+                _ => abort()
+            }
+
+            // n.b. 'data' and 'loans' are both invalid pointers at the point
+            // 'f' returned because `f` could have appended more TLS items which
+            // in turn relocated the vector. Hence we do another lookup here to
+            // fixup the loans.
+            if return_loan {
+                match map[i] {
+                    Some((_, _, ref mut loan)) => { *loan = NoLoan; }
+                    None => abort()
+                }
+            }
+            return ret;
+        }
+    }
+}
+
+fn abort() -> ! {
+    #[fixed_stack_segment]; #[inline(never)];
+    unsafe { libc::abort() }
+}
+
+/// Inserts a value into task local storage. If the key is already present in
+/// TLS, then the previous value is removed and replaced with the provided data.
+///
+/// It is considered a runtime error to attempt to set a key which is currently
+/// on loan via the `get` or `get_mut` methods.
 pub fn set<T: 'static>(key: Key<T>, data: T) {
-    unsafe { local_set(Handle::new(), key, data) }
+    let map = unsafe { get_local_map() };
+    let keyval = key_to_key_value(key);
+
+    // When the task-local map is destroyed, all the data needs to be cleaned
+    // up. For this reason we can't do some clever tricks to store '~T' as a
+    // '*c_void' or something like that. To solve the problem, we cast
+    // everything to a trait (LocalData) which is then stored inside the map.
+    // Upon destruction of the map, all the objects will be destroyed and the
+    // traits have enough information about them to destroy themselves.
+    //
+    // FIXME(#7673): This should be "~data as ~LocalData" (only one sigil)
+    let data = ~~data as ~LocalData:;
+
+    fn insertion_position(map: &mut Map,
+                          key: *libc::c_void) -> Option<uint> {
+        // First see if the map contains this key already
+        let curspot = map.iter().position(|entry| {
+            match *entry {
+                Some((ekey, _, loan)) if key == ekey => {
+                    if loan != NoLoan {
+                        fail!("TLS value cannot be overwritten because it is
+                               already borrowed as %s", loan.describe())
+                    }
+                    true
+                }
+                _ => false,
+            }
+        });
+        // If it doesn't contain the key, just find a slot that's None
+        match curspot {
+            Some(i) => Some(i),
+            None => map.iter().position(|entry| entry.is_none())
+        }
+    }
+
+    // The type of the local data map must ascribe to Send, so we do the
+    // transmute here to add the Send bound back on. This doesn't actually
+    // matter because TLS will always own the data (until its moved out) and
+    // we're not actually sending it to other schedulers or anything.
+    let data: ~LocalData = unsafe { cast::transmute(data) };
+    match insertion_position(map, keyval) {
+        Some(i) => { map[i] = Some((keyval, data, NoLoan)); }
+        None => { map.push(Some((keyval, data, NoLoan))); }
+    }
 }
 
-/**
- * Modify a task-local data value. If the function returns 'None', the
- * data is removed (and its reference dropped).
- */
+/// Modifies a task-local value by temporarily removing it from task-local
+/// storage and then re-inserting if `Some` is returned from the closure.
+///
+/// This function will have the same runtime errors as generated from `pop` and
+/// `set` (the key must not currently be on loan
 pub fn modify<T: 'static>(key: Key<T>, f: &fn(Option<T>) -> Option<T>) {
-    unsafe {
-        match f(pop(::cast::unsafe_copy(&key))) {
-            Some(next) => { set(key, next); }
-            None => {}
-        }
+    match f(pop(key)) {
+        Some(next) => { set(key, next); }
+        None => {}
     }
 }
 
-#[test]
-fn test_tls_multitask() {
-    static my_key: Key<@~str> = &Key;
-    set(my_key, @~"parent data");
-    do task::spawn {
-        // TLS shouldn't carry over.
-        assert!(get(my_key, |k| k.map_move(|k| *k)).is_none());
-        set(my_key, @~"child data");
-        assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) ==
-                ~"child data");
-        // should be cleaned up for us
-    }
-    // Must work multiple times
-    assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
-    assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
-    assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
-}
+#[cfg(test)]
+mod tests {
+    use prelude::*;
+    use super::*;
+    use task;
 
-#[test]
-fn test_tls_overwrite() {
-    static my_key: Key<@~str> = &Key;
-    set(my_key, @~"first data");
-    set(my_key, @~"next data"); // Shouldn't leak.
-    assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"next data");
-}
-
-#[test]
-fn test_tls_pop() {
-    static my_key: Key<@~str> = &Key;
-    set(my_key, @~"weasel");
-    assert!(*(pop(my_key).unwrap()) == ~"weasel");
-    // Pop must remove the data from the map.
-    assert!(pop(my_key).is_none());
-}
-
-#[test]
-fn test_tls_modify() {
-    static my_key: Key<@~str> = &Key;
-    modify(my_key, |data| {
-        match data {
-            Some(@ref val) => fail!("unwelcome value: %s", *val),
-            None           => Some(@~"first data")
+    #[test]
+    fn test_tls_multitask() {
+        static my_key: Key<@~str> = &Key;
+        set(my_key, @~"parent data");
+        do task::spawn {
+            // TLS shouldn't carry over.
+            assert!(get(my_key, |k| k.map_move(|k| *k)).is_none());
+            set(my_key, @~"child data");
+            assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) ==
+                    ~"child data");
+            // should be cleaned up for us
         }
-    });
-    modify(my_key, |data| {
-        match data {
-            Some(@~"first data") => Some(@~"next data"),
-            Some(@ref val)       => fail!("wrong value: %s", *val),
-            None                 => fail!("missing value")
-        }
-    });
-    assert!(*(pop(my_key).unwrap()) == ~"next data");
-}
-
-#[test]
-fn test_tls_crust_automorestack_memorial_bug() {
-    // This might result in a stack-canary clobber if the runtime fails to
-    // set sp_limit to 0 when calling the cleanup extern - it might
-    // automatically jump over to the rust stack, which causes next_c_sp
-    // to get recorded as something within a rust stack segment. Then a
-    // subsequent upcall (esp. for logging, think vsnprintf) would run on
-    // a stack smaller than 1 MB.
-    static my_key: Key<@~str> = &Key;
-    do task::spawn {
-        set(my_key, @~"hax");
+        // Must work multiple times
+        assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
+        assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
+        assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"parent data");
     }
-}
 
-#[test]
-fn test_tls_multiple_types() {
-    static str_key: Key<@~str> = &Key;
-    static box_key: Key<@@()> = &Key;
-    static int_key: Key<@int> = &Key;
-    do task::spawn {
-        set(str_key, @~"string data");
+    #[test]
+    fn test_tls_overwrite() {
+        static my_key: Key<@~str> = &Key;
+        set(my_key, @~"first data");
+        set(my_key, @~"next data"); // Shouldn't leak.
+        assert!(*(get(my_key, |k| k.map_move(|k| *k)).unwrap()) == ~"next data");
+    }
+
+    #[test]
+    fn test_tls_pop() {
+        static my_key: Key<@~str> = &Key;
+        set(my_key, @~"weasel");
+        assert!(*(pop(my_key).unwrap()) == ~"weasel");
+        // Pop must remove the data from the map.
+        assert!(pop(my_key).is_none());
+    }
+
+    #[test]
+    fn test_tls_modify() {
+        static my_key: Key<@~str> = &Key;
+        modify(my_key, |data| {
+            match data {
+                Some(@ref val) => fail!("unwelcome value: %s", *val),
+                None           => Some(@~"first data")
+            }
+        });
+        modify(my_key, |data| {
+            match data {
+                Some(@~"first data") => Some(@~"next data"),
+                Some(@ref val)       => fail!("wrong value: %s", *val),
+                None                 => fail!("missing value")
+            }
+        });
+        assert!(*(pop(my_key).unwrap()) == ~"next data");
+    }
+
+    #[test]
+    fn test_tls_crust_automorestack_memorial_bug() {
+        // This might result in a stack-canary clobber if the runtime fails to
+        // set sp_limit to 0 when calling the cleanup extern - it might
+        // automatically jump over to the rust stack, which causes next_c_sp
+        // to get recorded as something within a rust stack segment. Then a
+        // subsequent upcall (esp. for logging, think vsnprintf) would run on
+        // a stack smaller than 1 MB.
+        static my_key: Key<@~str> = &Key;
+        do task::spawn {
+            set(my_key, @~"hax");
+        }
+    }
+
+    #[test]
+    fn test_tls_multiple_types() {
+        static str_key: Key<@~str> = &Key;
+        static box_key: Key<@@()> = &Key;
+        static int_key: Key<@int> = &Key;
+        do task::spawn {
+            set(str_key, @~"string data");
+            set(box_key, @@());
+            set(int_key, @42);
+        }
+    }
+
+    #[test]
+    fn test_tls_overwrite_multiple_types() {
+        static str_key: Key<@~str> = &Key;
+        static box_key: Key<@@()> = &Key;
+        static int_key: Key<@int> = &Key;
+        do task::spawn {
+            set(str_key, @~"string data");
+            set(int_key, @42);
+            // This could cause a segfault if overwriting-destruction is done
+            // with the crazy polymorphic transmute rather than the provided
+            // finaliser.
+            set(int_key, @31337);
+        }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_tls_cleanup_on_failure() {
+        static str_key: Key<@~str> = &Key;
+        static box_key: Key<@@()> = &Key;
+        static int_key: Key<@int> = &Key;
+        set(str_key, @~"parent data");
         set(box_key, @@());
-        set(int_key, @42);
-    }
-}
-
-#[test]
-fn test_tls_overwrite_multiple_types() {
-    static str_key: Key<@~str> = &Key;
-    static box_key: Key<@@()> = &Key;
-    static int_key: Key<@int> = &Key;
-    do task::spawn {
-        set(str_key, @~"string data");
-        set(int_key, @42);
-        // This could cause a segfault if overwriting-destruction is done
-        // with the crazy polymorphic transmute rather than the provided
-        // finaliser.
+        do task::spawn {
+            // spawn_linked
+            set(str_key, @~"string data");
+            set(box_key, @@());
+            set(int_key, @42);
+            fail!();
+        }
+        // Not quite nondeterministic.
         set(int_key, @31337);
-    }
-}
-
-#[test]
-#[should_fail]
-fn test_tls_cleanup_on_failure() {
-    static str_key: Key<@~str> = &Key;
-    static box_key: Key<@@()> = &Key;
-    static int_key: Key<@int> = &Key;
-    set(str_key, @~"parent data");
-    set(box_key, @@());
-    do task::spawn {
-        // spawn_linked
-        set(str_key, @~"string data");
-        set(box_key, @@());
-        set(int_key, @42);
         fail!();
     }
-    // Not quite nondeterministic.
-    set(int_key, @31337);
-    fail!();
-}
 
-#[test]
-fn test_static_pointer() {
-    static key: Key<@&'static int> = &Key;
-    static VALUE: int = 0;
-    let v: @&'static int = @&VALUE;
-    set(key, v);
-}
+    #[test]
+    fn test_static_pointer() {
+        static key: Key<@&'static int> = &Key;
+        static VALUE: int = 0;
+        let v: @&'static int = @&VALUE;
+        set(key, v);
+    }
 
-#[test]
-fn test_owned() {
-    static key: Key<~int> = &Key;
-    set(key, ~1);
+    #[test]
+    fn test_owned() {
+        static key: Key<~int> = &Key;
+        set(key, ~1);
 
-    do get(key) |v| {
         do get(key) |v| {
             do get(key) |v| {
+                do get(key) |v| {
+                    assert_eq!(**v.unwrap(), 1);
+                }
                 assert_eq!(**v.unwrap(), 1);
             }
             assert_eq!(**v.unwrap(), 1);
         }
-        assert_eq!(**v.unwrap(), 1);
-    }
-    set(key, ~2);
-    do get(key) |v| {
-        assert_eq!(**v.unwrap(), 2);
-    }
-}
-
-#[test]
-fn test_get_mut() {
-    static key: Key<int> = &Key;
-    set(key, 1);
-
-    do get_mut(key) |v| {
-        *v.unwrap() = 2;
+        set(key, ~2);
+        do get(key) |v| {
+            assert_eq!(**v.unwrap(), 2);
+        }
     }
 
-    do get(key) |v| {
-        assert_eq!(*v.unwrap(), 2);
+    #[test]
+    fn test_get_mut() {
+        static key: Key<int> = &Key;
+        set(key, 1);
+
+        do get_mut(key) |v| {
+            *v.unwrap() = 2;
+        }
+
+        do get(key) |v| {
+            assert_eq!(*v.unwrap(), 2);
+        }
     }
-}
 
-#[test]
-fn test_same_key_type() {
-    static key1: Key<int> = &Key;
-    static key2: Key<int> = &Key;
-    static key3: Key<int> = &Key;
-    static key4: Key<int> = &Key;
-    static key5: Key<int> = &Key;
-    set(key1, 1);
-    set(key2, 2);
-    set(key3, 3);
-    set(key4, 4);
-    set(key5, 5);
+    #[test]
+    fn test_same_key_type() {
+        static key1: Key<int> = &Key;
+        static key2: Key<int> = &Key;
+        static key3: Key<int> = &Key;
+        static key4: Key<int> = &Key;
+        static key5: Key<int> = &Key;
+        set(key1, 1);
+        set(key2, 2);
+        set(key3, 3);
+        set(key4, 4);
+        set(key5, 5);
 
-    get(key1, |x| assert_eq!(*x.unwrap(), 1));
-    get(key2, |x| assert_eq!(*x.unwrap(), 2));
-    get(key3, |x| assert_eq!(*x.unwrap(), 3));
-    get(key4, |x| assert_eq!(*x.unwrap(), 4));
-    get(key5, |x| assert_eq!(*x.unwrap(), 5));
-}
+        get(key1, |x| assert_eq!(*x.unwrap(), 1));
+        get(key2, |x| assert_eq!(*x.unwrap(), 2));
+        get(key3, |x| assert_eq!(*x.unwrap(), 3));
+        get(key4, |x| assert_eq!(*x.unwrap(), 4));
+        get(key5, |x| assert_eq!(*x.unwrap(), 5));
+    }
 
-#[test]
-#[should_fail]
-fn test_nested_get_set1() {
-    static key: Key<int> = &Key;
-    set(key, 4);
-    do get(key) |_| {
+    #[test]
+    #[should_fail]
+    fn test_nested_get_set1() {
+        static key: Key<int> = &Key;
         set(key, 4);
+        do get(key) |_| {
+            set(key, 4);
+        }
     }
-}
 
-#[test]
-#[should_fail]
-fn test_nested_get_mut2() {
-    static key: Key<int> = &Key;
-    set(key, 4);
-    do get(key) |_| {
-        get_mut(key, |_| {})
+    #[test]
+    #[should_fail]
+    fn test_nested_get_mut2() {
+        static key: Key<int> = &Key;
+        set(key, 4);
+        do get(key) |_| {
+            get_mut(key, |_| {})
+        }
     }
-}
 
-#[test]
-#[should_fail]
-fn test_nested_get_mut3() {
-    static key: Key<int> = &Key;
-    set(key, 4);
-    do get_mut(key) |_| {
-        get(key, |_| {})
+    #[test]
+    #[should_fail]
+    fn test_nested_get_mut3() {
+        static key: Key<int> = &Key;
+        set(key, 4);
+        do get_mut(key) |_| {
+            get(key, |_| {})
+        }
     }
-}
 
-#[test]
-#[should_fail]
-fn test_nested_get_mut4() {
-    static key: Key<int> = &Key;
-    set(key, 4);
-    do get_mut(key) |_| {
-        get_mut(key, |_| {})
+    #[test]
+    #[should_fail]
+    fn test_nested_get_mut4() {
+        static key: Key<int> = &Key;
+        set(key, 4);
+        do get_mut(key) |_| {
+            get_mut(key, |_| {})
+        }
     }
 }
