@@ -1002,6 +1002,18 @@ pub fn remove_file(p: &Path) -> bool {
     }
 }
 
+/// Renames an existing file or directory
+pub fn rename_file(old: &Path, new: &Path) -> bool {
+    #[fixed_stack_segment]; #[inline(never)];
+    unsafe {
+       do old.with_c_str |old_buf| {
+            do new.with_c_str |new_buf| {
+                libc::rename(old_buf, new_buf) == (0 as c_int)
+            }
+       }
+    }
+}
+
 #[cfg(unix)]
 /// Returns the platform-specific value of errno
 pub fn errno() -> int {
