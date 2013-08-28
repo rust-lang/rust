@@ -59,14 +59,7 @@ pub trait Hash {
      * IterBytes trait, that feeds SipHash.
      */
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64;
-}
 
-// When we have default methods, won't need this.
-pub trait HashUtil {
-    fn hash(&self) -> u64;
-}
-
-impl<A:Hash> HashUtil for A {
     #[inline]
     fn hash(&self) -> u64 { self.hash_keyed(0,0) }
 }
