@@ -19,8 +19,6 @@ struct Foo {
 }
 
 pub fn main() {
-    use std::hash::HashUtil; // necessary for IterBytes check
-
     let a = Foo {bar: 4, baz: -3};
 
     a == a;    // check for Eq impl w/o testing its correctness
