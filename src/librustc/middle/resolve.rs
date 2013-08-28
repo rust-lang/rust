@@ -125,7 +125,7 @@ pub enum Mutability {
 
 pub enum SelfBinding {
     NoSelfBinding,
-    HasSelfBinding(NodeId, bool /* is implicit */)
+    HasSelfBinding(NodeId)
 }
 
 struct ResolveVisitor {
@@ -3771,9 +3771,8 @@ impl Resolver {
                 NoSelfBinding => {
                     // Nothing to do.
                 }
-                HasSelfBinding(self_node_id, is_implicit) => {
-                    let def_like = dl_def(def_self(self_node_id,
-                                                   is_implicit));
+                HasSelfBinding(self_node_id) => {
+                    let def_like = dl_def(def_self(self_node_id));
                     *function_value_rib.self_binding = Some(def_like);
                 }
             }
@@ -3917,7 +3916,7 @@ impl Resolver {
         // we only have self ty if it is a non static method
         let self_binding = match method.explicit_self.node {
           sty_static => { NoSelfBinding }
-          _ => { HasSelfBinding(method.self_id, false) }
+          _ => { HasSelfBinding(method.self_id) }
         };
 
         self.resolve_function(rib_kind,

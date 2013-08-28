@@ -3093,7 +3093,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
                                       defn: ast::def)
                                    -> ty_param_bounds_and_ty {
     match defn {
-      ast::def_arg(nid, _) | ast::def_local(nid, _) | ast::def_self(nid, _) |
+      ast::def_arg(nid, _) | ast::def_local(nid, _) | ast::def_self(nid) |
       ast::def_binding(nid, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
