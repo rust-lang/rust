@@ -203,7 +203,7 @@ The FILTER is matched against the name of all tests to run, and if any tests
 have a substring match, only those tests are run.
 
 By default, all tests are run in parallel. This can be altered with the
-RUST_THREADS environment variable when running tests (set it to 1).
+RUST_TEST_TASKS environment variable when running tests (set it to 1).
 
 Test Attributes:
 
@@ -740,9 +740,20 @@ static SCHED_OVERCOMMIT : uint = 4u;
 
 fn get_concurrency() -> uint {
     use std::rt;
-    let threads = rt::util::default_sched_threads();
-    if threads == 1 { 1 }
-    else { threads * SCHED_OVERCOMMIT }
+    match os::getenv("RUST_TEST_TASKS") {
+        Some(s) => {
+            let opt_n: Option<uint> = FromStr::from_str(s);
+            match opt_n {
+                Some(n) if n > 0 => n,
+                _ => fail!("RUST_TEST_TASKS is `%s`, should be a non-negative integer.", s)
+            }
+        }
+        None => {
+            let threads = rt::util::default_sched_threads();
+            if threads == 1 { 1 }
+            else { threads * SCHED_OVERCOMMIT }
+        }
+    }
 }
 
 pub fn filter_tests(
