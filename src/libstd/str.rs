@@ -1092,7 +1092,7 @@ pub mod raw {
     pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
         do s.as_imm_buf |sbuf, _n| {
              cast::transmute(Slice {
-                 data: sbuf.offset_inbounds(begin as int),
+                 data: sbuf.offset(begin as int),
                  len: end - begin,
              })
         }
