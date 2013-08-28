@@ -113,21 +113,6 @@ do spawn {
 }
 ~~~
 
-By default, the scheduler multiplexes tasks across the available cores, running
-in parallel. Thus, on a multicore machine, running the following code
-should interleave the output in vaguely random order.
-
-~~~
-# use std::io::print;
-# use std::task::spawn;
-
-for child_task_number in range(0, 20) {
-    do spawn {
-       print(fmt!("I am child number %d\n", child_task_number));
-    }
-}
-~~~
-
 ## Communication
 
 Now that we have spawned a new task, it would be nice if we could
