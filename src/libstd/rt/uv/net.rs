@@ -600,6 +600,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8815
     fn listen_ip4() {
         do run_in_bare_thread() {
             static MAX: int = 10;
@@ -674,6 +675,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8815
     fn listen_ip6() {
         do run_in_bare_thread() {
             static MAX: int = 10;
@@ -750,6 +752,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8815
     fn udp_recv_ip4() {
         do run_in_bare_thread() {
             static MAX: int = 10;
@@ -810,6 +813,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8815
     fn udp_recv_ip6() {
         do run_in_bare_thread() {
             static MAX: int = 10;
