@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc;
 use option::*;
 use result::*;
 use libc::c_int;
 
 use rt::io::IoError;
 use super::io::net::ip::{IpAddr, SocketAddr};
+use rt::uv;
 use rt::uv::uvio;
 use path::Path;
 use super::io::support::PathLike;
@@ -30,6 +32,9 @@ pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub type RtioUdpSocketObject = uvio::UvUdpSocket;
 pub type RtioTimerObject = uvio::UvTimer;
 pub type PausibleIdleCallback = uvio::UvPausibleIdleCallback;
+pub type RtioPipeObject = uvio::UvPipeStream;
+pub type RtioProcessObject = uvio::UvProcess;
+pub type RtioProcessConfig<'self> = uv::process::Config<'self>;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -72,6 +77,13 @@ pub trait IoFactory {
     fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
+    fn pipe_init(&mut self, ipc: bool) -> Result<~RtioPipeObject, IoError>;
+    fn spawn(&mut self, config: &RtioProcessConfig) -> Result<~RtioProcessObject, IoError>;
+}
+
+pub trait RtioStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -80,9 +92,7 @@ pub trait RtioTcpListener : RtioSocket {
     fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
 }
 
-pub trait RtioTcpStream : RtioSocket {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+pub trait RtioTcpStream : RtioSocket + RtioStream {
     fn peer_name(&mut self) -> Result<SocketAddr, IoError>;
     fn control_congestion(&mut self) -> Result<(), IoError>;
     fn nodelay(&mut self) -> Result<(), IoError>;
@@ -123,4 +133,10 @@ pub trait RtioFileStream {
     fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError>;
     fn tell(&self) -> Result<u64, IoError>;
     fn flush(&mut self) -> Result<(), IoError>;
+}
+
+pub trait RtioProcess {
+    fn id(&self) -> libc::pid_t;
+    fn kill(&mut self, signal: int) -> Result<(), IoError>;
+    fn wait(&mut self) -> int;
 }

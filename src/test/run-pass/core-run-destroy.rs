@@ -22,13 +22,15 @@ use std::str;
 
 #[test]
 fn test_destroy_once() {
-    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
+    let p = run::Process::new("echo", [], run::ProcessOptions::new());
+    let mut p = p.unwrap();
     p.destroy(); // this shouldn't crash (and nor should the destructor)
 }
 
 #[test]
 fn test_destroy_twice() {
-    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
+    let p = run::Process::new("echo", [], run::ProcessOptions::new());
+    let mut p = p.unwrap();
     p.destroy(); // this shouldnt crash...
     p.destroy(); // ...and nor should this (and nor should the destructor)
 }
@@ -74,7 +76,8 @@ fn test_destroy_actually_kills(force: bool) {
     }
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new());
+    let p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new());
+    let mut p = p.unwrap();
 
     assert!(process_exists(p.get_id()));
 
