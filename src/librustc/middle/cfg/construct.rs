@@ -389,7 +389,6 @@ impl CFGBuilder {
                 self.straightline(expr, pred, [r, l])
             }
 
-            ast::ExprLog(l, r) |
             ast::ExprIndex(_, l, r) |
             ast::ExprBinary(_, _, l, r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r])
@@ -405,6 +404,7 @@ impl CFGBuilder {
                 self.straightline(expr, pred, [e])
             }
 
+            ast::ExprLogLevel |
             ast::ExprMac(*) |
             ast::ExprInlineAsm(*) |
             ast::ExprSelf |

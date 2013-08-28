@@ -8,13 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::c_str::ToCStr;
-
-use back::link;
-use lib;
 use lib::llvm::*;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
-use middle::lang_items::LogTypeFnLangItem;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -28,7 +23,6 @@ use middle::trans::type_::Type;
 
 use syntax::ast;
 use syntax::ast::Ident;
-use syntax::ast_map::path_mod;
 use syntax::ast_util;
 use syntax::codemap::Span;
 
@@ -204,72 +198,6 @@ pub fn trans_loop(bcx:@mut Block,
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
     cleanup_and_Br(body_bcx_out, body_bcx_in, body_bcx_in.llbb);
     return next_bcx;
-}
-
-pub fn trans_log(log_ex: &ast::Expr,
-                 lvl: @ast::Expr,
-                 bcx: @mut Block,
-                 e: @ast::Expr) -> @mut Block {
-    let _icx = push_ctxt("trans_log");
-    let ccx = bcx.ccx();
-    let mut bcx = bcx;
-    if ty::type_is_bot(expr_ty(bcx, lvl)) {
-       return expr::trans_into(bcx, lvl, expr::Ignore);
-    }
-
-    let (modpath, modname) = {
-        let path = &mut bcx.fcx.path;
-        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
-        for e in path.iter() {
-            match *e {
-                path_mod(_) => { modpath.push(*e) }
-                _ => {}
-            }
-        }
-        let modname = path_str(ccx.sess, modpath);
-        (modpath, modname)
-    };
-
-    let global = if ccx.module_data.contains_key(&modname) {
-        ccx.module_data.get_copy(&modname)
-    } else {
-        let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, "loglevel");
-        let global;
-        unsafe {
-            global = do s.with_c_str |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
-            };
-            llvm::LLVMSetGlobalConstant(global, False);
-            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
-            lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
-        }
-        ccx.module_data.insert(modname, global);
-        global
-    };
-    let current_level = Load(bcx, global);
-    let level = unpack_result!(bcx, {
-        do with_scope_result(bcx, lvl.info(), "level") |bcx| {
-            expr::trans_to_datum(bcx, lvl).to_result()
-        }
-    });
-
-    let llenabled = ICmp(bcx, lib::llvm::IntUGE, current_level, level);
-    do with_cond(bcx, llenabled) |bcx| {
-        do with_scope(bcx, log_ex.info(), "log") |bcx| {
-            let mut bcx = bcx;
-
-            // Translate the value to be logged
-            let val_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, e));
-
-            // Call the polymorphic log function
-            let val = val_datum.to_ref_llval(bcx);
-            let did = langcall(bcx, Some(e.span), "", LogTypeFnLangItem);
-            let bcx = callee::trans_lang_call_with_type_params(
-                bcx, did, [level, val], [val_datum.ty], expr::Ignore);
-            bcx
-        }
-    }
 }
 
 pub fn trans_break_cont(bcx: @mut Block,
