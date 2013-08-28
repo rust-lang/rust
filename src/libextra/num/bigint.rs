@@ -359,7 +359,7 @@ impl Integer for BigUint {
 
         fn div_mod_floor_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
             let mut m = a;
-            let mut d = Zero::zero::<BigUint>();
+            let mut d: BigUint = Zero::zero();
             let mut n = 1;
             while m >= b {
                 let (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
@@ -411,8 +411,9 @@ impl Integer for BigUint {
             if shift == 0 {
                 return (BigUint::new(d), One::one(), (*b).clone());
             }
+            let one: BigUint = One::one();
             return (BigUint::from_slice(d).shl_unit(shift),
-                    One::one::<BigUint>().shl_unit(shift),
+                    one.shl_unit(shift),
                     b.shl_unit(shift));
         }
     }
@@ -1168,8 +1169,8 @@ mod biguint_tests {
     #[test]
     fn test_shl() {
         fn check(s: &str, shift: uint, ans: &str) {
-            let bu = (FromStrRadix::from_str_radix::<BigUint>(s, 16).unwrap() << shift)
-                .to_str_radix(16);
+            let opt_biguint: Option<BigUint> = FromStrRadix::from_str_radix(s, 16);
+            let bu = (opt_biguint.unwrap() << shift).to_str_radix(16);
             assert_eq!(bu.as_slice(), ans);
         }
 
@@ -1206,8 +1207,9 @@ mod biguint_tests {
     #[test]
     fn test_shr() {
         fn check(s: &str, shift: uint, ans: &str) {
-            let bu = (FromStrRadix::from_str_radix::<BigUint>(s, 16).unwrap() >> shift)
-                .to_str_radix(16);
+            let opt_biguint: Option<BigUint> =
+                FromStrRadix::from_str_radix(s, 16);
+            let bu = (opt_biguint.unwrap() >> shift).to_str_radix(16);
             assert_eq!(bu.as_slice(), ans);
         }
 
@@ -1445,11 +1447,18 @@ mod biguint_tests {
 
     #[test]
     fn test_is_even() {
-        assert!(FromStr::from_str::<BigUint>("1").unwrap().is_odd());
-        assert!(FromStr::from_str::<BigUint>("2").unwrap().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000").unwrap().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000000000000000000000").unwrap().is_even());
-        assert!(FromStr::from_str::<BigUint>("1000000000000000000001").unwrap().is_odd());
+        let one: Option<BigUint> = FromStr::from_str("1");
+        let two: Option<BigUint> = FromStr::from_str("2");
+        let thousand: Option<BigUint> = FromStr::from_str("1000");
+        let big: Option<BigUint> =
+            FromStr::from_str("1000000000000000000000");
+        let bigger: Option<BigUint> =
+            FromStr::from_str("1000000000000000000001");
+        assert!(one.unwrap().is_odd());
+        assert!(two.unwrap().is_even());
+        assert!(thousand.unwrap().is_even());
+        assert!(big.unwrap().is_even());
+        assert!(bigger.unwrap().is_odd());
         assert!((BigUint::from_uint(1) << 64).is_even());
         assert!(((BigUint::from_uint(1) << 64) + BigUint::from_uint(1)).is_odd());
     }
@@ -1534,15 +1543,19 @@ mod biguint_tests {
             }
         }
 
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("Z", 10), None);
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("_", 2), None);
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("-1", 10), None);
+        let zed: Option<BigUint> = FromStrRadix::from_str_radix("Z", 10);
+        assert_eq!(zed, None);
+        let blank: Option<BigUint> = FromStrRadix::from_str_radix("_", 2);
+        assert_eq!(blank, None);
+        let minus_one: Option<BigUint> = FromStrRadix::from_str_radix("-1",
+                                                                      10);
+        assert_eq!(minus_one, None);
     }
 
     #[test]
     fn test_factor() {
         fn factor(n: uint) -> BigUint {
-            let mut f= One::one::<BigUint>();
+            let mut f: BigUint = One::one();
             for i in range(2, n + 1) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // f *= BigUint::from_uint(i);
@@ -1939,17 +1952,24 @@ mod bigint_tests {
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-One::one::<BigInt>()).abs_sub(&One::one()), Zero::zero());
-        assert_eq!(One::one::<BigInt>().abs_sub(&One::one()), Zero::zero());
-        assert_eq!(One::one::<BigInt>().abs_sub(&Zero::zero()), One::one());
-        assert_eq!(One::one::<BigInt>().abs_sub(&-One::one::<BigInt>()),
-                   IntConvertible::from_int(2));
+        let zero: BigInt = Zero::zero();
+        let one: BigInt = One::one();
+        assert_eq!((-one).abs_sub(&one), zero);
+        let one: BigInt = One::one();
+        let zero: BigInt = Zero::zero();
+        assert_eq!(one.abs_sub(&one), zero);
+        let one: BigInt = One::one();
+        let zero: BigInt = Zero::zero();
+        assert_eq!(one.abs_sub(&zero), one);
+        let one: BigInt = One::one();
+        assert_eq!(one.abs_sub(&-one), IntConvertible::from_int(2));
     }
 
     #[test]
     fn test_to_str_radix() {
         fn check(n: int, ans: &str) {
-            assert!(ans == IntConvertible::from_int::<BigInt>(n).to_str_radix(10));
+            let n: BigInt = IntConvertible::from_int(n);
+            assert!(ans == n.to_str_radix(10));
         }
         check(10, "10");
         check(1, "1");
@@ -1962,7 +1982,10 @@ mod bigint_tests {
     #[test]
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
-            let ans = ans.map_move(|n| IntConvertible::from_int::<BigInt>(n));
+            let ans = ans.map_move(|n| {
+                let x: BigInt = IntConvertible::from_int(n);
+                x
+            });
             assert_eq!(FromStrRadix::from_str_radix(s, 10), ans);
         }
         check("10", Some(10));
@@ -1980,7 +2003,8 @@ mod bigint_tests {
             BigInt::new(Minus, ~[1, 1, 1]));
         assert!(-BigInt::new(Minus, ~[1, 1, 1]) ==
             BigInt::new(Plus,  ~[1, 1, 1]));
-        assert_eq!(-Zero::zero::<BigInt>(), Zero::zero::<BigInt>());
+        let zero: BigInt = Zero::zero();
+        assert_eq!(-zero, zero);
     }
 }
 
@@ -1992,7 +2016,7 @@ mod bench {
     use extra::test::BenchHarness;
 
     fn factorial(n: uint) -> BigUint {
-        let mut f = One::one::<BigUint>();
+        let mut f: BigUint = One::one();
         for i in iterator::range_inclusive(1, n) {
             f = f * BigUint::from_uint(i);
         }
@@ -2000,8 +2024,8 @@ mod bench {
     }
 
     fn fib(n: uint) -> BigUint {
-        let mut f0 = Zero::zero::<BigUint>();
-        let mut f1 = One::one::<BigUint>();
+        let mut f0: BigUint = Zero::zero();
+        let mut f1: BigUint = One::one();
         for _ in range(0, n) {
             let f2 = f0 + f1;
             f0 = util::replace(&mut f1, f2);

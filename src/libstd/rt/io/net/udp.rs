@@ -20,7 +20,10 @@ pub struct UdpSocket(~RtioUdpSocketObject);
 
 impl UdpSocket {
     pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
-        let socket = unsafe { (*Local::unsafe_borrow::<IoFactoryObject>()).udp_bind(addr) };
+        let socket = unsafe {
+            let factory: *mut IoFactoryObject = Local::unsafe_borrow();
+            (*factory).udp_bind(addr)
+        };
         match socket {
             Ok(s) => Some(UdpSocket(s)),
             Err(ioerr) => {

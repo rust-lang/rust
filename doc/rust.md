@@ -2230,7 +2230,7 @@ Some examples of call expressions:
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
-let pi = FromStr::from_str::<f32>("3.14");
+let pi: Option<f32> = FromStr::from_str("3.14");
 ~~~~
 
 ### Lambda expressions

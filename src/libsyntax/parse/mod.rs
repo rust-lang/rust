@@ -361,27 +361,47 @@ mod test {
         span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
-    #[test] fn path_exprs_1 () {
+    #[test] fn path_exprs_1() {
         assert_eq!(string_to_expr(@"a"),
-                   @ast::expr{id:1,
-                              node:ast::expr_path(ast::Path {span:sp(0,1),
-                                                              global:false,
-                                                              idents:~[str_to_ident("a")],
-                                                              rp:None,
-                                                              types:~[]}),
-                              span:sp(0,1)})
+                   @ast::expr{
+                    id: 1,
+                    node: ast::expr_path(ast::Path {
+                        span: sp(0, 1),
+                        global: false,
+                        segments: ~[
+                            ast::PathSegment {
+                                identifier: str_to_ident("a"),
+                                lifetime: None,
+                                types: opt_vec::Empty,
+                            }
+                        ],
+                    }),
+                    span: sp(0, 1)
+                   })
     }
 
     #[test] fn path_exprs_2 () {
         assert_eq!(string_to_expr(@"::a::b"),
-                   @ast::expr{id:1,
-                               node:ast::expr_path(
-                                    ast::Path {span:sp(0,6),
-                                               global:true,
-                                               idents:strs_to_idents(~["a","b"]),
-                                               rp:None,
-                                               types:~[]}),
-                              span:sp(0,6)})
+                   @ast::expr {
+                    id:1,
+                    node: ast::expr_path(ast::Path {
+                            span: sp(0, 6),
+                            global: true,
+                            segments: ~[
+                                ast::PathSegment {
+                                    identifier: str_to_ident("a"),
+                                    lifetime: None,
+                                    types: opt_vec::Empty,
+                                },
+                                ast::PathSegment {
+                                    identifier: str_to_ident("b"),
+                                    lifetime: None,
+                                    types: opt_vec::Empty,
+                                }
+                            ]
+                        }),
+                    span: sp(0, 6)
+                   })
     }
 
     #[should_fail]
@@ -420,32 +440,43 @@ mod test {
 
     #[test] fn ret_expr() {
         assert_eq!(string_to_expr(@"return d"),
-                   @ast::expr{id:2,
-                              node:ast::expr_ret(
-                                  Some(@ast::expr{id:1,
-                                                  node:ast::expr_path(
-                                                       ast::Path{span:sp(7,8),
-                                                                 global:false,
-                                                                 idents:~[str_to_ident("d")],
-                                                                 rp:None,
-                                                                 types:~[]
-                                                                }),
-                                                  span:sp(7,8)})),
-                              span:sp(0,8)})
+                   @ast::expr{
+                    id:2,
+                    node:ast::expr_ret(Some(@ast::expr{
+                        id:1,
+                        node:ast::expr_path(ast::Path{
+                            span: sp(7, 8),
+                            global: false,
+                            segments: ~[
+                                ast::PathSegment {
+                                    identifier: str_to_ident("d"),
+                                    lifetime: None,
+                                    types: opt_vec::Empty,
+                                }
+                            ],
+                        }),
+                        span:sp(7,8)
+                    })),
+                    span:sp(0,8)
+                   })
     }
 
     #[test] fn parse_stmt_1 () {
         assert_eq!(string_to_stmt(@"b;"),
                    @spanned{
-                       node: ast::stmt_expr(@ast::expr{
+                       node: ast::stmt_expr(@ast::expr {
                            id: 1,
-                           node: ast::expr_path(
-                                ast::Path{
-                                   span:sp(0,1),
-                                   global:false,
-                                   idents:~[str_to_ident("b")],
-                                   rp:None,
-                                   types: ~[]}),
+                           node: ast::expr_path(ast::Path {
+                               span:sp(0,1),
+                               global:false,
+                               segments: ~[
+                                ast::PathSegment {
+                                    identifier: str_to_ident("b"),
+                                    lifetime: None,
+                                    types: opt_vec::Empty,
+                                }
+                               ],
+                            }),
                            span: sp(0,1)},
                                             2), // fixme
                        span: sp(0,1)})
@@ -460,47 +491,22 @@ mod test {
         let parser = string_to_parser(@"b");
         assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
-                             node: ast::pat_ident(ast::bind_infer,
-                                                   ast::Path{
-                                                      span:sp(0,1),
-                                                      global:false,
-                                                      idents:~[str_to_ident("b")],
-                                                      rp: None,
-                                                      types: ~[]},
-                                                  None // no idea
-                                                 ),
+                             node: ast::pat_ident(
+                                ast::bind_infer,
+                                ast::Path {
+                                    span:sp(0,1),
+                                    global:false,
+                                    segments: ~[
+                                        ast::PathSegment {
+                                            identifier: str_to_ident("b"),
+                                            lifetime: None,
+                                            types: opt_vec::Empty,
+                                        }
+                                    ],
+                                },
+                                None /* no idea */),
                              span: sp(0,1)});
         parser_done(parser);
-    }
-
-    #[test] fn parse_arg () {
-        let parser = string_to_parser(@"b : int");
-        assert_eq!(parser.parse_arg_general(true),
-                   ast::arg{
-                       is_mutbl: false,
-                       ty: ast::Ty{id:3, // fixme
-                                    node: ast::ty_path(ast::Path{
-                                        span:sp(4,4), // this is bizarre...
-                                        // check this in the original parser?
-                                        global:false,
-                                        idents:~[str_to_ident("int")],
-                                        rp: None,
-                                        types: ~[]},
-                                                       None, 2),
-                                    span:sp(4,7)},
-                       pat: @ast::pat{id:1,
-                                      node: ast::pat_ident(ast::bind_infer,
-                                                            ast::Path{
-                                                               span:sp(0,1),
-                                                               global:false,
-                                                               idents:~[str_to_ident("b")],
-                                                               rp: None,
-                                                               types: ~[]},
-                                                           None // no idea
-                                                          ),
-                                      span: sp(0,1)},
-                       id: 4 // fixme
-                   })
     }
 
     // check the contents of the tt manually:
@@ -519,23 +525,37 @@ mod test {
                                                 node: ast::ty_path(ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        idents:~[str_to_ident("int")],
-                                        rp: None,
-                                        types: ~[]},
-                                                       None, 2),
-                                                span:sp(10,13)},
-                                    pat: @ast::pat{id:1, // fixme
-                                                   node: ast::pat_ident(
-                                                       ast::bind_infer,
-                                                       ast::Path{
-                                                           span:sp(6,7),
-                                                           global:false,
-                                                           idents:~[str_to_ident("b")],
-                                                           rp: None,
-                                                           types: ~[]},
-                                                       None // no idea
-                                                   ),
-                                                  span: sp(6,7)},
+                                        segments: ~[
+                                            ast::PathSegment {
+                                                identifier:
+                                                    str_to_ident("int"),
+                                                lifetime: None,
+                                                types: opt_vec::Empty,
+                                            }
+                                        ],
+                                        }, None, 2),
+                                        span:sp(10,13)
+                                    },
+                                    pat: @ast::pat {
+                                        id:1, // fixme
+                                        node: ast::pat_ident(
+                                            ast::bind_infer,
+                                            ast::Path {
+                                                span:sp(6,7),
+                                                global:false,
+                                                segments: ~[
+                                                    ast::PathSegment {
+                                                        identifier:
+                                                            str_to_ident("b"),
+                                                        lifetime: None,
+                                                        types: opt_vec::Empty,
+                                                    }
+                                                ],
+                                            },
+                                            None // no idea
+                                        ),
+                                        span: sp(6,7)
+                                    },
                                     id: 4 // fixme
                                 }],
                                 output: ast::Ty{id:5, // fixme
@@ -558,9 +578,18 @@ mod test {
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
-                                                        idents:~[str_to_ident("b")],
-                                                        rp:None,
-                                                        types: ~[]}),
+                                                        segments: ~[
+                                                            ast::PathSegment {
+                                                                identifier:
+                                                                str_to_ident(
+                                                                    "b"),
+                                                                lifetime:
+                                                                    None,
+                                                                types:
+                                                                opt_vec::Empty
+                                                            }
+                                                        ],
+                                                      }),
                                                 span: sp(17,18)},
                                                                  7), // fixme
                                             span: sp(17,18)}],

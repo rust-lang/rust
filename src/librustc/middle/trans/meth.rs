@@ -176,6 +176,10 @@ pub fn trans_method_callee(bcx: @mut Block,
         }) => {
             match bcx.fcx.param_substs {
                 Some(substs) => {
+                    ty::populate_implementations_for_trait_if_necessary(
+                        bcx.tcx(),
+                        trait_id);
+
                     let vtbl = find_vtable(bcx.tcx(), substs,
                                            p, b);
                     trans_monomorphized_callee(bcx, callee_id, this, mentry,
@@ -209,6 +213,8 @@ pub fn trans_static_method_callee(bcx: @mut Block,
            ty::item_path_str(bcx.tcx(), trait_id),
            callee_id);
     let _indenter = indenter();
+
+    ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trait_id);
 
     // When we translate a static fn defined in a trait like:
     //
@@ -574,6 +580,8 @@ fn emit_vtable_methods(bcx: @mut Block,
         None       => ccx.sess.bug("make_impl_vtable: don't know how to \
                                     make a vtable for a type impl!")
     };
+
+    ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
     do trait_method_def_ids.map |method_def_id| {

@@ -15,12 +15,11 @@
 // each trait in the system to its implementations.
 
 
-use metadata::csearch::{each_path, get_impl_trait};
+use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
 use metadata::cstore::iter_crate_data;
-use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::ty::get;
-use middle::ty::{lookup_item_type, subst};
+use middle::ty::{ImplContainer, lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
@@ -43,13 +42,12 @@ use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
-use syntax::codemap::{span, dummy_sp};
+use syntax::codemap::span;
 use syntax::opt_vec;
 use syntax::visit;
 use syntax::parse;
-use util::ppaux::ty_to_str;
 
-use std::hashmap::{HashMap, HashSet};
+use std::hashmap::HashSet;
 use std::result::Ok;
 use std::vec;
 
@@ -150,19 +148,12 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
-
-        base_type_def_ids: @mut HashMap::new(),
     }
 }
 
 pub struct CoherenceChecker {
     crate_context: @mut CrateCtxt,
     inference_context: @mut InferCtxt,
-
-    // A mapping from implementations to the corresponding base type
-    // definition ID.
-
-    base_type_def_ids: @mut HashMap<def_id,def_id>,
 }
 
 struct CoherenceCheckVisitor { cc: CoherenceChecker }
@@ -321,9 +312,6 @@ impl CoherenceChecker {
                 if associated_traits.len() == 0 {
                     self.add_inherent_impl(base_type_def_id, implementation);
                 }
-
-                self.base_type_def_ids.insert(local_def(item.id),
-                                              base_type_def_id);
             }
         }
 
@@ -680,9 +668,6 @@ impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         let implementation = @csearch::get_impl(tcx, impl_def_id);
 
-        debug!("coherence: adding impl from external crate: %s",
-               ty::item_path_str(tcx, implementation.did));
-
         // Make sure we don't visit the same implementation multiple times.
         if !impls_seen.insert(implementation.did) {
             // Skip this one.
@@ -690,25 +675,11 @@ impl CoherenceChecker {
         }
         // Good. Continue.
 
-        let self_type = lookup_item_type(tcx, implementation.did);
-        let associated_traits = get_impl_trait(tcx,
-                                               implementation.did);
+        let _ = lookup_item_type(tcx, implementation.did);
+        let associated_traits = get_impl_trait(tcx, implementation.did);
 
-        // Do a sanity check to make sure that inherent methods have base
-        // types.
-        if associated_traits.is_none() {
-            match get_base_type_def_id(self.inference_context,
-                                       dummy_sp(),
-                                       self_type.ty) {
-                None => {
-                    tcx.sess.bug(fmt!("no base type for external impl with no \
-                                      trait: %s (type %s)!",
-                                     tcx.sess.str_of(implementation.ident),
-                                     ty_to_str(tcx, self_type.ty)));
-                }
-                Some(_) => {} // Nothing to do.
-            }
-        }
+        // Do a sanity check.
+        assert!(associated_traits.is_some());
 
         // Record all the trait methods.
         for trait_ref in associated_traits.iter() {
@@ -723,25 +694,6 @@ impl CoherenceChecker {
             }
         }
 
-        // Add the implementation to the mapping from implementation to base
-        // type def ID, if there is a base type for this implementation.
-        match get_base_type_def_id(self.inference_context,
-                                   dummy_sp(),
-                                   self_type.ty) {
-            None => {} // Nothing to do.
-            Some(base_type_def_id) => {
-                // inherent methods apply to `impl Type` but not
-                // `impl Trait for Type`:
-                if associated_traits.is_none() {
-                    self.add_inherent_impl(base_type_def_id,
-                                           implementation);
-                }
-
-                self.base_type_def_ids.insert(implementation.did,
-                                              base_type_def_id);
-            }
-        }
-
         tcx.impls.insert(implementation.did, implementation);
     }
 
@@ -752,15 +704,10 @@ impl CoherenceChecker {
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
-            do each_path(crate_store, crate_number) |_, def_like, _| {
-                match def_like {
-                    dl_impl(def_id) => {
-                        self.add_external_impl(&mut impls_seen, def_id)
-                    }
-                    dl_def(_) | dl_field => (),   // Skip this.
-                }
-                true
-            };
+            do each_impl(crate_store, crate_number) |def_id| {
+                assert_eq!(crate_number, def_id.crate);
+                self.add_external_impl(&mut impls_seen, def_id)
+            }
         }
     }
 
@@ -892,7 +839,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
         method.explicit_self,
         method.vis,
         new_def_id,
-        impl_id,
+        ImplContainer(impl_id),
         provided_source
     )
 }

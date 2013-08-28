@@ -23,12 +23,12 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
-use syntax::ast::{m_mutbl, m_imm, m_const};
+use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::visit;
 use util::ppaux::Repr;
 
 #[deriving(Clone)]
@@ -86,6 +86,44 @@ enum MoveError {
 }
 
 impl<'self> CheckLoanCtxt<'self> {
+    fn check_by_move_capture(&self,
+                             closure_id: ast::NodeId,
+                             cap_var: &moves::CaptureVar,
+                             move_path: @LoanPath) {
+        let move_err = self.analyze_move_out_from(closure_id, move_path);
+        match move_err {
+            MoveOk => {}
+            MoveWhileBorrowed(loan_path, loan_span) => {
+                self.bccx.span_err(
+                    cap_var.span,
+                    fmt!("cannot move `%s` into closure \
+                          because it is borrowed",
+                         self.bccx.loan_path_to_str(move_path)));
+                self.bccx.span_note(
+                    loan_span,
+                    fmt!("borrow of `%s` occurs here",
+                         self.bccx.loan_path_to_str(loan_path)));
+            }
+        }
+    }
+
+    fn check_captured_variables(&self, closure_id: ast::NodeId, span: span) {
+        let cap_vars = self.bccx.capture_map.get(&closure_id);
+        for cap_var in cap_vars.iter() {
+            let var_id = ast_util::def_id_of_def(cap_var.def).node;
+            let var_path = @LpVar(var_id);
+            self.check_if_path_is_moved(closure_id, span,
+                                        MovedInCapture, var_path);
+            match cap_var.mode {
+                moves::CapRef | moves::CapCopy => {}
+                moves::CapMove => {
+                    self.check_by_move_capture(closure_id, cap_var, var_path);
+                }
+            }
+        }
+        return;
+    }
+
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self,
@@ -220,9 +258,9 @@ impl<'self> CheckLoanCtxt<'self> {
 
         // Restrictions that would cause the new loan to be illegal:
         let illegal_if = match loan2.mutbl {
-            m_mutbl => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
-            m_imm =>   RESTR_ALIAS | RESTR_FREEZE,
-            m_const => RESTR_ALIAS,
+            MutableMutability   => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
+            ImmutableMutability => RESTR_ALIAS | RESTR_FREEZE,
+            ConstMutability     => RESTR_ALIAS,
         };
         debug!("illegal_if=%?", illegal_if);
 
@@ -231,7 +269,7 @@ impl<'self> CheckLoanCtxt<'self> {
             if restr.loan_path != loan2.loan_path { loop; }
 
             match (new_loan.mutbl, old_loan.mutbl) {
-                (m_mutbl, m_mutbl) => {
+                (MutableMutability, MutableMutability) => {
                     self.bccx.span_err(
                         new_loan.span,
                         fmt!("cannot borrow `%s` as mutable \
@@ -450,7 +488,6 @@ impl<'self> CheckLoanCtxt<'self> {
                     mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
                     mc::cat_static_item(*) |
                     mc::cat_deref(_, _, mc::gc_ptr(_)) |
-                    mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
                     mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) => {
                         // Aliasability is independent of base cmt
                         match cmt.freely_aliasable() {
@@ -582,7 +619,6 @@ impl<'self> CheckLoanCtxt<'self> {
                     // Otherwise stop iterating
                     LpExtend(_, mc::McDeclared, _) |
                     LpExtend(_, mc::McImmutable, _) |
-                    LpExtend(_, mc::McReadOnly, _) |
                     LpVar(_) => {
                         return true;
                     }
@@ -590,8 +626,11 @@ impl<'self> CheckLoanCtxt<'self> {
 
                 // Check for a non-const loan of `loan_path`
                 let cont = do this.each_in_scope_loan(expr.id) |loan| {
-                    if loan.loan_path == loan_path && loan.mutbl != m_const {
-                        this.report_illegal_mutation(expr, full_loan_path, loan);
+                    if loan.loan_path == loan_path &&
+                            loan.mutbl != ConstMutability {
+                        this.report_illegal_mutation(expr,
+                                                     full_loan_path,
+                                                     loan);
                         false
                     } else {
                         true
@@ -825,3 +864,4 @@ fn check_loans_in_block<'a>(vt: &mut CheckLoanVisitor,
     visit::walk_block(vt, blk, this);
     this.check_for_conflicting_loans(blk.id);
 }
+

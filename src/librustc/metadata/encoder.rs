@@ -39,6 +39,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
 use syntax::ast_util;
+use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::parse::token;
 use syntax;
@@ -72,6 +73,7 @@ struct Stats {
     dep_bytes: uint,
     lang_item_bytes: uint,
     link_args_bytes: uint,
+    impl_bytes: uint,
     misc_bytes: uint,
     item_bytes: uint,
     index_bytes: uint,
@@ -511,8 +513,12 @@ fn encode_reexports(ecx: &EncodeContext,
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
             for exp in exports.iter() {
-                debug!("(encoding info for module) reexport '%s' for %d",
-                       exp.name, id);
+                debug!("(encoding info for module) reexport '%s' (%d/%d) for \
+                        %d",
+                       exp.name,
+                       exp.def_id.crate,
+                       exp.def_id.node,
+                       id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
                 ebml_w.start_tag(tag_items_data_item_reexport_def_id);
                 ebml_w.wr_str(def_to_str(exp.def_id));
@@ -635,15 +641,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explic
     fn encode_mutability(ebml_w: &writer::Encoder,
                          m: ast::mutability) {
         match m {
-            m_imm => {
-                ebml_w.writer.write(&[ 'i' as u8 ]);
-            }
-            m_mutbl => {
-                ebml_w.writer.write(&[ 'm' as u8 ]);
-            }
-            m_const => {
-                ebml_w.writer.write(&[ 'c' as u8 ]);
-            }
+            m_imm => ebml_w.writer.write(&[ 'i' as u8 ]),
+            m_mutbl => ebml_w.writer.write(&[ 'm' as u8 ]),
         }
     }
 }
@@ -804,6 +803,38 @@ fn should_inline(attrs: &[Attribute]) -> bool {
     }
 }
 
+// Encodes the inherent implementations of a structure, enumeration, or trait.
+fn encode_inherent_implementations(ecx: &EncodeContext,
+                                   ebml_w: &mut writer::Encoder,
+                                   def_id: def_id) {
+    match ecx.tcx.inherent_impls.find(&def_id) {
+        None => {}
+        Some(&implementations) => {
+            for implementation in implementations.iter() {
+                ebml_w.start_tag(tag_items_data_item_inherent_impl);
+                encode_def_id(ebml_w, implementation.did);
+                ebml_w.end_tag();
+            }
+        }
+    }
+}
+
+// Encodes the implementations of a trait defined in this crate.
+fn encode_extension_implementations(ecx: &EncodeContext,
+                                    ebml_w: &mut writer::Encoder,
+                                    trait_def_id: def_id) {
+    match ecx.tcx.trait_impls.find(&trait_def_id) {
+        None => {}
+        Some(&implementations) => {
+            for implementation in implementations.iter() {
+                ebml_w.start_tag(tag_items_data_item_extension_impl);
+                encode_def_id(ebml_w, implementation.did);
+                ebml_w.end_tag();
+            }
+        }
+    }
+}
+
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
@@ -907,6 +938,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
+
+        // Encode inherent implementations for this enumeration.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
+
         ebml_w.end_tag();
 
         encode_enum_variant_info(ecx,
@@ -959,6 +994,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
         }
 
+        // Encode inherent implementations for this structure.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
+
         /* Each class has its own index -- encode it */
         let bkts = create_index(idx);
         encode_index(ebml_w, bkts, write_i64);
@@ -995,7 +1033,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
-            ast::ty_path(ref path, ref bounds, _) if path.idents.len() == 1 => {
+            ast::ty_path(ref path, ref bounds, _) if path.segments
+                                                         .len() == 1 => {
                 assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
@@ -1073,6 +1112,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
         }
+
+        // Encode the implementations of this trait.
+        encode_extension_implementations(ecx, ebml_w, def_id);
+
         ebml_w.end_tag();
 
         // Now output the method info for each method.
@@ -1134,6 +1177,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             ebml_w.end_tag();
         }
+
+        // Encode inherent implementations for this trait.
+        encode_inherent_implementations(ecx, ebml_w, def_id);
       }
       item_mac(*) => fail!("item macros unimplemented")
     }
@@ -1227,7 +1273,10 @@ struct EncodeVisitor {
 }
 
 impl visit::Visitor<()> for EncodeVisitor {
-    fn visit_expr(&mut self, ex:@expr, _:()) { my_visit_expr(ex); }
+    fn visit_expr(&mut self, ex:@expr, _:()) {
+        visit::walk_expr(self, ex, ());
+        my_visit_expr(ex);
+    }
     fn visit_item(&mut self, i:@item, _:()) {
         visit::walk_item(self, i, ());
         my_visit_item(i,
@@ -1516,6 +1565,60 @@ fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
+struct ImplVisitor<'self> {
+    ecx: &'self EncodeContext<'self>,
+    ebml_w: &'self mut writer::Encoder,
+}
+
+impl<'self> Visitor<()> for ImplVisitor<'self> {
+    fn visit_item(&mut self, item: @item, _: ()) {
+        match item.node {
+            item_impl(_, Some(ref trait_ref), _, _) => {
+                let def_map = self.ecx.tcx.def_map;
+                let trait_def = def_map.get_copy(&trait_ref.ref_id);
+                let def_id = ast_util::def_id_of_def(trait_def);
+
+                // Load eagerly if this is an implementation of the Drop trait
+                // or if the trait is not defined in this crate.
+                if def_id == self.ecx.tcx.lang_items.drop_trait().unwrap() ||
+                        def_id.crate != LOCAL_CRATE {
+                    self.ebml_w.start_tag(tag_impls_impl);
+                    encode_def_id(self.ebml_w, local_def(item.id));
+                    self.ebml_w.end_tag();
+                }
+            }
+            _ => {}
+        }
+        visit::walk_item(self, item, ());
+    }
+}
+
+/// Encodes implementations that are eagerly loaded.
+///
+/// None of this is necessary in theory; we can load all implementations
+/// lazily. However, in two cases the optimizations to lazily load
+/// implementations are not yet implemented. These two cases, which require us
+/// to load implementations eagerly, are:
+///
+/// * Destructors (implementations of the Drop trait).
+///
+/// * Implementations of traits not defined in this crate.
+fn encode_impls(ecx: &EncodeContext,
+                crate: &Crate,
+                ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_impls);
+
+    {
+        let mut visitor = ImplVisitor {
+            ecx: ecx,
+            ebml_w: ebml_w,
+        };
+        visit::walk_crate(&mut visitor, crate, ());
+    }
+
+    ebml_w.end_tag();
+}
+
 fn encode_misc_info(ecx: &EncodeContext,
                     crate: &Crate,
                     ebml_w: &mut writer::Encoder) {
@@ -1580,6 +1683,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         dep_bytes: 0,
         lang_item_bytes: 0,
         link_args_bytes: 0,
+        impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
@@ -1638,6 +1742,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     encode_link_args(&ecx, &mut ebml_w);
     ecx.stats.link_args_bytes = *wr.pos - i;
 
+    // Encode the def IDs of impls, for coherence checking.
+    i = *wr.pos;
+    encode_impls(&ecx, crate, &mut ebml_w);
+    ecx.stats.impl_bytes = *wr.pos - i;
+
     // Encode miscellaneous info.
     i = *wr.pos;
     encode_misc_info(&ecx, crate, &mut ebml_w);
@@ -1670,6 +1779,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         printfln!("       dep bytes: %u", ecx.stats.dep_bytes);
         printfln!(" lang item bytes: %u", ecx.stats.lang_item_bytes);
         printfln!(" link args bytes: %u", ecx.stats.link_args_bytes);
+        printfln!("      impl bytes: %u", ecx.stats.impl_bytes);
         printfln!("      misc bytes: %u", ecx.stats.misc_bytes);
         printfln!("      item bytes: %u", ecx.stats.item_bytes);
         printfln!("     index bytes: %u", ecx.stats.index_bytes);
