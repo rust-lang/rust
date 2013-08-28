@@ -314,6 +314,9 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
             visitor.visit_ty(mutable_type.ty, env.clone());
             visitor.visit_expr(expression, env)
         }
+        ty_typeof(expression) => {
+            visitor.visit_expr(expression, env)
+        }
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
     }
 }
