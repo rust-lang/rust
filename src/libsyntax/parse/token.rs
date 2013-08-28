@@ -478,6 +478,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "be",                 // 64
         "pure",               // 65
         "yield",              // 66
+        "typeof",             // 67
     ];
 
     @ident_interner {
@@ -595,6 +596,7 @@ pub mod keywords {
         True,
         Trait,
         Type,
+        Typeof,
         Unsafe,
         Use,
         While,
@@ -639,6 +641,7 @@ pub mod keywords {
                 True => ident { name: 57, ctxt: 0 },
                 Trait => ident { name: 58, ctxt: 0 },
                 Type => ident { name: 59, ctxt: 0 },
+                Typeof => ident { name: 67, ctxt: 0 },
                 Unsafe => ident { name: 60, ctxt: 0 },
                 Use => ident { name: 61, ctxt: 0 },
                 While => ident { name: 62, ctxt: 0 },
@@ -660,7 +663,7 @@ pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
 pub fn is_any_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 66 => true,
+            8 | 27 | 32 .. 67 => true,
             _ => false,
         },
         _ => false
@@ -680,7 +683,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            64 .. 66 => true,
+            64 .. 67 => true,
             _ => false,
         },
         _ => false,
