@@ -2366,20 +2366,12 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                                &ccx.int_type);
 
         // FIXME #4404 android JNI hacks
-        let llfn = if *ccx.sess.building_library {
-            decl_cdecl_fn(ccx.llmod, "amain", llfty)
+        let main_name = if *ccx.sess.building_library {
+            "amain"
         } else {
-            let main_name = match ccx.sess.targ_cfg.os {
-                session::os_win32 => {
-                    match ccx.sess.targ_cfg.arch {
-                        X86 => ~"WinMain@16",
-                        _ => ~"WinMain",
-                    }
-                },
-                _ => ~"main",
-            };
-            decl_cdecl_fn(ccx.llmod, main_name, llfty)
+            "main"
         };
+        let llfn = decl_cdecl_fn(ccx.llmod, main_name, llfty);
         let llbb = do "top".with_c_str |buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
