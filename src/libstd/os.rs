@@ -1418,12 +1418,12 @@ pub fn page_size() -> uint {
 pub fn page_size() -> uint {
     #[fixed_stack_segment]; #[inline(never)];
 
-  unsafe {
-    let mut info = libc::SYSTEM_INFO::new();
-    libc::GetSystemInfo(&mut info);
+    unsafe {
+        let mut info = libc::SYSTEM_INFO::new();
+        libc::GetSystemInfo(&mut info);
 
-    return info.dwPageSize as uint;
-  }
+        return info.dwPageSize as uint;
+    }
 }
 
 pub struct MemoryMap {
@@ -1458,7 +1458,6 @@ pub enum MapError {
     // Windows-specific errors
     ErrUnsupProt,
     ErrUnsupOffset,
-    ErrNeedRW,
     ErrAlreadyExists,
     ErrVirtualAlloc(uint),
     ErrCreateFileMappingW(uint),
@@ -1477,7 +1476,6 @@ impl to_str::ToStr for MapError {
             ErrUnknown(code) => fmt!("Unknown error=%?", code),
             ErrUnsupProt => ~"Protection mode unsupported",
             ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
-            ErrNeedRW => ~"File mapping should be at least readable/writable",
             ErrAlreadyExists => ~"File mapping for specified file already exists",
             ErrVirtualAlloc(code) => fmt!("VirtualAlloc failure=%?", code),
             ErrCreateFileMappingW(code) => fmt!("CreateFileMappingW failure=%?", code),
@@ -1541,6 +1539,10 @@ impl MemoryMap {
                }
             })
         }
+    }
+
+    pub fn granularity() -> uint {
+        page_size()
     }
 }
 
@@ -1617,21 +1619,21 @@ impl MemoryMap {
                 })
             }
         } else {
-            let dwDesiredAccess = match (readable, writable) {
-                (true, true) => libc::FILE_MAP_ALL_ACCESS,
-                (true, false) => libc::FILE_MAP_READ,
-                (false, true) => libc::FILE_MAP_WRITE,
-                _ => {
-                    return Err(ErrNeedRW);
-                }
+            let dwDesiredAccess = match (executable, readable, writable) {
+                (false, true, false) => libc::FILE_MAP_READ,
+                (false, true, true) => libc::FILE_MAP_WRITE,
+                (true, true, false) => libc::FILE_MAP_READ | libc::FILE_MAP_EXECUTE,
+                (true, true, true) => libc::FILE_MAP_WRITE | libc::FILE_MAP_EXECUTE,
+                _ => return Err(ErrUnsupProt) // Actually, because of the check above,
+                                              // we should never get here.
             };
             unsafe {
                 let hFile = libc::get_osfhandle(fd) as HANDLE;
                 let mapping = libc::CreateFileMappingW(hFile,
                                                        ptr::mut_null(),
                                                        flProtect,
-                                                       (len >> 32) as DWORD,
-                                                       (len & 0xffff_ffff) as DWORD,
+                                                       0,
+                                                       0,
                                                        ptr::null());
                 if mapping == ptr::mut_null() {
                     return Err(ErrCreateFileMappingW(errno()));
@@ -1641,7 +1643,7 @@ impl MemoryMap {
                 }
                 let r = libc::MapViewOfFile(mapping,
                                             dwDesiredAccess,
-                                            (offset >> 32) as DWORD,
+                                            ((len as u64) >> 32) as DWORD,
                                             (offset & 0xffff_ffff) as DWORD,
                                             0);
                 match r as uint {
@@ -1655,6 +1657,19 @@ impl MemoryMap {
             }
         }
     }
+
+    /// Granularity of MapAddr() and MapOffset() parameter values.
+    /// This may be greater than the value returned by page_size().
+    pub fn granularity() -> uint {
+        #[fixed_stack_segment]; #[inline(never)];
+
+        unsafe {
+            let mut info = libc::SYSTEM_INFO::new();
+            libc::GetSystemInfo(&mut info);
+
+            return info.dwAllocationGranularity as uint;
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -1663,20 +1678,22 @@ impl Drop for MemoryMap {
         #[fixed_stack_segment]; #[inline(never)];
 
         use libc::types::os::arch::extra::{LPCVOID, HANDLE};
+        use libc::consts::os::extra::FALSE;
 
         unsafe {
             match self.kind {
-                MapVirtual => match libc::VirtualFree(self.data as *mut c_void,
-                                                      self.len,
-                                                      libc::MEM_RELEASE) {
-                    0 => error!(fmt!("VirtualFree failed: %?", errno())),
-                    _ => ()
+                MapVirtual => {
+                    if libc::VirtualFree(self.data as *mut c_void,
+                                         self.len,
+                                         libc::MEM_RELEASE) == FALSE {
+                        error!(fmt!("VirtualFree failed: %?", errno()));
+                    }
                 },
                 MapFile(mapping) => {
-                    if libc::UnmapViewOfFile(self.data as LPCVOID) != 0 {
+                    if libc::UnmapViewOfFile(self.data as LPCVOID) == FALSE {
                         error!(fmt!("UnmapViewOfFile failed: %?", errno()));
                     }
-                    if libc::CloseHandle(mapping as HANDLE) != 0 {
+                    if libc::CloseHandle(mapping as HANDLE) == FALSE {
                         error!(fmt!("CloseHandle failed: %?", errno()));
                     }
                 }
@@ -2108,7 +2125,7 @@ mod tests {
         }
 
         let path = tmpdir().push("mmap_file.tmp");
-        let size = page_size() * 2;
+        let size = MemoryMap::granularity() * 2;
         remove_file(&path);
 
         let fd = unsafe {
