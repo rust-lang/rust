@@ -68,7 +68,6 @@ impl GuaranteeLifetimeContext {
 
         match cmt.cat {
             mc::cat_rvalue(*) |
-            mc::cat_implicit_self |
             mc::cat_copied_upvar(*) |                  // L-Local
             mc::cat_local(*) |                         // L-Local
             mc::cat_arg(*) |                           // L-Local
@@ -301,7 +300,6 @@ impl GuaranteeLifetimeContext {
             }
             mc::cat_rvalue(*) |
             mc::cat_static_item |
-            mc::cat_implicit_self |
             mc::cat_copied_upvar(*) |
             mc::cat_deref(*) => {
                 false
@@ -328,7 +326,6 @@ impl GuaranteeLifetimeContext {
             mc::cat_rvalue(cleanup_scope_id) => {
                 ty::re_scope(cleanup_scope_id)
             }
-            mc::cat_implicit_self |
             mc::cat_copied_upvar(_) => {
                 ty::re_scope(self.item_scope_id)
             }

@@ -261,7 +261,7 @@ pub enum LoanPath {
 
 #[deriving(Eq, IterBytes)]
 pub enum LoanPathElem {
-    LpDeref,                     // `*LV` in doc.rs
+    LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
 
@@ -284,8 +284,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     match cmt.cat {
         mc::cat_rvalue(*) |
         mc::cat_static_item |
-        mc::cat_copied_upvar(_) |
-        mc::cat_implicit_self => {
+        mc::cat_copied_upvar(_) => {
             None
         }
 
@@ -295,9 +294,9 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
             Some(@LpVar(id))
         }
 
-        mc::cat_deref(cmt_base, _, _) => {
+        mc::cat_deref(cmt_base, _, pk) => {
             do opt_loan_path(cmt_base).map_move |lp| {
-                @LpExtend(lp, cmt.mutbl, LpDeref)
+                @LpExtend(lp, cmt.mutbl, LpDeref(pk))
             }
         }
 
@@ -728,7 +727,7 @@ impl BorrowckCtxt {
                                                  loan_path: &LoanPath,
                                                  out: &mut ~str) {
         match *loan_path {
-            LpExtend(_, _, LpDeref) => {
+            LpExtend(_, _, LpDeref(_)) => {
                 out.push_char('(');
                 self.append_loan_path_to_str(loan_path, out);
                 out.push_char(')');
@@ -776,7 +775,7 @@ impl BorrowckCtxt {
                 out.push_str("[]");
             }
 
-            LpExtend(lp_base, _, LpDeref) => {
+            LpExtend(lp_base, _, LpDeref(_)) => {
                 out.push_char('*');
                 self.append_loan_path_to_str(lp_base, out);
             }
@@ -854,7 +853,7 @@ impl Repr for LoanPath {
                 fmt!("$(%?)", id)
             }
 
-            &LpExtend(lp, _, LpDeref) => {
+            &LpExtend(lp, _, LpDeref(_)) => {
                 fmt!("%s.*", lp.repr(tcx))
             }
 
