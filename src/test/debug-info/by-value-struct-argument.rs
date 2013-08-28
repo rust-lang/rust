@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Does not work yet, see issue #8512
-// xfail-test
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run

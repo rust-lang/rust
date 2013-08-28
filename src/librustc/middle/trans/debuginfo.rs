@@ -333,12 +333,18 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
         argument_index
     };
 
+    let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
+        DirectVariable
+    } else {
+        IndirectVariable
+    };
+
     declare_local(bcx,
                   llptr,
                   special_idents::self_,
                   type_of_self,
                   scope_metadata,
-                  DirectVariable,
+                  variable_access,
                   ArgumentVariable(argument_index),
                   span);
 }
@@ -371,6 +377,12 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
+        let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
+            DirectVariable
+        } else {
+            IndirectVariable
+        };
+
         let argument_type = node_id_type(bcx, node_id);
         let argument_ident = ast_util::path_to_ident(path_ref);
 
@@ -386,7 +398,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
                       argument_ident,
                       argument_type,
                       scope_metadata,
-                      DirectVariable,
+                      variable_access,
                       ArgumentVariable(argument_index),
                       span);
     }

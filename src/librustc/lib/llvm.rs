@@ -2103,6 +2103,12 @@ pub mod llvm {
             ArgNo: c_uint)
             -> ValueRef;
 
+        #[fast_ffi]
+        pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
+
+        #[fast_ffi]
+        pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
+
         pub fn LLVMInitializeX86TargetInfo();
         pub fn LLVMInitializeX86Target();
         pub fn LLVMInitializeX86TargetMC();
