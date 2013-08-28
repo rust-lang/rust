@@ -517,6 +517,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Clone + 'static>(
           }
         }
       }
+      ast::ty_typeof(_e) => {
+          tcx.sess.span_bug(ast_ty.span, "typeof is reserved but unimplemented");
+      }
       ast::ty_infer => {
         // ty_infer should only appear as the type of arguments or return
         // values in a fn_expr, or as the type of local variables.  Both of

@@ -435,6 +435,11 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         print_expr(s, v);
         word(s.s, "]");
       }
+      ast::ty_typeof(e) => {
+          word(s.s, "typeof(");
+          print_expr(s, e);
+          word(s.s, ")");
+      }
       ast::ty_mac(_) => {
           fail!("print_type doesn't know how to print a ty_mac");
       }
