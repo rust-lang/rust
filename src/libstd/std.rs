@@ -224,4 +224,5 @@ mod std {
     pub use os;
     pub use fmt;
     pub use to_bytes;
+    pub use logging;
 }

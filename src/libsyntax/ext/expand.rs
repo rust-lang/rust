@@ -813,13 +813,17 @@ pub fn std_macros() -> @str {
         ($lvl:expr, $arg:expr) => ({
             let lvl = $lvl;
             if lvl <= __log_level() {
-                ::std::logging::log(lvl, fmt!(\"%?\", $arg))
+                format_args!(|args| {
+                    ::std::logging::log(lvl, args)
+                }, \"{}\", fmt!(\"%?\", $arg))
             }
         });
         ($lvl:expr, $($arg:expr),+) => ({
             let lvl = $lvl;
             if lvl <= __log_level() {
-                ::std::logging::log(lvl, fmt!($($arg),+))
+                format_args!(|args| {
+                    ::std::logging::log(lvl, args)
+                }, \"{}\", fmt!($($arg),+))
             }
         })
     )
@@ -834,7 +838,9 @@ pub fn std_macros() -> @str {
         ($lvl:expr, $($arg:tt)+) => ({
             let lvl = $lvl;
             if lvl <= __log_level() {
-                ::std::logging::log(lvl, format!($($arg)+))
+                format_args!(|args| {
+                    ::std::logging::log(lvl, args)
+                }, $($arg)+)
             }
         })
     )
