@@ -218,6 +218,7 @@ mod std {
     pub use option;
     pub use kinds;
     pub use local_data;
+    pub use logging;
     pub use sys;
     pub use unstable;
     pub use str;

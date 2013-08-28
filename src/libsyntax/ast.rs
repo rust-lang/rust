@@ -505,7 +505,9 @@ pub enum Expr_ {
     ExprBreak(Option<Ident>),
     ExprAgain(Option<Ident>),
     ExprRet(Option<@Expr>),
-    ExprLog(@Expr, @Expr),
+
+    /// Gets the log level for the enclosing module
+    ExprLogLevel,
 
     ExprInlineAsm(inline_asm),
 

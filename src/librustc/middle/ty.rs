@@ -3320,7 +3320,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprBreak(*) |
         ast::ExprAgain(*) |
         ast::ExprRet(*) |
-        ast::ExprLog(*) |
         ast::ExprWhile(*) |
         ast::ExprLoop(*) |
         ast::ExprAssign(*) |
@@ -3331,6 +3330,7 @@ pub fn expr_kind(tcx: ctxt,
 
         ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
+        ast::ExprLogLevel |
         ast::ExprLit(_) | // Note: lit_str is carved out above
         ast::ExprUnary(*) |
         ast::ExprAddrOf(*) |

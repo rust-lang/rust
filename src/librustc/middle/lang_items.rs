@@ -59,7 +59,6 @@ pub enum LangItem {
 
     StrEqFnLangItem,                   // 19
     UniqStrEqFnLangItem,               // 20
-    LogTypeFnLangItem,                 // 21
     FailFnLangItem,                    // 22
     FailBoundsCheckFnLangItem,         // 23
     ExchangeMallocFnLangItem,          // 24
@@ -238,9 +237,6 @@ impl LanguageItems {
     pub fn uniq_str_eq_fn(&self) -> Option<DefId> {
         self.items[UniqStrEqFnLangItem as uint]
     }
-    pub fn log_type_fn(&self) -> Option<DefId> {
-        self.items[LogTypeFnLangItem as uint]
-    }
     pub fn fail_fn(&self) -> Option<DefId> {
         self.items[FailFnLangItem as uint]
     }
@@ -357,7 +353,6 @@ impl<'self> LanguageItemCollector<'self> {
 
         item_refs.insert(@"str_eq", StrEqFnLangItem as uint);
         item_refs.insert(@"uniq_str_eq", UniqStrEqFnLangItem as uint);
-        item_refs.insert(@"log_type", LogTypeFnLangItem as uint);
         item_refs.insert(@"fail_", FailFnLangItem as uint);
         item_refs.insert(@"fail_bounds_check",
                          FailBoundsCheckFnLangItem as uint);

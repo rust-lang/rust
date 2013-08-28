@@ -37,7 +37,7 @@ pub fn console_off() {
     rt::logging::console_off();
 }
 
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 #[lang="log_type"]
 #[allow(missing_doc)]
 pub fn log_type<T>(_level: u32, object: &T) {
@@ -66,4 +66,11 @@ fn newsched_log_str(msg: ~str) {
             }
         }
     }
+}
+
+// XXX: This will change soon to not require an allocation. This is an unstable
+//      api which should not be used outside of the macros in ext/expand.
+#[doc(hidden)]
+pub fn log(_level: u32, msg: ~str) {
+    newsched_log_str(msg);
 }
