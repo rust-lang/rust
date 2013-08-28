@@ -121,54 +121,54 @@ fn main() {
     io::println("\nTreeMap:");
 
     {
-        let mut map = TreeMap::new::<uint, uint>();
+        let mut map: TreeMap<uint,uint> = TreeMap::new();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map = TreeMap::new::<uint, uint>();
+        let mut map: TreeMap<uint,uint> = TreeMap::new();
         descending(&mut map, n_keys);
     }
 
     {
         io::println(" Random integers:");
-        let mut map = TreeMap::new::<uint, uint>();
+        let mut map: TreeMap<uint,uint> = TreeMap::new();
         vector(&mut map, n_keys, rand);
     }
 
     io::println("\nHashMap:");
 
     {
-        let mut map = HashMap::new::<uint, uint>();
+        let mut map: HashMap<uint,uint> = HashMap::new();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map = HashMap::new::<uint, uint>();
+        let mut map: HashMap<uint,uint> = HashMap::new();
         descending(&mut map, n_keys);
     }
 
     {
         io::println(" Random integers:");
-        let mut map = HashMap::new::<uint, uint>();
+        let mut map: HashMap<uint,uint> = HashMap::new();
         vector(&mut map, n_keys, rand);
     }
 
     io::println("\nTrieMap:");
 
     {
-        let mut map = TrieMap::new::<uint>();
+        let mut map: TrieMap<uint> = TrieMap::new();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map = TrieMap::new::<uint>();
+        let mut map: TrieMap<uint> = TrieMap::new();
         descending(&mut map, n_keys);
     }
 
     {
         io::println(" Random integers:");
-        let mut map = TrieMap::new::<uint>();
+        let mut map: TrieMap<uint> = TrieMap::new();
         vector(&mut map, n_keys, rand);
     }
 }

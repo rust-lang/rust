@@ -107,7 +107,7 @@ impl Local for Scheduler {
     }
     unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> {
         let task_opt: Option<*mut Task> = Local::try_unsafe_borrow();
-        match Local::try_unsafe_borrow::<Task>() {
+        match task_opt {
             Some(task) => {
                 match (*task).sched {
                     Some(~ref mut sched) => {

@@ -1169,8 +1169,8 @@ mod biguint_tests {
     #[test]
     fn test_shl() {
         fn check(s: &str, shift: uint, ans: &str) {
-            let bu = (FromStrRadix::from_str_radix::<BigUint>(s, 16).unwrap() << shift)
-                .to_str_radix(16);
+            let opt_biguint: Option<BigUint> = FromStrRadix::from_str_radix(s, 16);
+            let bu = (opt_biguint.unwrap() << shift).to_str_radix(16);
             assert_eq!(bu.as_slice(), ans);
         }
 
@@ -1207,8 +1207,9 @@ mod biguint_tests {
     #[test]
     fn test_shr() {
         fn check(s: &str, shift: uint, ans: &str) {
-            let bu = (FromStrRadix::from_str_radix::<BigUint>(s, 16).unwrap() >> shift)
-                .to_str_radix(16);
+            let opt_biguint: Option<BigUint> =
+                FromStrRadix::from_str_radix(s, 16);
+            let bu = (opt_biguint.unwrap() >> shift).to_str_radix(16);
             assert_eq!(bu.as_slice(), ans);
         }
 
@@ -2015,7 +2016,7 @@ mod bench {
     use extra::test::BenchHarness;
 
     fn factorial(n: uint) -> BigUint {
-        let mut f = One::one::<BigUint>();
+        let mut f: BigUint = One::one();
         for i in iterator::range_inclusive(1, n) {
             f = f * BigUint::from_uint(i);
         }
@@ -2023,8 +2024,8 @@ mod bench {
     }
 
     fn fib(n: uint) -> BigUint {
-        let mut f0 = Zero::zero::<BigUint>();
-        let mut f1 = One::one::<BigUint>();
+        let mut f0: BigUint = Zero::zero();
+        let mut f1: BigUint = One::one();
         for _ in range(0, n) {
             let f2 = f0 + f1;
             f0 = util::replace(&mut f1, f2);
