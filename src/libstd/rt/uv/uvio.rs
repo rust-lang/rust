@@ -889,11 +889,11 @@ impl Drop for UvTcpStream {
         // FIXME(#4330): should not need a transmute
         let this = unsafe { cast::transmute_mut(self) };
         do this.home_for_io |self_| {
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.as_stream().close {
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 }
             }
@@ -1387,7 +1387,7 @@ impl Drop for UvProcess {
         let this = unsafe { cast::transmute_mut(self) };
 
         let close = |self_: &mut UvProcess| {
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task = Cell::new(task);
                 do self_.process.close {
