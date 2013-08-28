@@ -36,5 +36,6 @@ struct Lots {
 }
 
 fn main() {
-    assert!(Zero::zero::<Lots>().is_zero());
+    let lots: Lots = Zero::zero();
+    assert!(lots.is_zero());
 }

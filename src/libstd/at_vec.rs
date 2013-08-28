@@ -276,7 +276,7 @@ pub mod raw {
             use rt::local::Local;
             use rt::task::Task;
 
-            do Local::borrow::<Task, *()> |task| {
+            do Local::borrow |task: &mut Task| {
                 task.heap.realloc(ptr as *libc::c_void, size) as *()
             }
         }

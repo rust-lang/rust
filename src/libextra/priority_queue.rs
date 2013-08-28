@@ -338,27 +338,36 @@ mod tests {
 
     #[test]
     #[should_fail]
-    fn test_empty_pop() { let mut heap = PriorityQueue::new::<int>(); heap.pop(); }
+    fn test_empty_pop() {
+        let mut heap: PriorityQueue<int> = PriorityQueue::new();
+        heap.pop();
+    }
 
     #[test]
     fn test_empty_maybe_pop() {
-        let mut heap = PriorityQueue::new::<int>();
+        let mut heap: PriorityQueue<int> = PriorityQueue::new();
         assert!(heap.maybe_pop().is_none());
     }
 
     #[test]
     #[should_fail]
-    fn test_empty_top() { let empty = PriorityQueue::new::<int>(); empty.top(); }
+    fn test_empty_top() {
+        let empty: PriorityQueue<int> = PriorityQueue::new();
+        empty.top();
+    }
 
     #[test]
     fn test_empty_maybe_top() {
-        let empty = PriorityQueue::new::<int>();
+        let empty: PriorityQueue<int> = PriorityQueue::new();
         assert!(empty.maybe_top().is_none());
     }
 
     #[test]
     #[should_fail]
-    fn test_empty_replace() { let mut heap = PriorityQueue::new(); heap.replace(5); }
+    fn test_empty_replace() {
+        let mut heap: PriorityQueue<int> = PriorityQueue::new();
+        heap.replace(5);
+    }
 
     #[test]
     fn test_from_iter() {

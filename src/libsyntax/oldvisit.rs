@@ -284,7 +284,11 @@ pub fn visit_ty<E:Clone>(t: &Ty, (e, v): (E, vt<E>)) {
 }
 
 pub fn visit_path<E:Clone>(p: &Path, (e, v): (E, vt<E>)) {
-    for tp in p.types.iter() { (v.visit_ty)(tp, (e.clone(), v)); }
+    for segment in p.segments.iter() {
+        for typ in segment.types.iter() {
+            (v.visit_ty)(typ, (e.clone(), v))
+        }
+    }
 }
 
 pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {

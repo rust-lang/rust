@@ -25,7 +25,6 @@ struct Innermost {
 }
 
 fn borrow(_v: &int) {}
-fn borrow_const(_v: &const int) {}
 
 fn box_mut(v: &mut ~int) {
     borrow(*v); // OK: &mut -> &imm
@@ -49,18 +48,6 @@ fn box_imm_rec(v: &Rec) {
 
 fn box_imm_recs(v: &Outer) {
     borrow(v.f.g.h); // OK
-}
-
-fn box_const(v: &const ~int) {
-    borrow_const(*v); //~ ERROR unsafe borrow
-}
-
-fn box_const_rec(v: &const Rec) {
-    borrow_const(v.f); //~ ERROR unsafe borrow
-}
-
-fn box_const_recs(v: &const Outer) {
-    borrow_const(v.f.g.h); //~ ERROR unsafe borrow
 }
 
 fn main() {

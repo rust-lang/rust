@@ -93,7 +93,7 @@ impl Task {
     pub fn build_homed_child(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
-        do Local::borrow::<Task, ~Task> |running_task| {
+        do Local::borrow |running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
                                                          stack_size,
@@ -111,7 +111,7 @@ impl Task {
     pub fn build_homed_root(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
         let f = Cell::new(f);
         let home = Cell::new(home);
-        do Local::borrow::<Task, ~Task> |running_task| {
+        do Local::borrow |running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
                                                  stack_size,
@@ -305,7 +305,7 @@ impl Task {
     // Grab both the scheduler and the task from TLS and check if the
     // task is executing on an appropriate scheduler.
     pub fn on_appropriate_sched() -> bool {
-        do Local::borrow::<Task,bool> |task| {
+        do Local::borrow |task: &mut Task| {
             let sched_id = task.sched.get_ref().sched_id();
             let sched_run_anything = task.sched.get_ref().run_anything;
             match task.task_type {
@@ -369,7 +369,7 @@ impl Coroutine {
             unsafe {
 
                 // Again - might work while safe, or it might not.
-                do Local::borrow::<Scheduler,()> |sched| {
+                do Local::borrow |sched: &mut Scheduler| {
                     sched.run_cleanup_job();
                 }
 
@@ -378,7 +378,7 @@ impl Coroutine {
                 // simply unsafe_borrow it to get this reference. We
                 // need to still have the task in TLS though, so we
                 // need to unsafe_borrow.
-                let task = Local::unsafe_borrow::<Task>();
+                let task: *mut Task = Local::unsafe_borrow();
 
                 do (*task).run {
                     // N.B. Removing `start` from the start wrapper
@@ -397,7 +397,7 @@ impl Coroutine {
             }
 
             // We remove the sched from the Task in TLS right now.
-            let sched = Local::take::<Scheduler>();
+            let sched: ~Scheduler = Local::take();
             // ... allowing us to give it away when performing a
             // scheduling operation.
             sched.terminate_current_task()

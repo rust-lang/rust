@@ -466,10 +466,10 @@ impl Int for $T {}
 
 impl Primitive for $T {
     #[inline]
-    fn bits() -> uint { bits }
+    fn bits(_: Option<$T>) -> uint { bits }
 
     #[inline]
-    fn bytes() -> uint { bits / 8 }
+    fn bytes(_: Option<$T>) -> uint { bits / 8 }
 }
 
 // String conversion functions and impl str -> num
@@ -754,8 +754,9 @@ mod tests {
 
     #[test]
     fn test_primitive() {
-        assert_eq!(Primitive::bits::<$T>(), sys::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes::<$T>(), sys::size_of::<$T>());
+        let none: Option<$T> = None;
+        assert_eq!(Primitive::bits(none), sys::size_of::<$T>() * 8);
+        assert_eq!(Primitive::bytes(none), sys::size_of::<$T>());
     }
 
     #[test]

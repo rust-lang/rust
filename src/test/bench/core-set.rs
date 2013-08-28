@@ -169,16 +169,28 @@ fn main() {
     {
         let mut rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
-        results.bench_int(&mut rng, num_keys, max, || HashSet::new::<uint>());
-        results.bench_str(&mut rng, num_keys, || HashSet::new::<~str>());
+        results.bench_int(&mut rng, num_keys, max, || {
+            let s: HashSet<uint> = HashSet::new();
+            s
+        });
+        results.bench_str(&mut rng, num_keys, || {
+            let s: HashSet<~str> = HashSet::new();
+            s
+        });
         write_results("std::hashmap::HashSet", &results);
     }
 
     {
         let mut rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
-        results.bench_int(&mut rng, num_keys, max, || TreeSet::new::<uint>());
-        results.bench_str(&mut rng, num_keys, || TreeSet::new::<~str>());
+        results.bench_int(&mut rng, num_keys, max, || {
+            let s: TreeSet<uint> = TreeSet::new();
+            s
+        });
+        results.bench_str(&mut rng, num_keys, || {
+            let s: TreeSet<~str> = TreeSet::new();
+            s
+        });
         write_results("extra::treemap::TreeSet", &results);
     }
 

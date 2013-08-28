@@ -59,7 +59,7 @@ fn main () {
 
     assert_eq!(0i.thing(3.14, 1), (3.14, 1));
     assert_eq!(B::staticthing(&0i, 3.14, 1), (3.14, 1));
-    assert_eq!(B::staticthing::<float, int, int>(&0i, 3.14, 1), (3.14, 1));
+    assert_eq!(B::<float>::staticthing::<int>(&0i, 3.14, 1), (3.14, 1));
 
     assert_eq!(g(0i, 3.14, 1), (3.14, 1));
     assert_eq!(g(false, 3.14, 1), (3.14, 1));

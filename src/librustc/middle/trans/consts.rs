@@ -559,7 +559,9 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
             v
           }
           ast::expr_path(ref pth) => {
-            assert_eq!(pth.types.len(), 0);
+            // Assert that there are no type parameters in this path.
+            assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
+
             let tcx = cx.tcx;
             match tcx.def_map.find(&e.id) {
                 Some(&ast::def_fn(def_id, _purity)) => {

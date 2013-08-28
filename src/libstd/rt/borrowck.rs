@@ -11,17 +11,18 @@
 use cell::Cell;
 use c_str::ToCStr;
 use cast::transmute;
-use libc::{c_char, size_t, STDERR_FILENO};
-use io;
 use io::{Writer, WriterUtil};
+use io;
+use libc::{c_char, size_t, STDERR_FILENO};
 use option::{Option, None, Some};
-use uint;
+use ptr::RawPtr;
 use rt::env;
 use rt::local::Local;
 use rt::task::Task;
-use str;
 use str::{OwnedStr, StrSlice};
+use str;
 use sys;
+use uint;
 use unstable::raw;
 use vec::ImmutableVector;
 
@@ -37,7 +38,7 @@ pub struct BorrowRecord {
 }
 
 fn try_take_task_borrow_list() -> Option<~[BorrowRecord]> {
-    do Local::borrow::<Task, Option<~[BorrowRecord]>> |task| {
+    do Local::borrow |task: &mut Task| {
         task.borrow_list.take()
     }
 }
@@ -49,7 +50,7 @@ fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
     };
     let borrows = f(borrows);
     let borrows = Cell::new(borrows);
-    do Local::borrow::<Task, ()> |task| {
+    do Local::borrow |task: &mut Task| {
         task.borrow_list = Some(borrows.take());
     }
 }
@@ -93,12 +94,12 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) {
 static ENABLE_DEBUG: bool = false;
 
 #[inline]
-unsafe fn debug_borrow<T>(tag: &'static str,
-                          p: *const T,
-                          old_bits: uint,
-                          new_bits: uint,
-                          filename: *c_char,
-                          line: size_t) {
+unsafe fn debug_borrow<T,P:RawPtr<T>>(tag: &'static str,
+                                      p: P,
+                                      old_bits: uint,
+                                      new_bits: uint,
+                                      filename: *c_char,
+                                      line: size_t) {
     //! A useful debugging function that prints a pointer + tag + newline
     //! without allocating memory.
 
@@ -106,15 +107,15 @@ unsafe fn debug_borrow<T>(tag: &'static str,
         debug_borrow_slow(tag, p, old_bits, new_bits, filename, line);
     }
 
-    unsafe fn debug_borrow_slow<T>(tag: &'static str,
-                                   p: *const T,
-                                   old_bits: uint,
-                                   new_bits: uint,
-                                   filename: *c_char,
-                                   line: size_t) {
+    unsafe fn debug_borrow_slow<T,P:RawPtr<T>>(tag: &'static str,
+                                               p: P,
+                                               old_bits: uint,
+                                               new_bits: uint,
+                                               filename: *c_char,
+                                               line: size_t) {
         let dbg = STDERR_FILENO as io::fd_t;
         dbg.write_str(tag);
-        dbg.write_hex(p as uint);
+        dbg.write_hex(p.to_uint());
         dbg.write_str(" ");
         dbg.write_hex(old_bits);
         dbg.write_str(" ");

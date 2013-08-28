@@ -61,6 +61,12 @@ pub struct field {
 }
 
 #[deriving(Clone)]
+pub enum MethodContainer {
+    TraitContainer(ast::def_id),
+    ImplContainer(ast::def_id),
+}
+
+#[deriving(Clone)]
 pub struct Method {
     ident: ast::ident,
     generics: ty::Generics,
@@ -69,7 +75,7 @@ pub struct Method {
     explicit_self: ast::explicit_self_,
     vis: ast::visibility,
     def_id: ast::def_id,
-    container_id: ast::def_id,
+    container: MethodContainer,
 
     // If this method is provided, we need to know where it came from
     provided_source: Option<ast::def_id>
@@ -83,7 +89,7 @@ impl Method {
                explicit_self: ast::explicit_self_,
                vis: ast::visibility,
                def_id: ast::def_id,
-               container_id: ast::def_id,
+               container: MethodContainer,
                provided_source: Option<ast::def_id>)
                -> Method {
         // Check the invariants.
@@ -101,8 +107,15 @@ impl Method {
             explicit_self: explicit_self,
             vis: vis,
             def_id: def_id,
-            container_id: container_id,
+            container: container,
             provided_source: provided_source
+        }
+    }
+
+    pub fn container_id(&self) -> ast::def_id {
+        match self.container {
+            TraitContainer(id) => id,
+            ImplContainer(id) => id,
         }
     }
 }
@@ -324,7 +337,15 @@ struct ctxt_ {
     used_mut_nodes: @mut HashSet<ast::NodeId>,
 
     // vtable resolution information for impl declarations
-    impl_vtables: typeck::impl_vtable_map
+    impl_vtables: typeck::impl_vtable_map,
+
+    // The set of external nominal types whose implementations have been read.
+    // This is used for lazy resolution of methods.
+    populated_external_types: @mut HashSet<ast::def_id>,
+
+    // The set of external traits whose implementations have been read. This
+    // is used for lazy resolution of traits.
+    populated_external_traits: @mut HashSet<ast::def_id>,
 }
 
 pub enum tbox_flag {
@@ -938,6 +959,8 @@ pub fn mk_ctxt(s: session::Session,
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
         impl_vtables: @mut HashMap::new(),
+        populated_external_types: @mut HashSet::new(),
+        populated_external_traits: @mut HashSet::new(),
      }
 }
 
@@ -3612,8 +3635,7 @@ pub fn def_has_ty_params(def: ast::def) -> bool {
     }
 }
 
-pub fn provided_source(cx: ctxt, id: ast::def_id)
-    -> Option<ast::def_id> {
+pub fn provided_source(cx: ctxt, id: ast::def_id) -> Option<ast::def_id> {
     cx.provided_method_sources.find(&id).map_move(|x| *x)
 }
 
@@ -4553,3 +4575,135 @@ pub fn visitor_object_ty(tcx: ctxt,
                  ast::m_imm,
                  EmptyBuiltinBounds())))
 }
+
+/// Records a trait-to-implementation mapping.
+fn record_trait_implementation(tcx: ctxt,
+                               trait_def_id: def_id,
+                               implementation: @Impl) {
+    let implementation_list;
+    match tcx.trait_impls.find(&trait_def_id) {
+        None => {
+            implementation_list = @mut ~[];
+            tcx.trait_impls.insert(trait_def_id, implementation_list);
+        }
+        Some(&existing_implementation_list) => {
+            implementation_list = existing_implementation_list
+        }
+    }
+
+    implementation_list.push(implementation);
+}
+
+/// Populates the type context with all the implementations for the given type
+/// if necessary.
+pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
+                                                      type_id: ast::def_id) {
+    if type_id.crate == LOCAL_CRATE {
+        return
+    }
+    if tcx.populated_external_types.contains(&type_id) {
+        return
+    }
+
+    do csearch::each_implementation_for_type(tcx.sess.cstore, type_id)
+            |implementation_def_id| {
+        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+
+        // Record the trait->implementation mappings, if applicable.
+        let associated_traits = csearch::get_impl_trait(tcx,
+                                                        implementation.did);
+        for trait_ref in associated_traits.iter() {
+            record_trait_implementation(tcx,
+                                        trait_ref.def_id,
+                                        implementation);
+        }
+
+        // For any methods that use a default implementation, add them to
+        // the map. This is a bit unfortunate.
+        for method in implementation.methods.iter() {
+            for source in method.provided_source.iter() {
+                tcx.provided_method_sources.insert(method.def_id, *source);
+            }
+        }
+
+        // If this is an inherent implementation, record it.
+        if associated_traits.is_none() {
+            let implementation_list;
+            match tcx.inherent_impls.find(&type_id) {
+                None => {
+                    implementation_list = @mut ~[];
+                    tcx.inherent_impls.insert(type_id, implementation_list);
+                }
+                Some(&existing_implementation_list) => {
+                    implementation_list = existing_implementation_list;
+                }
+            }
+            implementation_list.push(implementation);
+        }
+
+        // Store the implementation info.
+        tcx.impls.insert(implementation_def_id, implementation);
+    }
+
+    tcx.populated_external_types.insert(type_id);
+}
+
+/// Populates the type context with all the implementations for the given
+/// trait if necessary.
+pub fn populate_implementations_for_trait_if_necessary(
+        tcx: ctxt,
+        trait_id: ast::def_id) {
+    if trait_id.crate == LOCAL_CRATE {
+        return
+    }
+    if tcx.populated_external_traits.contains(&trait_id) {
+        return
+    }
+
+    do csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id)
+            |implementation_def_id| {
+        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+
+        // Record the trait->implementation mapping.
+        record_trait_implementation(tcx, trait_id, implementation);
+
+        // For any methods that use a default implementation, add them to
+        // the map. This is a bit unfortunate.
+        for method in implementation.methods.iter() {
+            for source in method.provided_source.iter() {
+                tcx.provided_method_sources.insert(method.def_id, *source);
+            }
+        }
+
+        // Store the implementation info.
+        tcx.impls.insert(implementation_def_id, implementation);
+    }
+
+    tcx.populated_external_traits.insert(trait_id);
+}
+
+/// If the given def ID describes a trait method, returns the ID of the trait
+/// that the method belongs to. Otherwise, returns `None`.
+pub fn trait_of_method(tcx: ctxt, def_id: ast::def_id)
+                       -> Option<ast::def_id> {
+    match tcx.methods.find(&def_id) {
+        Some(method_descriptor) => {
+            match method_descriptor.container {
+                TraitContainer(id) => return Some(id),
+                _ => {}
+            }
+        }
+        None => {}
+    }
+
+    // If the method was in the local crate, then if we got here we know the
+    // answer is negative.
+    if def_id.crate == LOCAL_CRATE {
+        return None
+    }
+
+    let result = csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
+
+    result
+}
+

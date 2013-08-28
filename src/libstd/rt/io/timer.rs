@@ -22,7 +22,7 @@ impl Timer {
     pub fn new() -> Option<Timer> {
         let timer = unsafe {
             rtdebug!("Timer::init: borrowing io to init timer");
-            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            let io: *mut IoFactoryObject = Local::unsafe_borrow();
             rtdebug!("about to init timer");
             (*io).timer_init()
         };

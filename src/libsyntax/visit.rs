@@ -319,8 +319,10 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
 }
 
 pub fn walk_path<E:Clone, V:Visitor<E>>(visitor: &mut V, path: &Path, env: E) {
-    for typ in path.types.iter() {
-        visitor.visit_ty(typ, env.clone())
+    for segment in path.segments.iter() {
+        for typ in segment.types.iter() {
+            visitor.visit_ty(typ, env.clone())
+        }
     }
 }
 

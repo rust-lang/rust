@@ -109,12 +109,21 @@ pub struct Path {
     /// A `::foo` path, is relative to the crate root rather than current
     /// module (like paths in an import).
     global: bool,
-    /// The segments in the path (the things separated by ::)
-    idents: ~[ident],
-    /// "Region parameter", currently only one lifetime is allowed in a path.
-    rp: Option<Lifetime>,
-    /// These are the type parameters, ie, the `a, b` in `foo::bar::<a, b>`
-    types: ~[Ty],
+    /// The segments in the path: the things separated by `::`.
+    segments: ~[PathSegment],
+}
+
+/// A segment of a path: an identifier, an optional lifetime, and a set of
+/// types.
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+pub struct PathSegment {
+    /// The identifier portion of this path segment.
+    identifier: ident,
+    /// The lifetime parameter for this path segment. Currently only one
+    /// lifetime parameter is allowed.
+    lifetime: Option<Lifetime>,
+    /// The type parameters for this path segment, if present.
+    types: OptVec<Ty>,
 }
 
 pub type CrateNum = int;
@@ -166,11 +175,15 @@ impl Generics {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+pub enum MethodProvenance {
+    FromTrait(def_id),
+    FromImpl(def_id),
+}
+
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum def {
     def_fn(def_id, purity),
-    def_static_method(/* method */ def_id,
-                      /* trait */  Option<def_id>,
-                      purity),
+    def_static_method(/* method */ def_id, MethodProvenance, purity),
     def_self(NodeId),
     def_self_ty(/* trait id */ NodeId),
     def_mod(def_id),
@@ -298,7 +311,10 @@ pub enum pat_ {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum mutability { m_mutbl, m_imm, m_const, }
+pub enum mutability {
+    m_mutbl,
+    m_imm,
+}
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Sigil {
@@ -704,7 +720,7 @@ impl ToStr for float_ty {
 }
 
 // NB Eq method appears below.
-#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Ty {
     id: NodeId,
     node: ty_,

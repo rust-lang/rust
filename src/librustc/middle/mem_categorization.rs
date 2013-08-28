@@ -52,7 +52,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
-use syntax::ast::{m_imm, m_const, m_mutbl};
+use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust;
@@ -113,7 +113,6 @@ pub enum ElementKind {
 #[deriving(Eq, IterBytes)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
-    McReadOnly,  // Read-only (`const`)
     McDeclared,  // Directly declared as mutable.
     McInherited  // Inherited from the fact that owner is mutable.
 }
@@ -297,7 +296,6 @@ impl MutabilityCategory {
     pub fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
         match m {
             m_imm => McImmutable,
-            m_const => McReadOnly,
             m_mutbl => McDeclared
         }
     }
@@ -305,7 +303,6 @@ impl MutabilityCategory {
     pub fn inherit(&self) -> MutabilityCategory {
         match *self {
             McImmutable => McImmutable,
-            McReadOnly => McReadOnly,
             McDeclared => McInherited,
             McInherited => McInherited
         }
@@ -313,7 +310,7 @@ impl MutabilityCategory {
 
     pub fn is_mutable(&self) -> bool {
         match *self {
-            McImmutable | McReadOnly => false,
+            McImmutable => false,
             McDeclared | McInherited => true
         }
     }
@@ -321,7 +318,7 @@ impl MutabilityCategory {
     pub fn is_immutable(&self) -> bool {
         match *self {
             McImmutable => true,
-            McReadOnly | McDeclared | McInherited => false
+            McDeclared | McInherited => false
         }
     }
 
@@ -329,7 +326,6 @@ impl MutabilityCategory {
         match *self {
             McDeclared | McInherited => "mutable",
             McImmutable => "immutable",
-            McReadOnly => "const"
         }
     }
 }
@@ -610,7 +606,6 @@ impl mem_categorization_ctxt {
                                 -> MutabilityCategory {
         match interior_m {
             m_imm => base_m.inherit(),
-            m_const => McReadOnly,
             m_mutbl => McDeclared
         }
     }
@@ -999,7 +994,6 @@ impl mem_categorization_ctxt {
     pub fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
         match mutbl {
           m_mutbl => ~"mutable",
-          m_const => ~"const",
           m_imm => ~"immutable"
         }
     }
@@ -1164,7 +1158,6 @@ impl cmt_ {
                 Some(AliasableManaged(m))
             }
 
-            cat_deref(_, _, region_ptr(m @ m_const, _)) |
             cat_deref(_, _, region_ptr(m @ m_imm, _)) => {
                 Some(AliasableBorrowed(m))
             }

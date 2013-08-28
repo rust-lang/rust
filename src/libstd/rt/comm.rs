@@ -159,7 +159,7 @@ impl<T> ChanOne<T> {
                         };
                     } else {
                         let recvr = Cell::new(recvr);
-                        do Local::borrow::<Scheduler, ()> |sched| {
+                        do Local::borrow |sched: &mut Scheduler| {
                             sched.enqueue_blocked_task(recvr.take());
                         }
                     }
@@ -199,7 +199,7 @@ impl<T> PortOne<T> {
         if !this.optimistic_check() {
             // No data available yet.
             // Switch to the scheduler to put the ~Task into the Packet state.
-            let sched = Local::take::<Scheduler>();
+            let sched: ~Scheduler = Local::take();
             do sched.deschedule_running_task_and_then |sched, task| {
                 this.block_on(sched, task);
             }
@@ -221,7 +221,7 @@ impl<T> SelectInner for PortOne<T> {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
         use rand::{Rand};
-        let actually_check = do Local::borrow::<Scheduler, bool> |sched| {
+        let actually_check = do Local::borrow |sched: &mut Scheduler| {
             Rand::rand(&mut sched.rng)
         };
         if actually_check {

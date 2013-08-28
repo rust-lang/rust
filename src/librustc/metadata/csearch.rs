@@ -49,16 +49,34 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
     decoder::each_lang_item(crate_data, f)
 }
 
-/// Iterates over all the paths in the given crate.
-pub fn each_path(cstore: @mut cstore::CStore,
-                 cnum: ast::CrateNum,
-                 f: &fn(&str, decoder::def_like, ast::visibility) -> bool)
-                 -> bool {
+/// Iterates over each child of the given item.
+pub fn each_child_of_item(cstore: @mut cstore::CStore,
+                          def_id: ast::def_id,
+                          callback: &fn(decoder::def_like, ast::ident)) {
+    let crate_data = cstore::get_crate_data(cstore, def_id.crate);
+    let get_crate_data: decoder::GetCrateDataCb = |cnum| {
+        cstore::get_crate_data(cstore, cnum)
+    };
+    decoder::each_child_of_item(cstore.intr,
+                                crate_data,
+                                def_id.node,
+                                get_crate_data,
+                                callback)
+}
+
+/// Iterates over each top-level crate item.
+pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
+                                    cnum: ast::CrateNum,
+                                    callback: &fn(decoder::def_like,
+                                                  ast::ident)) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
     };
-    decoder::each_path(cstore.intr, crate_data, get_crate_data, f)
+    decoder::each_top_level_item_of_crate(cstore.intr,
+                                          crate_data,
+                                          get_crate_data,
+                                          callback)
 }
 
 pub fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
@@ -246,3 +264,36 @@ pub fn get_link_args_for_crate(cstore: @mut cstore::CStore,
     let cdata = cstore::get_crate_data(cstore, crate_num);
     decoder::get_link_args_for_crate(cdata)
 }
+
+pub fn each_impl(cstore: @mut cstore::CStore,
+                 crate_num: ast::CrateNum,
+                 callback: &fn(ast::def_id)) {
+    let cdata = cstore::get_crate_data(cstore, crate_num);
+    decoder::each_impl(cdata, callback)
+}
+
+pub fn each_implementation_for_type(cstore: @mut cstore::CStore,
+                                    def_id: ast::def_id,
+                                    callback: &fn(ast::def_id)) {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::each_implementation_for_type(cdata, def_id.node, callback)
+}
+
+pub fn each_implementation_for_trait(cstore: @mut cstore::CStore,
+                                     def_id: ast::def_id,
+                                     callback: &fn(ast::def_id)) {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::each_implementation_for_trait(cdata, def_id.node, callback)
+}
+
+/// If the given def ID describes a method belonging to a trait (either a
+/// default method or an implementation of a trait method), returns the ID of
+/// the trait that the method belongs to. Otherwise, returns `None`.
+pub fn get_trait_of_method(cstore: @mut cstore::CStore,
+                           def_id: ast::def_id,
+                           tcx: ty::ctxt)
+                           -> Option<ast::def_id> {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::get_trait_of_method(cdata, def_id.node, tcx)
+}
+

@@ -138,12 +138,20 @@ fn parse_path(st: &mut PState) -> @ast::Path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @ast::Path { span: dummy_sp(),
-                                    global: false,
-                                    idents: idents,
-                                    rp: None,
-                                    types: ~[] };
-            } else { idents.push(parse_ident_(st, is_last)); }
+                return @ast::Path {
+                    span: dummy_sp(),
+                    global: false,
+                    segments: idents.move_iter().map(|identifier| {
+                        ast::PathSegment {
+                            identifier: identifier,
+                            lifetime: None,
+                            types: opt_vec::Empty,
+                        }
+                    }).collect()
+                };
+            } else {
+                idents.push(parse_ident_(st, is_last));
+            }
           }
         }
     };
@@ -417,7 +425,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
 fn parse_mutability(st: &mut PState) -> ast::mutability {
     match peek(st) {
       'm' => { next(st); ast::m_mutbl }
-      '?' => { next(st); ast::m_const }
       _ => { ast::m_imm }
     }
 }
