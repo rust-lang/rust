@@ -32,7 +32,8 @@ are represented as `ty_param()` instances.
 
 
 use metadata::csearch;
-use middle::ty::{substs, ty_param_bounds_and_ty};
+use middle::ty::{ImplContainer, MethodContainer, TraitContainer, substs};
+use middle::ty::{ty_param_bounds_and_ty};
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
@@ -388,7 +389,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
             // assume public, because this is only invoked on trait methods
             ast::public,
             local_def(*m_id),
-            local_def(trait_id),
+            TraitContainer(local_def(trait_id)),
             None
         )
     }
@@ -744,7 +745,7 @@ pub struct ConvertedMethod {
 }
 
 pub fn convert_methods(ccx: &CrateCtxt,
-                       container_id: ast::NodeId,
+                       container: MethodContainer,
                        ms: &[@ast::method],
                        untransformed_rcvr_ty: ty::t,
                        rcvr_ty_generics: &ty::Generics,
@@ -758,11 +759,14 @@ pub fn convert_methods(ccx: &CrateCtxt,
         let m_ty_generics =
             ty_generics(ccx, rcvr_ty_generics.region_param, &m.generics,
                         num_rcvr_ty_params);
-        let mty =
-            @ty_of_method(ccx, container_id, *m, rcvr_ty_generics.region_param,
-                          untransformed_rcvr_ty,
-                          rcvr_ast_generics, rcvr_visibility,
-                          &m.generics);
+        let mty = @ty_of_method(ccx,
+                                container,
+                                *m,
+                                rcvr_ty_generics.region_param,
+                                untransformed_rcvr_ty,
+                                rcvr_ast_generics,
+                                rcvr_visibility,
+                                &m.generics);
         let fty = ty::mk_bare_fn(tcx, mty.fty.clone());
         tcx.tcache.insert(
             local_def(m.id),
@@ -785,7 +789,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
     }).collect();
 
     fn ty_of_method(ccx: &CrateCtxt,
-                    container_id: ast::NodeId,
+                    container: MethodContainer,
                     m: &ast::method,
                     rp: Option<ty::region_variance>,
                     untransformed_rcvr_ty: ty::t,
@@ -817,7 +821,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
             m.explicit_self.node,
             method_vis,
             local_def(m.id),
-            local_def(container_id),
+            container,
             None
         )
     }
@@ -877,8 +881,12 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
             it.vis
         };
 
-        let cms = convert_methods(ccx, it.id, *ms, selfty,
-                                  &i_ty_generics, generics,
+        let cms = convert_methods(ccx,
+                                  ImplContainer(local_def(it.id)),
+                                  *ms,
+                                  selfty,
+                                  &i_ty_generics,
+                                  generics,
                                   parent_visibility);
         for t in opt_trait_ref.iter() {
             // Prevent the builtin kind traits from being manually implemented.
@@ -901,9 +909,12 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
           let untransformed_rcvr_ty = ty::mk_self(tcx, local_def(it.id));
           let (ty_generics, _) = mk_item_substs(ccx, generics, rp,
                                                 Some(untransformed_rcvr_ty));
-          let _ = convert_methods(ccx, it.id, provided_methods,
+          let _ = convert_methods(ccx,
+                                  TraitContainer(local_def(it.id)),
+                                  provided_methods,
                                   untransformed_rcvr_ty,
-                                  &ty_generics, generics,
+                                  &ty_generics,
+                                  generics,
                                   it.vis);
 
           // We need to do this *after* converting methods, since

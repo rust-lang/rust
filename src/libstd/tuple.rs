@@ -176,7 +176,7 @@ macro_rules! tuple_impls {
                 impl<$($T:Zero),+> Zero for ($($T,)+) {
                     #[inline]
                     fn zero() -> ($($T,)+) {
-                        ($(Zero::zero::<$T>(),)+)
+                        ($({ let x: $T = Zero::zero(); x},)+)
                     }
                     #[inline]
                     fn is_zero(&self) -> bool {

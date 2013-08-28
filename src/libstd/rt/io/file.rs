@@ -24,7 +24,7 @@ pub fn open<P: PathLike>(path: &P,
                          access: FileAccess
                         ) -> Option<FileStream> {
     let open_result = unsafe {
-        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
         (*io).fs_open(path, mode, access)
     };
     match open_result {
@@ -43,7 +43,7 @@ pub fn open<P: PathLike>(path: &P,
 /// by `path`.
 pub fn unlink<P: PathLike>(path: &P) {
     let unlink_result = unsafe {
-        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
         (*io).fs_unlink(path)
     };
     match unlink_result {

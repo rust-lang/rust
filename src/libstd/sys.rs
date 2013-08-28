@@ -143,7 +143,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
         if in_green_task_context() {
             // XXX: Logging doesn't work here - the check to call the log
             // function never passes - so calling the log function directly.
-            do Local::borrow::<Task, ()> |task| {
+            do Local::borrow |task: &mut Task| {
                 let msg = match task.name {
                     Some(ref name) =>
                     fmt!("task '%s' failed at '%s', %s:%i",
@@ -160,7 +160,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                      msg, file, line as int);
         }
 
-        let task = Local::unsafe_borrow::<Task>();
+        let task: *mut Task = Local::unsafe_borrow();
         if (*task).unwinder.unwinding {
             rtabort!("unwinding again");
         }

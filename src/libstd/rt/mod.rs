@@ -64,7 +64,7 @@ use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iterator::{Iterator, range};
-use option::{Some, None};
+use option::{Option, None, Some};
 use ptr::RawPtr;
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
@@ -408,7 +408,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
 pub fn in_sched_context() -> bool {
     unsafe {
-        match Local::try_unsafe_borrow::<Task>() {
+        let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
+        match task_ptr {
             Some(task) => {
                 match (*task).task_type {
                     SchedTask => true,
@@ -422,7 +423,8 @@ pub fn in_sched_context() -> bool {
 
 pub fn in_green_task_context() -> bool {
     unsafe {
-        match Local::try_unsafe_borrow::<Task>() {
+        let task: Option<*mut Task> = Local::try_unsafe_borrow();
+        match task {
             Some(task) => {
                 match (*task).task_type {
                     GreenTask(_) => true,

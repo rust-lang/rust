@@ -12,8 +12,11 @@
 
 use cast;
 use clone::Clone;
+use cmp::Equiv;
 use iterator::{range, Iterator};
 use option::{Option, Some, None};
+#[cfg(stage0)]
+use sys;
 use unstable::intrinsics;
 use util::swap;
 
@@ -24,18 +27,28 @@ use util::swap;
 
 /// Calculate the offset from a pointer
 #[inline]
+#[cfg(stage0)]
 pub fn offset<T>(ptr: *T, count: int) -> *T {
-    unsafe { intrinsics::offset(ptr, count) }
-}
-
-/// Calculate the offset from a const pointer
-#[inline]
-pub fn const_offset<T>(ptr: *const T, count: int) -> *const T {
-    unsafe { intrinsics::offset(ptr as *T, count) }
+    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *T
 }
 
 /// Calculate the offset from a mut pointer
 #[inline]
+#[cfg(stage0)]
+pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
+    (ptr as uint + (count as uint) * sys::size_of::<T>()) as *mut T
+}
+
+/// Calculate the offset from a pointer
+#[inline]
+#[cfg(not(stage0))]
+pub fn offset<T>(ptr: *T, count: int) -> *T {
+    unsafe { intrinsics::offset(ptr, count) }
+}
+
+/// Calculate the offset from a mut pointer
+#[inline]
+#[cfg(not(stage0))]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
     unsafe { intrinsics::offset(ptr as *T, count) as *mut T }
 }
@@ -73,11 +86,11 @@ pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline]
-pub fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
+pub fn is_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_null() }
 
 /// Returns true if the pointer is not equal to the null pointer.
 #[inline]
-pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
+pub fn is_not_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_not_null() }
 
 /**
  * Copies data from one location to another.
@@ -87,8 +100,10 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  */
 #[inline]
 #[cfg(target_word_size = "32")]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memmove32(dst, src as *T, count as u32);
+pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
+    intrinsics::memmove32(dst,
+                          cast::transmute_immut_unsafe(src),
+                          count as u32);
 }
 
 /**
@@ -99,8 +114,10 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  */
 #[inline]
 #[cfg(target_word_size = "64")]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memmove64(dst, src as *T, count as u64);
+pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
+    intrinsics::memmove64(dst,
+                          cast::transmute_immut_unsafe(src),
+                          count as u64);
 }
 
 /**
@@ -111,8 +128,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  */
 #[inline]
 #[cfg(target_word_size = "32")]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memcpy32(dst, src as *T, count as u32);
+pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
+                                                        src: P,
+                                                        count: uint) {
+    intrinsics::memcpy32(dst,
+                         cast::transmute_immut_unsafe(src),
+                         count as u32);
 }
 
 /**
@@ -123,8 +144,12 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
  */
 #[inline]
 #[cfg(target_word_size = "64")]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    intrinsics::memcpy64(dst, src as *T, count as u64);
+pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
+                                                        src: P,
+                                                        count: uint) {
+    intrinsics::memcpy64(dst,
+                         cast::transmute_immut_unsafe(src),
+                         count as u64);
 }
 
 /**
@@ -216,12 +241,6 @@ pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
     thing as *T
 }
 
-/// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
-#[inline]
-pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
-    thing as *const T
-}
-
 /// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
 #[inline]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
@@ -269,8 +288,10 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 
 #[allow(missing_doc)]
 pub trait RawPtr<T> {
+    fn null() -> Self;
     fn is_null(&self) -> bool;
     fn is_not_null(&self) -> bool;
+    fn to_uint(&self) -> uint;
     unsafe fn to_option(&self) -> Option<&T>;
     fn offset(&self, count: int) -> Self;
     unsafe fn offset_inbounds(self, count: int) -> Self;
@@ -278,13 +299,21 @@ pub trait RawPtr<T> {
 
 /// Extension methods for immutable pointers
 impl<T> RawPtr<T> for *T {
+    /// Returns the null pointer.
+    #[inline]
+    fn null() -> *T { null() }
+
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
-    fn is_null(&self) -> bool { is_null(*self) }
+    fn is_null(&self) -> bool { *self == RawPtr::null() }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline]
-    fn is_not_null(&self) -> bool { is_not_null(*self) }
+    fn is_not_null(&self) -> bool { *self != RawPtr::null() }
+
+    /// Returns the address of this pointer.
+    #[inline]
+    fn to_uint(&self) -> uint { *self as uint }
 
     ///
     /// Returns `None` if the pointer is null, or else returns the value wrapped
@@ -317,13 +346,21 @@ impl<T> RawPtr<T> for *T {
 
 /// Extension methods for mutable pointers
 impl<T> RawPtr<T> for *mut T {
+    /// Returns the null pointer.
+    #[inline]
+    fn null() -> *mut T { mut_null() }
+
     /// Returns true if the pointer is equal to the null pointer.
     #[inline]
-    fn is_null(&self) -> bool { is_null(*self) }
+    fn is_null(&self) -> bool { *self == RawPtr::null() }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline]
-    fn is_not_null(&self) -> bool { is_not_null(*self) }
+    fn is_not_null(&self) -> bool { *self != RawPtr::null() }
+
+    /// Returns the address of this pointer.
+    #[inline]
+    fn to_uint(&self) -> uint { *self as uint }
 
     ///
     /// Returns `None` if the pointer is null, or else returns the value wrapped
@@ -360,13 +397,38 @@ impl<T> RawPtr<T> for *mut T {
 
 // Equality for pointers
 #[cfg(not(test))]
-impl<T> Eq for *const T {
+impl<T> Eq for *T {
     #[inline]
-    fn eq(&self, other: &*const T) -> bool {
+    fn eq(&self, other: &*T) -> bool {
         (*self as uint) == (*other as uint)
     }
     #[inline]
-    fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
+    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
+}
+
+#[cfg(not(test))]
+impl<T> Eq for *mut T {
+    #[inline]
+    fn eq(&self, other: &*mut T) -> bool {
+        (*self as uint) == (*other as uint)
+    }
+    #[inline]
+    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
+}
+
+// Equivalence for pointers
+#[cfg(not(test))]
+impl<T> Equiv<*mut T> for *T {
+    fn equiv(&self, other: &*mut T) -> bool {
+        self.to_uint() == other.to_uint()
+    }
+}
+
+#[cfg(not(test))]
+impl<T> Equiv<*T> for *mut T {
+    fn equiv(&self, other: &*T) -> bool {
+        self.to_uint() == other.to_uint()
+    }
 }
 
 // Equality for extern "C" fn pointers
@@ -412,21 +474,41 @@ mod externfnpointers {
 
 // Comparison for pointers
 #[cfg(not(test))]
-impl<T> Ord for *const T {
+impl<T> Ord for *T {
     #[inline]
-    fn lt(&self, other: &*const T) -> bool {
+    fn lt(&self, other: &*T) -> bool {
         (*self as uint) < (*other as uint)
     }
     #[inline]
-    fn le(&self, other: &*const T) -> bool {
+    fn le(&self, other: &*T) -> bool {
         (*self as uint) <= (*other as uint)
     }
     #[inline]
-    fn ge(&self, other: &*const T) -> bool {
+    fn ge(&self, other: &*T) -> bool {
         (*self as uint) >= (*other as uint)
     }
     #[inline]
-    fn gt(&self, other: &*const T) -> bool {
+    fn gt(&self, other: &*T) -> bool {
+        (*self as uint) > (*other as uint)
+    }
+}
+
+#[cfg(not(test))]
+impl<T> Ord for *mut T {
+    #[inline]
+    fn lt(&self, other: &*mut T) -> bool {
+        (*self as uint) < (*other as uint)
+    }
+    #[inline]
+    fn le(&self, other: &*mut T) -> bool {
+        (*self as uint) <= (*other as uint)
+    }
+    #[inline]
+    fn ge(&self, other: &*mut T) -> bool {
+        (*self as uint) >= (*other as uint)
+    }
+    #[inline]
+    fn gt(&self, other: &*mut T) -> bool {
         (*self as uint) > (*other as uint)
     }
 }

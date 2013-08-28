@@ -879,7 +879,8 @@ mod test_treemap {
 
     #[test]
     fn find_empty() {
-        let m = TreeMap::new::<int, int>(); assert!(m.find(&5) == None);
+        let m: TreeMap<int,int> = TreeMap::new();
+        assert!(m.find(&5) == None);
     }
 
     #[test]
@@ -1006,7 +1007,7 @@ mod test_treemap {
 
     #[test]
     fn test_rand_int() {
-        let mut map = TreeMap::new::<int, int>();
+        let mut map: TreeMap<int,int> = TreeMap::new();
         let mut ctrl = ~[];
 
         check_equal(ctrl, &map);

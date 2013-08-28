@@ -141,7 +141,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on
             // a path in trans::callee that only works in block contexts.
-            if pth.types.len() != 0 {
+            if !pth.segments.iter().all(|segment| segment.types.is_empty()) {
                 sess.span_err(
                     e.span, "paths in constants may only refer to \
                              items without type parameters");

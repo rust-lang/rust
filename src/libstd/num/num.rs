@@ -272,8 +272,8 @@ pub trait Primitive: Num
                    + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
-    fn bits() -> uint;
-    fn bytes() -> uint;
+    fn bits(unused_self: Option<Self>) -> uint;
+    fn bytes(unused_self: Option<Self>) -> uint;
 }
 
 /// A collection of traits relevant to primitive signed and unsigned integers
@@ -314,13 +314,13 @@ pub trait Float: Real
     fn is_normal(&self) -> bool;
     fn classify(&self) -> FPCategory;
 
-    fn mantissa_digits() -> uint;
-    fn digits() -> uint;
+    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    fn digits(unused_self: Option<Self>) -> uint;
     fn epsilon() -> Self;
-    fn min_exp() -> int;
-    fn max_exp() -> int;
-    fn min_10_exp() -> int;
-    fn max_10_exp() -> int;
+    fn min_exp(unused_self: Option<Self>) -> int;
+    fn max_exp(unused_self: Option<Self>) -> int;
+    fn min_10_exp(unused_self: Option<Self>) -> int;
+    fn max_10_exp(unused_self: Option<Self>) -> int;
 
     fn ldexp(x: Self, exp: int) -> Self;
     fn frexp(&self) -> (Self, int);
@@ -484,9 +484,9 @@ impl<T: CheckedAdd+CheckedSub+Zero+Ord+Bounded> Saturating for T {
         match self.checked_add(&v) {
             Some(x) => x,
             None => if v >= Zero::zero() {
-                Bounded::max_value::<T>()
+                Bounded::max_value()
             } else {
-                Bounded::min_value::<T>()
+                Bounded::min_value()
             }
         }
     }
@@ -496,9 +496,9 @@ impl<T: CheckedAdd+CheckedSub+Zero+Ord+Bounded> Saturating for T {
         match self.checked_sub(&v) {
             Some(x) => x,
             None => if v >= Zero::zero() {
-                Bounded::min_value::<T>()
+                Bounded::min_value()
             } else {
-                Bounded::max_value::<T>()
+                Bounded::max_value()
             }
         }
     }

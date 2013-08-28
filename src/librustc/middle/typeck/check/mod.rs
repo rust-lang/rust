@@ -377,7 +377,7 @@ impl Visitor<()> for GatherLocalsVisitor {
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       self.tcx.sess.str_of(path.idents[0]),
+                       self.tcx.sess.str_of(path.segments[0].identifier),
                        self.fcx.infcx().ty_to_str(
                            self.fcx.inh.locals.get_copy(&p.id)));
               }
@@ -1132,8 +1132,160 @@ pub enum DerefArgs {
     DoDerefArgs
 }
 
-pub fn break_here() {
-    debug!("break here!");
+// Given the provenance of a static method, returns the generics of the static
+// method's container.
+fn generics_of_static_method_container(type_context: ty::ctxt,
+                                       provenance: ast::MethodProvenance)
+                                       -> ty::Generics {
+    match provenance {
+        ast::FromTrait(trait_def_id) => {
+            ty::lookup_trait_def(type_context, trait_def_id).generics
+        }
+        ast::FromImpl(impl_def_id) => {
+            ty::lookup_item_type(type_context, impl_def_id).generics
+        }
+    }
+}
+
+// Verifies that type parameters supplied in paths are in the right
+// locations.
+fn check_type_parameter_positions_in_path(function_context: @mut FnCtxt,
+                                          path: &ast::Path,
+                                          def: ast::def) {
+    // We only care about checking the case in which the path has two or
+    // more segments.
+    if path.segments.len() < 2 {
+        return
+    }
+
+    // Verify that no lifetimes or type parameters are present anywhere
+    // except the final two elements of the path.
+    for i in range(0, path.segments.len() - 2) {
+        match path.segments[i].lifetime {
+            None => {}
+            Some(lifetime) => {
+                function_context.tcx()
+                                .sess
+                                .span_err(lifetime.span,
+                                          "lifetime parameters may not \
+                                           appear here")
+            }
+        }
+
+        for typ in path.segments[i].types.iter() {
+            function_context.tcx()
+                            .sess
+                            .span_err(typ.span,
+                                      "type parameters may not appear here")
+        }
+    }
+
+    // If there are no parameters at all, there is nothing more to do; the
+    // rest of typechecking will (attempt to) infer everything.
+    if path.segments
+           .iter()
+           .all(|s| s.lifetime.is_none() && s.types.is_empty()) {
+        return
+    }
+
+    match def {
+        // If this is a static method of a trait or implementation, then
+        // ensure that the segment of the path which names the trait or
+        // implementation (the penultimate segment) is annotated with the
+        // right number of type parameters.
+        ast::def_static_method(_, provenance, _) => {
+            let generics =
+                generics_of_static_method_container(function_context.ccx.tcx,
+                                                    provenance);
+            let name = match provenance {
+                ast::FromTrait(_) => "trait",
+                ast::FromImpl(_) => "impl",
+            };
+
+            let trait_segment = &path.segments[path.segments.len() - 2];
+
+            // Make sure lifetime parameterization agrees with the trait or
+            // implementation type.
+            match (generics.region_param, trait_segment.lifetime) {
+                (Some(_), None) => {
+                    function_context.tcx()
+                                    .sess
+                                    .span_err(path.span,
+                                              fmt!("this %s has a lifetime \
+                                                    parameter but no \
+                                                    lifetime was specified",
+                                                   name))
+                }
+                (None, Some(_)) => {
+                    function_context.tcx()
+                                    .sess
+                                    .span_err(path.span,
+                                              fmt!("this %s has no lifetime \
+                                                    parameter but a lifetime \
+                                                    was specified",
+                                                   name))
+                }
+                (Some(_), Some(_)) | (None, None) => {}
+            }
+
+            // Make sure the number of type parameters supplied on the trait
+            // or implementation segment equals the number of type parameters
+            // on the trait or implementation definition.
+            let trait_type_parameter_count = generics.type_param_defs.len();
+            let supplied_type_parameter_count = trait_segment.types.len();
+            if trait_type_parameter_count != supplied_type_parameter_count {
+                let trait_count_suffix = if trait_type_parameter_count == 1 {
+                    ""
+                } else {
+                    "s"
+                };
+                let supplied_count_suffix =
+                    if supplied_type_parameter_count == 1 {
+                        ""
+                    } else {
+                        "s"
+                    };
+                function_context.tcx()
+                                .sess
+                                .span_err(path.span,
+                                          fmt!("the %s referenced by this \
+                                                path has %u type \
+                                                parameter%s, but %u type \
+                                                parameter%s were supplied",
+                                               name,
+                                               trait_type_parameter_count,
+                                               trait_count_suffix,
+                                               supplied_type_parameter_count,
+                                               supplied_count_suffix))
+            }
+        }
+        _ => {
+            // Verify that no lifetimes or type parameters are present on
+            // the penultimate segment of the path.
+            let segment = &path.segments[path.segments.len() - 2];
+            match segment.lifetime {
+                None => {}
+                Some(lifetime) => {
+                    function_context.tcx()
+                                    .sess
+                                    .span_err(lifetime.span,
+                                              "lifetime parameters may not
+                                               appear here")
+                }
+            }
+            for typ in segment.types.iter() {
+                function_context.tcx()
+                                .sess
+                                .span_err(typ.span,
+                                          "type parameters may not appear \
+                                           here");
+                function_context.tcx()
+                                .sess
+                                .span_note(typ.span,
+                                           fmt!("this is a %?", def));
+            }
+        }
+    }
 }
 
 /// Invariant:
@@ -2333,8 +2485,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_path(ref pth) => {
         let defn = lookup_def(fcx, pth.span, id);
 
+        check_type_parameter_positions_in_path(fcx, pth, defn);
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        instantiate_path(fcx, pth, tpt, expr.span, expr.id);
+        instantiate_path(fcx, pth, tpt, defn, expr.span, expr.id);
       }
       ast::expr_self => {
         let definition = lookup_def(fcx, expr.span, id);
@@ -3141,12 +3294,16 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
 pub fn instantiate_path(fcx: @mut FnCtxt,
                         pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
+                        def: ast::def,
                         span: span,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
-    let ty_substs_len = pth.types.len();
+    let mut ty_substs_len = 0;
+    for segment in pth.segments.iter() {
+        ty_substs_len += segment.types.len()
+    }
 
     debug!("tpt=%s ty_param_count=%? ty_substs_len=%?",
            tpt.repr(fcx.tcx()),
@@ -3155,7 +3312,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
 
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
-    let regions = match pth.rp {
+    let regions = match pth.segments.last().lifetime {
         Some(_) => { // user supplied a lifetime parameter...
             match tpt.generics.region_param {
                 None => { // ...but the type is not lifetime parameterized!
@@ -3165,13 +3322,31 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                 }
                 Some(_) => { // ...and the type is lifetime parameterized, ok.
                     opt_vec::with(
-                        ast_region_to_region(fcx, fcx, span, &pth.rp))
+                        ast_region_to_region(fcx,
+                                             fcx,
+                                             span,
+                                             &pth.segments.last().lifetime))
                 }
             }
         }
         None => { // no lifetime parameter supplied, insert default
             fcx.region_var_if_parameterized(tpt.generics.region_param, span)
         }
+    };
+
+    // Special case: If there is a self parameter, omit it from the list of
+    // type parameters.
+    //
+    // Here we calculate the "user type parameter count", which is the number
+    // of type parameters actually manifest in the AST. This will differ from
+    // the internal type parameter count when there are self types involved.
+    let (user_type_parameter_count, self_parameter_index) = match def {
+        ast::def_static_method(_, provenance @ ast::FromTrait(_), _) => {
+            let generics = generics_of_static_method_container(fcx.ccx.tcx,
+                                                               provenance);
+            (ty_param_count - 1, Some(generics.type_param_defs.len()))
+        }
+        _ => (ty_param_count, None),
     };
 
     // determine values for type parameters, using the values given by
@@ -3182,34 +3357,51 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         fcx.ccx.tcx.sess.span_err
             (span, "this item does not take type parameters");
         fcx.infcx().next_ty_vars(ty_param_count)
-    } else if ty_substs_len > ty_param_count {
+    } else if ty_substs_len > user_type_parameter_count {
         fcx.ccx.tcx.sess.span_err
             (span,
              fmt!("too many type parameters provided: expected %u, found %u",
-                  ty_param_count, ty_substs_len));
+                  user_type_parameter_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
-    } else if ty_substs_len < ty_param_count {
-        let is_static_method = match fcx.ccx.tcx.def_map.find(&node_id) {
-            Some(&ast::def_static_method(*)) => true,
-            _ => false
-        };
+    } else if ty_substs_len < user_type_parameter_count {
         fcx.ccx.tcx.sess.span_err
             (span,
              fmt!("not enough type parameters provided: expected %u, found %u",
-                  ty_param_count, ty_substs_len));
-        if is_static_method {
-            fcx.ccx.tcx.sess.span_note
-                (span, "Static methods have an extra implicit type parameter -- \
-                 did you omit the type parameter for the `Self` type?");
-        }
+                  user_type_parameter_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
-        pth.types.map(|aty| fcx.to_ty(aty))
+        // Build up the list of type parameters, inserting the self parameter
+        // at the appropriate position.
+        let mut result = ~[];
+        let mut pushed = false;
+        for (i, ast_type) in pth.segments
+                                .iter()
+                                .flat_map(|segment| segment.types.iter())
+                                .enumerate() {
+            match self_parameter_index {
+                Some(index) if index == i => {
+                    result.push(fcx.infcx().next_ty_vars(1)[0]);
+                    pushed = true;
+                }
+                _ => {}
+            }
+            result.push(fcx.to_ty(ast_type))
+        }
+
+        // If the self parameter goes at the end, insert it there.
+        if !pushed && self_parameter_index.is_some() {
+            result.push(fcx.infcx().next_ty_vars(1)[0])
+        }
+
+        assert_eq!(result.len(), ty_param_count)
+        result
     };
 
-    let substs = substs {regions: ty::NonerasedRegions(regions),
-                         self_ty: None,
-                         tps: tps };
+    let substs = substs {
+        regions: ty::NonerasedRegions(regions),
+        self_ty: None,
+        tps: tps
+    };
     fcx.write_ty_substs(node_id, tpt.ty, substs);
 
     debug!("<<<");

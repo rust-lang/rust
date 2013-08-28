@@ -13,11 +13,12 @@ extern mod extra;
 use std::num::Float;
 
 pub fn main() {
-  let nan = Float::NaN::<float>();
+  let nan: float = Float::NaN();
   assert!((nan).is_NaN());
 
-  let inf = Float::infinity::<float>();
-  assert_eq!(-inf, Float::neg_infinity::<float>());
+  let inf: float = Float::infinity();
+  let neg_inf: float = Float::neg_infinity();
+  assert_eq!(-inf, neg_inf);
 
   assert!( nan !=  nan);
   assert!( nan != -nan);

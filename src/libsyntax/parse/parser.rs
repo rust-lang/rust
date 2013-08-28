@@ -38,7 +38,7 @@ use ast::{ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
-use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local, m_const};
+use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, mul, mutability};
 use ast::{named_field, neg, NodeId, noreturn, not, pat, pat_box, pat_enum};
@@ -96,6 +96,37 @@ enum restriction {
 
 type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[Attribute]>);
+
+/// How to parse a path. There are four different kinds of paths, all of which
+/// are parsed somewhat differently.
+#[deriving(Eq)]
+pub enum PathParsingMode {
+    /// A path with no type parameters; e.g. `foo::bar::Baz`
+    NoTypesAllowed,
+    /// A path with a lifetime and type parameters, with no double colons
+    /// before the type parameters; e.g. `foo::bar<'self>::Baz<T>`
+    LifetimeAndTypesWithoutColons,
+    /// A path with a lifetime and type parameters with double colons before
+    /// the type parameters; e.g. `foo::bar::<'self>::Baz::<T>`
+    LifetimeAndTypesWithColons,
+    /// A path with a lifetime and type parameters with bounds before the last
+    /// set of type parameters only; e.g. `foo::bar<'self>::Baz:X+Y<T>` This
+    /// form does not use extra double colons.
+    LifetimeAndTypesAndBounds,
+}
+
+/// A pair of a path segment and group of type parameter bounds. (See `ast.rs`
+/// for the definition of a path segment.)
+struct PathSegmentAndBoundSet {
+    segment: ast::PathSegment,
+    bound_set: Option<OptVec<TyParamBound>>,
+}
+
+/// A path paired with optional type bounds.
+struct PathAndBounds {
+    path: ast::Path,
+    bounds: Option<OptVec<TyParamBound>>,
+}
 
 pub enum item_or_view_item {
     // Indicates a failure to parse any kind of item. The attributes are
@@ -1108,7 +1139,10 @@ impl Parser {
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(self.token) {
             // NAMED TYPE
-            let (path, bounds) = self.parse_type_path();
+            let PathAndBounds {
+                path,
+                bounds
+            } = self.parse_path(LifetimeAndTypesAndBounds);
             ty_path(path, bounds, self.get_id())
         } else {
             self.fatal(fmt!("expected type, found token %?",
@@ -1152,9 +1186,6 @@ impl Parser {
 
         if mt.mutbl != m_imm && sigil == OwnedSigil {
             self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
-        }
-        if mt.mutbl == m_const && sigil == ManagedSigil {
-            self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
         }
 
         ctor(mt)
@@ -1332,139 +1363,155 @@ impl Parser {
         }
     }
 
-    // parse a path into a vector of idents, whether the path starts
-    // with ::, and a span.
-    pub fn parse_path(&self) -> (~[ast::ident],bool,span) {
+    /// Parses a path and optional type parameter bounds, depending on the
+    /// mode. The `mode` parameter determines whether lifetimes, types, and/or
+    /// bounds are permitted and whether `::` must precede type parameter
+    /// groups.
+    pub fn parse_path(&self, mode: PathParsingMode) -> PathAndBounds {
+        // Check for a whole path...
+        let found = match *self.token {
+            INTERPOLATED(token::nt_path(_)) => Some(self.bump_and_get()),
+            _ => None,
+        };
+        match found {
+            Some(INTERPOLATED(token::nt_path(~path))) => {
+                return PathAndBounds {
+                    path: path,
+                    bounds: None,
+                }
+            }
+            _ => {}
+        }
+
         let lo = self.span.lo;
         let is_global = self.eat(&token::MOD_SEP);
-        let (ids,span{lo:_,hi,expn_info}) = self.parse_path_non_global();
-        (ids,is_global,span{lo:lo,hi:hi,expn_info:expn_info})
-    }
 
-    // parse a path beginning with an identifier into a vector of idents and a span
-    pub fn parse_path_non_global(&self) -> (~[ast::ident],span) {
-        let lo = self.span.lo;
-        let mut ids = ~[];
-        // must be at least one to begin:
-        ids.push(self.parse_ident());
+        // Parse any number of segments and bound sets. A segment is an
+        // identifier followed by an optional lifetime and a set of types.
+        // A bound set is a set of type parameter bounds.
+        let mut segments = ~[];
         loop {
+            // First, parse an identifier.
             match *self.token {
-                token::MOD_SEP => {
-                    let is_ident = do self.look_ahead(1) |t| {
-                        match *t {
-                            token::IDENT(*) => true,
-                            _ => false,
-                        }
-                    };
-                    if is_ident {
-                        self.bump();
-                        ids.push(self.parse_ident());
-                    } else {
-                        break
-                    }
-                }
-                _ => break
+                token::IDENT(*) => {}
+                _ => break,
             }
-        }
-        (ids, mk_sp(lo, self.last_span.hi))
-    }
+            let identifier = self.parse_ident();
 
-    // parse a path that doesn't have type parameters attached
-    pub fn parse_path_without_tps(&self) -> ast::Path {
-        maybe_whole!(deref self, nt_path);
-        let (ids,is_global,sp) = self.parse_path();
-        ast::Path { span: sp,
-                     global: is_global,
-                     idents: ids,
-                     rp: None,
-                     types: ~[] }
-    }
-
-    pub fn parse_bounded_path_with_tps(&self, colons: bool,
-                                        before_tps: Option<&fn()>) -> ast::Path {
-        debug!("parse_path_with_tps(colons=%b)", colons);
-
-        maybe_whole!(deref self, nt_path);
-        let lo = self.span.lo;
-        let path = self.parse_path_without_tps();
-        if colons && !self.eat(&token::MOD_SEP) {
-            return path;
-        }
-
-        // If the path might have bounds on it, they should be parsed before
-        // the parameters, e.g. module::TraitName:B1+B2<T>
-        before_tps.map_move(|callback| callback());
-
-        // Parse the (obsolete) trailing region parameter, if any, which will
-        // be written "foo/&x"
-        let rp_slash = {
-            if *self.token == token::BINOP(token::SLASH)
-                && self.look_ahead(1, |t| *t == token::BINOP(token::AND))
-            {
-                self.bump(); self.bump();
-                self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
-                match *self.token {
-                    token::IDENT(sid, _) => {
-                        let span = self.span;
-                        self.bump();
-                        Some(ast::Lifetime {
-                            id: self.get_id(),
-                            span: *span,
-                            ident: sid
-                        })
-                    }
-                    _ => {
-                        self.fatal(fmt!("Expected a lifetime name"));
-                    }
-                }
+            // Next, parse a colon and bounded type parameters, if applicable.
+            let bound_set = if mode == LifetimeAndTypesAndBounds {
+                self.parse_optional_ty_param_bounds()
             } else {
                 None
+            };
+
+            // Parse the '::' before type parameters if it's required. If
+            // it is required and wasn't present, then we're done.
+            if mode == LifetimeAndTypesWithColons &&
+                    !self.eat(&token::MOD_SEP) {
+                segments.push(PathSegmentAndBoundSet {
+                    segment: ast::PathSegment {
+                        identifier: identifier,
+                        lifetime: None,
+                        types: opt_vec::Empty,
+                    },
+                    bound_set: bound_set
+                });
+                break
             }
-        };
 
-        // Parse any lifetime or type parameters which may appear:
-        let (lifetimes, tps) = self.parse_generic_values();
-        let hi = self.span.lo;
+            // Parse the `<` before the lifetime and types, if applicable.
+            let (any_lifetime_or_types, optional_lifetime, types) =
+                    if mode != NoTypesAllowed && self.eat(&token::LT) {
+                // Parse an optional lifetime.
+                let optional_lifetime = match *self.token {
+                    token::LIFETIME(*) => Some(self.parse_lifetime()),
+                    _ => None,
+                };
 
-        let rp = match (&rp_slash, &lifetimes) {
-            (&Some(_), _) => rp_slash,
-            (&None, v) => {
-                if v.len() == 0 {
-                    None
-                } else if v.len() == 1 {
-                    Some(*v.get(0))
-                } else {
-                    self.fatal(fmt!("Expected at most one \
-                                     lifetime name (for now)"));
+                // Parse type parameters.
+                let mut types = opt_vec::Empty;
+                let mut need_comma = optional_lifetime.is_some();
+                loop {
+                    // We're done if we see a `>`.
+                    match *self.token {
+                        token::GT | token::BINOP(token::SHR) => {
+                            self.expect_gt();
+                            break
+                        }
+                        _ => {} // Go on.
+                    }
+
+                    if need_comma {
+                        self.expect(&token::COMMA)
+                    } else {
+                        need_comma = true
+                    }
+
+                    types.push(self.parse_ty(false))
+                }
+
+                (true, optional_lifetime, types)
+            } else {
+                (false, None, opt_vec::Empty)
+            };
+
+            // Assemble and push the result.
+            segments.push(PathSegmentAndBoundSet {
+                segment: ast::PathSegment {
+                    identifier: identifier,
+                    lifetime: optional_lifetime,
+                    types: types,
+                },
+                bound_set: bound_set
+            });
+
+            // We're done if we don't see a '::', unless the mode required
+            // a double colon to get here in the first place.
+            if !(mode == LifetimeAndTypesWithColons &&
+                    !any_lifetime_or_types) {
+                if !self.eat(&token::MOD_SEP) {
+                    break
                 }
             }
+        }
+
+        // Assemble the span.
+        let span = mk_sp(lo, self.last_span.hi);
+
+        // Assemble the path segments.
+        let mut path_segments = ~[];
+        let mut bounds = None;
+        let last_segment_index = segments.len() - 1;
+        for (i, segment_and_bounds) in segments.move_iter().enumerate() {
+            let PathSegmentAndBoundSet {
+                segment: segment,
+                bound_set: bound_set
+            } = segment_and_bounds;
+            path_segments.push(segment);
+
+            if bound_set.is_some() {
+                if i != last_segment_index {
+                    self.span_err(span,
+                                  "type parameter bounds are allowed only \
+                                   before the last segment in a path")
+                }
+
+                bounds = bound_set
+            }
+        }
+
+        // Assemble the result.
+        let path_and_bounds = PathAndBounds {
+            path: ast::Path {
+                span: span,
+                global: is_global,
+                segments: path_segments,
+            },
+            bounds: bounds,
         };
 
-        ast::Path {
-            span: mk_sp(lo, hi),
-            rp: rp,
-            types: tps,
-            .. path.clone()
-        }
-    }
-
-    // parse a path optionally with type parameters. If 'colons'
-    // is true, then type parameters must be preceded by colons,
-    // as in a::t::<t1,t2>
-    pub fn parse_path_with_tps(&self, colons: bool) -> ast::Path {
-        self.parse_bounded_path_with_tps(colons, None)
-    }
-
-    // Like the above, but can also parse kind bounds in the case of a
-    // path to be used as a type that might be a trait.
-    pub fn parse_type_path(&self) -> (ast::Path, Option<OptVec<TyParamBound>>) {
-        let mut bounds = None;
-        let path = self.parse_bounded_path_with_tps(false, Some(|| {
-            // Note: this closure might not even get called in the case of a
-            // macro-generated path. But that's the macro parser's job.
-            bounds = self.parse_optional_ty_param_bounds();
-        }));
-        (path, bounds)
+        path_and_bounds
     }
 
     /// parses 0 or 1 lifetime
@@ -1568,7 +1615,8 @@ impl Parser {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
         } else if self.eat_keyword(keywords::Const) {
-            m_const
+            self.obsolete(*self.last_span, ObsoleteConstPointer);
+            m_imm
         } else {
             m_imm
         }
@@ -1727,7 +1775,7 @@ impl Parser {
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
-            if mutbl == m_mutbl || mutbl == m_const {
+            if mutbl == m_mutbl {
                 self.obsolete(*self.last_span, ObsoleteMutVector);
             }
 
@@ -1791,7 +1839,7 @@ impl Parser {
         } else if *self.token == token::MOD_SEP ||
                 is_ident(&*self.token) && !self.is_keyword(keywords::True) &&
                 !self.is_keyword(keywords::False) {
-            let pth = self.parse_path_with_tps(true);
+            let pth = self.parse_path(LifetimeAndTypesWithColons).path;
 
             // `!`, as an operator, is prefix, so we know this isn't that
             if *self.token == token::NOT {
@@ -2182,10 +2230,6 @@ impl Parser {
           token::AT => {
             self.bump();
             let m = self.parse_mutability();
-            if m == m_const {
-                self.obsolete(*self.last_span, ObsoleteConstManagedPointer);
-            }
-
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
@@ -2886,7 +2930,8 @@ impl Parser {
             let val = self.parse_literal_maybe_minus();
             if self.eat(&token::DOTDOT) {
                 let end = if is_ident_or_path(tok) {
-                    let path = self.parse_path_with_tps(true);
+                    let path = self.parse_path(LifetimeAndTypesWithColons)
+                                   .path;
                     let hi = self.span.hi;
                     self.mk_expr(lo, hi, expr_path(path))
                 } else {
@@ -2915,7 +2960,7 @@ impl Parser {
                 let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 pat = pat_range(start, end);
             } else if is_plain_ident(&*self.token) && !can_be_enum_or_struct {
-                let name = self.parse_path_without_tps();
+                let name = self.parse_path(NoTypesAllowed).path;
                 let sub;
                 if self.eat(&token::AT) {
                     // parse foo @ pat
@@ -2927,7 +2972,8 @@ impl Parser {
                 pat = pat_ident(bind_infer, name, sub);
             } else {
                 // parse an enum pat
-                let enum_path = self.parse_path_with_tps(true);
+                let enum_path = self.parse_path(LifetimeAndTypesWithColons)
+                                    .path;
                 match *self.token {
                     token::LBRACE => {
                         self.bump();
@@ -2963,7 +3009,7 @@ impl Parser {
                             }
                           },
                           _ => {
-                              if enum_path.idents.len()==1u {
+                              if enum_path.segments.len() == 1 {
                                   // it could still be either an enum
                                   // or an identifier pattern, resolve
                                   // will sort it out:
@@ -2998,7 +3044,7 @@ impl Parser {
                             "expected identifier, found path");
         }
         // why a path here, and not just an identifier?
-        let name = self.parse_path_without_tps();
+        let name = self.parse_path(NoTypesAllowed).path;
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat())
         } else {
@@ -3115,7 +3161,7 @@ impl Parser {
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
-            let pth = self.parse_path_without_tps();
+            let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
             let id = if *self.token == token::LPAREN {
@@ -3791,7 +3837,7 @@ impl Parser {
     // parse a::B<~str,int>
     fn parse_trait_ref(&self) -> trait_ref {
         ast::trait_ref {
-            path: self.parse_path_with_tps(false),
+            path: self.parse_path(LifetimeAndTypesWithoutColons).path,
             ref_id: self.get_id(),
         }
     }
@@ -4707,7 +4753,7 @@ impl Parser {
             }
 
             // item macro.
-            let pth = self.parse_path_without_tps();
+            let pth = self.parse_path(NoTypesAllowed).path;
             self.expect(&token::NOT);
 
             // a 'special' identifier (like what `macro_rules!` uses)
@@ -4791,11 +4837,17 @@ impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = ast::Path { span: mk_sp(lo, self.span.hi),
-                                    global: false,
-                                    idents: path,
-                                    rp: None,
-                                    types: ~[] };
+            let path = ast::Path {
+                span: mk_sp(lo, self.span.hi),
+                global: false,
+                segments: path.move_iter().map(|identifier| {
+                    ast::PathSegment {
+                        identifier: identifier,
+                        lifetime: None,
+                        types: opt_vec::Empty,
+                    }
+                }).collect()
+            };
             return @spanned(lo, self.span.hi,
                             view_path_simple(first_ident,
                                              path,
@@ -4821,11 +4873,17 @@ impl Parser {
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident()
                     );
-                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
-                                            global: false,
-                                            idents: path,
-                                            rp: None,
-                                            types: ~[] };
+                    let path = ast::Path {
+                        span: mk_sp(lo, self.span.hi),
+                        global: false,
+                        segments: path.move_iter().map(|identifier| {
+                            ast::PathSegment {
+                                identifier: identifier,
+                                lifetime: None,
+                                types: opt_vec::Empty,
+                            }
+                        }).collect()
+                    };
                     return @spanned(lo, self.span.hi,
                                  view_path_list(path, idents, self.get_id()));
                   }
@@ -4833,11 +4891,17 @@ impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = ast::Path { span: mk_sp(lo, self.span.hi),
-                                            global: false,
-                                            idents: path,
-                                            rp: None,
-                                            types: ~[] };
+                    let path = ast::Path {
+                        span: mk_sp(lo, self.span.hi),
+                        global: false,
+                        segments: path.move_iter().map(|identifier| {
+                            ast::PathSegment {
+                                identifier: identifier,
+                                lifetime: None,
+                                types: opt_vec::Empty,
+                            }
+                        }).collect()
+                    };
                     return @spanned(lo, self.span.hi,
                                     view_path_glob(path, self.get_id()));
                   }
@@ -4849,11 +4913,17 @@ impl Parser {
           _ => ()
         }
         let last = path[path.len() - 1u];
-        let path = ast::Path { span: mk_sp(lo, self.span.hi),
-                                global: false,
-                                idents: path,
-                                rp: None,
-                                types: ~[] };
+        let path = ast::Path {
+            span: mk_sp(lo, self.span.hi),
+            global: false,
+            segments: path.move_iter().map(|identifier| {
+                ast::PathSegment {
+                    identifier: identifier,
+                    lifetime: None,
+                    types: opt_vec::Empty,
+                }
+            }).collect()
+        };
         return @spanned(lo,
                         self.last_span.hi,
                         view_path_simple(last, path, self.get_id()));

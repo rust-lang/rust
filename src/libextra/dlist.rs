@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut m = DList::new::<~int>();
+        let mut m: DList<~int> = DList::new();
         assert_eq!(m.pop_front(), None);
         assert_eq!(m.pop_back(), None);
         assert_eq!(m.pop_front(), None);
@@ -768,7 +768,7 @@ mod tests {
 
     #[test]
     fn test_rotate() {
-        let mut n = DList::new::<int>();
+        let mut n: DList<int> = DList::new();
         n.rotate_backward(); check_links(&n);
         assert_eq!(n.len(), 0);
         n.rotate_forward(); check_links(&n);
@@ -1033,7 +1033,7 @@ mod tests {
 
     #[cfg(test)]
     fn fuzz_test(sz: int) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         let mut v = ~[];
         for i in range(0, sz) {
             check_links(&m);
@@ -1078,7 +1078,7 @@ mod tests {
 
     #[bench]
     fn bench_push_front(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         do b.iter {
             m.push_front(0);
         }
@@ -1086,7 +1086,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         do b.iter {
             m.push_back(0);
         }
@@ -1094,7 +1094,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back_pop_back(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         do b.iter {
             m.push_back(0);
             m.pop_back();
@@ -1103,7 +1103,7 @@ mod tests {
 
     #[bench]
     fn bench_push_front_pop_front(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         do b.iter {
             m.push_front(0);
             m.pop_front();
@@ -1112,7 +1112,7 @@ mod tests {
 
     #[bench]
     fn bench_rotate_forward(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
         do b.iter {
@@ -1122,7 +1122,7 @@ mod tests {
 
     #[bench]
     fn bench_rotate_backward(b: &mut test::BenchHarness) {
-        let mut m = DList::new::<int>();
+        let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
         do b.iter {

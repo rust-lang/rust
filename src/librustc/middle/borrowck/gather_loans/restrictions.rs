@@ -15,7 +15,7 @@ use std::vec;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
-use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast::{m_imm, m_mutbl};
 use syntax::codemap::span;
 
 pub enum RestrictionResult {
@@ -118,13 +118,6 @@ impl RestrictionsContext {
             mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_imm)) => {
                 // R-Deref-Imm-Borrowed
-                Safe
-            }
-
-            mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
-            mc::cat_deref(_, _, mc::gc_ptr(m_const)) => {
-                // R-Deref-Freeze-Borrowed
-                self.check_no_mutability_control(cmt, restrictions);
                 Safe
             }
 

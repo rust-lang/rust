@@ -386,7 +386,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         word(s.s, "[");
         match mt.mutbl {
           ast::m_mutbl => word_space(s, "mut"),
-          ast::m_const => word_space(s, "const"),
           ast::m_imm => ()
         }
         print_type(s, mt.ty);
@@ -429,7 +428,6 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
         word(s.s, "[");
         match mt.mutbl {
             ast::m_mutbl => word_space(s, "mut"),
-            ast::m_const => word_space(s, "const"),
             ast::m_imm => ()
         }
         print_type(s, mt.ty);
@@ -1503,34 +1501,52 @@ pub fn print_for_decl(s: @ps, loc: &ast::Local, coll: &ast::expr) {
     print_expr(s, coll);
 }
 
-fn print_path_(s: @ps, path: &ast::Path, colons_before_params: bool,
+fn print_path_(s: @ps,
+               path: &ast::Path,
+               colons_before_params: bool,
                opt_bounds: &Option<OptVec<ast::TyParamBound>>) {
     maybe_print_comment(s, path.span.lo);
-    if path.global { word(s.s, "::"); }
-    let mut first = true;
-    for id in path.idents.iter() {
-        if first { first = false; } else { word(s.s, "::"); }
-        print_ident(s, *id);
+    if path.global {
+        word(s.s, "::");
     }
-    do opt_bounds.map |bounds| {
-        print_bounds(s, bounds, true);
-    };
-    if path.rp.is_some() || !path.types.is_empty() {
-        if colons_before_params { word(s.s, "::"); }
 
-        if path.rp.is_some() || !path.types.is_empty() {
-            word(s.s, "<");
+    let mut first = true;
+    for (i, segment) in path.segments.iter().enumerate() {
+        if first {
+            first = false
+        } else {
+            word(s.s, "::")
+        }
 
-            for r in path.rp.iter() {
-                print_lifetime(s, r);
-                if !path.types.is_empty() {
-                    word_space(s, ",");
+        print_ident(s, segment.identifier);
+
+        if segment.lifetime.is_some() || !segment.types.is_empty() {
+            // If this is the last segment, print the bounds.
+            if i == path.segments.len() - 1 {
+                match *opt_bounds {
+                    None => {}
+                    Some(ref bounds) => print_bounds(s, bounds, true),
                 }
             }
 
-            commasep(s, inconsistent, path.types, print_type);
+            if colons_before_params {
+                word(s.s, "::")
+            }
+            word(s.s, "<");
 
-            word(s.s, ">");
+            for lifetime in segment.lifetime.iter() {
+                print_lifetime(s, lifetime);
+                if !segment.types.is_empty() {
+                    word_space(s, ",")
+                }
+            }
+
+            commasep(s,
+                     inconsistent,
+                     segment.types.map_to_vec(|t| (*t).clone()),
+                     print_type);
+
+            word(s.s, ">")
         }
     }
 }
@@ -1821,7 +1837,7 @@ pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
 pub fn print_view_path(s: @ps, vp: &ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, ref path, _) => {
-        if path.idents[path.idents.len()-1u] != ident {
+        if path.segments.last().identifier != ident {
             print_ident(s, ident);
             space(s.s);
             word_space(s, "=");
@@ -1882,7 +1898,6 @@ pub fn print_view_item(s: @ps, item: &ast::view_item) {
 pub fn print_mutability(s: @ps, mutbl: ast::mutability) {
     match mutbl {
       ast::m_mutbl => word_nbsp(s, "mut"),
-      ast::m_const => word_nbsp(s, "const"),
       ast::m_imm => {/* nothing */ }
     }
 }
@@ -1902,8 +1917,9 @@ pub fn print_arg(s: @ps, input: &ast::arg) {
       _ => {
         match input.pat.node {
             ast::pat_ident(_, ref path, _) if
-                path.idents.len() == 1 &&
-                path.idents[0] == parse::token::special_idents::invalid => {
+                path.segments.len() == 1 &&
+                path.segments[0].identifier ==
+                    parse::token::special_idents::invalid => {
                 // Do nothing.
             }
             _ => {

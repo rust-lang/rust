@@ -10,10 +10,11 @@
 
 
 use driver::session::Session;
-use metadata::csearch::{each_path, get_trait_method_def_ids};
+use metadata::csearch::get_trait_method_def_ids;
 use metadata::csearch::get_method_name_and_explicit_self;
 use metadata::csearch::get_static_methods_if_impl;
 use metadata::csearch::{get_type_name_if_impl, get_struct_fields};
+use metadata::csearch;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -54,6 +55,12 @@ pub type BindingMap = HashMap<ident,binding_info>;
 
 // Trait method resolution
 pub type TraitMap = HashMap<NodeId,@mut ~[def_id]>;
+
+// A summary of the generics on a trait.
+struct TraitGenerics {
+    has_lifetime: bool,
+    type_parameter_count: uint,
+}
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
@@ -464,12 +471,18 @@ pub struct Module {
 
     // The index of the import we're resolving.
     resolved_import_count: uint,
+
+    // Whether this module is populated. If not populated, any attempt to
+    // access the children must be preceded with a
+    // `populate_module_if_necessary` call.
+    populated: bool,
 }
 
 pub fn Module(parent_link: ParentLink,
               def_id: Option<def_id>,
-              kind: ModuleKind)
-           -> Module {
+              kind: ModuleKind,
+              external: bool)
+              -> Module {
     Module {
         parent_link: parent_link,
         def_id: def_id,
@@ -480,7 +493,8 @@ pub fn Module(parent_link: ParentLink,
         anonymous_children: @mut HashMap::new(),
         import_resolutions: @mut HashMap::new(),
         glob_count: 0,
-        resolved_import_count: 0
+        resolved_import_count: 0,
+        populated: !external,
     }
 }
 
@@ -527,9 +541,10 @@ impl NameBindings {
                          parent_link: ParentLink,
                          def_id: Option<def_id>,
                          kind: ModuleKind,
+                         external: bool,
                          sp: span) {
         // Merges the module with the existing type def or creates a new one.
-        let module_ = @mut Module(parent_link, def_id, kind);
+        let module_ = @mut Module(parent_link, def_id, kind, external);
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
@@ -556,10 +571,11 @@ impl NameBindings {
                            parent_link: ParentLink,
                            def_id: Option<def_id>,
                            kind: ModuleKind,
+                           external: bool,
                            _sp: span) {
         match self.type_def {
             None => {
-                let module = @mut Module(parent_link, def_id, kind);
+                let module = @mut Module(parent_link, def_id, kind, external);
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module),
@@ -570,7 +586,10 @@ impl NameBindings {
             Some(type_def) => {
                 match type_def.module_def {
                     None => {
-                        let module = @mut Module(parent_link, def_id, kind);
+                        let module = @mut Module(parent_link,
+                                                 def_id,
+                                                 kind,
+                                                 external);
                         self.type_def = Some(TypeNsDef {
                             privacy: privacy,
                             module_def: Some(module),
@@ -792,6 +811,7 @@ pub fn Resolver(session: Session,
                              NoParentLink,
                              Some(def_id { crate: 0, node: 0 }),
                              NormalModuleKind,
+                             false,
                              crate.span);
 
     let current_module = graph_root.get_module();
@@ -1157,6 +1177,7 @@ impl Resolver {
                                             parent_link,
                                             Some(def_id),
                                             NormalModuleKind,
+                                            false,
                                             sp);
 
                 let new_parent =
@@ -1179,6 +1200,7 @@ impl Resolver {
                                                     parent_link,
                                                     Some(def_id),
                                                     ExternModuleKind,
+                                                    false,
                                                     sp);
 
                         ModuleReducedGraphParent(name_bindings.get_module())
@@ -1277,7 +1299,7 @@ impl Resolver {
                     &Ty {
                         node: ty_path(ref path, _, _),
                         _
-                    } if path.idents.len() == 1 => {
+                    } if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
                         let new_parent = match parent.children.find(&name) {
@@ -1303,6 +1325,7 @@ impl Resolver {
                                                             parent_link,
                                                             Some(def_id),
                                                             ImplModuleKind,
+                                                            false,
                                                             sp);
 
                                 ModuleReducedGraphParent(
@@ -1321,9 +1344,12 @@ impl Resolver {
                                                method.span);
                             let def = match method.explicit_self.node {
                                 sty_static => {
-                                    // Static methods become `def_fn`s.
-                                    def_fn(local_def(method.id),
-                                           method.purity)
+                                    // Static methods become
+                                    // `def_static_method`s.
+                                    def_static_method(local_def(method.id),
+                                                      FromImpl(local_def(
+                                                        item.id)),
+                                                      method.purity)
                                 }
                                 _ => {
                                     // Non-static methods become
@@ -1357,6 +1383,7 @@ impl Resolver {
                                             parent_link,
                                             Some(local_def(item.id)),
                                             TraitModuleKind,
+                                            false,
                                             sp);
                 let module_parent = ModuleReducedGraphParent(name_bindings.
                                                              get_module());
@@ -1373,7 +1400,7 @@ impl Resolver {
                         sty_static => {
                             // Static methods become `def_static_method`s.
                             def_static_method(local_def(ty_m.id),
-                                              Some(local_def(item.id)),
+                                              FromTrait(local_def(item.id)),
                                               ty_m.purity)
                         }
                         _ => {
@@ -1476,20 +1503,22 @@ impl Resolver {
                     let mut module_path = ~[];
                     match view_path.node {
                         view_path_simple(_, ref full_path, _) => {
-                            let path_len = full_path.idents.len();
+                            let path_len = full_path.segments.len();
                             assert!(path_len != 0);
 
-                            for (i, ident) in full_path.idents.iter().enumerate() {
+                            for (i, segment) in full_path.segments
+                                                         .iter()
+                                                         .enumerate() {
                                 if i != path_len - 1 {
-                                    module_path.push(*ident);
+                                    module_path.push(segment.identifier)
                                 }
                             }
                         }
 
                         view_path_glob(ref module_ident_path, _) |
                         view_path_list(ref module_ident_path, _, _) => {
-                            for ident in module_ident_path.idents.iter() {
-                                module_path.push(*ident);
+                            for segment in module_ident_path.segments.iter() {
+                                module_path.push(segment.identifier)
                             }
                         }
                     }
@@ -1498,7 +1527,8 @@ impl Resolver {
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
                         view_path_simple(binding, ref full_path, id) => {
-                            let source_ident = *full_path.idents.last();
+                            let source_ident =
+                                full_path.segments.last().identifier;
                             let subclass = @SingleImport(binding,
                                                          source_ident);
                             self.build_import_directive(privacy,
@@ -1543,7 +1573,8 @@ impl Resolver {
                             (self.get_module_from_parent(parent), name);
                         let external_module = @mut Module(parent_link,
                                                           Some(def_id),
-                                                          NormalModuleKind);
+                                                          NormalModuleKind,
+                                                          false);
 
                         parent.external_module_children.insert(
                             name,
@@ -1607,7 +1638,8 @@ impl Resolver {
             let new_module = @mut Module(
                 BlockParentLink(parent_module, block_id),
                 None,
-                AnonymousModuleKind);
+                AnonymousModuleKind,
+                false);
             parent_module.anonymous_children.insert(block_id, new_module);
             new_parent = ModuleReducedGraphParent(new_module);
         } else {
@@ -1617,23 +1649,22 @@ impl Resolver {
         visit::walk_block(visitor, block, new_parent);
     }
 
-    pub fn handle_external_def(@mut self,
-                               def: def,
-                               visibility: ast::visibility,
-                               modules: &mut HashMap<def_id, @mut Module>,
-                               child_name_bindings: @mut NameBindings,
-                               final_ident: &str,
-                               ident: ident,
-                               new_parent: ReducedGraphParent) {
+    fn handle_external_def(@mut self,
+                           def: def,
+                           visibility: ast::visibility,
+                           child_name_bindings: @mut NameBindings,
+                           final_ident: &str,
+                           ident: ident,
+                           new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
         match def {
-          def_mod(def_id) | def_foreign_mod(def_id) => {
+          def_mod(def_id) | def_foreign_mod(def_id) | def_struct(def_id) |
+          def_ty(def_id) => {
             match child_name_bindings.type_def {
               Some(TypeNsDef { module_def: Some(module_def), _ }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
                 module_def.def_id = Some(def_id);
-                modules.insert(def_id, module_def);
               }
               Some(_) | None => {
                 debug!("(building reduced graph for \
@@ -1641,45 +1672,20 @@ impl Resolver {
                         %s", final_ident);
                 let parent_link = self.get_parent_link(new_parent, ident);
 
-                // FIXME (#5074): this should be a match on find
-                if !modules.contains_key(&def_id) {
-                    child_name_bindings.define_module(privacy,
-                                                      parent_link,
-                                                      Some(def_id),
-                                                      NormalModuleKind,
-                                                      dummy_sp());
-                    modules.insert(def_id,
-                                   child_name_bindings.get_module());
-                } else {
-                    let existing_module = *modules.get(&def_id);
-
-                    // Create an import resolution to avoid creating cycles in
-                    // the module graph.
-
-                    let resolution = @mut ImportResolution(Public, 0);
-                    resolution.outstanding_references = 0;
-
-                    match existing_module.parent_link {
-                      NoParentLink |
-                      BlockParentLink(*) => {
-                        fail!("can't happen");
-                      }
-                      ModuleParentLink(parent_module, ident) => {
-                        let name_bindings = parent_module.children.get(
-                            &ident);
-                        resolution.type_target =
-                            Some(Target(parent_module, *name_bindings));
-                      }
-                    }
-
-                    debug!("(building reduced graph for external crate) \
-                            ... creating import resolution");
-
-                    new_parent.import_resolutions.insert(ident, resolution);
-                }
+                child_name_bindings.define_module(privacy,
+                                                  parent_link,
+                                                  Some(def_id),
+                                                  NormalModuleKind,
+                                                  true,
+                                                  dummy_sp());
               }
             }
           }
+          _ => {}
+        }
+
+        match def {
+          def_mod(_) | def_foreign_mod(_) => {}
           def_variant(*) => {
             debug!("(building reduced graph for external crate) building \
                     variant %s",
@@ -1691,7 +1697,7 @@ impl Resolver {
           }
           def_fn(*) | def_static_method(*) | def_static(*) => {
             debug!("(building reduced graph for external \
-                    crate) building value %s", final_ident);
+                    crate) building value (fn/static) %s", final_ident);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
           def_trait(def_id) => {
@@ -1737,6 +1743,7 @@ impl Resolver {
                                                   parent_link,
                                                   Some(def_id),
                                                   TraitModuleKind,
+                                                  true,
                                                   dummy_sp())
           }
           def_ty(_) => {
@@ -1767,184 +1774,183 @@ impl Resolver {
         }
     }
 
-    /**
-     * Builds the reduced graph rooted at the 'use' directive for an external
-     * crate.
-     */
-    pub fn build_reduced_graph_for_external_crate(@mut self,
-                                                  root: @mut Module) {
-        let mut modules = HashMap::new();
-
-        // Create all the items reachable by paths.
-        do each_path(self.session.cstore, root.def_id.unwrap().crate)
-                |path_string, def_like, visibility| {
-
-            debug!("(building reduced graph for external crate) found path \
-                        entry: %s (%?)",
-                    path_string, def_like);
-
-            let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
-            let final_ident_str = pieces.pop();
-            let final_ident = self.session.ident_of(final_ident_str);
-
-            // Find the module we need, creating modules along the way if we
-            // need to.
-
-            let mut current_module = root;
-            for ident_str in pieces.iter() {
-                let ident = self.session.ident_of(*ident_str);
-                // Create or reuse a graph node for the child.
-                let (child_name_bindings, new_parent) =
-                    self.add_child(ident,
-                                   ModuleReducedGraphParent(current_module),
-                                   OverwriteDuplicates,
-                                   dummy_sp());
-
-                // Define or reuse the module node.
-                match child_name_bindings.type_def {
-                    None => {
-                        debug!("(building reduced graph for external crate) \
-                                autovivifying missing type def %s",
-                                *ident_str);
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        child_name_bindings.define_module(Public,
-                                                          parent_link,
-                                                          None,
-                                                          NormalModuleKind,
-                                                          dummy_sp());
+    /// Builds the reduced graph for a single item in an external crate.
+    fn build_reduced_graph_for_external_crate_def(@mut self,
+                                                  root: @mut Module,
+                                                  def_like: def_like,
+                                                  ident: ident) {
+        match def_like {
+            dl_def(def) => {
+                // Add the new child item, if necessary.
+                match def {
+                    def_foreign_mod(def_id) => {
+                        // Foreign modules have no names. Recur and populate
+                        // eagerly.
+                        do csearch::each_child_of_item(self.session.cstore,
+                                                       def_id)
+                                |def_like, child_ident| {
+                            self.build_reduced_graph_for_external_crate_def(
+                                root,
+                                def_like,
+                                child_ident)
+                        }
                     }
-                    Some(type_ns_def)
-                            if type_ns_def.module_def.is_none() => {
-                        debug!("(building reduced graph for external crate) \
-                                autovivifying missing module def %s",
-                                *ident_str);
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        child_name_bindings.define_module(Public,
-                                                          parent_link,
-                                                          None,
-                                                          NormalModuleKind,
-                                                          dummy_sp());
+                    _ => {
+                        let (child_name_bindings, new_parent) =
+                            self.add_child(ident,
+                                           ModuleReducedGraphParent(root),
+                                           OverwriteDuplicates,
+                                           dummy_sp());
+
+                        self.handle_external_def(def,
+                                                 public,
+                                                 child_name_bindings,
+                                                 self.session.str_of(ident),
+                                                 ident,
+                                                 new_parent);
                     }
-                    _ => {} // Fall through.
                 }
-
-                current_module = child_name_bindings.get_module();
             }
+            dl_impl(def) => {
+                // We only process static methods of impls here.
+                match get_type_name_if_impl(self.session.cstore, def) {
+                    None => {}
+                    Some(final_ident) => {
+                        let static_methods_opt =
+                            get_static_methods_if_impl(self.session.cstore,
+                                                       def);
+                        match static_methods_opt {
+                            Some(ref static_methods) if
+                                static_methods.len() >= 1 => {
+                                debug!("(building reduced graph for \
+                                        external crate) processing \
+                                        static methods for type name %s",
+                                        self.session.str_of(
+                                            final_ident));
 
-            match def_like {
-                dl_def(def) => {
-                    // Add the new child item.
-                    let (child_name_bindings, new_parent) =
-                        self.add_child(final_ident,
-                                       ModuleReducedGraphParent(
-                                            current_module),
-                                       OverwriteDuplicates,
-                                       dummy_sp());
+                                let (child_name_bindings, new_parent) =
+                                    self.add_child(
+                                        final_ident,
+                                        ModuleReducedGraphParent(root),
+                                        OverwriteDuplicates,
+                                        dummy_sp());
 
-                    self.handle_external_def(def,
-                                             visibility,
-                                             &mut modules,
-                                             child_name_bindings,
-                                             self.session.str_of(
-                                                 final_ident),
-                                             final_ident,
-                                             new_parent);
-                }
-                dl_impl(def) => {
-                    // We only process static methods of impls here.
-                    match get_type_name_if_impl(self.session.cstore, def) {
-                        None => {}
-                        Some(final_ident) => {
-                            let static_methods_opt =
-                                get_static_methods_if_impl(
-                                    self.session.cstore, def);
-                            match static_methods_opt {
-                                Some(ref static_methods) if
-                                    static_methods.len() >= 1 => {
-                                    debug!("(building reduced graph for \
-                                            external crate) processing \
-                                            static methods for type name %s",
-                                            self.session.str_of(
-                                                final_ident));
+                                // Process the static methods. First,
+                                // create the module.
+                                let type_module;
+                                match child_name_bindings.type_def {
+                                    Some(TypeNsDef {
+                                        module_def: Some(module_def),
+                                        _
+                                    }) => {
+                                        // We already have a module. This
+                                        // is OK.
+                                        type_module = module_def;
 
-                                    let (child_name_bindings, new_parent) =
-                                        self.add_child(final_ident,
-                                            ModuleReducedGraphParent(
-                                                            current_module),
-                                            OverwriteDuplicates,
-                                            dummy_sp());
-
-                                    // Process the static methods. First,
-                                    // create the module.
-                                    let type_module;
-                                    match child_name_bindings.type_def {
-                                        Some(TypeNsDef {
-                                            module_def: Some(module_def),
-                                            _
-                                        }) => {
-                                            // We already have a module. This
-                                            // is OK.
-                                            type_module = module_def;
-
-                                            // Mark it as an impl module if
-                                            // necessary.
-                                            type_module.kind = ImplModuleKind;
-                                        }
-                                        Some(_) | None => {
-                                            let parent_link =
-                                                self.get_parent_link(
-                                                    new_parent, final_ident);
-                                            child_name_bindings.define_module(
-                                                Public,
-                                                parent_link,
-                                                Some(def),
-                                                ImplModuleKind,
-                                                dummy_sp());
-                                            type_module =
-                                                child_name_bindings.
-                                                    get_module();
-                                        }
+                                        // Mark it as an impl module if
+                                        // necessary.
+                                        type_module.kind = ImplModuleKind;
                                     }
-
-                                    // Add each static method to the module.
-                                    let new_parent = ModuleReducedGraphParent(
-                                        type_module);
-                                    for static_method_info in static_methods.iter() {
-                                        let ident = static_method_info.ident;
-                                        debug!("(building reduced graph for \
-                                                 external crate) creating \
-                                                 static method '%s'",
-                                               self.session.str_of(ident));
-
-                                        let (method_name_bindings, _) =
-                                            self.add_child(
-                                                ident,
-                                                new_parent,
-                                                OverwriteDuplicates,
-                                                dummy_sp());
-                                        let def = def_fn(
-                                            static_method_info.def_id,
-                                            static_method_info.purity);
-                                        method_name_bindings.define_value(
-                                            Public, def, dummy_sp());
+                                    Some(_) | None => {
+                                        let parent_link =
+                                            self.get_parent_link(new_parent,
+                                                                 final_ident);
+                                        child_name_bindings.define_module(
+                                            Public,
+                                            parent_link,
+                                            Some(def),
+                                            ImplModuleKind,
+                                            true,
+                                            dummy_sp());
+                                        type_module =
+                                            child_name_bindings.
+                                                get_module();
                                     }
                                 }
 
-                                // Otherwise, do nothing.
-                                Some(_) | None => {}
+                                // Add each static method to the module.
+                                let new_parent =
+                                    ModuleReducedGraphParent(type_module);
+                                for static_method_info in
+                                        static_methods.iter() {
+                                    let ident = static_method_info.ident;
+                                    debug!("(building reduced graph for \
+                                             external crate) creating \
+                                             static method '%s'",
+                                           self.session.str_of(ident));
+
+                                    let (method_name_bindings, _) =
+                                        self.add_child(ident,
+                                                       new_parent,
+                                                       OverwriteDuplicates,
+                                                       dummy_sp());
+                                    let def = def_fn(
+                                        static_method_info.def_id,
+                                        static_method_info.purity);
+                                    method_name_bindings.define_value(
+                                        Public,
+                                        def,
+                                        dummy_sp());
+                                }
                             }
+
+                            // Otherwise, do nothing.
+                            Some(_) | None => {}
                         }
                     }
                 }
-                dl_field => {
-                    debug!("(building reduced graph for external crate) \
-                            ignoring field");
-                }
             }
-            true
+            dl_field => {
+                debug!("(building reduced graph for external crate) \
+                        ignoring field");
+            }
+        }
+    }
+
+    /// Builds the reduced graph rooted at the given external module.
+    fn populate_external_module(@mut self, module: @mut Module) {
+        debug!("(populating external module) attempting to populate %s",
+               self.module_to_str(module));
+
+        let def_id = match module.def_id {
+            None => {
+                debug!("(populating external module) ... no def ID!");
+                return
+            }
+            Some(def_id) => def_id,
         };
+
+        do csearch::each_child_of_item(self.session.cstore, def_id)
+                |def_like, child_ident| {
+            debug!("(populating external module) ... found ident: %s",
+                   token::ident_to_str(&child_ident));
+            self.build_reduced_graph_for_external_crate_def(module,
+                                                            def_like,
+                                                            child_ident)
+        }
+        module.populated = true
+    }
+
+    /// Ensures that the reduced graph rooted at the given external module
+    /// is built, building it if it is not.
+    fn populate_module_if_necessary(@mut self, module: @mut Module) {
+        if !module.populated {
+            self.populate_external_module(module)
+        }
+        assert!(module.populated)
+    }
+
+    /// Builds the reduced graph rooted at the 'use' directive for an external
+    /// crate.
+    pub fn build_reduced_graph_for_external_crate(@mut self,
+                                                  root: @mut Module) {
+        do csearch::each_top_level_item_of_crate(self.session.cstore,
+                                                 root.def_id.unwrap().crate)
+                |def_like, ident| {
+            self.build_reduced_graph_for_external_crate_def(root,
+                                                            def_like,
+                                                            ident)
+        }
     }
 
     /// Creates and adds an import directive to the given module.
@@ -2043,6 +2049,7 @@ impl Resolver {
                self.module_to_str(module_));
         self.resolve_imports_for_module(module_);
 
+        self.populate_module_if_necessary(module_);
         for (_, &child_node) in module_.children.iter() {
             match child_node.get_module_if_available() {
                 None => {
@@ -2107,6 +2114,14 @@ impl Resolver {
             result.push_str(self.session.str_of(*ident));
         };
         return result;
+    }
+
+    fn path_idents_to_str(@mut self, path: &Path) -> ~str {
+        let identifiers: ~[ast::ident] = path.segments
+                                             .iter()
+                                             .map(|seg| seg.identifier)
+                                             .collect();
+        self.idents_to_str(identifiers)
     }
 
     pub fn import_directive_subclass_to_str(@mut self,
@@ -2260,6 +2275,7 @@ impl Resolver {
         let mut type_result = UnknownResult;
 
         // Search for direct children of the containing module.
+        self.populate_module_if_necessary(containing_module);
         match containing_module.children.find(&source) {
             None => {
                 // Continue.
@@ -2578,6 +2594,7 @@ impl Resolver {
         };
 
         // Add all children from the containing module.
+        self.populate_module_if_necessary(containing_module);
         for (&ident, name_bindings) in containing_module.children.iter() {
             merge_import_resolution(ident, *name_bindings);
         }
@@ -2811,6 +2828,7 @@ impl Resolver {
 
         // The current module node is handled specially. First, check for
         // its immediate children.
+        self.populate_module_if_necessary(module_);
         match module_.children.find(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
@@ -3065,6 +3083,7 @@ impl Resolver {
                self.module_to_str(module_));
 
         // First, check the direct children of the module.
+        self.populate_module_if_necessary(module_);
         match module_.children.find(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
@@ -3154,6 +3173,7 @@ impl Resolver {
         }
 
         // Descend into children and anonymous children.
+        self.populate_module_if_necessary(module_);
         for (_, &child_node) in module_.children.iter() {
             match child_node.get_module_if_available() {
                 None => {
@@ -3212,6 +3232,7 @@ impl Resolver {
         }
 
         self.record_exports_for_module(module_);
+        self.populate_module_if_necessary(module_);
 
         for (_, &child_name_bindings) in module_.children.iter() {
             match child_name_bindings.get_module_if_available() {
@@ -3325,6 +3346,7 @@ impl Resolver {
                 // Nothing to do.
             }
             Some(name) => {
+                self.populate_module_if_necessary(orig_module);
                 match orig_module.children.find(&name) {
                     None => {
                         debug!("!!! (with scope) didn't find `%s` in `%s`",
@@ -3841,8 +3863,7 @@ impl Resolver {
                                    reference_type: TraitReferenceType) {
         match self.resolve_path(id, &trait_reference.path, TypeNS, true, visitor) {
             None => {
-                let path_str = self.idents_to_str(trait_reference.path.idents);
-
+                let path_str = self.path_idents_to_str(&trait_reference.path);
                 let usage_str = match reference_type {
                     TraitBoundingTypeParameter => "bound type parameter with",
                     TraitImplementation        => "implement",
@@ -3864,7 +3885,7 @@ impl Resolver {
                           generics: &Generics,
                           fields: &[@struct_field],
                           visitor: &mut ResolveVisitor) {
-        let mut ident_map = HashMap::new::<ast::ident, @struct_field>();
+        let mut ident_map: HashMap<ast::ident,@struct_field> = HashMap::new();
         for &field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
@@ -4141,8 +4162,8 @@ impl Resolver {
                 let mut result_def = None;
 
                 // First, check to see whether the name is a primitive type.
-                if path.idents.len() == 1 {
-                    let name = *path.idents.last();
+                if path.segments.len() == 1 {
+                    let name = path.segments.last().identifier;
 
                     match self.primitive_type_table
                             .primitive_types
@@ -4151,6 +4172,22 @@ impl Resolver {
                         Some(&primitive_type) => {
                             result_def =
                                 Some(def_prim_ty(primitive_type));
+
+                            if path.segments
+                                   .iter()
+                                   .any(|s| s.lifetime.is_some()) {
+                                self.session.span_err(path.span,
+                                                      "lifetime parameters \
+                                                       are not allowed on \
+                                                       this type")
+                            } else if path.segments
+                                          .iter()
+                                          .any(|s| s.types.len() > 0) {
+                                self.session.span_err(path.span,
+                                                      "type parameters are \
+                                                       not allowed on this \
+                                                       type")
+                            }
                         }
                         None => {
                             // Continue.
@@ -4160,12 +4197,17 @@ impl Resolver {
 
                 match result_def {
                     None => {
-                        match self.resolve_path(ty.id, path, TypeNS, true, visitor) {
+                        match self.resolve_path(ty.id,
+                                                path,
+                                                TypeNS,
+                                                true,
+                                                visitor) {
                             Some(def) => {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
-                                       self.session.str_of(
-                                            *path.idents.last()),
+                                       self.session.str_of(path.segments
+                                                               .last()
+                                                               .identifier),
                                        def);
                                 result_def = Some(def);
                             }
@@ -4174,9 +4216,7 @@ impl Resolver {
                             }
                         }
                     }
-                    Some(_) => {
-                        // Continue.
-                    }
+                    Some(_) => {}   // Continue.
                 }
 
                 match result_def {
@@ -4184,14 +4224,15 @@ impl Resolver {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `%s` \
                                 (id %d)",
-                               self.idents_to_str(path.idents),
+                               self.path_idents_to_str(path),
                                path_id);
                         self.record_def(path_id, def);
                     }
                     None => {
                         self.resolve_error
-                            (ty.span, fmt!("use of undeclared type name `%s`",
-                                           self.idents_to_str(path.idents)));
+                            (ty.span,
+                             fmt!("use of undeclared type name `%s`",
+                                  self.path_idents_to_str(path)))
                     }
                 }
 
@@ -4230,7 +4271,7 @@ impl Resolver {
         do walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, ref path, _)
-                        if !path.global && path.idents.len() == 1 => {
+                        if !path.global && path.segments.len() == 1 => {
 
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant or unit-like struct
@@ -4241,7 +4282,7 @@ impl Resolver {
                     // such a value is simply disallowed (since it's rarely
                     // what you want).
 
-                    let ident = path.idents[0];
+                    let ident = path.segments[0].identifier;
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def)
@@ -4351,7 +4392,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map(|seg| seg.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4375,7 +4418,7 @@ impl Resolver {
                                 path.span,
                                 fmt!("`%s` is not an enum variant or constant",
                                      self.session.str_of(
-                                         *path.idents.last())));
+                                         path.segments.last().identifier)))
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4384,7 +4427,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4402,8 +4447,10 @@ impl Resolver {
                             self.resolve_error(
                                 path.span,
                                 fmt!("`%s` is not an enum variant, struct or const",
-                                     self.session.str_of(
-                                         *path.idents.last())));
+                                     self.session
+                                         .str_of(path.segments
+                                                     .last()
+                                                     .identifier)));
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4413,7 +4460,9 @@ impl Resolver {
                     }
 
                     // Check the types in the path pattern.
-                    for ty in path.types.iter() {
+                    for ty in path.segments
+                                  .iter()
+                                  .flat_map(|s| s.types.iter()) {
                         self.resolve_type(ty, visitor);
                     }
                 }
@@ -4448,7 +4497,7 @@ impl Resolver {
                             self.resolve_error(
                                 path.span,
                                 fmt!("`%s` does not name a structure",
-                                     self.idents_to_str(path.idents)));
+                                     self.path_idents_to_str(path)));
                         }
                     }
                 }
@@ -4510,7 +4559,7 @@ impl Resolver {
                         visitor: &mut ResolveVisitor)
                         -> Option<def> {
         // First, resolve the types.
-        for ty in path.types.iter() {
+        for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
             self.resolve_type(ty, visitor);
         }
 
@@ -4520,20 +4569,27 @@ impl Resolver {
                                                     namespace);
         }
 
-        let unqualified_def = self.resolve_identifier(
-            *path.idents.last(), namespace, check_ribs, path.span);
+        let unqualified_def = self.resolve_identifier(path.segments
+                                                          .last()
+                                                          .identifier,
+                                                      namespace,
+                                                      check_ribs,
+                                                      path.span);
 
-        if path.idents.len() > 1 {
-            let def = self.resolve_module_relative_path(
-                path, self.xray_context, namespace);
+        if path.segments.len() > 1 {
+            let def = self.resolve_module_relative_path(path,
+                                                        self.xray_context,
+                                                        namespace);
             match (def, unqualified_def) {
                 (Some(d), Some(ud)) if d == ud => {
                     self.session.add_lint(unnecessary_qualification,
-                                          id, path.span,
+                                          id,
+                                          path.span,
                                           ~"unnecessary qualification");
                 }
                 _ => ()
             }
+
             return def;
         }
 
@@ -4571,6 +4627,7 @@ impl Resolver {
                                                 xray: XrayFlag)
                                                 -> NameDefinition {
         // First, search children.
+        self.populate_module_if_necessary(containing_module);
         match containing_module.children.find(&name) {
             Some(child_name_bindings) => {
                 match (child_name_bindings.def_for_namespace(namespace),
@@ -4640,12 +4697,12 @@ impl Resolver {
 
     pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[ident] {
         let mut module_path_idents = ~[];
-        for (index, ident) in path.idents.iter().enumerate() {
-            if index == path.idents.len() - 1 {
+        for (index, segment) in path.segments.iter().enumerate() {
+            if index == path.segments.len() - 1 {
                 break;
             }
 
-            module_path_idents.push(*ident);
+            module_path_idents.push(segment.identifier);
         }
 
         return module_path_idents;
@@ -4681,7 +4738,7 @@ impl Resolver {
             }
         }
 
-        let name = *path.idents.last();
+        let name = path.segments.last().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
@@ -4749,7 +4806,7 @@ impl Resolver {
             }
         }
 
-        let name = *path.idents.last();
+        let name = path.segments.last().identifier;
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
@@ -4969,7 +5026,7 @@ impl Resolver {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `%s`",
-                               self.idents_to_str(path.idents));
+                               self.path_idents_to_str(path));
 
                         // First-class methods are not supported yet; error
                         // out here.
@@ -4989,8 +5046,7 @@ impl Resolver {
                         self.record_def(expr.id, def);
                     }
                     None => {
-                        let wrong_name = self.idents_to_str(
-                            path.idents);
+                        let wrong_name = self.path_idents_to_str(path);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.resolve_error(expr.span,
                                         fmt!("unresolved name `%s`. \
@@ -5066,7 +5122,7 @@ impl Resolver {
                         self.resolve_error(
                             path.span,
                             fmt!("`%s` does not name a structure",
-                                 self.idents_to_str(path.idents)));
+                                 self.path_idents_to_str(path)));
                     }
                 }
 
@@ -5236,7 +5292,9 @@ impl Resolver {
                 }
 
                 // Look for trait children.
-                for (_, &child_name_bindings) in search_module.children.iter() {
+                self.populate_module_if_necessary(search_module);
+                for (_, &child_name_bindings) in
+                        search_module.children.iter() {
                     match child_name_bindings.def_for_namespace(TypeNS) {
                         Some(def) => {
                             match def {
@@ -5435,6 +5493,7 @@ impl Resolver {
         debug!("Dump of module `%s`:", self.module_to_str(module_));
 
         debug!("Children:");
+        self.populate_module_if_necessary(module_);
         for (&name, _) in module_.children.iter() {
             debug!("* %s", self.session.str_of(name));
         }
