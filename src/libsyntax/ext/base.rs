@@ -160,6 +160,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_tt(
                                 ext::concat_idents::expand_syntax_ext));
+    syntax_expanders.insert(intern("upcase_ident"),
+                            builtin_normal_tt(
+                                ext::upcase_ident::expand_syntax_ext));
     syntax_expanders.insert(intern(&"log_syntax"),
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
