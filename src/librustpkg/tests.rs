@@ -695,7 +695,8 @@ fn package_script_with_default_build() {
 
 #[test]
 fn rustpkg_build_no_arg() {
-    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_build_no_arg").expect("rustpkg_build_no_arg failed");
+    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_build_no_arg").expect("rustpkg_build_no_arg failed")
+              .push(".rust");
     let package_dir = tmp.push("src").push("foo");
     assert!(os::mkdir_recursive(&package_dir, U_RWX));
 
@@ -709,7 +710,8 @@ fn rustpkg_build_no_arg() {
 #[test]
 fn rustpkg_install_no_arg() {
     let tmp = mkdtemp(&os::tmpdir(),
-                      "rustpkg_install_no_arg").expect("rustpkg_install_no_arg failed");
+                      "rustpkg_install_no_arg").expect("rustpkg_install_no_arg failed")
+              .push(".rust");
     let package_dir = tmp.push("src").push("foo");
     assert!(os::mkdir_recursive(&package_dir, U_RWX));
     writeFile(&package_dir.push("lib.rs"),
@@ -721,7 +723,8 @@ fn rustpkg_install_no_arg() {
 
 #[test]
 fn rustpkg_clean_no_arg() {
-    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_clean_no_arg").expect("rustpkg_clean_no_arg failed");
+    let tmp = mkdtemp(&os::tmpdir(), "rustpkg_clean_no_arg").expect("rustpkg_clean_no_arg failed")
+              .push(".rust");
     let package_dir = tmp.push("src").push("foo");
     assert!(os::mkdir_recursive(&package_dir, U_RWX));
 
