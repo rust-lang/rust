@@ -54,10 +54,10 @@ pub fn run(lib_path: &str,
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).unwrap();
 
     for input in input.iter() {
-        proc.input().write_str(*input);
+        proc.input().write(input.as_bytes());
     }
     let output = proc.finish_with_output();
 

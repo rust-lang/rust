@@ -11,8 +11,8 @@
 use prelude::*;
 use ptr::null;
 use libc::c_void;
-use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf,
-             status_to_maybe_uv_error_with_loop, UvError};
+use rt::uv::{Request, NativeHandle, Loop, FsCallback, Buf, UvError};
+use rt::uv::status_to_maybe_uv_error;
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use super::super::io::support::PathLike;
@@ -62,7 +62,7 @@ impl FsRequest {
     pub fn open_sync<P: PathLike>(loop_: &Loop, path: &P, flags: int, mode: int)
           -> Result<int, UvError> {
         let result = FsRequest::open_common(loop_, path, flags, mode, None);
-        sync_cleanup(loop_, result)
+        sync_cleanup(result)
     }
 
     fn unlink_common<P: PathLike>(loop_: &Loop, path: &P, cb: Option<FsCallback>) -> int {
@@ -83,11 +83,11 @@ impl FsRequest {
     }
     pub fn unlink<P: PathLike>(loop_: &Loop, path: &P, cb: FsCallback) {
         let result = FsRequest::unlink_common(loop_, path, Some(cb));
-        sync_cleanup(loop_, result);
+        sync_cleanup(result);
     }
     pub fn unlink_sync<P: PathLike>(loop_: &Loop, path: &P) -> Result<int, UvError> {
         let result = FsRequest::unlink_common(loop_, path, None);
-        sync_cleanup(loop_, result)
+        sync_cleanup(result)
     }
 
     pub fn install_req_data(&self, cb: Option<FsCallback>) {
@@ -139,9 +139,8 @@ impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
         match self { &FsRequest(ptr) => ptr }
     }
 }
-    fn sync_cleanup(loop_: &Loop, result: int)
-          -> Result<int, UvError> {
-        match status_to_maybe_uv_error_with_loop(loop_.native_handle(), result as i32) {
+    fn sync_cleanup(result: int) -> Result<int, UvError> {
+        match status_to_maybe_uv_error(result as i32) {
             Some(err) => Err(err),
             None => Ok(result)
         }
@@ -184,7 +183,7 @@ impl FileDescriptor {
     pub fn write_sync(&mut self, loop_: &Loop, buf: Buf, offset: i64)
           -> Result<int, UvError> {
         let result = self.write_common(loop_, buf, offset, None);
-        sync_cleanup(loop_, result)
+        sync_cleanup(result)
     }
 
     fn read_common(&mut self, loop_: &Loop, buf: Buf,
@@ -212,7 +211,7 @@ impl FileDescriptor {
     pub fn read_sync(&mut self, loop_: &Loop, buf: Buf, offset: i64)
           -> Result<int, UvError> {
         let result = self.read_common(loop_, buf, offset, None);
-        sync_cleanup(loop_, result)
+        sync_cleanup(result)
     }
 
     fn close_common(self, loop_: &Loop, cb: Option<FsCallback>) -> int {
@@ -234,12 +233,11 @@ impl FileDescriptor {
     }
     pub fn close_sync(self, loop_: &Loop) -> Result<int, UvError> {
         let result = self.close_common(loop_, None);
-        sync_cleanup(loop_, result)
+        sync_cleanup(result)
     }
 }
 extern fn compl_cb(req: *uv_fs_t) {
     let mut req: FsRequest = NativeHandle::from_native_handle(req);
-    let loop_ = req.get_loop();
     // pull the user cb out of the req data
     let cb = {
         let data = req.get_req_data();
@@ -250,8 +248,7 @@ extern fn compl_cb(req: *uv_fs_t) {
     // in uv_fs_open calls, the result will be the fd in the
     // case of success, otherwise it's -1 indicating an error
     let result = req.get_result();
-    let status = status_to_maybe_uv_error_with_loop(
-        loop_.native_handle(), result);
+    let status = status_to_maybe_uv_error(result);
     // we have a req and status, call the user cb..
     // only giving the user a ref to the FsRequest, as we
     // have to clean it up, afterwards (and they aren't really
