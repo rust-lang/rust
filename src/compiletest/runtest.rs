@@ -551,7 +551,7 @@ fn exec_compiled_test(config: &config, props: &TestProps,
 
         ~"arm-linux-androideabi" => {
             if (config.adb_device_status) {
-                _arm_exec_compiled_test(config, props, testfile)
+                _arm_exec_compiled_test(config, props, testfile, env)
             } else {
                 _dummy_exec_compiled_test(config, props, testfile)
             }
@@ -777,7 +777,7 @@ stderr:\n\
 }
 
 fn _arm_exec_compiled_test(config: &config, props: &TestProps,
-                      testfile: &Path) -> ProcRes {
+                      testfile: &Path, env: ~[(~str, ~str)]) -> ProcRes {
 
     let args = make_run_args(config, props, testfile);
     let cmdline = make_cmdline("", args.prog, args.args);
@@ -803,6 +803,9 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // run test via adb_run_wrapper
     runargs.push(~"shell");
+    for (key, val) in env.move_iter() {
+        runargs.push(fmt!("%s=%s", key, val));
+    }
     runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
     runargs.push(fmt!("%s", config.adb_test_dir));
     runargs.push(fmt!("%s", prog_short));
