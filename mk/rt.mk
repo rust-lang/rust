@@ -164,41 +164,46 @@ LIBUV_DEPS := $$(wildcard \
 endif
 
 LIBUV_GYP := $$(S)src/libuv/build/gyp
-LIBUV_MAKEFILE := $$(S)src/libuv/out/Makefile
+LIBUV_MAKEFILE_$(1)_$(2) := $$(CFG_BUILD_DIR)rt/$(1)/stage$(2)/libuv/Makefile
 LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
 		uv_dtrace_header.target.mk uv_dtrace_provider.target.mk
 
+$$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_GYP)
+	(cd $(S)src/libuv/ && \
+	 ./gyp_uv -f make -Dtarget_arch=$$(HOST_$(1)) -D ninja \
+	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+
 # XXX: Shouldn't need platform-specific conditions here
 ifdef CFG_WINDOWSY_$(1)
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE)
-	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		builddir="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
-		OS=mingw \
-		BUILDTYPE=Release \
-		NO_LOAD="$$(LIBUV_NO_LOAD)" \
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
+	$$(Q)rm -f $$(S)src/libuv/libuv.a
+	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
+	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE)
-	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)_$(2))
+	$$(Q)$$(MAKE) -C $$(@D) \
 		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
-		builddir="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
 		host=android OS=linux \
+		builddir="." \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 else
-$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE)
-	$$(Q)$$(MAKE) -C $$(S)src/libuv/out \
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)_$(2))
+	$$(Q)$$(MAKE) -C $$(@D) \
 		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
-		builddir="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
+		builddir="." \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
@@ -260,13 +265,6 @@ endif
 
 endef
 
-$(LIBUV_GYP):
-	mkdir -p $(S)src/libuv/build
-	git clone https://git.chromium.org/external/gyp.git $(S)src/libuv/build/gyp
-
-$(LIBUV_MAKEFILE): $(LIBUV_GYP)
-	(cd $(S)src/libuv/ && ./gyp_uv -f make)
-
 # Instantiate template for all stages
 $(foreach stage,$(STAGES), \
 	$(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -275,6 +273,3 @@ $(foreach stage,$(STAGES), \
 $(LIBUV_GYP):
 	mkdir -p $(S)src/libuv/build
 	git clone https://git.chromium.org/external/gyp.git $(S)src/libuv/build/gyp
-
-$(LIBUV_MAKEFILE): $(LIBUV_GYP)
-	(cd $(S)src/libuv/ && ./gyp_uv -f make)
