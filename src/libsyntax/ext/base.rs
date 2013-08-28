@@ -161,6 +161,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                             builtin_normal_tt_no_ctxt(ext::ifmt::expand_write));
     syntax_expanders.insert(intern(&"writeln"),
                             builtin_normal_tt_no_ctxt(ext::ifmt::expand_writeln));
+    syntax_expanders.insert(intern(&"format_args"),
+                            builtin_normal_tt_no_ctxt(ext::ifmt::expand_format_args));
     syntax_expanders.insert(
         intern(&"auto_encode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
