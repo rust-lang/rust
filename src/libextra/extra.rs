@@ -70,6 +70,10 @@ pub mod treemap;
 mod cryptoutil;
 #[path="crypto/digest.rs"]
 pub mod digest;
+#[path="crypto/hmac.rs"]
+pub mod hmac;
+#[path="crypto/mac.rs"]
+pub mod mac;
 #[path="crypto/md5.rs"]
 pub mod md5;
 #[path="crypto/sha1.rs"]
