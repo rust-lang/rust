@@ -92,7 +92,7 @@ trait HomingIO {
             // go home
             let old_home = Cell::new_empty();
             let old_home_ptr = &old_home;
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 // get the old home first
                 do task.wake().map_move |mut task| {
@@ -102,11 +102,11 @@ trait HomingIO {
             }
 
             // do IO
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             let a = io_sched(self, scheduler);
 
             // unhome home
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |scheduler, task| {
                 do task.wake().map_move |mut task| {
                     task.give_home(old_home.take());
@@ -442,7 +442,7 @@ impl IoFactory for UvIoFactory {
                             do stream.close {
                                 let res = Err(uv_error_to_io_error(status.unwrap()));
                                 unsafe { (*result_cell_ptr).put_back(res); }
-                                let scheduler = Local::take::<Scheduler>();
+                                let scheduler: ~Scheduler = Local::take();
                                 scheduler.resume_blocked_task_immediately(task_cell.take());
                             }
                         }
@@ -539,7 +539,7 @@ impl IoFactory for UvIoFactory {
                                            IoError>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
@@ -553,12 +553,12 @@ impl IoFactory for UvIoFactory {
                             loop_, fd, true, home) as ~RtioFileStream;
                         let res = Ok(fs);
                         unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler = Local::take::<Scheduler>();
+                        let scheduler: ~Scheduler = Local::take();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     } else {
                         let res = Err(uv_error_to_io_error(err.unwrap()));
                         unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler = Local::take::<Scheduler>();
+                        let scheduler: ~Scheduler = Local::take();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     }
                 };
@@ -573,7 +573,7 @@ impl IoFactory for UvIoFactory {
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
-            let scheduler = Local::take::<Scheduler>();
+            let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 let path = path_cell.take();
@@ -583,7 +583,7 @@ impl IoFactory for UvIoFactory {
                         Some(err) => Err(uv_error_to_io_error(err))
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
             };
@@ -1154,7 +1154,7 @@ impl UvFileStream {
                         Some(err) => Err(uv_error_to_io_error(err))
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
             };
@@ -1175,7 +1175,7 @@ impl UvFileStream {
                         Some(err) => Err(uv_error_to_io_error(err))
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
-                    let scheduler = Local::take::<Scheduler>();
+                    let scheduler: ~Scheduler = Local::take();
                     scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
             };
@@ -1208,7 +1208,7 @@ impl Drop for UvFileStream {
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     let task_cell = Cell::new(task);
                     do self_.fd.close(&self.loop_) |_,_| {
-                        let scheduler = Local::take::<Scheduler>();
+                        let scheduler: ~Scheduler = Local::take();
                         scheduler.resume_blocked_task_immediately(task_cell.take());
                     };
                 };
@@ -1776,7 +1776,7 @@ fn file_test_uvio_full_simple_impl() {
     use path::Path;
     use rt::io::{Open, Create, ReadWrite, Read};
     unsafe {
-        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
         let write_val = "hello uvio!";
         let path = "./tmp/file_test_uvio_full.txt";
         {
@@ -1810,7 +1810,7 @@ fn uvio_naive_print(input: &str) {
     use str::StrSlice;
     unsafe {
         use libc::{STDOUT_FILENO};
-        let io = Local::unsafe_borrow::<IoFactoryObject>();
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
         {
             let mut fd = (*io).fs_from_raw_fd(STDOUT_FILENO, false);
             let write_buf = input.as_bytes();

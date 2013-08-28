@@ -175,7 +175,7 @@ impl Scheduler {
         sched.run();
 
         // Close the idle callback.
-        let mut sched = Local::take::<Scheduler>();
+        let mut sched: ~Scheduler = Local::take();
         sched.idle_callback.get_mut_ref().close();
         // Make one go through the loop to run the close callback.
         sched.run();
@@ -581,7 +581,7 @@ impl Scheduler {
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         unsafe {
-            let task: *mut Task = Local::unsafe_borrow::<Task>();
+            let task: *mut Task = Local::unsafe_borrow();
             (*task).sched.get_mut_ref().run_cleanup_job();
 
             // Must happen after running the cleanup job (of course).

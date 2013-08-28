@@ -23,7 +23,7 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
-use syntax::ast::m_mutbl;
+use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -488,7 +488,6 @@ impl<'self> CheckLoanCtxt<'self> {
                     mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
                     mc::cat_static_item(*) |
                     mc::cat_deref(_, _, mc::gc_ptr(_)) |
-                    mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
                     mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) => {
                         // Aliasability is independent of base cmt
                         match cmt.freely_aliasable() {
