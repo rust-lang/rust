@@ -211,6 +211,8 @@ impl Digest for Md5 {
     }
 
     fn output_bits(&self) -> uint { 128 }
+
+    fn block_size(&self) -> uint { 64 }
 }
 
 

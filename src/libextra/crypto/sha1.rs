@@ -172,6 +172,7 @@ impl Digest for Sha1 {
     fn input(&mut self, msg: &[u8]) { add_input(self, msg); }
     fn result(&mut self, out: &mut [u8]) { return mk_result(self, out); }
     fn output_bits(&self) -> uint { 160 }
+    fn block_size(&self) -> uint { 64 }
 }
 
 #[cfg(test)]

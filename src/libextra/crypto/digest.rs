@@ -46,6 +46,11 @@ pub trait Digest {
     fn output_bits(&self) -> uint;
 
     /**
+     * Get the block size in bytes.
+     */
+    fn block_size(&self) -> uint;
+
+    /**
      * Convenience function that feeds a string into a digest.
      *
      * # Arguments
