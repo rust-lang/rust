@@ -14,6 +14,7 @@ pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
+use context::Ctx;
 
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
@@ -51,18 +52,23 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     debug!("Checking in src dir of %s for %s",
            workspace.to_str(), pkgid.to_str());
+    workspace_contains_package_id_(pkgid, workspace, |p| { p.push("src") }).is_some()
+}
 
-    let src_dir = workspace.push("src");
+pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
+// Returns the directory it was actually found in
+             workspace_to_src_dir: &fn(&Path) -> Path) -> Option<Path> {
+    let src_dir = workspace_to_src_dir(workspace);
 
-    let mut found = false;
+    let mut found = None;
     do os::walk_dir(&src_dir) |p| {
         debug!("=> p = %s", p.to_str());
 
-        let was_found = os::path_is_dir(p) && {
+        if os::path_is_dir(p) {
             debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
                    src_dir.push_rel(&pkgid.path).to_str());
 
-            *p == src_dir.push_rel(&pkgid.path) || {
+            if *p == src_dir.push_rel(&pkgid.path) || {
                 let pf = p.filename();
                 do pf.iter().any |pf| {
                     let g = pf.to_str();
@@ -76,16 +82,15 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
                         }
                     }
                 }
+            } {
+                found = Some(p.clone());
             }
-        };
 
-        if was_found {
-            found = true
-        }
+        };
         true
     };
 
-    debug!(if found { fmt!("Found %s in %s", pkgid.to_str(), workspace.to_str()) }
+    debug!(if found.is_some() { fmt!("Found %s in %s", pkgid.to_str(), workspace.to_str()) }
            else     { fmt!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str()) });
     found
 }
@@ -123,8 +128,7 @@ pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<
         Some(result)
     }
     else {
-        // This is not an error, but it's worth logging it
-        error!(fmt!("built_executable_in_workspace: %s does not exist", result.to_str()));
+        debug!("built_executable_in_workspace: %s does not exist", result.to_str());
         None
     }
 }
@@ -164,7 +168,7 @@ pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Pat
 
 /// Does the actual searching stuff
 pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Option<Path> {
-    // NOTE: this could break once we're handling multiple versions better... want a test for it
+    // This could break once we're handling multiple versions better -- I should add a test for it
     library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib", &NoVersion)
 }
 
@@ -246,8 +250,8 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
     } // for
 
     if result_filename.is_none() {
-        warn(fmt!("library_in_workspace didn't find a library in %s for %s",
-                  dir_to_search.to_str(), short_name));
+        debug!("warning: library_in_workspace didn't find a library in %s for %s",
+                  dir_to_search.to_str(), short_name);
     }
 
     // Return the filename that matches, which we now know exists
@@ -391,4 +395,26 @@ pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
              pkgid.to_str(), workspace.to_str()));
     }
 
+}
+
+fn dir_has_file(dir: &Path, file: &str) -> bool {
+    assert!(dir.is_absolute());
+    os::path_exists(&dir.push(file))
+}
+
+pub fn find_dir_using_rust_path_hack(cx: &Ctx, p: &PkgId) -> Option<Path> {
+    if !cx.use_rust_path_hack {
+        return None;
+    }
+    let rp = rust_path();
+    for dir in rp.iter() {
+        debug!("In find_dir_using_rust_path_hack: checking dir %s", dir.to_str());
+        if dir_has_file(dir, "lib.rs") || dir_has_file(dir, "main.rs")
+            || dir_has_file(dir, "test.rs") || dir_has_file(dir, "bench.rs") {
+            debug!("Did find id %s in dir %s", p.to_str(), dir.to_str());
+            return Some(dir.clone());
+        }
+        debug!("Didn't find id %s in dir %s", p.to_str(), dir.to_str())
+    }
+    None
 }

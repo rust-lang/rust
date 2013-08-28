@@ -15,6 +15,11 @@ use std::hashmap::HashMap;
 use std::os;
 
 pub struct Ctx {
+    // If use_rust_path_hack is true, rustpkg searches for sources
+    // in *package* directories that are in the RUST_PATH (for example,
+    // FOO/src/bar-0.1 instead of FOO). The flag doesn't affect where
+    // rustpkg stores build artifacts.
+    use_rust_path_hack: bool,
     // Sysroot -- if this is None, uses rustc filesearch's
     // idea of the default
     sysroot_opt: Option<@Path>,
