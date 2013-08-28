@@ -105,7 +105,7 @@ pub mod fileinput;
 pub mod flate;
 pub mod hex;
 pub mod uuid;
-
+pub mod metrics;
 
 #[cfg(unicode)]
 mod unicode;
