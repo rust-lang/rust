@@ -170,7 +170,7 @@ LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
 
 $$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_GYP)
 	(cd $(S)src/libuv/ && \
-	 ./gyp_uv -f make -Dtarget_arch=$$(HOST_$(1)) -D ninja \
+	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(HOST_$(1)) -D ninja \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
 
 # XXX: Shouldn't need platform-specific conditions here
