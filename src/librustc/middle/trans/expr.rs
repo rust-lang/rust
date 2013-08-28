@@ -1066,7 +1066,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::def) -> Datum {
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
             take_local(bcx, bcx.fcx.lllocals, nid)
         }
-        ast::def_self(nid, _) => {
+        ast::def_self(nid) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
                 Some(ref self_info) => *self_info,
                 None => {

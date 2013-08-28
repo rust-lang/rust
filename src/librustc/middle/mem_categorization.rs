@@ -59,18 +59,17 @@ use syntax::print::pprust;
 
 #[deriving(Eq)]
 pub enum categorization {
-    cat_rvalue(ast::NodeId),          // temporary val, argument is its scope
+    cat_rvalue(ast::NodeId),           // temporary val, argument is its scope
     cat_static_item,
-    cat_implicit_self,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from &fn
-    cat_local(ast::NodeId),           // local variable
-    cat_arg(ast::NodeId),             // formal argument
-    cat_deref(cmt, uint, ptr_kind),    // deref of a ptr
+    cat_local(ast::NodeId),            // local variable
+    cat_arg(ast::NodeId),              // formal argument
+    cat_deref(cmt, uint, PointerKind), // deref of a ptr
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (*)
-    cat_discr(cmt, ast::NodeId),      // match discriminant (see preserve())
-    cat_self(ast::NodeId),            // explicit `self`
+    cat_discr(cmt, ast::NodeId),       // match discriminant (see preserve())
+    cat_self(ast::NodeId),             // explicit `self`
 
     // (*) downcast is only required if the enum has more than one variant
 }
@@ -82,8 +81,8 @@ pub struct CopiedUpvar {
 }
 
 // different kinds of pointers:
-#[deriving(Eq)]
-pub enum ptr_kind {
+#[deriving(Eq, IterBytes)]
+pub enum PointerKind {
     uniq_ptr,
     gc_ptr(ast::mutability),
     region_ptr(ast::mutability, ty::Region),
@@ -147,7 +146,7 @@ pub type cmt = @cmt_;
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
 pub enum deref_kind {
-    deref_ptr(ptr_kind),
+    deref_ptr(PointerKind),
     deref_interior(InteriorKind),
 }
 
@@ -493,17 +492,11 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_self(self_id, is_implicit) => {
-            let cat = if is_implicit {
-                cat_implicit_self
-            } else {
-                cat_self(self_id)
-            };
-
+          ast::def_self(self_id) => {
             @cmt_ {
                 id:id,
                 span:span,
-                cat:cat,
+                cat:cat_self(self_id),
                 mutbl: McImmutable,
                 ty:expr_ty
             }
@@ -1016,9 +1009,6 @@ impl mem_categorization_ctxt {
           cat_static_item => {
               ~"static item"
           }
-          cat_implicit_self => {
-              ~"self reference"
-          }
           cat_copied_upvar(_) => {
               ~"captured outer variable in a heap closure"
           }
@@ -1121,7 +1111,6 @@ impl cmt_ {
         match self.cat {
             cat_rvalue(*) |
             cat_static_item |
-            cat_implicit_self |
             cat_copied_upvar(*) |
             cat_local(*) |
             cat_self(*) |
@@ -1146,9 +1135,10 @@ impl cmt_ {
     }
 
     pub fn freely_aliasable(&self) -> Option<AliasableReason> {
-        //! True if this lvalue resides in an area that is
-        //! freely aliasable, meaning that rustc cannot track
-        //! the alias//es with precision.
+        /*!
+         * Returns `Some(_)` if this lvalue represents a freely aliasable
+         * pointer type.
+         */
 
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
@@ -1166,8 +1156,7 @@ impl cmt_ {
             }
 
             cat_copied_upvar(CopiedUpvar {onceness: ast::Many, _}) |
-            cat_static_item(*) |
-            cat_implicit_self(*) => {
+            cat_static_item(*) => {
                 Some(AliasableOther)
             }
 
@@ -1180,12 +1169,12 @@ impl cmt_ {
                 Some(AliasableBorrowed(m))
             }
 
-            cat_downcast(b) |
-            cat_stack_upvar(b) |
-            cat_deref(b, _, uniq_ptr) |
-            cat_interior(b, _) |
-            cat_discr(b, _) => {
-                b.freely_aliasable()
+            cat_downcast(*) |
+            cat_stack_upvar(*) |
+            cat_deref(_, _, uniq_ptr) |
+            cat_interior(*) |
+            cat_discr(*) => {
+                None
             }
         }
     }
@@ -1205,7 +1194,6 @@ impl Repr for categorization {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             cat_static_item |
-            cat_implicit_self |
             cat_rvalue(*) |
             cat_copied_upvar(*) |
             cat_local(*) |
@@ -1233,7 +1221,7 @@ impl Repr for categorization {
     }
 }
 
-pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
+pub fn ptr_sigil(ptr: PointerKind) -> ~str {
     match ptr {
         uniq_ptr => ~"~",
         gc_ptr(_) => ~"@",
