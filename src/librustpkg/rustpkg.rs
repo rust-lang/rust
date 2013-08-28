@@ -22,12 +22,7 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::result;
-use std::io;
-use std::os;
-use std::run;
-use std::str;
-
+use std::{io, os, result, run, str};
 pub use std::path::Path;
 use std::hashmap::HashMap;
 
@@ -173,7 +168,8 @@ impl<'self> PkgScript<'self> {
 pub trait CtxMethods {
     fn run(&self, cmd: &str, args: ~[~str]);
     fn do_cmd(&self, _cmd: &str, _pkgname: &str);
-    fn build(&self, workspace: &Path, pkgid: &PkgId);
+    /// Returns the destination workspace
+    fn build(&self, workspace: &Path, pkgid: &PkgId) -> Path;
     fn clean(&self, workspace: &Path, id: &PkgId);
     fn info(&self);
     fn install(&self, workspace: &Path, id: &PkgId);
@@ -191,15 +187,19 @@ impl CtxMethods for Ctx {
             "build" => {
                 if args.len() < 1 {
                     match cwd_to_workspace() {
-                        None => { usage::build(); return }
-                        Some((ws, pkgid)) => self.build(&ws, &pkgid)
+                        None if self.use_rust_path_hack => {
+                            let cwd = os::getcwd();
+                            self.build(&cwd, &PkgId::new(cwd.components[cwd.components.len() - 1]));
+                        }
+                        None => { usage::build(); return; }
+                        Some((ws, pkgid)) => { self.build(&ws, &pkgid); }
                     }
                 }
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
                     let pkgid = PkgId::new(args[0].clone());
-                    do each_pkg_parent_workspace(&pkgid) |workspace| {
+                    do each_pkg_parent_workspace(self, &pkgid) |workspace| {
                         debug!("found pkg %s in workspace %s, trying to build",
                                pkgid.to_str(), workspace.to_str());
                         self.build(workspace, &pkgid);
@@ -238,15 +238,20 @@ impl CtxMethods for Ctx {
             "install" => {
                 if args.len() < 1 {
                     match cwd_to_workspace() {
-                        None => { usage::install(); return }
-                        Some((ws, pkgid)) => self.install(&ws, &pkgid)
-                    }
+                        None if self.use_rust_path_hack => {
+                            let cwd = os::getcwd();
+                            self.install(&cwd,
+                                &PkgId::new(cwd.components[cwd.components.len() - 1]));
+                        }
+                        None  => { usage::install(); return; }
+                        Some((ws, pkgid))                => self.install(&ws, &pkgid),
+                     }
                 }
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
                     let pkgid = PkgId::new(args[0]);
-                    let workspaces = pkg_parent_workspaces(&pkgid);
+                    let workspaces = pkg_parent_workspaces(self, &pkgid);
                     debug!("package ID = %s, found it in %? workspaces",
                            pkgid.to_str(), workspaces.len());
                     if workspaces.is_empty() {
@@ -257,7 +262,7 @@ impl CtxMethods for Ctx {
                         self.install(&rp[0], &pkgid);
                     }
                     else {
-                        do each_pkg_parent_workspace(&pkgid) |workspace| {
+                        do each_pkg_parent_workspace(self, &pkgid) |workspace| {
                             self.install(workspace, &pkgid);
                             true
                         };
@@ -294,7 +299,7 @@ impl CtxMethods for Ctx {
                 else {
                     let rp = rust_path();
                     assert!(!rp.is_empty());
-                    do each_pkg_parent_workspace(&pkgid) |workspace| {
+                    do each_pkg_parent_workspace(self, &pkgid) |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
                         note(fmt!("Uninstalled package %s (was installed in %s)",
                                   pkgid.to_str(), workspace.to_str()));
@@ -318,7 +323,9 @@ impl CtxMethods for Ctx {
         fail!("`do` not yet implemented");
     }
 
-    fn build(&self, workspace: &Path, pkgid: &PkgId) {
+    /// Returns the destination workspace
+    /// In the case of a custom build, we don't know, so we just return the source workspace
+    fn build(&self, workspace: &Path, pkgid: &PkgId) -> Path {
         debug!("build: workspace = %s (in Rust path? %? is git dir? %? \
                 pkgid = %s", workspace.to_str(),
                in_rust_path(workspace), is_git_dir(&workspace.push_rel(&pkgid.path)),
@@ -374,9 +381,13 @@ impl CtxMethods for Ctx {
         // the build already. Otherwise...
         if !custom {
             // Find crates inside the workspace
-            src.find_crates();
+            src.find_crates(self);
             // Build it!
-            src.build(self, cfgs);
+            src.build(self, cfgs)
+        }
+        else {
+            // Just return the source workspace
+            workspace.clone()
         }
     }
 
@@ -402,12 +413,15 @@ impl CtxMethods for Ctx {
     }
 
     fn install(&self, workspace: &Path, id: &PkgId)  {
-        // FIXME #7402: Use RUST_PATH to determine target dir
         // Also should use workcache to not build if not necessary.
-        self.build(workspace, id);
-        debug!("install: workspace = %s, id = %s", workspace.to_str(),
-               id.to_str());
-        self.install_no_build(workspace, id);
+        let destination_workspace = self.build(workspace, id);
+        // See #7402: This still isn't quite right yet; we want to
+        // install to the first workspace in the RUST_PATH if there's
+        // a non-default RUST_PATH. This code installs to the same
+        // workspace the package was built in.
+        debug!("install: destination workspace = %s, id = %s",
+               destination_workspace.to_str(), id.to_str());
+        self.install_no_build(&destination_workspace, id);
 
     }
 
@@ -473,7 +487,8 @@ pub fn main_args(args: &[~str]) {
     let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
                  getopts::optflag("j"), getopts::optflag("json"),
                  getopts::optmulti("c"), getopts::optmulti("cfg"),
-                 getopts::optflag("v"), getopts::optflag("version")];
+                 getopts::optflag("v"), getopts::optflag("version"),
+                 getopts::optflag("r"), getopts::optflag("rust-path-hack")];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
@@ -493,6 +508,9 @@ pub fn main_args(args: &[~str]) {
         return;
     }
 
+    let use_rust_path_hack = getopts::opt_present(matches, "r") ||
+                             getopts::opt_present(matches, "rust-path-hack");
+
     let mut args = matches.free.clone();
 
     args.shift();
@@ -501,33 +519,48 @@ pub fn main_args(args: &[~str]) {
         return usage::general();
     }
 
-    let cmd = args.shift();
-
-    if !util::is_cmd(cmd) {
-        return usage::general();
-    } else if help {
-        return match cmd {
-            ~"build" => usage::build(),
-            ~"clean" => usage::clean(),
-            ~"do" => usage::do_cmd(),
-            ~"info" => usage::info(),
-            ~"install" => usage::install(),
-            ~"list"    => usage::list(),
-            ~"prefer" => usage::prefer(),
-            ~"test" => usage::test(),
-            ~"uninstall" => usage::uninstall(),
-            ~"unprefer" => usage::unprefer(),
-            _ => usage::general()
-        };
+    let mut cmd_opt = None;
+    for a in args.iter() {
+        if util::is_cmd(*a) {
+            cmd_opt = Some(a);
+            break;
+        }
     }
+    let cmd = match cmd_opt {
+        None => return usage::general(),
+        Some(cmd) => if help {
+            return match *cmd {
+                ~"build" => usage::build(),
+                ~"clean" => usage::clean(),
+                ~"do" => usage::do_cmd(),
+                ~"info" => usage::info(),
+                ~"install" => usage::install(),
+                ~"list"    => usage::list(),
+                ~"prefer" => usage::prefer(),
+                ~"test" => usage::test(),
+                ~"uninstall" => usage::uninstall(),
+                ~"unprefer" => usage::unprefer(),
+                _ => usage::general()
+            };
+        }
+        else {
+            cmd
+        }
+    };
 
+    // Pop off all flags, plus the command
+    let remaining_args = args.iter().skip_while(|s| !util::is_cmd(**s));
+    // I had to add this type annotation to get the code to typecheck
+    let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
+    remaining_args.shift();
     let sroot = Some(@filesearch::get_or_default_sysroot());
     debug!("Using sysroot: %?", sroot);
     Ctx {
+        use_rust_path_hack: use_rust_path_hack,
         sysroot_opt: sroot, // Currently, only tests override this
         json: json,
         dep_cache: @mut HashMap::new()
-    }.run(cmd, args);
+    }.run(*cmd, remaining_args)
 }
 
 /**

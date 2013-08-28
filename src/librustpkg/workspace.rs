@@ -12,15 +12,17 @@
 
 use std::{os,util};
 use std::path::Path;
-use path_util::workspace_contains_package_id;
+use context::Ctx;
+use path_util::{workspace_contains_package_id, find_dir_using_rust_path_hack};
+use util::option_to_vec;
 use package_id::PkgId;
 
 use path_util::rust_path;
 
-pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
+pub fn each_pkg_parent_workspace(cx: &Ctx, pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
     // this package ID
-    let workspaces = pkg_parent_workspaces(pkgid);
+    let workspaces = pkg_parent_workspaces(cx, pkgid);
     if workspaces.is_empty() {
         // tjc: make this a condition
         fail!("Package %s not found in any of \
@@ -36,10 +38,20 @@ pub fn each_pkg_parent_workspace(pkgid: &PkgId, action: &fn(&Path) -> bool) -> b
     return true;
 }
 
-pub fn pkg_parent_workspaces(pkgid: &PkgId) -> ~[Path] {
-    rust_path().move_iter()
+pub fn pkg_parent_workspaces(cx: &Ctx, pkgid: &PkgId) -> ~[Path] {
+    let rs: ~[Path] = rust_path().move_iter()
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
-        .collect()
+        .collect();
+    if cx.use_rust_path_hack {
+        rs + option_to_vec(find_dir_using_rust_path_hack(cx, pkgid))
+    }
+    else {
+        rs
+    }
+}
+
+pub fn is_workspace(p: &Path) -> bool {
+    os::path_is_dir(&p.push("src"))
 }
 
 /// Construct a workspace and package-ID name based on the current directory.
