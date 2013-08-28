@@ -21,7 +21,6 @@ use middle::typeck;
 use middle::astencode;
 use middle;
 
-use std::hash::HashUtil;
 use std::hashmap::{HashMap, HashSet};
 use std::io;
 use std::str;
