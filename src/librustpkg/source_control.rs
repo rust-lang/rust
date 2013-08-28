@@ -89,7 +89,7 @@ pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
 
 fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput {
     let mut prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
-                                ,..ProcessOptions::new()});
+                                ,..ProcessOptions::new()}).unwrap();
     prog.finish_with_output()
 }
 

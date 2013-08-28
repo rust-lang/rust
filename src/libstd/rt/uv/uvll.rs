@@ -37,26 +37,72 @@ use libc::{malloc, free};
 use libc;
 use prelude::*;
 use ptr;
-use str;
 use vec;
 
-pub static UNKNOWN: c_int = -1;
-pub static OK: c_int = 0;
-pub static EOF: c_int = 1;
-pub static EADDRINFO: c_int = 2;
-pub static EACCES: c_int = 3;
-pub static ECONNREFUSED: c_int = 12;
-pub static ECONNRESET: c_int = 13;
-pub static EPIPE: c_int = 36;
+pub use self::errors::*;
 
-pub struct uv_err_t {
-    code: c_int,
-    sys_errno_: c_int
+pub static OK: c_int = 0;
+pub static EOF: c_int = -4095;
+pub static UNKNOWN: c_int = -4094;
+
+// uv-errno.h redefines error codes for windows, but not for unix...
+
+#[cfg(windows)]
+pub mod errors {
+    use libc::c_int;
+
+    pub static EACCES: c_int = -4093;
+    pub static ECONNREFUSED: c_int = -4079;
+    pub static ECONNRESET: c_int = -4078;
+    pub static EPIPE: c_int = -4048;
 }
+#[cfg(not(windows))]
+pub mod errors {
+    use libc;
+    use libc::c_int;
+
+    pub static EACCES: c_int = -libc::EACCES;
+    pub static ECONNREFUSED: c_int = -libc::ECONNREFUSED;
+    pub static ECONNRESET: c_int = -libc::ECONNRESET;
+    pub static EPIPE: c_int = -libc::EPIPE;
+}
+
+pub static PROCESS_SETUID: c_int = 1 << 0;
+pub static PROCESS_SETGID: c_int = 1 << 1;
+pub static PROCESS_WINDOWS_VERBATIM_ARGUMENTS: c_int = 1 << 2;
+pub static PROCESS_DETACHED: c_int = 1 << 3;
+pub static PROCESS_WINDOWS_HIDE: c_int = 1 << 4;
+
+pub static STDIO_IGNORE: c_int = 0x00;
+pub static STDIO_CREATE_PIPE: c_int = 0x01;
+pub static STDIO_INHERIT_FD: c_int = 0x02;
+pub static STDIO_INHERIT_STREAM: c_int = 0x04;
+pub static STDIO_READABLE_PIPE: c_int = 0x10;
+pub static STDIO_WRITABLE_PIPE: c_int = 0x20;
 
 pub struct uv_buf_t {
     base: *u8,
     len: libc::size_t,
+}
+
+pub struct uv_process_options_t {
+    exit_cb: uv_exit_cb,
+    file: *libc::c_char,
+    args: **libc::c_char,
+    env: **libc::c_char,
+    cwd: *libc::c_char,
+    flags: libc::c_uint,
+    stdio_count: libc::c_int,
+    stdio: *uv_stdio_container_t,
+    uid: uv_uid_t,
+    gid: uv_gid_t,
+}
+
+// These fields are private because they must be interfaced with through the
+// functions below.
+pub struct uv_stdio_container_t {
+    priv flags: libc::c_int,
+    priv stream: *uv_stream_t,
 }
 
 pub type uv_handle_t = c_void;
@@ -72,6 +118,8 @@ pub type uv_timer_t = c_void;
 pub type uv_stream_t = c_void;
 pub type uv_fs_t = c_void;
 pub type uv_udp_send_t = c_void;
+pub type uv_process_t = c_void;
+pub type uv_pipe_t = c_void;
 
 #[cfg(stage0)]
 pub type uv_idle_cb = *u8;
@@ -97,6 +145,8 @@ pub type uv_connection_cb = *u8;
 pub type uv_timer_cb = *u8;
 #[cfg(stage0)]
 pub type uv_write_cb = *u8;
+#[cfg(stage0)]
+pub type uv_exit_cb = *u8;
 
 #[cfg(not(stage0))]
 pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
@@ -137,11 +187,20 @@ pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t,
 #[cfg(not(stage0))]
 pub type uv_write_cb = extern "C" fn(handle: *uv_write_t,
                                      status: c_int);
+#[cfg(not(stage0))]
+pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
+                                    exit_status: c_int,
+                                    term_signal: c_int);
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
 pub type sockaddr_in6 = c_void;
 pub type sockaddr_storage = c_void;
+
+#[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
+#[cfg(unix)] pub type uv_gid_t = libc::types::os::arch::posix88::gid_t;
+#[cfg(windows)] pub type uv_uid_t = libc::c_uchar;
+#[cfg(windows)] pub type uv_gid_t = libc::c_uchar;
 
 #[deriving(Eq)]
 pub enum uv_handle_type {
@@ -487,20 +546,12 @@ pub unsafe fn read_stop(stream: *uv_stream_t) -> c_int {
     return rust_uv_read_stop(stream as *c_void);
 }
 
-pub unsafe fn last_error(loop_handle: *c_void) -> uv_err_t {
+pub unsafe fn strerror(err: c_int) -> *c_char {
     #[fixed_stack_segment]; #[inline(never)];
-
-    return rust_uv_last_error(loop_handle);
-}
-
-pub unsafe fn strerror(err: *uv_err_t) -> *c_char {
-    #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_strerror(err);
 }
-pub unsafe fn err_name(err: *uv_err_t) -> *c_char {
+pub unsafe fn err_name(err: c_int) -> *c_char {
     #[fixed_stack_segment]; #[inline(never)];
-
     return rust_uv_err_name(err);
 }
 
@@ -654,6 +705,45 @@ pub unsafe fn fs_req_cleanup(req: *uv_fs_t) {
     rust_uv_fs_req_cleanup(req);
 }
 
+pub unsafe fn spawn(loop_ptr: *c_void, result: *uv_process_t,
+                    options: uv_process_options_t) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_spawn(loop_ptr, result, options);
+}
+
+pub unsafe fn process_kill(p: *uv_process_t, signum: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_process_kill(p, signum);
+}
+
+pub unsafe fn process_pid(p: *uv_process_t) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_process_pid(p);
+}
+
+pub unsafe fn set_stdio_container_flags(c: *uv_stdio_container_t,
+                                        flags: libc::c_int) {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_set_stdio_container_flags(c, flags);
+}
+
+pub unsafe fn set_stdio_container_fd(c: *uv_stdio_container_t,
+                                     fd: libc::c_int) {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_set_stdio_container_fd(c, fd);
+}
+
+pub unsafe fn set_stdio_container_stream(c: *uv_stdio_container_t,
+                                         stream: *uv_stream_t) {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_set_stdio_container_stream(c, stream);
+}
+
+pub unsafe fn pipe_init(loop_ptr: *c_void, p: *uv_pipe_t, ipc: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_pipe_init(loop_ptr, p, ipc)
+}
+
 // data access helpers
 pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
@@ -720,22 +810,6 @@ pub unsafe fn get_len_from_buf(buf: uv_buf_t) -> size_t {
 
     return rust_uv_get_len_from_buf(buf);
 }
-pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
-    let err = last_error(uv_loop);
-    let err_ptr = ptr::to_unsafe_ptr(&err);
-    let err_name = str::raw::from_c_str(err_name(err_ptr));
-    let err_msg = str::raw::from_c_str(strerror(err_ptr));
-    return fmt!("LIBUV ERROR: name: %s msg: %s",
-                    err_name, err_msg);
-}
-
-pub unsafe fn get_last_err_data(uv_loop: *c_void) -> uv_err_data {
-    let err = last_error(uv_loop);
-    let err_ptr = ptr::to_unsafe_ptr(&err);
-    let err_name = str::raw::from_c_str(err_name(err_ptr));
-    let err_msg = str::raw::from_c_str(strerror(err_ptr));
-    uv_err_data { err_name: err_name, err_msg: err_msg }
-}
 
 pub struct uv_err_data {
     err_name: ~str,
@@ -768,9 +842,8 @@ extern {
                           cb: uv_async_cb) -> c_int;
     fn rust_uv_tcp_init(loop_handle: *c_void, handle_ptr: *uv_tcp_t) -> c_int;
     fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8, len: size_t);
-    fn rust_uv_last_error(loop_handle: *c_void) -> uv_err_t;
-    fn rust_uv_strerror(err: *uv_err_t) -> *c_char;
-    fn rust_uv_err_name(err: *uv_err_t) -> *c_char;
+    fn rust_uv_strerror(err: c_int) -> *c_char;
+    fn rust_uv_err_name(err: c_int) -> *c_char;
     fn rust_uv_ip4_addrp(ip: *u8, port: c_int) -> *sockaddr_in;
     fn rust_uv_ip6_addrp(ip: *u8, port: c_int) -> *sockaddr_in6;
     fn rust_uv_free_ip4_addr(addr: *sockaddr_in);
@@ -856,4 +929,13 @@ extern {
     fn rust_uv_set_data_for_req(req: *c_void, data: *c_void);
     fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
     fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> size_t;
+    fn rust_uv_spawn(loop_ptr: *c_void, outptr: *uv_process_t,
+                     options: uv_process_options_t) -> c_int;
+    fn rust_uv_process_kill(p: *uv_process_t, signum: c_int) -> c_int;
+    fn rust_uv_process_pid(p: *uv_process_t) -> c_int;
+    fn rust_set_stdio_container_flags(c: *uv_stdio_container_t, flags: c_int);
+    fn rust_set_stdio_container_fd(c: *uv_stdio_container_t, fd: c_int);
+    fn rust_set_stdio_container_stream(c: *uv_stdio_container_t,
+                                       stream: *uv_stream_t);
+    fn rust_uv_pipe_init(loop_ptr: *c_void, p: *uv_pipe_t, ipc: c_int) -> c_int;
 }
