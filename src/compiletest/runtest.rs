@@ -545,9 +545,7 @@ fn compile_test_(config: &config, props: &TestProps,
 fn exec_compiled_test(config: &config, props: &TestProps,
                       testfile: &Path) -> ProcRes {
 
-    // If testing the new runtime then set the RUST_NEWRT env var
     let env = props.exec_env.clone();
-    let env = if config.newrt { env + &[(~"RUST_NEWRT", ~"1")] } else { env };
 
     match config.target {
 
