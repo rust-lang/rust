@@ -594,7 +594,7 @@ impl<A: Eq> Eq for DList<A> {
     }
 
     fn ne(&self, other: &DList<A>) -> bool {
-        self.len() != other.len() &&
+        self.len() != other.len() ||
             iterator::order::ne(self.iter(), other.iter())
     }
 }
@@ -978,6 +978,10 @@ mod tests {
         assert!(n != m);
         m.push_back(1);
         assert_eq!(&n, &m);
+
+        let n = list_from([2,3,4]);
+        let m = list_from([1,2,3]);
+        assert!(n != m);
     }
 
     #[test]
