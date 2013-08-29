@@ -268,9 +268,6 @@ pub use self::extensions::WriterByteConversions;
 /// Synchronous, non-blocking file I/O.
 pub mod file;
 
-/// Synchronous, in-memory I/O.
-pub mod pipe;
-
 /// Synchronous, non-blocking network I/O.
 pub mod net {
     pub mod tcp;

@@ -4,5 +4,5 @@
 	branch = master
 [submodule "src/libuv"]
 	path = src/libuv
-	url = https://github.com/alexcrichton/libuv.git
+	url = https://github.com/brson/libuv.git
 	branch = master
