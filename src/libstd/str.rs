@@ -1713,6 +1713,7 @@ impl<'self> StrSlice<'self> for &'self str {
             if count == end { end_byte = Some(idx); break; }
             count += 1;
         }
+        if begin_byte.is_none() && count == begin { begin_byte = Some(self.len()) }
         if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
 
         match (begin_byte, end_byte) {
@@ -2700,8 +2701,11 @@ mod tests {
         fn t(a: &str, b: &str, start: uint) {
             assert_eq!(a.slice_chars(start, start + b.char_len()), b);
         }
+        t("", "", 0);
         t("hello", "llo", 2);
         t("hello", "el", 1);
+        t("αβλ", "β", 1);
+        t("αβλ", "", 3);
         assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
