@@ -126,7 +126,7 @@ pub fn select2<TA, A: SelectPort<TA>, TB, B: SelectPort<TB>>(mut a: A, mut b: B)
 mod test {
     use super::*;
     use clone::Clone;
-    use iter::Times;
+    use num::Times;
     use option::*;
     use rt::comm::*;
     use rt::test::*;

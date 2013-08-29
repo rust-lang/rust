@@ -80,6 +80,19 @@ pub trait Signed: Num
 
 pub trait Unsigned: Num {}
 
+/// Times trait
+///
+/// ~~~ {.rust}
+/// use num::Times;
+/// let ten = 10 as uint;
+/// let mut accum = 0;
+/// do ten.times { accum += 1; }
+/// ~~~
+///
+pub trait Times {
+    fn times(&self, it: &fn());
+}
+
 pub trait Integer: Num
                  + Orderable
                  + Div<Self,Self>
