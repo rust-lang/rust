@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1164,9 +1164,6 @@ impl Ord for Json {
             }
         }
     }
-    fn le(&self, other: &Json) -> bool { !(*other).lt(&(*self)) }
-    fn ge(&self, other: &Json) -> bool { !(*self).lt(other) }
-    fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
 /// A trait for converting values to JSON
