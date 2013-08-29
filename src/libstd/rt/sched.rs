@@ -1114,7 +1114,7 @@ mod test {
     #[test]
     fn multithreading() {
         use rt::comm::*;
-        use iter::Times;
+        use num::Times;
         use vec::OwnedVector;
         use container::Container;
 
