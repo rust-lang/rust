@@ -173,10 +173,17 @@ LIBUV_MAKEFILE_$(1)_$(2) := $$(CFG_BUILD_DIR)rt/$(1)/stage$(2)/libuv/Makefile
 LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
 		uv_dtrace_header.target.mk uv_dtrace_provider.target.mk
 
+ifeq ($(OSTYPE_$(1)), linux-androideabi)
+$$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_GYP)
+	(cd $(S)src/libuv/ && \
+	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja -DOS=android \
+	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+else
 $$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_GYP)
 	(cd $(S)src/libuv/ && \
 	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+endif
 
 # XXX: Shouldn't need platform-specific conditions here
 ifdef CFG_WINDOWSY_$(1)
@@ -194,8 +201,10 @@ $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)_$(2))
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
+	 	LINK="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		host=android OS=linux \
+		PLATFORM=android \
 		builddir="." \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
