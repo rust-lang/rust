@@ -26,6 +26,7 @@ use result::{Err, Ok};
 use rt::io::io_error;
 use rt::rtio::{IoFactory, RtioSignal, with_local_io};
 
+#[repr(int)]
 #[deriving(Eq, IterBytes)]
 pub enum Signum {
     /// Equivalent to SIGBREAK, delivered when the user presses Ctrl-Break.
