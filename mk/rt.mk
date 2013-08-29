@@ -41,6 +41,11 @@ ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))),)
 	SNAP_DEFINES=-DRUST_SNAPSHOT
 endif
 
+define DEF_LIBUV_ARCH_VAR
+  LIBUV_ARCH_$(1) = $$(subst i386,ia32,$$(subst x86_64,x64,$$(HOST_$(1))))
+endef
+$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_LIBUV_ARCH_VAR,$(t))))
+
 define DEF_RUNTIME_TARGETS
 
 ######################################################################
@@ -170,7 +175,7 @@ LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
 
 $$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_GYP)
 	(cd $(S)src/libuv/ && \
-	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(HOST_$(1)) -D ninja \
+	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
 
 # XXX: Shouldn't need platform-specific conditions here
