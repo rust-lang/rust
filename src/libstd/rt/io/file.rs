@@ -71,6 +71,9 @@ pub struct FileStream {
     last_nread: int,
 }
 
+impl FileStream {
+}
+
 impl Reader for FileStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         match self.fd.read(buf) {

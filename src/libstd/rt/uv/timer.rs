@@ -43,7 +43,7 @@ impl TimerWatcher {
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             let data = watcher.get_watcher_data();
             let cb = data.timer_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
+            let status = status_to_maybe_uv_error(watcher, status);
             (*cb)(watcher, status);
         }
     }
