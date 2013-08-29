@@ -29,10 +29,8 @@
 
     table))
 
-(defcustom rust-indent-offset default-tab-width
-  "*Indent Rust code by this number of spaces.
-
-The initializer is `DEFAULT-TAB-WIDTH'.")
+(defcustom rust-indent-offset 4
+  "*Indent Rust code by this number of spaces.")
 
 (defun rust-paren-level () (nth 0 (syntax-ppss)))
 (defun rust-in-str-or-cmnt () (nth 8 (syntax-ppss)))
@@ -61,7 +59,7 @@ The initializer is `DEFAULT-TAB-WIDTH'.")
 
               ;; If we're in any other token-tree / sexp, then:
               ;;  - [ or ( means line up with the opening token
-              ;;  - { means indent to either nesting-level * tab width,
+              ;;  - { means indent to either nesting-level * rust-indent-offset,
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
               ;;    semi, comma or brace, and wasn't an attribute. PHEW.
