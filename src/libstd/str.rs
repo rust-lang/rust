@@ -21,7 +21,7 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use iter::Times;
+use num::Times;
 use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
 use iterator::{Invert, DoubleEndedIterator};

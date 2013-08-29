@@ -10,7 +10,7 @@
 
 //! Operations and constants for `uint`
 
-use iter;
+use num;
 use sys;
 
 pub use self::generated::*;
@@ -70,7 +70,7 @@ pub fn div_round(x: uint, y: uint) -> uint {
 ///
 pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
-impl iter::Times for uint {
+impl num::Times for uint {
     #[inline]
     ///
     /// A convenience form for basic repetition. Given a uint `x`,
@@ -162,7 +162,7 @@ fn test_div() {
 
 #[test]
 pub fn test_times() {
-    use iter::Times;
+    use num::Times;
     let ten = 10 as uint;
     let mut accum = 0;
     do ten.times { accum += 1; }

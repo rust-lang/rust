@@ -718,7 +718,7 @@ mod test {
     use option::*;
     use rt::test::*;
     use cell::Cell;
-    use iter::Times;
+    use num::Times;
     use rt::util;
 
     #[test]
