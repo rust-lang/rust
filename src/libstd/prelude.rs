@@ -49,7 +49,7 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use hash::Hash;
-pub use iter::Times;
+pub use num::Times;
 pub use iterator::{FromIterator, Extendable};
 pub use iterator::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
 pub use iterator::{OrdIterator, MutableDoubleEndedIterator};
