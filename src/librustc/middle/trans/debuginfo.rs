@@ -27,7 +27,7 @@ where possible. This will hopefully ease the adaption of this module to future L
 
 The public API of the module is a set of functions that will insert the correct metadata into the
 LLVM IR when called with the right parameters. The module is thus driven from an outside client with
-functions like `debuginfo::local_var_metadata(bcx: block, local: &ast::local)`.
+functions like `debuginfo::create_local_var_metadata(bcx: block, local: &ast::local)`.
 
 Internally the module will try to reuse already created metadata by utilizing a cache. The way to
 get a shared metadata node when needed is thus to just call the corresponding function in this
@@ -37,9 +37,8 @@ module:
 
 The function will take care of probing the cache for an existing node for that exact file path.
 
-All private state used by the module is stored within a DebugContext struct, which in turn is
-contained in the CrateContext.
-
+All private state used by the module is stored within either the CrateDebugContext struct (owned by
+the CrateContext) or the FunctionDebugContext (owned by the FunctionContext).
 
 This file consists of three conceptual sections:
 1. The public interface of the module
@@ -92,7 +91,7 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 //=-------------------------------------------------------------------------------------------------
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct DebugContext {
+pub struct CrateDebugContext {
     priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
@@ -101,13 +100,13 @@ pub struct DebugContext {
     priv created_types: HashMap<uint, DIType>,
 }
 
-impl DebugContext {
-    pub fn new(llmod: ModuleRef, crate: ~str) -> DebugContext {
-        debug!("DebugContext::new");
+impl CrateDebugContext {
+    pub fn new(llmod: ModuleRef, crate: ~str) -> CrateDebugContext {
+        debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
-        return DebugContext {
+        return CrateDebugContext {
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
@@ -165,9 +164,9 @@ struct FunctionDebugContextData {
 }
 
 enum VariableAccess {
-    // The value given is a pointer to data
+    // The value given is a pointer to the data (T*)
     DirectVariable,
-    // The value given has to be dereferenced once to get the pointer to data
+    // The value given has to be dereferenced once to get the pointer to data (T**)
     IndirectVariable
 }
 
@@ -224,9 +223,9 @@ pub fn create_local_var_metadata(bcx: @mut Block,
     }
 }
 
-/// Creates debug information for a local variable introduced in the head of a match-statement arm.
+/// Creates debug information for a variable captured in a closure.
 ///
-// /// Adds the created metadata nodes directly to the crate's IR.
+/// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_captured_var_metadata(bcx: @mut Block,
                                     node_id: ast::NodeId,
                                     llptr: ValueRef,
@@ -321,7 +320,8 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
             _) => {
             explicit_self.span
         }
-        _ => bcx.ccx().sess.bug(fmt!("create_self_argument_metadata: unexpected sort of node: %?", fnitem))
+        _ => bcx.ccx().sess.bug(
+                fmt!("create_self_argument_metadata: unexpected sort of node: %?", fnitem))
     };
 
     let scope_metadata = bcx.fcx.debug_context.get_ref(bcx.ccx(), span).fn_metadata;
@@ -361,14 +361,10 @@ pub fn create_argument_metadata(bcx: @mut Block,
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    let pattern = arg.pat;
-    let filename = span_start(cx, pattern.span).file.name;
-
     let def_map = cx.tcx.def_map;
-    let file_metadata = file_metadata(cx, filename);
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
-    do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
+    do pat_util::pat_bindings(def_map, arg.pat) |_, node_id, span, path_ref| {
 
         let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
             Some(v) => v,
@@ -429,13 +425,24 @@ pub fn set_source_location(fcx: &FunctionContext,
     }
 }
 
+/// Enables emitting source locations for the given functions.
+///
+/// Since we don't want source locations to be emitted for the function prelude, they are disabled
+/// when beginning to translate a new function. This functions switches source location emitting on
+/// and must therefore be called before the first real statement/expression of the function is
+/// translated.
 pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
     match fcx.debug_context {
         FunctionDebugContext(~ref mut data) => data.source_locations_enabled = true,
-        _ => { /* safe to ignore */}
+        _ => { /* safe to ignore */ }
     }
 }
 
+/// Creates the function-specific debug context.
+///
+/// Returns the FunctionDebugContext for the function which holds state needed for debug info
+/// creation. The function may also return another variant of the FunctionDebugContext enum which
+/// indicates why no debuginfo should be created for the function.
 pub fn create_function_debug_context(cx: &mut CrateContext,
                                      fn_ast_id: ast::NodeId,
                                      param_substs: Option<@param_substs>,
@@ -1663,7 +1670,7 @@ fn bytes_to_bits(bytes: uint) -> c_ulonglong {
 }
 
 #[inline]
-fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut DebugContext {
+fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut CrateDebugContext {
     cx.dbg_cx.get_mut_ref()
 }
 
