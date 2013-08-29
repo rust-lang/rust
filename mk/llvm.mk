@@ -26,7 +26,7 @@ ifeq ($(CFG_LLVM_ROOT),)
 
 $$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS)
 	@$$(call E, make: llvm)
-	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1))
+	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) $$(CFG_LLVM_BUILD_ENV)
 	$$(Q)touch $$(LLVM_CONFIG_$(1))
 endif
 
