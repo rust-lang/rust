@@ -9,14 +9,11 @@
 // except according to those terms.
 
 
-use std::option;
 use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
 
-type in_cfg_pred = @fn(attrs: &[ast::Attribute]) -> bool;
-
-struct Context {
-    in_cfg: in_cfg_pred
+struct Context<'self> {
+    in_cfg: &'self fn(attrs: &[ast::Attribute]) -> bool,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
@@ -27,56 +24,55 @@ pub fn strip_unconfigured_items(crate: @ast::Crate) -> @ast::Crate {
     }
 }
 
-struct ItemRemover {
-    ctxt: @Context,
-}
-
-impl fold::ast_fold for ItemRemover {
+impl<'self> fold::ast_fold for Context<'self> {
     fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
-        fold_mod(self.ctxt, module, self)
+        fold_mod(self, module)
     }
     fn fold_block(&self, block: &ast::Block) -> ast::Block {
-        fold_block(self.ctxt, block, self)
+        fold_block(self, block)
     }
     fn fold_foreign_mod(&self, foreign_module: &ast::foreign_mod)
                         -> ast::foreign_mod {
-        fold_foreign_mod(self.ctxt, foreign_module, self)
+        fold_foreign_mod(self, foreign_module)
     }
     fn fold_item_underscore(&self, item: &ast::item_) -> ast::item_ {
-        fold_item_underscore(self.ctxt, item, self)
+        fold_item_underscore(self, item)
     }
 }
 
-pub fn strip_items(crate: &ast::Crate, in_cfg: in_cfg_pred) -> @ast::Crate {
-    let ctxt = @Context {
+pub fn strip_items(crate: &ast::Crate,
+                   in_cfg: &fn(attrs: &[ast::Attribute]) -> bool)
+                   -> @ast::Crate {
+    let ctxt = Context {
         in_cfg: in_cfg,
     };
-    let precursor = ItemRemover {
-        ctxt: ctxt,
-    };
-    @precursor.fold_crate(crate)
+    @ctxt.fold_crate(crate)
 }
 
-fn filter_item(cx: @Context, item: @ast::item) ->
-   Option<@ast::item> {
-    if item_in_cfg(cx, item) { option::Some(item) } else { option::None }
-}
-
-fn filter_view_item<'r>(cx: @Context, view_item: &'r ast::view_item)-> Option<&'r ast::view_item> {
-    if view_item_in_cfg(cx, view_item) {
-        option::Some(view_item)
+fn filter_item(cx: &Context, item: @ast::item) -> Option<@ast::item> {
+    if item_in_cfg(cx, item) {
+        Some(item)
     } else {
-        option::None
+        None
     }
 }
 
-fn fold_mod(cx: @Context, m: &ast::_mod, fld: &ItemRemover) -> ast::_mod {
-    let filtered_items = do  m.items.iter().filter_map |a| {
-        filter_item(cx, *a).and_then(|x| fld.fold_item(x))
+fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
+                        -> Option<&'r ast::view_item> {
+    if view_item_in_cfg(cx, view_item) {
+        Some(view_item)
+    } else {
+        None
+    }
+}
+
+fn fold_mod(cx: &Context, m: &ast::_mod) -> ast::_mod {
+    let filtered_items = do m.items.iter().filter_map |a| {
+        filter_item(cx, *a).and_then(|x| cx.fold_item(x))
     }.collect();
     let filtered_view_items = do m.view_items.iter().filter_map |a| {
         do filter_view_item(cx, a).map_move |x| {
-            fld.fold_view_item(x)
+            cx.fold_view_item(x)
         }
     }.collect();
     ast::_mod {
@@ -85,22 +81,23 @@ fn fold_mod(cx: @Context, m: &ast::_mod, fld: &ItemRemover) -> ast::_mod {
     }
 }
 
-fn filter_foreign_item(cx: @Context, item: @ast::foreign_item) ->
-   Option<@ast::foreign_item> {
+fn filter_foreign_item(cx: &Context, item: @ast::foreign_item)
+                       -> Option<@ast::foreign_item> {
     if foreign_item_in_cfg(cx, item) {
-        option::Some(item)
-    } else { option::None }
+        Some(item)
+    } else {
+        None
+    }
 }
 
-fn fold_foreign_mod(cx: @Context, nm: &ast::foreign_mod, fld: &ItemRemover)
-                    -> ast::foreign_mod {
+fn fold_foreign_mod(cx: &Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
     let filtered_items = nm.items
                            .iter()
                            .filter_map(|a| filter_foreign_item(cx, *a))
                            .collect();
     let filtered_view_items = do nm.view_items.iter().filter_map |a| {
         do filter_view_item(cx, a).map_move |x| {
-            fld.fold_view_item(x)
+            cx.fold_view_item(x)
         }
     }.collect();
     ast::foreign_mod {
@@ -111,8 +108,7 @@ fn fold_foreign_mod(cx: @Context, nm: &ast::foreign_mod, fld: &ItemRemover)
     }
 }
 
-fn fold_item_underscore(cx: @Context, item: &ast::item_, fld: &ItemRemover)
-                        -> ast::item_ {
+fn fold_item_underscore(cx: &Context, item: &ast::item_) -> ast::item_ {
     let item = match *item {
         ast::item_impl(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
@@ -120,67 +116,70 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_, fld: &ItemRemover)
             ast::item_impl((*a).clone(), (*b).clone(), (*c).clone(), methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
-            let methods = methods.iter().filter(|m| trait_method_in_cfg(cx, *m) )
-                .map(|x| (*x).clone()).collect();
+            let methods = methods.iter()
+                                 .filter(|m| trait_method_in_cfg(cx, *m) )
+                                 .map(|x| (*x).clone())
+                                 .collect();
             ast::item_trait((*a).clone(), (*b).clone(), methods)
         }
         ref item => (*item).clone(),
     };
 
-    fold::noop_fold_item_underscore(&item, fld)
+    fold::noop_fold_item_underscore(&item, cx)
 }
 
-fn filter_stmt(cx: @Context, stmt: @ast::Stmt) ->
-   Option<@ast::Stmt> {
+fn filter_stmt(cx: &Context, stmt: @ast::Stmt) -> Option<@ast::Stmt> {
     match stmt.node {
       ast::StmtDecl(decl, _) => {
         match decl.node {
           ast::DeclItem(item) => {
             if item_in_cfg(cx, item) {
-                option::Some(stmt)
-            } else { option::None }
+                Some(stmt)
+            } else {
+                None
+            }
           }
-          _ => option::Some(stmt)
+          _ => Some(stmt)
         }
       }
-      _ => option::Some(stmt)
+      _ => Some(stmt),
     }
 }
 
-fn fold_block(cx: @Context, b: &ast::Block, fld: &ItemRemover) -> ast::Block {
+fn fold_block(cx: &Context, b: &ast::Block) -> ast::Block {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
-        filter_stmt(cx, *a).and_then(|stmt| fld.fold_stmt(stmt))
+        filter_stmt(cx, *a).and_then(|stmt| cx.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
-        filter_view_item(cx, a).map(|x| fld.fold_view_item(*x))
+        filter_view_item(cx, a).map(|x| cx.fold_view_item(*x))
     }.collect();
     ast::Block {
         view_items: filtered_view_items,
         stmts: resulting_stmts,
-        expr: b.expr.map(|x| fld.fold_expr(*x)),
+        expr: b.expr.map(|x| cx.fold_expr(*x)),
         id: b.id,
         rules: b.rules,
         span: b.span,
     }
 }
 
-fn item_in_cfg(cx: @Context, item: @ast::item) -> bool {
+fn item_in_cfg(cx: &Context, item: @ast::item) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn foreign_item_in_cfg(cx: @Context, item: @ast::foreign_item) -> bool {
+fn foreign_item_in_cfg(cx: &Context, item: @ast::foreign_item) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn view_item_in_cfg(cx: @Context, item: &ast::view_item) -> bool {
+fn view_item_in_cfg(cx: &Context, item: &ast::view_item) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn method_in_cfg(cx: @Context, meth: @ast::method) -> bool {
+fn method_in_cfg(cx: &Context, meth: @ast::method) -> bool {
     return (cx.in_cfg)(meth.attrs);
 }
 
-fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
+fn trait_method_in_cfg(cx: &Context, meth: &ast::trait_method) -> bool {
     match *meth {
         ast::required(ref meth) => (cx.in_cfg)(meth.attrs),
         ast::provided(@ref meth) => (cx.in_cfg)(meth.attrs)
@@ -192,3 +191,4 @@ fn trait_method_in_cfg(cx: @Context, meth: &ast::trait_method) -> bool {
 fn in_cfg(cfg: &[@ast::MetaItem], attrs: &[ast::Attribute]) -> bool {
     attr::test_cfg(cfg, attrs.iter().map(|x| *x))
 }
+

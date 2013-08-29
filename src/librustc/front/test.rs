@@ -27,8 +27,6 @@ use syntax::opt_vec;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-type node_id_gen = @fn() -> ast::NodeId;
-
 struct Test {
     span: Span,
     path: ~[ast::Ident],
