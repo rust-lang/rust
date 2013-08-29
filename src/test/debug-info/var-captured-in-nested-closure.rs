@@ -25,6 +25,9 @@
 // check:$5 = 6
 // debugger:print managed->val
 // check:$6 = 7
+// debugger:print closure_local
+// check:$7 = 8
+// debugger:continue
 
 #[allow(unused_variable)];
 
@@ -49,8 +52,20 @@ fn main() {
     let managed = @7;
 
     let closure = || {
-        zzz();
-        variable = constant + a_struct.a + struct_ref.a + *owned + *managed;
+        let closure_local = 8;
+
+        let nested_closure = || {
+            zzz();
+            variable = constant + a_struct.a + struct_ref.a + *owned + *managed + closure_local;
+        };
+
+        // breaking here will yield a wrong value for 'constant'. In particular, GDB will
+        // read the value of the register that supposedly contains the pointer to 'constant'
+        // and try derefence it. The register, however, already contains the actual value, and
+        // not a pointer to it. -mw
+        // zzz();
+
+        nested_closure();
     };
 
     closure();
