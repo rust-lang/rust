@@ -37,7 +37,7 @@ syn keyword   rustKeyword     be yield typeof
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str Self
-syn keyword   rustType        Option Either
+syn keyword   rustType        Option Either Result Ordering
 
 " Types from libc
 syn keyword   rustType        c_float c_double c_void FILE fpos_t
@@ -48,10 +48,10 @@ syn keyword   rustType        size_t ptrdiff_t clock_t time_t
 syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
 syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
-syn keyword   rustTrait       Const Copy Send Owned Sized " inherent traits
-syn keyword   rustTrait       Clone Decodable Encodable IterBytes Rand ToStr
-syn keyword   rustTrait       Eq Ord TotalEq TotalOrd Num Ptr
-syn keyword   rustTrait       Drop Add Sub Mul Quot Rem Neg BitAnd BitOr
+syn keyword   rustTrait       Const Copy Freeze Send Owned Sized " inherent traits
+syn keyword   rustTrait       Clone DeepClone Decodable Encodable IterBytes Rand ToCStr ToStr ToStrConsume FromStr
+syn keyword   rustTrait       ApproxEq Eq Ord TotalEq TotalOrd Num Ptr Equiv
+syn keyword   rustTrait       Drop Add Sub Mul Div Rem Not Neg BitAnd BitOr
 syn keyword   rustTrait       BitXor Shl Shr Index
 
 syn keyword   rustSelf        self
@@ -60,9 +60,7 @@ syn keyword   rustBoolean     true false
 syn keyword   rustConstant    Some None       " option
 syn keyword   rustConstant    Left Right      " either
 syn keyword   rustConstant    Ok Err          " result
-syn keyword   rustConstant    Success Failure " task
-syn keyword   rustConstant    Cons Nil        " list
-" syn keyword   rustConstant    empty node      " tree
+syn keyword   rustConstant    Less Equal Greater " Ordering
 
 " Constants from libc
 syn keyword   rustConstant    EXIT_FAILURE EXIT_SUCCESS RAND_MAX
