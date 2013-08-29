@@ -87,6 +87,7 @@ use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::visit::Visitor;
 
 pub use middle::trans::context::task_llcx;
 
@@ -2162,6 +2163,14 @@ pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
     }
 }
 
+pub struct TransItemVisitor;
+
+impl Visitor<@mut CrateContext> for TransItemVisitor {
+    fn visit_item(&mut self, i: @ast::item, ccx: @mut CrateContext) {
+        trans_item(ccx, i);
+    }
+}
+
 pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
     let _icx = push_ctxt("trans_item");
     let path = match ccx.tcx.items.get_copy(&item.id) {
@@ -2193,15 +2202,10 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                      item.id,
                      item.attrs);
         } else {
-            for stmt in body.stmts.iter() {
-                match stmt.node {
-                  ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
-                                                 _ }, _) => {
-                    trans_item(ccx, i);
-                  }
-                  _ => ()
-                }
-            }
+            // Be sure to travel more than just one layer deep to catch nested
+            // items in blocks and such.
+            let mut v = TransItemVisitor;
+            v.visit_block(body, ccx);
         }
       }
       ast::item_impl(ref generics, _, _, ref ms) => {

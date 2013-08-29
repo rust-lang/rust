@@ -37,6 +37,7 @@ use std::vec;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};
+use syntax::visit;
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -56,7 +57,15 @@ pub fn trans_impl(ccx: @mut CrateContext,
     debug!("trans_impl(path=%s, name=%s, id=%?)",
            path.repr(tcx), name.repr(tcx), id);
 
-    if !generics.ty_params.is_empty() { return; }
+    // Both here and below with generic methods, be sure to recurse and look for
+    // items that we need to translate.
+    if !generics.ty_params.is_empty() {
+        let mut v = TransItemVisitor;
+        for method in methods.iter() {
+            visit::walk_method_helper(&mut v, *method, ccx);
+        }
+        return;
+    }
     let sub_path = vec::append_one(path, path_name(name));
     for method in methods.iter() {
         if method.generics.ty_params.len() == 0u {
@@ -69,6 +78,9 @@ pub fn trans_impl(ccx: @mut CrateContext,
                          *method,
                          None,
                          llfn);
+        } else {
+            let mut v = TransItemVisitor;
+            visit::walk_method_helper(&mut v, *method, ccx);
         }
     }
 }
