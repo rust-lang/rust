@@ -112,14 +112,13 @@ fn mk_temp_workspace(short_name: &Path, version: &Version) -> Path {
 
 fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &str) {
     let cwd = (*cwd).clone();
-    let prog = run::Process::new("git", args, run::ProcessOptions {
+    let mut prog = run::Process::new("git", args, run::ProcessOptions {
         env: env,
         dir: Some(&cwd),
         in_fd: None,
         out_fd: None,
         err_fd: None
     });
-    let mut prog = prog.unwrap();
     let rslt = prog.finish_with_output();
     if rslt.status != 0 {
         fail!("%s [git returned %?, output = %s, error = %s]", err_msg,
@@ -227,7 +226,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
         in_fd: None,
         out_fd: None,
         err_fd: None
-    }).unwrap();
+    });
     let output = prog.finish_with_output();
     debug!("Output from command %s with args %? was %s {%s}[%?]",
                     cmd, args, str::from_bytes(output.output),
@@ -1028,17 +1027,16 @@ fn test_extern_mod() {
                      test_sysroot().to_str(),
                      exec_file.to_str());
 
-    let prog = run::Process::new(rustc.to_str(), [main_file.to_str(),
-                                                  ~"--sysroot", test_sysroot().to_str(),
-                                                  ~"-o", exec_file.to_str()],
-                                 run::ProcessOptions {
+    let mut prog = run::Process::new(rustc.to_str(), [main_file.to_str(),
+                                                      ~"--sysroot", test_sysroot().to_str(),
+                                               ~"-o", exec_file.to_str()],
+                                     run::ProcessOptions {
         env: env,
         dir: Some(&dir),
         in_fd: None,
         out_fd: None,
         err_fd: None
     });
-    let mut prog = prog.unwrap();
     let outp = prog.finish_with_output();
     if outp.status != 0 {
         fail!("output was %s, error was %s",
