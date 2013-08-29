@@ -745,7 +745,7 @@ fn get_concurrency() -> uint {
             let opt_n: Option<uint> = FromStr::from_str(s);
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => fail!("RUST_TEST_TASKS is `%s`, should be a non-negative integer.", s)
+                _ => fail!("RUST_TEST_TASKS is `%s`, should be a positive integer.", s)
             }
         }
         None => {
