@@ -107,7 +107,7 @@ macro_rules! cmp_impl {
 }
 cmp_impl!(impl Eq, eq, ne)
 cmp_impl!(impl TotalEq, equals)
-cmp_impl!(impl Ord, lt)
+cmp_impl!(impl Ord, lt, gt, le, ge)
 cmp_impl!(impl TotalOrd, cmp -> cmp::Ordering)
 
 impl<T: Clone + Integer + Ord> Orderable for Ratio<T> {
