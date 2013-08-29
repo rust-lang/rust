@@ -16,6 +16,7 @@ use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback, UdpReceiveCallback
 use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
              status_to_maybe_uv_error};
 use rt::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
+use rt::uv::last_uv_error;
 use vec;
 use str;
 use from_str::{FromStr};
@@ -136,7 +137,7 @@ impl StreamWatcher {
             rtdebug!("buf len: %d", buf.len as int);
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let cb = stream_watcher.get_watcher_data().read_cb.get_ref();
-            let status = status_to_maybe_uv_error(nread as c_int);
+            let status = status_to_maybe_uv_error(stream_watcher, nread as c_int);
             (*cb)(stream_watcher, nread as int, buf, status);
         }
     }
@@ -166,7 +167,7 @@ impl StreamWatcher {
             let mut stream_watcher = write_request.stream();
             write_request.delete();
             let cb = stream_watcher.get_watcher_data().write_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(status);
+            let status = status_to_maybe_uv_error(stream_watcher, status);
             cb(stream_watcher, status);
         }
     }
@@ -231,7 +232,7 @@ impl TcpWatcher {
             };
             match result {
                 0 => Ok(()),
-                _ => Err(UvError(result)),
+                _ => Err(last_uv_error(self)),
             }
         }
     }
@@ -259,7 +260,7 @@ impl TcpWatcher {
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
                 let cb = stream_watcher.get_watcher_data().connect_cb.take_unwrap();
-                let status = status_to_maybe_uv_error(status);
+                let status = status_to_maybe_uv_error(stream_watcher, status);
                 cb(stream_watcher, status);
             }
         }
@@ -282,7 +283,7 @@ impl TcpWatcher {
             rtdebug!("connection_cb");
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             let cb = stream_watcher.get_watcher_data().connect_cb.get_ref();
-            let status = status_to_maybe_uv_error(status);
+            let status = status_to_maybe_uv_error(stream_watcher, status);
             (*cb)(stream_watcher, status);
         }
     }
@@ -326,7 +327,7 @@ impl UdpWatcher {
             };
             match result {
                 0 => Ok(()),
-                _ => Err(UvError(result)),
+                _ => Err(last_uv_error(self)),
             }
         }
     }
@@ -359,7 +360,7 @@ impl UdpWatcher {
             rtdebug!("buf len: %d", buf.len as int);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
-            let status = status_to_maybe_uv_error(nread as c_int);
+            let status = status_to_maybe_uv_error(udp_watcher, nread as c_int);
             let addr = uv_socket_addr_to_socket_addr(sockaddr_to_UvSocketAddr(addr));
             (*cb)(udp_watcher, nread as int, buf, addr, flags as uint, status);
         }
@@ -394,7 +395,7 @@ impl UdpWatcher {
             let mut udp_watcher = send_request.handle();
             send_request.delete();
             let cb = udp_watcher.get_watcher_data().udp_send_cb.take_unwrap();
-            let status = status_to_maybe_uv_error(status);
+            let status = status_to_maybe_uv_error(udp_watcher, status);
             cb(udp_watcher, status);
         }
     }

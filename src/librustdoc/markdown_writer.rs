@@ -104,14 +104,14 @@ fn pandoc_writer(
     ];
 
     do generic_writer |markdown| {
+        use std::io::WriterUtil;
+
         debug!("pandoc cmd: %s", pandoc_cmd);
         debug!("pandoc args: %s", pandoc_args.connect(" "));
 
-        let proc = run::Process::new(pandoc_cmd, pandoc_args,
-                                     run::ProcessOptions::new());
-        let mut proc = proc.unwrap();
+        let mut proc = run::Process::new(pandoc_cmd, pandoc_args, run::ProcessOptions::new());
 
-        proc.input().write(markdown.as_bytes());
+        proc.input().write_str(markdown);
         let output = proc.finish_with_output();
 
         debug!("pandoc result: %i", output.status);

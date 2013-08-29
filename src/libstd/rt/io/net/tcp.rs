@@ -16,7 +16,7 @@ use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{IoFactory, IoFactoryObject,
                RtioSocket, RtioTcpListener,
                RtioTcpListenerObject, RtioTcpStream,
-               RtioTcpStreamObject, RtioStream};
+               RtioTcpStreamObject};
 use rt::local::Local;
 
 pub struct TcpStream(~RtioTcpStreamObject);
@@ -69,7 +69,7 @@ impl TcpStream {
 
 impl Reader for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match (***self).read(buf) {
+        match (**self).read(buf) {
             Ok(read) => Some(read),
             Err(ioerr) => {
                 // EOF is indicated by returning None
@@ -86,7 +86,7 @@ impl Reader for TcpStream {
 
 impl Writer for TcpStream {
     fn write(&mut self, buf: &[u8]) {
-        match (***self).write(buf) {
+        match (**self).write(buf) {
             Ok(_) => (),
             Err(ioerr) => io_error::cond.raise(ioerr),
         }
@@ -166,7 +166,7 @@ mod test {
         do run_in_newsched_task {
             let mut called = false;
             do io_error::cond.trap(|e| {
-                assert_eq!(e.kind, ConnectionRefused);
+                assert!(e.kind == ConnectionRefused);
                 called = true;
             }).inside {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
