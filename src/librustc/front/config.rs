@@ -10,6 +10,7 @@
 
 
 use std::option;
+use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: &[ast::Attribute]) -> bool;
@@ -26,21 +27,34 @@ pub fn strip_unconfigured_items(crate: @ast::Crate) -> @ast::Crate {
     }
 }
 
-pub fn strip_items(crate: &ast::Crate, in_cfg: in_cfg_pred)
-    -> @ast::Crate {
+struct ItemRemover {
+    ctxt: @Context,
+}
 
-    let ctxt = @Context { in_cfg: in_cfg };
+impl fold::ast_fold for ItemRemover {
+    fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
+        fold_mod(self.ctxt, module, self)
+    }
+    fn fold_block(&self, block: &ast::Block) -> ast::Block {
+        fold_block(self.ctxt, block, self)
+    }
+    fn fold_foreign_mod(&self, foreign_module: &ast::foreign_mod)
+                        -> ast::foreign_mod {
+        fold_foreign_mod(self.ctxt, foreign_module, self)
+    }
+    fn fold_item_underscore(&self, item: &ast::item_) -> ast::item_ {
+        fold_item_underscore(self.ctxt, item, self)
+    }
+}
 
-    let precursor = @fold::AstFoldFns {
-          fold_mod: |a,b| fold_mod(ctxt, a, b),
-          fold_block: |a,b| fold_block(ctxt, a, b),
-          fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
-          fold_item_underscore: |a,b| fold_item_underscore(ctxt, a, b),
-          .. *fold::default_ast_fold()
+pub fn strip_items(crate: &ast::Crate, in_cfg: in_cfg_pred) -> @ast::Crate {
+    let ctxt = @Context {
+        in_cfg: in_cfg,
     };
-
-    let fold = fold::make_fold(precursor);
-    @fold.fold_crate(crate)
+    let precursor = ItemRemover {
+        ctxt: ctxt,
+    };
+    @precursor.fold_crate(crate)
 }
 
 fn filter_item(cx: @Context, item: @ast::item) ->
@@ -56,7 +70,7 @@ fn filter_view_item<'r>(cx: @Context, view_item: &'r ast::view_item)-> Option<&'
     }
 }
 
-fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
+fn fold_mod(cx: @Context, m: &ast::_mod, fld: &ItemRemover) -> ast::_mod {
     let filtered_items = do  m.items.iter().filter_map |a| {
         filter_item(cx, *a).and_then(|x| fld.fold_item(x))
     }.collect();
@@ -78,12 +92,12 @@ fn filter_foreign_item(cx: @Context, item: @ast::foreign_item) ->
     } else { option::None }
 }
 
-fn fold_foreign_mod(
-    cx: @Context,
-    nm: &ast::foreign_mod,
-    fld: @fold::ast_fold
-) -> ast::foreign_mod {
-    let filtered_items = nm.items.iter().filter_map(|a| filter_foreign_item(cx, *a)).collect();
+fn fold_foreign_mod(cx: @Context, nm: &ast::foreign_mod, fld: &ItemRemover)
+                    -> ast::foreign_mod {
+    let filtered_items = nm.items
+                           .iter()
+                           .filter_map(|a| filter_foreign_item(cx, *a))
+                           .collect();
     let filtered_view_items = do nm.view_items.iter().filter_map |a| {
         do filter_view_item(cx, a).map_move |x| {
             fld.fold_view_item(x)
@@ -97,8 +111,8 @@ fn fold_foreign_mod(
     }
 }
 
-fn fold_item_underscore(cx: @Context, item: &ast::item_,
-                        fld: @fold::ast_fold) -> ast::item_ {
+fn fold_item_underscore(cx: @Context, item: &ast::item_, fld: &ItemRemover)
+                        -> ast::item_ {
     let item = match *item {
         ast::item_impl(ref a, ref b, ref c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
@@ -133,11 +147,7 @@ fn filter_stmt(cx: @Context, stmt: @ast::Stmt) ->
     }
 }
 
-fn fold_block(
-    cx: @Context,
-    b: &ast::Block,
-    fld: @fold::ast_fold
-) -> ast::Block {
+fn fold_block(cx: @Context, b: &ast::Block, fld: &ItemRemover) -> ast::Block {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
         filter_stmt(cx, *a).and_then(|stmt| fld.fold_stmt(stmt))
     }.collect();

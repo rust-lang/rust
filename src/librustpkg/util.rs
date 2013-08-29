@@ -18,6 +18,8 @@ use syntax::codemap::{dummy_sp, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
+use syntax::fold::ast_fold;
+use rustc::back::link::output_type_exe;
 use rustc::back::link;
 use rustc::driver::session::{lib_crate, bin_crate};
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
@@ -70,9 +72,8 @@ struct ReadyCtx {
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @mut ReadyCtx,
-            m: &ast::_mod,
-            fold: @fold::ast_fold) -> ast::_mod {
+fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
+            -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.iter().filter_map |attr| {
@@ -94,9 +95,8 @@ fn fold_mod(_ctx: @mut ReadyCtx,
     }, fold)
 }
 
-fn fold_item(ctx: @mut ReadyCtx,
-             item: @ast::item,
-             fold: @fold::ast_fold) -> Option<@ast::item> {
+fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &CrateSetup)
+             -> Option<@ast::item> {
     ctx.path.push(item.ident);
 
     let mut cmds = ~[];
@@ -134,6 +134,19 @@ fn fold_item(ctx: @mut ReadyCtx,
     res
 }
 
+struct CrateSetup {
+    ctx: @mut ReadyCtx,
+}
+
+impl fold::ast_fold for CrateSetup {
+    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+        fold_item(self.ctx, item, self)
+    }
+    fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
+        fold_mod(self.ctx, module, self)
+    }
+}
+
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
                    crate: @ast::Crate) -> @ast::Crate {
@@ -144,15 +157,9 @@ pub fn ready_crate(sess: session::Session,
         path: ~[],
         fns: ~[]
     };
-    let precursor = @fold::AstFoldFns {
-        // fold_crate: fold::wrap(|a, b| fold_crate(ctx, a, b)),
-        fold_item: |a, b| fold_item(ctx, a, b),
-        fold_mod: |a, b| fold_mod(ctx, a, b),
-        .. *fold::default_ast_fold()
+    let fold = CrateSetup {
+        ctx: ctx,
     };
-
-    let fold = fold::make_fold(precursor);
-
     @fold.fold_crate(crate)
 }
 
