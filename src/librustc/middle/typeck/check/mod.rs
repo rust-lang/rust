@@ -200,7 +200,7 @@ impl PurityState {
 
             purity => {
                 let (purity, def) = match blk.rules {
-                    ast::UnsafeBlock => (ast::unsafe_fn, blk.id),
+                    ast::UnsafeBlock(*) => (ast::unsafe_fn, blk.id),
                     ast::DefaultBlock => (purity, self.def),
                 };
                 PurityState{ def: def,
