@@ -11,7 +11,7 @@
 use container::Container;
 use from_str::FromStr;
 use libc;
-use option::{Some, None};
+use option::{Some, None, Option};
 use os;
 use str::StrSlice;
 use unstable::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
@@ -57,7 +57,13 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
     match os::getenv("RUST_THREADS") {
-        Some(nstr) => FromStr::from_str(nstr).unwrap(),
+        Some(nstr) => {
+            let opt_n: Option<uint> = FromStr::from_str(nstr);
+            match opt_n {
+                Some(n) if n > 0 => n,
+                _ => rtabort!("`RUST_THREADS` is `%s`, should be a positive integer", nstr)
+            }
+        }
         None => {
             if limit_thread_creation_due_to_osx_and_valgrind() {
                 1
