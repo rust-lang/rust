@@ -102,7 +102,8 @@ syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
 syn match     rustFormat      display "%%" contained
 syn match     rustSpecial     display contained /\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
-syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial
+syn match     rustStringContinuation display contained /\\\n\s*/
+syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial,rustStringContinuation
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
@@ -137,9 +138,9 @@ syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit
 syn match   rustCharacter   /'\([^'\\]\|\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial
 
 syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
-syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustComment     start="//" end="$" contains=rustTodo keepend
 syn region    rustCommentMLDoc start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
-syn region    rustCommentDoc  start="//[/!]" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustCommentDoc  start="//[/!]" end="$" contains=rustTodo keepend
 
 syn keyword rustTodo contained TODO FIXME XXX NB NOTE
 
@@ -157,6 +158,7 @@ hi def link rustTrait           rustType
 hi def link rustSigil         StorageClass
 hi def link rustFormat        Special
 hi def link rustSpecial       Special
+hi def link rustStringContinuation Special
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
