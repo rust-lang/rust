@@ -439,15 +439,70 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     phase_6_link_output(sess, &trans, outputs);
 }
 
-pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
-                          ppm: PpMode) {
+struct IdentifiedAnnotation {
+    contents: (),
+}
 
-    fn ann_paren_for_expr(node: pprust::ann_node) {
+impl pprust::pp_ann for IdentifiedAnnotation {
+    fn pre(&self, node: pprust::ann_node) {
         match node {
-          pprust::node_expr(s, _) => pprust::popen(s),
-          _ => ()
+            pprust::node_expr(s, _) => pprust::popen(s),
+            _ => ()
         }
     }
+    fn post(&self, node: pprust::ann_node) {
+        match node {
+            pprust::node_item(s, item) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, item.id.to_str());
+            }
+            pprust::node_block(s, ref blk) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, ~"block " + blk.id.to_str());
+            }
+            pprust::node_expr(s, expr) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, expr.id.to_str());
+                pprust::pclose(s);
+            }
+            pprust::node_pat(s, pat) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, ~"pat " + pat.id.to_str());
+            }
+        }
+    }
+}
+
+struct TypedAnnotation {
+    analysis: CrateAnalysis,
+}
+
+impl pprust::pp_ann for TypedAnnotation {
+    fn pre(&self, node: pprust::ann_node) {
+        match node {
+            pprust::node_expr(s, _) => pprust::popen(s),
+            _ => ()
+        }
+    }
+    fn post(&self, node: pprust::ann_node) {
+        let tcx = self.analysis.ty_cx;
+        match node {
+            pprust::node_expr(s, expr) => {
+                pp::space(s.s);
+                pp::word(s.s, "as");
+                pp::space(s.s);
+                pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+                pprust::pclose(s);
+            }
+            _ => ()
+        }
+    }
+}
+
+pub fn pretty_print_input(sess: Session,
+                          cfg: ast::CrateConfig,
+                          input: &input,
+                          ppm: PpMode) {
     fn ann_typed_post(tcx: ty::ctxt, node: pprust::ann_node) {
         match node {
           pprust::node_expr(s, expr) => {
@@ -458,28 +513,6 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
             pprust::pclose(s);
           }
           _ => ()
-        }
-    }
-    fn ann_identified_post(node: pprust::ann_node) {
-        match node {
-          pprust::node_item(s, item) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, item.id.to_str());
-          }
-          pprust::node_block(s, ref blk) => {
-            pp::space(s.s);
-            pprust::synth_comment(
-                s, ~"block " + blk.id.to_str());
-          }
-          pprust::node_expr(s, expr) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, expr.id.to_str());
-            pprust::pclose(s);
-          }
-          pprust::node_pat(s, pat) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, ~"pat " + pat.id.to_str());
-          }
         }
     }
 
@@ -494,28 +527,30 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
 
     let annotation = match ppm {
         PpmIdentified | PpmExpandedIdentified => {
-            pprust::pp_ann {
-                pre: ann_paren_for_expr,
-                post: ann_identified_post
-            }
+            @IdentifiedAnnotation {
+                contents: (),
+            } as @pprust::pp_ann
         }
         PpmTyped => {
             let analysis = phase_3_run_analysis_passes(sess, crate);
-            pprust::pp_ann {
-                pre: ann_paren_for_expr,
-                post: |a| ann_typed_post(analysis.ty_cx, a)
-            }
+            @TypedAnnotation {
+                analysis: analysis
+            } as @pprust::pp_ann
         }
-        _ => pprust::no_ann()
+        _ => @pprust::no_ann::new() as @pprust::pp_ann,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
     do io::with_str_reader(src) |rdr| {
-        pprust::print_crate(sess.codemap, token::get_ident_interner(),
-                            sess.span_diagnostic, crate,
+        pprust::print_crate(sess.codemap,
+                            token::get_ident_interner(),
+                            sess.span_diagnostic,
+                            crate,
                             source_name(input),
-                            rdr, io::stdout(),
-                            annotation, is_expanded);
+                            rdr,
+                            io::stdout(),
+                            annotation,
+                            is_expanded);
     }
 }
 
