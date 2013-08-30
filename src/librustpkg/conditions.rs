@@ -36,3 +36,11 @@ condition! {
 condition! {
     no_rust_path: (~str) -> super::Path;
 }
+
+condition! {
+    not_a_workspace: (~str) -> super::Path;
+}
+
+condition! {
+    failed_to_create_temp_dir: (~str) -> super::Path;
+}

@@ -452,6 +452,13 @@ mod test {
 
 }
 
+pub fn option_to_vec<T>(x: Option<T>) -> ~[T] {
+    match x {
+       Some(y) => ~[y],
+       None    => ~[]
+    }
+}
+
 // tjc: cheesy
 fn debug_flags() -> ~[~str] { ~[] }
 // static DEBUG_FLAGS: ~[~str] = ~[~"-Z", ~"time-passes"];

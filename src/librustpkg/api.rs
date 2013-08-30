@@ -20,7 +20,12 @@ use std::hashmap::*;
 /// Convenience functions intended for calling from pkg.rs
 
 fn default_ctxt(p: @Path) -> Ctx {
-    Ctx { sysroot_opt: Some(p), json: false, dep_cache: @mut HashMap::new() }
+    Ctx {
+        use_rust_path_hack: false,
+        sysroot_opt: Some(p),
+        json: false,
+        dep_cache: @mut HashMap::new()
+    }
 }
 
 pub fn build_lib(sysroot: @Path, root: Path, name: ~str, version: Version,
