@@ -11,7 +11,7 @@
 // This checks that RUST_TEST_TASKS not being 1, 2, ... is detected
 // properly.
 
-// error-pattern:should be a non-negative integer
+// error-pattern:should be a positive integer
 // compile-flags: --test
 // exec-env:RUST_TEST_TASKS=foo
 

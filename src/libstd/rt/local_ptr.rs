@@ -121,27 +121,20 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 /// For the Scheduler pointer to be aliased
 pub unsafe fn unsafe_borrow<T>() -> *mut T {
     let key = tls_key();
-    let mut void_ptr: *mut c_void = tls::get(key);
+    let void_ptr = tls::get(key);
     if void_ptr.is_null() {
         rtabort!("thread-local pointer is null. bogus!");
     }
-    let ptr: *mut *mut c_void = &mut void_ptr;
-    let ptr: *mut ~T = ptr as *mut ~T;
-    let ptr: *mut T = &mut **ptr;
-    return ptr;
+    void_ptr as *mut T
 }
 
 pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
     let key = tls_key();
-    let mut void_ptr: *mut c_void = tls::get(key);
+    let void_ptr = tls::get(key);
     if void_ptr.is_null() {
-        return None;
-    }
-    {
-        let ptr: *mut *mut c_void = &mut void_ptr;
-        let ptr: *mut ~T = ptr as *mut ~T;
-        let ptr: *mut T = &mut **ptr;
-        return Some(ptr);
+        None
+    } else {
+        Some(void_ptr as *mut T)
     }
 }
 
