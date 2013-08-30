@@ -18,7 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One, Integer, CheckedAdd, Saturating};
+use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::Ord;
@@ -601,6 +601,37 @@ impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator 
                 _ => break
             }
         }
+    }
+}
+
+/// A double-ended iterator with known size
+pub trait ExactSizeDoubleEndedIterator<A> {
+    /// Return the index of the last element satisfying the specified predicate
+    ///
+    /// If no element matches, None is returned.
+    #[inline]
+    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
+}
+
+impl<A, T: DoubleEndedIterator<A> + ExactSizeHint> ExactSizeDoubleEndedIterator<A> for T {
+    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+        let (size, _) = self.size_hint();
+        let mut i = size;
+        loop {
+            match self.next_back() {
+                None => break,
+                Some(x) => {
+                    i = match i.checked_sub(&1) {
+                        Some(x) => x,
+                        None => fail!("rposition: incorrect ExactSizeHint")
+                    };
+                    if predicate(x) {
+                        return Some(i)
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
