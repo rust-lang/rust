@@ -26,6 +26,7 @@ use vec;
 /// An atomically reference counted pointer.
 ///
 /// Enforces no shared-memory safety.
+#[unsafe_no_drop_flag]
 pub struct UnsafeArc<T> {
     data: *mut ArcData<T>,
 }
@@ -221,8 +222,9 @@ impl<T: Send> Clone for UnsafeArc<T> {
 impl<T> Drop for UnsafeArc<T>{
     fn drop(&self) {
         unsafe {
+            // Happens when destructing an unwrapper's handle and from `#[unsafe_no_drop_flag]`
             if self.data.is_null() {
-                return; // Happens when destructing an unwrapper's handle.
+                return
             }
             let mut data: ~ArcData<T> = cast::transmute(self.data);
             // Must be acquire+release, not just release, to make sure this
@@ -440,6 +442,12 @@ mod tests {
     use super::{Exclusive, UnsafeArc, atomically};
     use task;
     use util;
+    use sys::size_of;
+
+    #[test]
+    fn test_size() {
+        assert_eq!(size_of::<UnsafeArc<[int, ..10]>>(), size_of::<*[int, ..10]>());
+    }
 
     #[test]
     fn test_atomically() {
