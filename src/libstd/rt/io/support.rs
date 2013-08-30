@@ -33,6 +33,7 @@ mod test {
     use super::PathLike;
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8812
     fn path_like_smoke_test() {
         let expected = "/home";
         let path = Path(expected);

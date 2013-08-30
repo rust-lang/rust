@@ -90,6 +90,7 @@ mod test {
     use libc;
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8818
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in

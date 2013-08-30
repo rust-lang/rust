@@ -870,7 +870,8 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
    $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
 
-check-fast: tidy check-fast-H-$(CFG_BUILD_TRIPLE)
+check-fast: tidy check-fast-H-$(CFG_BUILD_TRIPLE) check-stage2-std check-stage2-extra
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 define DEF_CHECK_FAST_FOR_H
 

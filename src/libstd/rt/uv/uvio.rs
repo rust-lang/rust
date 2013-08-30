@@ -1666,6 +1666,7 @@ fn test_read_read_read() {
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8816
 fn test_udp_twice() {
     do run_in_newsched_task {
         let server_addr = next_test_ip4();
@@ -1800,6 +1801,7 @@ fn file_test_uvio_full_simple_impl() {
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8816
 fn file_test_uvio_full_simple() {
     do run_in_newsched_task {
         file_test_uvio_full_simple_impl();
