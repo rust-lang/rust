@@ -5,6 +5,7 @@
 ;; Url: https://github.com/mozilla/rust
 
 (eval-when-compile (require 'cl))
+(eval-when-compile (require 'misc))
 
 ;; Syntax definitions and helpers
 (defvar rust-mode-syntax-table
@@ -57,19 +58,39 @@
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
 
+              ; Doc comments in /** style with leading * indent to line up the *s
+              ((and (nth 4 (syntax-ppss)) (looking-at "*"))
+               (+ 1 (* rust-indent-offset level)))
+
               ;; If we're in any other token-tree / sexp, then:
               ;;  - [ or ( means line up with the opening token
               ;;  - { means indent to either nesting-level * rust-indent-offset,
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
-              ;;    semi, comma or brace, and wasn't an attribute. PHEW.
+              ;;    semi, comma or brace (other than whitespace and line
+              ;;    comments) , and wasn't an attribute.  But if we have 
+              ;;    something after the open brace and ending with a comma,
+              ;;    treat it as fields and align them.  PHEW.
               ((> level 0)
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (if (looking-at "[[(]")
-                     (+ 1 (current-column))
+                 (cond 
+                  ((and
+                      (looking-at "[[(]")
+                      ; We don't want to indent out to the open bracket if the
+                      ; open bracket ends the line
+                      (save-excursion 
+                        (forward-char)
+                        (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
+                   (+ 1 (current-column)))
+                  ;; Check for fields on the same line as the open curly brace:
+                  ((looking-at "{[[:blank:]]*[^}\n]*,[[:space:]]*$")
                    (progn
+                    (forward-char)
+                    (forward-to-word 1)
+                    (current-column)))
+                  (t (progn
                      (goto-char pt)
                      (back-to-indentation)
                      (if (looking-at "\\<else\\>")
@@ -79,12 +100,12 @@
                          (beginning-of-line)
                          (rust-rewind-irrelevant)
                          (end-of-line)
-                         (if (looking-back "[{};,]")
+                         (if (looking-back "[,;{}(][[:space:]]*\\(?://.*\\)?")
                              (* rust-indent-offset level)
                            (back-to-indentation)
                            (if (looking-at "#")
                                (* rust-indent-offset level)
-                             (* rust-indent-offset (+ 1 level))))))))))
+                             (* rust-indent-offset (+ 1 level)))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
