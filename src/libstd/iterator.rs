@@ -616,6 +616,26 @@ pub trait RandomAccessIterator<A>: Iterator<A> {
     fn idx(&self, index: uint) -> Option<A>;
 }
 
+/// An iterator that knows its exact length
+///
+/// This trait is a helper for iterators like the vector iterator, so that
+/// it can support double-ended enumeration.
+///
+/// `Iterator::size_hint` *must* return the exact size of the iterator.
+/// Note that the size must fit in `uint`.
+pub trait ExactSizeHint {}
+
+// All adaptors that preserve the size of the wrapped iterator are fine
+// Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
+impl<T: ExactSizeHint> ExactSizeHint for Enumerate<T> {}
+impl<'self, A, T: ExactSizeHint> ExactSizeHint for Inspect<'self, A, T> {}
+impl<T: ExactSizeHint> ExactSizeHint for Invert<T> {}
+impl<'self, A, B, T: ExactSizeHint> ExactSizeHint for Map<'self, A, B, T> {}
+impl<A, T: ExactSizeHint> ExactSizeHint for Peekable<A, T> {}
+impl<T: ExactSizeHint> ExactSizeHint for Skip<T> {}
+impl<T: ExactSizeHint> ExactSizeHint for Take<T> {}
+impl<T: ExactSizeHint, U: ExactSizeHint> ExactSizeHint for Zip<T, U> {}
+
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
 pub struct Invert<T> {
@@ -1091,6 +1111,21 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for Enumerate<T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
+    }
+}
+
+impl<A, T: DoubleEndedIterator<A> + ExactSizeHint> DoubleEndedIterator<(uint, A)>
+for Enumerate<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(uint, A)> {
+        match self.iter.next_back() {
+            Some(a) => {
+                let (len, _) = self.iter.size_hint();
+                let ret = Some((self.count + len, a));
+                ret
+            }
+            _ => None
+        }
     }
 }
 

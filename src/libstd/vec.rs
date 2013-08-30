@@ -2319,6 +2319,9 @@ iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
 pub type RevIterator<'self, T> = Invert<VecIterator<'self, T>>;
 
+impl<'self, T> ExactSizeHint for VecIterator<'self, T> {}
+impl<'self, T> ExactSizeHint for VecMutIterator<'self, T> {}
+
 impl<'self, T> Clone for VecIterator<'self, T> {
     fn clone(&self) -> VecIterator<'self, T> { *self }
 }
