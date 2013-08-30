@@ -1320,7 +1320,7 @@ pub fn trans_block_cleanups_(bcx: @mut Block,
                 // Some types don't need to be cleaned up during
                 // landing pads because they can be freed en mass later
                 if cleanup_type == normal_exit_and_unwind || !is_lpad {
-                    bcx = cfn(bcx);
+                    bcx = cfn.clean(bcx);
                 }
             }
         }
