@@ -162,6 +162,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8811
     fn connect_error() {
         do run_in_newsched_task {
             let mut called = false;
@@ -258,6 +259,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip4() {
         do run_in_newsched_task {
             let addr = next_test_ip4();
@@ -280,6 +282,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip6() {
         do run_in_newsched_task {
             let addr = next_test_ip6();
@@ -302,6 +305,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip4() {
         do run_in_newsched_task {
             let addr = next_test_ip4();
@@ -331,6 +335,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip6() {
         do run_in_newsched_task {
             let addr = next_test_ip6();

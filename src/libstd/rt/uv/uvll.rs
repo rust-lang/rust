@@ -227,6 +227,7 @@ fn handle_sanity_check() {
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8817
 #[fixed_stack_segment]
 #[inline(never)]
 fn request_sanity_check() {
