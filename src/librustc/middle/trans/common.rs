@@ -294,9 +294,85 @@ pub enum cleantype {
     normal_exit_and_unwind
 }
 
+// Cleanup functions
+
+/// A cleanup function: a built-in destructor.
+pub trait CleanupFunction {
+    fn clean(&self, block: @mut Block) -> @mut Block;
+}
+
+/// A cleanup function that calls the "drop glue" (destructor function) on
+/// a typed value.
+pub struct TypeDroppingCleanupFunction {
+    val: ValueRef,
+    t: ty::t,
+}
+
+impl CleanupFunction for TypeDroppingCleanupFunction {
+    fn clean(&self, block: @mut Block) -> @mut Block {
+        glue::drop_ty(block, self.val, self.t)
+    }
+}
+
+/// A cleanup function that calls the "drop glue" (destructor function) on
+/// an immediate typed value.
+pub struct ImmediateTypeDroppingCleanupFunction {
+    val: ValueRef,
+    t: ty::t,
+}
+
+impl CleanupFunction for ImmediateTypeDroppingCleanupFunction {
+    fn clean(&self, block: @mut Block) -> @mut Block {
+        glue::drop_ty_immediate(block, self.val, self.t)
+    }
+}
+
+/// A cleanup function that releases a write guard, returning a value to
+/// mutable status.
+pub struct WriteGuardReleasingCleanupFunction {
+    root_key: root_map_key,
+    frozen_val_ref: ValueRef,
+    bits_val_ref: ValueRef,
+    filename_val: ValueRef,
+    line_val: ValueRef,
+}
+
+impl CleanupFunction for WriteGuardReleasingCleanupFunction {
+    fn clean(&self, bcx: @mut Block) -> @mut Block {
+        write_guard::return_to_mut(bcx,
+                                   self.root_key,
+                                   self.frozen_val_ref,
+                                   self.bits_val_ref,
+                                   self.filename_val,
+                                   self.line_val)
+    }
+}
+
+/// A cleanup function that frees some memory in the garbage-collected heap.
+pub struct GCHeapFreeingCleanupFunction {
+    ptr: ValueRef,
+}
+
+impl CleanupFunction for GCHeapFreeingCleanupFunction {
+    fn clean(&self, bcx: @mut Block) -> @mut Block {
+        glue::trans_free(bcx, self.ptr)
+    }
+}
+
+/// A cleanup function that frees some memory in the exchange heap.
+pub struct ExchangeHeapFreeingCleanupFunction {
+    ptr: ValueRef,
+}
+
+impl CleanupFunction for ExchangeHeapFreeingCleanupFunction {
+    fn clean(&self, bcx: @mut Block) -> @mut Block {
+        glue::trans_exchange_free(bcx, self.ptr)
+    }
+}
+
 pub enum cleanup {
-    clean(@fn(@mut Block) -> @mut Block, cleantype),
-    clean_temp(ValueRef, @fn(@mut Block) -> @mut Block, cleantype),
+    clean(@CleanupFunction, cleantype),
+    clean_temp(ValueRef, @CleanupFunction, cleantype),
 }
 
 // Can't use deriving(Clone) because of the managed closure.
@@ -337,13 +413,19 @@ pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
 }
 
 pub fn add_clean(bcx: @mut Block, val: ValueRef, t: ty::t) {
-    if !ty::type_needs_drop(bcx.tcx(), t) { return; }
+    if !ty::type_needs_drop(bcx.tcx(), t) {
+        return
+    }
 
     debug!("add_clean(%s, %s, %s)", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
 
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx, None) |scope_info| {
-        scope_info.cleanups.push(clean(|a| glue::drop_ty(a, val, t), cleanup_type));
+        scope_info.cleanups.push(clean(@TypeDroppingCleanupFunction {
+            val: val,
+            t: t,
+        } as @CleanupFunction,
+        cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
@@ -355,9 +437,12 @@ pub fn add_clean_temp_immediate(cx: @mut Block, val: ValueRef, ty: ty::t) {
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx, None) |scope_info| {
-        scope_info.cleanups.push(
-            clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
-                       cleanup_type));
+        scope_info.cleanups.push(clean_temp(val,
+            @ImmediateTypeDroppingCleanupFunction {
+                val: val,
+                t: ty,
+            } as @CleanupFunction,
+            cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
@@ -381,7 +466,12 @@ pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::NodeI
            t.repr(bcx.tcx()));
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx, scope_id) |scope_info| {
-        scope_info.cleanups.push(clean_temp(val, |a| glue::drop_ty(a, val, t), cleanup_type));
+        scope_info.cleanups.push(clean_temp(val,
+            @TypeDroppingCleanupFunction {
+                val: val,
+                t: t,
+            } as @CleanupFunction,
+            cleanup_type));
         grow_scope_clean(scope_info);
     }
 }
@@ -405,29 +495,36 @@ pub fn add_clean_return_to_mut(bcx: @mut Block,
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
     do in_scope_cx(bcx, Some(scope_id)) |scope_info| {
-        scope_info.cleanups.push(
-            clean_temp(
+        scope_info.cleanups.push(clean_temp(
                 frozen_val_ref,
-                |bcx| write_guard::return_to_mut(bcx, root_key, frozen_val_ref, bits_val_ref,
-                                                 filename_val, line_val),
+                @WriteGuardReleasingCleanupFunction {
+                    root_key: root_key,
+                    frozen_val_ref: frozen_val_ref,
+                    bits_val_ref: bits_val_ref,
+                    filename_val: filename_val,
+                    line_val: line_val,
+                } as @CleanupFunction,
                 normal_exit_only));
         grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_free(cx: @mut Block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
-      heap_managed | heap_managed_unique => {
-        let f: @fn(@mut Block) -> @mut Block = |a| glue::trans_free(a, ptr);
-        f
-      }
-      heap_exchange | heap_exchange_closure => {
-        let f: @fn(@mut Block) -> @mut Block = |a| glue::trans_exchange_free(a, ptr);
-        f
-      }
+        heap_managed | heap_managed_unique => {
+            @GCHeapFreeingCleanupFunction {
+                ptr: ptr,
+            } as @CleanupFunction
+        }
+        heap_exchange | heap_exchange_closure => {
+            @ExchangeHeapFreeingCleanupFunction {
+                ptr: ptr,
+            } as @CleanupFunction
+        }
     };
     do in_scope_cx(cx, None) |scope_info| {
-        scope_info.cleanups.push(clean_temp(ptr, free_fn,
-                                      normal_exit_and_unwind));
+        scope_info.cleanups.push(clean_temp(ptr,
+                                            free_fn,
+                                            normal_exit_and_unwind));
         grow_scope_clean(scope_info);
     }
 }
