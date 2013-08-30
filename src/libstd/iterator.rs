@@ -2274,6 +2274,33 @@ mod tests {
     }
 
     #[test]
+    fn test_double_ended_enumerate() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().map(|&x| x).enumerate();
+        assert_eq!(it.next(), Some((0, 1)));
+        assert_eq!(it.next(), Some((1, 2)));
+        assert_eq!(it.next_back(), Some((5, 6)));
+        assert_eq!(it.next_back(), Some((4, 5)));
+        assert_eq!(it.next_back(), Some((3, 4)));
+        assert_eq!(it.next_back(), Some((2, 3)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_double_ended_zip() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let ys = [1, 2, 3, 7];
+        let a = xs.iter().map(|&x| x);
+        let b = ys.iter().map(|&x| x);
+        let mut it = a.zip(b);
+        assert_eq!(it.next(), Some((1, 1)));
+        assert_eq!(it.next(), Some((2, 2)));
+        assert_eq!(it.next_back(), Some((4, 7)));
+        assert_eq!(it.next_back(), Some((3, 3)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
     fn test_double_ended_filter() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter(|&x| *x & 1 == 0);
