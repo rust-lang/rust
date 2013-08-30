@@ -4572,7 +4572,7 @@ pub fn visitor_object_ty(tcx: ctxt,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
                  RegionTraitStore(region),
-                 ast::m_imm,
+                 ast::m_mutbl,
                  EmptyBuiltinBounds())))
 }
 

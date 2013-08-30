@@ -19,7 +19,7 @@ More runtime type reflection
 use cast::transmute;
 use char;
 use container::Container;
-use io::{Writer, WriterUtil};
+use rt::io;
 use iterator::Iterator;
 use libc::c_void;
 use option::{Some, None};
@@ -32,51 +32,27 @@ use vec::OwnedVector;
 use unstable::intrinsics::{Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use unstable::raw;
 
-#[cfg(test)] use io;
-
-/// Helpers
-
-trait EscapedCharWriter {
-    fn write_escaped_char(&self, ch: char);
-}
-
-impl EscapedCharWriter for @Writer {
-    fn write_escaped_char(&self, ch: char) {
-        match ch {
-            '\t' => self.write_str("\\t"),
-            '\r' => self.write_str("\\r"),
-            '\n' => self.write_str("\\n"),
-            '\\' => self.write_str("\\\\"),
-            '\'' => self.write_str("\\'"),
-            '"' => self.write_str("\\\""),
-            '\x20'..'\x7e' => self.write_char(ch),
-            _ => {
-                do char::escape_unicode(ch) |c| {
-                    self.write_char(c);
-                }
-            }
-        }
-    }
-}
-
 /// Representations
 
 trait Repr {
-    fn write_repr(&self, writer: @Writer);
+    fn write_repr(&self, writer: &mut io::Writer);
 }
 
 impl Repr for () {
-    fn write_repr(&self, writer: @Writer) { writer.write_str("()"); }
+    fn write_repr(&self, writer: &mut io::Writer) {
+        writer.write("()".as_bytes());
+    }
 }
 
 impl Repr for bool {
-    fn write_repr(&self, writer: @Writer) {
-        writer.write_str(if *self { "true" } else { "false" })
+    fn write_repr(&self, writer: &mut io::Writer) {
+        let s = if *self { "true" } else { "false" };
+        writer.write(s.as_bytes())
     }
 }
 
 impl Repr for int {
-    fn write_repr(&self, writer: @Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) {
         do ::int::to_str_bytes(*self, 10u) |bits| {
             writer.write(bits);
         }
@@ -84,7 +60,7 @@ impl Repr for int {
 }
 
 macro_rules! int_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
-    fn write_repr(&self, writer: @Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) {
         do ::$ty::to_str_bytes(*self, 10u) |bits| {
             writer.write(bits);
             writer.write(bytes!($suffix));
@@ -103,14 +79,14 @@ int_repr!(u32, "u32")
 int_repr!(u64, "u64")
 
 impl Repr for float {
-    fn write_repr(&self, writer: @Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) {
         let s = self.to_str();
         writer.write(s.as_bytes());
     }
 }
 
 macro_rules! num_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
-    fn write_repr(&self, writer: @Writer) {
+    fn write_repr(&self, writer: &mut io::Writer) {
         let s = self.to_str();
         writer.write(s.as_bytes());
         writer.write(bytes!($suffix));
@@ -128,87 +104,97 @@ enum VariantState {
     AlreadyFound
 }
 
-pub struct ReprVisitor {
-    ptr: @mut *c_void,
-    ptr_stk: @mut ~[*c_void],
-    var_stk: @mut ~[VariantState],
-    writer: @Writer
+pub struct ReprVisitor<'self> {
+    ptr: *c_void,
+    ptr_stk: ~[*c_void],
+    var_stk: ~[VariantState],
+    writer: &'self mut io::Writer
 }
-pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
+
+pub fn ReprVisitor<'a>(ptr: *c_void,
+                       writer: &'a mut io::Writer) -> ReprVisitor<'a> {
     ReprVisitor {
-        ptr: @mut ptr,
-        ptr_stk: @mut ~[],
-        var_stk: @mut ~[],
+        ptr: ptr,
+        ptr_stk: ~[],
+        var_stk: ~[],
         writer: writer,
     }
 }
 
-impl MovePtr for ReprVisitor {
+impl<'self> MovePtr for ReprVisitor<'self> {
     #[inline]
-    fn move_ptr(&self, adjustment: &fn(*c_void) -> *c_void) {
-        *self.ptr = adjustment(*self.ptr);
+    fn move_ptr(&mut self, adjustment: &fn(*c_void) -> *c_void) {
+        self.ptr = adjustment(self.ptr);
     }
-    fn push_ptr(&self) {
-        self.ptr_stk.push(*self.ptr);
+    fn push_ptr(&mut self) {
+        self.ptr_stk.push(self.ptr);
     }
-    fn pop_ptr(&self) {
-        *self.ptr = self.ptr_stk.pop();
+    fn pop_ptr(&mut self) {
+        self.ptr = self.ptr_stk.pop();
     }
 }
 
-impl ReprVisitor {
+impl<'self> ReprVisitor<'self> {
     // Various helpers for the TyVisitor impl
 
     #[inline]
-    pub fn get<T>(&self, f: &fn(&T)) -> bool {
+    pub fn get<T>(&mut self, f: &fn(&mut ReprVisitor, &T)) -> bool {
         unsafe {
-            f(transmute::<*c_void,&T>(*self.ptr));
+            f(self, transmute::<*c_void,&T>(self.ptr));
         }
         true
     }
 
     #[inline]
-    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
-        self.visit_ptr_inner(*self.ptr, inner)
+    pub fn visit_inner(&mut self, inner: *TyDesc) -> bool {
+        self.visit_ptr_inner(self.ptr, inner)
     }
 
     #[inline]
-    pub fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&mut self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
-            let u = ReprVisitor(ptr, self.writer);
-            let v = reflect::MovePtrAdaptor(u);
-            visit_tydesc(inner, &v as &TyVisitor);
+            // This should call the constructor up above, but due to limiting
+            // issues we have to recreate it here.
+            let u = ReprVisitor {
+                ptr: ptr,
+                ptr_stk: ~[],
+                var_stk: ~[],
+                writer: ::cast::transmute_copy(&self.writer),
+            };
+            let mut v = reflect::MovePtrAdaptor(u);
+            // Obviously this should not be a thing, but blame #8401 for now
+            visit_tydesc(inner, &mut v as &mut TyVisitor);
             true
         }
     }
 
     #[inline]
-    pub fn write<T:Repr>(&self) -> bool {
-        do self.get |v:&T| {
-            v.write_repr(self.writer);
+    pub fn write<T:Repr>(&mut self) -> bool {
+        do self.get |this, v:&T| {
+            v.write_repr(unsafe { ::cast::transmute_copy(&this.writer) });
         }
     }
 
-    pub fn write_escaped_slice(&self, slice: &str) {
-        self.writer.write_char('"');
+    pub fn write_escaped_slice(&mut self, slice: &str) {
+        self.writer.write(['"' as u8]);
         for ch in slice.iter() {
-            self.writer.write_escaped_char(ch);
+            self.write_escaped_char(ch);
         }
-        self.writer.write_char('"');
+        self.writer.write(['"' as u8]);
     }
 
-    pub fn write_mut_qualifier(&self, mtbl: uint) {
+    pub fn write_mut_qualifier(&mut self, mtbl: uint) {
         if mtbl == 0 {
-            self.writer.write_str("mut ");
+            self.writer.write("mut ".as_bytes());
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
             assert_eq!(mtbl, 2);
-            self.writer.write_str("const ");
+            self.writer.write("const ".as_bytes());
         }
     }
 
-    pub fn write_vec_range(&self,
+    pub fn write_vec_range(&mut self,
                            _mtbl: uint,
                            ptr: *(),
                            len: uint,
@@ -216,7 +202,7 @@ impl ReprVisitor {
                            -> bool {
         let mut p = ptr as *u8;
         let (sz, al) = unsafe { ((*inner).size, (*inner).align) };
-        self.writer.write_char('[');
+        self.writer.write(['[' as u8]);
         let mut first = true;
         let mut left = len;
         // unit structs have 0 size, and don't loop forever.
@@ -225,17 +211,17 @@ impl ReprVisitor {
             if first {
                 first = false;
             } else {
-                self.writer.write_str(", ");
+                self.writer.write(", ".as_bytes());
             }
             self.visit_ptr_inner(p as *c_void, inner);
             p = align(unsafe { ptr::offset(p, sz as int) as uint }, al) as *u8;
             left -= dec;
         }
-        self.writer.write_char(']');
+        self.writer.write([']' as u8]);
         true
     }
 
-    pub fn write_unboxed_vec_repr(&self,
+    pub fn write_unboxed_vec_repr(&mut self,
                                   mtbl: uint,
                                   v: &raw::Vec<()>,
                                   inner: *TyDesc)
@@ -243,239 +229,246 @@ impl ReprVisitor {
         self.write_vec_range(mtbl, ptr::to_unsafe_ptr(&v.data),
                              v.fill, inner)
     }
+
+    fn write_escaped_char(&mut self, ch: char) {
+        match ch {
+            '\t' => self.writer.write("\\t".as_bytes()),
+            '\r' => self.writer.write("\\r".as_bytes()),
+            '\n' => self.writer.write("\\n".as_bytes()),
+            '\\' => self.writer.write("\\\\".as_bytes()),
+            '\'' => self.writer.write("\\'".as_bytes()),
+            '"' => self.writer.write("\\\"".as_bytes()),
+            '\x20'..'\x7e' => self.writer.write([ch as u8]),
+            _ => {
+                do char::escape_unicode(ch) |c| {
+                    self.writer.write([c as u8]);
+                }
+            }
+        }
+    }
 }
 
-impl TyVisitor for ReprVisitor {
-    fn visit_bot(&self) -> bool {
-        self.writer.write_str("!");
+impl<'self> TyVisitor for ReprVisitor<'self> {
+    fn visit_bot(&mut self) -> bool {
+        self.writer.write("!".as_bytes());
         true
     }
-    fn visit_nil(&self) -> bool { self.write::<()>() }
-    fn visit_bool(&self) -> bool { self.write::<bool>() }
-    fn visit_int(&self) -> bool { self.write::<int>() }
-    fn visit_i8(&self) -> bool { self.write::<i8>() }
-    fn visit_i16(&self) -> bool { self.write::<i16>() }
-    fn visit_i32(&self) -> bool { self.write::<i32>()  }
-    fn visit_i64(&self) -> bool { self.write::<i64>() }
+    fn visit_nil(&mut self) -> bool { self.write::<()>() }
+    fn visit_bool(&mut self) -> bool { self.write::<bool>() }
+    fn visit_int(&mut self) -> bool { self.write::<int>() }
+    fn visit_i8(&mut self) -> bool { self.write::<i8>() }
+    fn visit_i16(&mut self) -> bool { self.write::<i16>() }
+    fn visit_i32(&mut self) -> bool { self.write::<i32>()  }
+    fn visit_i64(&mut self) -> bool { self.write::<i64>() }
 
-    fn visit_uint(&self) -> bool { self.write::<uint>() }
-    fn visit_u8(&self) -> bool { self.write::<u8>() }
-    fn visit_u16(&self) -> bool { self.write::<u16>() }
-    fn visit_u32(&self) -> bool { self.write::<u32>() }
-    fn visit_u64(&self) -> bool { self.write::<u64>() }
+    fn visit_uint(&mut self) -> bool { self.write::<uint>() }
+    fn visit_u8(&mut self) -> bool { self.write::<u8>() }
+    fn visit_u16(&mut self) -> bool { self.write::<u16>() }
+    fn visit_u32(&mut self) -> bool { self.write::<u32>() }
+    fn visit_u64(&mut self) -> bool { self.write::<u64>() }
 
-    fn visit_float(&self) -> bool { self.write::<float>() }
-    fn visit_f32(&self) -> bool { self.write::<f32>() }
-    fn visit_f64(&self) -> bool { self.write::<f64>() }
+    fn visit_float(&mut self) -> bool { self.write::<float>() }
+    fn visit_f32(&mut self) -> bool { self.write::<f32>() }
+    fn visit_f64(&mut self) -> bool { self.write::<f64>() }
 
-    fn visit_char(&self) -> bool {
-        do self.get::<char> |&ch| {
-            self.writer.write_char('\'');
-            self.writer.write_escaped_char(ch);
-            self.writer.write_char('\'');
+    fn visit_char(&mut self) -> bool {
+        do self.get::<char> |this, &ch| {
+            this.writer.write(['\'' as u8]);
+            this.write_escaped_char(ch);
+            this.writer.write(['\'' as u8]);
         }
     }
 
-    fn visit_estr_box(&self) -> bool {
-        do self.get::<@str> |s| {
-            self.writer.write_char('@');
-            self.write_escaped_slice(*s);
+    fn visit_estr_box(&mut self) -> bool {
+        do self.get::<@str> |this, s| {
+            this.writer.write(['@' as u8]);
+            this.write_escaped_slice(*s);
         }
     }
 
-    fn visit_estr_uniq(&self) -> bool {
-        do self.get::<~str> |s| {
-            self.writer.write_char('~');
-            self.write_escaped_slice(*s);
+    fn visit_estr_uniq(&mut self) -> bool {
+        do self.get::<~str> |this, s| {
+            this.writer.write(['~' as u8]);
+            this.write_escaped_slice(*s);
         }
     }
 
-    fn visit_estr_slice(&self) -> bool {
-        do self.get::<&str> |s| {
-            self.write_escaped_slice(*s);
+    fn visit_estr_slice(&mut self) -> bool {
+        do self.get::<&str> |this, s| {
+            this.write_escaped_slice(*s);
         }
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_estr_fixed(&self, _n: uint, _sz: uint,
+    fn visit_estr_fixed(&mut self, _n: uint, _sz: uint,
                         _align: uint) -> bool { fail!(); }
 
-    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('@');
+    fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write(['@' as u8]);
         self.write_mut_qualifier(mtbl);
-        do self.get::<&raw::Box<()>> |b| {
+        do self.get::<&raw::Box<()>> |this, b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
-            self.visit_ptr_inner(p, inner);
+            this.visit_ptr_inner(p, inner);
         }
     }
 
-    fn visit_uniq(&self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('~');
-        do self.get::<*c_void> |b| {
-            self.visit_ptr_inner(*b, inner);
+    fn visit_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write(['~' as u8]);
+        do self.get::<*c_void> |this, b| {
+            this.visit_ptr_inner(*b, inner);
         }
     }
 
-    fn visit_uniq_managed(&self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('~');
-        do self.get::<&raw::Box<()>> |b| {
+    fn visit_uniq_managed(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write(['~' as u8]);
+        do self.get::<&raw::Box<()>> |this, b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
-            self.visit_ptr_inner(p, inner);
+            this.visit_ptr_inner(p, inner);
         }
     }
 
-    #[cfg(stage0)]
-    fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
-        do self.get::<*c_void> |p| {
-            self.writer.write_str(fmt!("(0x%x as *())",
-                                       *p as uint));
+    fn visit_ptr(&mut self, mtbl: uint, _inner: *TyDesc) -> bool {
+        do self.get::<*c_void> |this, p| {
+            write!(this.writer, "({} as *", *p);
+            this.write_mut_qualifier(mtbl);
+            this.writer.write("())".as_bytes());
         }
     }
 
-    #[cfg(not(stage0))]
-    fn visit_ptr(&self, mtbl: uint, _inner: *TyDesc) -> bool {
-        do self.get::<*c_void> |p| {
-            self.writer.write_str(fmt!("(0x%x as *", *p as uint));
-            self.write_mut_qualifier(mtbl);
-            self.writer.write_str("())");
-        }
-    }
-
-    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write_char('&');
+    fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write(['&' as u8]);
         self.write_mut_qualifier(mtbl);
-        do self.get::<*c_void> |p| {
-            self.visit_ptr_inner(*p, inner);
+        do self.get::<*c_void> |this, p| {
+            this.visit_ptr_inner(*p, inner);
         }
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
+    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
 
 
-    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<raw::Vec<()>> |b| {
-            self.write_unboxed_vec_repr(mtbl, b, inner);
+    fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<raw::Vec<()>> |this, b| {
+            this.write_unboxed_vec_repr(mtbl, b, inner);
         }
     }
 
-    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<&raw::Box<raw::Vec<()>>> |b| {
-            self.writer.write_char('@');
-            self.write_mut_qualifier(mtbl);
-            self.write_unboxed_vec_repr(mtbl, &b.data, inner);
+    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&raw::Box<raw::Vec<()>>> |this, b| {
+            this.writer.write(['@' as u8]);
+            this.write_mut_qualifier(mtbl);
+            this.write_unboxed_vec_repr(mtbl, &b.data, inner);
         }
     }
 
-    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<&raw::Vec<()>> |b| {
-            self.writer.write_char('~');
-            self.write_unboxed_vec_repr(mtbl, *b, inner);
+    fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&raw::Vec<()>> |this, b| {
+            this.writer.write(['~' as u8]);
+            this.write_unboxed_vec_repr(mtbl, *b, inner);
         }
     }
 
-    fn visit_evec_uniq_managed(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<&raw::Box<raw::Vec<()>>> |b| {
-            self.writer.write_char('~');
-            self.write_unboxed_vec_repr(mtbl, &b.data, inner);
+    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&raw::Box<raw::Vec<()>>> |this, b| {
+            this.writer.write(['~' as u8]);
+            this.write_unboxed_vec_repr(mtbl, &b.data, inner);
         }
     }
 
-    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<raw::Slice<()>> |s| {
-            self.writer.write_char('&');
-            self.write_vec_range(mtbl, s.data, s.len, inner);
+    fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<raw::Slice<()>> |this, s| {
+            this.writer.write(['&' as u8]);
+            this.write_vec_range(mtbl, s.data, s.len, inner);
         }
     }
 
-    fn visit_evec_fixed(&self, _n: uint, sz: uint, _align: uint,
+    fn visit_evec_fixed(&mut self, _n: uint, sz: uint, _align: uint,
                         mtbl: uint, inner: *TyDesc) -> bool {
-        do self.get::<()> |b| {
-            self.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), sz, inner);
+        do self.get::<()> |this, b| {
+            this.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), sz, inner);
         }
     }
 
-    fn visit_enter_rec(&self, _n_fields: uint,
+    fn visit_enter_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('{');
+        self.writer.write(['{' as u8]);
         true
     }
 
-    fn visit_rec_field(&self, i: uint, name: &str,
+    fn visit_rec_field(&mut self, i: uint, name: &str,
                        mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            self.writer.write(", ".as_bytes());
         }
         self.write_mut_qualifier(mtbl);
-        self.writer.write_str(name);
-        self.writer.write_str(": ");
+        self.writer.write(name.as_bytes());
+        self.writer.write(": ".as_bytes());
         self.visit_inner(inner);
         true
     }
 
-    fn visit_leave_rec(&self, _n_fields: uint,
+    fn visit_leave_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('}');
+        self.writer.write(['}' as u8]);
         true
     }
 
-    fn visit_enter_class(&self, _n_fields: uint,
+    fn visit_enter_class(&mut self, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('{');
+        self.writer.write(['{' as u8]);
         true
     }
-    fn visit_class_field(&self, i: uint, name: &str,
+    fn visit_class_field(&mut self, i: uint, name: &str,
                          mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            self.writer.write(", ".as_bytes());
         }
         self.write_mut_qualifier(mtbl);
-        self.writer.write_str(name);
-        self.writer.write_str(": ");
+        self.writer.write(name.as_bytes());
+        self.writer.write(": ".as_bytes());
         self.visit_inner(inner);
         true
     }
-    fn visit_leave_class(&self, _n_fields: uint,
+    fn visit_leave_class(&mut self, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('}');
+        self.writer.write(['}' as u8]);
         true
     }
 
-    fn visit_enter_tup(&self, _n_fields: uint,
+    fn visit_enter_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
-        self.writer.write_char('(');
+        self.writer.write(['(' as u8]);
         true
     }
-    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool {
+    fn visit_tup_field(&mut self, i: uint, inner: *TyDesc) -> bool {
         if i != 0 {
-            self.writer.write_str(", ");
+            self.writer.write(", ".as_bytes());
         }
         self.visit_inner(inner);
         true
     }
-    fn visit_leave_tup(&self, _n_fields: uint,
+    fn visit_leave_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
         if _n_fields == 1 {
-            self.writer.write_char(',');
+            self.writer.write([',' as u8]);
         }
-        self.writer.write_char(')');
+        self.writer.write([')' as u8]);
         true
     }
 
-    fn visit_enter_enum(&self,
+    fn visit_enter_enum(&mut self,
                         _n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint,
                         _align: uint) -> bool {
-        let var_stk: &mut ~[VariantState] = self.var_stk;
         let disr = unsafe {
-            get_disr(transmute(*self.ptr))
+            get_disr(transmute(self.ptr))
         };
-        var_stk.push(SearchingFor(disr));
+        self.var_stk.push(SearchingFor(disr));
         true
     }
 
-    fn visit_enter_enum_variant(&self, _variant: uint,
+    fn visit_enter_enum_variant(&mut self, _variant: uint,
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool {
@@ -495,15 +488,15 @@ impl TyVisitor for ReprVisitor {
         }
 
         if write {
-            self.writer.write_str(name);
+            self.writer.write(name.as_bytes());
             if n_fields > 0 {
-                self.writer.write_char('(');
+                self.writer.write(['(' as u8]);
             }
         }
         true
     }
 
-    fn visit_enum_variant_field(&self,
+    fn visit_enum_variant_field(&mut self,
                                 i: uint,
                                 _offset: uint,
                                 inner: *TyDesc)
@@ -511,7 +504,7 @@ impl TyVisitor for ReprVisitor {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if i != 0 {
-                    self.writer.write_str(", ");
+                    self.writer.write(", ".as_bytes());
                 }
                 if ! self.visit_inner(inner) {
                     return false;
@@ -522,14 +515,14 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_leave_enum_variant(&self, _variant: uint,
+    fn visit_leave_enum_variant(&mut self, _variant: uint,
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
         match self.var_stk[self.var_stk.len() - 1] {
             Matched => {
                 if n_fields > 0 {
-                    self.writer.write_char(')');
+                    self.writer.write([')' as u8]);
                 }
             }
             _ => ()
@@ -537,54 +530,53 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_leave_enum(&self,
+    fn visit_leave_enum(&mut self,
                         _n_variants: uint,
                         _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         _sz: uint,
                         _align: uint)
                         -> bool {
-        let var_stk: &mut ~[VariantState] = self.var_stk;
-        match var_stk.pop() {
+        match self.var_stk.pop() {
             SearchingFor(*) => fail!("enum value matched no variant"),
             _ => true
         }
     }
 
-    fn visit_enter_fn(&self, _purity: uint, _proto: uint,
+    fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
-    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
         true
     }
-    fn visit_fn_output(&self, _retstyle: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
         true
     }
-    fn visit_leave_fn(&self, _purity: uint, _proto: uint,
+    fn visit_leave_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&self) -> bool { true }
-    fn visit_param(&self, _i: uint) -> bool { true }
-    fn visit_self(&self) -> bool { true }
-    fn visit_type(&self) -> bool { true }
+    fn visit_trait(&mut self) -> bool { true }
+    fn visit_param(&mut self, _i: uint) -> bool { true }
+    fn visit_self(&mut self) -> bool { true }
+    fn visit_type(&mut self) -> bool { true }
 
-    fn visit_opaque_box(&self) -> bool {
-        self.writer.write_char('@');
-        do self.get::<&raw::Box<()>> |b| {
+    fn visit_opaque_box(&mut self) -> bool {
+        self.writer.write(['@' as u8]);
+        do self.get::<&raw::Box<()>> |this, b| {
             let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
-            self.visit_ptr_inner(p, b.type_desc);
+            this.visit_ptr_inner(p, b.type_desc);
         }
     }
 
-    fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
+    fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 
-pub fn write_repr<T>(writer: @Writer, object: &T) {
+pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
-        let v = reflect::MovePtrAdaptor(u);
-        visit_tydesc(tydesc, &v as &TyVisitor)
+        let mut v = reflect::MovePtrAdaptor(u);
+        visit_tydesc(tydesc, &mut v as &mut TyVisitor);
     }
 }
 
@@ -593,14 +585,15 @@ struct P {a: int, b: float}
 
 #[test]
 fn test_repr() {
+    use str;
+    use str::Str;
+    use rt::io::Decorator;
 
     fn exact_test<T>(t: &T, e:&str) {
-        let s : &str = io::with_str_writer(|w| write_repr(w, t));
-        if s != e {
-            error!("expected '%s', got '%s'",
-                   e, s);
-        }
-        assert_eq!(s, e);
+        let mut m = io::mem::MemWriter::new();
+        write_repr(&mut m as &mut io::Writer, t);
+        let s = str::from_bytes_owned(m.inner());
+        assert_eq!(s.as_slice(), e);
     }
 
     exact_test(&10, "10");
