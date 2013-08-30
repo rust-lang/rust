@@ -936,6 +936,29 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     }
 }
 
+impl<A, B,
+     T: DoubleEndedIterator<A> + ExactSizeHint,
+     U: DoubleEndedIterator<B> + ExactSizeHint> DoubleEndedIterator<(A, B)>
+for Zip<T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(A, B)> {
+        let (a_sz, _) = self.a.size_hint();
+        let (b_sz, _) = self.b.size_hint();
+        if a_sz < b_sz {
+            for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
+        } else if a_sz > b_sz {
+            for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+        }
+        let (a_sz, _) = self.a.size_hint();
+        let (b_sz, _) = self.b.size_hint();
+        assert!(a_sz == b_sz);
+        match (self.a.next_back(), self.b.next_back()) {
+            (Some(x), Some(y)) => Some((x, y)),
+            _ => None
+        }
+    }
+}
+
 impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
 RandomAccessIterator<(A, B)> for Zip<T, U> {
     #[inline]
