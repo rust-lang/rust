@@ -15,5 +15,9 @@ extern mod inner_static;
 
 pub fn main() {
     let a = inner_static::A::<()>;
-    assert_eq!(a.bar(), 3);
+    let b = inner_static::B::<()>;
+    let c = inner_static::test::A::<()>;
+    assert_eq!(a.bar(), 2);
+    assert_eq!(b.bar(), 4);
+    assert_eq!(c.bar(), 6);
 }

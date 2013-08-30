@@ -22,6 +22,7 @@ use print::pprust;
 use visit::{Visitor, fn_kind};
 use visit;
 
+use std::hash;
 use std::hashmap::HashMap;
 use std::vec;
 
@@ -29,6 +30,12 @@ use std::vec;
 pub enum path_elt {
     path_mod(Ident),
     path_name(Ident)
+
+    // A pretty name can come from an `impl` block. We attempt to select a
+    // reasonable name for debuggers to see, but to guarantee uniqueness with
+    // other paths the hash should also be taken into account during symbol
+    // generation.
+    path_pretty_name(Ident, u64),
 }
 
 pub type path = ~[path_elt];
@@ -37,8 +44,9 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
                          -> ~str {
     let strs = do p.map |e| {
         match *e {
-          path_mod(s) => itr.get(s.name),
-          path_name(s) => itr.get(s.name)
+            path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
+                itr.get(s.name)
+            }
         }
     };
     strs.connect(sep)
@@ -58,8 +66,9 @@ pub fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
 
 pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     match pe {
-        path_mod(s) => itr.get(s.name).to_owned(),
-        path_name(s) => itr.get(s.name).to_owned()
+        path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
+            itr.get(s.name).to_owned()
+        }
     }
 }
 
@@ -195,12 +204,33 @@ impl Visitor<()> for Ctx {
         let item_path = @self.path.clone();
         self.map.insert(i.id, node_item(i, item_path));
         match i.node {
-            item_impl(_, _, _, ref ms) => {
+            item_impl(_, ref maybe_trait, ref ty, ref ms) => {
                 let impl_did = ast_util::local_def(i.id);
                 for m in ms.iter() {
                     let extended = { self.extend(i.ident) };
                     self.map_method(impl_did, extended, *m, false)
                 }
+
+                // Right now the ident on impls is __extensions__ which isn't
+                // very pretty when debugging, so attempt to select a better
+                // name to use.
+                let name = match *maybe_trait {
+                    Some(ref trait_ref) => {
+                        trait_ref.path.segments.last().identifier
+                    }
+                    None => {
+                        match ty.node {
+                            ty_path(ref p, _, _) => {
+                                p.segments.last().identifier
+                            }
+                            // oh well, just give up for now
+                            _ => { i.ident }
+                        }
+                    }
+                };
+
+                let hash = hash::hash_keyed_2(maybe_trait, ty, 0, 0);
+                self.path.push(path_pretty_name(name, hash));
             }
             item_enum(ref enum_definition, _) => {
                 for v in (*enum_definition).variants.iter() {
@@ -267,6 +297,7 @@ impl Visitor<()> for Ctx {
             item_mod(_) | item_foreign_mod(_) => {
                 self.path.push(path_mod(i.ident));
             }
+            item_impl(*) => {} // this was guessed above.
             _ => self.path.push(path_name(i.ident))
         }
         visit::walk_item(self, i, ());
