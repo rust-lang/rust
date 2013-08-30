@@ -36,7 +36,7 @@ pub struct config {
     llvm_bin_path: Option<Path>,
 
     // The directory containing the tests to run
-    src_base: Path,
+    src_base: ~[Path],
 
     // The directory where programs should be built
     build_base: Path,
