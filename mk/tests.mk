@@ -476,7 +476,7 @@ RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
-BENCH_RS := $(wildcard $(S)src/test/bench/rt/*.rs $(S)src/test/bench/shootout/*.rs $(S)src/test/bench/std/*.rs $(S)src/test/bench/*.rs)
+BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
 CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
@@ -484,7 +484,7 @@ CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
-PERF_RS := $(BENCH_RS)
+PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RPASS_FULL_TESTS := $(RPASS_FULL_RC) $(RPASS_FULL_RS)
@@ -516,7 +516,7 @@ CTEST_BUILD_BASE_cfail = compile-fail
 CTEST_MODE_cfail = compile-fail
 CTEST_RUNTOOL_cfail = $(CTEST_RUNTOOL)
 
-CTEST_SRC_BASE_bench = bench bench/rt bench/shootout bench/std
+CTEST_SRC_BASE_bench = bench
 CTEST_BUILD_BASE_bench = bench
 CTEST_MODE_bench = run-pass
 CTEST_RUNTOOL_bench = $(CTEST_RUNTOOL)
@@ -610,8 +610,7 @@ define DEF_RUN_COMPILETEST
 
 CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
-        $(foreach base,$$(CTEST_SRC_BASE_$(4)), \
-        --src-base $$(S)src/test/$$(base))/ \
+        --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
         --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
         --mode $$(CTEST_MODE_$(4)) \
