@@ -60,12 +60,12 @@ pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
     fields.map(|f| f.expr)
 }
 
-struct LoopQueryVisitor {
-    p: @fn(&ast::Expr_) -> bool
+struct LoopQueryVisitor<'self> {
+    p: &'self fn(&ast::Expr_) -> bool
 }
 
-impl Visitor<@mut bool> for LoopQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
+impl<'self> Visitor<@mut bool> for LoopQueryVisitor<'self> {
+    fn visit_expr(&mut self, e: @ast::Expr, flag: @mut bool) {
         *flag |= (self.p)(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
@@ -78,19 +78,21 @@ impl Visitor<@mut bool> for LoopQueryVisitor {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: @fn(&ast::Expr_) -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: &fn(&ast::Expr_) -> bool) -> bool {
     let rs = @mut false;
-    let mut v = LoopQueryVisitor { p: p };
+    let mut v = LoopQueryVisitor {
+        p: p,
+    };
     visit::walk_block(&mut v, b, rs);
     return *rs;
 }
 
-struct BlockQueryVisitor {
-    p: @fn(@ast::Expr) -> bool
+struct BlockQueryVisitor<'self> {
+    p: &'self fn(@ast::Expr) -> bool
 }
 
-impl Visitor<@mut bool> for BlockQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
+impl<'self> Visitor<@mut bool> for BlockQueryVisitor<'self> {
+    fn visit_expr(&mut self, e: @ast::Expr, flag: @mut bool) {
         *flag |= (self.p)(e);
         visit::walk_expr(self, e, flag)
     }
@@ -98,9 +100,11 @@ impl Visitor<@mut bool> for BlockQueryVisitor {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: @fn(@ast::Expr) -> bool) -> bool {
+pub fn block_query(b: &ast::Block, p: &fn(@ast::Expr) -> bool) -> bool {
     let rs = @mut false;
-    let mut v = BlockQueryVisitor { p: p };
+    let mut v = BlockQueryVisitor {
+        p: p,
+    };
     visit::walk_block(&mut v, b, rs);
     return *rs;
 }
