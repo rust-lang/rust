@@ -552,8 +552,18 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                 // Detect overflow by comparing to last value, except
                 // if we've not seen any non-zero digits.
                 if last_accum != _0 {
-                    if accum_positive && accum <= last_accum { return None; }
-                    if !accum_positive && accum >= last_accum { return None; }
+                    if accum_positive && accum <= last_accum { return NumStrConv::inf(); }
+                    if !accum_positive && accum >= last_accum { return NumStrConv::neg_inf(); }
+
+                    // Detect overflow by reversing the shift-and-add proccess
+                    if accum_positive &&
+                        (last_accum != ((accum - cast(digit as int))/radix_gen.clone())) {
+                        return NumStrConv::inf();
+                    }
+                    if !accum_positive &&
+                        (last_accum != ((accum + cast(digit as int))/radix_gen.clone())) {
+                        return NumStrConv::neg_inf();
+                    }
                 }
                 last_accum = accum.clone();
             }
@@ -597,8 +607,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                     }
 
                     // Detect overflow by comparing to last value
-                    if accum_positive && accum < last_accum { return None; }
-                    if !accum_positive && accum > last_accum { return None; }
+                    if accum_positive && accum < last_accum { return NumStrConv::inf(); }
+                    if !accum_positive && accum > last_accum { return NumStrConv::neg_inf(); }
                     last_accum = accum.clone();
                 }
                 None => match c {
@@ -701,6 +711,23 @@ mod test {
         let n : Option<u8> = from_str_common("111111111", 2, false, false, false,
                                              ExpNone, false, false);
         assert_eq!(n, None);
+    }
+
+    #[test]
+    fn from_str_issue7588() {
+        let u : Option<u8> = from_str_common("1000", 10, false, false, false,
+                                            ExpNone, false, false);
+        assert_eq!(u, None);
+        let s : Option<i16> = from_str_common("80000", 10, false, false, false,
+                                             ExpNone, false, false);
+        assert_eq!(s, None);
+        let f : Option<f32> = from_str_common(
+            "10000000000000000000000000000000000000000", 10, false, false, false,
+            ExpNone, false, false);
+        assert_eq!(f, NumStrConv::inf())
+        let fe : Option<f32> = from_str_common("1e40", 10, false, false, false,
+                                            ExpDec, false, false);
+        assert_eq!(fe, NumStrConv::inf())
     }
 }
 
