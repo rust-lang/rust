@@ -232,7 +232,10 @@ pub fn compile_input(context: &BuildContext,
         maybe_sysroot: Some(sysroot_to_use),
         addl_lib_search_paths: @mut (~[]),
         output_type: output_type,
-        .. (*driver::build_session_options(binary, &matches, diagnostic::emit)).clone()
+        .. (*driver::build_session_options(binary,
+                                           &matches,
+                                           @diagnostic::DefaultEmitter as
+                                            @diagnostic::Emitter)).clone()
     };
 
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
@@ -247,7 +250,9 @@ pub fn compile_input(context: &BuildContext,
         }
     }
 
-    let sess = driver::build_session(options, diagnostic::emit);
+    let sess = driver::build_session(options,
+                                     @diagnostic::DefaultEmitter as
+                                        @diagnostic::Emitter);
 
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
