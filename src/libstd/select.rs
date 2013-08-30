@@ -11,7 +11,7 @@
 use cell::Cell;
 use comm;
 use container::Container;
-use iterator::Iterator;
+use iterator::{Iterator, DoubleEndedIterator};
 use option::*;
 // use either::{Either, Left, Right};
 // use rt::kill::BlockedTask;
@@ -87,7 +87,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.
     // Iterate in reverse so the 'earliest' index that's ready gets returned.
-    for (index, port) in ports.mut_slice(0, ready_index).mut_rev_iter().enumerate() {
+    for (index, port) in ports.mut_slice(0, ready_index).mut_iter().enumerate().invert() {
         if port.unblock_from() {
             ready_index = index;
         }
