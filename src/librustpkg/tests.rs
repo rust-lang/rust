@@ -34,6 +34,7 @@ fn datestamp(p: &Path) -> Option<libc::time_t> {
 
 fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
     Ctx {
+        use_rust_path_hack: false,
         sysroot_opt: sysroot_opt,
         json: false,
         dep_cache: @mut HashMap::new()
@@ -70,8 +71,8 @@ fn writeFile(file_path: &Path, contents: &str) {
     out.write_line(contents);
 }
 
-fn mk_empty_workspace(short_name: &Path, version: &Version) -> Path {
-    let workspace_dir = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
+fn mk_empty_workspace(short_name: &Path, version: &Version, tag: &str) -> Path {
+    let workspace_dir = mkdtemp(&os::tmpdir(), tag).expect("couldn't create temp dir");
     mk_workspace(&workspace_dir, short_name, version);
     workspace_dir
 }
@@ -86,7 +87,7 @@ fn mk_workspace(workspace: &Path, short_name: &Path, version: &Version) -> Path 
 
 fn mk_temp_workspace(short_name: &Path, version: &Version) -> Path {
     let package_dir = mk_empty_workspace(short_name,
-                                         version).push("src").push(fmt!("%s-%s",
+                          version, "temp_workspace").push("src").push(fmt!("%s-%s",
                                                             short_name.to_str(),
                                                             version.to_str()));
 
@@ -304,29 +305,54 @@ fn create_local_package_with_custom_build_hook(pkgid: &PkgId,
 
 }
 
-fn assert_lib_exists(repo: &Path, short_name: &str, _v: Version) { // ??? version?
+fn assert_lib_exists(repo: &Path, short_name: &str, v: Version) {
+    assert!(lib_exists(repo, short_name, v));
+}
+
+fn lib_exists(repo: &Path, short_name: &str, _v: Version) -> bool { // ??? version?
     debug!("assert_lib_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
     let lib = installed_library_in_workspace(short_name, repo);
     debug!("assert_lib_exists: checking whether %? exists", lib);
-    assert!(lib.is_some());
-    let libname = lib.get_ref();
-    assert!(os::path_exists(libname));
-    assert!(is_rwx(libname));
+    lib.is_some() && {
+        let libname = lib.get_ref();
+        os::path_exists(libname) && is_rwx(libname)
+    }
 }
 
 fn assert_executable_exists(repo: &Path, short_name: &str) {
+    assert!(executable_exists(repo, short_name));
+}
+
+fn executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("assert_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
     let exec = target_executable_in_workspace(&PkgId::new(short_name), repo);
-    assert!(os::path_exists(&exec));
-    assert!(is_rwx(&exec));
+    os::path_exists(&exec) && is_rwx(&exec)
 }
 
 fn assert_built_executable_exists(repo: &Path, short_name: &str) {
+    assert!(built_executable_exists(repo, short_name));
+}
+
+fn built_executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("assert_built_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
-    let exec = built_executable_in_workspace(&PkgId::new(short_name),
-                                             repo).expect("assert_built_executable_exists failed");
-    assert!(os::path_exists(&exec));
-    assert!(is_rwx(&exec));
+    let exec = built_executable_in_workspace(&PkgId::new(short_name), repo);
+    exec.is_some() && {
+       let execname = exec.get_ref();
+       os::path_exists(execname) && is_rwx(execname)
+    }
+}
+
+fn assert_built_library_exists(repo: &Path, short_name: &str) {
+    assert!(built_library_exists(repo, short_name));
+}
+
+fn built_library_exists(repo: &Path, short_name: &str) -> bool {
+    debug!("assert_built_library_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
+    let lib = built_library_in_workspace(&PkgId::new(short_name), repo);
+    lib.is_some() && {
+        let libname = lib.get_ref();
+        os::path_exists(libname) && is_rwx(libname)
+    }
 }
 
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
@@ -452,12 +478,14 @@ fn test_install_valid() {
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
+    use cond2 = conditions::not_a_workspace::cond;
 
     let ctxt = fake_ctxt(None);
     let pkgid = fake_pkg();
     let temp_workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let mut error_occurred = false;
     let mut error1_occurred = false;
+    let mut error2_occurred = false;
     do cond1.trap(|_| {
         error1_occurred = true;
     }).inside {
@@ -465,10 +493,15 @@ fn test_install_invalid() {
             error_occurred = true;
             temp_workspace.clone()
         }).inside {
-            ctxt.install(&temp_workspace, &pkgid);
+            do cond2.trap(|_| {
+               error2_occurred = true;
+               temp_workspace.clone()
+            }).inside {
+                 ctxt.install(&temp_workspace, &pkgid);
+            }
         }
     }
-    assert!(error_occurred && error1_occurred);
+    assert!(error_occurred && error1_occurred && error2_occurred);
 }
 
 // Tests above should (maybe) be converted to shell out to rustpkg, too
@@ -1086,6 +1119,152 @@ fn multiple_workspaces() {
     let c_loc = create_local_package_with_dep(&PkgId::new("bar"), &PkgId::new("foo"));
     command_line_test_with_env([~"install", ~"bar"], &c_loc, env);
 }
+
+fn rust_path_hack_test(hack_flag: bool) {
+/*
+      Make a workspace containing a pkg foo [A]
+      Make a second, empty workspace        [B]
+      Set RUST_PATH to B:A
+      rustpkg install foo
+      make sure built files for foo are in B
+      make sure nothing gets built into A or A/../build[lib,bin]
+*/
+   let p_id = PkgId::new("foo");
+   let workspace = create_local_package(&p_id);
+   let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+   let rust_path = Some(~[(~"RUST_PATH",
+       fmt!("%s:%s", dest_workspace.to_str(), workspace.push_many(["src", "foo-0.1"]).to_str()))]);
+   debug!("declare -x RUST_PATH=%s:%s",
+       dest_workspace.to_str(), workspace.push_many(["src", "foo-0.1"]).to_str());
+   command_line_test_with_env(~[~"install"] + if hack_flag { ~[~"--rust-path-hack"] } else { ~[] } +
+                               ~[~"foo"], &dest_workspace, rust_path);
+   assert_lib_exists(&dest_workspace, "foo", NoVersion);
+   assert_executable_exists(&dest_workspace, "foo");
+   assert_built_library_exists(&dest_workspace, "foo");
+   assert_built_executable_exists(&dest_workspace, "foo");
+   assert!(!lib_exists(&workspace, "foo", NoVersion));
+   assert!(!executable_exists(&workspace, "foo"));
+   assert!(!built_library_exists(&workspace, "foo"));
+   assert!(!built_executable_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_rust_path_can_contain_package_dirs_with_flag() {
+/*
+   Test that the temporary hack added for bootstrapping Servo builds
+   works. That is: if you add $FOO/src/some_pkg to the RUST_PATH,
+   it will find the sources in some_pkg, build them, and install them
+   into the first entry in the RUST_PATH.
+
+   When the hack is removed, we should change this to a should_fail test.
+*/
+   rust_path_hack_test(true);
+}
+
+#[test]
+#[should_fail]
+fn test_rust_path_can_contain_package_dirs_without_flag() {
+   rust_path_hack_test(false);
+}
+
+#[test]
+fn rust_path_hack_cwd() {
+   // Same as rust_path_hack_test, but the CWD is the dir to build out of
+   let cwd = mkdtemp(&os::tmpdir(), "pkg_files").expect("rust_path_hack_cwd");
+   writeFile(&cwd.push("lib.rs"), "pub fn f() { }");
+
+   let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+   let rust_path = Some(~[(~"RUST_PATH", dest_workspace.to_str())]);
+   debug!("declare -x RUST_PATH=%s", dest_workspace.to_str());
+   command_line_test_with_env([~"install", ~"--rust-path-hack", ~"foo"], &cwd, rust_path);
+   debug!("Checking that foo exists in %s", dest_workspace.to_str());
+   assert_lib_exists(&dest_workspace, "foo", NoVersion);
+   assert_built_library_exists(&dest_workspace, "foo");
+   assert!(!lib_exists(&cwd, "foo", NoVersion));
+   assert!(!built_library_exists(&cwd, "foo"));
+}
+
+#[test]
+fn rust_path_hack_multi_path() {
+   // Same as rust_path_hack_test, but with a more complex package ID
+   let cwd = mkdtemp(&os::tmpdir(), "pkg_files").expect("rust_path_hack_cwd");
+   let subdir = cwd.push_many([~"foo", ~"bar", ~"quux"]);
+   assert!(os::mkdir_recursive(&subdir, U_RWX));
+   writeFile(&subdir.push("lib.rs"), "pub fn f() { }");
+   let name = ~"foo/bar/quux";
+
+   let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+   let rust_path = Some(~[(~"RUST_PATH", dest_workspace.to_str())]);
+   debug!("declare -x RUST_PATH=%s", dest_workspace.to_str());
+   command_line_test_with_env([~"install", ~"--rust-path-hack", name.clone()], &subdir, rust_path);
+   debug!("Checking that %s exists in %s", name, dest_workspace.to_str());
+   assert_lib_exists(&dest_workspace, "quux", NoVersion);
+   assert_built_library_exists(&dest_workspace, name);
+   assert!(!lib_exists(&subdir, "quux", NoVersion));
+   assert!(!built_library_exists(&subdir, name));
+}
+
+#[test]
+fn rust_path_hack_install_no_arg() {
+   // Same as rust_path_hack_cwd, but making rustpkg infer the pkg id
+   let cwd = mkdtemp(&os::tmpdir(), "pkg_files").expect("rust_path_hack_install_no_arg");
+   let source_dir = cwd.push("foo");
+   assert!(make_dir_rwx(&source_dir));
+   writeFile(&source_dir.push("lib.rs"), "pub fn f() { }");
+
+   let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+   let rust_path = Some(~[(~"RUST_PATH", dest_workspace.to_str())]);
+   debug!("declare -x RUST_PATH=%s", dest_workspace.to_str());
+   command_line_test_with_env([~"install", ~"--rust-path-hack"], &source_dir, rust_path);
+   debug!("Checking that foo exists in %s", dest_workspace.to_str());
+   assert_lib_exists(&dest_workspace, "foo", NoVersion);
+   assert_built_library_exists(&dest_workspace, "foo");
+   assert!(!lib_exists(&source_dir, "foo", NoVersion));
+   assert!(!built_library_exists(&cwd, "foo"));
+}
+
+#[test]
+fn rust_path_hack_build_no_arg() {
+   // Same as rust_path_hack_install_no_arg, but building instead of installing
+   let cwd = mkdtemp(&os::tmpdir(), "pkg_files").expect("rust_path_hack_build_no_arg");
+   let source_dir = cwd.push("foo");
+   assert!(make_dir_rwx(&source_dir));
+   writeFile(&source_dir.push("lib.rs"), "pub fn f() { }");
+
+   let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+   let rust_path = Some(~[(~"RUST_PATH", dest_workspace.to_str())]);
+   debug!("declare -x RUST_PATH=%s", dest_workspace.to_str());
+   command_line_test_with_env([~"build", ~"--rust-path-hack"], &source_dir, rust_path);
+   debug!("Checking that foo exists in %s", dest_workspace.to_str());
+   assert_built_library_exists(&dest_workspace, "foo");
+   assert!(!built_library_exists(&source_dir, "foo"));
+}
+
+#[test]
+#[ignore (reason = "#7402 not yet implemented")]
+fn rust_path_install_target() {
+    let dir_for_path = mkdtemp(&os::tmpdir(),
+        "source_workspace").expect("rust_path_install_target failed");
+    let dir = mk_workspace(&dir_for_path, &Path("foo"), &NoVersion);
+    debug!("dir = %s", dir.to_str());
+    writeFile(&dir.push("main.rs"), "fn main() { let _x = (); }");
+    let dir_to_install_to = mkdtemp(&os::tmpdir(),
+        "dest_workspace").expect("rust_path_install_target failed");
+    let dir = dir.pop().pop();
+
+    let rust_path = Some(~[(~"RUST_PATH", fmt!("%s:%s", dir_to_install_to.to_str(),
+                                               dir.to_str()))]);
+    let cwd = os::getcwd();
+
+    debug!("RUST_PATH=%s:%s", dir_to_install_to.to_str(), dir.to_str());
+    command_line_test_with_env([~"install", ~"foo"],
+                               &cwd,
+                               rust_path);
+
+    assert_executable_exists(&dir_to_install_to, "foo");
+
+}
+
 
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {

@@ -129,7 +129,7 @@ fn check_impl_of_trait(cx: Context, it: @item, trait_ref: &trait_ref, self_type:
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
-    error!("checking impl with self type %?", ty::get(self_ty).sty);
+    debug!("checking impl with self type %?", ty::get(self_ty).sty);
     do check_builtin_bounds(cx, self_ty, trait_def.bounds) |missing| {
         cx.tcx.sess.span_err(self_type.span,
             fmt!("the type `%s', which does not fulfill `%s`, cannot implement this \
