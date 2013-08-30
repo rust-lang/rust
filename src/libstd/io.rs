@@ -619,7 +619,7 @@ pub trait ReaderUtil {
 
 impl<T:Reader> ReaderUtil for T {
 
-    fn read_bytes(&self,len: uint) -> ~[u8] {
+    fn read_bytes(&self, len: uint) -> ~[u8] {
         let mut bytes = vec::with_capacity(len);
         unsafe { vec::raw::set_len(&mut bytes, len); }
 
