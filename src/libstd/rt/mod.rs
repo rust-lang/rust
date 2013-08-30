@@ -59,7 +59,7 @@ Several modules in `core` are clients of `rt`:
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::{Iterator, range};
+use iterator::Iterator;
 use option::{Option, None, Some};
 use ptr::RawPtr;
 use rt::local::Local;
@@ -71,7 +71,8 @@ use rt::work_queue::WorkQueue;
 use rt::uv::uvio::UvEventLoop;
 use unstable::atomics::{AtomicInt, SeqCst};
 use unstable::sync::UnsafeArc;
-use vec::{OwnedVector, MutableVector};
+use vec;
+use vec::{OwnedVector, MutableVector, ImmutableVector};
 
 /// The global (exchange) heap.
 pub mod global_heap;
@@ -251,11 +252,7 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
 
     // Create a work queue for each scheduler, ntimes. Create an extra
     // for the main thread if that flag is set. We won't steal from it.
-    let mut work_queues = ~[];
-    for _ in range(0u, nscheds) {
-        let work_queue: WorkQueue<~Task> = WorkQueue::new();
-        work_queues.push(work_queue);
-    }
+    let work_queues: ~[WorkQueue<~Task>] = vec::from_fn(nscheds, |_| WorkQueue::new());
 
     // The schedulers.
     let mut scheds = ~[];
@@ -263,13 +260,13 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     // sent the Shutdown message to terminate the schedulers.
     let mut handles = ~[];
 
-    for i in range(0u, nscheds) {
+    for work_queue in work_queues.iter() {
         rtdebug!("inserting a regular scheduler");
 
         // Every scheduler is driven by an I/O event loop.
         let loop_ = ~UvEventLoop::new();
         let mut sched = ~Scheduler::new(loop_,
-                                        work_queues[i].clone(),
+                                        work_queue.clone(),
                                         work_queues.clone(),
                                         sleepers.clone());
         let handle = sched.make_handle();
@@ -358,9 +355,8 @@ fn run_(main: ~fn(), use_main_sched: bool) -> int {
     }
 
     // Run each remaining scheduler in a thread.
-    while !scheds.is_empty() {
+    for sched in scheds.move_rev_iter() {
         rtdebug!("creating regular schedulers");
-        let sched = scheds.pop();
         let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
             let mut sched = sched_cell.take();
