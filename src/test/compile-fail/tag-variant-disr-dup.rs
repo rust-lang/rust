@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern:discriminator value already exists
+//error-pattern:discriminant value already exists
 
 // black and white have the same discriminator value ...
 
