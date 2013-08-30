@@ -1228,17 +1228,27 @@ fn lint_unused_mut() -> @mut OuterLint {
     @mut UnusedMutLintVisitor{ stopping_on_items: false } as @mut OuterLint
 }
 
-fn lint_session(cx: @mut Context) -> @mut visit::Visitor<()> {
-    ast_util::id_visitor(|id| {
-        match cx.tcx.sess.lints.pop(&id) {
-            None => {},
+struct LintReportingIdVisitor {
+    cx: @mut Context,
+}
+
+impl ast_util::IdVisitingOperation for LintReportingIdVisitor {
+    fn visit_id(&self, id: ast::NodeId) {
+        match self.cx.tcx.sess.lints.pop(&id) {
+            None => {}
             Some(l) => {
                 for (lint, span, msg) in l.move_iter() {
-                    cx.span_lint(lint, span, msg)
+                    self.cx.span_lint(lint, span, msg)
                 }
             }
         }
-    }, false)
+    }
+}
+
+fn lint_session(cx: @mut Context) -> @mut visit::Visitor<()> {
+    ast_util::id_visitor(@LintReportingIdVisitor {
+        cx: cx,
+    } as @ast_util::IdVisitingOperation, false)
 }
 
 struct UnnecessaryAllocationLintVisitor { stopping_on_items: bool }

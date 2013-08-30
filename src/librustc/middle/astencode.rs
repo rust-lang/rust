@@ -24,6 +24,7 @@ use middle;
 use util::ppaux::ty_to_str;
 
 use std::at_vec;
+use std::libc;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize;
@@ -849,6 +850,26 @@ impl write_tag_and_id for writer::Encoder {
     }
 }
 
+struct SideTableEncodingIdVisitor {
+    ecx_ptr: *libc::c_void,
+    new_ebml_w: writer::Encoder,
+    maps: Maps,
+}
+
+impl ast_util::IdVisitingOperation for SideTableEncodingIdVisitor {
+    fn visit_id(&self, id: ast::NodeId) {
+        // Note: this will cause a copy of ebml_w, which is bad as
+        // it is mutable. But I believe it's harmless since we generate
+        // balanced EBML.
+        let mut new_ebml_w = self.new_ebml_w.clone();
+        // See above
+        let ecx: &e::EncodeContext = unsafe {
+            cast::transmute(self.ecx_ptr)
+        };
+        encode_side_tables_for_id(ecx, self.maps, &mut new_ebml_w, id)
+    }
+}
+
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
@@ -856,22 +877,16 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
     ebml_w.start_tag(c::tag_table as uint);
     let new_ebml_w = (*ebml_w).clone();
 
-    // Because the ast visitor uses @fn, I can't pass in
-    // ecx directly, but /I/ know that it'll be fine since
-    // the lifetime is tied to the CrateContext that
-    // lives this entire section.
-    let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
-    ast_util::visit_ids_for_inlined_item(
-        ii,
-        |id: ast::NodeId| {
-            // Note: this will cause a copy of ebml_w, which is bad as
-            // it is mutable. But I believe it's harmless since we generate
-            // balanced EBML.
-            let mut new_ebml_w = new_ebml_w.clone();
-            // See above
-            let ecx : &e::EncodeContext = unsafe { cast::transmute(ecx_ptr) };
-            encode_side_tables_for_id(ecx, maps, &mut new_ebml_w, id)
-        });
+    // Because the ast visitor uses @IdVisitingOperation, I can't pass in
+    // ecx directly, but /I/ know that it'll be fine since the lifetime is
+    // tied to the CrateContext that lives throughout this entire section.
+    ast_util::visit_ids_for_inlined_item(ii, @SideTableEncodingIdVisitor {
+        ecx_ptr: unsafe {
+            cast::transmute(ecx)
+        },
+        new_ebml_w: new_ebml_w,
+        maps: maps,
+    } as @ast_util::IdVisitingOperation);
     ebml_w.end_tag();
 }
 
