@@ -621,8 +621,7 @@ enum NormalizationForm {
 #[deriving(Clone)]
 struct NormalizationIterator<'self> {
     priv kind: NormalizationForm,
-    priv index: uint,
-    priv string: &'self str,
+    priv iter: CharIterator<'self>,
     priv buffer: ~[(char, u8)],
     priv sorted: bool
 }
@@ -650,16 +649,17 @@ impl<'self> Iterator<char> for NormalizationIterator<'self> {
             NFKD => char::decompose_compatible
         };
 
-        while !self.sorted && self.index < self.string.len() {
-            let CharRange {ch, next} = self.string.char_range_at(self.index);
-            self.index = next;
-            do decomposer(ch) |d| {
-                let class = canonical_combining_class(d);
-                if class == 0 && !self.sorted {
-                    canonical_sort(self.buffer);
-                    self.sorted = true;
+        if !self.sorted {
+            for ch in self.iter {
+                do decomposer(ch) |d| {
+                    let class = canonical_combining_class(d);
+                    if class == 0 && !self.sorted {
+                        canonical_sort(self.buffer);
+                        self.sorted = true;
+                    }
+                    self.buffer.push((d, class));
                 }
-                self.buffer.push((d, class));
+                if self.sorted { break }
             }
         }
 
@@ -678,7 +678,10 @@ impl<'self> Iterator<char> for NormalizationIterator<'self> {
         }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) { (self.string.len(), None) }
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (lower, _) = self.iter.size_hint();
+        (lower, None)
+    }
 }
 
 /// Replace all occurrences of one string with another
@@ -1588,8 +1591,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Returns the string in Unicode Normalization Form D (canonical decomposition)
     fn nfd_iter(&self) -> NormalizationIterator<'self> {
         NormalizationIterator {
-            index: 0,
-            string: *self,
+            iter: self.iter(),
             buffer: ~[],
             sorted: false,
             kind: NFD
@@ -1599,8 +1601,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Returns the string in Unicode Normalization Form KD (compatibility decomposition)
     fn nfkd_iter(&self) -> NormalizationIterator<'self> {
         NormalizationIterator {
-            index: 0,
-            string: *self,
+            iter: self.iter(),
             buffer: ~[],
             sorted: false,
             kind: NFKD
@@ -1672,6 +1673,7 @@ impl<'self> StrSlice<'self> for &'self str {
             if count == end { end_byte = Some(idx); break; }
             count += 1;
         }
+        if begin_byte.is_none() && count == begin { begin_byte = Some(self.len()) }
         if end_byte.is_none() && count == end { end_byte = Some(self.len()) }
 
         match (begin_byte, end_byte) {
@@ -2659,8 +2661,11 @@ mod tests {
         fn t(a: &str, b: &str, start: uint) {
             assert_eq!(a.slice_chars(start, start + b.char_len()), b);
         }
+        t("", "", 0);
         t("hello", "llo", 2);
         t("hello", "el", 1);
+        t("αβλ", "β", 1);
+        t("αβλ", "", 3);
         assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
