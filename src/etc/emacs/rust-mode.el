@@ -68,7 +68,13 @@
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (if (looking-at "[[(]")
+                 (if (and
+                      (looking-at "[[(]")
+                      ; We don't want to indent out to the open bracket if the
+                      ; open bracket ends the line
+                      (save-excursion 
+                        (forward-char)
+                        (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
                      (+ 1 (current-column))
                    (progn
                      (goto-char pt)
@@ -80,7 +86,7 @@
                          (beginning-of-line)
                          (rust-rewind-irrelevant)
                          (end-of-line)
-                         (if (looking-back "[,;{}][[:space:]]*\\(?://.*\\)?")
+                         (if (looking-back "[,;{}(][[:space:]]*\\(?://.*\\)?")
                              (* rust-indent-offset level)
                            (back-to-indentation)
                            (if (looking-at "#")
