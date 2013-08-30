@@ -10,8 +10,6 @@
 
 // xfail-fast
 
-use std::int;
-
 trait vec_monad<A> {
     fn bind<B>(&self, f: &fn(&A) -> ~[B]) -> ~[B];
 }
