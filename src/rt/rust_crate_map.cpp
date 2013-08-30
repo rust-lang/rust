@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,36 +12,52 @@
 #include <set>
 
 void iter_module_map(const mod_entry* map,
-                     void (*fn)(const mod_entry* entry, void *cookie),
-                     void *cookie) {
+                    void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                    void* fptr,
+                    void* env
+                    ) {
     for (const mod_entry* cur = map; cur->name; cur++) {
-        fn(cur, cookie);
+        fn(fptr, env, cur);
     }
 }
 
 void iter_crate_map(const cratemap* map,
-                    void (*fn)(const mod_entry* map, void *cookie),
-                    void *cookie,
+                    void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                    void *fptr,
+                    void *env,
                     std::set<const cratemap*>& visited) {
     if (visited.find(map) == visited.end()) {
         // Mark this crate visited
         visited.insert(map);
         // First iterate this crate
-        iter_module_map(map->entries(), fn, cookie);
+        iter_module_map(map->entries(), fn, fptr, env);
         // Then recurse on linked crates
         for (cratemap::iterator i = map->begin(),
                 e = map->end(); i != e; ++i) {
-            iter_crate_map(*i, fn, cookie, visited);
+            iter_crate_map(*i, fn, fptr, env, visited);
         }
     }
 }
 
 void iter_crate_map(const cratemap* map,
-                    void (*fn)(const mod_entry* map, void *cookie),
-                    void *cookie) {
+                    void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                    void *fptr,
+                    void *env
+                    ) {
     std::set<const cratemap*> visited;
-    iter_crate_map(map, fn, cookie, visited);
+    iter_crate_map(map, fn, fptr, env, visited);
 }
+
+extern "C" CDECL void
+rust_iter_crate_map(const cratemap* map,
+                    void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                    void *fptr,
+                    void *env
+                    ) {
+    return iter_crate_map(map, fn, fptr, env);
+}
+
+
 //
 // Local Variables:
 // mode: C++
