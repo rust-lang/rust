@@ -907,46 +907,6 @@ pub fn with_capacity(capacity: uint) -> ~str {
     }
 }
 
-/// As char_len but for a slice of a string
-///
-/// # Arguments
-///
-/// * s - A valid string
-/// * start - The position inside `s` where to start counting in bytes
-/// * end - The position where to stop counting
-///
-/// # Return value
-///
-/// The number of Unicode characters in `s` between the given indices.
-pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    assert!(s.is_char_boundary(end));
-    let mut i = start;
-    let mut len = 0u;
-    while i < end {
-        let next = s.char_range_at(i).next;
-        len += 1u;
-        i = next;
-    }
-    return len;
-}
-
-/// Counts the number of bytes taken by the first `n` chars in `s`
-/// starting from `start`.
-pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    let mut end = start;
-    let mut cnt = n;
-    let l = s.len();
-    while cnt > 0u {
-        assert!(end < l);
-        let next = s.char_range_at(end).next;
-        cnt -= 1u;
-        end = next;
-    }
-    end - start
-}
-
 // https://tools.ietf.org/html/rfc3629
 static UTF8_CHAR_WIDTH: [u8, ..256] = [
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
