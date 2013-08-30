@@ -303,6 +303,15 @@ fn item_path(item_doc: ebml::Doc) -> ast_map::path {
         } else if tag == tag_path_elt_name {
             let str = elt_doc.as_str_slice();
             result.push(ast_map::path_name(token::str_to_ident(str)));
+        } else if tag == tag_path_elt_pretty_name {
+            let name_doc = reader::get_doc(elt_doc,
+                                           tag_path_elt_pretty_name_ident);
+            let extra_doc = reader::get_doc(elt_doc,
+                                            tag_path_elt_pretty_name_extra);
+            let str = name_doc.as_str_slice();
+            let extra = reader::doc_as_u64(extra_doc);
+            result.push(ast_map::path_pretty_name(token::str_to_ident(str),
+                                                  extra));
         } else {
             // ignore tag_path_len element
         }

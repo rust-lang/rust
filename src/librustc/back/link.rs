@@ -35,7 +35,7 @@ use std::run;
 use std::str;
 use std::vec;
 use syntax::ast;
-use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::print::pprust;
@@ -741,19 +741,40 @@ pub fn sanitize(s: &str) -> ~str {
 }
 
 pub fn mangle(sess: Session, ss: path) -> ~str {
-    // Follow C++ namespace-mangling style
+    // Follow C++ namespace-mangling style, see
+    // http://en.wikipedia.org/wiki/Name_mangling for more info.
 
-    let mut n = ~"_ZN"; // Begin name-sequence.
+    let mut n = ~"_ZN"; // _Z == Begin name-sequence, N == nested
 
+    // First, connect each component with <len, name> pairs.
     for s in ss.iter() {
         match *s {
-            path_name(s) | path_mod(s) => {
+            path_name(s) | path_mod(s) | path_pretty_name(s, _) => {
                 let sani = sanitize(sess.str_of(s));
                 n.push_str(fmt!("%u%s", sani.len(), sani));
             }
         }
     }
     n.push_char('E'); // End name-sequence.
+
+    // next, if any identifiers are "pretty" and need extra information tacked
+    // on, then use the hash to generate two unique characters. For now
+    // hopefully 2 characters is enough to avoid collisions.
+    static EXTRA_CHARS: &'static str =
+        "abcdefghijklmnopqrstuvwxyz\
+         ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+         0123456789";
+    for s in ss.iter() {
+        match *s {
+            path_pretty_name(_, extra) => {
+                let hi = (extra >> 32) as u32 as uint;
+                let lo = extra as u32 as uint;
+                n.push_char(EXTRA_CHARS[hi % EXTRA_CHARS.len()] as char);
+                n.push_char(EXTRA_CHARS[lo % EXTRA_CHARS.len()] as char);
+            }
+            _ => {}
+        }
+    }
     n
 }
 
