@@ -62,7 +62,8 @@
               ;;  - { means indent to either nesting-level * rust-indent-offset,
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
-              ;;    semi, comma or brace, and wasn't an attribute. PHEW.
+              ;;    semi, comma or brace (other than whitespace and line
+              ;;    comments) , and wasn't an attribute. PHEW.
               ((> level 0)
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
@@ -79,7 +80,7 @@
                          (beginning-of-line)
                          (rust-rewind-irrelevant)
                          (end-of-line)
-                         (if (looking-back "[{};,]")
+                         (if (looking-back "[,;{}][[:space:]]*\\(?://.*\\)?")
                              (* rust-indent-offset level)
                            (back-to-indentation)
                            (if (looking-at "#")
