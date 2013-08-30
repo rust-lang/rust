@@ -153,7 +153,15 @@ impl Ctx {
         for a in decl.inputs.iter() {
             self.map.insert(a.id, node_arg);
         }
+        match *fk {
+            visit::fk_method(name, _, _) => { self.path.push(path_name(name)) }
+            _ => {}
+        }
         visit::walk_fn(self, fk, decl, body, sp, id, ());
+        match *fk {
+            visit::fk_method(*) => { self.path.pop(); }
+            _ => {}
+        }
     }
 
     fn map_stmt(&mut self, stmt: @stmt) {
