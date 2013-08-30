@@ -57,6 +57,10 @@
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
 
+              ; Doc comments in /** style with leading * indent to line up the *s
+              ((and (nth 4 (syntax-ppss)) (looking-at "*"))
+               (+ 1 (* rust-indent-offset level)))
+
               ;; If we're in any other token-tree / sexp, then:
               ;;  - [ or ( means line up with the opening token
               ;;  - { means indent to either nesting-level * rust-indent-offset,
