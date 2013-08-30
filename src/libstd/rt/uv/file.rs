@@ -408,11 +408,13 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8814
     fn file_test_full_simple() {
         file_test_full_simple_impl();
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME #8814
     fn file_test_full_simple_sync() {
         file_test_full_simple_impl_sync();
     }
