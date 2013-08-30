@@ -150,6 +150,8 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
 
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
+                // (Typechecking will reject discriminant-sizing attrs.)
+                assert_eq!(hint, attr::ReprAny);
                 return Univariant(mk_struct(cx, [], false), false);
             }
 
@@ -165,13 +167,6 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 return mk_cenum(cx, hint, &bounds);
             }
 
-            if cases.len() == 1 {
-                // Equivalent to a struct/tuple/newtype.
-                // FIXME: should this conflict with a discriminant size hint?
-                assert_eq!(cases[0].discr, 0);
-                return Univariant(mk_struct(cx, cases[0].tys, false), false)
-            }
-
             // Since there's at least one
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
@@ -181,8 +176,15 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                                  ty::item_path_str(cx.tcx, def_id)))
             }
 
-            if cases.len() == 2 {
-                // FIXME: disable if size hint present?
+            if cases.len() == 1 {
+                // Equivalent to a struct/tuple/newtype.
+                // (Typechecking will reject discriminant-sizing attrs.)
+                assert_eq!(hint, attr::ReprAny);
+                return Univariant(mk_struct(cx, cases[0].tys, false), false)
+            }
+
+            if cases.len() == 2 && hint == attr::ReprAny {
+                // Nullable pointer optimization
                 let mut discr = 0;
                 while discr < 2 {
                     if cases[1 - discr].is_zerolen(cx) {
@@ -205,7 +207,6 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             }
 
             // The general case.
-            let hint = ty::lookup_repr_hint(cx.tcx, def_id);
             assert!((cases.len() - 1) as i64 >= 0);
             let bounds = IntBounds { ulo: 0, uhi: (cases.len() - 1) as u64,
                                      slo: 0, shi: (cases.len() - 1) as i64 };
@@ -307,7 +308,7 @@ fn range_to_inttype(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> In
     match hint {
         attr::ReprInt(span, ity) => {
             if !bounds_usable(cx, ity, bounds) {
-                cx.sess.span_err(span, "representation hint insufficient for discriminant range")
+                cx.sess.span_bug(span, "representation hint insufficient for discriminant range")
             }
             return ity;
         }
@@ -364,6 +365,7 @@ fn ty_of_inttype(ity: IntType) -> ty::t {
         attr::UnsignedInt(t) => ty::mk_mach_uint(t)
     }
 }
+
 
 /**
  * Returns the fields of a struct for the given representation.
