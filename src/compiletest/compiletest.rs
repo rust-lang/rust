@@ -71,7 +71,6 @@ pub fn parse_config(args: ~[~str]) -> config {
           optopt("", "ratchet-noise-percent",
                  "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
-          optflag("", "newrt", "run tests on the new runtime / scheduler"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
@@ -137,7 +136,6 @@ pub fn parse_config(args: ~[~str]) -> config {
         runtool: getopts::opt_maybe_str(matches, "runtool"),
         rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
         jit: getopts::opt_present(matches, "jit"),
-        newrt: getopts::opt_present(matches, "newrt"),
         target: opt_str2(getopts::opt_maybe_str(matches, "target")).to_str(),
         adb_path: opt_str2(getopts::opt_maybe_str(matches, "adb-path")).to_str(),
         adb_test_dir:
@@ -171,7 +169,6 @@ pub fn log_config(config: &config) {
     logv(c, fmt!("runtool: %s", opt_str(&config.runtool)));
     logv(c, fmt!("rustcflags: %s", opt_str(&config.rustcflags)));
     logv(c, fmt!("jit: %b", config.jit));
-    logv(c, fmt!("newrt: %b", config.newrt));
     logv(c, fmt!("target: %s", config.target));
     logv(c, fmt!("adb_path: %s", config.adb_path));
     logv(c, fmt!("adb_test_dir: %s", config.adb_test_dir));
