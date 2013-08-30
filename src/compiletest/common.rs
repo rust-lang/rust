@@ -83,9 +83,6 @@ pub struct config {
     // Run tests using the JIT
     jit: bool,
 
-    // Run tests using the new runtime
-    newrt: bool,
-
     // Target system to be tested
     target: ~str,
 
