@@ -5,6 +5,7 @@
 ;; Url: https://github.com/mozilla/rust
 
 (eval-when-compile (require 'cl))
+(eval-when-compile (require 'misc))
 
 ;; Syntax definitions and helpers
 (defvar rust-mode-syntax-table
@@ -67,20 +68,29 @@
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
               ;;    semi, comma or brace (other than whitespace and line
-              ;;    comments) , and wasn't an attribute. PHEW.
+              ;;    comments) , and wasn't an attribute.  But if we have 
+              ;;    something after the open brace and ending with a comma,
+              ;;    treat it as fields and align them.  PHEW.
               ((> level 0)
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (if (and
+                 (cond 
+                  ((and
                       (looking-at "[[(]")
                       ; We don't want to indent out to the open bracket if the
                       ; open bracket ends the line
                       (save-excursion 
                         (forward-char)
                         (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
-                     (+ 1 (current-column))
+                   (+ 1 (current-column)))
+                  ;; Check for fields on the same line as the open curly brace:
+                  ((looking-at "{[[:blank:]]*[^}\n]*,[[:space:]]*$")
                    (progn
+                    (forward-char)
+                    (forward-to-word 1)
+                    (current-column)))
+                  (t (progn
                      (goto-char pt)
                      (back-to-indentation)
                      (if (looking-at "\\<else\\>")
@@ -95,7 +105,7 @@
                            (back-to-indentation)
                            (if (looking-at "#")
                                (* rust-indent-offset level)
-                             (* rust-indent-offset (+ 1 level))))))))))
+                             (* rust-indent-offset (+ 1 level)))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
