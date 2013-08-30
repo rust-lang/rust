@@ -236,13 +236,6 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
     print_maybe_styled(fmt!("%s\n", msg), term::attr::Bold);
 }
 
-pub fn collect(messages: @mut ~[~str])
-            -> @fn(Option<(@codemap::CodeMap, Span)>, &str, level) {
-    let f: @fn(Option<(@codemap::CodeMap, Span)>, &str, level) =
-        |_o, msg: &str, _l| { messages.push(msg.to_str()); };
-    f
-}
-
 pub struct DefaultEmitter;
 
 impl Emitter for DefaultEmitter {
