@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,7 +16,7 @@
 
 struct mod_entry {
     const char* name;
-    uint32_t* state;
+    uint32_t* log_level;
 };
 
 class cratemap;
@@ -83,12 +83,14 @@ public:
 };
 
 void iter_module_map(const mod_entry* map,
-                     void (*fn)(const mod_entry* entry, void *cookie),
-                     void *cookie);
+                     void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                     void *fptr,
+                     void *env);
 
 void iter_crate_map(const cratemap* map,
-                    void (*fn)(const mod_entry* entry, void *cookie),
-                    void *cookie);
+                    void (*fn)(void* fptr, void* env, const mod_entry *entry),
+                    void *fptr,
+                    void *env);
 
 //
 // Local Variables:
