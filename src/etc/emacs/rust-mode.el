@@ -85,10 +85,10 @@
                         (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
                    (+ 1 (current-column)))
                   ;; Check for fields on the same line as the open curly brace:
-                  ((looking-at "{[[:blank:]]*[^}\n]*,[[:space:]]*$")
+                  ((looking-at "{[[:space:]]*[^\n]*,[[:space:]]*$")
                    (progn
                     (forward-char)
-                    (forward-to-word 1)
+                    (when (looking-at "[[:space:]]") (forward-to-word 1))
                     (current-column)))
                   (t (progn
                      (goto-char pt)
