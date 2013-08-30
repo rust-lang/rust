@@ -2585,11 +2585,13 @@ impl Resolver {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
                     Some(Target(containing_module, name_bindings));
+                dest_import_resolution.value_id = id;
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
                     Some(Target(containing_module, name_bindings));
+                dest_import_resolution.type_id = id;
             }
         };
 
