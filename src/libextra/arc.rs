@@ -214,7 +214,7 @@ impl<T:Send> MutexArc<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline]
-    pub unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn unsafe_access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         let state = self.x.get();
         // Borrowck would complain about this if the function were
         // not already unsafe. See borrow_rwlock, far below.
@@ -227,7 +227,7 @@ impl<T:Send> MutexArc<T> {
 
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
-    pub unsafe fn access_cond<'x, 'c, U>(&self,
+    pub unsafe fn unsafe_access_cond<'x, 'c, U>(&self,
                                          blk: &fn(x: &'x mut T,
                                                   c: &'c Condvar) -> U)
                                          -> U {
@@ -597,12 +597,12 @@ mod tests {
             do task::spawn {
                 // wait until parent gets in
                 p.take().recv();
-                do arc2.access_cond |state, cond| {
+                do arc2.unsafe_access_cond |state, cond| {
                     *state = true;
                     cond.signal();
                 }
             }
-            do arc.access_cond |state, cond| {
+            do arc.unsafe_access_cond |state, cond| {
                 c.take().send(());
                 assert!(!*state);
                 while !*state {
@@ -621,14 +621,14 @@ mod tests {
 
             do task::spawn_unlinked {
                 let _ = p.recv();
-                do arc2.access_cond |one, cond| {
+                do arc2.unsafe_access_cond |one, cond| {
                     cond.signal();
                     // Parent should fail when it wakes up.
                     assert_eq!(*one, 0);
                 }
             }
 
-            do arc.access_cond |one, cond| {
+            do arc.unsafe_access_cond |one, cond| {
                 c.send(());
                 while *one == 1 {
                     cond.wait();
@@ -642,11 +642,11 @@ mod tests {
             let arc = MutexArc::new(1);
             let arc2 = arc.clone();
             do task::try {
-                do arc2.access |one| {
+                do arc2.unsafe_access |one| {
                     assert_eq!(*one, 2);
                 }
             };
-            do arc.access |one| {
+            do arc.unsafe_access |one| {
                 assert_eq!(*one, 1);
             }
         }
@@ -658,7 +658,7 @@ mod tests {
         let (p, c) = comm::stream();
         do task::spawn {
             unsafe {
-                do arc2.access |one| {
+                do arc2.unsafe_access |one| {
                     c.send(());
                     assert!(*one == 2);
                 }
