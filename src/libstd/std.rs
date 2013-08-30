@@ -178,8 +178,14 @@ pub mod run;
 pub mod sys;
 pub mod cast;
 pub mod fmt;
+#[cfg(stage0)] #[path = "repr_stage0.rs"]
+pub mod repr;
+#[cfg(not(stage0))]
 pub mod repr;
 pub mod cleanup;
+#[cfg(stage0)] #[path = "reflect_stage0.rs"]
+pub mod reflect;
+#[cfg(not(stage0))]
 pub mod reflect;
 pub mod condition;
 pub mod logging;
