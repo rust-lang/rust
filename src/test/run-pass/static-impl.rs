@@ -10,8 +10,6 @@
 
 // xfail-fast
 
-use std::uint;
-
 pub trait plus {
     fn plus(&self) -> int;
 }

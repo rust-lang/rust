@@ -595,7 +595,6 @@ impl<'self> Parser<'self> {
 mod tests {
     use super::*;
     use prelude::*;
-    use realstd::fmt::{String};
 
     fn same(fmt: &'static str, p: ~[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
