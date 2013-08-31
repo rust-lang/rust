@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -36,18 +36,6 @@ impl cmp::Ord for Identifier {
             (&AlphaNumeric(ref a), &AlphaNumeric(ref b)) => *a < *b,
             (&AlphaNumeric(_), _) => false
         }
-    }
-    #[inline]
-    fn le(&self, other: &Identifier) -> bool {
-        ! (other < self)
-    }
-    #[inline]
-    fn gt(&self, other: &Identifier) -> bool {
-        other < self
-    }
-    #[inline]
-    fn ge(&self, other: &Identifier) -> bool {
-        ! (self < other)
     }
 }
 
