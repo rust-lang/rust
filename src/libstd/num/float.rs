@@ -331,8 +331,6 @@ impl Num for float {}
 impl Eq for float {
     #[inline]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
-    #[inline]
-    fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]

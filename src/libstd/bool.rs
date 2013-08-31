@@ -321,8 +321,6 @@ impl TotalOrd for bool {
 impl Eq for bool {
     #[inline]
     fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
-    #[inline]
-    fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]

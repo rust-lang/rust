@@ -36,6 +36,8 @@ and `Eq` to overload the `==` and `!=` operators.
 #[lang="eq"]
 pub trait Eq {
     fn eq(&self, other: &Self) -> bool;
+
+    #[inline]
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
 

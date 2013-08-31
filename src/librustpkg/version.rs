@@ -40,9 +40,6 @@ impl Eq for Version {
             _ => false
         }
     }
-    fn ne(&self, other: &Version) -> bool {
-        !self.eq(other)
-    }
 }
 
 impl Ord for Version {

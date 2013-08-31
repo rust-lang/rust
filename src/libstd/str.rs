@@ -1180,8 +1180,6 @@ pub mod traits {
         fn eq(&self, other: &~str) -> bool {
             eq_slice((*self), (*other))
         }
-        #[inline]
-        fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
     }
 
     impl Eq for @str {
@@ -1189,8 +1187,6 @@ pub mod traits {
         fn eq(&self, other: &@str) -> bool {
             eq_slice((*self), (*other))
         }
-        #[inline]
-        fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
     }
 
     impl<'self> TotalEq for &'self str {
