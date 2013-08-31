@@ -79,6 +79,7 @@ pub static once_fns:                uint = 1 << 26;
 pub static print_llvm_passes:       uint = 1 << 27;
 pub static no_vectorize_loops:      uint = 1 << 28;
 pub static no_vectorize_slp:        uint = 1 << 29;
+pub static no_prepopulate_passes:   uint = 1 << 30;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -126,6 +127,10 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"print-llvm-passes",
       ~"Prints the llvm optimization passes being run",
       print_llvm_passes),
+     (~"no-prepopulate-passes",
+      ~"Don't pre-populate the pass managers with a list of passes, only use \
+        the passes from --passes",
+      no_prepopulate_passes),
      (~"no-vectorize-loops",
       ~"Don't run the loop vectorization optimization passes",
       no_vectorize_loops),
@@ -152,6 +157,7 @@ pub struct options {
     gc: bool,
     optimize: OptLevel,
     custom_passes: ~[~str],
+    llvm_args: ~[~str],
     debuginfo: bool,
     extra_debuginfo: bool,
     lint_opts: ~[(lint::lint, lint::level)],
@@ -320,6 +326,9 @@ impl Session_ {
     pub fn print_llvm_passes(@self) -> bool {
         self.debugging_opt(print_llvm_passes)
     }
+    pub fn no_prepopulate_passes(@self) -> bool {
+        self.debugging_opt(no_prepopulate_passes)
+    }
     pub fn no_vectorize_loops(@self) -> bool {
         self.debugging_opt(no_vectorize_loops)
     }
@@ -351,6 +360,7 @@ pub fn basic_options() -> @options {
         gc: false,
         optimize: No,
         custom_passes: ~[],
+        llvm_args: ~[],
         debuginfo: false,
         extra_debuginfo: false,
         lint_opts: ~[],

@@ -143,36 +143,15 @@ LLVMRustRunFunctionPassManager(LLVMPassManagerRef PM, LLVMModuleRef M) {
 }
 
 extern "C" void
-LLVMRustSetLLVMOptions(bool PrintPasses,
-                       bool VectorizeLoops,
-                       bool VectorizeSLP,
-                       bool TimePasses) {
+LLVMRustSetLLVMOptions(int Argc, char **Argv) {
     // Initializing the command-line options more than once is not allowed. So,
     // check if they've already been initialized.  (This could happen if we're
     // being called from rustpkg, for example). If the arguments change, then
     // that's just kinda unfortunate.
     static bool initialized = false;
     if (initialized) return;
-
-    int argc = 3;
-    const char *argv[20] = {"rustc",
-                            "-arm-enable-ehabi",
-                            "-arm-enable-ehabi-descriptors"};
-    if (PrintPasses) {
-        argv[argc++] = "-debug-pass";
-        argv[argc++] = "Structure";
-    }
-    if (VectorizeLoops) {
-        argv[argc++] = "-vectorize-loops";
-    }
-    if (VectorizeSLP) {
-        argv[argc++] = "-vectorize-slp";
-    }
-    if (TimePasses) {
-        argv[argc++] = "-time-passes";
-    }
-    cl::ParseCommandLineOptions(argc, argv);
     initialized = true;
+    cl::ParseCommandLineOptions(Argc, Argv);
 }
 
 extern "C" bool
