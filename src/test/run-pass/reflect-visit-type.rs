@@ -99,11 +99,11 @@ impl TyVisitor for MyVisitor {
     fn visit_leave_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_enter_class(&mut self, _n_fields: uint,
+    fn visit_enter_class(&mut self, _name: &str, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
     fn visit_class_field(&mut self, _i: uint, _name: &str,
                          _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_leave_class(&mut self, _n_fields: uint,
+    fn visit_leave_class(&mut self, _name: &str, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_tup(&mut self, _n_fields: uint,

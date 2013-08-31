@@ -252,8 +252,8 @@ impl Reflector {
               let tcx = bcx.ccx().tcx;
               let fields = ty::struct_fields(tcx, did, substs);
 
-              let extra = ~[self.c_uint(fields.len())]
-                  + self.c_size_and_align(t);
+              let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
+                            self.c_uint(fields.len())] + self.c_size_and_align(t);
               do self.bracketed("class", extra) |this| {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[this.c_uint(i),
