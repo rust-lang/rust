@@ -216,7 +216,7 @@ pub mod write {
     use lib;
 
     use std::c_str::ToCStr;
-    use std::libc::c_uint;
+    use std::libc::{c_uint, c_int};
     use std::path::Path;
     use std::run;
     use std::str;
@@ -257,17 +257,7 @@ pub mod write {
                 }
             }
 
-            // Copy what clan does by turning on loop vectorization at O2 and
-            // slp vectorization at O3
-            let vectorize_loop = !sess.no_vectorize_loops() &&
-                                 (sess.opts.optimize == session::Default ||
-                                  sess.opts.optimize == session::Aggressive);
-            let vectorize_slp = !sess.no_vectorize_slp() &&
-                                sess.opts.optimize == session::Aggressive;
-            llvm::LLVMRustSetLLVMOptions(sess.print_llvm_passes(),
-                                         vectorize_loop,
-                                         vectorize_slp,
-                                         sess.time_llvm_passes());
+            configure_llvm(sess);
 
             let OptLevel = match sess.opts.optimize {
               session::No => lib::llvm::CodeGenLevelNone,
@@ -293,12 +283,9 @@ pub mod write {
             // Create the two optimizing pass managers. These mirror what clang
             // does, and are by populated by LLVM's default PassManagerBuilder.
             // Each manager has a different set of passes, but they also share
-            // some common passes. Each one is initialized with the analyis
-            // passes the target requires, and then further passes are added.
+            // some common passes.
             let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
             let mpm = llvm::LLVMCreatePassManager();
-            llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-            llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
 
             // If we're verifying or linting, add them to the function pass
             // manager.
@@ -308,32 +295,11 @@ pub mod write {
             if !sess.no_verify() { assert!(addpass("verify")); }
             if sess.lint_llvm()  { assert!(addpass("lint"));   }
 
-            // Create the PassManagerBuilder for LLVM. We configure it with
-            // reasonable defaults and prepare it to actually populate the pass
-            // manager.
-            let builder = llvm::LLVMPassManagerBuilderCreate();
-            match sess.opts.optimize {
-                session::No => {
-                    // Don't add lifetime intrinsics add O0
-                    llvm::LLVMRustAddAlwaysInlinePass(builder, false);
-                }
-                // numeric values copied from clang
-                session::Less => {
-                    llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
-                                                                        225);
-                }
-                session::Default | session::Aggressive => {
-                    llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
-                                                                        275);
-                }
+            if !sess.no_prepopulate_passes() {
+                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                populate_llvm_passess(fpm, mpm, llmod, OptLevel);
             }
-            llvm::LLVMPassManagerBuilderSetOptLevel(builder, OptLevel as c_uint);
-            llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod);
-
-            // Use the builder to populate the function/module pass managers.
-            llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
-            llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
-            llvm::LLVMPassManagerBuilderDispose(builder);
 
             for pass in sess.opts.custom_passes.iter() {
                 do pass.with_c_str |s| {
@@ -423,6 +389,74 @@ pub mod write {
             sess.note(str::from_bytes(prog.error + prog.output));
             sess.abort_if_errors();
         }
+    }
+
+    unsafe fn configure_llvm(sess: Session) {
+        // Copy what clan does by turning on loop vectorization at O2 and
+        // slp vectorization at O3
+        let vectorize_loop = !sess.no_vectorize_loops() &&
+                             (sess.opts.optimize == session::Default ||
+                              sess.opts.optimize == session::Aggressive);
+        let vectorize_slp = !sess.no_vectorize_slp() &&
+                            sess.opts.optimize == session::Aggressive;
+
+        let mut llvm_c_strs = ~[];
+        let mut llvm_args = ~[];
+        let add = |arg: &str| {
+            let s = arg.to_c_str();
+            llvm_args.push(s.with_ref(|p| p));
+            llvm_c_strs.push(s);
+        };
+        add("rustc"); // fake program name
+        add("-arm-enable-ehabi");
+        add("-arm-enable-ehabi-descriptors");
+        if vectorize_loop { add("-vectorize-loops"); }
+        if vectorize_slp  { add("-vectorize-slp");   }
+        if sess.time_llvm_passes() { add("-time-passes"); }
+        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+
+        for arg in sess.opts.llvm_args.iter() {
+            add(*arg);
+        }
+
+        do llvm_args.as_imm_buf |p, len| {
+            llvm::LLVMRustSetLLVMOptions(len as c_int, p);
+        }
+    }
+
+    unsafe fn populate_llvm_passess(fpm: lib::llvm::PassManagerRef,
+                                    mpm: lib::llvm::PassManagerRef,
+                                    llmod: ModuleRef,
+                                    opt: lib::llvm::CodeGenOptLevel) {
+        // Create the PassManagerBuilder for LLVM. We configure it with
+        // reasonable defaults and prepare it to actually populate the pass
+        // manager.
+        let builder = llvm::LLVMPassManagerBuilderCreate();
+        match opt {
+            lib::llvm::CodeGenLevelNone => {
+                // Don't add lifetime intrinsics add O0
+                llvm::LLVMRustAddAlwaysInlinePass(builder, false);
+            }
+            lib::llvm::CodeGenLevelLess => {
+                llvm::LLVMRustAddAlwaysInlinePass(builder, true);
+            }
+            // numeric values copied from clang
+            lib::llvm::CodeGenLevelDefault => {
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                                                                    225);
+            }
+            lib::llvm::CodeGenLevelAggressive => {
+                llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder,
+                                                                    275);
+            }
+        }
+        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt as c_uint);
+        llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod);
+
+        // Use the builder to populate the function/module pass managers.
+        llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
+        llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
+        llvm::LLVMPassManagerBuilderDispose(builder);
     }
 }
 
