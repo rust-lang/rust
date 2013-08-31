@@ -46,6 +46,13 @@ pub trait Digest {
     fn output_bits(&self) -> uint;
 
     /**
+     * Get the output size in bytes.
+     */
+    fn output_bytes(&self) -> uint {
+        return (self.output_bits() + 7) / 8;
+    }
+
+    /**
      * Get the block size in bytes.
      */
     fn block_size(&self) -> uint;
