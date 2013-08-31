@@ -194,8 +194,6 @@ impl Num for f64 {}
 impl Eq for f64 {
     #[inline]
     fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
-    #[inline]
-    fn ne(&self, other: &f64) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]

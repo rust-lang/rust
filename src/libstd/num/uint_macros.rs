@@ -148,8 +148,6 @@ impl Ord for $T {
 impl Eq for $T {
     #[inline]
     fn eq(&self, other: &$T) -> bool { return (*self) == (*other); }
-    #[inline]
-    fn ne(&self, other: &$T) -> bool { return (*self) != (*other); }
 }
 
 impl Orderable for $T {
