@@ -37,8 +37,8 @@ pub struct PkgId {
 }
 
 impl Eq for PkgId {
-    fn eq(&self, p: &PkgId) -> bool {
-        p.path == self.path && p.version == self.version
+    fn eq(&self, other: &PkgId) -> bool {
+        self.path == other.path && self.version == other.version
     }
 }
 
