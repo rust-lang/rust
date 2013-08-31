@@ -285,6 +285,7 @@ pub trait Primitive: Num
                    + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
+    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
     fn bits(unused_self: Option<Self>) -> uint;
     fn bytes(unused_self: Option<Self>) -> uint;
 }
@@ -327,6 +328,7 @@ pub trait Float: Real
     fn is_normal(&self) -> bool;
     fn classify(&self) -> FPCategory;
 
+    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
     fn mantissa_digits(unused_self: Option<Self>) -> uint;
     fn digits(unused_self: Option<Self>) -> uint;
     fn epsilon() -> Self;

@@ -10,8 +10,6 @@
 
 // xfail-fast
 
-use std::int;
-
 trait to_str {
     fn to_string(&self) -> ~str;
 }

@@ -15,7 +15,7 @@ extern fn voidret2() {}
 
 extern fn uintret() -> uint { 22 }
 
-extern fn uintvoidret(x: uint) {}
+extern fn uintvoidret(_x: uint) {}
 
 extern fn uintuintuintuintret(x: uint, y: uint, z: uint) -> uint { x+y+z }
 

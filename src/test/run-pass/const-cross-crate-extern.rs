@@ -13,11 +13,8 @@
 
 extern mod cci_const;
 use cci_const::bar;
-use std::cast::transmute;
 static foo: extern "C" fn() = bar;
 
 pub fn main() {
-    unsafe {
-        assert_eq!(foo, bar);
-    }
+    assert_eq!(foo, bar);
 }
