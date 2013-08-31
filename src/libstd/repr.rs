@@ -346,7 +346,6 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     // Type no longer exists, vestigial function.
     fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
 
-
     fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Vec<()>> |this, b| {
             this.write_unboxed_vec_repr(mtbl, b, inner);
@@ -413,11 +412,15 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_enter_class(&mut self, _n_fields: uint,
+    fn visit_enter_class(&mut self, name: &str, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write(['{' as u8]);
+        self.writer.write(name.as_bytes());
+        if n_fields != 0 {
+            self.writer.write(['{' as u8]);
+        }
         true
     }
+
     fn visit_class_field(&mut self, i: uint, name: &str,
                          mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
@@ -429,9 +432,12 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         self.visit_inner(inner);
         true
     }
-    fn visit_leave_class(&mut self, _n_fields: uint,
+
+    fn visit_leave_class(&mut self, _name: &str, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write(['}' as u8]);
+        if n_fields != 0 {
+            self.writer.write(['}' as u8]);
+        }
         true
     }
 
@@ -440,6 +446,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         self.writer.write(['(' as u8]);
         true
     }
+
     fn visit_tup_field(&mut self, i: uint, inner: *TyDesc) -> bool {
         if i != 0 {
             self.writer.write(", ".as_bytes());
@@ -447,6 +454,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         self.visit_inner(inner);
         true
     }
+
     fn visit_leave_tup(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool {
         if _n_fields == 1 {
@@ -544,12 +552,15 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
+
     fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
         true
     }
+
     fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
         true
     }
+
     fn visit_leave_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
@@ -628,11 +639,11 @@ fn test_repr() {
     exact_test(&(&["hi", "there"]),
                "&[\"hi\", \"there\"]");
     exact_test(&(P{a:10, b:1.234}),
-               "{a: 10, b: 1.234}");
+               "repr::P{a: 10, b: 1.234}");
     exact_test(&(@P{a:10, b:1.234}),
-               "@{a: 10, b: 1.234}");
+               "@repr::P{a: 10, b: 1.234}");
     exact_test(&(~P{a:10, b:1.234}),
-               "~{a: 10, b: 1.234}");
+               "~repr::P{a: 10, b: 1.234}");
     exact_test(&(10u8, ~"hello"),
                "(10u8, ~\"hello\")");
     exact_test(&(10u16, ~"hello"),
@@ -643,5 +654,5 @@ fn test_repr() {
                "(10u64, ~\"hello\")");
 
     struct Foo;
-    exact_test(&(~[Foo, Foo, Foo]), "~[{}, {}, {}]");
+    exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
 }

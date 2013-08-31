@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast: check-fast screws up repr paths
+
 use std::fmt;
 
 struct A;
@@ -27,7 +29,7 @@ pub fn main() {
 
     // Make sure there's a poly formatter that takes anything
     t!(format!("{:?}", 1), "1");
-    t!(format!("{:?}", A), "{}");
+    t!(format!("{:?}", A), "A");
     t!(format!("{:?}", ()), "()");
     t!(format!("{:?}", @(~1, "foo")), "@(~1, \"foo\")");
 

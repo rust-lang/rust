@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast: check-fast screws up repr paths
+
 enum a_tag {
     a_tag(u64)
 }
@@ -21,5 +23,5 @@ pub fn main() {
     let x = t_rec {c8: 22u8, t: a_tag(44u64)};
     let y = fmt!("%?", x);
     info!("y = %s", y);
-    assert_eq!(y, ~"{c8: 22u8, t: a_tag(44u64)}");
+    assert_eq!(y, ~"t_rec{c8: 22u8, t: a_tag(44u64)}");
 }
