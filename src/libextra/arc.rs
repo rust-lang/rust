@@ -572,10 +572,10 @@ mod tests {
 
         let (p, c) = comm::stream();
 
-        do task::spawn() || {
-            let arc_v : Arc<~[int]> = p.recv();
+        do task::spawn {
+            let arc_v: Arc<~[int]> = p.recv();
 
-            let v = (*arc_v.get()).clone();
+            let v = arc_v.get().clone();
             assert_eq!(v[3], 4);
         };
 
@@ -590,11 +590,11 @@ mod tests {
     #[test]
     fn test_mutex_arc_condvar() {
         unsafe {
-            let arc = ~MutexArc::new(false);
-            let arc2 = ~arc.clone();
-            let (p,c) = comm::oneshot();
-            let (c,p) = (Cell::new(c), Cell::new(p));
-            do task::spawn || {
+            let arc = MutexArc::new(false);
+            let arc2 = arc.clone();
+            let (p, c) = comm::oneshot();
+            let (c, p) = (Cell::new(c), Cell::new(p));
+            do task::spawn {
                 // wait until parent gets in
                 p.take().recv();
                 do arc2.access_cond |state, cond| {
@@ -615,11 +615,11 @@ mod tests {
     #[test] #[should_fail]
     fn test_arc_condvar_poison() {
         unsafe {
-            let arc = ~MutexArc::new(1);
-            let arc2 = ~arc.clone();
+            let arc = MutexArc::new(1);
+            let arc2 = arc.clone();
             let (p, c) = comm::stream();
 
-            do task::spawn_unlinked || {
+            do task::spawn_unlinked {
                 let _ = p.recv();
                 do arc2.access_cond |one, cond| {
                     cond.signal();
@@ -639,9 +639,9 @@ mod tests {
     #[test] #[should_fail]
     fn test_mutex_arc_poison() {
         unsafe {
-            let arc = ~MutexArc::new(1);
-            let arc2 = ~arc.clone();
-            do task::try || {
+            let arc = MutexArc::new(1);
+            let arc2 = arc.clone();
+            do task::try {
                 do arc2.access |one| {
                     assert_eq!(*one, 2);
                 }
@@ -654,7 +654,7 @@ mod tests {
     #[test] #[should_fail]
     pub fn test_mutex_arc_unwrap_poison() {
         let arc = MutexArc::new(1);
-        let arc2 = ~(&arc).clone();
+        let arc2 = arc.clone();
         let (p, c) = comm::stream();
         do task::spawn {
             unsafe {
@@ -670,9 +670,9 @@ mod tests {
     }
     #[test] #[should_fail]
     fn test_rw_arc_poison_wr() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.write |one| {
                 assert_eq!(*one, 2);
             }
@@ -683,9 +683,9 @@ mod tests {
     }
     #[test] #[should_fail]
     fn test_rw_arc_poison_ww() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.write |one| {
                 assert_eq!(*one, 2);
             }
@@ -696,9 +696,9 @@ mod tests {
     }
     #[test] #[should_fail]
     fn test_rw_arc_poison_dw() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.write_downgrade |mut write_mode| {
                 do write_mode.write |one| {
                     assert_eq!(*one, 2);
@@ -711,9 +711,9 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_rr() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.read |one| {
                 assert_eq!(*one, 2);
             }
@@ -724,9 +724,9 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_rw() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.read |one| {
                 assert_eq!(*one, 2);
             }
@@ -737,12 +737,12 @@ mod tests {
     }
     #[test]
     fn test_rw_arc_no_poison_dr() {
-        let arc = ~RWArc::new(1);
-        let arc2 = (*arc).clone();
-        do task::try || {
+        let arc = RWArc::new(1);
+        let arc2 = arc.clone();
+        do task::try {
             do arc2.write_downgrade |write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
-                do (&read_mode).read |one| {
+                do read_mode.read |one| {
                     assert_eq!(*one, 2);
                 }
             }
@@ -753,11 +753,11 @@ mod tests {
     }
     #[test]
     fn test_rw_arc() {
-        let arc = ~RWArc::new(0);
-        let arc2 = (*arc).clone();
-        let (p,c) = comm::stream();
+        let arc = RWArc::new(0);
+        let arc2 = arc.clone();
+        let (p, c) = comm::stream();
 
-        do task::spawn || {
+        do task::spawn {
             do arc2.write |num| {
                 do 10.times {
                     let tmp = *num;
@@ -772,7 +772,7 @@ mod tests {
         // Readers try to catch the writer in the act
         let mut children = ~[];
         do 5.times {
-            let arc3 = (*arc).clone();
+            let arc3 = arc.clone();
             let mut builder = task::task();
             builder.future_result(|r| children.push(r));
             do builder.spawn {
@@ -801,15 +801,15 @@ mod tests {
         // (4) tells writer and all other readers to contend as it downgrades.
         // (5) Writer attempts to set state back to 42, while downgraded task
         //     and all reader tasks assert that it's 31337.
-        let arc = ~RWArc::new(0);
+        let arc = RWArc::new(0);
 
         // Reader tasks
         let mut reader_convos = ~[];
         do 10.times {
-            let ((rp1,rc1),(rp2,rc2)) = (comm::stream(),comm::stream());
+            let ((rp1, rc1), (rp2, rc2)) = (comm::stream(), comm::stream());
             reader_convos.push((rc1, rp2));
-            let arcn = (*arc).clone();
-            do task::spawn || {
+            let arcn = arc.clone();
+            do task::spawn {
                 rp1.recv(); // wait for downgrader to give go-ahead
                 do arcn.read |state| {
                     assert_eq!(*state, 31337);
@@ -819,8 +819,8 @@ mod tests {
         }
 
         // Writer task
-        let arc2 = (*arc).clone();
-        let ((wp1,wc1),(wp2,wc2)) = (comm::stream(),comm::stream());
+        let arc2 = arc.clone();
+        let ((wp1, wc1), (wp2, wc2)) = (comm::stream(), comm::stream());
         do task::spawn || {
             wp1.recv();
             do arc2.write_cond |state, cond| {
@@ -853,7 +853,7 @@ mod tests {
                 }
             }
             let read_mode = arc.downgrade(write_mode);
-            do (&read_mode).read |state| {
+            do read_mode.read |state| {
                 // complete handshake with other readers
                 for &(_, ref rp) in reader_convos.iter() {
                     rp.recv()
@@ -876,11 +876,11 @@ mod tests {
         // line in RWLock::write_cond() that looks like:
         //     "blk(&Condvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
-        let x = ~RWArc::new(true);
+        let x = RWArc::new(true);
         let (wp, wc) = comm::stream();
 
         // writer task
-        let xw = (*x).clone();
+        let xw = x.clone();
         do task::spawn {
             do xw.write_cond |state, c| {
                 wc.send(()); // tell downgrader it's ok to go
@@ -901,7 +901,7 @@ mod tests {
                 c.signal();
             }
             // make a reader task to trigger the "reader cloud lock" handoff
-            let xr = (*x).clone();
+            let xr = x.clone();
             let (rp, rc) = comm::stream();
             do task::spawn {
                 rc.send(());
