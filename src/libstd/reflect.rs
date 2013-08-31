@@ -331,17 +331,15 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_enter_class(&mut self, n_fields: uint, sz: uint, align: uint)
-                      -> bool {
+    fn visit_enter_class(&mut self, name: &str, n_fields: uint, sz: uint, align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_enter_class(n_fields, sz, align) {
+        if ! self.inner.visit_enter_class(name, n_fields, sz, align) {
             return false;
         }
         true
     }
 
-    fn visit_class_field(&mut self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_class_field(&mut self, i: uint, name: &str, mtbl: uint, inner: *TyDesc) -> bool {
         unsafe { self.align((*inner).align); }
         if ! self.inner.visit_class_field(i, name, mtbl, inner) {
             return false;
@@ -350,9 +348,8 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_leave_class(&mut self, n_fields: uint, sz: uint, align: uint)
-                      -> bool {
-        if ! self.inner.visit_leave_class(n_fields, sz, align) {
+    fn visit_leave_class(&mut self, name: &str, n_fields: uint, sz: uint, align: uint) -> bool {
+        if ! self.inner.visit_leave_class(name, n_fields, sz, align) {
             return false;
         }
         true
