@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast: check-fast screws up repr paths
+
 // Issue #2303
 
 use std::sys;
@@ -86,6 +88,6 @@ pub fn main() {
         // because `Inner`s alignment was 4.
         assert_eq!(sys::size_of::<Outer>(), m::m::size());
 
-        assert_eq!(y, ~"{c8: 22u8, t: {c64: 44u64}}");
+        assert_eq!(y, ~"Outer{c8: 22u8, t: Inner{c64: 44u64}}");
     }
 }
