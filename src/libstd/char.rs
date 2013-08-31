@@ -397,8 +397,6 @@ impl Char for char {
 impl Eq for char {
     #[inline]
     fn eq(&self, other: &char) -> bool { (*self) == (*other) }
-    #[inline]
-    fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]
