@@ -191,6 +191,7 @@ pub enum AsmDialect {
     AD_Intel = 1
 }
 
+#[deriving(Eq)]
 pub enum CodeGenOptLevel {
     CodeGenLevelNone = 0,
     CodeGenLevelLess = 1,
@@ -2123,10 +2124,7 @@ pub mod llvm {
         pub fn LLVMRustPrintModule(PM: PassManagerRef,
                                    M: ModuleRef,
                                    Output: *c_char);
-        pub fn LLVMRustSetLLVMOptions(PrintPasses: bool,
-                                      VectorizeLoops: bool,
-                                      VectorizeSLP: bool,
-                                      TimePasses: bool);
+        pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: **c_char);
         pub fn LLVMRustPrintPasses();
         pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *c_char);
         pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef,

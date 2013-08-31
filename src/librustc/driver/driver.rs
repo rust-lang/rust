@@ -737,6 +737,14 @@ pub fn build_session_options(binary: @str,
             }).collect()
         }
     };
+    let llvm_args = match getopts::opt_maybe_str(matches, "llvm-args") {
+        None => ~[],
+        Some(s) => {
+            s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
+                s.trim().to_owned()
+            }).collect()
+        }
+    };
 
     let sopts = @session::options {
         crate_type: crate_type,
@@ -744,6 +752,7 @@ pub fn build_session_options(binary: @str,
         gc: gc,
         optimize: opt_level,
         custom_passes: custom_passes,
+        llvm_args: llvm_args,
         debuginfo: debuginfo,
         extra_debuginfo: extra_debuginfo,
         lint_opts: lint_opts,
@@ -851,6 +860,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                         Appends to the default list of passes to run for the \
                         specified current optimization level. A value of \
                         \"list\" will list all of the available passes", "NAMES"),
+  optopt("", "llvm-args", "A list of arguments to pass to llvm, comma \
+                           separated", "ARGS"),
   optopt( "",  "out-dir",
                         "Write output to compiler-chosen filename
                           in <dir>", "DIR"),
