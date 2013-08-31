@@ -412,10 +412,12 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_enter_class(&mut self, name: &str, _n_fields: uint,
+    fn visit_enter_class(&mut self, name: &str, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
         self.writer.write(name.as_bytes());
-        self.writer.write(['{' as u8]);
+        if n_fields != 0 {
+            self.writer.write(['{' as u8]);
+        }
         true
     }
 
@@ -431,9 +433,11 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_leave_class(&mut self, _name: &str, _n_fields: uint,
+    fn visit_leave_class(&mut self, _name: &str, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
-        self.writer.write(['}' as u8]);
+        if n_fields != 0 {
+            self.writer.write(['}' as u8]);
+        }
         true
     }
 
@@ -650,5 +654,5 @@ fn test_repr() {
                "(10u64, ~\"hello\")");
 
     struct Foo;
-    exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo{}, repr::test_repr::Foo{}]");
+    exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
 }

@@ -29,7 +29,7 @@ pub fn main() {
 
     // Make sure there's a poly formatter that takes anything
     t!(format!("{:?}", 1), "1");
-    t!(format!("{:?}", A), "A{}");
+    t!(format!("{:?}", A), "A");
     t!(format!("{:?}", ()), "()");
     t!(format!("{:?}", @(~1, "foo")), "@(~1, \"foo\")");
 
