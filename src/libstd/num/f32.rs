@@ -171,8 +171,6 @@ impl Num for f32 {}
 impl Eq for f32 {
     #[inline]
     fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
-    #[inline]
-    fn ne(&self, other: &f32) -> bool { (*self) != (*other) }
 }
 
 #[cfg(not(test))]
