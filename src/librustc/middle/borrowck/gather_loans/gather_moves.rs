@@ -19,13 +19,13 @@ use middle::moves;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use util::ppaux::{UserString};
 
 pub fn gather_decl(bccx: @BorrowckCtxt,
                    move_data: &mut MoveData,
                    decl_id: ast::NodeId,
-                   _decl_span: span,
+                   _decl_span: Span,
                    var_id: ast::NodeId) {
     let loan_path = @LpVar(var_id);
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
@@ -86,7 +86,7 @@ pub fn gather_captures(bccx: @BorrowckCtxt,
 pub fn gather_assignment(bccx: @BorrowckCtxt,
                          move_data: &mut MoveData,
                          assignment_id: ast::NodeId,
-                         assignment_span: span,
+                         assignment_span: Span,
                          assignee_loan_path: @LoanPath,
                          assignee_id: ast::NodeId) {
     move_data.add_assignment(bccx.tcx,

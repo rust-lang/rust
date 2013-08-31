@@ -21,7 +21,7 @@ use syntax::ast;
 use std::vec;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{span, dummy_sp};
+use syntax::codemap::{Span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
@@ -33,7 +33,7 @@ pub fn read_crates(diag: @mut span_handler,
                    crate: &ast::Crate,
                    cstore: @mut cstore::CStore,
                    filesearch: @FileSearch,
-                   os: loader::os,
+                   os: loader::Os,
                    statik: bool,
                    intr: @ident_interner) {
     let e = @mut Env {
@@ -68,7 +68,7 @@ impl visit::Visitor<()> for ReadCrateVisitor {
 #[deriving(Clone)]
 struct cache_entry {
     cnum: int,
-    span: span,
+    span: Span,
     hash: @str,
     metas: @~[@ast::MetaItem]
 }
@@ -116,7 +116,7 @@ struct Env {
     diag: @mut span_handler,
     filesearch: @FileSearch,
     cstore: @mut cstore::CStore,
-    os: loader::os,
+    os: loader::Os,
     statik: bool,
     crate_cache: @mut ~[cache_entry],
     next_crate_num: ast::CrateNum,
@@ -252,7 +252,7 @@ fn resolve_crate(e: @mut Env,
                  ident: @str,
                  metas: ~[@ast::MetaItem],
                  hash: @str,
-                 span: span)
+                 span: Span)
               -> ast::CrateNum {
     let metas = metas_with_ident(ident, metas);
 

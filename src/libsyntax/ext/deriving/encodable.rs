@@ -44,7 +44,7 @@ Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
     #[deriving(Encodable, Decodable)]
-    struct spanned<T> {node: T, span: span}
+    struct spanned<T> {node: T, span: Span}
 
 would yield functions like:
 
@@ -76,13 +76,13 @@ would yield functions like:
 */
 
 use ast::{MetaItem, item, expr, m_imm, m_mutbl};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_encodable(cx: @ExtCtxt,
-                                 span: span,
+                                 span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
@@ -110,7 +110,7 @@ pub fn expand_deriving_encodable(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn encodable_substructure(cx: @ExtCtxt, span: span,
+fn encodable_substructure(cx: @ExtCtxt, span: Span,
                           substr: &Substructure) -> @expr {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings

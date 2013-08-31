@@ -13,7 +13,7 @@ use ast::*;
 use ast;
 use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
-use codemap::span;
+use codemap::Span;
 use codemap;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
@@ -148,7 +148,7 @@ impl Ctx {
               fk: &visit::fn_kind,
               decl: &fn_decl,
               body: &Block,
-              sp: codemap::span,
+              sp: codemap::Span,
               id: NodeId) {
         for a in decl.inputs.iter() {
             self.map.insert(a.id, node_arg);
@@ -282,7 +282,7 @@ impl Visitor<()> for Ctx {
                 function_kind: &fn_kind,
                 function_declaration: &fn_decl,
                 block: &Block,
-                span: span,
+                span: Span,
                 node_id: NodeId,
                 _: ()) {
         self.map_fn(function_kind, function_declaration, block, span, node_id)
@@ -294,7 +294,7 @@ impl Visitor<()> for Ctx {
 
     // XXX: Methods below can become default methods.
 
-    fn visit_mod(&mut self, module: &_mod, _: span, _: NodeId, _: ()) {
+    fn visit_mod(&mut self, module: &_mod, _: Span, _: NodeId, _: ()) {
         visit::walk_mod(self, module, ())
     }
 
@@ -334,7 +334,7 @@ impl Visitor<()> for Ctx {
                 function_kind: &fn_kind,
                 function_declaration: &fn_decl,
                 block: &Block,
-                span: span,
+                span: Span,
                 node_id: NodeId,
                 _: ()) {
         visit::walk_fn(self,

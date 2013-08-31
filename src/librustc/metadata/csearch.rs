@@ -52,7 +52,7 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 /// Iterates over each child of the given item.
 pub fn each_child_of_item(cstore: @mut cstore::CStore,
                           def_id: ast::def_id,
-                          callback: &fn(decoder::def_like, ast::ident)) {
+                          callback: &fn(decoder::DefLike, ast::ident)) {
     let crate_data = cstore::get_crate_data(cstore, def_id.crate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -67,7 +67,7 @@ pub fn each_child_of_item(cstore: @mut cstore::CStore,
 /// Iterates over each top-level crate item.
 pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
                                     cnum: ast::CrateNum,
-                                    callback: &fn(decoder::def_like,
+                                    callback: &fn(decoder::DefLike,
                                                   ast::ident)) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {

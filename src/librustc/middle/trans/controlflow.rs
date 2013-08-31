@@ -30,7 +30,7 @@ use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Block {
     let _icx = push_ctxt("trans_block");
@@ -353,7 +353,7 @@ pub fn trans_ret(bcx: @mut Block, e: Option<@ast::expr>) -> @mut Block {
 }
 
 pub fn trans_fail_expr(bcx: @mut Block,
-                       sp_opt: Option<span>,
+                       sp_opt: Option<Span>,
                        fail_expr: Option<@ast::expr>)
                     -> @mut Block {
     let _icx = push_ctxt("trans_fail_expr");
@@ -381,7 +381,7 @@ pub fn trans_fail_expr(bcx: @mut Block,
 }
 
 pub fn trans_fail(bcx: @mut Block,
-                  sp_opt: Option<span>,
+                  sp_opt: Option<Span>,
                   fail_str: @str)
                -> @mut Block {
     let _icx = push_ctxt("trans_fail");
@@ -390,7 +390,7 @@ pub fn trans_fail(bcx: @mut Block,
 }
 
 fn trans_fail_value(bcx: @mut Block,
-                    sp_opt: Option<span>,
+                    sp_opt: Option<Span>,
                     V_fail_str: ValueRef)
                  -> @mut Block {
     let _icx = push_ctxt("trans_fail_value");
@@ -415,7 +415,7 @@ fn trans_fail_value(bcx: @mut Block,
     return bcx;
 }
 
-pub fn trans_fail_bounds_check(bcx: @mut Block, sp: span,
+pub fn trans_fail_bounds_check(bcx: @mut Block, sp: Span,
                                index: ValueRef, len: ValueRef) -> @mut Block {
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);

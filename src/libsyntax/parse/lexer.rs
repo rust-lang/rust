@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::{BytePos, CharPos, CodeMap, Pos, span};
+use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
 use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};
@@ -36,7 +36,7 @@ pub trait reader {
 #[deriving(Clone, Eq)]
 pub struct TokenAndSpan {
     tok: token::Token,
-    sp: span,
+    sp: Span,
 }
 
 pub struct StringReader {
@@ -53,7 +53,7 @@ pub struct StringReader {
     filemap: @codemap::FileMap,
     /* cached: */
     peek_tok: token::Token,
-    peek_span: span
+    peek_span: Span
 }
 
 pub fn new_string_reader(span_diagnostic: @mut span_handler,
@@ -798,7 +798,7 @@ mod test {
     use super::*;
 
     use ast;
-    use codemap::{BytePos, CodeMap, span};
+    use codemap::{BytePos, CodeMap, Span};
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
@@ -827,7 +827,7 @@ mod test {
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
-            sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
+            sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
         // the 'main' id is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(28));
@@ -835,7 +835,7 @@ mod test {
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
             tok:token::IDENT(str_to_ident("main"), false),
-            sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
+            sp:Span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
         assert_eq!(string_reader.last_pos.clone(), BytePos(29))

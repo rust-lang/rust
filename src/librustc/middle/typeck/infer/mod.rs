@@ -44,7 +44,7 @@ use extra::smallintmap::SmallIntMap;
 use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 pub mod doc;
 pub mod macros;
@@ -100,25 +100,25 @@ pub struct InferCtxt {
 #[deriving(Clone)]
 pub enum TypeOrigin {
     // Not yet categorized in a better way
-    Misc(span),
+    Misc(Span),
 
     // Checking that method of impl is compatible with trait
-    MethodCompatCheck(span),
+    MethodCompatCheck(Span),
 
     // Checking that this expression can be assigned where it needs to be
     ExprAssignable(@ast::expr),
 
     // Relating trait refs when resolving vtables
-    RelateTraitRefs(span),
+    RelateTraitRefs(Span),
 
     // Relating trait refs when resolving vtables
-    RelateSelfType(span),
+    RelateSelfType(Span),
 
     // Computing common supertype in a match expression
-    MatchExpression(span),
+    MatchExpression(Span),
 
     // Computing common supertype in an if expression
-    IfExpression(span),
+    IfExpression(Span),
 }
 
 /// See `error_reporting.rs` for more details
@@ -148,47 +148,47 @@ pub enum SubregionOrigin {
 
     // Stack-allocated closures cannot outlive innermost loop
     // or function so as to ensure we only require finite stack
-    InfStackClosure(span),
+    InfStackClosure(Span),
 
     // Invocation of closure must be within its lifetime
-    InvokeClosure(span),
+    InvokeClosure(Span),
 
     // Dereference of borrowed pointer must be within its lifetime
-    DerefPointer(span),
+    DerefPointer(Span),
 
     // Closure bound must not outlive captured free variables
-    FreeVariable(span),
+    FreeVariable(Span),
 
     // Index into slice must be within its lifetime
-    IndexSlice(span),
+    IndexSlice(Span),
 
     // When casting `&'a T` to an `&'b Trait` object,
     // relating `'a` to `'b`
-    RelateObjectBound(span),
+    RelateObjectBound(Span),
 
     // Creating a pointer `b` to contents of another borrowed pointer
-    Reborrow(span),
+    Reborrow(Span),
 
     // (&'a &'b T) where a >= b
-    ReferenceOutlivesReferent(ty::t, span),
+    ReferenceOutlivesReferent(ty::t, Span),
 
     // A `ref b` whose region does not enclose the decl site
-    BindingTypeIsNotValidAtDecl(span),
+    BindingTypeIsNotValidAtDecl(Span),
 
     // Regions appearing in a method receiver must outlive method call
-    CallRcvr(span),
+    CallRcvr(Span),
 
     // Regions appearing in a function argument must outlive func call
-    CallArg(span),
+    CallArg(Span),
 
     // Region in return type of invoked fn must enclose call
-    CallReturn(span),
+    CallReturn(Span),
 
     // Region resulting from a `&` expr must enclose the `&` expr
-    AddrOf(span),
+    AddrOf(Span),
 
     // An auto-borrow that does not enclose the expr where it occurs
-    AutoBorrow(span),
+    AutoBorrow(Span),
 }
 
 /// Reasons to create a region inference variable
@@ -197,36 +197,36 @@ pub enum SubregionOrigin {
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
-    MiscVariable(span),
+    MiscVariable(Span),
 
     // Regions created by a `&P` or `[...]` pattern
-    PatternRegion(span),
+    PatternRegion(Span),
 
     // Regions created by `&` operator
-    AddrOfRegion(span),
+    AddrOfRegion(Span),
 
     // Regions created by `&[...]` literal
-    AddrOfSlice(span),
+    AddrOfSlice(Span),
 
     // Regions created as part of an autoref of a method receiver
-    Autoref(span),
+    Autoref(Span),
 
     // Regions created as part of an automatic coercion
     Coercion(TypeTrace),
 
     // Region variables created for bound regions
     // in a function or method that is called
-    BoundRegionInFnCall(span, ty::bound_region),
+    BoundRegionInFnCall(Span, ty::bound_region),
 
     // Region variables created for bound regions
     // when doing subtyping/lub/glb computations
-    BoundRegionInFnType(span, ty::bound_region),
+    BoundRegionInFnType(Span, ty::bound_region),
 
-    BoundRegionInTypeOrImpl(span),
+    BoundRegionInTypeOrImpl(Span),
 
     BoundRegionInCoherence,
 
-    BoundRegionError(span),
+    BoundRegionError(Span),
 }
 
 pub enum fixup_err {
@@ -710,7 +710,7 @@ impl InferCtxt {
     // types using one of these four methods, and should not call span_err directly for such
     // errors.
     pub fn type_error_message_str(@mut self,
-                                  sp: span,
+                                  sp: Span,
                                   mk_msg: &fn(Option<~str>, ~str) -> ~str,
                                   actual_ty: ~str,
                                   err: Option<&ty::type_err>) {
@@ -718,7 +718,7 @@ impl InferCtxt {
     }
 
     pub fn type_error_message_str_with_expected(@mut self,
-                                                sp: span,
+                                                sp: Span,
                                                 mk_msg:
                                                 &fn(Option<~str>, ~str) ->
                                                 ~str,
@@ -749,7 +749,7 @@ impl InferCtxt {
     }
 
     pub fn type_error_message(@mut self,
-                              sp: span,
+                              sp: Span,
                               mk_msg: &fn(~str) -> ~str,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
@@ -764,7 +764,7 @@ impl InferCtxt {
     }
 
     pub fn report_mismatched_types(@mut self,
-                                   sp: span,
+                                   sp: Span,
                                    e: ty::t,
                                    a: ty::t,
                                    err: &ty::type_err) {
@@ -812,7 +812,7 @@ pub fn fold_regions_in_sig(
 }
 
 impl TypeTrace {
-    pub fn span(&self) -> span {
+    pub fn span(&self) -> Span {
         self.origin.span()
     }
 }
@@ -824,7 +824,7 @@ impl Repr for TypeTrace {
 }
 
 impl TypeOrigin {
-    pub fn span(&self) -> span {
+    pub fn span(&self) -> Span {
         match *self {
             MethodCompatCheck(span) => span,
             ExprAssignable(expr) => expr.span,
@@ -852,7 +852,7 @@ impl Repr for TypeOrigin {
 }
 
 impl SubregionOrigin {
-    pub fn span(&self) -> span {
+    pub fn span(&self) -> Span {
         match *self {
             Subtype(a) => a.span(),
             InfStackClosure(a) => a,
@@ -896,7 +896,7 @@ impl Repr for SubregionOrigin {
 }
 
 impl RegionVariableOrigin {
-    pub fn span(&self) -> span {
+    pub fn span(&self) -> Span {
         match *self {
             MiscVariable(a) => a,
             PatternRegion(a) => a,

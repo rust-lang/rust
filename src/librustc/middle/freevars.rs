@@ -16,7 +16,7 @@ use middle::resolve;
 use middle::ty;
 
 use std::hashmap::HashMap;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::{ast, ast_util};
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -27,7 +27,7 @@ use syntax::ast::{item};
 #[deriving(Encodable, Decodable)]
 pub struct freevar_entry {
     def: ast::def, //< The variable being accessed free.
-    span: span     //< First span where it is accessed (there can be multiple)
+    span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
 pub type freevar_map = @mut HashMap<ast::NodeId, freevar_info>;
@@ -110,7 +110,7 @@ struct AnnotateFreevarsVisitor {
 
 impl Visitor<()> for AnnotateFreevarsVisitor {
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                blk:&ast::Block, s:span, nid:ast::NodeId, _:()) {
+                blk:&ast::Block, s:Span, nid:ast::NodeId, _:()) {
         let vars = collect_freevars(self.def_map, blk);
         self.freevars.insert(nid, vars);
         visit::walk_fn(self, fk, fd, blk, s, nid, ());

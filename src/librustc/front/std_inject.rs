@@ -39,8 +39,8 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
 }
 
 fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
-    fn spanned<T>(x: T) -> codemap::spanned<T> {
-        codemap::spanned { node: x, span: dummy_sp() }
+    fn spanned<T>(x: T) -> codemap::Spanned<T> {
+        codemap::Spanned { node: x, span: dummy_sp() }
     }
 
     let precursor = @fold::AstFoldFns {

@@ -40,7 +40,7 @@ use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 
@@ -220,7 +220,7 @@ pub struct FunctionContext {
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
-    span: Option<span>,
+    span: Option<Span>,
     path: path,
 
     // This function's enclosing crate context.
@@ -509,7 +509,7 @@ impl get_node_info for Option<@ast::expr> {
 pub struct NodeInfo {
     id: ast::NodeId,
     callee_id: Option<ast::NodeId>,
-    span: span
+    span: Span
 }
 
 // Basic block context.  We create a block context for each basic block
@@ -1110,7 +1110,7 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
 }
 
 pub fn filename_and_line_num_from_span(bcx: @mut Block,
-                                       span: span) -> (ValueRef, ValueRef) {
+                                       span: Span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p());
@@ -1123,7 +1123,7 @@ pub fn bool_to_i1(bcx: @mut Block, llval: ValueRef) -> ValueRef {
     build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
 }
 
-pub fn langcall(bcx: @mut Block, span: Option<span>, msg: &str,
+pub fn langcall(bcx: @mut Block, span: Option<Span>, msg: &str,
                 li: LangItem) -> ast::def_id {
     match bcx.tcx().lang_items.require(li) {
         Ok(id) => id,

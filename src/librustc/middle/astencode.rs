@@ -33,7 +33,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::inlined_item_utils;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::fold::*;
 use syntax::fold;
@@ -214,7 +214,7 @@ impl ExtendedDecodeContext {
         assert_eq!(did.crate, ast::LOCAL_CRATE);
         ast::def_id { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
-    pub fn tr_span(&self, _span: span) -> span {
+    pub fn tr_span(&self, _span: Span) -> Span {
         codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
@@ -231,8 +231,8 @@ impl tr for ast::def_id {
     }
 }
 
-impl tr for span {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> span {
+impl tr for Span {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> Span {
         xcx.tr_span(*self)
     }
 }
@@ -302,9 +302,9 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_), span: _}, _)
+              ast::stmt_decl(@codemap::Spanned { node: ast::decl_local(_), span: _}, _)
                 => Some(*stmt),
-              ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_), span: _}, _)
+              ast::stmt_decl(@codemap::Spanned { node: ast::decl_item(_), span: _}, _)
                 => None,
               ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
@@ -1255,7 +1255,7 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 trait fake_ext_ctxt {
     fn cfg(&self) -> ast::CrateConfig;
     fn parse_sess(&self) -> @mut parse::ParseSess;
-    fn call_site(&self) -> span;
+    fn call_site(&self) -> Span;
     fn ident_of(&self, st: &str) -> ast::ident;
 }
 
@@ -1266,8 +1266,8 @@ type fake_session = @mut parse::ParseSess;
 impl fake_ext_ctxt for fake_session {
     fn cfg(&self) -> ast::CrateConfig { ~[] }
     fn parse_sess(&self) -> @mut parse::ParseSess { *self }
-    fn call_site(&self) -> span {
-        codemap::span {
+    fn call_site(&self) -> Span {
+        codemap::Span {
             lo: codemap::BytePos(0),
             hi: codemap::BytePos(0),
             expn_info: None

@@ -10,7 +10,7 @@
 
 
 use syntax::ast;
-use syntax::codemap::{span};
+use syntax::codemap::{Span};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -105,7 +105,7 @@ pub fn block_query(b: &ast::Block, p: @fn(@ast::expr) -> bool) -> bool {
     return *rs;
 }
 
-pub fn local_rhs_span(l: @ast::Local, def: span) -> span {
+pub fn local_rhs_span(l: @ast::Local, def: Span) -> Span {
     match l.init {
       Some(i) => return i.span,
       _ => return def

@@ -28,14 +28,14 @@ use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr;
 use middle::ty;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::ast;
 
 use middle::trans::type_::Type;
 
 pub fn root_and_write_guard(datum: &Datum,
                             mut bcx: @mut Block,
-                            span: span,
+                            span: Span,
                             expr_id: ast::NodeId,
                             derefs: uint) -> @mut Block {
     let key = root_map_key { id: expr_id, derefs: derefs };
@@ -103,7 +103,7 @@ pub fn return_to_mut(mut bcx: @mut Block,
 
 fn root(datum: &Datum,
         mut bcx: @mut Block,
-        span: span,
+        span: Span,
         root_key: root_map_key,
         root_info: RootInfo) -> @mut Block {
     //! In some cases, borrowck will decide that an @T/@[]/@str
@@ -183,7 +183,7 @@ fn root(datum: &Datum,
 
 fn perform_write_guard(datum: &Datum,
                        bcx: @mut Block,
-                       span: span) -> @mut Block {
+                       span: Span) -> @mut Block {
     debug!("perform_write_guard");
 
     let llval = datum.to_value_llval(bcx);

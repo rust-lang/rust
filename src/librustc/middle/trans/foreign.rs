@@ -29,7 +29,7 @@ use middle::ty::FnSig;
 
 use std::uint;
 use std::vec;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::{ast};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
@@ -350,7 +350,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
 // correct code in the first place, but this is much simpler.
 
 pub fn register_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
-                                         sp: span,
+                                         sp: Span,
                                          sym: ~str,
                                          node_id: ast::NodeId)
                                          -> ValueRef {

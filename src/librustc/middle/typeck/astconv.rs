@@ -65,7 +65,7 @@ use middle::typeck::lookup_def_tcx;
 use std::result;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
@@ -78,12 +78,12 @@ pub trait AstConv {
     fn get_trait_def(&self, id: ast::def_id) -> @ty::TraitDef;
 
     // what type should we use when a type is omitted?
-    fn ty_infer(&self, span: span) -> ty::t;
+    fn ty_infer(&self, span: Span) -> ty::t;
 }
 
 pub fn get_region_reporting_err(
     tcx: ty::ctxt,
-    span: span,
+    span: Span,
     a_r: &Option<ast::Lifetime>,
     res: Result<ty::Region, RegionError>) -> ty::Region
 {
@@ -107,7 +107,7 @@ pub fn get_region_reporting_err(
 pub fn ast_region_to_region<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
-    default_span: span,
+    default_span: Span,
     opt_lifetime: &Option<ast::Lifetime>) -> ty::Region
 {
     let (span, res) = match opt_lifetime {
@@ -701,7 +701,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
     decl: &ast::fn_decl,
     expected_sig: Option<ty::FnSig>,
     lifetimes: &OptVec<ast::Lifetime>,
-    span: span)
+    span: Span)
     -> ty::ClosureTy
 {
     // The caller should not both provide explicit bound lifetime

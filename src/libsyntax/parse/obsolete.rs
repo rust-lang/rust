@@ -19,7 +19,7 @@ removed.
 
 use ast::{expr, expr_lit, lit_nil, Attribute};
 use ast;
-use codemap::{span, respan};
+use codemap::{Span, respan};
 use parse::parser::Parser;
 use parse::token::{keywords, Token};
 use parse::token;
@@ -76,12 +76,12 @@ impl to_bytes::IterBytes for ObsoleteSyntax {
 
 pub trait ParserObsoleteMethods {
     /// Reports an obsolete syntax non-fatal error.
-    fn obsolete(&self, sp: span, kind: ObsoleteSyntax);
+    fn obsolete(&self, sp: Span, kind: ObsoleteSyntax);
     // Reports an obsolete syntax non-fatal error, and returns
     // a placeholder expression
-    fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr;
+    fn obsolete_expr(&self, sp: Span, kind: ObsoleteSyntax) -> @expr;
     fn report(&self,
-              sp: span,
+              sp: Span,
               kind: ObsoleteSyntax,
               kind_str: &str,
               desc: &str);
@@ -94,7 +94,7 @@ pub trait ParserObsoleteMethods {
 
 impl ParserObsoleteMethods for Parser {
     /// Reports an obsolete syntax non-fatal error.
-    fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
+    fn obsolete(&self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
             ObsoleteLet => (
                 "`let` in field declaration",
@@ -263,13 +263,13 @@ impl ParserObsoleteMethods for Parser {
 
     // Reports an obsolete syntax non-fatal error, and returns
     // a placeholder expression
-    fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr {
+    fn obsolete_expr(&self, sp: Span, kind: ObsoleteSyntax) -> @expr {
         self.obsolete(sp, kind);
         self.mk_expr(sp.lo, sp.hi, expr_lit(@respan(sp, lit_nil)))
     }
 
     fn report(&self,
-              sp: span,
+              sp: Span,
               kind: ObsoleteSyntax,
               kind_str: &str,
               desc: &str) {

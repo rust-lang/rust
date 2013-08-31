@@ -27,7 +27,7 @@ use std::hashmap::HashSet;
 use std::result;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust::expr_to_str;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -62,7 +62,7 @@ use syntax::visit::Visitor;
 /// responsible for this vtable instantiation. (This may not be an expression
 /// if the vtable instantiation is being performed as part of "deriving".)
 pub struct LocationInfo {
-    span: span,
+    span: Span,
     id: ast::NodeId
 }
 
