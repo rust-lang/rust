@@ -40,9 +40,6 @@ impl Eq for PkgId {
     fn eq(&self, p: &PkgId) -> bool {
         p.path == self.path && p.version == self.version
     }
-    fn ne(&self, p: &PkgId) -> bool {
-        !(self.eq(p))
-    }
 }
 
 impl PkgId {
