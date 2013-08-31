@@ -12,6 +12,7 @@
 use driver::session;
 use middle::ty;
 use middle::pat_util;
+use metadata::csearch;
 use util::ppaux::{ty_to_str};
 
 use std::cmp;
@@ -27,7 +28,7 @@ use std::u8;
 use extra::smallintmap::SmallIntMap;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
+use syntax::attr::{AttrMetaMethods, AttributeMethods};
 use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::parse::token;
@@ -96,6 +97,10 @@ pub enum lint {
 
     missing_doc,
     unreachable_code,
+
+    deprecated,
+    experimental,
+    unstable,
 
     warnings,
 }
@@ -279,6 +284,27 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unreachable_code,
         desc: "detects unreachable code",
         default: warn
+    }),
+
+    ("deprecated",
+     LintSpec {
+        lint: deprecated,
+        desc: "detects use of #[deprecated] items",
+        default: warn
+    }),
+
+    ("experimental",
+     LintSpec {
+        lint: experimental,
+        desc: "detects use of #[experimental] items",
+        default: warn
+    }),
+
+    ("unstable",
+     LintSpec {
+        lint: unstable,
+        desc: "detects use of #[unstable] items (incl. items with no stability attribute)",
+        default: allow
     }),
 
     ("warnings",
@@ -1375,6 +1401,107 @@ fn lint_missing_doc() -> @mut OuterLint {
     @mut MissingDocLintVisitor { stopping_on_items: false } as @mut OuterLint
 }
 
+/// Checks for use of items with #[deprecated], #[experimental] and
+/// #[unstable] (or none of them) attributes.
+struct StabilityLintVisitor { stopping_on_items: bool }
+
+impl StabilityLintVisitor {
+    fn handle_def(&mut self, sp: Span, def: &ast::Def, cx: @mut Context) {
+        let id = ast_util::def_id_of_def(*def);
+
+        let stability = if ast_util::is_local(id) {
+            // this crate
+            match cx.tcx.items.find(&id.node) {
+                Some(ast_node) => {
+                    let s = do ast_node.with_attrs |attrs| {
+                        do attrs.map_move |a| {
+                            attr::find_stability(a.iter().map(|a| a.meta()))
+                        }
+                    };
+                    match s {
+                        Some(s) => s,
+
+                        // no possibility of having attributes
+                        // (e.g. it's a local variable), so just
+                        // ignore it.
+                        None => return
+                    }
+                }
+                _ => cx.tcx.sess.bug(fmt!("handle_def: %? not found", id))
+            }
+        } else {
+            // cross-crate
+
+            let mut s = None;
+            // run through all the attributes and take the first
+            // stability one.
+            do csearch::get_item_attrs(cx.tcx.cstore, id) |meta_items| {
+                if s.is_none() {
+                    s = attr::find_stability(meta_items.move_iter())
+                }
+            }
+            s
+        };
+
+        let (lint, label) = match stability {
+            // no stability attributes == Unstable
+            None => (unstable, "unmarked"),
+            Some(attr::Stability { level: attr::Unstable, _ }) => (unstable, "unstable"),
+            Some(attr::Stability { level: attr::Experimental, _ }) => {
+                (experimental, "experimental")
+            }
+            Some(attr::Stability { level: attr::Deprecated, _ }) => (deprecated, "deprecated"),
+            _ => return
+        };
+
+        let msg = match stability {
+            Some(attr::Stability { text: Some(ref s), _ }) => {
+                fmt!("use of %s item: %s", label, *s)
+            }
+            _ => fmt!("use of %s item", label)
+        };
+
+        cx.span_lint(lint, sp, msg);
+    }
+}
+
+impl SubitemStoppableVisitor for StabilityLintVisitor {
+    fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
+}
+
+impl Visitor<@mut Context> for StabilityLintVisitor {
+    fn visit_item(&mut self, i:@ast::item, e:@mut Context) {
+        self.OVERRIDE_visit_item(i, e);
+    }
+
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
+        self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
+    }
+
+    fn visit_expr(&mut self, ex: @ast::Expr, cx: @mut Context) {
+        match ex.node {
+            ast::ExprMethodCall(*) |
+            ast::ExprPath(*) |
+            ast::ExprStruct(*) => {
+                match cx.tcx.def_map.find(&ex.id) {
+                    Some(def) => self.handle_def(ex.span, def, cx),
+                    None => {}
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_expr(self, ex, cx)
+    }
+}
+
+outer_lint_boilerplate_impl!(StabilityLintVisitor)
+
+fn lint_stability() -> @mut OuterLint {
+    @mut StabilityLintVisitor { stopping_on_items: false } as @mut OuterLint
+}
+
 struct LintCheckVisitor;
 
 impl Visitor<@mut Context> for LintCheckVisitor {
@@ -1458,6 +1585,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::Crate) {
     cx.add_old_lint(lint_unused_mut());
     cx.add_old_lint(lint_unnecessary_allocations());
     cx.add_old_lint(lint_missing_doc());
+    cx.add_old_lint(lint_stability());
     cx.add_lint(lint_session(cx));
 
     // Actually perform the lint checks (iterating the ast)

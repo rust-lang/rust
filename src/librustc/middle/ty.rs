@@ -4706,4 +4706,3 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
 
     result
 }
-
