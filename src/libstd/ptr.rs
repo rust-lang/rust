@@ -12,6 +12,7 @@
 
 use cast;
 use clone::Clone;
+#[cfg(not(test))]
 use cmp::Equiv;
 use iterator::{range, Iterator};
 use option::{Option, Some, None};

@@ -28,7 +28,6 @@ use std::io;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
-use std::u64;
 use std::uint;
 
 fn fib(n: int) -> int {

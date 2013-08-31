@@ -340,7 +340,7 @@ mod test {
     use parse::token::{str_to_ident};
     use util::parser_testing::{string_to_tts_and_sess, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
-    use util::parser_testing::{string_to_stmt, strs_to_idents};
+    use util::parser_testing::string_to_stmt;
 
     // map a string to tts, return the tt without its parsesess
     fn string_to_tts_only(source_str : @str) -> ~[ast::token_tree] {

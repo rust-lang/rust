@@ -10,7 +10,6 @@
 
 // xfail-fast
 
-use std::int;
 use std::libc::c_void;
 use std::ptr;
 use std::sys;
