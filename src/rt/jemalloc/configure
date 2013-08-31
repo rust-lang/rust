@@ -4489,6 +4489,7 @@ case "${host}" in
 
 	$as_echo "#define JEMALLOC_THREADED_INIT  " >>confdefs.h
 
+	JEMALLOC_USABLE_SIZE_CONST=""
 	default_munmap="0"
 	;;
   *-*-linux*)
