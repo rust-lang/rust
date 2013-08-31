@@ -158,11 +158,14 @@ pub mod ct {
 
     // A fragment of the output sequence
     #[deriving(Eq)]
-    pub enum Piece { PieceString(~str), PieceConv(Conv), }
+    pub enum Piece {
+        PieceString(~str),
+        PieceConv(Conv),
+    }
 
-    pub type ErrorFn = @fn(&str) -> !;
+    pub type ErrorFn<'self> = &'self fn(&str) -> !;
 
-    pub fn parse_fmt_string(s: &str, err: ErrorFn) -> ~[Piece] {
+    pub fn parse_fmt_string<'a>(s: &str, err: ErrorFn<'a>) -> ~[Piece] {
         fn push_slice(ps: &mut ~[Piece], s: &str, from: uint, to: uint) {
             if to > from {
                 ps.push(PieceString(s.slice(from, to).to_owned()));
@@ -185,7 +188,10 @@ pub mod ct {
                     i += 1;
                 } else {
                     push_slice(&mut pieces, s, h, i - 1);
-                    let Parsed {val, next} = parse_conversion(s, i, lim, err);
+                    let Parsed {
+                        val,
+                        next
+                    } = parse_conversion(s, i, lim, |s| err(s));
                     pieces.push(val);
                     i = next;
                 }
@@ -224,8 +230,8 @@ pub mod ct {
         }
     }
 
-    pub fn parse_conversion(s: &str, i: uint, lim: uint, err: ErrorFn) ->
-        Parsed<Piece> {
+    pub fn parse_conversion<'a>(s: &str, i: uint, lim: uint, err: ErrorFn<'a>)
+                                -> Parsed<Piece> {
         let param = parse_parameter(s, i, lim);
         // avoid copying ~[Flag] by destructuring
         let Parsed {val: flags_val, next: flags_next} = parse_flags(s,
@@ -308,8 +314,8 @@ pub mod ct {
         }
     }
 
-    pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
-        Parsed<Ty> {
+    pub fn parse_type<'a>(s: &str, i: uint, lim: uint, err: ErrorFn<'a>)
+                          -> Parsed<Ty> {
         if i >= lim { err("missing type in conversion"); }
 
         // FIXME (#2249): Do we really want two signed types here?

@@ -189,7 +189,7 @@ pub mod reflect;
 pub mod condition;
 pub mod logging;
 pub mod util;
-
+pub mod routine;
 
 /* Unsupported interfaces */
 
