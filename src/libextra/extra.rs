@@ -76,6 +76,8 @@ pub mod hmac;
 pub mod mac;
 #[path="crypto/md5.rs"]
 pub mod md5;
+#[path="crypto/pbkdf2.rs"]
+pub mod pbkdf2;
 #[path="crypto/sha1.rs"]
 pub mod sha1;
 #[path="crypto/sha2.rs"]
