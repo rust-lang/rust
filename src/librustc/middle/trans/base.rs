@@ -2453,10 +2453,16 @@ pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
 }
 
 fn exported_name(ccx: @mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
-    if attr::contains_name(attrs, "no_mangle") {
-        path_elt_to_str(*path.last(), token::get_ident_interner())
-    } else {
-        mangle_exported_name(ccx, path, ty)
+    match attr::first_attr_value_str_by_name(attrs, "export_name") {
+        // Use provided name
+        Some(name) => name.to_owned(),
+
+        // Don't mangle
+        _ if attr::contains_name(attrs, "no_mangle")
+            => path_elt_to_str(*path.last(), token::get_ident_interner()),
+
+        // Usual name mangling
+        _ => mangle_exported_name(ccx, path, ty)
     }
 }
 
