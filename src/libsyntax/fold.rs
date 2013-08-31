@@ -869,35 +869,19 @@ mod test {
     use parse::token;
     use print::pprust;
     use super::*;
-
-    struct IdentFolder {
-        f: @fn(ast::ident)->ast::ident,
-    }
-
-    impl ast_fold for IdentFolder {
-        fn fold_ident(@self, i: ident) -> ident {
-            (self.f)(i)
-        }
-    }
-
-    // taken from expand
-    // given a function from idents to idents, produce
-    // an ast_fold that applies that function:
-    pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold {
-        @IdentFolder {
-            f: f,
-        } as @ast_fold
-    }
-
+    
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 
     // change every identifier to "zz"
-    pub fn to_zz() -> @fn(ast::Ident)->ast::Ident {
-        let zz_id = token::str_to_ident("zz");
-        |_id| {zz_id}
+    struct ToZzIdentFolder;
+
+    impl ast_fold for ToZzIdentFolder {
+        fn fold_ident(&self, _: ident) -> ident {
+            token::str_to_ident("zz")
+        }
     }
 
     // maybe add to expand.rs...
@@ -917,7 +901,7 @@ mod test {
 
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
-        let zz_fold = fun_to_ident_folder(to_zz());
+        let zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(@"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
@@ -928,7 +912,7 @@ mod test {
 
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
-        let zz_fold = fun_to_ident_folder(to_zz());
+        let zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(@"macro_rules! a {(b $c:expr $(d $e:token)f+
 => (g $(d $d $e)+))} ");
         assert_pred!(matches_codepattern,
@@ -940,7 +924,7 @@ mod test {
 
     // and in cast expressions... this appears to be an existing bug.
     #[test] fn ident_transformation_in_types () {
-        let zz_fold = fun_to_ident_folder(to_zz());
+        let zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(@"fn a() {let z = 13 as int;}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
