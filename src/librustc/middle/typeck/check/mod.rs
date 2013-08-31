@@ -101,7 +101,7 @@ use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::bound_self_region;
 use middle::typeck::rscope::{RegionError};
-use middle::typeck::rscope::region_scope;
+use middle::typeck::rscope::RegionScope;
 use middle::typeck::{isr_alist, lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
@@ -705,7 +705,7 @@ impl FnCtxt {
     }
 }
 
-impl region_scope for FnCtxt {
+impl RegionScope for FnCtxt {
     fn anon_region(&self, span: span) -> Result<ty::Region, RegionError> {
         result::Ok(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
