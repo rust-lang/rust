@@ -3682,11 +3682,11 @@ mod tests {
 
         let xs = ~[Foo, Foo, Foo];
         assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
-                   ~"~[vec::tests::Foo{}, vec::tests::Foo{}]");
+                   ~"~[vec::tests::Foo, vec::tests::Foo]");
 
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
         assert_eq!(fmt!("%?", xs.slice(0, 2).to_owned()),
-                   ~"~[vec::tests::Foo{}, vec::tests::Foo{}]");
+                   ~"~[vec::tests::Foo, vec::tests::Foo]");
         cnt = 0;
         for f in xs.iter() {
             assert!(*f == Foo);
