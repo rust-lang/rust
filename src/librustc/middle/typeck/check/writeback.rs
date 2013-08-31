@@ -27,11 +27,11 @@ use middle::typeck::write_ty_to_tcx;
 use util::ppaux;
 
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust::pat_to_str;
 use syntax::oldvisit;
 
-fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: span, typ: ty::t)
+fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: Span, typ: ty::t)
                           -> Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
@@ -49,7 +49,7 @@ fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: span, typ: ty::t)
     }
 }
 
-fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: span, tys: &[ty::t])
+fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: Span, tys: &[ty::t])
                           -> ~[ty::t] {
     tys.map(|t| {
         match resolve_type_vars_in_type(fcx, sp, *t) {
@@ -59,7 +59,7 @@ fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: span, tys: &[ty::t])
     })
 }
 
-fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
+fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
     match fcx.inh.method_map.find(&id) {
         None => {}
@@ -79,7 +79,7 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
     }
 }
 
-fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
+fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
     match fcx.inh.vtable_map.find(&id) {
         None => {}
@@ -92,13 +92,13 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
         }
     }
 
-    fn resolve_origins(fcx: @mut FnCtxt, sp: span,
+    fn resolve_origins(fcx: @mut FnCtxt, sp: Span,
                        vtbls: vtable_res) -> vtable_res {
         @vtbls.map(|os| @os.map(|o| resolve_origin(fcx, sp, o)))
     }
 
     fn resolve_origin(fcx: @mut FnCtxt,
-                      sp: span,
+                      sp: Span,
                       origin: &vtable_origin) -> vtable_origin {
         match origin {
             &vtable_static(def_id, ref tys, origins) => {
@@ -113,7 +113,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) {
     }
 }
 
-fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::NodeId)
+fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: Span, id: ast::NodeId)
                            -> Option<ty::t> {
     let fcx = wbcx.fcx;
     let tcx = fcx.ccx.tcx;
@@ -196,7 +196,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::NodeId)
 }
 
 fn maybe_resolve_type_vars_for_node(wbcx: @mut WbCtxt,
-                                    sp: span,
+                                    sp: Span,
                                     id: ast::NodeId)
                                  -> Option<ty::t> {
     if wbcx.fcx.inh.node_types.contains_key(&id) {

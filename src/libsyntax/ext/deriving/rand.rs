@@ -10,7 +10,7 @@
 
 use ast;
 use ast::{MetaItem, item, expr, ident};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 use std::vec;
 
 pub fn expand_deriving_rand(cx: @ExtCtxt,
-                            span: span,
+                            span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@item])
     -> ~[@item] {
@@ -48,7 +48,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
+fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
     let rng = match substr.nonself_args {
         [rng] => ~[ rng ],
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -128,7 +128,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
-    fn rand_thing(cx: @ExtCtxt, span: span,
+    fn rand_thing(cx: @ExtCtxt, span: Span,
                   ctor_ident: ident,
                   summary: &Either<uint, ~[ident]>,
                   rand_call: &fn() -> @expr) -> @expr {

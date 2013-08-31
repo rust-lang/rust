@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use parse::lexer::{new_tt_reader, reader};
@@ -17,7 +17,7 @@ use parse::parser::Parser;
 use parse::token::keywords;
 
 pub fn expand_trace_macros(cx: @ExtCtxt,
-                           sp: span,
+                           sp: Span,
                            tt: &[ast::token_tree])
                         -> base::MacResult {
     let sess = cx.parse_sess();

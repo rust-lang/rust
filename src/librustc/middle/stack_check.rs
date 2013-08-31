@@ -21,7 +21,7 @@ use middle::ty;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
@@ -39,7 +39,7 @@ impl Visitor<Context> for StackCheckVisitor {
         stack_check_item(*self, i, e);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:Context) {
         stack_check_fn(*self, fk, fd, b, s, n, e);
     }
     fn visit_expr(&mut self, ex:@ast::expr, e:Context) {
@@ -94,7 +94,7 @@ fn stack_check_fn<'a>(v: StackCheckVisitor,
                       fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
-                      sp: span,
+                      sp: Span,
                       id: ast::NodeId,
                       in_cx: Context) {
     let safe_stack = match *fk {

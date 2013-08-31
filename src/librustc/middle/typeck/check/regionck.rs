@@ -42,7 +42,7 @@ use middle::pat_util;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -626,7 +626,7 @@ fn constrain_derefs(rcx: @mut Rcx,
 }
 
 pub fn mk_subregion_due_to_derefence(rcx: @mut Rcx,
-                                     deref_span: span,
+                                     deref_span: Span,
                                      minimum_lifetime: ty::Region,
                                      maximum_lifetime: ty::Region) {
     rcx.fcx.mk_subr(true, infer::DerefPointer(deref_span),
@@ -809,7 +809,7 @@ pub mod guarantor {
     use middle::typeck::infer;
     use middle::ty;
     use syntax::ast;
-    use syntax::codemap::span;
+    use syntax::codemap::Span;
     use util::ppaux::{ty_to_str};
 
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
@@ -918,7 +918,7 @@ pub mod guarantor {
 
     fn link(
         rcx: @mut Rcx,
-        span: span,
+        span: Span,
         id: ast::NodeId,
         guarantor: Option<ty::Region>) {
         /*!

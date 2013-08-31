@@ -15,7 +15,7 @@ use lib::llvm::{Opcode, IntPredicate, RealPredicate};
 use lib::llvm::{ValueRef, BasicBlockRef};
 use lib;
 use middle::trans::common::*;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 use middle::trans::builder::Builder;
 use middle::trans::type_::Type;
@@ -629,7 +629,7 @@ pub fn _UndefReturn(cx: @mut Block, Fn: ValueRef) -> ValueRef {
     }
 }
 
-pub fn add_span_comment(cx: @mut Block, sp: span, text: &str) {
+pub fn add_span_comment(cx: @mut Block, sp: Span, text: &str) {
     B(cx).add_span_comment(sp, text)
 }
 

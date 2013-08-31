@@ -30,7 +30,7 @@ use middle::ty;
 
 use std::hashmap::{HashMap, HashSet};
 use syntax::ast_map;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
@@ -318,7 +318,7 @@ impl RegionMaps {
 }
 
 /// Records the current parent (if any) as the parent of `child_id`.
-fn parent_to_expr(cx: Context, child_id: ast::NodeId, sp: span) {
+fn parent_to_expr(cx: Context, child_id: ast::NodeId, sp: Span) {
     debug!("region::parent_to_expr(span=%?)",
            cx.sess.codemap.span_to_str(sp));
     for parent_id in cx.parent.iter() {
@@ -431,7 +431,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               fk: &visit::fn_kind,
               decl: &ast::fn_decl,
               body: &ast::Block,
-              sp: span,
+              sp: Span,
               id: ast::NodeId,
               cx: Context) {
     debug!("region::resolve_fn(id=%?, \
@@ -482,7 +482,7 @@ impl Visitor<Context> for RegionResolutionVisitor {
         resolve_item(self, i, cx);
     }
 
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, cx:Context) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, cx:Context) {
         resolve_fn(self, fk, fd, b, s, n, cx);
     }
     fn visit_arm(&mut self, a:&arm, cx:Context) {
@@ -744,7 +744,7 @@ fn determine_rp_in_fn(visitor: &mut DetermineRpVisitor,
                       fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
-                      _: span,
+                      _: Span,
                       _: ast::NodeId,
                       cx: @mut DetermineRpCtxt) {
     do cx.with(cx.item_id, false) {
@@ -911,7 +911,7 @@ struct DetermineRpVisitor;
 impl Visitor<@mut DetermineRpCtxt> for DetermineRpVisitor {
 
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
-                b:&Block, s:span, n:NodeId, e:@mut DetermineRpCtxt) {
+                b:&Block, s:Span, n:NodeId, e:@mut DetermineRpCtxt) {
         determine_rp_in_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_item(&mut self, i:@item, e:@mut DetermineRpCtxt) {

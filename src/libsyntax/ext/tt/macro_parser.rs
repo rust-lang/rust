@@ -182,7 +182,7 @@ pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
 // ast::matcher it was derived from.
 
 pub enum named_match {
-    matched_seq(~[@named_match], codemap::span),
+    matched_seq(~[@named_match], codemap::Span),
     matched_nonterminal(nonterminal)
 }
 
@@ -193,13 +193,13 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
     fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
              ret_val: &mut HashMap<ident, @named_match>) {
         match *m {
-          codemap::spanned {node: match_tok(_), _} => (),
-          codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
+          codemap::Spanned {node: match_tok(_), _} => (),
+          codemap::Spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
             for next_m in more_ms.iter() {
                 n_rec(p_s, next_m, res, ret_val)
             };
           }
-          codemap::spanned {
+          codemap::Spanned {
                 node: match_nonterminal(ref bind_name, _, idx), span: sp
           } => {
             if ret_val.contains_key(bind_name) {
@@ -217,8 +217,8 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
 
 pub enum parse_result {
     success(HashMap<ident, @named_match>),
-    failure(codemap::span, ~str),
-    error(codemap::span, ~str)
+    failure(codemap::Span, ~str),
+    error(codemap::Span, ~str)
 }
 
 pub fn parse_or_else(

@@ -10,13 +10,13 @@
 
 use ast;
 use ast::{MetaItem, item, expr};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_ord(cx: @ExtCtxt,
-                           span: span,
+                           span: Span,
                            mitem: @MetaItem,
                            in_items: ~[@item]) -> ~[@item] {
     macro_rules! md (
@@ -48,7 +48,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
+fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
     let op = if less {ast::lt} else {ast::gt};
     cs_fold(
         false, // need foldr,

@@ -11,7 +11,7 @@
 use abi::AbiSet;
 use ast::*;
 use ast;
-use codemap::span;
+use codemap::Span;
 use parse;
 use opt_vec;
 use opt_vec::OptVec;
@@ -67,7 +67,7 @@ pub fn generics_of_fn(fk: &fn_kind) -> Generics {
 }
 
 pub trait Visitor<E:Clone> {
-    fn visit_mod(&mut self, m:&_mod, _s:span, _n:NodeId, e:E) { walk_mod(self, m, e) }
+    fn visit_mod(&mut self, m:&_mod, _s:Span, _n:NodeId, e:E) { walk_mod(self, m, e) }
     fn visit_view_item(&mut self, i:&view_item, e:E) { walk_view_item(self, i, e) }
     fn visit_foreign_item(&mut self, i:@foreign_item, e:E) { walk_foreign_item(self, i, e) }
     fn visit_item(&mut self, i:@item, e:E) { walk_item(self, i, e) }
@@ -81,7 +81,7 @@ pub trait Visitor<E:Clone> {
     fn visit_expr_post(&mut self, _ex:@expr, _e:E) { }
     fn visit_ty(&mut self, _t:&Ty, _e:E) { }
     fn visit_generics(&mut self, g:&Generics, e:E) { walk_generics(self, g, e) }
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:E) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:E) {
         walk_fn(self, fk, fd, b, s, n , e)
     }
     fn visit_ty_method(&mut self, t:&TypeMethod, e:E) { walk_ty_method(self, t, e) }
@@ -93,7 +93,7 @@ pub trait Visitor<E:Clone> {
 }
 
 impl<E:Clone> Visitor<E> for @mut Visitor<E> {
-    fn visit_mod(&mut self, a:&_mod, b:span, c:NodeId, e:E) {
+    fn visit_mod(&mut self, a:&_mod, b:Span, c:NodeId, e:E) {
         (*self).visit_mod(a, b, c, e)
     }
     fn visit_view_item(&mut self, a:&view_item, e:E) {
@@ -135,7 +135,7 @@ impl<E:Clone> Visitor<E> for @mut Visitor<E> {
     fn visit_generics(&mut self, a:&Generics, e:E) {
         (*self).visit_generics(a, e)
     }
-    fn visit_fn(&mut self, a:&fn_kind, b:&fn_decl, c:&Block, d:span, f:NodeId, e:E) {
+    fn visit_fn(&mut self, a:&fn_kind, b:&fn_decl, c:&Block, d:Span, f:NodeId, e:E) {
         (*self).visit_fn(a, b, c, d, f, e)
     }
     fn visit_ty_method(&mut self, a:&TypeMethod, e:E) {
@@ -444,7 +444,7 @@ pub fn walk_fn<E:Clone, V:Visitor<E>>(visitor: &mut V,
                          function_kind: &fn_kind,
                          function_declaration: &fn_decl,
                          function_body: &Block,
-                         _: span,
+                         _: Span,
                          _: NodeId,
                          env: E) {
     walk_fn_decl(visitor, function_declaration, env.clone());
@@ -676,7 +676,7 @@ pub fn walk_arm<E:Clone, V:Visitor<E>>(visitor: &mut V, arm: &arm, env: E) {
 // calls the given functions on the nodes.
 
 pub trait SimpleVisitor {
-    fn visit_mod(&mut self, &_mod, span, NodeId);
+    fn visit_mod(&mut self, &_mod, Span, NodeId);
     fn visit_view_item(&mut self, &view_item);
     fn visit_foreign_item(&mut self, @foreign_item);
     fn visit_item(&mut self, @item);
@@ -690,7 +690,7 @@ pub trait SimpleVisitor {
     fn visit_expr_post(&mut self, @expr);
     fn visit_ty(&mut self, &Ty);
     fn visit_generics(&mut self, &Generics);
-    fn visit_fn(&mut self, &fn_kind, &fn_decl, &Block, span, NodeId);
+    fn visit_fn(&mut self, &fn_kind, &fn_decl, &Block, Span, NodeId);
     fn visit_ty_method(&mut self, &TypeMethod);
     fn visit_trait_method(&mut self, &trait_method);
     fn visit_struct_def(&mut self, @struct_def, ident, &Generics, NodeId);
@@ -705,7 +705,7 @@ pub struct SimpleVisitorVisitor {
 impl Visitor<()> for SimpleVisitorVisitor {
     fn visit_mod(&mut self,
                  module: &_mod,
-                 span: span,
+                 span: Span,
                  node_id: NodeId,
                  env: ()) {
         self.simple_visitor.visit_mod(module, span, node_id);
@@ -766,7 +766,7 @@ impl Visitor<()> for SimpleVisitorVisitor {
                 function_kind: &fn_kind,
                 function_declaration: &fn_decl,
                 block: &Block,
-                span: span,
+                span: Span,
                 node_id: NodeId,
                 env: ()) {
         self.simple_visitor.visit_fn(function_kind,

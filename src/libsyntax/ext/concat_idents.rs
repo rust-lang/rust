@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base::*;
 use ext::base;
 use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
 
-pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
     for (i, e) in tts.iter().enumerate() {

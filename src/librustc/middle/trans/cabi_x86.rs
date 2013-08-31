@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use driver::session::{os_win32, os_macos};
+use driver::session::{OsWin32, OsMacos};
 use lib::llvm::*;
 use super::cabi::*;
 use super::common::*;
@@ -42,7 +42,7 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
 
         enum Strategy { RetValue(Type), RetPointer }
         let strategy = match ccx.sess.targ_cfg.os {
-            os_win32 | os_macos => {
+            OsWin32 | OsMacos => {
                 match llsize_of_alloc(ccx, rty) {
                     1 => RetValue(Type::i8()),
                     2 => RetValue(Type::i16()),

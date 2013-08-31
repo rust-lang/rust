@@ -18,7 +18,7 @@ use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, span, ExpnInfo, NameAndSpan};
+use syntax::codemap::{dummy_sp, Span, ExpnInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold;
@@ -29,7 +29,7 @@ use syntax::{ast, ast_util};
 type node_id_gen = @fn() -> ast::NodeId;
 
 struct Test {
-    span: span,
+    span: Span,
     path: ~[ast::ident],
     bench: bool,
     ignore: bool,
@@ -379,8 +379,8 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     return @item;
 }
 
-fn nospan<T>(t: T) -> codemap::spanned<T> {
-    codemap::spanned { node: t, span: dummy_sp() }
+fn nospan<T>(t: T) -> codemap::Spanned<T> {
+    codemap::Spanned { node: t, span: dummy_sp() }
 }
 
 fn path_node(ids: ~[ast::ident]) -> ast::Path {

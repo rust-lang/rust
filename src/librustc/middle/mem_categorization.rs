@@ -54,7 +54,7 @@ use util::common::indenter;
 
 use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust;
 
 #[deriving(Eq)]
@@ -134,7 +134,7 @@ pub enum MutabilityCategory {
 #[deriving(Eq)]
 pub struct cmt_ {
     id: ast::NodeId,          // id of expr/pat producing this value
-    span: span,                // span of same expr/pat
+    span: Span,                // span of same expr/pat
     cat: categorization,       // categorization of expr
     mutbl: MutabilityCategory, // mutability of expr as lvalue
     ty: ty::t                  // type of the expr (*see WARNING above*)
@@ -256,7 +256,7 @@ pub fn cat_def(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     expr_id: ast::NodeId,
-    expr_span: span,
+    expr_span: Span,
     expr_ty: ty::t,
     def: ast::def) -> cmt {
 
@@ -268,17 +268,17 @@ pub fn cat_def(
 
 pub trait ast_node {
     fn id(&self) -> ast::NodeId;
-    fn span(&self) -> span;
+    fn span(&self) -> Span;
 }
 
 impl ast_node for @ast::expr {
     fn id(&self) -> ast::NodeId { self.id }
-    fn span(&self) -> span { self.span }
+    fn span(&self) -> Span { self.span }
 }
 
 impl ast_node for @ast::pat {
     fn id(&self) -> ast::NodeId { self.id }
-    fn span(&self) -> span { self.span }
+    fn span(&self) -> Span { self.span }
 }
 
 pub struct mem_categorization_ctxt {
@@ -442,7 +442,7 @@ impl mem_categorization_ctxt {
 
     pub fn cat_def(&self,
                    id: ast::NodeId,
-                   span: span,
+                   span: Span,
                    expr_ty: ty::t,
                    def: ast::def)
                    -> cmt {
@@ -584,7 +584,7 @@ impl mem_categorization_ctxt {
 
     pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
-                      span: span,
+                      span: Span,
                       cleanup_scope_id: ast::NodeId,
                       expr_ty: ty::t) -> cmt {
         @cmt_ {

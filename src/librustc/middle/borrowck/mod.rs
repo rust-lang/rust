@@ -26,7 +26,7 @@ use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
@@ -65,7 +65,7 @@ struct BorrowckVisitor;
 
 impl Visitor<@BorrowckCtxt> for BorrowckVisitor {
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
-                b:&Block, s:span, n:NodeId, e:@BorrowckCtxt) {
+                b:&Block, s:Span, n:NodeId, e:@BorrowckCtxt) {
         borrowck_fn(self, fk, fd, b, s, n, e);
     }
 }
@@ -127,7 +127,7 @@ fn borrowck_fn(v: &mut BorrowckVisitor,
                fk: &visit::fn_kind,
                decl: &ast::fn_decl,
                body: &ast::Block,
-               sp: span,
+               sp: Span,
                id: ast::NodeId,
                this: @BorrowckCtxt) {
     match fk {
@@ -277,7 +277,7 @@ pub struct Loan {
     restrictions: ~[Restriction],
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Eq, IterBytes)]
@@ -454,7 +454,7 @@ pub enum bckerr_code {
 // that caused it
 #[deriving(Eq)]
 pub struct BckError {
-    span: span,
+    span: Span,
     cmt: mc::cmt,
     code: bckerr_code
 }
@@ -516,7 +516,7 @@ impl BorrowckCtxt {
 
     pub fn cat_def(&self,
                    id: ast::NodeId,
-                   span: span,
+                   span: Span,
                    ty: ty::t,
                    def: ast::def)
                    -> mc::cmt {
@@ -550,7 +550,7 @@ impl BorrowckCtxt {
     }
 
     pub fn report_use_of_moved_value(&self,
-                                     use_span: span,
+                                     use_span: Span,
                                      use_kind: MovedValueUseKind,
                                      lp: &LoanPath,
                                      move: &move_data::Move,
@@ -631,7 +631,7 @@ impl BorrowckCtxt {
     }
 
     pub fn report_reassigned_immutable_variable(&self,
-                                                span: span,
+                                                span: Span,
                                                 lp: &LoanPath,
                                                 assign:
                                                 &move_data::Assignment) {
@@ -644,11 +644,11 @@ impl BorrowckCtxt {
             fmt!("prior assignment occurs here"));
     }
 
-    pub fn span_err(&self, s: span, m: &str) {
+    pub fn span_err(&self, s: Span, m: &str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    pub fn span_note(&self, s: span, m: &str) {
+    pub fn span_note(&self, s: Span, m: &str) {
         self.tcx.sess.span_note(s, m);
     }
 
@@ -677,7 +677,7 @@ impl BorrowckCtxt {
     }
 
     pub fn report_aliasability_violation(&self,
-                                         span: span,
+                                         span: Span,
                                          kind: AliasableViolationKind,
                                          cause: mc::AliasableReason) {
         let prefix = match kind {

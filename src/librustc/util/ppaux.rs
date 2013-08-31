@@ -26,7 +26,7 @@ use middle::ty;
 use middle::typeck;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
@@ -69,7 +69,7 @@ pub fn explain_region(cx: ctxt, region: ty::Region) -> ~str {
 
 
 pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
-                            -> (~str, Option<span>) {
+                            -> (~str, Option<Span>) {
     return match region {
       re_scope(node_id) => {
         match cx.items.find(&node_id) {
@@ -136,8 +136,8 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
       }
     };
 
-    fn explain_span(cx: ctxt, heading: &str, span: span)
-        -> (~str, Option<span>)
+    fn explain_span(cx: ctxt, heading: &str, span: Span)
+        -> (~str, Option<Span>)
     {
         let lo = cx.sess.codemap.lookup_char_pos_adj(span.lo);
         (fmt!("the %s at %u:%u", heading,
@@ -827,7 +827,7 @@ impl Repr for ty::BuiltinBounds {
     }
 }
 
-impl Repr for span {
+impl Repr for Span {
     fn repr(&self, tcx: ctxt) -> ~str {
         tcx.sess.codemap.span_to_str(*self)
     }

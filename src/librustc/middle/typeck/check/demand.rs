@@ -16,24 +16,24 @@ use middle::typeck::infer;
 use std::result::{Err, Ok};
 use std::result;
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
-pub fn suptype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
+pub fn suptype(fcx: @mut FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     suptype_with_fn(fcx, sp, false, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn subtype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
+pub fn subtype(fcx: @mut FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     suptype_with_fn(fcx, sp, true, actual, expected,
         |sp, a, e, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
 pub fn suptype_with_fn(fcx: @mut FnCtxt,
-                       sp: span, b_is_expected: bool,
+                       sp: Span, b_is_expected: bool,
                        ty_a: ty::t, ty_b: ty::t,
-                       handle_err: &fn(span, ty::t, ty::t, &ty::type_err)) {
+                       handle_err: &fn(Span, ty::t, ty::t, &ty::type_err)) {
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), b_is_expected, infer::Misc(sp),
                           ty_b, ty_a) {
@@ -44,7 +44,7 @@ pub fn suptype_with_fn(fcx: @mut FnCtxt,
     }
 }
 
-pub fn eqtype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
+pub fn eqtype(fcx: @mut FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {
@@ -55,7 +55,7 @@ pub fn eqtype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
 
 // Checks that the type `actual` can be coerced to `expected`.
 pub fn coerce(fcx: @mut FnCtxt,
-              sp: span,
+              sp: Span,
               expected: ty::t,
               expr: @ast::expr) {
     let expr_ty = fcx.expr_ty(expr);

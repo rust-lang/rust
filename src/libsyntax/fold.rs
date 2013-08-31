@@ -10,7 +10,7 @@
 
 use ast::*;
 use ast;
-use codemap::{span, spanned};
+use codemap::{Span, Spanned};
 use parse::token;
 use opt_vec::OptVec;
 
@@ -37,7 +37,7 @@ pub trait ast_fold {
     fn fold_local(@self, @Local) -> @Local;
     fn map_exprs(@self, @fn(@expr) -> @expr, &[@expr]) -> ~[@expr];
     fn new_id(@self, NodeId) -> NodeId;
-    fn new_span(@self, span) -> span;
+    fn new_span(@self, Span) -> Span;
 }
 
 // We may eventually want to be able to fold over type parameters, too
@@ -52,21 +52,21 @@ pub struct AstFoldFns {
     fold_item_underscore: @fn(&item_, @ast_fold) -> item_,
     fold_method: @fn(@method, @ast_fold) -> @method,
     fold_block: @fn(&Block, @ast_fold) -> Block,
-    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (Option<stmt_>, span),
+    fold_stmt: @fn(&stmt_, Span, @ast_fold) -> (Option<stmt_>, Span),
     fold_arm: @fn(&arm, @ast_fold) -> arm,
-    fold_pat: @fn(&pat_, span, @ast_fold) -> (pat_, span),
-    fold_decl: @fn(&decl_, span, @ast_fold) -> (Option<decl_>, span),
-    fold_expr: @fn(&expr_, span, @ast_fold) -> (expr_, span),
-    fold_ty: @fn(&ty_, span, @ast_fold) -> (ty_, span),
+    fold_pat: @fn(&pat_, Span, @ast_fold) -> (pat_, Span),
+    fold_decl: @fn(&decl_, Span, @ast_fold) -> (Option<decl_>, Span),
+    fold_expr: @fn(&expr_, Span, @ast_fold) -> (expr_, Span),
+    fold_ty: @fn(&ty_, Span, @ast_fold) -> (ty_, Span),
     fold_mod: @fn(&_mod, @ast_fold) -> _mod,
     fold_foreign_mod: @fn(&foreign_mod, @ast_fold) -> foreign_mod,
-    fold_variant: @fn(&variant_, span, @ast_fold) -> (variant_, span),
+    fold_variant: @fn(&variant_, Span, @ast_fold) -> (variant_, Span),
     fold_ident: @fn(ident, @ast_fold) -> ident,
     fold_path: @fn(&Path, @ast_fold) -> Path,
     fold_local: @fn(@Local, @ast_fold) -> @Local,
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
     new_id: @fn(NodeId) -> NodeId,
-    new_span: @fn(span) -> span
+    new_span: @fn(Span) -> Span
 }
 
 pub type ast_fold_fns = @AstFoldFns;
@@ -75,7 +75,7 @@ pub type ast_fold_fns = @AstFoldFns;
 
 //used in noop_fold_item and noop_fold_crate and noop_fold_crate_directive
 fn fold_meta_item_(mi: @MetaItem, fld: @ast_fold) -> @MetaItem {
-    @spanned {
+    @Spanned {
         node:
             match mi.node {
                 MetaWord(id) => MetaWord(id),
@@ -92,7 +92,7 @@ fn fold_meta_item_(mi: @MetaItem, fld: @ast_fold) -> @MetaItem {
 }
 //used in noop_fold_item and noop_fold_crate
 fn fold_attribute_(at: Attribute, fld: @ast_fold) -> Attribute {
-    spanned {
+    Spanned {
         span: fld.new_span(at.span),
         node: ast::Attribute_ {
             style: at.node.style,
@@ -114,7 +114,7 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
 
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
-    spanned {
+    Spanned {
         node: match m.node {
             mac_invoc_tt(ref p,ref tts) =>
             mac_invoc_tt(fld.fold_path(p),
@@ -258,7 +258,7 @@ fn noop_fold_struct_field(sf: @struct_field, fld: @ast_fold)
                        -> @struct_field {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    @spanned {
+    @Spanned {
         node: ast::struct_field_ {
             kind: sf.node.kind,
             id: sf.node.id,
@@ -348,7 +348,7 @@ fn fold_trait_ref(p: &trait_ref, fld: @ast_fold) -> trait_ref {
 }
 
 fn fold_struct_field(f: @struct_field, fld: @ast_fold) -> @struct_field {
-    @spanned {
+    @Spanned {
         node: ast::struct_field_ {
             kind: f.node.kind,
             id: fld.new_id(f.node.id),
@@ -479,8 +479,8 @@ fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> Option<decl_> {
 }
 
 pub fn wrap<T>(f: @fn(&T, @ast_fold) -> T)
-            -> @fn(&T, span, @ast_fold) -> (T, span) {
-    let result: @fn(&T, span, @ast_fold) -> (T, span) = |x, s, fld| {
+            -> @fn(&T, Span, @ast_fold) -> (T, Span) {
+    let result: @fn(&T, Span, @ast_fold) -> (T, Span) = |x, s, fld| {
         (f(x, fld), s)
     };
     result
@@ -793,7 +793,7 @@ fn noop_map_exprs(f: @fn(@expr) -> @expr, es: &[@expr]) -> ~[@expr] {
 
 fn noop_id(i: NodeId) -> NodeId { return i; }
 
-fn noop_span(sp: span) -> span { return sp; }
+fn noop_span(sp: Span) -> Span { return sp; }
 
 pub fn default_ast_fold() -> ast_fold_fns {
     @AstFoldFns {
@@ -843,7 +843,7 @@ impl ast_fold for AstFoldFns {
         (self.fold_item)(i, self as @ast_fold)
     }
     fn fold_struct_field(@self, sf: @struct_field) -> @struct_field {
-        @spanned {
+        @Spanned {
             node: ast::struct_field_ {
                 kind: sf.node.kind,
                 id: sf.node.id,
@@ -865,7 +865,7 @@ impl ast_fold for AstFoldFns {
     fn fold_stmt(@self, x: &stmt) -> Option<@stmt> {
         let (n_opt, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);
         match n_opt {
-            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            Some(n) => Some(@Spanned { node: n, span: (self.new_span)(s) }),
             None => None,
         }
     }
@@ -883,7 +883,7 @@ impl ast_fold for AstFoldFns {
     fn fold_decl(@self, x: @decl) -> Option<@decl> {
         let (n_opt, s) = (self.fold_decl)(&x.node, x.span, self as @ast_fold);
         match n_opt {
-            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            Some(n) => Some(@Spanned { node: n, span: (self.new_span)(s) }),
             None => None,
         }
     }
@@ -911,7 +911,7 @@ impl ast_fold for AstFoldFns {
     }
     fn fold_variant(@self, x: &variant) -> variant {
         let (n, s) = (self.fold_variant)(&x.node, x.span, self as @ast_fold);
-        spanned { node: n, span: (self.new_span)(s) }
+        Spanned { node: n, span: (self.new_span)(s) }
     }
     fn fold_ident(@self, x: ident) -> ident {
         (self.fold_ident)(x, self as @ast_fold)
@@ -931,7 +931,7 @@ impl ast_fold for AstFoldFns {
     fn new_id(@self, node_id: ast::NodeId) -> NodeId {
         (self.new_id)(node_id)
     }
-    fn new_span(@self, span: span) -> span {
+    fn new_span(@self, span: Span) -> Span {
         (self.new_span)(span)
     }
 }

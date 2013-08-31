@@ -14,7 +14,7 @@ use extra;
 
 use ast;
 use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use codemap::{spanned, dummy_spanned};
+use codemap::{Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -212,7 +212,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
     do v.move_iter().map |(_, m)| {
         match m.node {
             MetaList(n, ref mis) => {
-                @spanned {
+                @Spanned {
                     node: MetaList(n, sort_meta_items(*mis)),
                     .. /*bad*/ (*m).clone()
                 }

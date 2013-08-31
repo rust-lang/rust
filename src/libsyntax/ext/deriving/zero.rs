@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{MetaItem, item, expr};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
@@ -17,7 +17,7 @@ use ext::deriving::generic::*;
 use std::vec;
 
 pub fn expand_deriving_zero(cx: @ExtCtxt,
-                            span: span,
+                            span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@item])
     -> ~[@item] {
@@ -55,7 +55,7 @@ pub fn expand_deriving_zero(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn zero_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
+fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
     let zero_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("num"),

@@ -24,7 +24,7 @@ use std::vec;
 use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
-use syntax::codemap::{span, dummy_sp, spanned};
+use syntax::codemap::{Span, dummy_sp, Spanned};
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
 
@@ -45,7 +45,7 @@ impl Visitor<()> for CheckMatchVisitor {
     fn visit_local(&mut self, l:@Local, e:()) {
         check_local(self, self.cx, l, e);
     }
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:()) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:()) {
         check_fn(self, self.cx, fk, fd, b, s, n, e);
     }
 }
@@ -160,7 +160,7 @@ pub fn raw_pat(p: @pat) -> @pat {
     }
 }
 
-pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: span, pats: ~[@pat]) {
+pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@pat]) {
     assert!((!pats.is_empty()));
     let ext = match is_useful(cx, &pats.map(|p| ~[*p]), [wild()]) {
         not_useful => {
@@ -821,7 +821,7 @@ pub fn check_fn(v: &mut CheckMatchVisitor,
                 kind: &visit::fn_kind,
                 decl: &fn_decl,
                 body: &Block,
-                sp: span,
+                sp: Span,
                 id: NodeId,
                 s: ()) {
     visit::walk_fn(v, kind, decl, body, sp, id, s);
@@ -850,7 +850,7 @@ pub fn is_refutable(cx: &MatchCheckCtxt, pat: &pat) -> bool {
         is_refutable(cx, sub)
       }
       pat_wild | pat_ident(_, _, None) => { false }
-      pat_lit(@expr {node: expr_lit(@spanned { node: lit_nil, _}), _}) => {
+      pat_lit(@expr {node: expr_lit(@Spanned { node: lit_nil, _}), _}) => {
         // "()"
         false
       }

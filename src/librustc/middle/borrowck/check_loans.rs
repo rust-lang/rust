@@ -26,7 +26,7 @@ use middle::ty;
 use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 use util::ppaux::Repr;
@@ -56,7 +56,7 @@ impl<'self> Visitor<CheckLoanCtxt<'self>> for CheckLoanVisitor {
         check_loans_in_pat(self, p, e);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:CheckLoanCtxt) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:CheckLoanCtxt) {
         check_loans_in_fn(self, fk, fd, b, s, n, e);
     }
 }
@@ -82,7 +82,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
 
 enum MoveError {
     MoveOk,
-    MoveWhileBorrowed(/*loan*/@LoanPath, /*loan*/span)
+    MoveWhileBorrowed(/*loan*/@LoanPath, /*loan*/Span)
 }
 
 impl<'self> CheckLoanCtxt<'self> {
@@ -107,7 +107,7 @@ impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn check_captured_variables(&self, closure_id: ast::NodeId, span: span) {
+    fn check_captured_variables(&self, closure_id: ast::NodeId, span: Span) {
         let cap_vars = self.bccx.capture_map.get(&closure_id);
         for cap_var in cap_vars.iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
@@ -311,7 +311,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
     pub fn check_if_path_is_moved(&self,
                                   id: ast::NodeId,
-                                  span: span,
+                                  span: Span,
                                   use_kind: MovedValueUseKind,
                                   lp: @LoanPath) {
         /*!
@@ -669,7 +669,7 @@ impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn check_move_out_from_id(&self, id: ast::NodeId, span: span) {
+    fn check_move_out_from_id(&self, id: ast::NodeId, span: Span) {
         do self.move_data.each_path_moved_by(id) |_, move_path| {
             match self.analyze_move_out_from(id, move_path) {
                 MoveOk => {}
@@ -713,7 +713,7 @@ impl<'self> CheckLoanCtxt<'self> {
                       _expr: @ast::expr,
                       _callee: Option<@ast::expr>,
                       _callee_id: ast::NodeId,
-                      _callee_span: span,
+                      _callee_span: Span,
                       _args: &[@ast::expr]) {
         // NB: This call to check for conflicting loans is not truly
         // necessary, because the callee_id never issues new loans.
@@ -729,7 +729,7 @@ fn check_loans_in_fn<'a>(visitor: &mut CheckLoanVisitor,
                          fk: &visit::fn_kind,
                          decl: &ast::fn_decl,
                          body: &ast::Block,
-                         sp: span,
+                         sp: Span,
                          id: ast::NodeId,
                          this: CheckLoanCtxt<'a>) {
     match *fk {
@@ -749,7 +749,7 @@ fn check_loans_in_fn<'a>(visitor: &mut CheckLoanVisitor,
 
     fn check_captured_variables(this: CheckLoanCtxt,
                                 closure_id: ast::NodeId,
-                                span: span) {
+                                span: Span) {
         let cap_vars = this.bccx.capture_map.get(&closure_id);
         for cap_var in cap_vars.iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;

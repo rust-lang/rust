@@ -680,7 +680,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: @ast::expr,
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
-        ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
+        ast::expr_lit(@codemap::Spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::expr_vstore(contents, ast::expr_vstore_slice) |
@@ -1163,7 +1163,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
 fn trans_rec_or_struct(bcx: @mut Block,
                        fields: &[ast::Field],
                        base: Option<@ast::expr>,
-                       expr_span: codemap::span,
+                       expr_span: codemap::Span,
                        id: ast::NodeId,
                        dest: Dest) -> @mut Block
 {

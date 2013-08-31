@@ -16,7 +16,7 @@ use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::{FileSearch, FileMatch, FileMatches, FileDoesntMatch};
 use metadata::filesearch;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
@@ -34,22 +34,22 @@ use std::str;
 use std::vec;
 use extra::flate;
 
-pub enum os {
-    os_macos,
-    os_win32,
-    os_linux,
-    os_android,
-    os_freebsd
+pub enum Os {
+    OsMacos,
+    OsWin32,
+    OsLinux,
+    OsAndroid,
+    OsFreebsd
 }
 
 pub struct Context {
     diag: @mut span_handler,
     filesearch: @FileSearch,
-    span: span,
+    span: Span,
     ident: @str,
     metas: ~[@ast::MetaItem],
     hash: @str,
-    os: os,
+    os: Os,
     is_static: bool,
     intr: @ident_interner
 }
@@ -73,11 +73,11 @@ fn find_library_crate(cx: &Context) -> Option<(~str, @~[u8])> {
 fn libname(cx: &Context) -> (~str, ~str) {
     if cx.is_static { return (~"lib", ~".rlib"); }
     let (dll_prefix, dll_suffix) = match cx.os {
-        os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-        os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-        os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-        os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
-        os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+        OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+        OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
 
     (dll_prefix.to_owned(), dll_suffix.to_owned())
@@ -196,7 +196,7 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
     }
 }
 
-fn get_metadata_section(os: os,
+fn get_metadata_section(os: Os,
                         filename: &Path) -> Option<@~[u8]> {
     unsafe {
         let mb = do filename.with_c_str |buf| {
@@ -212,7 +212,7 @@ fn get_metadata_section(os: os,
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
             let name = str::raw::from_c_str(name_buf);
             debug!("get_metadata_section: name %s", name);
-            if name == read_meta_section_name(os) {
+            if read_meta_section_name(os) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found = None;
@@ -245,29 +245,29 @@ fn get_metadata_section(os: os,
     }
 }
 
-pub fn meta_section_name(os: os) -> ~str {
+pub fn meta_section_name(os: Os) -> &'static str {
     match os {
-      os_macos => ~"__DATA,__note.rustc",
-      os_win32 => ~".note.rustc",
-      os_linux => ~".note.rustc",
-      os_android => ~".note.rustc",
-      os_freebsd => ~".note.rustc"
+        OsMacos => "__DATA,__note.rustc",
+        OsWin32 => ".note.rustc",
+        OsLinux => ".note.rustc",
+        OsAndroid => ".note.rustc",
+        OsFreebsd => ".note.rustc"
     }
 }
 
-pub fn read_meta_section_name(os: os) -> ~str {
+pub fn read_meta_section_name(os: Os) -> &'static str {
     match os {
-      os_macos => ~"__note.rustc",
-      os_win32 => ~".note.rustc",
-      os_linux => ~".note.rustc",
-      os_android => ~".note.rustc",
-      os_freebsd => ~".note.rustc"
+        OsMacos => "__note.rustc",
+        OsWin32 => ".note.rustc",
+        OsLinux => ".note.rustc",
+        OsAndroid => ".note.rustc",
+        OsFreebsd => ".note.rustc"
     }
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(intr: @ident_interner,
-                          os: os,
+                          os: Os,
                           path: &Path,
                           out: @io::Writer) {
     match get_metadata_section(os, path) {

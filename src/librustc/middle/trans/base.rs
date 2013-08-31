@@ -81,7 +81,7 @@ use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
@@ -138,7 +138,7 @@ fn fcx_has_nonzero_span(fcx: &FunctionContext) -> bool {
     }
 }
 
-fn span_is_empty(opt_span: &Option<span>) -> bool {
+fn span_is_empty(opt_span: &Option<Span>) -> bool {
     match *opt_span {
         None => true,
         Some(span) => *span.lo == 0 && *span.hi == 0
@@ -791,7 +791,7 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: @mut Block, span: span, divrem: ast::binop,
+pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> @mut Block {
     let text = if divrem == ast::div {
         @"attempted to divide by zero"
@@ -1064,7 +1064,7 @@ pub fn load_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     return v;
 }
 
-pub fn trans_trace(bcx: @mut Block, sp_opt: Option<span>, trace_str: @str) {
+pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
     if !bcx.sess().trace() { return; }
     let _icx = push_ctxt("trans_trace");
     add_comment(bcx, trace_str);
@@ -1615,7 +1615,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
                         skip_retptr: bool,
                         param_substs: Option<@param_substs>,
                         opt_node_info: Option<NodeInfo>,
-                        sp: Option<span>)
+                        sp: Option<Span>)
                      -> @mut FunctionContext {
     for p in param_substs.iter() { p.validate(); }
 
@@ -1690,7 +1690,7 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
                    path: path,
                    llfndecl: ValueRef,
                    output_type: ty::t,
-                   sp: Option<span>)
+                   sp: Option<Span>)
                 -> @mut FunctionContext {
     new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, None, sp)
 }
@@ -2283,7 +2283,7 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 }
 
 pub fn register_fn(ccx: @mut CrateContext,
-                   sp: span,
+                   sp: Span,
                    sym: ~str,
                    node_id: ast::NodeId,
                    node_type: ty::t)
@@ -2293,7 +2293,7 @@ pub fn register_fn(ccx: @mut CrateContext,
 }
 
 pub fn register_fn_llvmty(ccx: @mut CrateContext,
-                          sp: span,
+                          sp: Span,
                           sym: ~str,
                           node_id: ast::NodeId,
                           cc: lib::llvm::CallConv,
@@ -2309,7 +2309,7 @@ pub fn register_fn_llvmty(ccx: @mut CrateContext,
     // FIXME #4404 android JNI hacks
     let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::os_android));
+                       ccx.sess.targ_cfg.os == session::OsAndroid));
     if is_entry {
         create_entry_wrapper(ccx, sp, llfn);
     }
@@ -2326,7 +2326,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
 pub fn create_entry_wrapper(ccx: @mut CrateContext,
-                           _sp: span,
+                           _sp: Span,
                            main_llfn: ValueRef) {
     let et = ccx.sess.entry_type.unwrap();
     match et {
