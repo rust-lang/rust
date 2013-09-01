@@ -321,13 +321,16 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     time_t s = sec;
     LOCALTIME(&s, &tm);
 
+    const char* zone = NULL;
 #if defined(__WIN32__)
     int32_t gmtoff = -timezone;
-    char zone[64];
-    strftime(zone, sizeof(zone), "%Z", &tm);
+    char buffer[64];
+    if (strftime(buffer, sizeof(buffer), "%Z", &tm) > 0) {
+        zone = buffer;
+    }
 #else
     int32_t gmtoff = tm.tm_gmtoff;
-    const char *zone = tm.tm_zone;
+    zone = tm.tm_zone;
 #endif
 
     tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
