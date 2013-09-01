@@ -604,36 +604,6 @@ impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator 
     }
 }
 
-/// A double-ended iterator with known size
-pub trait ExactSizeDoubleEndedIterator<A> {
-    /// Return the index of the last element satisfying the specified predicate
-    ///
-    /// If no element matches, None is returned.
-    #[inline]
-    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
-}
-
-impl<A, T: DoubleEndedIterator<A> + ExactSizeHint> ExactSizeDoubleEndedIterator<A> for T {
-    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
-        let (size, _) = self.size_hint();
-        let mut i = size;
-        loop {
-            match self.next_back() {
-                None => break,
-                Some(x) => {
-                    i = match i.checked_sub(&1) {
-                        Some(x) => x,
-                        None => fail!("rposition: incorrect ExactSizeHint")
-                    };
-                    if predicate(x) {
-                        return Some(i)
-                    }
-                }
-            }
-        }
-        None
-    }
-}
 
 /// An object implementing random access indexing by `uint`
 ///
@@ -654,18 +624,40 @@ pub trait RandomAccessIterator<A>: Iterator<A> {
 ///
 /// `Iterator::size_hint` *must* return the exact size of the iterator.
 /// Note that the size must fit in `uint`.
-pub trait ExactSizeHint {}
+pub trait ExactSize<A> : DoubleEndedIterator<A> {
+    /// Return the index of the last element satisfying the specified predicate
+    ///
+    /// If no element matches, None is returned.
+    #[inline]
+    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+        let (lower, upper) = self.size_hint();
+        assert!(upper == Some(lower));
+        let mut i = lower;
+        loop {
+            match self.next_back() {
+                None => break,
+                Some(x) => {
+                    i = match i.checked_sub(&1) {
+                        Some(x) => x,
+                        None => fail!("rposition: incorrect ExactSize")
+                    };
+                    if predicate(x) {
+                        return Some(i)
+                    }
+                }
+            }
+        }
+        None
+    }
+}
 
 // All adaptors that preserve the size of the wrapped iterator are fine
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
-impl<T: ExactSizeHint> ExactSizeHint for Enumerate<T> {}
-impl<'self, A, T: ExactSizeHint> ExactSizeHint for Inspect<'self, A, T> {}
-impl<T: ExactSizeHint> ExactSizeHint for Invert<T> {}
-impl<'self, A, B, T: ExactSizeHint> ExactSizeHint for Map<'self, A, B, T> {}
-impl<A, T: ExactSizeHint> ExactSizeHint for Peekable<A, T> {}
-impl<T: ExactSizeHint> ExactSizeHint for Skip<T> {}
-impl<T: ExactSizeHint> ExactSizeHint for Take<T> {}
-impl<T: ExactSizeHint, U: ExactSizeHint> ExactSizeHint for Zip<T, U> {}
+impl<A, T: ExactSize<A>> ExactSize<(uint, A)> for Enumerate<T> {}
+impl<'self, A, T: ExactSize<A>> ExactSize<A> for Inspect<'self, A, T> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Invert<T> {}
+impl<'self, A, B, T: ExactSize<A>> ExactSize<B> for Map<'self, A, B, T> {}
+impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
@@ -967,14 +959,14 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     }
 }
 
-impl<A, B,
-     T: DoubleEndedIterator<A> + ExactSizeHint,
-     U: DoubleEndedIterator<B> + ExactSizeHint> DoubleEndedIterator<(A, B)>
+impl<A, B, T: ExactSize<A>, U: ExactSize<B>> DoubleEndedIterator<(A, B)>
 for Zip<T, U> {
     #[inline]
     fn next_back(&mut self) -> Option<(A, B)> {
-        let (a_sz, _) = self.a.size_hint();
-        let (b_sz, _) = self.b.size_hint();
+        let (a_sz, a_upper) = self.a.size_hint();
+        let (b_sz, b_upper) = self.b.size_hint();
+        assert!(a_upper == Some(a_sz));
+        assert!(b_upper == Some(b_sz));
         if a_sz < b_sz {
             for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
         } else if a_sz > b_sz {
@@ -1168,15 +1160,14 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for Enumerate<T> {
     }
 }
 
-impl<A, T: DoubleEndedIterator<A> + ExactSizeHint> DoubleEndedIterator<(uint, A)>
-for Enumerate<T> {
+impl<A, T: ExactSize<A>> DoubleEndedIterator<(uint, A)> for Enumerate<T> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, A)> {
         match self.iter.next_back() {
             Some(a) => {
-                let (len, _) = self.iter.size_hint();
-                let ret = Some((self.count + len, a));
-                ret
+                let (lower, upper) = self.iter.size_hint();
+                assert!(upper == Some(lower));
+                Some((self.count + lower, a))
             }
             _ => None
         }
