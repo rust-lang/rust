@@ -51,7 +51,7 @@ pub struct binding_info {
 }
 
 // Map from the name in a pattern to its binding mode.
-pub type BindingMap = HashMap<ident,binding_info>;
+pub type BindingMap = HashMap<Ident,binding_info>;
 
 // Trait method resolution
 pub type TraitMap = HashMap<NodeId,@mut ~[def_id]>;
@@ -162,7 +162,7 @@ impl Visitor<()> for ResolveVisitor {
 
 /// Contains data for specific types of import directives.
 pub enum ImportDirectiveSubclass {
-    SingleImport(ident /* target */, ident /* source */),
+    SingleImport(Ident /* target */, Ident /* source */),
     GlobImport
 }
 
@@ -311,7 +311,7 @@ pub enum DuplicateCheckingMode {
 
 /// One local scope.
 pub struct Rib {
-    bindings: @mut HashMap<ident, DefLike>,
+    bindings: @mut HashMap<Ident, DefLike>,
     self_binding: @mut Option<DefLike>,
     kind: RibKind,
 }
@@ -329,7 +329,7 @@ impl Rib {
 /// One import directive.
 pub struct ImportDirective {
     privacy: Privacy,
-    module_path: ~[ident],
+    module_path: ~[Ident],
     subclass: @ImportDirectiveSubclass,
     span: Span,
     id: NodeId,
@@ -337,7 +337,7 @@ pub struct ImportDirective {
 
 impl ImportDirective {
     pub fn new(privacy: Privacy,
-               module_path: ~[ident],
+               module_path: ~[Ident],
                subclass: @ImportDirectiveSubclass,
                span: Span,
                id: NodeId)
@@ -425,7 +425,7 @@ impl ImportResolution {
 /// The link from a module up to its nearest parent node.
 pub enum ParentLink {
     NoParentLink,
-    ModuleParentLink(@mut Module, ident),
+    ModuleParentLink(@mut Module, Ident),
     BlockParentLink(@mut Module, NodeId)
 }
 
@@ -445,12 +445,12 @@ pub struct Module {
     def_id: Option<def_id>,
     kind: ModuleKind,
 
-    children: @mut HashMap<ident, @mut NameBindings>,
+    children: @mut HashMap<Ident, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
 
     // The external module children of this node that were declared with
     // `extern mod`.
-    external_module_children: @mut HashMap<ident, @mut Module>,
+    external_module_children: @mut HashMap<Ident, @mut Module>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -469,7 +469,7 @@ pub struct Module {
     anonymous_children: @mut HashMap<NodeId,@mut Module>,
 
     // The status of resolving each import in this module.
-    import_resolutions: @mut HashMap<ident, @mut ImportResolution>,
+    import_resolutions: @mut HashMap<Ident, @mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     glob_count: uint,
@@ -759,7 +759,7 @@ pub fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 pub struct PrimitiveTypeTable {
-    primitive_types: HashMap<ident,prim_ty>,
+    primitive_types: HashMap<Ident,prim_ty>,
 }
 
 impl PrimitiveTypeTable {
@@ -873,7 +873,7 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    method_map: @mut HashMap<ident, HashSet<def_id>>,
+    method_map: @mut HashMap<Ident, HashSet<def_id>>,
     structs: HashSet<def_id>,
 
     // The number of imports that are currently unresolved.
@@ -900,9 +900,9 @@ pub struct Resolver {
     current_trait_refs: Option<~[def_id]>,
 
     // The ident for the keyword "self".
-    self_ident: ident,
+    self_ident: Ident,
     // The ident for the non-keyword "Self".
-    type_self_ident: ident,
+    type_self_ident: Ident,
 
     // The idents for the primitive types.
     primitive_type_table: @PrimitiveTypeTable,
@@ -1017,7 +1017,7 @@ impl Resolver {
      * a block, fails.
      */
     pub fn add_child(@mut self,
-                     name: ident,
+                     name: Ident,
                      reduced_graph_parent: ReducedGraphParent,
                      duplicate_checking_mode: DuplicateCheckingMode,
                      // For printing errors
@@ -1153,7 +1153,7 @@ impl Resolver {
         return false;
     }
 
-    pub fn get_parent_link(@mut self, parent: ReducedGraphParent, name: ident)
+    pub fn get_parent_link(@mut self, parent: ReducedGraphParent, name: Ident)
                            -> ParentLink {
         match parent {
             ModuleReducedGraphParent(module_) => {
@@ -1659,7 +1659,7 @@ impl Resolver {
                            visibility: ast::visibility,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
-                           ident: ident,
+                           ident: Ident,
                            new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
         match def {
@@ -1783,7 +1783,7 @@ impl Resolver {
     fn build_reduced_graph_for_external_crate_def(@mut self,
                                                   root: @mut Module,
                                                   def_like: DefLike,
-                                                  ident: ident) {
+                                                  ident: Ident) {
         match def_like {
             DlDef(def) => {
                 // Add the new child item, if necessary.
@@ -1962,7 +1962,7 @@ impl Resolver {
     pub fn build_import_directive(@mut self,
                                   privacy: Privacy,
                                   module_: @mut Module,
-                                  module_path: ~[ident],
+                                  module_path: ~[Ident],
                                   subclass: @ImportDirectiveSubclass,
                                   span: Span,
                                   id: NodeId) {
@@ -2107,7 +2107,7 @@ impl Resolver {
         }
     }
 
-    pub fn idents_to_str(@mut self, idents: &[ident]) -> ~str {
+    pub fn idents_to_str(@mut self, idents: &[Ident]) -> ~str {
         let mut first = true;
         let mut result = ~"";
         for ident in idents.iter() {
@@ -2122,7 +2122,7 @@ impl Resolver {
     }
 
     fn path_idents_to_str(@mut self, path: &Path) -> ~str {
-        let identifiers: ~[ast::ident] = path.segments
+        let identifiers: ~[ast::Ident] = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
                                              .collect();
@@ -2139,7 +2139,7 @@ impl Resolver {
     }
 
     pub fn import_path_to_str(@mut self,
-                              idents: &[ident],
+                              idents: &[Ident],
                               subclass: ImportDirectiveSubclass)
                               -> @str {
         if idents.is_empty() {
@@ -2262,8 +2262,8 @@ impl Resolver {
     pub fn resolve_single_import(@mut self,
                                  module_: @mut Module,
                                  containing_module: @mut Module,
-                                 target: ident,
-                                 source: ident,
+                                 target: Ident,
+                                 source: Ident,
                                  directive: &ImportDirective)
                                  -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
@@ -2620,7 +2620,7 @@ impl Resolver {
     /// Resolves the given module path from the given root `module_`.
     pub fn resolve_module_path_from_root(@mut self,
                                          module_: @mut Module,
-                                         module_path: &[ident],
+                                         module_path: &[Ident],
                                          index: uint,
                                          span: Span,
                                          mut name_search_type: NameSearchType)
@@ -2729,7 +2729,7 @@ impl Resolver {
     /// rooted at the given module.
     pub fn resolve_module_path(@mut self,
                                module_: @mut Module,
-                               module_path: &[ident],
+                               module_path: &[Ident],
                                use_lexical_scope: UseLexicalScopeFlag,
                                span: Span,
                                name_search_type: NameSearchType)
@@ -2822,7 +2822,7 @@ impl Resolver {
     /// import resolution.
     pub fn resolve_item_in_lexical_scope(@mut self,
                                          module_: @mut Module,
-                                         name: ident,
+                                         name: Ident,
                                          namespace: Namespace,
                                          search_through_modules:
                                          SearchThroughModulesFlag)
@@ -2951,7 +2951,7 @@ impl Resolver {
     /// Resolves a module name in the current lexical scope.
     pub fn resolve_module_in_lexical_scope(@mut self,
                                            module_: @mut Module,
-                                           name: ident)
+                                           name: Ident)
                                            -> ResolveResult<@mut Module> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
@@ -3038,7 +3038,7 @@ impl Resolver {
     /// (b) some chain of `super::`.
     pub fn resolve_module_prefix(@mut self,
                                  module_: @mut Module,
-                                 module_path: &[ident])
+                                 module_path: &[Ident])
                                  -> ResolveResult<ModulePrefixResult> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -3081,7 +3081,7 @@ impl Resolver {
     /// the name.
     pub fn resolve_name_in_module(@mut self,
                                   module_: @mut Module,
-                                  name: ident,
+                                  name: Ident,
                                   namespace: Namespace,
                                   name_search_type: NameSearchType)
                                   -> ResolveResult<Target> {
@@ -3273,7 +3273,7 @@ impl Resolver {
 
     pub fn add_exports_of_namebindings(@mut self,
                                        exports2: &mut ~[Export2],
-                                       ident: ident,
+                                       ident: Ident,
                                        namebindings: @mut NameBindings,
                                        ns: Namespace,
                                        reexport: bool) {
@@ -3344,7 +3344,7 @@ impl Resolver {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    pub fn with_scope(@mut self, name: Option<ident>, f: &fn()) {
+    pub fn with_scope(@mut self, name: Option<Ident>, f: &fn()) {
         let orig_module = self.current_module;
 
         // Move down in the graph.
@@ -3498,7 +3498,7 @@ impl Resolver {
 
     pub fn search_ribs(@mut self,
                        ribs: &mut ~[@Rib],
-                       name: ident,
+                       name: Ident,
                        span: Span,
                        allow_capturing_self: AllowCapturingSelfFlag)
                        -> Option<DefLike> {
@@ -3892,7 +3892,7 @@ impl Resolver {
                           generics: &Generics,
                           fields: &[@struct_field],
                           visitor: &mut ResolveVisitor) {
-        let mut ident_map: HashMap<ast::ident,@struct_field> = HashMap::new();
+        let mut ident_map: HashMap<ast::Ident,@struct_field> = HashMap::new();
         for &field in fields.iter() {
             match field.node.kind {
                 named_field(ident, _) => {
@@ -4035,7 +4035,7 @@ impl Resolver {
     pub fn resolve_module(@mut self,
                           module_: &_mod,
                           _span: Span,
-                          _name: ident,
+                          _name: Ident,
                           id: NodeId,
                           visitor: &mut ResolveVisitor) {
         // Write the implementations in scope into the module metadata.
@@ -4272,7 +4272,7 @@ impl Resolver {
                            mutability: Mutability,
                            // Maps idents to the node ID for the (outermost)
                            // pattern that binds them
-                           bindings_list: Option<@mut HashMap<ident,NodeId>>,
+                           bindings_list: Option<@mut HashMap<Ident,NodeId>>,
                            visitor: &mut ResolveVisitor) {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
@@ -4517,7 +4517,7 @@ impl Resolver {
         };
     }
 
-    pub fn resolve_bare_identifier_pattern(@mut self, name: ident)
+    pub fn resolve_bare_identifier_pattern(@mut self, name: Ident)
                                            ->
                                            BareIdentifierPatternResolution {
         match self.resolve_item_in_lexical_scope(self.current_module,
@@ -4604,7 +4604,7 @@ impl Resolver {
     }
 
     pub fn resolve_identifier(@mut self,
-                              identifier: ident,
+                              identifier: Ident,
                               namespace: Namespace,
                               check_ribs: bool,
                               span: Span)
@@ -4629,7 +4629,7 @@ impl Resolver {
     // FIXME #4952: Merge me with resolve_name_in_module?
     pub fn resolve_definition_of_name_in_module(@mut self,
                                                 containing_module: @mut Module,
-                                                name: ident,
+                                                name: Ident,
                                                 namespace: Namespace,
                                                 xray: XrayFlag)
                                                 -> NameDefinition {
@@ -4702,7 +4702,7 @@ impl Resolver {
         return NoNameDefinition;
     }
 
-    pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[ident] {
+    pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[Ident] {
         let mut module_path_idents = ~[];
         for (index, segment) in path.segments.iter().enumerate() {
             if index == path.segments.len() - 1 {
@@ -4829,7 +4829,7 @@ impl Resolver {
     }
 
     pub fn resolve_identifier_in_local_ribs(@mut self,
-                                            ident: ident,
+                                            ident: Ident,
                                             namespace: Namespace,
                                             span: Span)
                                             -> Option<def> {
@@ -4895,7 +4895,7 @@ impl Resolver {
     }
 
     pub fn resolve_item_by_identifier_in_lexical_scope(@mut self,
-                                                       ident: ident,
+                                                       ident: Ident,
                                                        namespace: Namespace)
                                                        -> Option<def> {
         // Check the items.
@@ -5273,7 +5273,7 @@ impl Resolver {
         }
     }
 
-    pub fn search_for_traits_containing_method(@mut self, name: ident)
+    pub fn search_for_traits_containing_method(@mut self, name: Ident)
                                                -> ~[def_id] {
         debug!("(searching for traits containing method) looking for '%s'",
                self.session.str_of(name));
@@ -5376,7 +5376,7 @@ impl Resolver {
     pub fn add_trait_info(&self,
                           found_traits: &mut ~[def_id],
                           trait_def_id: def_id,
-                          name: ident) {
+                          name: Ident) {
         debug!("(adding trait info) found trait %d:%d for method '%s'",
                trait_def_id.crate,
                trait_def_id.node,
@@ -5493,7 +5493,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::ident]>());
+        return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::Ident]>());
     }
 
     pub fn dump_module(@mut self, module_: @mut Module) {

@@ -637,7 +637,7 @@ impl Context {
     }
 
     fn format_arg(&self, sp: Span, arg: Either<uint, @str>,
-                  ident: ast::ident) -> @ast::expr {
+                  ident: ast::Ident) -> @ast::expr {
         let ty = match arg {
             Left(i) => self.arg_types[i].unwrap(),
             Right(s) => *self.name_types.get(&s)

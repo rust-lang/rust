@@ -38,7 +38,7 @@ use std::cast;
 use std::hashmap::{HashMap};
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
-use syntax::ast::ident;
+use syntax::ast::Ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -46,7 +46,7 @@ use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
-pub fn gensym_name(name: &str) -> ident {
+pub fn gensym_name(name: &str) -> Ident {
     token::str_to_ident(fmt!("%s_%u", name, token::gensym(name)))
 }
 
@@ -460,7 +460,7 @@ pub fn block_cleanups(bcx: @mut Block) -> ~[cleanup] {
 pub struct ScopeInfo {
     parent: Option<@mut ScopeInfo>,
     loop_break: Option<@mut Block>,
-    loop_label: Option<ident>,
+    loop_label: Option<Ident>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
@@ -562,7 +562,7 @@ impl Block {
     pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    pub fn ident(&self, ident: ident) -> @str {
+    pub fn ident(&self, ident: Ident) -> @str {
         token::ident_to_str(&ident)
     }
 

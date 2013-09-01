@@ -50,7 +50,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(ident: &str) -> ~[ast::ident] {
+    fn make_path_vec(ident: &str) -> ~[ast::Ident] {
         return ~[str_to_ident("std"),
                  str_to_ident("unstable"),
                  str_to_ident("extfmt"),

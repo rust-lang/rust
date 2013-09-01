@@ -337,12 +337,12 @@ impl Session_ {
     }
 
     // pointless function, now...
-    pub fn str_of(@self, id: ast::ident) -> @str {
+    pub fn str_of(@self, id: ast::Ident) -> @str {
         token::ident_to_str(&id)
     }
 
     // pointless function, now...
-    pub fn ident_of(@self, st: &str) -> ast::ident {
+    pub fn ident_of(@self, st: &str) -> ast::Ident {
         token::str_to_ident(st)
     }
 

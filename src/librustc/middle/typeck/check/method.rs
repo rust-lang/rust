@@ -126,7 +126,7 @@ pub fn lookup(
         self_expr: @ast::expr,              // The expression `a`.
         callee_id: NodeId,                  /* Where to store `a.b`'s type,
                                              * also the scope of the call */
-        m_name: ast::ident,                 // The ident `b`.
+        m_name: ast::Ident,                 // The ident `b`.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
         deref_args: check::DerefArgs,       // Whether we autopointer first.
@@ -173,7 +173,7 @@ pub struct LookupContext<'self> {
     expr: @ast::expr,
     self_expr: @ast::expr,
     callee_id: NodeId,
-    m_name: ast::ident,
+    m_name: ast::Ident,
     supplied_tps: &'self [ty::t],
     impl_dups: @mut HashSet<def_id>,
     inherent_candidates: @mut ~[Candidate],

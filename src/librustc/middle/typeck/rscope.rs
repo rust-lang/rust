@@ -27,7 +27,7 @@ pub struct RegionError {
 pub trait RegionScope {
     fn anon_region(&self, span: Span) -> Result<ty::Region, RegionError>;
     fn self_region(&self, span: Span) -> Result<ty::Region, RegionError>;
-    fn named_region(&self, span: Span, id: ast::ident)
+    fn named_region(&self, span: Span, id: ast::Ident)
                       -> Result<ty::Region, RegionError>;
 }
 
@@ -43,7 +43,7 @@ impl RegionScope for EmptyRscope {
     fn self_region(&self, _span: Span) -> Result<ty::Region, RegionError> {
         self.anon_region(_span)
     }
-    fn named_region(&self, _span: Span, _id: ast::ident)
+    fn named_region(&self, _span: Span, _id: ast::Ident)
         -> Result<ty::Region, RegionError>
     {
         self.anon_region(_span)
@@ -51,14 +51,14 @@ impl RegionScope for EmptyRscope {
 }
 
 #[deriving(Clone)]
-pub struct RegionParamNames(OptVec<ast::ident>);
+pub struct RegionParamNames(OptVec<ast::Ident>);
 
 impl RegionParamNames {
     fn has_self(&self) -> bool {
         self.has_ident(special_idents::self_)
     }
 
-    fn has_ident(&self, ident: ast::ident) -> bool {
+    fn has_ident(&self, ident: ast::Ident) -> bool {
         for region_param_name in self.iter() {
             if *region_param_name == ident {
                 return true;
@@ -197,7 +197,7 @@ impl RegionScope for MethodRscope {
         }
         result::Ok(ty::re_bound(ty::br_self))
     }
-    fn named_region(&self, span: Span, id: ast::ident)
+    fn named_region(&self, span: Span, id: ast::Ident)
                       -> Result<ty::Region, RegionError> {
         if !self.region_param_names.has_ident(id) {
             return RegionParamNames::undeclared_name(None);
@@ -249,7 +249,7 @@ impl RegionScope for TypeRscope {
         }
         result::Ok(ty::re_bound(ty::br_self))
     }
-    fn named_region(&self, span: Span, id: ast::ident)
+    fn named_region(&self, span: Span, id: ast::Ident)
                       -> Result<ty::Region, RegionError> {
         do EmptyRscope.named_region(span, id).chain_err |_e| {
             result::Err(RegionError {
@@ -308,7 +308,7 @@ impl RegionScope for BindingRscope {
     }
     fn named_region(&self,
                     span: Span,
-                    id: ast::ident) -> Result<ty::Region, RegionError>
+                    id: ast::Ident) -> Result<ty::Region, RegionError>
     {
         do self.base.named_region(span, id).chain_err |_e| {
             let result = ty::re_bound(ty::br_named(id));

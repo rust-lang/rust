@@ -18,7 +18,7 @@ library.
 
 */
 
-use ast::{enum_def, ident, item, Generics, struct_def};
+use ast::{enum_def, Ident, item, Generics, struct_def};
 use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -47,13 +47,13 @@ pub mod generic;
 pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ExtCtxt,
                                                        Span,
                                                        x: &struct_def,
-                                                       ident,
+                                                       Ident,
                                                        y: &Generics)
                                                  -> @item;
 pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
                                                     Span,
                                                     x: &enum_def,
-                                                    ident,
+                                                    Ident,
                                                     y: &Generics)
                                                  -> @item;
 

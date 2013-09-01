@@ -32,7 +32,7 @@ pub trait ast_fold {
     fn fold_mod(@self, &_mod) -> _mod;
     fn fold_foreign_mod(@self, &foreign_mod) -> foreign_mod;
     fn fold_variant(@self, &variant) -> variant;
-    fn fold_ident(@self, ident) -> ident;
+    fn fold_ident(@self, Ident) -> Ident;
     fn fold_path(@self, &Path) -> Path;
     fn fold_local(@self, @Local) -> @Local;
     fn map_exprs(@self, @fn(@expr) -> @expr, &[@expr]) -> ~[@expr];
@@ -61,7 +61,7 @@ pub struct AstFoldFns {
     fold_mod: @fn(&_mod, @ast_fold) -> _mod,
     fold_foreign_mod: @fn(&foreign_mod, @ast_fold) -> foreign_mod,
     fold_variant: @fn(&variant_, Span, @ast_fold) -> (variant_, Span),
-    fold_ident: @fn(ident, @ast_fold) -> ident,
+    fold_ident: @fn(Ident, @ast_fold) -> Ident,
     fold_path: @fn(&Path, @ast_fold) -> Path,
     fold_local: @fn(@Local, @ast_fold) -> @Local,
     map_exprs: @fn(@fn(@expr) -> @expr, &[@expr]) -> ~[@expr],
@@ -758,7 +758,7 @@ fn noop_fold_variant(v: &variant_, fld: @ast_fold) -> variant_ {
     }
 }
 
-fn noop_fold_ident(i: ident, _fld: @ast_fold) -> ident {
+fn noop_fold_ident(i: Ident, _fld: @ast_fold) -> Ident {
     i
 }
 
@@ -913,7 +913,7 @@ impl ast_fold for AstFoldFns {
         let (n, s) = (self.fold_variant)(&x.node, x.span, self as @ast_fold);
         Spanned { node: n, span: (self.new_span)(s) }
     }
-    fn fold_ident(@self, x: ident) -> ident {
+    fn fold_ident(@self, x: Ident) -> Ident {
         (self.fold_ident)(x, self as @ast_fold)
     }
     fn fold_path(@self, x: &Path) -> Path {
@@ -961,7 +961,7 @@ mod test {
     // taken from expand
     // given a function from idents to idents, produce
     // an ast_fold that applies that function:
-    pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
+    pub fn fun_to_ident_folder(f: @fn(ast::Ident)->ast::Ident) -> @ast_fold{
         let afp = default_ast_fold();
         let f_pre = @AstFoldFns{
             fold_ident : |id, _| f(id),
@@ -976,7 +976,7 @@ mod test {
     }
 
     // change every identifier to "zz"
-    pub fn to_zz() -> @fn(ast::ident)->ast::ident {
+    pub fn to_zz() -> @fn(ast::Ident)->ast::Ident {
         let zz_id = token::str_to_ident("zz");
         |_id| {zz_id}
     }

@@ -99,7 +99,7 @@ pub enum InteriorKind {
 
 #[deriving(Eq, IterBytes)]
 pub enum FieldName {
-    NamedField(ast::ident),
+    NamedField(ast::Ident),
     PositionalField(uint)
 }
 
@@ -613,7 +613,7 @@ impl mem_categorization_ctxt {
     pub fn cat_field<N:ast_node>(&self,
                                  node: N,
                                  base_cmt: cmt,
-                                 f_name: ast::ident,
+                                 f_name: ast::Ident,
                                  f_ty: ty::t)
                                  -> cmt {
         @cmt_ {
@@ -1058,7 +1058,7 @@ impl mem_categorization_ctxt {
 /// an enum to determine which variant is in use.
 pub fn field_mutbl(tcx: ty::ctxt,
                    base_ty: ty::t,
-                   f_name: ast::ident,
+                   f_name: ast::Ident,
                    node_id: ast::NodeId)
                 -> Option<ast::mutability> {
     // Need to refactor so that struct/enum fields can be treated uniformly.

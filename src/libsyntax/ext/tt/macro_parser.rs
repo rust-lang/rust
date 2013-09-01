@@ -11,7 +11,7 @@
 // Earley-like parser for macros.
 
 use ast;
-use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
+use ast::{matcher, match_tok, match_seq, match_nonterminal, Ident};
 use codemap::{BytePos, mk_sp};
 use codemap;
 use parse::lexer::*; //resolve bug?
@@ -189,9 +189,9 @@ pub enum named_match {
 pub type earley_item = ~MatcherPos;
 
 pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
-            -> HashMap<ident,@named_match> {
+            -> HashMap<Ident,@named_match> {
     fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
-             ret_val: &mut HashMap<ident, @named_match>) {
+             ret_val: &mut HashMap<Ident, @named_match>) {
         match *m {
           codemap::Spanned {node: match_tok(_), _} => (),
           codemap::Spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
@@ -216,7 +216,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
 }
 
 pub enum parse_result {
-    success(HashMap<ident, @named_match>),
+    success(HashMap<Ident, @named_match>),
     failure(codemap::Span, ~str),
     error(codemap::Span, ~str)
 }
@@ -226,7 +226,7 @@ pub fn parse_or_else(
     cfg: ast::CrateConfig,
     rdr: @mut reader,
     ms: ~[matcher]
-) -> HashMap<ident, @named_match> {
+) -> HashMap<Ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
