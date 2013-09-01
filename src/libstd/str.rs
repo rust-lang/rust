@@ -24,7 +24,7 @@ use container::{Container, Mutable};
 use num::Times;
 use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
-use iterator::{Invert, DoubleEndedIterator, ExactSizeDoubleEndedIterator};
+use iterator::{Invert, DoubleEndedIterator, ExactSize};
 use libc;
 use num::{Saturating};
 use option::{None, Option, Some};
