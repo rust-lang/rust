@@ -227,13 +227,13 @@ enum LocalKind {
 
 struct LocalInfo {
     id: NodeId,
-    ident: ident,
+    ident: Ident,
     is_mutbl: bool,
     kind: LocalKind,
 }
 
 enum VarKind {
-    Arg(NodeId, ident),
+    Arg(NodeId, Ident),
     Local(LocalInfo),
     ImplicitRet
 }
@@ -756,7 +756,7 @@ impl Liveness {
     }
 
     pub fn find_loop_scope(&self,
-                           opt_label: Option<ident>,
+                           opt_label: Option<Ident>,
                            id: NodeId,
                            sp: Span)
                            -> NodeId {

@@ -25,7 +25,7 @@ use syntax::ast_map;
 use syntax::diagnostic::expect;
 
 pub struct StaticMethodInfo {
-    ident: ast::ident,
+    ident: ast::Ident,
     def_id: ast::def_id,
     purity: ast::purity
 }
@@ -52,7 +52,7 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 /// Iterates over each child of the given item.
 pub fn each_child_of_item(cstore: @mut cstore::CStore,
                           def_id: ast::def_id,
-                          callback: &fn(decoder::DefLike, ast::ident)) {
+                          callback: &fn(decoder::DefLike, ast::Ident)) {
     let crate_data = cstore::get_crate_data(cstore, def_id.crate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -68,7 +68,7 @@ pub fn each_child_of_item(cstore: @mut cstore::CStore,
 pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
                                     cnum: ast::CrateNum,
                                     callback: &fn(decoder::DefLike,
-                                                  ast::ident)) {
+                                                  ast::Ident)) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -129,7 +129,7 @@ pub fn get_method(tcx: ty::ctxt, def: ast::def_id) -> ty::Method {
 
 pub fn get_method_name_and_explicit_self(cstore: @mut cstore::CStore,
                                          def: ast::def_id)
-                                     -> (ast::ident, ast::explicit_self_)
+                                     -> (ast::Ident, ast::explicit_self_)
 {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_method_name_and_explicit_self(cstore.intr, cdata, def.node)
@@ -156,7 +156,7 @@ pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[@ty::TraitRef] {
 }
 
 pub fn get_type_name_if_impl(cstore: @mut cstore::CStore, def: ast::def_id)
-                          -> Option<ast::ident> {
+                          -> Option<ast::Ident> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_type_name_if_impl(cdata, def.node)
 }
@@ -245,7 +245,7 @@ pub fn get_impl_vtables(tcx: ty::ctxt,
 
 pub fn get_impl_method(cstore: @mut cstore::CStore,
                        def: ast::def_id,
-                       mname: ast::ident)
+                       mname: ast::Ident)
                     -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_impl_method(cstore.intr, cdata, def.node, mname)

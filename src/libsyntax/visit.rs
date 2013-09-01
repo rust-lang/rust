@@ -30,10 +30,10 @@ use opt_vec::OptVec;
 
 pub enum fn_kind<'self> {
     // fn foo() or extern "Abi" fn foo()
-    fk_item_fn(ident, &'self Generics, purity, AbiSet),
+    fk_item_fn(Ident, &'self Generics, purity, AbiSet),
 
     // fn foo(&self)
-    fk_method(ident, &'self Generics, &'self method),
+    fk_method(Ident, &'self Generics, &'self method),
 
     // @fn(x, y) { ... }
     fk_anon(ast::Sigil),
@@ -42,7 +42,7 @@ pub enum fn_kind<'self> {
     fk_fn_block,
 }
 
-pub fn name_of_fn(fk: &fn_kind) -> ident {
+pub fn name_of_fn(fk: &fn_kind) -> Ident {
     match *fk {
       fk_item_fn(name, _, _, _) | fk_method(name, _, _) => {
           name
@@ -86,7 +86,7 @@ pub trait Visitor<E:Clone> {
     }
     fn visit_ty_method(&mut self, t:&TypeMethod, e:E) { walk_ty_method(self, t, e) }
     fn visit_trait_method(&mut self, t:&trait_method, e:E) { walk_trait_method(self, t, e) }
-    fn visit_struct_def(&mut self, s:@struct_def, i:ident, g:&Generics, n:NodeId, e:E) {
+    fn visit_struct_def(&mut self, s:@struct_def, i:Ident, g:&Generics, n:NodeId, e:E) {
         walk_struct_def(self, s, i, g, n, e)
     }
     fn visit_struct_field(&mut self, s:@struct_field, e:E) { walk_struct_field(self, s, e) }
@@ -144,7 +144,7 @@ impl<E:Clone> Visitor<E> for @mut Visitor<E> {
     fn visit_trait_method(&mut self, a:&trait_method, e:E) {
         (*self).visit_trait_method(a, e)
     }
-    fn visit_struct_def(&mut self, a:@struct_def, b:ident, c:&Generics, d:NodeId, e:E) {
+    fn visit_struct_def(&mut self, a:@struct_def, b:Ident, c:&Generics, d:NodeId, e:E) {
         (*self).visit_struct_def(a, b, c, d, e)
     }
     fn visit_struct_field(&mut self, a:@struct_field, e:E) {
@@ -476,7 +476,7 @@ pub fn walk_trait_method<E:Clone, V:Visitor<E>>(visitor: &mut V,
 
 pub fn walk_struct_def<E:Clone, V:Visitor<E>>(visitor: &mut V,
                                  struct_definition: @struct_def,
-                                 _: ast::ident,
+                                 _: ast::Ident,
                                  _: &Generics,
                                  _: NodeId,
                                  env: E) {
@@ -693,7 +693,7 @@ pub trait SimpleVisitor {
     fn visit_fn(&mut self, &fn_kind, &fn_decl, &Block, Span, NodeId);
     fn visit_ty_method(&mut self, &TypeMethod);
     fn visit_trait_method(&mut self, &trait_method);
-    fn visit_struct_def(&mut self, @struct_def, ident, &Generics, NodeId);
+    fn visit_struct_def(&mut self, @struct_def, Ident, &Generics, NodeId);
     fn visit_struct_field(&mut self, @struct_field);
     fn visit_struct_method(&mut self, @method);
 }
@@ -792,7 +792,7 @@ impl Visitor<()> for SimpleVisitorVisitor {
     }
     fn visit_struct_def(&mut self,
                         struct_definition: @struct_def,
-                        identifier: ident,
+                        identifier: Ident,
                         generics: &Generics,
                         node_id: NodeId,
                         env: ()) {

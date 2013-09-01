@@ -30,7 +30,7 @@ type node_id_gen = @fn() -> ast::NodeId;
 
 struct Test {
     span: Span,
-    path: ~[ast::ident],
+    path: ~[ast::Ident],
     bench: bool,
     ignore: bool,
     should_fail: bool
@@ -39,7 +39,7 @@ struct Test {
 struct TestCtxt {
     sess: session::Session,
     crate: @ast::Crate,
-    path: ~[ast::ident],
+    path: ~[ast::Ident],
     ext_cx: @ExtCtxt,
     testfns: ~[Test]
 }
@@ -383,7 +383,7 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
     codemap::Spanned { node: t, span: dummy_sp() }
 }
 
-fn path_node(ids: ~[ast::ident]) -> ast::Path {
+fn path_node(ids: ~[ast::Ident]) -> ast::Path {
     ast::Path {
         span: dummy_sp(),
         global: false,
@@ -395,7 +395,7 @@ fn path_node(ids: ~[ast::ident]) -> ast::Path {
     }
 }
 
-fn path_node_global(ids: ~[ast::ident]) -> ast::Path {
+fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
     ast::Path {
         span: dummy_sp(),
         global: true,

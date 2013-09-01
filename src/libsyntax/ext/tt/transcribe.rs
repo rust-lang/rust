@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
+use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,Ident};
 use codemap::{Span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
@@ -34,7 +34,7 @@ pub struct TtReader {
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
-    interpolations: HashMap<ident, @named_match>,
+    interpolations: HashMap<Ident, @named_match>,
     repeat_idx: ~[uint],
     repeat_len: ~[uint],
     /* cached: */
@@ -46,7 +46,7 @@ pub struct TtReader {
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: @mut span_handler,
-                     interp: Option<HashMap<ident,@named_match>>,
+                     interp: Option<HashMap<Ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
@@ -113,7 +113,7 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
     r.repeat_idx.iter().fold(start, red)
 }
 
-fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
+fn lookup_cur_matched(r: &mut TtReader, name: Ident) -> @named_match {
     match r.interpolations.find_copy(&name) {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
@@ -126,7 +126,7 @@ fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
 #[deriving(Clone)]
 enum lis {
     lis_unconstrained,
-    lis_constraint(uint, ident),
+    lis_constraint(uint, Ident),
     lis_contradiction(~str),
 }
 

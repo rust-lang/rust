@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::AbiSet;
-use ast::ident;
+use ast::Ident;
 use ast;
 use ast_util;
 use codemap::{Span, respan, dummy_sp};
@@ -20,7 +20,7 @@ use opt_vec;
 use opt_vec::OptVec;
 
 pub struct Field {
-    ident: ast::ident,
+    ident: ast::Ident,
     ex: @ast::expr
 }
 
@@ -32,12 +32,12 @@ mod syntax {
 
 pub trait AstBuilder {
     // paths
-    fn path(&self, span: Span, strs: ~[ast::ident]) -> ast::Path;
-    fn path_ident(&self, span: Span, id: ast::ident) -> ast::Path;
-    fn path_global(&self, span: Span, strs: ~[ast::ident]) -> ast::Path;
+    fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path;
+    fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path;
+    fn path_global(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path;
     fn path_all(&self, sp: Span,
                 global: bool,
-                idents: ~[ast::ident],
+                idents: ~[ast::Ident],
                 rp: Option<ast::Lifetime>,
                 types: ~[ast::Ty])
         -> ast::Path;
@@ -47,7 +47,7 @@ pub trait AstBuilder {
 
     fn ty(&self, span: Span, ty: ast::ty_) -> ast::Ty;
     fn ty_path(&self, ast::Path, Option<OptVec<ast::TyParamBound>>) -> ast::Ty;
-    fn ty_ident(&self, span: Span, idents: ast::ident) -> ast::Ty;
+    fn ty_ident(&self, span: Span, idents: ast::Ident) -> ast::Ty;
 
     fn ty_rptr(&self, span: Span,
                ty: ast::Ty,
@@ -62,22 +62,22 @@ pub trait AstBuilder {
 
     fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
     fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[ast::Ty];
-    fn ty_field_imm(&self, span: Span, name: ident, ty: ast::Ty) -> ast::TypeField;
+    fn ty_field_imm(&self, span: Span, name: Ident, ty: ast::Ty) -> ast::TypeField;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
-    fn typaram(&self, id: ast::ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam;
+    fn typaram(&self, id: ast::Ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::trait_ref;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
-    fn lifetime(&self, span: Span, ident: ast::ident) -> ast::Lifetime;
+    fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime;
 
     // statements
     fn stmt_expr(&self, expr: @ast::expr) -> @ast::stmt;
-    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt;
+    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: @ast::expr) -> @ast::stmt;
     fn stmt_let_typed(&self,
                       sp: Span,
                       mutbl: bool,
-                      ident: ast::ident,
+                      ident: ast::Ident,
                       typ: ast::Ty,
                       ex: @ast::expr)
                       -> @ast::stmt;
@@ -93,7 +93,7 @@ pub trait AstBuilder {
     // expressions
     fn expr(&self, span: Span, node: ast::expr_) -> @ast::expr;
     fn expr_path(&self, path: ast::Path) -> @ast::expr;
-    fn expr_ident(&self, span: Span, id: ast::ident) -> @ast::expr;
+    fn expr_ident(&self, span: Span, id: ast::Ident) -> @ast::expr;
 
     fn expr_self(&self, span: Span) -> @ast::expr;
     fn expr_binary(&self, sp: Span, op: ast::binop,
@@ -104,19 +104,19 @@ pub trait AstBuilder {
     fn expr_managed(&self, sp: Span, e: @ast::expr) -> @ast::expr;
     fn expr_addr_of(&self, sp: Span, e: @ast::expr) -> @ast::expr;
     fn expr_mut_addr_of(&self, sp: Span, e: @ast::expr) -> @ast::expr;
-    fn expr_field_access(&self, span: Span, expr: @ast::expr, ident: ast::ident) -> @ast::expr;
+    fn expr_field_access(&self, span: Span, expr: @ast::expr, ident: ast::Ident) -> @ast::expr;
     fn expr_call(&self, span: Span, expr: @ast::expr, args: ~[@ast::expr]) -> @ast::expr;
-    fn expr_call_ident(&self, span: Span, id: ast::ident, args: ~[@ast::expr]) -> @ast::expr;
-    fn expr_call_global(&self, sp: Span, fn_path: ~[ast::ident],
+    fn expr_call_ident(&self, span: Span, id: ast::Ident, args: ~[@ast::expr]) -> @ast::expr;
+    fn expr_call_global(&self, sp: Span, fn_path: ~[ast::Ident],
                         args: ~[@ast::expr]) -> @ast::expr;
     fn expr_method_call(&self, span: Span,
-                        expr: @ast::expr, ident: ast::ident,
+                        expr: @ast::expr, ident: ast::Ident,
                         args: ~[@ast::expr]) -> @ast::expr;
     fn expr_block(&self, b: ast::Block) -> @ast::expr;
 
-    fn field_imm(&self, span: Span, name: ident, e: @ast::expr) -> ast::Field;
+    fn field_imm(&self, span: Span, name: Ident, e: @ast::expr) -> ast::Field;
     fn expr_struct(&self, span: Span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr;
-    fn expr_struct_ident(&self, span: Span, id: ast::ident, fields: ~[ast::Field]) -> @ast::expr;
+    fn expr_struct_ident(&self, span: Span, id: ast::Ident, fields: ~[ast::Field]) -> @ast::expr;
 
     fn expr_lit(&self, sp: Span, lit: ast::lit_) -> @ast::expr;
 
@@ -137,11 +137,11 @@ pub trait AstBuilder {
     fn pat(&self, span: Span, pat: ast::pat_) -> @ast::pat;
     fn pat_wild(&self, span: Span) -> @ast::pat;
     fn pat_lit(&self, span: Span, expr: @ast::expr) -> @ast::pat;
-    fn pat_ident(&self, span: Span, ident: ast::ident) -> @ast::pat;
+    fn pat_ident(&self, span: Span, ident: ast::Ident) -> @ast::pat;
 
     fn pat_ident_binding_mode(&self,
                               span: Span,
-                              ident: ast::ident,
+                              ident: ast::Ident,
                               bm: ast::binding_mode) -> @ast::pat;
     fn pat_enum(&self, span: Span, path: ast::Path, subpats: ~[@ast::pat]) -> @ast::pat;
     fn pat_struct(&self, span: Span,
@@ -156,65 +156,65 @@ pub trait AstBuilder {
 
     fn lambda_fn_decl(&self, span: Span, fn_decl: ast::fn_decl, blk: ast::Block) -> @ast::expr;
 
-    fn lambda(&self, span: Span, ids: ~[ast::ident], blk: ast::Block) -> @ast::expr;
+    fn lambda(&self, span: Span, ids: ~[ast::Ident], blk: ast::Block) -> @ast::expr;
     fn lambda0(&self, span: Span, blk: ast::Block) -> @ast::expr;
-    fn lambda1(&self, span: Span, blk: ast::Block, ident: ast::ident) -> @ast::expr;
+    fn lambda1(&self, span: Span, blk: ast::Block, ident: ast::Ident) -> @ast::expr;
 
-    fn lambda_expr(&self, span: Span, ids: ~[ast::ident], blk: @ast::expr) -> @ast::expr;
+    fn lambda_expr(&self, span: Span, ids: ~[ast::Ident], blk: @ast::expr) -> @ast::expr;
     fn lambda_expr_0(&self, span: Span, expr: @ast::expr) -> @ast::expr;
-    fn lambda_expr_1(&self, span: Span, expr: @ast::expr, ident: ast::ident) -> @ast::expr;
+    fn lambda_expr_1(&self, span: Span, expr: @ast::expr, ident: ast::Ident) -> @ast::expr;
 
-    fn lambda_stmts(&self, span: Span, ids: ~[ast::ident], blk: ~[@ast::stmt]) -> @ast::expr;
+    fn lambda_stmts(&self, span: Span, ids: ~[ast::Ident], blk: ~[@ast::stmt]) -> @ast::expr;
     fn lambda_stmts_0(&self, span: Span, stmts: ~[@ast::stmt]) -> @ast::expr;
-    fn lambda_stmts_1(&self, span: Span, stmts: ~[@ast::stmt], ident: ast::ident) -> @ast::expr;
+    fn lambda_stmts_1(&self, span: Span, stmts: ~[@ast::stmt], ident: ast::Ident) -> @ast::expr;
 
     // items
     fn item(&self, span: Span,
-            name: ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item;
+            name: Ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item;
 
-    fn arg(&self, span: Span, name: ident, ty: ast::Ty) -> ast::arg;
+    fn arg(&self, span: Span, name: Ident, ty: ast::Ty) -> ast::arg;
     // XXX unused self
     fn fn_decl(&self, inputs: ~[ast::arg], output: ast::Ty) -> ast::fn_decl;
 
     fn item_fn_poly(&self,
                     span: Span,
-                    name: ident,
+                    name: Ident,
                     inputs: ~[ast::arg],
                     output: ast::Ty,
                     generics: Generics,
                     body: ast::Block) -> @ast::item;
     fn item_fn(&self,
                span: Span,
-               name: ident,
+               name: Ident,
                inputs: ~[ast::arg],
                output: ast::Ty,
                body: ast::Block) -> @ast::item;
 
-    fn variant(&self, span: Span, name: ident, tys: ~[ast::Ty]) -> ast::variant;
+    fn variant(&self, span: Span, name: Ident, tys: ~[ast::Ty]) -> ast::variant;
     fn item_enum_poly(&self,
                       span: Span,
-                      name: ident,
+                      name: Ident,
                       enum_definition: ast::enum_def,
                       generics: Generics) -> @ast::item;
-    fn item_enum(&self, span: Span, name: ident, enum_def: ast::enum_def) -> @ast::item;
+    fn item_enum(&self, span: Span, name: Ident, enum_def: ast::enum_def) -> @ast::item;
 
     fn item_struct_poly(&self,
                         span: Span,
-                        name: ident,
+                        name: Ident,
                         struct_def: ast::struct_def,
                         generics: Generics) -> @ast::item;
-    fn item_struct(&self, span: Span, name: ident, struct_def: ast::struct_def) -> @ast::item;
+    fn item_struct(&self, span: Span, name: Ident, struct_def: ast::struct_def) -> @ast::item;
 
     fn item_mod(&self, span: Span,
-                name: ident, attrs: ~[ast::Attribute],
+                name: Ident, attrs: ~[ast::Attribute],
                 vi: ~[ast::view_item], items: ~[@ast::item]) -> @ast::item;
 
     fn item_ty_poly(&self,
                     span: Span,
-                    name: ident,
+                    name: Ident,
                     ty: ast::Ty,
                     generics: Generics) -> @ast::item;
-    fn item_ty(&self, span: Span, name: ident, ty: ast::Ty) -> @ast::item;
+    fn item_ty(&self, span: Span, name: Ident, ty: ast::Ty) -> @ast::item;
 
     fn attribute(&self, sp: Span, mi: @ast::MetaItem) -> ast::Attribute;
 
@@ -225,25 +225,25 @@ pub trait AstBuilder {
     fn view_use(&self, sp: Span,
                 vis: ast::visibility, vp: ~[@ast::view_path]) -> ast::view_item;
     fn view_use_list(&self, sp: Span, vis: ast::visibility,
-                     path: ~[ast::ident], imports: &[ast::ident]) -> ast::view_item;
+                     path: ~[ast::Ident], imports: &[ast::Ident]) -> ast::view_item;
     fn view_use_glob(&self, sp: Span,
-                     vis: ast::visibility, path: ~[ast::ident]) -> ast::view_item;
+                     vis: ast::visibility, path: ~[ast::Ident]) -> ast::view_item;
 }
 
 impl AstBuilder for @ExtCtxt {
-    fn path(&self, span: Span, strs: ~[ast::ident]) -> ast::Path {
+    fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
         self.path_all(span, false, strs, None, ~[])
     }
-    fn path_ident(&self, span: Span, id: ast::ident) -> ast::Path {
+    fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, ~[id])
     }
-    fn path_global(&self, span: Span, strs: ~[ast::ident]) -> ast::Path {
+    fn path_global(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
         self.path_all(span, true, strs, None, ~[])
     }
     fn path_all(&self,
                 sp: Span,
                 global: bool,
-                mut idents: ~[ast::ident],
+                mut idents: ~[ast::Ident],
                 rp: Option<ast::Lifetime>,
                 types: ~[ast::Ty])
                 -> ast::Path {
@@ -291,7 +291,7 @@ impl AstBuilder for @ExtCtxt {
 
     // Might need to take bounds as an argument in the future, if you ever want
     // to generate a bounded existential trait type.
-    fn ty_ident(&self, span: Span, ident: ast::ident)
+    fn ty_ident(&self, span: Span, ident: ast::Ident)
         -> ast::Ty {
         self.ty_path(self.path_ident(span, ident), None)
     }
@@ -326,7 +326,7 @@ impl AstBuilder for @ExtCtxt {
                           ~[ ty ]), None)
     }
 
-    fn ty_field_imm(&self, span: Span, name: ident, ty: ast::Ty) -> ast::TypeField {
+    fn ty_field_imm(&self, span: Span, name: Ident, ty: ast::Ty) -> ast::TypeField {
         ast::TypeField {
             ident: name,
             mt: ast::mt { ty: ~ty, mutbl: ast::m_imm },
@@ -346,7 +346,7 @@ impl AstBuilder for @ExtCtxt {
         }
     }
 
-    fn typaram(&self, id: ast::ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam {
+    fn typaram(&self, id: ast::Ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam {
         ast::TyParam { ident: id, id: self.next_id(), bounds: bounds }
     }
 
@@ -385,7 +385,7 @@ impl AstBuilder for @ExtCtxt {
         ast::TraitTyParamBound(self.trait_ref(path))
     }
 
-    fn lifetime(&self, span: Span, ident: ast::ident) -> ast::Lifetime {
+    fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {
         ast::Lifetime { id: self.next_id(), span: span, ident: ident }
     }
 
@@ -393,7 +393,7 @@ impl AstBuilder for @ExtCtxt {
         @respan(expr.span, ast::stmt_semi(expr, self.next_id()))
     }
 
-    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
+    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: @ast::expr) -> @ast::stmt {
         let pat = self.pat_ident(sp, ident);
         let local = @ast::Local {
             is_mutbl: mutbl,
@@ -410,7 +410,7 @@ impl AstBuilder for @ExtCtxt {
     fn stmt_let_typed(&self,
                       sp: Span,
                       mutbl: bool,
-                      ident: ast::ident,
+                      ident: ast::Ident,
                       typ: ast::Ty,
                       ex: @ast::expr)
                       -> @ast::stmt {
@@ -461,7 +461,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr(path.span, ast::expr_path(path))
     }
 
-    fn expr_ident(&self, span: Span, id: ast::ident) -> @ast::expr {
+    fn expr_ident(&self, span: Span, id: ast::Ident) -> @ast::expr {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> @ast::expr {
@@ -485,7 +485,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr_unary(sp, ast::box(ast::m_imm), e)
     }
 
-    fn expr_field_access(&self, sp: Span, expr: @ast::expr, ident: ast::ident) -> @ast::expr {
+    fn expr_field_access(&self, sp: Span, expr: @ast::expr, ident: ast::Ident) -> @ast::expr {
         self.expr(sp, ast::expr_field(expr, ident, ~[]))
     }
     fn expr_addr_of(&self, sp: Span, e: @ast::expr) -> @ast::expr {
@@ -498,18 +498,18 @@ impl AstBuilder for @ExtCtxt {
     fn expr_call(&self, span: Span, expr: @ast::expr, args: ~[@ast::expr]) -> @ast::expr {
         self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
     }
-    fn expr_call_ident(&self, span: Span, id: ast::ident, args: ~[@ast::expr]) -> @ast::expr {
+    fn expr_call_ident(&self, span: Span, id: ast::Ident, args: ~[@ast::expr]) -> @ast::expr {
         self.expr(span,
                   ast::expr_call(self.expr_ident(span, id), args, ast::NoSugar))
     }
-    fn expr_call_global(&self, sp: Span, fn_path: ~[ast::ident],
+    fn expr_call_global(&self, sp: Span, fn_path: ~[ast::Ident],
                       args: ~[@ast::expr]) -> @ast::expr {
         let pathexpr = self.expr_path(self.path_global(sp, fn_path));
         self.expr_call(sp, pathexpr, args)
     }
     fn expr_method_call(&self, span: Span,
                         expr: @ast::expr,
-                        ident: ast::ident,
+                        ident: ast::Ident,
                         args: ~[@ast::expr]) -> @ast::expr {
         self.expr(span,
                   ast::expr_method_call(self.next_id(), expr, ident, ~[], args, ast::NoSugar))
@@ -517,14 +517,14 @@ impl AstBuilder for @ExtCtxt {
     fn expr_block(&self, b: ast::Block) -> @ast::expr {
         self.expr(b.span, ast::expr_block(b))
     }
-    fn field_imm(&self, span: Span, name: ident, e: @ast::expr) -> ast::Field {
+    fn field_imm(&self, span: Span, name: Ident, e: @ast::expr) -> ast::Field {
         ast::Field { ident: name, expr: e, span: span }
     }
     fn expr_struct(&self, span: Span, path: ast::Path, fields: ~[ast::Field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
     }
     fn expr_struct_ident(&self, span: Span,
-                         id: ast::ident, fields: ~[ast::Field]) -> @ast::expr {
+                         id: ast::Ident, fields: ~[ast::Field]) -> @ast::expr {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
@@ -591,13 +591,13 @@ impl AstBuilder for @ExtCtxt {
     fn pat_lit(&self, span: Span, expr: @ast::expr) -> @ast::pat {
         self.pat(span, ast::pat_lit(expr))
     }
-    fn pat_ident(&self, span: Span, ident: ast::ident) -> @ast::pat {
+    fn pat_ident(&self, span: Span, ident: ast::Ident) -> @ast::pat {
         self.pat_ident_binding_mode(span, ident, ast::bind_infer)
     }
 
     fn pat_ident_binding_mode(&self,
                               span: Span,
-                              ident: ast::ident,
+                              ident: ast::Ident,
                               bm: ast::binding_mode) -> @ast::pat {
         let path = self.path_ident(span, ident);
         let pat = ast::pat_ident(bm, path, None);
@@ -638,7 +638,7 @@ impl AstBuilder for @ExtCtxt {
     fn lambda_fn_decl(&self, span: Span, fn_decl: ast::fn_decl, blk: ast::Block) -> @ast::expr {
         self.expr(span, ast::expr_fn_block(fn_decl, blk))
     }
-    fn lambda(&self, span: Span, ids: ~[ast::ident], blk: ast::Block) -> @ast::expr {
+    fn lambda(&self, span: Span, ids: ~[ast::Ident], blk: ast::Block) -> @ast::expr {
         let fn_decl = self.fn_decl(
             ids.map(|id| self.arg(span, *id, self.ty_infer(span))),
             self.ty_infer(span));
@@ -658,38 +658,38 @@ impl AstBuilder for @ExtCtxt {
     }
 
     #[cfg(stage0)]
-    fn lambda1(&self, _span: Span, blk: ast::Block, ident: ast::ident) -> @ast::expr {
+    fn lambda1(&self, _span: Span, blk: ast::Block, ident: ast::Ident) -> @ast::expr {
         let ext_cx = *self;
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(|$ident| $blk_e )
     }
     #[cfg(not(stage0))]
-    fn lambda1(&self, _span: Span, blk: ast::Block, ident: ast::ident) -> @ast::expr {
+    fn lambda1(&self, _span: Span, blk: ast::Block, ident: ast::Ident) -> @ast::expr {
         let blk_e = self.expr(blk.span, ast::expr_block(blk.clone()));
         quote_expr!(*self, |$ident| $blk_e )
     }
 
-    fn lambda_expr(&self, span: Span, ids: ~[ast::ident], expr: @ast::expr) -> @ast::expr {
+    fn lambda_expr(&self, span: Span, ids: ~[ast::Ident], expr: @ast::expr) -> @ast::expr {
         self.lambda(span, ids, self.block_expr(expr))
     }
     fn lambda_expr_0(&self, span: Span, expr: @ast::expr) -> @ast::expr {
         self.lambda0(span, self.block_expr(expr))
     }
-    fn lambda_expr_1(&self, span: Span, expr: @ast::expr, ident: ast::ident) -> @ast::expr {
+    fn lambda_expr_1(&self, span: Span, expr: @ast::expr, ident: ast::Ident) -> @ast::expr {
         self.lambda1(span, self.block_expr(expr), ident)
     }
 
-    fn lambda_stmts(&self, span: Span, ids: ~[ast::ident], stmts: ~[@ast::stmt]) -> @ast::expr {
+    fn lambda_stmts(&self, span: Span, ids: ~[ast::Ident], stmts: ~[@ast::stmt]) -> @ast::expr {
         self.lambda(span, ids, self.block(span, stmts, None))
     }
     fn lambda_stmts_0(&self, span: Span, stmts: ~[@ast::stmt]) -> @ast::expr {
         self.lambda0(span, self.block(span, stmts, None))
     }
-    fn lambda_stmts_1(&self, span: Span, stmts: ~[@ast::stmt], ident: ast::ident) -> @ast::expr {
+    fn lambda_stmts_1(&self, span: Span, stmts: ~[@ast::stmt], ident: ast::Ident) -> @ast::expr {
         self.lambda1(span, self.block(span, stmts, None), ident)
     }
 
-    fn arg(&self, span: Span, ident: ast::ident, ty: ast::Ty) -> ast::arg {
+    fn arg(&self, span: Span, ident: ast::Ident, ty: ast::Ty) -> ast::arg {
         let arg_pat = self.pat_ident(span, ident);
         ast::arg {
             is_mutbl: false,
@@ -709,7 +709,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn item(&self, span: Span,
-            name: ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item {
+            name: Ident, attrs: ~[ast::Attribute], node: ast::item_) -> @ast::item {
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
         @ast::item { ident: name,
@@ -722,7 +722,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn item_fn_poly(&self,
                     span: Span,
-                    name: ident,
+                    name: Ident,
                     inputs: ~[ast::arg],
                     output: ast::Ty,
                     generics: Generics,
@@ -739,7 +739,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn item_fn(&self,
                span: Span,
-               name: ident,
+               name: Ident,
                inputs: ~[ast::arg],
                output: ast::Ty,
                body: ast::Block
@@ -753,7 +753,7 @@ impl AstBuilder for @ExtCtxt {
             body)
     }
 
-    fn variant(&self, span: Span, name: ident, tys: ~[ast::Ty]) -> ast::variant {
+    fn variant(&self, span: Span, name: Ident, tys: ~[ast::Ty]) -> ast::variant {
         let args = tys.move_iter().map(|ty| {
             ast::variant_arg { ty: ty, id: self.next_id() }
         }).collect();
@@ -769,13 +769,13 @@ impl AstBuilder for @ExtCtxt {
                })
     }
 
-    fn item_enum_poly(&self, span: Span, name: ident,
+    fn item_enum_poly(&self, span: Span, name: Ident,
                       enum_definition: ast::enum_def,
                       generics: Generics) -> @ast::item {
         self.item(span, name, ~[], ast::item_enum(enum_definition, generics))
     }
 
-    fn item_enum(&self, span: Span, name: ident,
+    fn item_enum(&self, span: Span, name: Ident,
                  enum_definition: ast::enum_def) -> @ast::item {
         self.item_enum_poly(span, name, enum_definition,
                             ast_util::empty_generics())
@@ -784,7 +784,7 @@ impl AstBuilder for @ExtCtxt {
     fn item_struct(
         &self,
         span: Span,
-        name: ident,
+        name: Ident,
         struct_def: ast::struct_def
     ) -> @ast::item {
         self.item_struct_poly(
@@ -798,14 +798,14 @@ impl AstBuilder for @ExtCtxt {
     fn item_struct_poly(
         &self,
         span: Span,
-        name: ident,
+        name: Ident,
         struct_def: ast::struct_def,
         generics: Generics
     ) -> @ast::item {
         self.item(span, name, ~[], ast::item_struct(@struct_def, generics))
     }
 
-    fn item_mod(&self, span: Span, name: ident,
+    fn item_mod(&self, span: Span, name: Ident,
                 attrs: ~[ast::Attribute],
                 vi: ~[ast::view_item],
                 items: ~[@ast::item]) -> @ast::item {
@@ -820,12 +820,12 @@ impl AstBuilder for @ExtCtxt {
         )
     }
 
-    fn item_ty_poly(&self, span: Span, name: ident, ty: ast::Ty,
+    fn item_ty_poly(&self, span: Span, name: Ident, ty: ast::Ty,
                     generics: Generics) -> @ast::item {
         self.item(span, name, ~[], ast::item_ty(ty, generics))
     }
 
-    fn item_ty(&self, span: Span, name: ident, ty: ast::Ty) -> @ast::item {
+    fn item_ty(&self, span: Span, name: Ident, ty: ast::Ty) -> @ast::item {
         self.item_ty_poly(span, name, ty, ast_util::empty_generics())
     }
 
@@ -858,7 +858,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn view_use_list(&self, sp: Span, vis: ast::visibility,
-                     path: ~[ast::ident], imports: &[ast::ident]) -> ast::view_item {
+                     path: ~[ast::Ident], imports: &[ast::Ident]) -> ast::view_item {
         let imports = do imports.map |id| {
             respan(sp, ast::path_list_ident_ { name: *id, id: self.next_id() })
         };
@@ -871,7 +871,7 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn view_use_glob(&self, sp: Span,
-                     vis: ast::visibility, path: ~[ast::ident]) -> ast::view_item {
+                     vis: ast::visibility, path: ~[ast::Ident]) -> ast::view_item {
         self.view_use(sp, vis,
                       ~[@respan(sp,
                                 ast::view_path_glob(self.path(sp, path), self.next_id()))])
