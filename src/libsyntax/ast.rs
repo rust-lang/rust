@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, spanned};
+use codemap::{Span, Spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::{interner_get, str_to_ident};
@@ -95,7 +95,7 @@ pub type fn_ident = Option<ident>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Lifetime {
     id: NodeId,
-    span: span,
+    span: Span,
     ident: ident
 }
 
@@ -105,7 +105,7 @@ pub struct Lifetime {
 // of supporting information.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Path {
-    span: span,
+    span: Span,
     /// A `::foo` path, is relative to the crate root rather than current
     /// module (like paths in an import).
     global: bool,
@@ -219,10 +219,10 @@ pub struct Crate {
     module: _mod,
     attrs: ~[Attribute],
     config: CrateConfig,
-    span: span,
+    span: Span,
 }
 
-pub type MetaItem = spanned<MetaItem_>;
+pub type MetaItem = Spanned<MetaItem_>;
 
 #[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum MetaItem_ {
@@ -263,14 +263,14 @@ pub struct Block {
     expr: Option<@expr>,
     id: NodeId,
     rules: BlockCheckMode,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct pat {
     id: NodeId,
     node: pat_,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -333,7 +333,7 @@ impl ToStr for Sigil {
     }
 }
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Eq, Encodable, Decodable, IterBytes)]
 pub enum vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
     vstore_fixed(Option<uint>),     // [1,2,3,4]
@@ -382,7 +382,7 @@ pub enum unop {
     neg
 }
 
-pub type stmt = spanned<stmt_>;
+pub type stmt = Spanned<stmt_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum stmt_ {
@@ -408,10 +408,10 @@ pub struct Local {
     pat: @pat,
     init: Option<@expr>,
     id: NodeId,
-    span: span,
+    span: Span,
 }
 
-pub type decl = spanned<decl_>;
+pub type decl = Spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum decl_ {
@@ -432,7 +432,7 @@ pub struct arm {
 pub struct Field {
     ident: ident,
     expr: @expr,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -445,7 +445,7 @@ pub enum BlockCheckMode {
 pub struct expr {
     id: NodeId,
     node: expr_,
-    span: span,
+    span: Span,
 }
 
 impl expr {
@@ -538,7 +538,7 @@ pub enum expr_ {
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum token_tree {
     // a single token
-    tt_tok(span, ::parse::token::Token),
+    tt_tok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
     tt_delim(@mut ~[token_tree]),
@@ -547,10 +547,10 @@ pub enum token_tree {
     // a kleene-style repetition sequence with a span, a tt_forest,
     // an optional separator (?), and a boolean where true indicates
     // zero or more (*), and false indicates one or more (+).
-    tt_seq(span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
+    tt_seq(Span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
-    tt_nonterminal(span, ident)
+    tt_nonterminal(Span, ident)
 }
 
 //
@@ -605,7 +605,7 @@ pub enum token_tree {
 // If you understand that, you have closed to loop and understand the whole
 // macro system. Congratulations.
 //
-pub type matcher = spanned<matcher_>;
+pub type matcher = Spanned<matcher_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum matcher_ {
@@ -618,14 +618,14 @@ pub enum matcher_ {
     match_nonterminal(ident, ident, uint)
 }
 
-pub type mac = spanned<mac_>;
+pub type mac = Spanned<mac_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum mac_ {
     mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
 }
 
-pub type lit = spanned<lit_>;
+pub type lit = Spanned<lit_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum lit_ {
@@ -651,7 +651,7 @@ pub struct mt {
 pub struct TypeField {
     ident: ident,
     mt: mt,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -663,7 +663,7 @@ pub struct TypeMethod {
     generics: Generics,
     explicit_self: explicit_self,
     id: NodeId,
-    span: span,
+    span: Span,
 }
 
 // A trait method is either required (meaning it doesn't have an
@@ -724,7 +724,7 @@ impl ToStr for float_ty {
 pub struct Ty {
     id: NodeId,
     node: ty_,
-    span: span,
+    span: Span,
 }
 
 // Not represented directly in the AST, referred to by name through a ty_path.
@@ -864,7 +864,7 @@ pub enum explicit_self_ {
     sty_uniq                                   // `~self`
 }
 
-pub type explicit_self = spanned<explicit_self_>;
+pub type explicit_self = Spanned<explicit_self_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct method {
@@ -876,7 +876,7 @@ pub struct method {
     decl: fn_decl,
     body: Block,
     id: NodeId,
-    span: span,
+    span: Span,
     self_id: NodeId,
     vis: visibility,
 }
@@ -929,7 +929,7 @@ pub struct variant_ {
     vis: visibility,
 }
 
-pub type variant = spanned<variant_>;
+pub type variant = Spanned<variant_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct path_list_ident_ {
@@ -937,9 +937,9 @@ pub struct path_list_ident_ {
     id: NodeId,
 }
 
-pub type path_list_ident = spanned<path_list_ident_>;
+pub type path_list_ident = Spanned<path_list_ident_>;
 
-pub type view_path = spanned<view_path_>;
+pub type view_path = Spanned<view_path_>;
 
 #[deriving(Eq, Encodable, Decodable, IterBytes)]
 pub enum view_path_ {
@@ -963,7 +963,7 @@ pub struct view_item {
     node: view_item_,
     attrs: ~[Attribute],
     vis: visibility,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -977,7 +977,7 @@ pub enum view_item_ {
 }
 
 // Meta-data associated with an item
-pub type Attribute = spanned<Attribute_>;
+pub type Attribute = Spanned<Attribute_>;
 
 // Distinguishes between Attributes that decorate items and Attributes that
 // are contained as statements within items. These two cases need to be
@@ -1033,7 +1033,7 @@ pub struct struct_field_ {
     attrs: ~[Attribute],
 }
 
-pub type struct_field = spanned<struct_field_>;
+pub type struct_field = Spanned<struct_field_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum struct_field_kind {
@@ -1060,7 +1060,7 @@ pub struct item {
     id: NodeId,
     node: item_,
     vis: visibility,
-    span: span,
+    span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -1087,7 +1087,7 @@ pub struct foreign_item {
     attrs: ~[Attribute],
     node: foreign_item_,
     id: NodeId,
-    span: span,
+    span: Span,
     vis: visibility,
 }
 

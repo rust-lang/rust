@@ -18,7 +18,7 @@ use util::ppaux::UserString;
 
 use syntax::ast::*;
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit,ast_util};
@@ -65,7 +65,7 @@ impl Visitor<Context> for KindAnalysisVisitor {
         check_expr(self, ex, e);
     }
 
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:Context) {
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:Context) {
         check_fn(self, fk, fd, b, s, n, e);
     }
 
@@ -91,7 +91,7 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 fn check_struct_safe_for_destructor(cx: Context,
-                                    span: span,
+                                    span: Span,
                                     struct_did: def_id) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
@@ -245,7 +245,7 @@ fn check_fn(
     fk: &visit::fn_kind,
     decl: &fn_decl,
     body: &Block,
-    sp: span,
+    sp: Span,
     fn_id: NodeId,
     cx: Context) {
 
@@ -364,7 +364,7 @@ pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
 
 pub fn check_typaram_bounds(cx: Context,
                     _type_parameter_id: NodeId,
-                    sp: span,
+                    sp: Span,
                     ty: ty::t,
                     type_param_def: &ty::TypeParameterDef)
 {
@@ -378,7 +378,7 @@ pub fn check_typaram_bounds(cx: Context,
     }
 }
 
-pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
+pub fn check_freevar_bounds(cx: Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
@@ -401,7 +401,7 @@ pub fn check_freevar_bounds(cx: Context, sp: span, ty: ty::t,
     }
 }
 
-pub fn check_trait_cast_bounds(cx: Context, sp: span, ty: ty::t,
+pub fn check_trait_cast_bounds(cx: Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(sp,
@@ -426,7 +426,7 @@ fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     }
 }
 
-fn check_imm_free_var(cx: Context, def: def, sp: span) {
+fn check_imm_free_var(cx: Context, def: def, sp: Span) {
     match def {
         def_local(_, is_mutbl) => {
             if is_mutbl {
@@ -446,7 +446,7 @@ fn check_imm_free_var(cx: Context, def: def, sp: span) {
     }
 }
 
-fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
+fn check_copy(cx: Context, ty: ty::t, sp: Span, reason: &str) {
     debug!("type_contents(%s)=%s",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
@@ -458,7 +458,7 @@ fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
     }
 }
 
-pub fn check_send(cx: Context, ty: ty::t, sp: span) -> bool {
+pub fn check_send(cx: Context, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_sendable(cx.tcx, ty) {
         cx.tcx.sess.span_err(
             sp, fmt!("value has non-sendable type `%s`",
@@ -470,7 +470,7 @@ pub fn check_send(cx: Context, ty: ty::t, sp: span) -> bool {
 }
 
 // note: also used from middle::typeck::regionck!
-pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
+pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {

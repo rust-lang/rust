@@ -16,7 +16,7 @@ use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
 use syntax::ast::{m_imm, m_mutbl};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 pub enum RestrictionResult {
     Safe,
@@ -24,7 +24,7 @@ pub enum RestrictionResult {
 }
 
 pub fn compute_restrictions(bccx: @BorrowckCtxt,
-                            span: span,
+                            span: Span,
                             cmt: mc::cmt,
                             restr: RestrictionSet) -> RestrictionResult {
     let ctxt = RestrictionsContext {
@@ -41,7 +41,7 @@ pub fn compute_restrictions(bccx: @BorrowckCtxt,
 
 struct RestrictionsContext {
     bccx: @BorrowckCtxt,
-    span: span,
+    span: Span,
     cmt_original: mc::cmt
 }
 

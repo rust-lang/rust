@@ -21,7 +21,7 @@ use middle::typeck::require_same_types;
 use std::hashmap::{HashMap, HashSet};
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust;
 
 pub fn check_match(fcx: @mut FnCtxt,
@@ -284,7 +284,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: &ast::Path,
 /// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: &pat_ctxt,
-                               span: span,
+                               span: Span,
                                path: &ast::Path,
                                fields: &[ast::field_pat],
                                class_fields: ~[ty::field_ty],
@@ -338,7 +338,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     }
 }
 
-pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: span,
+pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
                         expected: ty::t, path: &ast::Path,
                         fields: &[ast::field_pat], etc: bool,
                         struct_id: ast::def_id,
@@ -372,7 +372,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: span,
 
 pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                           pat_id: ast::NodeId,
-                                          span: span,
+                                          span: Span,
                                           expected: ty::t,
                                           path: &ast::Path,
                                           fields: &[ast::field_pat],
@@ -651,7 +651,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                          pointer_kind: PointerKind,
                          inner: @ast::pat,
                          pat_id: ast::NodeId,
-                         span: span,
+                         span: Span,
                          expected: ty::t) {
     let fcx = pcx.fcx;
     let check_inner: &fn(ty::mt) = |e_inner| {

@@ -31,7 +31,7 @@ use syntax::ast_map;
 use syntax::ast_util::{Private, Public, is_local};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -79,7 +79,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that an enum variant is in scope
-    fn check_variant(&mut self, span: span, enum_id: ast::def_id) {
+    fn check_variant(&mut self, span: Span, enum_id: ast::def_id) {
         let variant_info = ty::enum_variants(self.tcx, enum_id)[0];
         let parental_privacy = if is_local(enum_id) {
             let parent_vis = ast_map::node_item_query(self.tcx.items,
@@ -108,7 +108,7 @@ impl PrivacyVisitor {
     }
 
     // Returns true if a crate-local method is private and false otherwise.
-    fn method_is_private(&mut self, span: span, method_id: NodeId) -> bool {
+    fn method_is_private(&mut self, span: Span, method_id: NodeId) -> bool {
         let check = |vis: visibility, container_id: def_id| {
             let mut is_private = false;
             if vis == private {
@@ -171,7 +171,7 @@ impl PrivacyVisitor {
     }
 
     // Returns true if the given local item is private and false otherwise.
-    fn local_item_is_private(&mut self, span: span, item_id: NodeId) -> bool {
+    fn local_item_is_private(&mut self, span: Span, item_id: NodeId) -> bool {
         let mut f: &fn(NodeId) -> bool = |_| false;
         f = |item_id| {
             match self.tcx.items.find(&item_id) {
@@ -203,7 +203,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private field is in scope.
-    fn check_field(&mut self, span: span, id: ast::def_id, ident: ast::ident) {
+    fn check_field(&mut self, span: Span, id: ast::def_id, ident: ast::ident) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for field in fields.iter() {
             if field.ident != ident { loop; }
@@ -216,7 +216,7 @@ impl PrivacyVisitor {
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
-    fn check_method_common(&mut self, span: span, method_id: def_id, name: &ident) {
+    fn check_method_common(&mut self, span: Span, method_id: def_id, name: &ident) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         // Having to do this this is really unfortunate.
@@ -245,7 +245,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private path is in scope.
-    fn check_path(&mut self, span: span, def: def, path: &Path) {
+    fn check_path(&mut self, span: Span, def: def, path: &Path) {
         debug!("checking path");
         match def {
             def_static_method(method_id, _, _) => {
@@ -280,7 +280,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private method is in scope.
-    fn check_method(&mut self, span: span, origin: &method_origin, ident: ast::ident) {
+    fn check_method(&mut self, span: Span, origin: &method_origin, ident: ast::ident) {
         match *origin {
             method_static(method_id) => {
                 self.check_method_common(span, method_id, &ident)
@@ -343,7 +343,7 @@ impl PrivacyVisitor {
 
 impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
 
-    fn visit_mod<'mm>(&mut self, the_module:&_mod, _:span, _:NodeId,
+    fn visit_mod<'mm>(&mut self, the_module:&_mod, _:Span, _:NodeId,
                       method_map:&'mm method_map) {
 
             let n_added = self.add_privileged_items(the_module.items);

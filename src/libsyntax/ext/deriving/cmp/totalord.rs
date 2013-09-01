@@ -10,14 +10,14 @@
 
 use ast;
 use ast::{MetaItem, item, expr};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use std::cmp::{Ordering, Equal, Less, Greater};
 
 pub fn expand_deriving_totalord(cx: @ExtCtxt,
-                                span: span,
+                                span: Span,
                                 mitem: @MetaItem,
                                 in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
@@ -41,7 +41,7 @@ pub fn expand_deriving_totalord(cx: @ExtCtxt,
 }
 
 
-pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> ast::Path {
+pub fn ordering_const(cx: @ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
     let cnst = match cnst {
         Less => "Less",
         Equal => "Equal",
@@ -53,7 +53,7 @@ pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> ast::Path {
                      cx.ident_of(cnst)])
 }
 
-pub fn cs_cmp(cx: @ExtCtxt, span: span,
+pub fn cs_cmp(cx: @ExtCtxt, span: Span,
               substr: &Substructure) -> @expr {
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);

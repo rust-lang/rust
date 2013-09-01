@@ -21,7 +21,7 @@ use std::cast;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
 use std::vec;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use std::ptr::is_not_null;
 
 pub struct Builder {
@@ -728,7 +728,7 @@ impl Builder {
         }
     }
 
-    pub fn add_span_comment(&self, sp: span, text: &str) {
+    pub fn add_span_comment(&self, sp: Span, text: &str) {
         if self.ccx.sess.asm_comments() {
             let s = fmt!("%s (%s)", text, self.ccx.sess.codemap.span_to_str(sp));
             debug!("%s", s);

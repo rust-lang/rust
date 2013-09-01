@@ -13,7 +13,7 @@
  */
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base;
 use ext::base::*;
 use parse;
@@ -37,7 +37,7 @@ fn next_state(s: State) -> Option<State> {
     }
 }
 
-pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                -> base::MacResult {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),

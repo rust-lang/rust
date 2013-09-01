@@ -18,7 +18,7 @@ use parse::token::{get_ident_interner};
 use std::io;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt,
-                         sp: codemap::span,
+                         sp: codemap::Span,
                          tt: &[ast::token_tree])
                       -> base::MacResult {
 
@@ -31,7 +31,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     //trivial expression
     MRExpr(@ast::expr {
         id: cx.next_id(),
-        node: ast::expr_lit(@codemap::spanned {
+        node: ast::expr_lit(@codemap::Spanned {
             node: ast::lit_nil,
             span: sp
         }),

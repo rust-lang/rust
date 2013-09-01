@@ -42,7 +42,7 @@ use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::opt_vec;
 use syntax::visit;
 use syntax::parse;
@@ -58,7 +58,7 @@ pub struct UniversalQuantificationResult {
 }
 
 pub fn get_base_type(inference_context: @mut InferCtxt,
-                     span: span,
+                     span: Span,
                      original_type: t)
                   -> Option<t> {
     let resolved_type;
@@ -121,7 +121,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 
 // Returns the def ID of the base type, if there is one.
 pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
-                            span: span,
+                            span: Span,
                             original_type: t)
                          -> Option<def_id> {
     match get_base_type(inference_context, span, original_type) {
@@ -546,7 +546,7 @@ impl CoherenceChecker {
         &self,
         all_methods: &mut ~[@Method],
         trait_did: def_id,
-        trait_ref_span: span) {
+        trait_ref_span: Span) {
 
         let tcx = self.crate_context.tcx;
 
@@ -647,7 +647,7 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn span_of_impl(&self, implementation: @Impl) -> span {
+    pub fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.crate, LOCAL_CRATE);
         match self.crate_context.tcx.items.find(&implementation.did.node) {
             Some(&node_item(item, _)) => {

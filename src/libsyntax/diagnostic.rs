@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::{Pos, span};
+use codemap::{Pos, Span};
 use codemap;
 
 use std::io;
 use std::local_data;
 use extra::term;
 
-pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
+pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, Span)>,
                        msg: &str,
                        lvl: level);
 
@@ -35,7 +35,7 @@ pub trait handler {
     fn bug(@mut self, msg: &str) -> !;
     fn unimpl(@mut self, msg: &str) -> !;
     fn emit(@mut self,
-            cmsp: Option<(@codemap::CodeMap, span)>,
+            cmsp: Option<(@codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level);
 }
@@ -44,12 +44,12 @@ pub trait handler {
 // accepts span information for source-location
 // reporting.
 pub trait span_handler {
-    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
-    fn span_err(@mut self, sp: span, msg: &str);
-    fn span_warn(@mut self, sp: span, msg: &str);
-    fn span_note(@mut self, sp: span, msg: &str);
-    fn span_bug(@mut self, sp: span, msg: &str) -> !;
-    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
+    fn span_fatal(@mut self, sp: Span, msg: &str) -> !;
+    fn span_err(@mut self, sp: Span, msg: &str);
+    fn span_warn(@mut self, sp: Span, msg: &str);
+    fn span_note(@mut self, sp: Span, msg: &str);
+    fn span_bug(@mut self, sp: Span, msg: &str) -> !;
+    fn span_unimpl(@mut self, sp: Span, msg: &str) -> !;
     fn handler(@mut self) -> @mut handler;
 }
 
@@ -64,24 +64,24 @@ struct CodemapT {
 }
 
 impl span_handler for CodemapT {
-    fn span_fatal(@mut self, sp: span, msg: &str) -> ! {
+    fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail!();
     }
-    fn span_err(@mut self, sp: span, msg: &str) {
+    fn span_err(@mut self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(@mut self, sp: span, msg: &str) {
+    fn span_warn(@mut self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(@mut self, sp: span, msg: &str) {
+    fn span_note(@mut self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(@mut self, sp: span, msg: &str) -> ! {
+    fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(@mut self, sp: span, msg: &str) -> ! {
+    fn span_unimpl(@mut self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
     fn handler(@mut self) -> @mut handler {
@@ -132,7 +132,7 @@ impl handler for HandlerT {
         self.bug(~"unimplemented " + msg);
     }
     fn emit(@mut self,
-            cmsp: Option<(@codemap::CodeMap, span)>,
+            cmsp: Option<(@codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
         (self.emit)(cmsp, msg, lvl);
@@ -231,13 +231,13 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
 }
 
 pub fn collect(messages: @mut ~[~str])
-            -> @fn(Option<(@codemap::CodeMap, span)>, &str, level) {
-    let f: @fn(Option<(@codemap::CodeMap, span)>, &str, level) =
+            -> @fn(Option<(@codemap::CodeMap, Span)>, &str, level) {
+    let f: @fn(Option<(@codemap::CodeMap, Span)>, &str, level) =
         |_o, msg: &str, _l| { messages.push(msg.to_str()); };
     f
 }
 
-pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
+pub fn emit(cmsp: Option<(@codemap::CodeMap, Span)>, msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
         let sp = cm.adjust_span(sp);
@@ -254,7 +254,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
 }
 
 fn highlight_lines(cm: @codemap::CodeMap,
-                   sp: span, lvl: level,
+                   sp: Span, lvl: level,
                    lines: @codemap::FileLines) {
     let fm = lines.file;
 
@@ -330,7 +330,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     }
 }
 
-fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
+fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.map_default(~"", |span| cm.span_to_str(*span));
         print_diagnostic(ss, note,

@@ -17,13 +17,13 @@ use mc = middle::mem_categorization;
 use middle::ty;
 use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use util::ppaux::{note_and_explain_region};
 
 pub fn guarantee_lifetime(bccx: @BorrowckCtxt,
                           item_scope_id: ast::NodeId,
                           root_scope_id: ast::NodeId,
-                          span: span,
+                          span: Span,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
                           loan_mutbl: LoanMutability) {
@@ -52,7 +52,7 @@ struct GuaranteeLifetimeContext {
     // longest scope for which we can root managed boxes
     root_scope_id: ast::NodeId,
 
-    span: span,
+    span: Span,
     loan_region: ty::Region,
     loan_mutbl: LoanMutability,
     cmt_original: mc::cmt

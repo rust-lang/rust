@@ -14,7 +14,7 @@ use driver::session::Session;
 use syntax::ast::{Crate, NodeId, item, item_fn};
 use syntax::ast_map;
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -26,17 +26,17 @@ struct EntryContext {
     ast_map: ast_map::map,
 
     // The top-level function called 'main'
-    main_fn: Option<(NodeId, span)>,
+    main_fn: Option<(NodeId, Span)>,
 
     // The function that has attribute named 'main'
-    attr_main_fn: Option<(NodeId, span)>,
+    attr_main_fn: Option<(NodeId, Span)>,
 
     // The function that has the attribute 'start' on it
-    start_fn: Option<(NodeId, span)>,
+    start_fn: Option<(NodeId, Span)>,
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
-    non_main_fns: ~[(NodeId, span)],
+    non_main_fns: ~[(NodeId, Span)],
 }
 
 struct EntryVisitor;
@@ -51,7 +51,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
 
     // FIXME #4404 android JNI hacks
     if *session.building_library &&
-        session.targ_cfg.os != session::os_android {
+        session.targ_cfg.os != session::OsAndroid {
         // No need to find a main function
         return;
     }
@@ -157,7 +157,7 @@ fn configure_main(ctxt: @mut EntryContext) {
         } else {
             // If we *are* building a library, then we're on android where we still might
             // optionally want to translate main $4404
-            assert_eq!(this.session.targ_cfg.os, session::os_android);
+            assert_eq!(this.session.targ_cfg.os, session::OsAndroid);
         }
     }
 }

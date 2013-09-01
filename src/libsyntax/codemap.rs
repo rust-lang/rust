@@ -96,57 +96,57 @@ relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 to the original source.
 */
 #[deriving(Clone, IterBytes)]
-pub struct span {
+pub struct Span {
     lo: BytePos,
     hi: BytePos,
     expn_info: Option<@ExpnInfo>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct spanned<T> {
+pub struct Spanned<T> {
     node: T,
-    span: span,
+    span: Span,
 }
 
-impl cmp::Eq for span {
-    fn eq(&self, other: &span) -> bool {
+impl cmp::Eq for Span {
+    fn eq(&self, other: &Span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
-    fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &Span) -> bool { !(*self).eq(other) }
 }
 
-impl<S:Encoder> Encodable<S> for span {
+impl<S:Encoder> Encodable<S> for Span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, s: &mut S) {
         s.emit_nil()
     }
 }
 
-impl<D:Decoder> Decodable<D> for span {
-    fn decode(_d: &mut D) -> span {
+impl<D:Decoder> Decodable<D> for Span {
+    fn decode(_d: &mut D) -> Span {
         dummy_sp()
     }
 }
 
-pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> spanned<T> {
+pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> Spanned<T> {
     respan(mk_sp(lo, hi), t)
 }
 
-pub fn respan<T>(sp: span, t: T) -> spanned<T> {
-    spanned {node: t, span: sp}
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned {node: t, span: sp}
 }
 
-pub fn dummy_spanned<T>(t: T) -> spanned<T> {
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
     respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */
-pub fn mk_sp(lo: BytePos, hi: BytePos) -> span {
-    span {lo: lo, hi: hi, expn_info: None}
+pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
+    Span {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
-pub fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
+pub fn dummy_sp() -> Span { return mk_sp(BytePos(0), BytePos(0)); }
 
 
 
@@ -174,12 +174,12 @@ pub struct LocWithOpt {
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
 #[deriving(IterBytes)]
-pub struct NameAndSpan {name: @str, span: Option<span>}
+pub struct NameAndSpan {name: @str, span: Option<Span>}
 
 /// Extra information for tracking macro expansion of spans
 #[deriving(IterBytes)]
 pub struct ExpnInfo {
-    call_site: span,
+    call_site: Span,
     callee: NameAndSpan
 }
 
@@ -197,7 +197,7 @@ pub enum FileSubstr {
     FssNone,
     // indicates that this "file" is actually a substring
     // of another file that appears earlier in the codemap
-    FssInternal(span),
+    FssInternal(Span),
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
@@ -302,7 +302,7 @@ impl CodeMap {
         return filemap;
     }
 
-    pub fn mk_substr_filename(&self, sp: span) -> ~str {
+    pub fn mk_substr_filename(&self, sp: Span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
         return fmt!("<%s:%u:%u>", pos.file.name,
                     pos.line, pos.col.to_uint());
@@ -328,12 +328,12 @@ impl CodeMap {
         }
     }
 
-    pub fn adjust_span(&self, sp: span) -> span {
+    pub fn adjust_span(&self, sp: Span) -> Span {
         let line = self.lookup_line(sp.lo);
         match (line.fm.substr) {
             FssNone => sp,
             FssInternal(s) => {
-                self.adjust_span(span {
+                self.adjust_span(Span {
                     lo: s.lo + (sp.lo - line.fm.start_pos),
                     hi: s.lo + (sp.hi - line.fm.start_pos),
                     expn_info: sp.expn_info
@@ -342,7 +342,7 @@ impl CodeMap {
         }
     }
 
-    pub fn span_to_str(&self, sp: span) -> ~str {
+    pub fn span_to_str(&self, sp: Span) -> ~str {
         let files = &*self.files;
         if files.len() == 0 && sp == dummy_sp() {
             return ~"no-location";
@@ -354,12 +354,12 @@ impl CodeMap {
                     lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 
-    pub fn span_to_filename(&self, sp: span) -> FileName {
+    pub fn span_to_filename(&self, sp: Span) -> FileName {
         let lo = self.lookup_char_pos(sp.lo);
         lo.file.name
     }
 
-    pub fn span_to_lines(&self, sp: span) -> @FileLines {
+    pub fn span_to_lines(&self, sp: Span) -> @FileLines {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = ~[];
@@ -369,7 +369,7 @@ impl CodeMap {
         return @FileLines {file: lo.file, lines: lines};
     }
 
-    pub fn span_to_snippet(&self, sp: span) -> Option<~str> {
+    pub fn span_to_snippet(&self, sp: Span) -> Option<~str> {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
 
@@ -446,7 +446,7 @@ impl CodeMap {
         };
     }
 
-    fn span_to_str_no_adj(&self, sp: span) -> ~str {
+    fn span_to_str_no_adj(&self, sp: Span) -> ~str {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.file.name,

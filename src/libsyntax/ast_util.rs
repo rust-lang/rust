@@ -11,7 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, dummy_sp};
+use codemap::{Span, dummy_sp};
 use opt_vec;
 use parse::token;
 use visit::{SimpleVisitor, SimpleVisitorVisitor, Visitor};
@@ -217,7 +217,7 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: span, identifier: ident) -> Path {
+pub fn ident_to_path(s: Span, identifier: ident) -> Path {
     ast::Path {
         span: s,
         global: false,
@@ -231,7 +231,7 @@ pub fn ident_to_path(s: span, identifier: ident) -> Path {
     }
 }
 
-pub fn ident_to_pat(id: NodeId, s: span, i: ident) -> @pat {
+pub fn ident_to_pat(id: NodeId, s: Span, i: ident) -> @pat {
     @ast::pat { id: id,
                 node: pat_ident(bind_infer, ident_to_path(s, i), None),
                 span: s }
@@ -426,7 +426,7 @@ impl IdVisitor {
 impl Visitor<()> for IdVisitor {
     fn visit_mod(&mut self,
                  module: &_mod,
-                 _: span,
+                 _: Span,
                  node_id: NodeId,
                  env: ()) {
         (self.visit_callback)(node_id);
@@ -551,7 +551,7 @@ impl Visitor<()> for IdVisitor {
                 function_kind: &visit::fn_kind,
                 function_declaration: &fn_decl,
                 block: &Block,
-                span: span,
+                span: Span,
                 node_id: NodeId,
                 env: ()) {
         if !self.pass_through_items {
@@ -691,7 +691,7 @@ struct EachViewItemData {
 }
 
 impl SimpleVisitor for EachViewItemData {
-    fn visit_mod(&mut self, _: &_mod, _: span, _: NodeId) {
+    fn visit_mod(&mut self, _: &_mod, _: Span, _: NodeId) {
         // XXX: Default method.
     }
     fn visit_view_item(&mut self, view_item: &view_item) {
@@ -737,7 +737,7 @@ impl SimpleVisitor for EachViewItemData {
                 _: &visit::fn_kind,
                 _: &fn_decl,
                 _: &Block,
-                _: span,
+                _: Span,
                 _: NodeId) {
         // XXX: Default method.
     }

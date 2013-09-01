@@ -14,7 +14,7 @@ use middle::resolve;
 use std::hashmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 pub type PatIdMap = HashMap<ident, NodeId>;
 
@@ -71,7 +71,7 @@ pub fn pat_is_binding_or_wild(dm: resolve::DefMap, pat: @pat) -> bool {
 }
 
 pub fn pat_bindings(dm: resolve::DefMap, pat: @pat,
-                    it: &fn(binding_mode, NodeId, span, &Path)) {
+                    it: &fn(binding_mode, NodeId, Span, &Path)) {
     do walk_pat(pat) |p| {
         match p.node {
           pat_ident(binding_mode, ref pth, _) if pat_is_binding(dm, p) => {

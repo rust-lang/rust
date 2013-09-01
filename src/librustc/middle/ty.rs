@@ -38,7 +38,7 @@ use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
@@ -2898,7 +2898,7 @@ pub fn ty_vstore(ty: t) -> vstore {
 }
 
 pub fn ty_region(tcx: ctxt,
-                 span: span,
+                 span: Span,
                  ty: t) -> Region {
     match get(ty).sty {
         ty_rptr(r, _) => r,
@@ -2996,7 +2996,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::expr) -> t {
 }
 
 pub fn adjust_ty(cx: ctxt,
-                 span: span,
+                 span: Span,
                  unadjusted_ty: ty::t,
                  adjustment: Option<@AutoAdjustment>) -> ty::t
 {
@@ -3076,7 +3076,7 @@ pub fn adjust_ty(cx: ctxt,
         }
     };
 
-    fn borrow_vec(cx: ctxt, span: span,
+    fn borrow_vec(cx: ctxt, span: Span,
                   r: Region, m: ast::mutability,
                   ty: ty::t) -> ty::t {
         match get(ty).sty {
@@ -3097,7 +3097,7 @@ pub fn adjust_ty(cx: ctxt,
         }
     }
 
-    fn borrow_fn(cx: ctxt, span: span, r: Region, ty: ty::t) -> ty::t {
+    fn borrow_fn(cx: ctxt, span: Span, r: Region, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_closure(ref fty) => {
                 ty::mk_closure(cx, ClosureTy {
@@ -3116,7 +3116,7 @@ pub fn adjust_ty(cx: ctxt,
         }
     }
 
-    fn borrow_obj(cx: ctxt, span: span, r: Region,
+    fn borrow_obj(cx: ctxt, span: Span, r: Region,
                   m: ast::mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_trait(trt_did, ref trt_substs, _, _, b) => {
@@ -3283,7 +3283,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_do_body(*) |
         ast::expr_block(*) |
         ast::expr_repeat(*) |
-        ast::expr_lit(@codemap::spanned {node: lit_str(_), _}) |
+        ast::expr_lit(@codemap::Spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
         ast::expr_vec(*) => {
@@ -3395,7 +3395,7 @@ pub fn param_tys_in_type(ty: t) -> ~[param_ty] {
     rslt
 }
 
-pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
+pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
     // Returns a vec of all the type variables occurring in `ty`. It may
     // contain duplicates.  (Integral type vars aren't counted.)
     fn vars_in_type(ty: t) -> ~[TyVid] {

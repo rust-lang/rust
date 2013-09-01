@@ -1488,13 +1488,13 @@ fn encode_crate_deps(ecx: &EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      cstore: &cstore::CStore) {
     fn get_ordered_deps(ecx: &EncodeContext, cstore: &cstore::CStore)
-                     -> ~[decoder::crate_dep] {
-        type numdep = decoder::crate_dep;
+                     -> ~[decoder::CrateDep] {
+        type numdep = decoder::CrateDep;
 
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
-            let dep = decoder::crate_dep {cnum: key,
+            let dep = decoder::CrateDep {cnum: key,
                        name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
@@ -1645,7 +1645,7 @@ fn encode_misc_info(ecx: &EncodeContext,
 
 fn encode_crate_dep(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
-                    dep: decoder::crate_dep) {
+                    dep: decoder::CrateDep) {
     ebml_w.start_tag(tag_crate_dep);
     ebml_w.start_tag(tag_crate_dep_name);
     let s = ecx.tcx.sess.str_of(dep.name);

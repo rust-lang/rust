@@ -62,7 +62,7 @@ use ast::visibility;
 use ast;
 use ast_util::{as_prec, operator_prec};
 use ast_util;
-use codemap::{span, BytePos, spanned, mk_sp};
+use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::classify;
@@ -321,9 +321,9 @@ pub struct Parser {
     // the current token:
     token: @mut token::Token,
     // the span of the current token:
-    span: @mut span,
+    span: @mut Span,
     // the span of the prior token:
-    last_span: @mut span,
+    last_span: @mut Span,
     // the previous token or None (only stashed sometimes).
     last_token: @mut Option<~token::Token>,
     buffer: @mut [TokenAndSpan, ..4],
@@ -666,7 +666,7 @@ impl Parser {
                         ket: &token::Token,
                         sep: SeqSep,
                         f: &fn(&Parser) -> T)
-                        -> spanned<~[T]> {
+                        -> Spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
@@ -736,10 +736,10 @@ impl Parser {
     pub fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(*self.span, m)
     }
-    pub fn span_fatal(&self, sp: span, m: &str) -> ! {
+    pub fn span_fatal(&self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    pub fn span_note(&self, sp: span, m: &str) {
+    pub fn span_note(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
     pub fn bug(&self, m: &str) -> ! {
@@ -748,7 +748,7 @@ impl Parser {
     pub fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(*self.span, m)
     }
-    pub fn span_err(&self, sp: span, m: &str) {
+    pub fn span_err(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
     pub fn abort_if_errors(&self) {
@@ -1349,7 +1349,7 @@ impl Parser {
             let lit = self.lit_from_token(&token);
             lit
         };
-        codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
+        codemap::Spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
     // matches '-' lit | lit
@@ -1686,14 +1686,14 @@ impl Parser {
     pub fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @expr {
         @expr {
             id: self.get_id(),
-            node: expr_mac(codemap::spanned {node: m, span: mk_sp(lo, hi)}),
+            node: expr_mac(codemap::Spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
         }
     }
 
     pub fn mk_lit_u32(&self, i: u32) -> @expr {
         let span = self.span;
-        let lv_lit = @codemap::spanned {
+        let lv_lit = @codemap::Spanned {
             node: lit_uint(i as u64, ty_u32),
             span: *span
         };
@@ -2060,7 +2060,7 @@ impl Parser {
                     );
                     let (s, z) = p.parse_sep_and_zerok();
                     let seq = match seq {
-                        spanned { node, _ } => node,
+                        Spanned { node, _ } => node,
                     };
                     tt_seq(
                         mk_sp(sp.lo, p.span.hi),
@@ -2219,7 +2219,7 @@ impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
-                  expr_vec(*) | expr_lit(@codemap::spanned {
+                  expr_vec(*) | expr_lit(@codemap::Spanned {
                     node: lit_str(_), span: _
                   })
                   if m == m_imm => {
@@ -2244,7 +2244,7 @@ impl Parser {
               expr_vec(*) | expr_repeat(*) if m == m_mutbl =>
                 expr_vstore(e, expr_vstore_mut_box),
               expr_vec(*) |
-              expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
+              expr_lit(@codemap::Spanned { node: lit_str(_), span: _}) |
               expr_repeat(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
               _ => self.mk_unary(box(m), e)
             };
@@ -2261,7 +2261,7 @@ impl Parser {
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
               expr_vec(*) |
-              expr_lit(@codemap::spanned { node: lit_str(_), span: _}) |
+              expr_lit(@codemap::Spanned { node: lit_str(_), span: _}) |
               expr_repeat(*) => expr_vstore(e, expr_vstore_uniq),
               _ => self.mk_unary(uniq, e)
             };
@@ -2789,7 +2789,7 @@ impl Parser {
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@codemap::spanned {
+                node: expr_lit(@codemap::Spanned {
                     node: lit_str(_),
                     span: _}), _
               }) => {
@@ -2817,7 +2817,7 @@ impl Parser {
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@codemap::spanned {
+                node: expr_lit(@codemap::Spanned {
                     node: lit_str(_),
                     span: _}), _
               }) => {
@@ -2846,7 +2846,7 @@ impl Parser {
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
                   pat_lit(e@@expr {
-                      node: expr_lit(@codemap::spanned {
+                      node: expr_lit(@codemap::Spanned {
                             node: lit_str(_), span: _}), _
                   }) => {
                       let vst = @expr {
@@ -2884,7 +2884,7 @@ impl Parser {
             if *self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
-                let lit = @codemap::spanned {
+                let lit = @codemap::Spanned {
                     node: lit_nil,
                     span: mk_sp(lo, hi)};
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
@@ -3320,7 +3320,7 @@ impl Parser {
                             match *self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@codemap::spanned {
+                                    stmts.push(@codemap::Spanned {
                                         node: stmt_semi(e, stmt_id),
                                         span: stmt.span,
                                     });
@@ -3357,7 +3357,7 @@ impl Parser {
 
                             if has_semi {
                                 self.bump();
-                                stmts.push(@codemap::spanned {
+                                stmts.push(@codemap::Spanned {
                                     node: stmt_mac((*m).clone(), true),
                                     span: stmt.span,
                                 });
@@ -4125,7 +4125,7 @@ impl Parser {
     fn eval_src_mod(&self,
                     id: ast::ident,
                     outer_attrs: &[ast::Attribute],
-                    id_sp: span)
+                    id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {
         let prefix = Path(self.sess.cm.span_to_filename(*self.span));
         let prefix = prefix.dir_path();
@@ -4173,7 +4173,7 @@ impl Parser {
     fn eval_src_mod_from_path(&self,
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
-                              id_sp: span) -> (ast::item_, ~[ast::Attribute]) {
+                              id_sp: Span) -> (ast::item_, ~[ast::Attribute]) {
         let full_path = path.normalize();
 
         let maybe_i = do self.sess.included_mod_stack.iter().position |p| { *p == full_path };
@@ -4797,7 +4797,7 @@ impl Parser {
             };
             // single-variant-enum... :
             let m = ast::mac_invoc_tt(pth, tts);
-            let m: ast::mac = codemap::spanned { node: m,
+            let m: ast::mac = codemap::Spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };
             let item_ = item_mac(m);

@@ -225,7 +225,7 @@ use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
-use syntax::codemap::{span, dummy_sp};
+use syntax::codemap::{Span, dummy_sp};
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
@@ -386,7 +386,7 @@ struct BindingInfo {
     llmatch: ValueRef,
     trmode: TransBindingMode,
     id: ast::NodeId,
-    span: span,
+    span: Span,
     ty: ty::t,
 }
 
@@ -1014,7 +1014,7 @@ fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
 
 
 fn extract_vec_elems(bcx: @mut Block,
-                         pat_span: span,
+                         pat_span: Span,
                          pat_id: ast::NodeId,
                          elem_count: uint,
                          slice: Option<uint>,
@@ -1891,7 +1891,7 @@ fn trans_match_inner(scope_cx: @mut Block,
     bcx = controlflow::join_blocks(scope_cx, arm_cxs);
     return bcx;
 
-    fn mk_fail(bcx: @mut Block, sp: span, msg: @str,
+    fn mk_fail(bcx: @mut Block, sp: Span, msg: @str,
                finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {
         match *finished { Some(bb) => return bb, _ => () }
         let fail_cx = sub_block(bcx, "case_fallthrough");

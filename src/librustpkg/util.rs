@@ -12,7 +12,7 @@ use std::os;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax::ast_util::*;
-use syntax::codemap::{dummy_sp, spanned};
+use syntax::codemap::{dummy_sp, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
@@ -53,7 +53,7 @@ pub fn is_cmd(cmd: &str) -> bool {
 
 struct ListenerFn {
     cmds: ~[~str],
-    span: codemap::span,
+    span: codemap::Span,
     path: ~[ast::ident]
 }
 
@@ -427,7 +427,7 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool {
 }
 
 pub fn mk_string_lit(s: @str) -> ast::lit {
-    spanned {
+    Spanned {
         node: ast::lit_str(s),
         span: dummy_sp()
     }

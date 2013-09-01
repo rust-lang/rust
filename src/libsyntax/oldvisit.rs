@@ -11,7 +11,7 @@
 use abi::AbiSet;
 use ast::*;
 use ast;
-use codemap::span;
+use codemap::Span;
 use parse;
 use opt_vec;
 use opt_vec::OptVec;
@@ -71,7 +71,7 @@ pub fn generics_of_fn(fk: &fn_kind) -> Generics {
 }
 
 pub struct Visitor<E> {
-    visit_mod: @fn(&_mod, span, NodeId, (E, vt<E>)),
+    visit_mod: @fn(&_mod, Span, NodeId, (E, vt<E>)),
     visit_view_item: @fn(&view_item, (E, vt<E>)),
     visit_foreign_item: @fn(@foreign_item, (E, vt<E>)),
     visit_item: @fn(@item, (E, vt<E>)),
@@ -85,7 +85,7 @@ pub struct Visitor<E> {
     visit_expr_post: @fn(@expr, (E, vt<E>)),
     visit_ty: @fn(&Ty, (E, vt<E>)),
     visit_generics: @fn(&Generics, (E, vt<E>)),
-    visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, NodeId, (E, vt<E>)),
+    visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId, (E, vt<E>)),
     visit_ty_method: @fn(&TypeMethod, (E, vt<E>)),
     visit_trait_method: @fn(&trait_method, (E, vt<E>)),
     visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId, (E, vt<E>)),
@@ -123,7 +123,7 @@ pub fn visit_crate<E:Clone>(c: &Crate, (e, v): (E, vt<E>)) {
 }
 
 pub fn visit_mod<E:Clone>(m: &_mod,
-                          _sp: span,
+                          _sp: Span,
                           _id: NodeId,
                           (e, v): (E, vt<E>)) {
     for vi in m.view_items.iter() {
@@ -396,7 +396,7 @@ pub fn visit_method_helper<E:Clone>(m: &method, (e, v): (E, vt<E>)) {
 pub fn visit_fn<E:Clone>(fk: &fn_kind,
                          decl: &fn_decl,
                          body: &Block,
-                         _sp: span,
+                         _sp: Span,
                          _id: NodeId,
                          (e, v): (E, vt<E>)) {
     visit_fn_decl(decl, (e.clone(), v));
@@ -595,7 +595,7 @@ pub fn visit_arm<E:Clone>(a: &arm, (e, v): (E, vt<E>)) {
 // calls the given functions on the nodes.
 
 pub struct SimpleVisitor {
-    visit_mod: @fn(&_mod, span, NodeId),
+    visit_mod: @fn(&_mod, Span, NodeId),
     visit_view_item: @fn(&view_item),
     visit_foreign_item: @fn(@foreign_item),
     visit_item: @fn(@item),
@@ -609,7 +609,7 @@ pub struct SimpleVisitor {
     visit_expr_post: @fn(@expr),
     visit_ty: @fn(&Ty),
     visit_generics: @fn(&Generics),
-    visit_fn: @fn(&fn_kind, &fn_decl, &Block, span, NodeId),
+    visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId),
     visit_ty_method: @fn(&TypeMethod),
     visit_trait_method: @fn(&trait_method),
     visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId),
@@ -648,9 +648,9 @@ pub fn default_simple_visitor() -> @SimpleVisitor {
 
 pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     fn v_mod(
-        f: @fn(&_mod, span, NodeId),
+        f: @fn(&_mod, Span, NodeId),
         m: &_mod,
-        sp: span,
+        sp: Span,
         id: NodeId,
         (e, v): ((), vt<()>)
     ) {
@@ -734,11 +734,11 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         visit_generics(ps, (e, v));
     }
     fn v_fn(
-        f: @fn(&fn_kind, &fn_decl, &Block, span, NodeId),
+        f: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId),
         fk: &fn_kind,
         decl: &fn_decl,
         body: &Block,
-        sp: span,
+        sp: Span,
         id: NodeId,
         (e, v): ((), vt<()>)
     ) {
