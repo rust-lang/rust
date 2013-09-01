@@ -2367,6 +2367,31 @@ mod tests {
         assert_eq!(it.next_back(), None)
     }
 
+    #[test]
+    fn test_rposition() {
+        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
+        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert_eq!(v.iter().rposition(f), Some(3u));
+        assert!(v.iter().rposition(g).is_none());
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_rposition_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do v.iter().rposition |_elt| {
+            if i == 2 {
+                fail!()
+            }
+            i += 1;
+            false
+        };
+    }
+
+
     #[cfg(test)]
     fn check_randacc_iter<A: Eq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
     {
