@@ -58,10 +58,10 @@ pub fn PosixPath(s: &str) -> PosixPath {
 }
 
 pub trait GenericPath : Clone + Eq + ToStr {
-    /// Converts a string to a Path
+    /// Converts a string to a path.
     fn from_str(&str) -> Self;
 
-    /// Returns the directory component of `self`, as a string
+    /// Returns the directory component of `self`, as a string.
     fn dirname(&self) -> ~str {
         let s = self.dir_path().to_str();
         match s.len() {
@@ -152,17 +152,17 @@ pub trait GenericPath : Clone + Eq + ToStr {
     /// If `self` names a directory, returns the empty path.
     fn file_path(&self) -> Self;
 
-    /// Returns a new Path whose parent directory is `self` and whose
+    /// Returns a new path whose parent directory is `self` and whose
     /// file component is the given string.
     fn push(&self, (&str)) -> Self;
 
-    /// Returns a new Path consisting of the given path, made relative to `self`.
+    /// Returns a new path consisting of the given path, made relative to `self`.
     fn push_rel(&self, other: &Self) -> Self {
         assert!(!other.is_absolute());
         self.push_many(other.components())
     }
 
-    /// Returns a new Path consisting of the path given by the given vector
+    /// Returns a new path consisting of the path given by the given vector
     /// of strings, relative to `self`.
     fn push_many<S: Str>(&self, (&[S])) -> Self;
 
@@ -174,9 +174,9 @@ pub trait GenericPath : Clone + Eq + ToStr {
     /// contain directory separators in any of its components.
     fn unsafe_join(&self, (&Self)) -> Self;
 
-    /// On Unix, always returns false. On Windows, returns true iff `self`'s
+    /// On Unix, always returns `false`. On Windows, returns `true` iff `self`'s
     /// file stem is one of: `con` `aux` `com1` `com2` `com3` `com4`
-    /// `lpt1` `lpt2` `lpt3` `prn` `nul`
+    /// `lpt1` `lpt2` `lpt3` `prn` `nul`.
     fn is_restricted(&self) -> bool;
 
     /// Returns a new path that names the same file as `self`, without containing
@@ -187,7 +187,8 @@ pub trait GenericPath : Clone + Eq + ToStr {
     /// Returns `true` if `self` is an absolute path.
     fn is_absolute(&self) -> bool;
 
-    /// True if `self` is an ancestor of `other`. See `test_is_ancestor_of` for examples
+    /// True if `self` is an ancestor of `other`.
+    // See `test_is_ancestor_of` for examples.
     fn is_ancestor_of(&self, other: &Self) -> bool {
         debug!("%s / %s %? %?", self.to_str(), other.to_str(), self.is_absolute(),
                self.components().len());
@@ -197,7 +198,7 @@ pub trait GenericPath : Clone + Eq + ToStr {
              self.is_ancestor_of(&other.pop()))
     }
 
-    /// Find the relative path from one file to another
+    /// Finds the relative path from one file to another.
     fn get_relative_to(&self, abs2: (&Self)) -> Self {
         assert!(self.is_absolute());
         assert!(abs2.is_absolute());
@@ -516,7 +517,7 @@ impl PosixPath {
         }
     }
 
-    /// Execute a function on p as well as all of its ancestors
+    /// Executes a function `f` on `self` as well as on all of its ancestors.
     pub fn each_parent(&self, f: &fn(&Path)) {
         if !self.components.is_empty() {
             f(self);
@@ -618,7 +619,7 @@ impl WindowsPath {
         }
     }
 
-    /// Execute a function on p as well as all of its ancestors
+    /// Executes a function `f` on `self` as well as on all of its ancestors.
     pub fn each_parent(&self, f: &fn(&Path)) {
         if !self.components.is_empty() {
             f(self);
