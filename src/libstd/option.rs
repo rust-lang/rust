@@ -46,7 +46,7 @@ use cmp::{Eq,Ord};
 use util;
 use num::Zero;
 use iterator;
-use iterator::{Iterator, DoubleEndedIterator};
+use iterator::{Iterator, DoubleEndedIterator, ExactSize};
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -401,6 +401,8 @@ impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
         self.opt.take()
     }
 }
+
+impl<A> ExactSize<A> for OptionIterator<A> {}
 
 #[cfg(test)]
 mod tests {

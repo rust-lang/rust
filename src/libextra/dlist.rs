@@ -472,6 +472,8 @@ impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
     }
 }
 
+impl<'self, A> ExactSize<&'self A> for DListIterator<'self, A> {}
+
 impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
     #[inline]
     fn next(&mut self) -> Option<&'self mut A> {
@@ -508,6 +510,7 @@ impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> 
     }
 }
 
+impl<'self, A> ExactSize<&'self mut A> for MutDListIterator<'self, A> {}
 
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {

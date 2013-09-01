@@ -243,6 +243,8 @@ pub struct RingBufIterator<'self, T> {
 iterator!{impl RingBufIterator -> &'self T, get_ref}
 iterator_rev!{impl RingBufIterator -> &'self T, get_ref}
 
+impl<'self, T> ExactSize<&'self T> for RingBufIterator<'self, T> {}
+
 impl<'self, T> RandomAccessIterator<&'self T> for RingBufIterator<'self, T> {
     #[inline]
     fn indexable(&self) -> uint { self.rindex - self.index }
@@ -267,6 +269,8 @@ pub struct RingBufMutIterator<'self, T> {
 }
 iterator!{impl RingBufMutIterator -> &'self mut T, get_mut_ref}
 iterator_rev!{impl RingBufMutIterator -> &'self mut T, get_mut_ref}
+
+impl<'self, T> ExactSize<&'self mut T> for RingBufMutIterator<'self, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
