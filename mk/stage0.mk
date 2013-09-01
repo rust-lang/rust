@@ -6,7 +6,9 @@ $(HBIN0_H_$(CFG_BUILD_TRIPLE))/:
 $(HLIB0_H_$(CFG_BUILD_TRIPLE))/:
 	mkdir -p $@
 
-$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE)):		\
+SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
+
+$(SNAPSHOT_RUSTC_POST_CLEANUP):						\
 		$(S)src/snapshots.txt					\
 		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)		\
 		| $(HBIN0_H_$(CFG_BUILD_TRIPLE))/
