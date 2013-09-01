@@ -11,7 +11,7 @@
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
-use codemap::{span, spanned, dummy_sp};
+use codemap::{Span, Spanned, dummy_sp};
 use ext::base::{ExtCtxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
 use ext::tt::macro_parser::{error};
@@ -24,13 +24,13 @@ use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
 pub fn add_new_extension(cx: @ExtCtxt,
-                         sp: span,
+                         sp: Span,
                          name: ident,
                          arg: ~[ast::token_tree])
                       -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        spanned {
+        Spanned {
             node: m.clone(),
             span: dummy_sp()
         }
@@ -74,7 +74,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: @ExtCtxt, sp: span, name: ident,
+    fn generic_extension(cx: @ExtCtxt, sp: Span, name: ident,
                          arg: &[ast::token_tree],
                          lhses: &[@named_match], rhses: &[@named_match])
     -> MacResult {
@@ -144,7 +144,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(@ExtCtxt, span, &[ast::token_tree]) -> MacResult =
+    let exp: @fn(@ExtCtxt, Span, &[ast::token_tree]) -> MacResult =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{

@@ -19,7 +19,7 @@ use util::ppaux;
 use syntax::ast::{deref, expr_call, expr_inline_asm, expr_method_call};
 use syntax::ast::{expr_unary, unsafe_fn, expr_path};
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::visit::{fk_item_fn, fk_method};
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
@@ -53,7 +53,7 @@ struct EffectCheckVisitor {
 }
 
 impl EffectCheckVisitor {
-    fn require_unsafe(&mut self, span: span, description: &str) {
+    fn require_unsafe(&mut self, span: Span, description: &str) {
         match self.context.unsafe_context {
             SafeContext => {
                 // Report an error.
@@ -73,7 +73,7 @@ impl EffectCheckVisitor {
 
 impl Visitor<()> for EffectCheckVisitor {
     fn visit_fn(&mut self, fn_kind:&fn_kind, fn_decl:&fn_decl,
-                block:&Block, span:span, node_id:NodeId, _:()) {
+                block:&Block, span:Span, node_id:NodeId, _:()) {
 
             let (is_item_fn, is_unsafe_fn) = match *fn_kind {
                 fk_item_fn(_, _, purity, _) => (true, purity == unsafe_fn),

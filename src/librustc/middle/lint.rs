@@ -28,7 +28,7 @@ use extra::smallintmap::SmallIntMap;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
@@ -135,7 +135,7 @@ enum AttributedNode<'self> {
 
 #[deriving(Eq)]
 enum LintSource {
-    Node(span),
+    Node(Span),
     Default,
     CommandLine
 }
@@ -304,7 +304,7 @@ pub fn get_lint_dict() -> LintDict {
 trait OuterLint {
     fn process_item(@mut self, i:@ast::item, e:@mut Context);
     fn process_fn(@mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                  b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context);
+                  b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context);
 
     // Returned inner variant will not proceed past subitems.
     // Supports decomposition of simple lints into subitem-traversing
@@ -319,7 +319,7 @@ trait InnerLint {
                   function_kind: &visit::fn_kind,
                   function_declaration: &ast::fn_decl,
                   function_body: &ast::Block,
-                  sp: span,
+                  sp: Span,
                   id: ast::NodeId,
                   env: @mut Context);
 }
@@ -332,7 +332,7 @@ impl<V:Visitor<@mut Context>> InnerLint for V {
         visit::walk_crate(self, crate, env);
     }
     fn descend_fn(@mut self, fk: &visit::fn_kind, fd: &ast::fn_decl, fb: &ast::Block,
-                  sp: span, id: ast::NodeId, env: @mut Context) {
+                  sp: Span, id: ast::NodeId, env: @mut Context) {
         visit::walk_fn(self, fk, fd, fb, sp, id, env);
     }
 }
@@ -409,7 +409,7 @@ impl Context {
         fail!("unregistered lint %?", lint);
     }
 
-    fn span_lint(&self, lint: lint, span: span, msg: &str) {
+    fn span_lint(&self, lint: lint, span: Span, msg: &str) {
         let (level, src) = match self.curr.find(&(lint as uint)) {
             None => { return }
             Some(&(warn, src)) => (self.get_level(warnings), src),
@@ -617,7 +617,7 @@ trait SubitemStoppableVisitor : Visitor<@mut Context> {
     }
 
     fn visit_fn_action(&mut self, _fk:&visit::fn_kind, _fd:&ast::fn_decl,
-                       _b:&ast::Block, _s:span, _n:ast::NodeId, _e:@mut Context) {
+                       _b:&ast::Block, _s:Span, _n:ast::NodeId, _e:@mut Context) {
         // fill in with particular action without recursion if desired
     }
 
@@ -641,7 +641,7 @@ trait SubitemStoppableVisitor : Visitor<@mut Context> {
     }
 
     fn OVERRIDE_visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         if self.is_running_on_items() {
             self.visit_fn_action(fk, fd, b, s, n, e);
             visit::walk_fn(self, fk, fd, b, s, n, e);
@@ -670,7 +670,7 @@ impl Visitor<@mut Context> for WhileTrueLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -679,7 +679,7 @@ impl Visitor<@mut Context> for WhileTrueLintVisitor {
             match e.node {
                 ast::expr_while(cond, _) => {
                     match cond.node {
-                        ast::expr_lit(@codemap::spanned {
+                        ast::expr_lit(@codemap::Spanned {
                             node: ast::lit_bool(true), _}) =>
                         {
                             cx.span_lint(while_true, e.span,
@@ -703,7 +703,7 @@ macro_rules! outer_lint_boilerplate_impl(
                 self.visit_item_action(i, e);
             }
             fn process_fn(@mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                          b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                          b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
                 self.visit_fn_action(fk, fd, b, s, n, e);
             }
             fn inner_variant(@mut self) -> @mut InnerLint {
@@ -834,7 +834,7 @@ impl Visitor<@mut Context> for TypeLimitsLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -905,7 +905,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     }
 }
 
-fn check_type_for_lint(cx: &Context, lint: lint, span: span, ty: ty::t) {
+fn check_type_for_lint(cx: &Context, lint: lint, span: Span, ty: ty::t) {
     if cx.get_level(lint) == allow { return }
 
     let mut n_box = 0;
@@ -932,7 +932,7 @@ fn check_type_for_lint(cx: &Context, lint: lint, span: span, ty: ty::t) {
     }
 }
 
-fn check_type(cx: &Context, span: span, ty: ty::t) {
+fn check_type(cx: &Context, span: Span, ty: ty::t) {
     let xs = [managed_heap_memory, owned_heap_memory, heap_memory];
     for lint in xs.iter() {
         check_type_for_lint(cx, *lint, span, ty);
@@ -975,7 +975,7 @@ impl Visitor<@mut Context> for HeapLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1006,7 +1006,7 @@ impl Visitor<@mut Context> for PathStatementLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1044,7 +1044,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
             !ident.contains_char('_')
     }
 
-    fn check_case(cx: &Context, sort: &str, ident: ast::ident, span: span) {
+    fn check_case(cx: &Context, sort: &str, ident: ast::ident, span: Span) {
         if !is_camel_case(cx.tcx, ident) {
             cx.span_lint(
                 non_camel_case_types, span,
@@ -1099,7 +1099,7 @@ impl Visitor<@mut Context> for UnusedUnsafeLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1157,7 +1157,7 @@ impl SubitemStoppableVisitor for UnusedMutLintVisitor {
     fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
 
     fn visit_fn_action(&mut self, _a:&visit::fn_kind, fd:&ast::fn_decl,
-                       _b:&ast::Block, _c:span, _d:ast::NodeId, cx:@mut Context) {
+                       _b:&ast::Block, _c:Span, _d:ast::NodeId, cx:@mut Context) {
             self.visit_fn_decl(cx, fd);
     }
 }
@@ -1168,7 +1168,7 @@ impl Visitor<@mut Context> for UnusedMutLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1225,7 +1225,7 @@ impl Visitor<@mut Context> for UnnecessaryAllocationLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1243,7 +1243,7 @@ impl UnnecessaryAllocationLintVisitor {
             ast::expr_vstore(e2, ast::expr_vstore_uniq) |
             ast::expr_vstore(e2, ast::expr_vstore_box) => {
                 match e2.node {
-                    ast::expr_lit(@codemap::spanned{
+                    ast::expr_lit(@codemap::Spanned{
                             node: ast::lit_str(*), _}) |
                     ast::expr_vec(*) => {}
                     _ => return
@@ -1278,7 +1278,7 @@ impl MissingDocLintVisitor {
     fn check_attrs(&mut self,
                    cx: @mut Context,
                    attrs: &[ast::Attribute],
-                   sp: span,
+                   sp: Span,
                    msg: &str) {
         // If we're building a test harness, then warning about documentation is
         // probably not really relevant right now
@@ -1299,7 +1299,7 @@ impl Visitor<@mut Context> for MissingDocLintVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                b:&ast::Block, s:span, n:ast::NodeId, e:@mut Context) {
+                b:&ast::Block, s:Span, n:ast::NodeId, e:@mut Context) {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
@@ -1316,7 +1316,7 @@ impl SubitemStoppableVisitor for MissingDocLintVisitor {
     fn is_running_on_items(&mut self) -> bool { !self.stopping_on_items }
 
     fn visit_fn_action(&mut self, fk:&visit::fn_kind, _d:&ast::fn_decl,
-                       _b:&ast::Block, sp:span, _id:ast::NodeId, cx:@mut Context) {
+                       _b:&ast::Block, sp:Span, _id:ast::NodeId, cx:@mut Context) {
 
             // Only warn about explicitly public methods. Soon implicit
             // public-ness will hopefully be going away.
@@ -1400,7 +1400,7 @@ impl Visitor<@mut Context> for LintCheckVisitor {
     }
 
     fn visit_fn(&mut self, fk:&visit::fn_kind, decl:&ast::fn_decl,
-                body:&ast::Block, span:span, id:ast::NodeId, cx:@mut Context) {
+                body:&ast::Block, span:Span, id:ast::NodeId, cx:@mut Context) {
 
                 match *fk {
                     visit::fk_method(_, _, m) => {

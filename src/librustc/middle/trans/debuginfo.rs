@@ -68,7 +68,7 @@ use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::vec;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token::special_idents;
 
@@ -158,7 +158,7 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
                                      variable_ident: ast::ident,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
-                                     span: span) {
+                                     span: Span) {
     declare_local(bcx, variable_ident, node_id, variable_type, span);
 }
 
@@ -296,7 +296,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
 /// reliably find the correct visibility scope for the code position.
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
-                           span: span) {
+                           span: Span) {
     let cx: &mut CrateContext = fcx.ccx;
 
     if !cx.sess.opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
@@ -643,7 +643,7 @@ fn declare_local(bcx: @mut Block,
                  variable_ident: ast::ident,
                  node_id: ast::NodeId,
                  variable_type: ty::t,
-                 span: span) {
+                 span: Span) {
     let cx: &mut CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name;
@@ -720,7 +720,7 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
 /// Finds the scope metadata node for the given AST node.
 fn scope_metadata(fcx: &FunctionContext,
                   node_id: ast::NodeId,
-                  span: span) -> DIScope {
+                  span: Span) -> DIScope {
     if fcx.debug_context.is_none() {
         fcx.ccx.sess.span_bug(span, "debuginfo: FunctionDebugContext should be initialized \
                                      but is not!");
@@ -808,7 +808,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
 fn struct_metadata(cx: &mut CrateContext,
                    struct_type: ty::t,
                    fields: ~[ty::field],
-                   span: span)
+                   span: Span)
                 -> DICompositeType {
     let struct_name = ty_to_str(cx.tcx, struct_type);
     debug!("struct_metadata: %s", struct_name);
@@ -840,7 +840,7 @@ fn struct_metadata(cx: &mut CrateContext,
 fn tuple_metadata(cx: &mut CrateContext,
                   tuple_type: ty::t,
                   component_types: &[ty::t],
-                  span: span)
+                  span: Span)
                -> DICompositeType {
 
     let tuple_name = ty_to_str(cx.tcx, tuple_type);
@@ -865,7 +865,7 @@ fn tuple_metadata(cx: &mut CrateContext,
 fn enum_metadata(cx: &mut CrateContext,
                  enum_type: ty::t,
                  enum_def_id: ast::def_id,
-                 span: span)
+                 span: Span)
               -> DIType {
 
     let enum_name = ty_to_str(cx.tcx, enum_type);
@@ -987,7 +987,7 @@ fn enum_metadata(cx: &mut CrateContext,
                                   struct_def: &adt::Struct,
                                   variant_info: &ty::VariantInfo,
                                   discriminant_type_metadata: Option<DIType>,
-                                  span: span)
+                                  span: Span)
                                -> DICompositeType
     {
         let arg_llvm_types: ~[Type] = do struct_def.fields.map |&ty| { type_of::type_of(cx, ty) };
@@ -1031,7 +1031,7 @@ fn composite_type_metadata(cx: &mut CrateContext,
                            member_llvm_types: &[Type],
                            member_names: &[~str],
                            member_type_metadata: &[DIType],
-                           span: span)
+                           span: Span)
                         -> DICompositeType {
 
     let loc = span_start(cx, span);
@@ -1088,7 +1088,7 @@ fn boxed_type_metadata(cx: &mut CrateContext,
                        content_type_name: Option<&str>,
                        content_llvm_type: Type,
                        content_type_metadata: DIType,
-                       span: span)
+                       span: Span)
                     -> DICompositeType {
 
     let box_type_name = match content_type_name {
@@ -1140,7 +1140,7 @@ fn boxed_type_metadata(cx: &mut CrateContext,
 fn fixed_vec_metadata(cx: &mut CrateContext,
                       element_type: ty::t,
                       len: uint,
-                      span: span)
+                      span: Span)
                    -> DIType {
     let element_type_metadata = type_metadata(cx, element_type, span);
     let element_llvm_type = type_of::type_of(cx, element_type);
@@ -1166,7 +1166,7 @@ fn fixed_vec_metadata(cx: &mut CrateContext,
 
 fn vec_metadata(cx: &mut CrateContext,
                 element_type: ty::t,
-                span: span)
+                span: Span)
              -> DICompositeType {
 
     let element_type_metadata = type_metadata(cx, element_type, span);
@@ -1204,7 +1204,7 @@ fn vec_metadata(cx: &mut CrateContext,
 
 fn boxed_vec_metadata(cx: &mut CrateContext,
                       element_type: ty::t,
-                      span: span)
+                      span: Span)
                    -> DICompositeType {
 
     let element_llvm_type = type_of::type_of(cx, element_type);
@@ -1223,7 +1223,7 @@ fn boxed_vec_metadata(cx: &mut CrateContext,
 fn vec_slice_metadata(cx: &mut CrateContext,
                       vec_type: ty::t,
                       element_type: ty::t,
-                      span: span)
+                      span: Span)
                    -> DICompositeType {
 
     debug!("vec_slice_metadata: %?", ty::get(vec_type));
@@ -1264,7 +1264,7 @@ fn bare_fn_metadata(cx: &mut CrateContext,
                     _fn_ty: ty::t,
                     inputs: ~[ty::t],
                     output: ty::t,
-                    span: span)
+                    span: Span)
                  -> DICompositeType {
 
     debug!("bare_fn_metadata: %?", ty::get(_fn_ty));
@@ -1307,7 +1307,7 @@ fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
 
 fn type_metadata(cx: &mut CrateContext,
                  t: ty::t,
-                 span: span)
+                 span: Span)
               -> DIType {
     let type_id = ty::type_id(t);
     match dbg_cx(cx).created_types.find(&type_id) {
@@ -1493,7 +1493,7 @@ fn roundup(x: uint, a: uint) -> uint {
 }
 
 /// Return codemap::Loc corresponding to the beginning of the span
-fn span_start(cx: &CrateContext, span: span) -> codemap::Loc {
+fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
     cx.sess.codemap.lookup_char_pos(span.lo)
 }
 
@@ -1561,7 +1561,7 @@ fn populate_scope_map(cx: &mut CrateContext,
     // local helper functions for walking the AST.
 
     fn with_new_scope(cx: &mut CrateContext,
-                      scope_span: span,
+                      scope_span: Span,
                       scope_stack: &mut ~[ScopeStackEntry],
                       scope_map: &mut HashMap<ast::NodeId, DIScope>,
                       inner_walk: &fn(&mut CrateContext,
@@ -1625,7 +1625,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                  scope_stack: &mut ~[ScopeStackEntry],
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
-            codemap::spanned { node: ast::decl_local(@ref local), _ } => {
+            codemap::Spanned { node: ast::decl_local(@ref local), _ } => {
                 scope_map.insert(local.id, scope_stack.last().scope_metadata);
 
                 walk_pattern(cx, local.pat, scope_stack, scope_map);

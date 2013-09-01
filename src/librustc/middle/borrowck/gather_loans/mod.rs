@@ -28,7 +28,7 @@ use util::ppaux::{Repr};
 
 use syntax::ast;
 use syntax::ast_util::id_range;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -83,7 +83,7 @@ impl visit::Visitor<@mut GatherLoanCtxt> for GatherLoanVisitor {
         gather_loans_in_block(self, b, e);
     }
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block,
-                s:span, n:NodeId, e:@mut GatherLoanCtxt) {
+                s:Span, n:NodeId, e:@mut GatherLoanCtxt) {
         gather_loans_in_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_stmt(&mut self, s:@stmt, e:@mut GatherLoanCtxt) {
@@ -131,7 +131,7 @@ fn gather_loans_in_fn(v: &mut GatherLoanVisitor,
                       fk: &fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
-                      sp: span,
+                      sp: Span,
                       id: ast::NodeId,
                       this: @mut GatherLoanCtxt) {
     match fk {
@@ -413,7 +413,7 @@ impl GatherLoanCtxt {
     // dynamically that they are not freed.
     pub fn guarantee_valid(&mut self,
                            borrow_id: ast::NodeId,
-                           borrow_span: span,
+                           borrow_span: Span,
                            cmt: mc::cmt,
                            req_mutbl: LoanMutability,
                            loan_region: ty::Region) {
@@ -538,7 +538,7 @@ impl GatherLoanCtxt {
         // }
 
         fn check_mutability(bccx: @BorrowckCtxt,
-                            borrow_span: span,
+                            borrow_span: Span,
                             cmt: mc::cmt,
                             req_mutbl: LoanMutability) {
             //! Implements the M-* rules in doc.rs.

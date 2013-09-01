@@ -16,7 +16,7 @@ use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
-use codemap::{span, spanned, ExpnInfo, NameAndSpan};
+use codemap::{Span, Spanned, spanned, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
 use opt_vec;
@@ -32,10 +32,10 @@ use std::vec;
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    e: &expr_,
-                   s: span,
+                   s: Span,
                    fld: @ast_fold,
-                   orig: @fn(&expr_, span, @ast_fold) -> (expr_, span))
-                -> (expr_, span) {
+                   orig: @fn(&expr_, Span, @ast_fold) -> (expr_, Span))
+                -> (expr_, Span) {
     match *e {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -117,7 +117,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             let lo = s.lo;
             let hi = s.hi;
 
-            pub fn mk_expr(cx: @ExtCtxt, span: span,
+            pub fn mk_expr(cx: @ExtCtxt, span: Span,
                            node: expr_) -> @ast::expr {
                 @ast::expr {
                     id: cx.next_id(),
@@ -129,7 +129,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             fn mk_block(cx: @ExtCtxt,
                         stmts: &[@ast::stmt],
                         expr: Option<@ast::expr>,
-                        span: span) -> ast::Block {
+                        span: Span) -> ast::Block {
                 ast::Block {
                     view_items: ~[],
                     stmts: stmts.to_owned(),
@@ -140,7 +140,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                 }
             }
 
-            fn mk_simple_path(ident: ast::ident, span: span) -> ast::Path {
+            fn mk_simple_path(ident: ast::ident, span: Span) -> ast::Path {
                 ast::Path {
                     span: span,
                     global: false,
@@ -367,7 +367,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
-        item_mac(codemap::spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
+        item_mac(codemap::Spanned { node: mac_invoc_tt(ref pth, ref tts), _}) => {
             (pth, (*tts).clone())
         }
         _ => cx.span_bug(it.span, "invalid item macro invocation")
@@ -449,11 +449,11 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
 pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    s: &stmt_,
-                   sp: span,
+                   sp: Span,
                    fld: @ast_fold,
-                   orig: @fn(&stmt_, span, @ast_fold)
-                             -> (Option<stmt_>, span))
-                -> (Option<stmt_>, span) {
+                   orig: @fn(&stmt_, Span, @ast_fold)
+                             -> (Option<stmt_>, Span))
+                -> (Option<stmt_>, Span) {
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
@@ -484,7 +484,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             });
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
-                    @codemap::spanned { node: stmt_expr(e, cx.next_id()),
+                    @codemap::Spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
                 MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
@@ -563,7 +563,7 @@ impl Visitor<()> for NewNameFinderContext {
 
     // XXX: Methods below can become default methods.
 
-    fn visit_mod(&mut self, module: &ast::_mod, _: span, _: NodeId, _: ()) {
+    fn visit_mod(&mut self, module: &ast::_mod, _: Span, _: NodeId, _: ()) {
         visit::walk_mod(self, module, ())
     }
 
@@ -621,7 +621,7 @@ impl Visitor<()> for NewNameFinderContext {
                 function_kind: &visit::fn_kind,
                 function_declaration: &ast::fn_decl,
                 block: &ast::Block,
-                span: span,
+                span: Span,
                 node_id: NodeId,
                 _: ()) {
         visit::walk_fn(self,
@@ -723,9 +723,9 @@ fn apply_pending_renames(folder : @ast_fold, stmt : ast::stmt) -> @ast::stmt {
 
 
 
-pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
+pub fn new_span(cx: @ExtCtxt, sp: Span) -> Span {
     /* this discards information in the case of macro-defining macros */
-    return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
+    return Span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
 // FIXME (#2247): this is a moderately bad kludge to inject some macros into
@@ -1193,7 +1193,7 @@ mod test {
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
     use codemap;
-    use codemap::spanned;
+    use codemap::Spanned;
     use parse;
     use parse::token::{intern, get_ident_interner};
     use print::pprust;
@@ -1282,11 +1282,11 @@ mod test {
 
     // make a MetaWord outer attribute with the given name
     fn make_dummy_attr(s: @str) -> ast::Attribute {
-        spanned {
+        Spanned {
             span:codemap::dummy_sp(),
             node: Attribute_ {
                 style: AttrOuter,
-                value: @spanned {
+                value: @Spanned {
                     node: MetaWord(s),
                     span: codemap::dummy_sp(),
                 },

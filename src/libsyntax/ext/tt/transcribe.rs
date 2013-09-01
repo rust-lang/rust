@@ -10,7 +10,7 @@
 
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-use codemap::{span, dummy_sp};
+use codemap::{Span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
@@ -39,7 +39,7 @@ pub struct TtReader {
     repeat_len: ~[uint],
     /* cached: */
     cur_tok: Token,
-    cur_span: span
+    cur_span: Span
 }
 
 /** This can do Macro-By-Example transcription. On the other hand, if

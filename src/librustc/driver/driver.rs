@@ -43,12 +43,12 @@ use syntax::parse::token;
 use syntax::print::{pp, pprust};
 use syntax;
 
-pub enum pp_mode {
-    ppm_normal,
-    ppm_expanded,
-    ppm_typed,
-    ppm_identified,
-    ppm_expanded_identified
+pub enum PpMode {
+    PpmNormal,
+    PpmExpanded,
+    PpmTyped,
+    PpmIdentified,
+    PpmExpandedIdentified
 }
 
 /**
@@ -67,11 +67,11 @@ pub fn source_name(input: &input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        session::os_win32 =>   @"win32",
-        session::os_macos =>   @"macos",
-        session::os_linux =>   @"linux",
-        session::os_android => @"android",
-        session::os_freebsd => @"freebsd"
+        session::OsWin32 =>   @"win32",
+        session::OsMacos =>   @"macos",
+        session::OsLinux =>   @"linux",
+        session::OsAndroid => @"android",
+        session::OsFreebsd => @"freebsd"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -338,8 +338,8 @@ pub fn phase_5_run_llvm_passes(sess: Session,
     // output are OK, so we generate assembly first and then run it through
     // an external assembler.
     // Same for Android.
-    if (sess.targ_cfg.os == session::os_android ||
-        sess.targ_cfg.os == session::os_win32) &&
+    if (sess.targ_cfg.os == session::OsAndroid ||
+        sess.targ_cfg.os == session::OsWin32) &&
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
@@ -439,7 +439,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
 }
 
 pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
-                          ppm: pp_mode) {
+                          ppm: PpMode) {
 
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -485,20 +485,20 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     let crate = phase_1_parse_input(sess, cfg.clone(), input);
 
     let (crate, is_expanded) = match ppm {
-        ppm_expanded | ppm_expanded_identified | ppm_typed => {
+        PpmExpanded | PpmExpandedIdentified | PpmTyped => {
             (phase_2_configure_and_expand(sess, cfg, crate), true)
         }
         _ => (crate, false)
     };
 
     let annotation = match ppm {
-        ppm_identified | ppm_expanded_identified => {
+        PpmIdentified | PpmExpandedIdentified => {
             pprust::pp_ann {
                 pre: ann_paren_for_expr,
                 post: ann_identified_post
             }
         }
-        ppm_typed => {
+        PpmTyped => {
             let analysis = phase_3_run_analysis_passes(sess, crate);
             pprust::pp_ann {
                 pre: ann_paren_for_expr,
@@ -518,19 +518,19 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     }
 }
 
-pub fn get_os(triple: &str) -> Option<session::os> {
+pub fn get_os(triple: &str) -> Option<session::Os> {
     for &(name, os) in os_names.iter() {
         if triple.contains(name) { return Some(os) }
     }
     None
 }
-static os_names : &'static [(&'static str, session::os)] = &'static [
-    ("mingw32", session::os_win32),
-    ("win32",   session::os_win32),
-    ("darwin",  session::os_macos),
-    ("android", session::os_android),
-    ("linux",   session::os_linux),
-    ("freebsd", session::os_freebsd)];
+static os_names : &'static [(&'static str, session::Os)] = &'static [
+    ("mingw32", session::OsWin32),
+    ("win32",   session::OsWin32),
+    ("darwin",  session::OsMacos),
+    ("android", session::OsAndroid),
+    ("linux",   session::OsLinux),
+    ("freebsd", session::OsFreebsd)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {
@@ -817,13 +817,13 @@ pub fn build_session_(sopts: @session::options,
     }
 }
 
-pub fn parse_pretty(sess: Session, name: &str) -> pp_mode {
+pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
     match name {
-      &"normal" => ppm_normal,
-      &"expanded" => ppm_expanded,
-      &"typed" => ppm_typed,
-      &"expanded,identified" => ppm_expanded_identified,
-      &"identified" => ppm_identified,
+      &"normal" => PpmNormal,
+      &"expanded" => PpmExpanded,
+      &"typed" => PpmTyped,
+      &"expanded,identified" => PpmExpandedIdentified,
+      &"identified" => PpmIdentified,
       _ => {
         sess.fatal("argument to `pretty` must be one of `normal`, \
                     `expanded`, `typed`, `identified`, \

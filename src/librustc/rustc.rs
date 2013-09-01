@@ -28,7 +28,7 @@ extern mod syntax;
 use driver::driver::{host_triple, optgroups, early_error};
 use driver::driver::{str_input, file_input, build_session_options};
 use driver::driver::{build_session, build_configuration, parse_pretty};
-use driver::driver::{pp_mode, pretty_print_input, list_metadata};
+use driver::driver::{PpMode, pretty_print_input, list_metadata};
 use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
@@ -262,11 +262,11 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
         parse_pretty(sess, a)
     };
     match pretty {
-      Some::<pp_mode>(ppm) => {
+      Some::<PpMode>(ppm) => {
         pretty_print_input(sess, cfg, &input, ppm);
         return;
       }
-      None::<pp_mode> => {/* continue */ }
+      None::<PpMode> => {/* continue */ }
     }
     let ls = opt_present(matches, "ls");
     if ls {
@@ -326,7 +326,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
         let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter: @fn(Option<(@codemap::CodeMap, codemap::span)>,
+        let demitter: @fn(Option<(@codemap::CodeMap, codemap::Span)>,
                           &str,
                           diagnostic::level) =
                           |cmsp, msg, lvl| {

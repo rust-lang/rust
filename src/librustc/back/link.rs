@@ -814,13 +814,13 @@ pub fn mangle_internal_name_by_seq(_ccx: &mut CrateContext, flav: &str) -> ~str 
 }
 
 
-pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
+pub fn output_dll_filename(os: session::Os, lm: LinkMeta) -> ~str {
     let (dll_prefix, dll_suffix) = match os {
-        session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-        session::os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-        session::os_linux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-        session::os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
-        session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+        session::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+        session::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+        session::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+        session::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+        session::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
     fmt!("%s%s-%s-%s%s", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
@@ -835,7 +835,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
     match sess.opts.linker {
         Some(ref linker) => linker.to_str(),
         None => match sess.targ_cfg.os {
-            session::os_android =>
+            session::OsAndroid =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
                         fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
@@ -845,7 +845,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
                                     (--android-cross-path)")
                     }
                 },
-            session::os_win32 => ~"g++",
+            session::OsWin32 => ~"g++",
             _ => ~"cc"
         }
     }
@@ -892,7 +892,7 @@ pub fn link_binary(sess: Session,
     }
 
     // Clean up on Darwin
-    if sess.targ_cfg.os == session::os_macos {
+    if sess.targ_cfg.os == session::OsMacos {
         run::process_status("dsymutil", [output.to_str()]);
     }
 
@@ -913,7 +913,7 @@ pub fn link_args(sess: Session,
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
-            config.os != session::os_win32 {
+            config.os != session::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {
             stem
@@ -939,7 +939,7 @@ pub fn link_args(sess: Session,
         obj_filename.to_str()]);
 
     let lib_cmd = match sess.targ_cfg.os {
-        session::os_macos => ~"-dynamiclib",
+        session::OsMacos => ~"-dynamiclib",
         _ => ~"-shared"
     };
 
@@ -995,7 +995,7 @@ pub fn link_args(sess: Session,
 
         // On mac we need to tell the linker to let this library
         // be rpathed
-        if sess.targ_cfg.os == session::os_macos {
+        if sess.targ_cfg.os == session::OsMacos {
             args.push(~"-Wl,-install_name,@rpath/"
                       + output.filename().unwrap());
         }
@@ -1003,7 +1003,7 @@ pub fn link_args(sess: Session,
 
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
-    if sess.targ_cfg.os == session::os_linux {
+    if sess.targ_cfg.os == session::OsLinux {
         args.push_all([~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
@@ -1011,12 +1011,12 @@ pub fn link_args(sess: Session,
         // have to be explicit about linking to it. See #2510
         args.push(~"-lm");
     }
-    else if sess.targ_cfg.os == session::os_android {
+    else if sess.targ_cfg.os == session::OsAndroid {
         args.push_all([~"-ldl", ~"-llog",  ~"-lsupc++", ~"-lgnustl_shared"]);
         args.push(~"-lm");
     }
 
-    if sess.targ_cfg.os == session::os_freebsd {
+    if sess.targ_cfg.os == session::OsFreebsd {
         args.push_all([~"-pthread", ~"-lrt",
                        ~"-L/usr/local/lib", ~"-lexecinfo",
                        ~"-L/usr/local/lib/gcc46",
@@ -1030,7 +1030,7 @@ pub fn link_args(sess: Session,
     // linker from the dwarf unwind info. Unfortunately, it does not seem to
     // understand how to unwind our __morestack frame, so we have to turn it
     // off. This has impacted some other projects like GHC.
-    if sess.targ_cfg.os == session::os_macos {
+    if sess.targ_cfg.os == session::OsMacos {
         args.push(~"-Wl,-no_compact_unwind");
     }
 

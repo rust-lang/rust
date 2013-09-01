@@ -11,12 +11,12 @@
 /// Deprecated #[auto_encode] and #[auto_decode] syntax extensions
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base::*;
 
 pub fn expand_auto_encode(
     cx: @ExtCtxt,
-    span: span,
+    span: Span,
     _mitem: @ast::MetaItem,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
@@ -26,7 +26,7 @@ pub fn expand_auto_encode(
 
 pub fn expand_auto_decode(
     cx: @ExtCtxt,
-    span: span,
+    span: Span,
     _mitem: @ast::MetaItem,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {

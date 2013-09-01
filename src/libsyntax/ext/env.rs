@@ -15,7 +15,7 @@
  */
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -23,7 +23,7 @@ use ext::build::AstBuilder;
 use std::os;
 
 #[cfg(stage0)]
-pub fn expand_option_env(ext_cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_option_env(ext_cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let var = get_single_str_from_tts(ext_cx, sp, tts, "option_env!");
 
@@ -34,7 +34,7 @@ pub fn expand_option_env(ext_cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     MRExpr(e)
 }
 #[cfg(not(stage0))]
-pub fn expand_option_env(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_option_env(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let var = get_single_str_from_tts(cx, sp, tts, "option_env!");
 
@@ -45,7 +45,7 @@ pub fn expand_option_env(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     MRExpr(e)
 }
 
-pub fn expand_env(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_env(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let exprs = get_exprs_from_tts(cx, sp, tts);
 

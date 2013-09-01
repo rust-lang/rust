@@ -141,7 +141,7 @@ use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 #[deriving(Encodable, Decodable)]
 pub enum CaptureMode {
@@ -153,7 +153,7 @@ pub enum CaptureMode {
 #[deriving(Encodable, Decodable)]
 pub struct CaptureVar {
     def: def,         // Variable being accessed free
-    span: span,       // Location of an access to this variable
+    span: Span,       // Location of an access to this variable
     mode: CaptureMode // How variable is being accessed
 }
 
@@ -194,7 +194,7 @@ struct ComputeModesVisitor;
 
 impl visit::Visitor<VisitContext> for ComputeModesVisitor {
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
-                b:&Block, s:span, n:NodeId, e:VisitContext) {
+                b:&Block, s:Span, n:NodeId, e:VisitContext) {
         compute_modes_for_fn(*self, fk, fd, b, s, n, e);
     }
     fn visit_expr(&mut self, ex:@expr, e:VisitContext) {
@@ -250,7 +250,7 @@ fn compute_modes_for_fn(v: ComputeModesVisitor,
                         fk: &visit::fn_kind,
                         decl: &fn_decl,
                         body: &Block,
-                        span: span,
+                        span: Span,
                         id: NodeId,
                         cx: VisitContext) {
     let mut v = v;

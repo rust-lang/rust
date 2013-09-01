@@ -122,7 +122,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -144,7 +144,7 @@ pub mod method;
 pub struct SelfInfo {
     self_ty: ty::t,
     self_id: ast::NodeId,
-    span: span
+    span: Span
 }
 
 /// Fields that are part of a `FnCtxt` which are inherited by
@@ -398,7 +398,7 @@ impl Visitor<()> for GatherLocalsVisitor {
 
         // Don't descend into fns and items
     fn visit_fn(&mut self, _:&visit::fn_kind, _:&ast::fn_decl,
-                _:&ast::Block, _:span, _:ast::NodeId, _:()) { }
+                _:&ast::Block, _:Span, _:ast::NodeId, _:()) { }
     fn visit_item(&mut self, _:@ast::item, _:()) { }
 
 }
@@ -557,7 +557,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
 }
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
-                                 fields: ~[(ast::ident, span)]) {
+                                 fields: ~[(ast::ident, Span)]) {
     let mut field_names = HashMap::new();
 
     for p in fields.iter() {
@@ -577,7 +577,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: span) {
+pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
     // Check that the class is instantiable
@@ -665,7 +665,7 @@ impl AstConv for FnCtxt {
         ty::lookup_trait_def(self.tcx(), id)
     }
 
-    fn ty_infer(&self, _span: span) -> ty::t {
+    fn ty_infer(&self, _span: Span) -> ty::t {
         self.infcx().next_ty_var()
     }
 }
@@ -678,7 +678,7 @@ impl FnCtxt {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
     pub fn search_in_scope_regions(&self,
-                                   span: span,
+                                   span: Span,
                                    br: ty::bound_region)
                                    -> Result<ty::Region, RegionError> {
         let in_scope_regions = self.in_scope_regions;
@@ -706,14 +706,14 @@ impl FnCtxt {
 }
 
 impl RegionScope for FnCtxt {
-    fn anon_region(&self, span: span) -> Result<ty::Region, RegionError> {
+    fn anon_region(&self, span: Span) -> Result<ty::Region, RegionError> {
         result::Ok(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
-    fn self_region(&self, span: span) -> Result<ty::Region, RegionError> {
+    fn self_region(&self, span: Span) -> Result<ty::Region, RegionError> {
         self.search_in_scope_regions(span, ty::br_self)
     }
     fn named_region(&self,
-                    span: span,
+                    span: Span,
                     id: ast::ident) -> Result<ty::Region, RegionError> {
         self.search_in_scope_regions(span, ty::br_named(id))
     }
@@ -726,7 +726,7 @@ impl FnCtxt {
         }
     }
 
-    pub fn local_ty(&self, span: span, nid: ast::NodeId) -> ty::t {
+    pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
         match self.inh.locals.find(&nid) {
             Some(&t) => t,
             None => {
@@ -918,7 +918,7 @@ impl FnCtxt {
 
     pub fn region_var_if_parameterized(&self,
                                        rp: Option<ty::region_variance>,
-                                       span: span)
+                                       span: Span)
                                        -> OptVec<ty::Region> {
         match rp {
             None => opt_vec::Empty,
@@ -931,7 +931,7 @@ impl FnCtxt {
     }
 
     pub fn type_error_message(&self,
-                              sp: span,
+                              sp: Span,
                               mk_msg: &fn(~str) -> ~str,
                               actual_ty: ty::t,
                               err: Option<&ty::type_err>) {
@@ -939,7 +939,7 @@ impl FnCtxt {
     }
 
     pub fn report_mismatched_return_types(&self,
-                                          sp: span,
+                                          sp: Span,
                                           e: ty::t,
                                           a: ty::t,
                                           err: &ty::type_err) {
@@ -951,7 +951,7 @@ impl FnCtxt {
     }
 
     pub fn report_mismatched_types(&self,
-                                   sp: span,
+                                   sp: Span,
                                    e: ty::t,
                                    a: ty::t,
                                    err: &ty::type_err) {
@@ -959,7 +959,7 @@ impl FnCtxt {
     }
 }
 
-pub fn do_autoderef(fcx: @mut FnCtxt, sp: span, t: ty::t) -> (ty::t, uint) {
+pub fn do_autoderef(fcx: @mut FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
     /*!
      *
      * Autoderefs the type `t` as many times as possible, returning
@@ -1306,7 +1306,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_method_argument_types(
         fcx: @mut FnCtxt,
-        sp: span,
+        sp: Span,
         method_fn_ty: ty::t,
         callee_expr: @ast::expr,
         args: &[@ast::expr],
@@ -1336,7 +1336,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_argument_types(
         fcx: @mut FnCtxt,
-        sp: span,
+        sp: Span,
         fn_inputs: &[ty::t],
         callee_expr: @ast::expr,
         args: &[@ast::expr],
@@ -1597,7 +1597,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        then_blk: &ast::Block,
                        opt_else_expr: Option<@ast::expr>,
                        id: ast::NodeId,
-                       sp: span,
+                       sp: Span,
                        expected: Option<ty::t>) {
         check_expr_has_type(fcx, cond_expr, ty::mk_bool());
 
@@ -2005,7 +2005,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_struct_or_variant_fields(fcx: @mut FnCtxt,
-                                      span: span,
+                                      span: Span,
                                       class_id: ast::def_id,
                                       node_id: ast::NodeId,
                                       substitutions: ty::substs,
@@ -2096,7 +2096,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_struct_constructor(fcx: @mut FnCtxt,
                                 id: ast::NodeId,
-                                span: codemap::span,
+                                span: codemap::Span,
                                 class_id: ast::def_id,
                                 fields: &[ast::Field],
                                 base_expr: Option<@ast::expr>) {
@@ -2185,7 +2185,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     fn check_struct_enum_variant(fcx: @mut FnCtxt,
                                  id: ast::NodeId,
-                                 span: codemap::span,
+                                 span: codemap::Span,
                                  enum_id: ast::def_id,
                                  variant_id: ast::def_id,
                                  fields: &[ast::Field]) {
@@ -2259,7 +2259,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     match expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match ev.node {
-          ast::expr_lit(@codemap::spanned { node: ast::lit_str(_), _ }) => {
+          ast::expr_lit(@codemap::Spanned { node: ast::lit_str(_), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_estr(tcx, tt)
           }
@@ -2708,7 +2708,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 _ => false
                             }
                         }
-                        fn types_compatible(fcx: @mut FnCtxt, sp: span,
+                        fn types_compatible(fcx: @mut FnCtxt, sp: Span,
                                             t1: ty::t, t2: ty::t) -> bool {
                             if !is_vec(t1) {
                                 false
@@ -2897,7 +2897,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     unifier();
 }
 
-pub fn require_integral(fcx: @mut FnCtxt, sp: span, t: ty::t) {
+pub fn require_integral(fcx: @mut FnCtxt, sp: Span, t: ty::t) {
     if !type_is_integral(fcx, sp, t) {
         fcx.type_error_message(sp, |actual| {
             fmt!("mismatched types: expected integral type but found `%s`",
@@ -3022,7 +3022,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             let s_id = ast_util::stmt_id(*s);
             let s_ty = fcx.node_ty(s_id);
             if last_was_bot && !warned && match s.node {
-                  ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
+                  ast::stmt_decl(@codemap::Spanned { node: ast::decl_local(_),
                                                  _}, _) |
                   ast::stmt_expr(_, _) | ast::stmt_semi(_, _) => {
                     true
@@ -3070,7 +3070,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
 }
 
 pub fn check_const(ccx: @mut CrateCtxt,
-                   sp: span,
+                   sp: Span,
                    e: @ast::expr,
                    id: ast::NodeId) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
@@ -3080,7 +3080,7 @@ pub fn check_const(ccx: @mut CrateCtxt,
 }
 
 pub fn check_const_with_ty(fcx: @mut FnCtxt,
-                           _: span,
+                           _: Span,
                            e: @ast::expr,
                            declty: ty::t) {
     check_expr(fcx, e);
@@ -3102,7 +3102,7 @@ pub fn check_const_with_ty(fcx: @mut FnCtxt,
 ///
 /// is representable, but not instantiable.
 pub fn check_instantiable(tcx: ty::ctxt,
-                          sp: span,
+                          sp: Span,
                           item_id: ast::NodeId) {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
@@ -3113,7 +3113,7 @@ pub fn check_instantiable(tcx: ty::ctxt,
     }
 }
 
-pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::NodeId) {
+pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = ty::node_id_to_type(tcx, id);
     if ty::type_needs_subst(t) {
         tcx.sess.span_err(sp, "SIMD vector cannot be generic");
@@ -3143,7 +3143,7 @@ pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::NodeId) {
 }
 
 pub fn check_enum_variants(ccx: @mut CrateCtxt,
-                           sp: span,
+                           sp: Span,
                            vs: &[ast::variant],
                            id: ast::NodeId) {
     fn do_check(ccx: @mut CrateCtxt,
@@ -3236,13 +3236,13 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_def(fcx: @mut FnCtxt, sp: span, id: ast::NodeId) -> ast::def {
+pub fn lookup_def(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) -> ast::def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
 
 // Returns the type parameter count and the type for the given definition.
 pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
-                                      sp: span,
+                                      sp: Span,
                                       defn: ast::def)
                                    -> ty_param_bounds_and_ty {
     match defn {
@@ -3295,7 +3295,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         pth: &ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         def: ast::def,
-                        span: span,
+                        span: Span,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
 
@@ -3409,7 +3409,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: span, tp: ty::t)
+pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: Span, tp: ty::t)
                                -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
@@ -3424,32 +3424,32 @@ pub fn structurally_resolved_type(fcx: @mut FnCtxt, sp: span, tp: ty::t)
 }
 
 // Returns the one-level-deep structure of the given type.
-pub fn structure_of<'a>(fcx: @mut FnCtxt, sp: span, typ: ty::t)
+pub fn structure_of<'a>(fcx: @mut FnCtxt, sp: Span, typ: ty::t)
                         -> &'a ty::sty {
     &ty::get(structurally_resolved_type(fcx, sp, typ)).sty
 }
 
-pub fn type_is_integral(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+pub fn type_is_integral(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_integral(typ_s);
 }
 
-pub fn type_is_scalar(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+pub fn type_is_scalar(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_scalar(typ_s);
 }
 
-pub fn type_is_unsafe_ptr(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+pub fn type_is_unsafe_ptr(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_unsafe_ptr(typ_s);
 }
 
-pub fn type_is_region_ptr(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+pub fn type_is_region_ptr(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_region_ptr(typ_s);
 }
 
-pub fn type_is_c_like_enum(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+pub fn type_is_c_like_enum(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
@@ -3492,7 +3492,7 @@ pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
 }
 
 pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
-                             span: span,
+                             span: Span,
                              tps: &OptVec<ast::TyParam>,
                              ty: ty::t) {
     debug!("check_bounds_are_used(n_tps=%u, ty=%s)",

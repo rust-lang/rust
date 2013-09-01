@@ -16,7 +16,7 @@ use metadata::csearch::get_static_methods_if_impl;
 use metadata::csearch::{get_type_name_if_impl, get_struct_fields};
 use metadata::csearch;
 use metadata::cstore::find_extern_mod_stmt_cnum;
-use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
+use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{unnecessary_qualification, unused_imports};
 use middle::pat_util::pat_bindings;
@@ -32,7 +32,7 @@ use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
-use syntax::codemap::{span, dummy_sp, BytePos};
+use syntax::codemap::{Span, dummy_sp, BytePos};
 use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -46,7 +46,7 @@ use std::util;
 pub type DefMap = @mut HashMap<NodeId,def>;
 
 pub struct binding_info {
-    span: span,
+    span: Span,
     binding_mode: binding_mode,
 }
 
@@ -311,41 +311,44 @@ pub enum DuplicateCheckingMode {
 
 /// One local scope.
 pub struct Rib {
-    bindings: @mut HashMap<ident,def_like>,
-    self_binding: @mut Option<def_like>,
+    bindings: @mut HashMap<ident, DefLike>,
+    self_binding: @mut Option<DefLike>,
     kind: RibKind,
 }
 
-pub fn Rib(kind: RibKind) -> Rib {
-    Rib {
-        bindings: @mut HashMap::new(),
-        self_binding: @mut None,
-        kind: kind
+impl Rib {
+    pub fn new(kind: RibKind) -> Rib {
+        Rib {
+            bindings: @mut HashMap::new(),
+            self_binding: @mut None,
+            kind: kind
+        }
     }
 }
-
 
 /// One import directive.
 pub struct ImportDirective {
     privacy: Privacy,
     module_path: ~[ident],
     subclass: @ImportDirectiveSubclass,
-    span: span,
+    span: Span,
     id: NodeId,
 }
 
-pub fn ImportDirective(privacy: Privacy,
-                       module_path: ~[ident],
-                       subclass: @ImportDirectiveSubclass,
-                       span: span,
-                       id: NodeId)
-                    -> ImportDirective {
-    ImportDirective {
-        privacy: privacy,
-        module_path: module_path,
-        subclass: subclass,
-        span: span,
-        id: id
+impl ImportDirective {
+    pub fn new(privacy: Privacy,
+               module_path: ~[ident],
+               subclass: @ImportDirectiveSubclass,
+               span: Span,
+               id: NodeId)
+               -> ImportDirective {
+        ImportDirective {
+            privacy: privacy,
+            module_path: module_path,
+            subclass: subclass,
+            span: span,
+            id: id
+        }
     }
 }
 
@@ -355,12 +358,14 @@ pub struct Target {
     bindings: @mut NameBindings,
 }
 
-pub fn Target(target_module: @mut Module,
-              bindings: @mut NameBindings)
-           -> Target {
-    Target {
-        target_module: target_module,
-        bindings: bindings
+impl Target {
+    pub fn new(target_module: @mut Module,
+               bindings: @mut NameBindings)
+               -> Target {
+        Target {
+            target_module: target_module,
+            bindings: bindings
+        }
     }
 }
 
@@ -388,19 +393,19 @@ pub struct ImportResolution {
     type_id: NodeId,
 }
 
-pub fn ImportResolution(privacy: Privacy,
-                        id: NodeId) -> ImportResolution {
-    ImportResolution {
-        privacy: privacy,
-        type_id: id,
-        value_id: id,
-        outstanding_references: 0,
-        value_target: None,
-        type_target: None,
-    }
-}
-
 impl ImportResolution {
+    pub fn new(privacy: Privacy,
+               id: NodeId) -> ImportResolution {
+        ImportResolution {
+            privacy: privacy,
+            type_id: id,
+            value_id: id,
+            outstanding_references: 0,
+            value_target: None,
+            type_target: None,
+        }
+    }
+
     pub fn target_for_namespace(&self, namespace: Namespace)
                                 -> Option<Target> {
         match namespace {
@@ -478,27 +483,27 @@ pub struct Module {
     populated: bool,
 }
 
-pub fn Module(parent_link: ParentLink,
-              def_id: Option<def_id>,
-              kind: ModuleKind,
-              external: bool)
-              -> Module {
-    Module {
-        parent_link: parent_link,
-        def_id: def_id,
-        kind: kind,
-        children: @mut HashMap::new(),
-        imports: @mut ~[],
-        external_module_children: @mut HashMap::new(),
-        anonymous_children: @mut HashMap::new(),
-        import_resolutions: @mut HashMap::new(),
-        glob_count: 0,
-        resolved_import_count: 0,
-        populated: !external,
-    }
-}
-
 impl Module {
+    pub fn new(parent_link: ParentLink,
+                def_id: Option<def_id>,
+                kind: ModuleKind,
+                external: bool)
+                -> Module {
+        Module {
+            parent_link: parent_link,
+            def_id: def_id,
+            kind: kind,
+            children: @mut HashMap::new(),
+            imports: @mut ~[],
+            external_module_children: @mut HashMap::new(),
+            anonymous_children: @mut HashMap::new(),
+            import_resolutions: @mut HashMap::new(),
+            glob_count: 0,
+            resolved_import_count: 0,
+            populated: !external,
+        }
+    }
+
     pub fn all_imports_resolved(&self) -> bool {
         let imports = &mut *self.imports;
         return imports.len() == self.resolved_import_count;
@@ -510,14 +515,14 @@ pub struct TypeNsDef {
     privacy: Privacy,
     module_def: Option<@mut Module>,
     type_def: Option<def>,
-    type_span: Option<span>
+    type_span: Option<Span>
 }
 
 // Records a possibly-private value definition.
 pub struct ValueNsDef {
     privacy: Privacy,
     def: def,
-    value_span: Option<span>,
+    value_span: Option<Span>,
 }
 
 // Records the definitions (at most one for each namespace) that a name is
@@ -542,9 +547,9 @@ impl NameBindings {
                          def_id: Option<def_id>,
                          kind: ModuleKind,
                          external: bool,
-                         sp: span) {
+                         sp: Span) {
         // Merges the module with the existing type def or creates a new one.
-        let module_ = @mut Module(parent_link, def_id, kind, external);
+        let module_ = @mut Module::new(parent_link, def_id, kind, external);
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
@@ -572,10 +577,10 @@ impl NameBindings {
                            def_id: Option<def_id>,
                            kind: ModuleKind,
                            external: bool,
-                           _sp: span) {
+                           _sp: Span) {
         match self.type_def {
             None => {
-                let module = @mut Module(parent_link, def_id, kind, external);
+                let module = @mut Module::new(parent_link, def_id, kind, external);
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module),
@@ -586,7 +591,7 @@ impl NameBindings {
             Some(type_def) => {
                 match type_def.module_def {
                     None => {
-                        let module = @mut Module(parent_link,
+                        let module = @mut Module::new(parent_link,
                                                  def_id,
                                                  kind,
                                                  external);
@@ -604,7 +609,7 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    pub fn define_type(@mut self, privacy: Privacy, def: def, sp: span) {
+    pub fn define_type(@mut self, privacy: Privacy, def: def, sp: Span) {
         // Merges the type with the existing type def or creates a new one.
         match self.type_def {
             None => {
@@ -627,7 +632,7 @@ impl NameBindings {
     }
 
     /// Records a value definition.
-    pub fn define_value(@mut self, privacy: Privacy, def: def, sp: span) {
+    pub fn define_value(@mut self, privacy: Privacy, def: def, sp: Span) {
         self.value_def = Some(ValueNsDef { privacy: privacy, def: def, value_span: Some(sp) });
     }
 
@@ -723,7 +728,7 @@ impl NameBindings {
         }
     }
 
-    pub fn span_for_namespace(&self, namespace: Namespace) -> Option<span> {
+    pub fn span_for_namespace(&self, namespace: Namespace) -> Option<Span> {
         if self.defined_in_namespace(namespace) {
             match namespace {
                 TypeNS  => {
@@ -1016,7 +1021,7 @@ impl Resolver {
                      reduced_graph_parent: ReducedGraphParent,
                      duplicate_checking_mode: DuplicateCheckingMode,
                      // For printing errors
-                     sp: span)
+                     sp: Span)
                      -> (@mut NameBindings, ReducedGraphParent) {
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
@@ -1571,7 +1576,7 @@ impl Resolver {
                         let def_id = def_id { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(parent), name);
-                        let external_module = @mut Module(parent_link,
+                        let external_module = @mut Module::new(parent_link,
                                                           Some(def_id),
                                                           NormalModuleKind,
                                                           false);
@@ -1635,7 +1640,7 @@ impl Resolver {
                    block_id);
 
             let parent_module = self.get_module_from_parent(parent);
-            let new_module = @mut Module(
+            let new_module = @mut Module::new(
                 BlockParentLink(parent_module, block_id),
                 None,
                 AnonymousModuleKind,
@@ -1777,10 +1782,10 @@ impl Resolver {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(@mut self,
                                                   root: @mut Module,
-                                                  def_like: def_like,
+                                                  def_like: DefLike,
                                                   ident: ident) {
         match def_like {
-            dl_def(def) => {
+            DlDef(def) => {
                 // Add the new child item, if necessary.
                 match def {
                     def_foreign_mod(def_id) => {
@@ -1811,7 +1816,7 @@ impl Resolver {
                     }
                 }
             }
-            dl_impl(def) => {
+            DlImpl(def) => {
                 // We only process static methods of impls here.
                 match get_type_name_if_impl(self.session.cstore, def) {
                     None => {}
@@ -1900,7 +1905,7 @@ impl Resolver {
                     }
                 }
             }
-            dl_field => {
+            DlField => {
                 debug!("(building reduced graph for external crate) \
                         ignoring field");
             }
@@ -1959,9 +1964,9 @@ impl Resolver {
                                   module_: @mut Module,
                                   module_path: ~[ident],
                                   subclass: @ImportDirectiveSubclass,
-                                  span: span,
+                                  span: Span,
                                   id: NodeId) {
-        let directive = @ImportDirective(privacy, module_path,
+        let directive = @ImportDirective::new(privacy, module_path,
                                          subclass, span, id);
         module_.imports.push(directive);
 
@@ -1989,7 +1994,7 @@ impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
-                        let resolution = @mut ImportResolution(privacy, id);
+                        let resolution = @mut ImportResolution::new(privacy, id);
                         resolution.outstanding_references = 1;
                         module_.import_resolutions.insert(target, resolution);
                     }
@@ -2402,7 +2407,7 @@ impl Resolver {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found value target");
                 import_resolution.value_target =
-                    Some(Target(target_module, name_bindings));
+                    Some(Target::new(target_module, name_bindings));
                 import_resolution.value_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
@@ -2415,7 +2420,7 @@ impl Resolver {
                 debug!("(resolving single import) found type target: %?",
                         name_bindings.type_def.unwrap().type_def);
                 import_resolution.type_target =
-                    Some(Target(target_module, name_bindings));
+                    Some(Target::new(target_module, name_bindings));
                 import_resolution.type_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
@@ -2522,7 +2527,7 @@ impl Resolver {
                 None if target_import_resolution.privacy == Public => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
-                        @mut ImportResolution(privacy, id);
+                        @mut ImportResolution::new(privacy, id);
                     new_import_resolution.value_target =
                         target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2564,7 +2569,7 @@ impl Resolver {
             match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @mut ImportResolution(privacy, id);
+                    dest_import_resolution = @mut ImportResolution::new(privacy, id);
                     module_.import_resolutions.insert
                         (ident, dest_import_resolution);
                 }
@@ -2584,13 +2589,13 @@ impl Resolver {
             if name_bindings.defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
-                    Some(Target(containing_module, name_bindings));
+                    Some(Target::new(containing_module, name_bindings));
                 dest_import_resolution.value_id = id;
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
-                    Some(Target(containing_module, name_bindings));
+                    Some(Target::new(containing_module, name_bindings));
                 dest_import_resolution.type_id = id;
             }
         };
@@ -2617,7 +2622,7 @@ impl Resolver {
                                          module_: @mut Module,
                                          module_path: &[ident],
                                          index: uint,
-                                         span: span,
+                                         span: Span,
                                          mut name_search_type: NameSearchType)
                                          -> ResolveResult<@mut Module> {
         let mut search_module = module_;
@@ -2637,7 +2642,7 @@ impl Resolver {
                     let segment_name = self.session.str_of(name);
                     let module_name = self.module_to_str(search_module);
                     if "???" == module_name {
-                        let span = span {
+                        let span = Span {
                             lo: span.lo,
                             hi: span.lo + BytePos(segment_name.len()),
                             expn_info: span.expn_info,
@@ -2726,7 +2731,7 @@ impl Resolver {
                                module_: @mut Module,
                                module_path: &[ident],
                                use_lexical_scope: UseLexicalScopeFlag,
-                               span: span,
+                               span: Span,
                                name_search_type: NameSearchType)
                                -> ResolveResult<@mut Module> {
         let module_path_len = module_path.len();
@@ -2834,7 +2839,7 @@ impl Resolver {
         match module_.children.find(&name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
-                return Success(Target(module_, *name_bindings));
+                return Success(Target::new(module_, *name_bindings));
             }
             Some(_) | None => { /* Not found; continue. */ }
         }
@@ -2873,7 +2878,7 @@ impl Resolver {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
                             *module);
-                    return Success(Target(module_, name_bindings));
+                    return Success(Target::new(module_, name_bindings));
                 }
             }
         }
@@ -3090,7 +3095,7 @@ impl Resolver {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("(resolving name in module) found node as child");
-                return Success(Target(module_, *name_bindings));
+                return Success(Target::new(module_, *name_bindings));
             }
             Some(_) | None => {
                 // Continue.
@@ -3148,7 +3153,7 @@ impl Resolver {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
                             *module);
-                    return Success(Target(module_, name_bindings));
+                    return Success(Target::new(module_, name_bindings));
                 }
             }
         }
@@ -3382,24 +3387,24 @@ impl Resolver {
     pub fn upvarify(@mut self,
                     ribs: &mut ~[@Rib],
                     rib_index: uint,
-                    def_like: def_like,
-                    span: span,
+                    def_like: DefLike,
+                    span: Span,
                     allow_capturing_self: AllowCapturingSelfFlag)
-                    -> Option<def_like> {
+                    -> Option<DefLike> {
         let mut def;
         let is_ty_param;
 
         match def_like {
-            dl_def(d @ def_local(*)) | dl_def(d @ def_upvar(*)) |
-            dl_def(d @ def_arg(*)) | dl_def(d @ def_binding(*)) => {
+            DlDef(d @ def_local(*)) | DlDef(d @ def_upvar(*)) |
+            DlDef(d @ def_arg(*)) | DlDef(d @ def_binding(*)) => {
                 def = d;
                 is_ty_param = false;
             }
-            dl_def(d @ def_ty_param(*)) => {
+            DlDef(d @ def_ty_param(*)) => {
                 def = d;
                 is_ty_param = true;
             }
-            dl_def(d @ def_self(*))
+            DlDef(d @ def_self(*))
                     if allow_capturing_self == DontAllowCapturingSelf => {
                 def = d;
                 is_ty_param = false;
@@ -3488,15 +3493,15 @@ impl Resolver {
             rib_index += 1;
         }
 
-        return Some(dl_def(def));
+        return Some(DlDef(def));
     }
 
     pub fn search_ribs(@mut self,
                        ribs: &mut ~[@Rib],
                        name: ident,
-                       span: span,
+                       span: Span,
                        allow_capturing_self: AllowCapturingSelfFlag)
-                       -> Option<def_like> {
+                       -> Option<DefLike> {
         // FIXME #4950: This should not use a while loop.
         // FIXME #4950: Try caching?
 
@@ -3584,10 +3589,10 @@ impl Resolver {
 
             item_trait(ref generics, ref traits, ref methods) => {
                 // Create a new rib for the self type.
-                let self_type_rib = @Rib(NormalRibKind);
+                let self_type_rib = @Rib::new(NormalRibKind);
                 self.type_ribs.push(self_type_rib);
                 self_type_rib.bindings.insert(self.type_self_ident,
-                                              dl_def(def_self_ty(item.id)));
+                                              DlDef(def_self_ty(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
@@ -3714,14 +3719,14 @@ impl Resolver {
             HasTypeParameters(generics, node_id, initial_index,
                               rib_kind) => {
 
-                let function_type_rib = @Rib(rib_kind);
+                let function_type_rib = @Rib::new(rib_kind);
                 self.type_ribs.push(function_type_rib);
 
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
                     let name = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
-                    let def_like = dl_def(def_ty_param
+                    let def_like = DlDef(def_ty_param
                         (local_def(type_parameter.id),
                          index + initial_index));
                     // Associate this type parameter with
@@ -3751,13 +3756,13 @@ impl Resolver {
     }
 
     pub fn with_label_rib(@mut self, f: &fn()) {
-        self.label_ribs.push(@Rib(NormalRibKind));
+        self.label_ribs.push(@Rib::new(NormalRibKind));
         f();
         self.label_ribs.pop();
     }
 
     pub fn with_constant_rib(@mut self, f: &fn()) {
-        self.value_ribs.push(@Rib(ConstantItemRibKind));
+        self.value_ribs.push(@Rib::new(ConstantItemRibKind));
         f();
         self.value_ribs.pop();
     }
@@ -3770,11 +3775,11 @@ impl Resolver {
                             self_binding: SelfBinding,
                             visitor: &mut ResolveVisitor) {
         // Create a value rib for the function.
-        let function_value_rib = @Rib(rib_kind);
+        let function_value_rib = @Rib::new(rib_kind);
         self.value_ribs.push(function_value_rib);
 
         // Create a label rib for the function.
-        let function_label_rib = @Rib(rib_kind);
+        let function_label_rib = @Rib::new(rib_kind);
         self.label_ribs.push(function_label_rib);
 
         // If this function has type parameters, add them now.
@@ -3796,7 +3801,7 @@ impl Resolver {
                     // Nothing to do.
                 }
                 HasSelfBinding(self_node_id) => {
-                    let def_like = dl_def(def_self(self_node_id));
+                    let def_like = DlDef(def_self(self_node_id));
                     *function_value_rib.self_binding = Some(def_like);
                 }
             }
@@ -4029,7 +4034,7 @@ impl Resolver {
 
     pub fn resolve_module(@mut self,
                           module_: &_mod,
-                          _span: span,
+                          _span: Span,
                           _name: ident,
                           id: NodeId,
                           visitor: &mut ResolveVisitor) {
@@ -4110,7 +4115,7 @@ impl Resolver {
     }
 
     pub fn resolve_arm(@mut self, arm: &arm, visitor: &mut ResolveVisitor) {
-        self.value_ribs.push(@Rib(NormalRibKind));
+        self.value_ribs.push(@Rib::new(NormalRibKind));
 
         let bindings_list = @mut HashMap::new();
         for pattern in arm.pats.iter() {
@@ -4130,7 +4135,7 @@ impl Resolver {
 
     pub fn resolve_block(@mut self, block: &Block, visitor: &mut ResolveVisitor) {
         debug!("(resolving block) entering block");
-        self.value_ribs.push(@Rib(NormalRibKind));
+        self.value_ribs.push(@Rib::new(NormalRibKind));
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
@@ -4366,7 +4371,7 @@ impl Resolver {
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
                                     last_rib.bindings.insert(ident,
-                                                             dl_def(def));
+                                                             DlDef(def));
                                     bindings_list.insert(ident, pat_id);
                                 }
                                 Some(b) => {
@@ -4387,7 +4392,7 @@ impl Resolver {
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
                                     last_rib.bindings.insert(ident,
-                                                             dl_def(def));
+                                                             DlDef(def));
                                 }
                             }
                         }
@@ -4602,7 +4607,7 @@ impl Resolver {
                               identifier: ident,
                               namespace: Namespace,
                               check_ribs: bool,
-                              span: span)
+                              span: Span)
                               -> Option<def> {
         if check_ribs {
             match self.resolve_identifier_in_local_ribs(identifier,
@@ -4826,7 +4831,7 @@ impl Resolver {
     pub fn resolve_identifier_in_local_ribs(@mut self,
                                             ident: ident,
                                             namespace: Namespace,
-                                            span: span)
+                                            span: Span)
                                             -> Option<def> {
         // Check the local set of ribs.
         let search_result;
@@ -4843,20 +4848,20 @@ impl Resolver {
         }
 
         match search_result {
-            Some(dl_def(def)) => {
+            Some(DlDef(def)) => {
                 debug!("(resolving path in local ribs) resolved `%s` to \
                         local: %?",
                        self.session.str_of(ident),
                        def);
                 return Some(def);
             }
-            Some(dl_field) | Some(dl_impl(_)) | None => {
+            Some(DlField) | Some(DlImpl(_)) | None => {
                 return None;
             }
         }
     }
 
-    pub fn resolve_self_value_in_local_ribs(@mut self, span: span)
+    pub fn resolve_self_value_in_local_ribs(@mut self, span: Span)
                                             -> Option<def> {
         // FIXME #4950: This should not use a while loop.
         let ribs = &mut self.value_ribs;
@@ -4870,7 +4875,7 @@ impl Resolver {
                                         def_like,
                                         span,
                                         DontAllowCapturingSelf) {
-                        Some(dl_def(def)) => return Some(def),
+                        Some(DlDef(def)) => return Some(def),
                         _ => {
                             if self.session.has_errors() {
                                 // May happen inside a nested fn item, cf #6642.
@@ -4929,7 +4934,7 @@ impl Resolver {
         rs
     }
 
-    fn resolve_error(@mut self, span: span, s: &str) {
+    fn resolve_error(@mut self, span: Span, s: &str) {
         if self.emit_errors {
             self.session.span_err(span, s);
         }
@@ -5135,7 +5140,7 @@ impl Resolver {
                 do self.with_label_rib {
                     {
                         let this = &mut *self;
-                        let def_like = dl_def(def_label(expr.id));
+                        let def_like = DlDef(def_label(expr.id));
                         let rib = this.label_ribs[this.label_ribs.len() - 1];
                         rib.bindings.insert(label, def_like);
                     }
@@ -5155,7 +5160,7 @@ impl Resolver {
                                                    `%s`",
                                                    self.session.str_of(
                                                        label))),
-                    Some(dl_def(def @ def_label(_))) => {
+                    Some(DlDef(def @ def_label(_))) => {
                         self.record_def(expr.id, def)
                     }
                     Some(_) => {

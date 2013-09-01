@@ -10,13 +10,13 @@
 
 use ast;
 use ast::{MetaItem, item, expr};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_to_str(cx: @ExtCtxt,
-                              span: span,
+                              span: Span,
                               mitem: @MetaItem,
                               in_items: ~[@item])
     -> ~[@item] {
@@ -43,7 +43,7 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
 // std::sys::log_str, but this isn't sufficient because it doesn't invoke the
 // to_str() method on each field. Hence we mirror the logic of the log_str()
 // method, but with tweaks to call to_str() on sub-fields.
-fn to_str_substructure(cx: @ExtCtxt, span: span,
+fn to_str_substructure(cx: @ExtCtxt, span: Span,
                        substr: &Substructure) -> @expr {
     let to_str = cx.ident_of("to_str");
 
