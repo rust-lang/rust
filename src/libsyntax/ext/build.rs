@@ -878,6 +878,15 @@ impl AstBuilder for @ExtCtxt {
     }
 }
 
+struct Duplicator {
+    cx: @ExtCtxt,
+}
+
+impl fold::ast_fold for Duplicator {
+    fn new_id(&self, _: NodeId) -> NodeId {
+        self.cx.next_id()
+    }
+}
 
 pub trait Duplicate {
     //
@@ -891,12 +900,9 @@ pub trait Duplicate {
 
 impl Duplicate for @ast::expr {
     fn duplicate(&self, cx: @ExtCtxt) -> @ast::expr {
-        let folder = fold::default_ast_fold();
-        let folder = @fold::AstFoldFns {
-            new_id: |_| cx.next_id(),
-            ..*folder
-        };
-        let folder = fold::make_fold(folder);
+        let folder = @Duplicator {
+            cx: cx,
+        } as @fold::ast_fold;
         folder.fold_expr(*self)
     }
 }

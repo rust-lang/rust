@@ -1,3 +1,8 @@
+// xfail-test
+
+// xfail'd because the lint pass doesn't know to ignore standard library
+// stuff.
+
 // -*- rust -*-
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
