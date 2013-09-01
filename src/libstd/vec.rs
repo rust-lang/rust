@@ -2911,16 +2911,6 @@ mod tests {
     }
 
     #[test]
-    fn test_rposition() {
-        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
-
-        assert_eq!(v.iter().rposition(f), Some(3u));
-        assert!(v.iter().rposition(g).is_none());
-    }
-
-    #[test]
     fn test_bsearch_elem() {
         assert_eq!([1,2,3,4,5].bsearch_elem(&5), Some(4));
         assert_eq!([1,2,3,4,5].bsearch_elem(&4), Some(3));
