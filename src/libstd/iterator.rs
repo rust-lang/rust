@@ -41,6 +41,13 @@ pub trait Extendable<A>: FromIterator<A> {
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
+///
+/// The Iterator protocol states that an iterator yields a (potentially-empty,
+/// potentially-infinite) sequence of values, and returns `None` to signal that
+/// it's finished. The Iterator protocol does not define behavior after `None`
+/// is returned. A concrete Iterator implementation may choose to behave however
+/// it wishes, either by returning `None` infinitely, or by doing something
+/// else.
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
     fn next(&mut self) -> Option<A>;
@@ -298,6 +305,36 @@ pub trait Iterator<A> {
     fn flat_map<'r, B, U: Iterator<B>>(self, f: &'r fn(A) -> U)
         -> FlatMap<'r, A, Self, U> {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+    }
+
+    /// Creates an iterator that yields `None` forever after the underlying
+    /// iterator yields `None`. Random-access iterator behavior is not
+    /// affected, only single and double-ended iterator behavior.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// fn process<U: Iterator<int>>(it: U) -> int {
+    ///     let mut it = it.fuse();
+    ///     let mut sum = 0;
+    ///     for x in it {
+    ///         if x > 5 {
+    ///             break;
+    ///         }
+    ///         sum += x;
+    ///     }
+    ///     // did we exhaust the iterator?
+    ///     if it.next().is_none() {
+    ///         sum += 1000;
+    ///     }
+    ///     sum
+    /// }
+    /// let x = ~[1,2,3,7,8,9];
+    /// assert_eq!(process(x.move_iter()), 1006);
+    /// ~~~
+    #[inline]
+    fn fuse(self) -> Fuse<Self> {
+        Fuse{iter: self, done: false}
     }
 
     /// Creates an iterator that calls a function with a reference to each
@@ -892,9 +929,12 @@ pub struct Zip<T, U> {
 impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     #[inline]
     fn next(&mut self) -> Option<(A, B)> {
-        match (self.a.next(), self.b.next()) {
-            (Some(x), Some(y)) => Some((x, y)),
-            _ => None
+        match self.a.next() {
+            None => None,
+            Some(x) => match self.b.next() {
+                None => None,
+                Some(y) => Some((x, y))
+            }
         }
     }
 
@@ -925,9 +965,12 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 
     #[inline]
     fn idx(&self, index: uint) -> Option<(A, B)> {
-        match (self.a.idx(index), self.b.idx(index)) {
-            (Some(x), Some(y)) => Some((x, y)),
-            _ => None
+        match self.a.idx(index) {
+            None => None,
+            Some(x) => match self.b.idx(index) {
+                None => None,
+                Some(y) => Some((x, y))
+            }
         }
     }
 }
@@ -1418,6 +1461,79 @@ impl<'self,
                 next => self.backiter = next,
             }
         }
+    }
+}
+
+/// An iterator that yields `None` forever after the underlying iterator
+/// yields `None` once.
+#[deriving(Clone, DeepClone)]
+pub struct Fuse<T> {
+    priv iter: T,
+    priv done: bool
+}
+
+impl<A, T: Iterator<A>> Iterator<A> for Fuse<T> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.done {
+            None
+        } else {
+            match self.iter.next() {
+                None => {
+                    self.done = true;
+                    None
+                }
+                x => x
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        if self.done {
+            (0, Some(0))
+        } else {
+            self.iter.size_hint()
+        }
+    }
+}
+
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Fuse<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        if self.done {
+            None
+        } else {
+            match self.iter.next_back() {
+                None => {
+                    self.done = true;
+                    None
+                }
+                x => x
+            }
+        }
+    }
+}
+
+// Allow RandomAccessIterators to be fused without affecting random-access behavior
+impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Fuse<T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.iter.indexable()
+    }
+
+    #[inline]
+    fn idx(&self, index: uint) -> Option<A> {
+        self.iter.idx(index)
+    }
+}
+
+impl<T> Fuse<T> {
+    /// Resets the fuse such that the next call to .next() or .next_back() will
+    /// call the underlying iterator again even if it prevously returned None.
+    #[inline]
+    fn reset_fuse(&mut self) {
+        self.done = false
     }
 }
 
