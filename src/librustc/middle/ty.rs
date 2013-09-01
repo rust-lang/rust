@@ -56,7 +56,7 @@ pub static INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 #[deriving(Eq, IterBytes)]
 pub struct field {
-    ident: ast::ident,
+    ident: ast::Ident,
     mt: mt
 }
 
@@ -68,7 +68,7 @@ pub enum MethodContainer {
 
 #[deriving(Clone)]
 pub struct Method {
-    ident: ast::ident,
+    ident: ast::Ident,
     generics: ty::Generics,
     transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
@@ -82,7 +82,7 @@ pub struct Method {
 }
 
 impl Method {
-    pub fn new(ident: ast::ident,
+    pub fn new(ident: ast::Ident,
                generics: ty::Generics,
                transformed_self_ty: Option<ty::t>,
                fty: BareFnTy,
@@ -122,7 +122,7 @@ impl Method {
 
 pub struct Impl {
     did: def_id,
-    ident: ident,
+    ident: Ident,
     methods: ~[@Method]
 }
 
@@ -156,7 +156,7 @@ pub enum SelfMode {
 }
 
 pub struct field_ty {
-    ident: ident,
+    ident: Ident,
     id: def_id,
     vis: ast::visibility,
 }
@@ -431,7 +431,7 @@ pub struct ClosureTy {
  * - `output` is the return type. */
 #[deriving(Clone, Eq, IterBytes)]
 pub struct FnSig {
-    bound_lifetime_names: OptVec<ast::ident>,
+    bound_lifetime_names: OptVec<ast::Ident>,
     inputs: ~[t],
     output: t
 }
@@ -504,7 +504,7 @@ pub enum bound_region {
     br_anon(uint),
 
     /// Named region parameters for functions (a in &'a T)
-    br_named(ast::ident),
+    br_named(ast::Ident),
 
     /// Fresh bound identifiers created during GLB computations.
     br_fresh(uint),
@@ -684,7 +684,7 @@ pub enum type_err {
     terr_ty_param_size(expected_found<uint>),
     terr_record_size(expected_found<uint>),
     terr_record_mutability,
-    terr_record_fields(expected_found<ident>),
+    terr_record_fields(expected_found<Ident>),
     terr_arg_count,
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
@@ -693,7 +693,7 @@ pub enum type_err {
     terr_regions_overly_polymorphic(bound_region, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<vstore>),
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
-    terr_in_field(@type_err, ast::ident),
+    terr_in_field(@type_err, ast::Ident),
     terr_sorts(expected_found<t>),
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
@@ -848,7 +848,7 @@ impl ToStr for IntVarValue {
 
 #[deriving(Clone)]
 pub struct TypeParameterDef {
-    ident: ast::ident,
+    ident: ast::Ident,
     def_id: ast::def_id,
     bounds: @ParamBounds
 }
@@ -3359,13 +3359,13 @@ pub fn stmt_node_id(s: &ast::stmt) -> ast::NodeId {
     }
 }
 
-pub fn field_idx(id: ast::ident, fields: &[field]) -> Option<uint> {
+pub fn field_idx(id: ast::Ident, fields: &[field]) -> Option<uint> {
     let mut i = 0u;
     for f in fields.iter() { if f.ident == id { return Some(i); } i += 1u; }
     return None;
 }
 
-pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
+pub fn field_idx_strict(tcx: ty::ctxt, id: ast::Ident, fields: &[field])
                      -> uint {
     let mut i = 0u;
     for f in fields.iter() { if f.ident == id { return i; } i += 1u; }
@@ -3375,7 +3375,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
+pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
     meths.iter().position(|m| m.ident == id)
 }
 
@@ -3823,9 +3823,9 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
 #[deriving(Clone)]
 pub struct VariantInfo {
     args: ~[t],
-    arg_names: Option<~[ast::ident]>,
+    arg_names: Option<~[ast::Ident]>,
     ctor_ty: t,
-    name: ast::ident,
+    name: ast::Ident,
     id: ast::def_id,
     disr_val: Disr,
     vis: visibility

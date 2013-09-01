@@ -16,7 +16,7 @@ use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::Span;
 
-pub type PatIdMap = HashMap<ident, NodeId>;
+pub type PatIdMap = HashMap<Ident, NodeId>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.

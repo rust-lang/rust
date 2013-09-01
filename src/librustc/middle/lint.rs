@@ -1033,7 +1033,7 @@ fn lint_path_statement() -> @mut OuterLint {
 }
 
 fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
-    fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
+    fn is_camel_case(cx: ty::ctxt, ident: ast::Ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
         let ident = ident.trim_chars(&'_');
@@ -1044,7 +1044,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
             !ident.contains_char('_')
     }
 
-    fn check_case(cx: &Context, sort: &str, ident: ast::ident, span: Span) {
+    fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         if !is_camel_case(cx.tcx, ident) {
             cx.span_lint(
                 non_camel_case_types, span,

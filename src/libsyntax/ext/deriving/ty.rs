@@ -14,7 +14,7 @@ explicit `Self` type to use when specifying impls to be derived.
 */
 
 use ast;
-use ast::{expr,Generics,ident};
+use ast::{expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
@@ -59,7 +59,7 @@ impl<'self> Path<'self> {
     pub fn to_ty(&self,
                  cx: @ExtCtxt,
                  span: Span,
-                 self_ty: ident,
+                 self_ty: Ident,
                  self_generics: &Generics)
                  -> ast::Ty {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
@@ -67,7 +67,7 @@ impl<'self> Path<'self> {
     pub fn to_path(&self,
                    cx: @ExtCtxt,
                    span: Span,
-                   self_ty: ident,
+                   self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
         let idents = self.path.map(|s| cx.ident_of(*s) );
@@ -120,7 +120,7 @@ impl<'self> Ty<'self> {
     pub fn to_ty(&self,
                  cx: @ExtCtxt,
                  span: Span,
-                 self_ty: ident,
+                 self_ty: Ident,
                  self_generics: &Generics)
                  -> ast::Ty {
         match *self {
@@ -158,7 +158,7 @@ impl<'self> Ty<'self> {
     pub fn to_path(&self,
                    cx: @ExtCtxt,
                    span: Span,
-                   self_ty: ident,
+                   self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
         match *self {
@@ -186,7 +186,7 @@ impl<'self> Ty<'self> {
 
 
 fn mk_ty_param(cx: @ExtCtxt, span: Span, name: &str, bounds: &[Path],
-               self_ident: ident, self_generics: &Generics) -> ast::TyParam {
+               self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds = opt_vec::from(
         do bounds.map |b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
@@ -217,7 +217,7 @@ impl<'self> LifetimeBounds<'self> {
     pub fn to_generics(&self,
                        cx: @ExtCtxt,
                        span: Span,
-                       self_ty: ident,
+                       self_ty: Ident,
                        self_generics: &Generics)
                        -> Generics {
         let lifetimes = do self.lifetimes.map |lt| {

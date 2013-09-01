@@ -76,7 +76,7 @@ use std::vec;
 use std::local_data;
 use extra::time;
 use extra::sort;
-use syntax::ast::ident;
+use syntax::ast::Ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
@@ -1203,7 +1203,7 @@ pub fn scope_block(bcx: @mut Block,
 
 pub fn loop_scope_block(bcx: @mut Block,
                         loop_break: @mut Block,
-                        loop_label: Option<ident>,
+                        loop_label: Option<Ident>,
                         n: &str,
                         opt_node_info: Option<NodeInfo>) -> @mut Block {
     return new_block(bcx.fcx, Some(bcx), Some(@mut ScopeInfo {
