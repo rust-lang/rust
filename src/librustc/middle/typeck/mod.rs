@@ -61,7 +61,7 @@ use std::hashmap::HashMap;
 use std::result;
 use extra::list::List;
 use extra::list;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
 use syntax::opt_vec;
@@ -249,7 +249,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::NodeId) -> ast::def {
+pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::def {
     match tcx.def_map.find(&id) {
       Some(&x) => x,
       _ => {
@@ -258,7 +258,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::NodeId) -> ast::def {
     }
 }
 
-pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: span, id: ast::NodeId)
+pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
                    -> ast::def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
@@ -275,7 +275,7 @@ pub fn require_same_types(
     tcx: ty::ctxt,
     maybe_infcx: Option<@mut infer::InferCtxt>,
     t1_is_expected: bool,
-    span: span,
+    span: Span,
     t1: ty::t,
     t2: ty::t,
     msg: &fn() -> ~str) -> bool {
@@ -330,7 +330,7 @@ impl get_and_find_region for isr_alist {
 
 fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
-                    main_span: span) {
+                    main_span: Span) {
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
@@ -374,7 +374,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
 
 fn check_start_fn_ty(ccx: &CrateCtxt,
                      start_id: ast::NodeId,
-                     start_span: span) {
+                     start_span: Span) {
     let tcx = ccx.tcx;
     let start_t = ty::node_id_to_type(tcx, start_id);
     match ty::get(start_t).sty {

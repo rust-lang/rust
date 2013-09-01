@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::{span, respan};
+use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -30,7 +30,7 @@ enum ArgumentType {
 
 struct Context {
     ecx: @ExtCtxt,
-    fmtsp: span,
+    fmtsp: Span,
 
     // Parsed argument expressions and the types that we've found so far for
     // them.
@@ -53,7 +53,7 @@ struct Context {
 impl Context {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other fmt! expressions.
-    fn parse_args(&mut self, sp: span,
+    fn parse_args(&mut self, sp: Span,
                   leading_expr: bool,
                   tts: &[ast::token_tree]) -> (Option<@ast::expr>,
                                                Option<@ast::expr>) {
@@ -294,7 +294,7 @@ impl Context {
     ///
     /// Obviously `Some(Some(x)) != Some(Some(y))`, but we consider it true
     /// that: `Some(None) == Some(Some(x))`
-    fn verify_same(&self, sp: span, ty: ArgumentType,
+    fn verify_same(&self, sp: Span, ty: ArgumentType,
                    before: Option<ArgumentType>) {
         if ty == Unknown { return }
         let cur = match before {
@@ -636,7 +636,7 @@ impl Context {
         self.ecx.expr_block(self.ecx.block(self.fmtsp, lets, Some(result)))
     }
 
-    fn format_arg(&self, sp: span, arg: Either<uint, @str>,
+    fn format_arg(&self, sp: Span, arg: Either<uint, @str>,
                   ident: ast::ident) -> @ast::expr {
         let ty = match arg {
             Left(i) => self.arg_types[i].unwrap(),
@@ -697,22 +697,22 @@ impl Context {
     }
 }
 
-pub fn expand_format(ecx: @ExtCtxt, sp: span,
+pub fn expand_format(ecx: @ExtCtxt, sp: Span,
                      tts: &[ast::token_tree]) -> base::MacResult {
     expand_ifmt(ecx, sp, tts, false, false, "format")
 }
 
-pub fn expand_write(ecx: @ExtCtxt, sp: span,
+pub fn expand_write(ecx: @ExtCtxt, sp: Span,
                     tts: &[ast::token_tree]) -> base::MacResult {
     expand_ifmt(ecx, sp, tts, true, false, "write")
 }
 
-pub fn expand_writeln(ecx: @ExtCtxt, sp: span,
+pub fn expand_writeln(ecx: @ExtCtxt, sp: Span,
                       tts: &[ast::token_tree]) -> base::MacResult {
     expand_ifmt(ecx, sp, tts, true, true, "write")
 }
 
-fn expand_ifmt(ecx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
+fn expand_ifmt(ecx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
                leading_arg: bool, append_newline: bool,
                function: &str) -> base::MacResult {
     let mut cx = Context {

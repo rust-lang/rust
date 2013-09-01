@@ -258,10 +258,10 @@ pub fn bopen(s: @ps) {
     end(s); // close the head-box
 }
 
-pub fn bclose_(s: @ps, span: codemap::span, indented: uint) {
+pub fn bclose_(s: @ps, span: codemap::Span, indented: uint) {
     bclose_maybe_open(s, span, indented, true);
 }
-pub fn bclose_maybe_open (s: @ps, span: codemap::span, indented: uint,
+pub fn bclose_maybe_open (s: @ps, span: codemap::Span, indented: uint,
                           close_box: bool) {
     maybe_print_comment(s, span.hi);
     break_offset_if_not_bol(s, 1u, -(indented as int));
@@ -270,7 +270,7 @@ pub fn bclose_maybe_open (s: @ps, span: codemap::span, indented: uint,
         end(s); // close the outer-box
     }
 }
-pub fn bclose(s: @ps, span: codemap::span) { bclose_(s, span, indent_unit); }
+pub fn bclose(s: @ps, span: codemap::Span) { bclose_(s, span, indent_unit); }
 
 pub fn is_begin(s: @ps) -> bool {
     match s.s.last_token() { pp::BEGIN(_) => true, _ => false }
@@ -328,7 +328,7 @@ pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T)) {
 
 
 pub fn commasep_cmnt<T>(s: @ps, b: breaks, elts: &[T], op: &fn(@ps, &T),
-                               get_span: &fn(&T) -> codemap::span) {
+                               get_span: &fn(&T) -> codemap::Span) {
     box(s, 0u, b);
     let len = elts.len();
     let mut i = 0u;
@@ -618,7 +618,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(ref pth, ref tts),
+      ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -640,7 +640,7 @@ fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
 
 pub fn print_enum_def(s: @ps, enum_definition: &ast::enum_def,
                       generics: &ast::Generics, ident: ast::ident,
-                      span: codemap::span, visibility: ast::visibility) {
+                      span: codemap::Span, visibility: ast::visibility) {
     head(s, visibility_qualified(visibility, "enum"));
     print_ident(s, ident);
     print_generics(s, generics);
@@ -650,7 +650,7 @@ pub fn print_enum_def(s: @ps, enum_definition: &ast::enum_def,
 
 pub fn print_variants(s: @ps,
                       variants: &[ast::variant],
-                      span: codemap::span) {
+                      span: codemap::Span) {
     bopen(s);
     for v in variants.iter() {
         space_if_not_bol(s);
@@ -692,7 +692,7 @@ pub fn print_struct(s: @ps,
                     struct_def: &ast::struct_def,
                     generics: &ast::Generics,
                     ident: ast::ident,
-                    span: codemap::span) {
+                    span: codemap::Span) {
     print_ident(s, ident);
     print_generics(s, generics);
     if ast_util::struct_def_is_tuple_like(struct_def) {
@@ -1111,7 +1111,7 @@ pub fn print_expr(s: @ps, expr: &ast::expr) {
         print_expr(s, field.expr);
         end(s);
     }
-    fn get_span(field: &ast::Field) -> codemap::span { return field.span; }
+    fn get_span(field: &ast::Field) -> codemap::Span { return field.span; }
 
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
@@ -1614,7 +1614,7 @@ pub fn print_pat(s: @ps, pat: &ast::pat) {
             print_pat(s, f.pat);
             end(s);
         }
-        fn get_span(f: &ast::field_pat) -> codemap::span { return f.pat.span; }
+        fn get_span(f: &ast::field_pat) -> codemap::Span { return f.pat.span; }
         commasep_cmnt(s, consistent, *fields,
                       |s, f| print_field(s,f),
                       get_span);
@@ -1997,7 +1997,7 @@ pub fn print_ty_fn(s: @ps,
     end(s);
 }
 
-pub fn maybe_print_trailing_comment(s: @ps, span: codemap::span,
+pub fn maybe_print_trailing_comment(s: @ps, span: codemap::Span,
                                     next_pos: Option<BytePos>) {
     let cm;
     match s.cm { Some(ccm) => cm = ccm, _ => return }

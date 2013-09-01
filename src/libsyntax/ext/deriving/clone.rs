@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use ast::{MetaItem, item, expr};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_clone(cx: @ExtCtxt,
-                             span: span,
+                             span: Span,
                              mitem: @MetaItem,
                              in_items: ~[@item])
                           -> ~[@item] {
@@ -40,7 +40,7 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
 }
 
 pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
-                                  span: span,
+                                  span: Span,
                                   mitem: @MetaItem,
                                   in_items: ~[@item])
     -> ~[@item] {
@@ -68,7 +68,7 @@ pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
 
 fn cs_clone(
     name: &str,
-    cx: @ExtCtxt, span: span,
+    cx: @ExtCtxt, span: Span,
     substr: &Substructure) -> @expr {
     let clone_ident = substr.method_ident;
     let ctor_ident;

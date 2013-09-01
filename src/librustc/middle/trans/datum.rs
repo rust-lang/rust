@@ -106,7 +106,7 @@ use util::ppaux::ty_to_str;
 
 use std::uint;
 use syntax::ast;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 
 #[deriving(Eq)]
@@ -613,7 +613,7 @@ impl Datum {
     /// is_auto: If true, only deref if auto-derefable.
     pub fn try_deref(&self,
                      bcx: @mut Block,
-                     span: span,
+                     span: Span,
                      expr_id: ast::NodeId,
                      derefs: uint,
                      is_auto: bool)
@@ -739,7 +739,7 @@ impl Datum {
 
     pub fn autoderef(&self,
                      bcx: @mut Block,
-                     span: span,
+                     span: Span,
                      expr_id: ast::NodeId,
                      max: uint)
                      -> DatumBlock {
@@ -772,7 +772,7 @@ impl Datum {
 
     pub fn get_vec_base_and_len(&self,
                                 mut bcx: @mut Block,
-                                span: span,
+                                span: Span,
                                 expr_id: ast::NodeId,
                                 derefs: uint)
                                 -> (@mut Block, ValueRef, ValueRef) {
@@ -796,7 +796,7 @@ impl Datum {
 
     pub fn root_and_write_guard(&self,
                                 bcx: @mut Block,
-                                span: span,
+                                span: Span,
                                 expr_id: ast::NodeId,
                                 derefs: uint)
                                 -> @mut Block {

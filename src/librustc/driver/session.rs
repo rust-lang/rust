@@ -20,7 +20,7 @@ use middle::lint;
 
 use syntax::ast::NodeId;
 use syntax::ast::{int_ty, uint_ty, float_ty};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -31,7 +31,7 @@ use syntax;
 use std::hashmap::HashMap;
 
 #[deriving(Eq)]
-pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
 #[deriving(Clone)]
 pub enum crate_type {
@@ -41,7 +41,7 @@ pub enum crate_type {
 }
 
 pub struct config {
-    os: os,
+    os: Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
     int_type: int_ty,
@@ -209,25 +209,25 @@ pub struct Session_ {
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    entry_fn: @mut Option<(NodeId, codemap::span)>,
+    entry_fn: @mut Option<(NodeId, codemap::Span)>,
     entry_type: @mut Option<EntryFnType>,
     span_diagnostic: @mut diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
-    lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::span, ~str)]>,
+    lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
 }
 
 pub type Session = @Session_;
 
 impl Session_ {
-    pub fn span_fatal(@self, sp: span, msg: &str) -> ! {
+    pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
     pub fn fatal(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().fatal(msg)
     }
-    pub fn span_err(@self, sp: span, msg: &str) {
+    pub fn span_err(@self, sp: Span, msg: &str) {
         self.span_diagnostic.span_err(sp, msg)
     }
     pub fn err(@self, msg: &str) {
@@ -242,25 +242,25 @@ impl Session_ {
     pub fn abort_if_errors(@self) {
         self.span_diagnostic.handler().abort_if_errors()
     }
-    pub fn span_warn(@self, sp: span, msg: &str) {
+    pub fn span_warn(@self, sp: Span, msg: &str) {
         self.span_diagnostic.span_warn(sp, msg)
     }
     pub fn warn(@self, msg: &str) {
         self.span_diagnostic.handler().warn(msg)
     }
-    pub fn span_note(@self, sp: span, msg: &str) {
+    pub fn span_note(@self, sp: Span, msg: &str) {
         self.span_diagnostic.span_note(sp, msg)
     }
     pub fn note(@self, msg: &str) {
         self.span_diagnostic.handler().note(msg)
     }
-    pub fn span_bug(@self, sp: span, msg: &str) -> ! {
+    pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_bug(sp, msg)
     }
     pub fn bug(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().bug(msg)
     }
-    pub fn span_unimpl(@self, sp: span, msg: &str) -> ! {
+    pub fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_unimpl(sp, msg)
     }
     pub fn unimpl(@self, msg: &str) -> ! {
@@ -269,7 +269,7 @@ impl Session_ {
     pub fn add_lint(@self,
                     lint: lint::lint,
                     id: ast::NodeId,
-                    sp: span,
+                    sp: Span,
                     msg: ~str) {
         match self.lints.find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
@@ -288,7 +288,7 @@ impl Session_ {
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
-    pub fn impossible_case(@self, sp: span, msg: &str) -> ! {
+    pub fn impossible_case(@self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, fmt!("Impossible case reached: %s", msg));
     }
     pub fn verbose(@self) -> bool { self.debugging_opt(verbose) }
@@ -411,15 +411,15 @@ pub fn building_library(req_crate_type: crate_type,
     }
 }
 
-pub fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
+pub fn sess_os_to_meta_os(os: Os) -> metadata::loader::Os {
     use metadata::loader;
 
     match os {
-      os_win32 => loader::os_win32,
-      os_linux => loader::os_linux,
-      os_android => loader::os_android,
-      os_macos => loader::os_macos,
-      os_freebsd => loader::os_freebsd
+        OsWin32 => loader::OsWin32,
+        OsLinux => loader::OsLinux,
+        OsAndroid => loader::OsAndroid,
+        OsMacos => loader::OsMacos,
+        OsFreebsd => loader::OsFreebsd
     }
 }
 

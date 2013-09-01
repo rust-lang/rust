@@ -22,7 +22,7 @@ use ast::{enum_def, ident, item, Generics, struct_def};
 use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use codemap::span;
+use codemap::Span;
 
 pub mod clone;
 pub mod iter_bytes;
@@ -45,20 +45,20 @@ pub mod totalord;
 pub mod generic;
 
 pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ExtCtxt,
-                                                       span,
+                                                       Span,
                                                        x: &struct_def,
                                                        ident,
                                                        y: &Generics)
                                                  -> @item;
 pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
-                                                    span,
+                                                    Span,
                                                     x: &enum_def,
                                                     ident,
                                                     y: &Generics)
                                                  -> @item;
 
 pub fn expand_meta_deriving(cx: @ExtCtxt,
-                            _span: span,
+                            _span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@item])
                          -> ~[@item] {

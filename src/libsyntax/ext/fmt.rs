@@ -15,7 +15,7 @@
  */
 
 use ast;
-use codemap::span;
+use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -24,7 +24,7 @@ use std::option;
 use std::unstable::extfmt::ct::*;
 use parse::token::{str_to_ident};
 
-pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let args = get_exprs_from_tts(cx, sp, tts);
     if args.len() == 0 {
@@ -35,7 +35,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
                     "first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
     debug!("Format string: %s", fmt);
-    fn parse_fmt_err_(cx: @ExtCtxt, sp: span, msg: &str) -> ! {
+    fn parse_fmt_err_(cx: @ExtCtxt, sp: Span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
     let parse_fmt_err: @fn(&str) -> ! = |s| parse_fmt_err_(cx, fmtspan, s);
@@ -47,7 +47,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 // probably be factored out in common with other code that builds
 // expressions.  Also: Cleanup the naming of these functions.
 // Note: Moved many of the common ones to build.rs --kevina
-fn pieces_to_expr(cx: @ExtCtxt, sp: span,
+fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
     fn make_path_vec(ident: &str) -> ~[ast::ident] {
@@ -57,15 +57,15 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                  str_to_ident("rt"),
                  str_to_ident(ident)];
     }
-    fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
+    fn make_rt_path_expr(cx: @ExtCtxt, sp: Span, nm: &str) -> @ast::expr {
         let path = make_path_vec(nm);
         cx.expr_path(cx.path_global(sp, path))
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
 
-    fn make_rt_conv_expr(cx: @ExtCtxt, sp: span, cnv: &Conv) -> @ast::expr {
-        fn make_flags(cx: @ExtCtxt, sp: span, flags: &[Flag]) -> @ast::expr {
+    fn make_rt_conv_expr(cx: @ExtCtxt, sp: Span, cnv: &Conv) -> @ast::expr {
+        fn make_flags(cx: @ExtCtxt, sp: Span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
             for f in flags.iter() {
                 let fstr = match *f {
@@ -80,7 +80,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
             }
             return tmp_expr;
         }
-        fn make_count(cx: @ExtCtxt, sp: span, cnt: Count) -> @ast::expr {
+        fn make_count(cx: @ExtCtxt, sp: Span, cnt: Count) -> @ast::expr {
             match cnt {
               CountImplied => {
                 return make_rt_path_expr(cx, sp, "CountImplied");
@@ -94,7 +94,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
               _ => cx.span_unimpl(sp, "unimplemented fmt! conversion")
             }
         }
-        fn make_ty(cx: @ExtCtxt, sp: span, t: Ty) -> @ast::expr {
+        fn make_ty(cx: @ExtCtxt, sp: Span, t: Ty) -> @ast::expr {
             let rt_type = match t {
               TyHex(c) => match c {
                 CaseUpper =>  "TyHexUpper",
@@ -106,7 +106,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
             };
             return make_rt_path_expr(cx, sp, rt_type);
         }
-        fn make_conv_struct(cx: @ExtCtxt, sp: span, flags_expr: @ast::expr,
+        fn make_conv_struct(cx: @ExtCtxt, sp: Span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             cx.expr_struct(
@@ -127,7 +127,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         make_conv_struct(cx, sp, rt_conv_flags, rt_conv_width,
                          rt_conv_precision, rt_conv_ty)
     }
-    fn make_conv_call(cx: @ExtCtxt, sp: span, conv_type: &str, cnv: &Conv,
+    fn make_conv_call(cx: @ExtCtxt, sp: Span, conv_type: &str, cnv: &Conv,
                       arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
         let path = make_path_vec(fname);
@@ -136,7 +136,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         cx.expr_call_global(arg.span, path, args)
     }
 
-    fn make_new_conv(cx: @ExtCtxt, sp: span, cnv: &Conv,
+    fn make_new_conv(cx: @ExtCtxt, sp: Span, cnv: &Conv,
                      arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         fn is_signed_type(cnv: &Conv) -> bool {
             match cnv.ty {

@@ -16,13 +16,13 @@ encodable.rs for more.
 use std::vec;
 
 use ast::{MetaItem, item, expr, m_mutbl};
-use codemap::span;
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_decodable(cx: @ExtCtxt,
-                                 span: span,
+                                 span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
@@ -50,7 +50,7 @@ pub fn expand_deriving_decodable(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn decodable_substructure(cx: @ExtCtxt, span: span,
+fn decodable_substructure(cx: @ExtCtxt, span: Span,
                           substr: &Substructure) -> @expr {
     let decoder = substr.nonself_args[0];
     let recurse = ~[cx.ident_of("extra"),

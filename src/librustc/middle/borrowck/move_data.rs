@@ -25,7 +25,7 @@ use middle::ty;
 use middle::typeck;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use util::ppaux::Repr;
@@ -135,7 +135,7 @@ pub struct Assignment {
     id: ast::NodeId,
 
     /// span of node where assignment occurs
-    span: span,
+    span: Span,
 }
 
 pub struct MoveDataFlowOperator;
@@ -327,7 +327,7 @@ impl MoveData {
                           tcx: ty::ctxt,
                           lp: @LoanPath,
                           assign_id: ast::NodeId,
-                          span: span,
+                          span: Span,
                           assignee_id: ast::NodeId) {
         /*!
          * Adds a new record for an assignment to `lp` that occurs at

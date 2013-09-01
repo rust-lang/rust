@@ -54,7 +54,7 @@ use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, explicit_self_to_str};
 use syntax::visit;
@@ -140,7 +140,7 @@ impl AstConv for CrateCtxt {
         get_trait_def(self, id)
     }
 
-    fn ty_infer(&self, span: span) -> ty::t {
+    fn ty_infer(&self, span: Span) -> ty::t {
         self.tcx.sess.span_bug(span,
                                "found `ty_infer` in unexpected place");
     }
@@ -397,7 +397,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
 pub fn ensure_supertraits(ccx: &CrateCtxt,
                           id: ast::NodeId,
-                          sp: codemap::span,
+                          sp: codemap::Span,
                           rp: Option<ty::region_variance>,
                           ast_trait_refs: &[ast::trait_ref],
                           generics: &ast::Generics) -> ty::BuiltinBounds
@@ -740,7 +740,7 @@ pub fn convert_field(ccx: &CrateCtxt,
 pub struct ConvertedMethod {
     mty: @ty::Method,
     id: ast::NodeId,
-    span: span,
+    span: Span,
     body_id: ast::NodeId
 }
 
@@ -828,7 +828,7 @@ pub fn convert_methods(ccx: &CrateCtxt,
 }
 
 pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
-                                 span: span,
+                                 span: Span,
                                  generics: &ast::Generics,
                                  thing: &'static str) {
     for ty_param in generics.ty_params.iter() {

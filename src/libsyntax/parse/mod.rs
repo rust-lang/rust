@@ -13,7 +13,7 @@
 
 use ast::NodeId;
 use ast;
-use codemap::{span, CodeMap, FileMap, FileSubstr};
+use codemap::{Span, CodeMap, FileMap, FileSubstr};
 use codemap;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
@@ -247,7 +247,7 @@ pub fn new_sub_parser_from_file(
     sess: @mut ParseSess,
     cfg: ast::CrateConfig,
     path: &Path,
-    sp: span
+    sp: Span
 ) -> Parser {
     filemap_to_parser(sess,file_to_filemap(sess,path,Some(sp)),cfg)
 }
@@ -272,7 +272,7 @@ pub fn new_parser_from_tts(sess: @mut ParseSess,
 
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
-pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<span>)
+pub fn file_to_filemap(sess: @mut ParseSess, path: &Path, spanopt: Option<Span>)
     -> @FileMap {
     match io::read_whole_file_str(path) {
         Ok(src) => string_to_filemap(sess, src.to_managed(), path.to_str().to_managed()),
@@ -332,7 +332,7 @@ mod test {
     use extra::serialize::Encodable;
     use extra;
     use std::io;
-    use codemap::{span, BytePos, spanned};
+    use codemap::{Span, BytePos, Spanned};
     use opt_vec;
     use ast;
     use abi;
@@ -357,8 +357,8 @@ mod test {
     }
 
     // produce a codemap::span
-    fn sp (a: uint, b: uint) -> span {
-        span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
+    fn sp (a: uint, b: uint) -> Span {
+        Span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
     #[test] fn path_exprs_1() {
@@ -463,7 +463,7 @@ mod test {
 
     #[test] fn parse_stmt_1 () {
         assert_eq!(string_to_stmt(@"b;"),
-                   @spanned{
+                   @Spanned{
                        node: ast::stmt_expr(@ast::expr {
                            id: 1,
                            node: ast::expr_path(ast::Path {
@@ -571,7 +571,7 @@ mod test {
                                     },
                                     ast::Block {
                                         view_items: ~[],
-                                        stmts: ~[@spanned{
+                                        stmts: ~[@Spanned{
                                             node: ast::stmt_semi(@ast::expr{
                                                 id: 6,
                                                 node: ast::expr_path(

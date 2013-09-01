@@ -16,8 +16,8 @@ use metadata::filesearch;
 use std::hashmap::HashSet;
 use std::{os, util, vec};
 
-fn not_win32(os: session::os) -> bool {
-  os != session::os_win32
+fn not_win32(os: session::Os) -> bool {
+  os != session::OsWin32
 }
 
 pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
@@ -25,7 +25,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
-    if os == session::os_win32 {
+    if os == session::OsWin32 {
         return ~[];
     }
 
@@ -52,7 +52,7 @@ pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
     rpaths.iter().map(|rpath| fmt!("-Wl,-rpath,%s",rpath.to_str())).collect()
 }
 
-fn get_rpaths(os: session::os,
+fn get_rpaths(os: session::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
@@ -97,13 +97,13 @@ fn get_rpaths(os: session::os,
     return rpaths;
 }
 
-fn get_rpaths_relative_to_output(os: session::os,
+fn get_rpaths_relative_to_output(os: session::Os,
                                  output: &Path,
                                  libs: &[Path]) -> ~[Path] {
     libs.iter().map(|a| get_rpath_relative_to_output(os, output, a)).collect()
 }
 
-pub fn get_rpath_relative_to_output(os: session::os,
+pub fn get_rpath_relative_to_output(os: session::Os,
                                     output: &Path,
                                     lib: &Path)
                                  -> Path {
@@ -113,10 +113,10 @@ pub fn get_rpath_relative_to_output(os: session::os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
-        session::os_android | session::os_linux | session::os_freebsd
+        session::OsAndroid | session::OsLinux | session::OsFreebsd
                           => "$ORIGIN",
-        session::os_macos => "@executable_path",
-        session::os_win32 => util::unreachable()
+        session::OsMacos => "@executable_path",
+        session::OsWin32 => util::unreachable()
     };
 
     Path(prefix).push_rel(&os::make_absolute(output).get_relative_to(&os::make_absolute(lib)))
@@ -205,7 +205,7 @@ mod test {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn test_rpath_relative() {
-      let o = session::os_linux;
+      let o = session::OsLinux;
       let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
       assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
@@ -214,7 +214,7 @@ mod test {
     #[test]
     #[cfg(target_os = "freebsd")]
     fn test_rpath_relative() {
-        let o = session::os_freebsd;
+        let o = session::OsFreebsd;
         let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
         assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
@@ -223,7 +223,7 @@ mod test {
     #[test]
     #[cfg(target_os = "macos")]
     fn test_rpath_relative() {
-        let o = session::os_macos;
+        let o = session::OsMacos;
         let res = get_rpath_relative_to_output(o,
                                                &Path("bin/rustc"),
                                                &Path("lib/libstd.so"));

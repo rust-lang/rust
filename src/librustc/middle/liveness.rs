@@ -116,7 +116,7 @@ use std::to_str;
 use std::uint;
 use std::vec;
 use syntax::ast::*;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::{visit, ast_util};
@@ -135,9 +135,9 @@ impl Clone for LiveNode {
 
 #[deriving(Eq)]
 enum LiveNodeKind {
-    FreeVarNode(span),
-    ExprNode(span),
-    VarDefNode(span),
+    FreeVarNode(Span),
+    ExprNode(Span),
+    VarDefNode(Span),
     ExitNode
 }
 
@@ -154,7 +154,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 struct LivenessVisitor;
 
 impl Visitor<@mut IrMaps> for LivenessVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:@mut IrMaps) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:@mut IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_local(&mut self, l:@Local, e:@mut IrMaps) { visit_local(self, l, e); }
@@ -308,7 +308,7 @@ impl IrMaps {
         v
     }
 
-    pub fn variable(&mut self, node_id: NodeId, span: span) -> Variable {
+    pub fn variable(&mut self, node_id: NodeId, span: Span) -> Variable {
         match self.variable_map.find(&node_id) {
           Some(&var) => var,
           None => {
@@ -348,7 +348,7 @@ impl IrMaps {
 struct ErrorCheckVisitor;
 
 impl Visitor<@Liveness> for ErrorCheckVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:span, n:NodeId, e:@Liveness) {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:@Liveness) {
         check_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_local(&mut self, l:@Local, e:@Liveness) {
@@ -366,7 +366,7 @@ fn visit_fn(v: &mut LivenessVisitor,
             fk: &visit::fn_kind,
             decl: &fn_decl,
             body: &Block,
-            sp: span,
+            sp: Span,
             id: NodeId,
             this: @mut IrMaps) {
     debug!("visit_fn: id=%d", id);
@@ -602,7 +602,7 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
 }
 
 impl Liveness {
-    pub fn live_node(&self, node_id: NodeId, span: span) -> LiveNode {
+    pub fn live_node(&self, node_id: NodeId, span: Span) -> LiveNode {
         let ir: &mut IrMaps = self.ir;
         match ir.live_node_map.find(&node_id) {
           Some(&ln) => ln,
@@ -630,11 +630,11 @@ impl Liveness {
         }
     }
 
-    pub fn variable(&self, node_id: NodeId, span: span) -> Variable {
+    pub fn variable(&self, node_id: NodeId, span: Span) -> Variable {
         self.ir.variable(node_id, span)
     }
 
-    pub fn variable_from_def_map(&self, node_id: NodeId, span: span)
+    pub fn variable_from_def_map(&self, node_id: NodeId, span: Span)
                                  -> Option<Variable> {
         match self.tcx.def_map.find(&node_id) {
           Some(&def) => {
@@ -651,7 +651,7 @@ impl Liveness {
 
     pub fn pat_bindings(&self,
                         pat: @pat,
-                        f: &fn(LiveNode, Variable, span, NodeId)) {
+                        f: &fn(LiveNode, Variable, Span, NodeId)) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
@@ -662,7 +662,7 @@ impl Liveness {
 
     pub fn arm_pats_bindings(&self,
                              pats: &[@pat],
-                             f: &fn(LiveNode, Variable, span, NodeId)) {
+                             f: &fn(LiveNode, Variable, Span, NodeId)) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
         // the "authoratative" set of ids
@@ -758,7 +758,7 @@ impl Liveness {
     pub fn find_loop_scope(&self,
                            opt_label: Option<ident>,
                            id: NodeId,
-                           sp: span)
+                           sp: Span)
                            -> NodeId {
         match opt_label {
             Some(_) => // Refers to a labeled loop. Use the results of resolve
@@ -1512,7 +1512,7 @@ fn check_fn(_v: &mut ErrorCheckVisitor,
             _fk: &visit::fn_kind,
             _decl: &fn_decl,
             _body: &Block,
-            _sp: span,
+            _sp: Span,
             _id: NodeId,
             _self: @Liveness) {
     // do not check contents of nested fns
@@ -1528,7 +1528,7 @@ enum ReadKind {
 impl Liveness {
     pub fn check_ret(&self,
                      id: NodeId,
-                     sp: span,
+                     sp: Span,
                      _fk: &visit::fn_kind,
                      entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
@@ -1584,7 +1584,7 @@ impl Liveness {
     }
 
     pub fn report_illegal_read(&self,
-                               chk_span: span,
+                               chk_span: Span,
                                lnk: LiveNodeKind,
                                var: Variable,
                                rk: ReadKind) {
@@ -1639,7 +1639,7 @@ impl Liveness {
     }
 
     pub fn warn_about_unused(&self,
-                             sp: span,
+                             sp: Span,
                              id: NodeId,
                              ln: LiveNode,
                              var: Variable)
@@ -1673,7 +1673,7 @@ impl Liveness {
     }
 
     pub fn warn_about_dead_assign(&self,
-                                  sp: span,
+                                  sp: Span,
                                   id: NodeId,
                                   ln: LiveNode,
                                   var: Variable) {
