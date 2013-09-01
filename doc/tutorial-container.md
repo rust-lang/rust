@@ -105,6 +105,10 @@ impl Iterator<int> for ZeroStream {
 }
 ~~~
 
+In general, you cannot rely on the behavior of the `next()` method after it has
+returned `None`. Some iterators may return `None` forever. Others may behave
+differently.
+
 ## Container iterators
 
 Containers implement iteration over the contained elements by returning an
@@ -112,7 +116,7 @@ iterator object. For example, vector slices several iterators available:
 
 * `iter()` and `rev_iter()`, for immutable references to the elements
 * `mut_iter()` and `mut_rev_iter()`, for mutable references to the elements
-* `move_iter()` and `move_rev_iter`, to move the elements out by-value
+* `move_iter()` and `move_rev_iter()`, to move the elements out by-value
 
 A typical mutable container will implement at least `iter()`, `mut_iter()` and
 `move_iter()` along with the reverse variants if it maintains an order.
@@ -149,13 +153,42 @@ let result = xs.iter().fold(0, |accumulator, item| accumulator - *item);
 assert_eq!(result, -41);
 ~~~
 
-Some adaptors return an adaptor object implementing the `Iterator` trait itself:
+Most adaptors return an adaptor object implementing the `Iterator` trait itself:
 
 ~~~
 let xs = [1, 9, 2, 3, 14, 12];
 let ys = [5, 2, 1, 8];
 let sum = xs.iter().chain(ys.iter()).fold(0, |a, b| a + *b);
 assert_eq!(sum, 57);
+~~~
+
+Some iterator adaptors may return `None` before exhausting the underlying
+iterator. Additionally, if these iterator adaptors are called again after
+returning `None`, they may call their underlying iterator again even if the
+adaptor will continue to return `None` forever. This may not be desired if the
+underlying iterator has side-effects.
+
+In order to provide a guarantee about behavior once `None` has been returned, an
+iterator adaptor named `fuse()` is provided. This returns an iterator that will
+never call its underlying iterator again once `None` has been returned:
+
+~~~
+let xs = [1,2,3,4,5];
+let mut calls = 0;
+let it = xs.iter().scan((), |_, x| {
+    calls += 1;
+    if *x < 3 { Some(x) } else { None }});
+// the iterator will only yield 1 and 2 before returning None
+// If we were to call it 5 times, calls would end up as 5, despite only 2 values
+// being yielded (and therefore 3 unique calls being made). The fuse() adaptor
+// can fix this.
+let mut it = it.fuse();
+it.next();
+it.next();
+it.next();
+it.next();
+it.next();
+assert_eq!(calls, 3);
 ~~~
 
 ## For loops
