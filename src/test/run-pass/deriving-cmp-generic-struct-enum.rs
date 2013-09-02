@@ -1,5 +1,3 @@
-// xfail-test #5530
-
 // Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -18,18 +16,18 @@ enum ES<T> {
 
 
 pub fn main() {
-    let es11 = ES1 {x: 1}, es12 = ES1 {x: 2}, es21 = ES2 {x: 1, y: 1}, es22 = ES2 {x: 1, y: 2};
+    let (es11, es12, es21, es22) = (ES1 {x: 1}, ES1 {x: 2}, ES2 {x: 1, y: 1}, ES2 {x: 1, y: 2});
 
     // in order for both Ord and TotalOrd
     let ess = [es11, es12, es21, es22];
 
-    for ess.eachi |i, es1| {
-        for ess.eachi |j, es2| {
+    for (i, es1) in ess.iter().enumerate() {
+        for (j, es2) in ess.iter().enumerate() {
             let ord = i.cmp(&j);
 
             let eq = i == j;
-            let lt = i < j, le = i <= j;
-            let gt = i > j, ge = i >= j;
+            let (lt, le) = (i < j, i <= j);
+            let (gt, ge) = (i > j, i >= j);
 
             // Eq
             assert_eq!(*es1 == *es2, eq);

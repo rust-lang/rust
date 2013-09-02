@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // xfail-test
+use std::io;
+
 struct Point {
     x: float,
     y: float,

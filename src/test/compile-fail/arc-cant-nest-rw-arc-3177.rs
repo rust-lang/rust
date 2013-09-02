@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// error-pattern: instantiating a type parameter with an incompatible type
 extern mod extra;
-use extra::arc::rw_arc;
+use extra::arc::RWArc;
 
 fn main() {
-    let arc1  = ~rw_arc(true);
-    let _arc2 = ~rw_arc(arc1);
+    let arc1  = RWArc::new(true);
+    let _arc2 = RWArc::new(arc1); //~ ERROR instantiating a type parameter with an incompatible type
 }

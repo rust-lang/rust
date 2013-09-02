@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+struct HasNested {
+    nest: ~[~[int]],
+}
 
-struct X { x: (), }
-
-impl Drop for X {
-    fn drop(&self) {
-        error!("destructor runs");
+impl HasNested {
+    fn method_push_local(&mut self) {
+        self.nest[0].push(0);
     }
 }
 
-fn main() {
-    let x = Some(X { x: () });
-    match x {
-        Some(_z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
-        None => fail!()
-    }
-}
+fn main() {}

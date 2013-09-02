@@ -8,5 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-pub fn main() {  let early_error: @fn(str) -> !  = {|msg| fail!() }; }
+pub fn main() {
+    let early_error: @fn(&str) -> !  = |_msg| { fail!() };
+}
