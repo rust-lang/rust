@@ -551,13 +551,19 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
-                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+                      _n_inputs: uint, _retstyle: uint) -> bool {
+        self.writer.write("fn(".as_bytes());
+        true
+    }
 
     fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
+        // FIXME: #8917: should print out the parameter types here, separated by commas
         true
     }
 
     fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
+        self.writer.write(")".as_bytes());
+        // FIXME: #8917: should print out the output type here, as `-> T`
         true
     }
 
@@ -596,6 +602,7 @@ struct P {a: int, b: float}
 
 #[test]
 fn test_repr() {
+    use prelude::*;
     use str;
     use str::Str;
     use rt::io::Decorator;
@@ -652,6 +659,8 @@ fn test_repr() {
                "(10u32, ~\"hello\")");
     exact_test(&(10u64, ~"hello"),
                "(10u64, ~\"hello\")");
+
+    exact_test(&(&println), "&fn()");
 
     struct Foo;
     exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
