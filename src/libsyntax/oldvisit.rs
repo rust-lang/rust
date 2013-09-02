@@ -34,10 +34,10 @@ pub enum vt<E> { mk_vt(visitor<E>), }
 
 pub enum fn_kind<'self> {
     // fn foo() or extern "Abi" fn foo()
-    fk_item_fn(ident, &'self Generics, purity, AbiSet),
+    fk_item_fn(Ident, &'self Generics, purity, AbiSet),
 
     // fn foo(&self)
-    fk_method(ident, &'self Generics, &'self method),
+    fk_method(Ident, &'self Generics, &'self method),
 
     // @fn(x, y) { ... }
     fk_anon(ast::Sigil),
@@ -46,7 +46,7 @@ pub enum fn_kind<'self> {
     fk_fn_block,
 }
 
-pub fn name_of_fn(fk: &fn_kind) -> ident {
+pub fn name_of_fn(fk: &fn_kind) -> Ident {
     match *fk {
       fk_item_fn(name, _, _, _) | fk_method(name, _, _) => {
           name
@@ -88,7 +88,7 @@ pub struct Visitor<E> {
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId, (E, vt<E>)),
     visit_ty_method: @fn(&TypeMethod, (E, vt<E>)),
     visit_trait_method: @fn(&trait_method, (E, vt<E>)),
-    visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId, (E, vt<E>)),
+    visit_struct_def: @fn(@struct_def, Ident, &Generics, NodeId, (E, vt<E>)),
     visit_struct_field: @fn(@struct_field, (E, vt<E>)),
 }
 
@@ -422,7 +422,7 @@ pub fn visit_trait_method<E:Clone>(m: &trait_method, (e, v): (E, vt<E>)) {
 
 pub fn visit_struct_def<E:Clone>(
     sd: @struct_def,
-    _nm: ast::ident,
+    _nm: ast::Ident,
     _generics: &Generics,
     _id: NodeId,
     (e, v): (E, vt<E>)
@@ -612,7 +612,7 @@ pub struct SimpleVisitor {
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId),
     visit_ty_method: @fn(&TypeMethod),
     visit_trait_method: @fn(&trait_method),
-    visit_struct_def: @fn(@struct_def, ident, &Generics, NodeId),
+    visit_struct_def: @fn(@struct_def, Ident, &Generics, NodeId),
     visit_struct_field: @fn(@struct_field),
     visit_struct_method: @fn(@method)
 }
@@ -715,9 +715,9 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         visit_trait_method(m, (e, v));
     }
     fn v_struct_def(
-        f: @fn(@struct_def, ident, &Generics, NodeId),
+        f: @fn(@struct_def, Ident, &Generics, NodeId),
         sd: @struct_def,
-        nm: ident,
+        nm: Ident,
         generics: &Generics,
         id: NodeId,
         (e, v): ((), vt<()>)

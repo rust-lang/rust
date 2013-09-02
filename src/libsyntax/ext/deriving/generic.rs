@@ -163,7 +163,7 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
 */
 
 use ast;
-use ast::{enum_def, expr, ident, Generics, struct_def};
+use ast::{enum_def, expr, Ident, Generics, struct_def};
 
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -216,9 +216,9 @@ pub struct MethodDef<'self> {
 /// All the data about the data structure/method being derived upon.
 pub struct Substructure<'self> {
     /// ident of self
-    type_ident: ident,
+    type_ident: Ident,
     /// ident of the method
-    method_ident: ident,
+    method_ident: Ident,
     /// dereferenced access to any Self or Ptr(Self, _) arguments
     self_args: &'self [@expr],
     /// verbatim access to any other arguments
@@ -234,26 +234,26 @@ pub enum SubstructureFields<'self> {
     ident is the ident of the current field (`None` for all fields in tuple
     structs).
     */
-    Struct(~[(Option<ident>, @expr, ~[@expr])]),
+    Struct(~[(Option<Ident>, @expr, ~[@expr])]),
 
     /**
     Matching variants of the enum: variant index, ast::variant,
     fields: `(field ident, self, [others])`, where the field ident is
     only non-`None` in the case of a struct variant.
     */
-    EnumMatching(uint, &'self ast::variant, ~[(Option<ident>, @expr, ~[@expr])]),
+    EnumMatching(uint, &'self ast::variant, ~[(Option<Ident>, @expr, ~[@expr])]),
 
     /**
     non-matching variants of the enum, [(variant index, ast::variant,
     [field ident, fields])] (i.e. all fields for self are in the
     first tuple, for other1 are in the second tuple, etc.)
     */
-    EnumNonMatching(&'self [(uint, ast::variant, ~[(Option<ident>, @expr)])]),
+    EnumNonMatching(&'self [(uint, ast::variant, ~[(Option<Ident>, @expr)])]),
 
     /// A static method where Self is a struct
-    StaticStruct(&'self ast::struct_def, Either<uint, ~[ident]>),
+    StaticStruct(&'self ast::struct_def, Either<uint, ~[Ident]>),
     /// A static method where Self is an enum
-    StaticEnum(&'self ast::enum_def, ~[(ident, Either<uint, ~[ident]>)])
+    StaticEnum(&'self ast::enum_def, ~[(Ident, Either<uint, ~[Ident]>)])
 }
 
 
@@ -273,7 +273,7 @@ representing each variant: (variant index, ast::variant instance,
 pub type EnumNonMatchFunc<'self> =
     &'self fn(@ExtCtxt, Span,
               &[(uint, ast::variant,
-                 ~[(Option<ident>, @expr)])],
+                 ~[(Option<Ident>, @expr)])],
               &[@expr]) -> @expr;
 
 
@@ -315,7 +315,7 @@ impl<'self> TraitDef<'self> {
      *
      */
     fn create_derived_impl(&self, cx: @ExtCtxt, span: Span,
-                           type_ident: ident, generics: &Generics,
+                           type_ident: Ident, generics: &Generics,
                            methods: ~[@ast::method]) -> @ast::item {
         let trait_path = self.path.to_path(cx, span, type_ident, generics);
 
@@ -375,7 +375,7 @@ impl<'self> TraitDef<'self> {
     fn expand_struct_def(&self, cx: @ExtCtxt,
                          span: Span,
                          struct_def: &struct_def,
-                         type_ident: ident,
+                         type_ident: Ident,
                          generics: &Generics) -> @ast::item {
         let methods = do self.methods.map |method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
@@ -406,7 +406,7 @@ impl<'self> TraitDef<'self> {
     fn expand_enum_def(&self,
                        cx: @ExtCtxt, span: Span,
                        enum_def: &enum_def,
-                       type_ident: ident,
+                       type_ident: Ident,
                        generics: &Generics) -> @ast::item {
         let methods = do self.methods.map |method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
@@ -439,7 +439,7 @@ impl<'self> MethodDef<'self> {
     fn call_substructure_method(&self,
                                 cx: @ExtCtxt,
                                 span: Span,
-                                type_ident: ident,
+                                type_ident: Ident,
                                 self_args: &[@expr],
                                 nonself_args: &[@expr],
                                 fields: &SubstructureFields)
@@ -456,7 +456,7 @@ impl<'self> MethodDef<'self> {
     }
 
     fn get_ret_ty(&self, cx: @ExtCtxt, span: Span,
-                     generics: &Generics, type_ident: ident) -> ast::Ty {
+                     generics: &Generics, type_ident: Ident) -> ast::Ty {
         self.ret_ty.to_ty(cx, span, type_ident, generics)
     }
 
@@ -465,8 +465,8 @@ impl<'self> MethodDef<'self> {
     }
 
     fn split_self_nonself_args(&self, cx: @ExtCtxt, span: Span,
-                             type_ident: ident, generics: &Generics)
-        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, ast::Ty)]) {
+                             type_ident: Ident, generics: &Generics)
+        -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(Ident, ast::Ty)]) {
 
         let mut self_args = ~[];
         let mut nonself_args = ~[];
@@ -511,10 +511,10 @@ impl<'self> MethodDef<'self> {
     }
 
     fn create_method(&self, cx: @ExtCtxt, span: Span,
-                     type_ident: ident,
+                     type_ident: Ident,
                      generics: &Generics,
                      explicit_self: ast::explicit_self,
-                     arg_types: ~[(ident, ast::Ty)],
+                     arg_types: ~[(Ident, ast::Ty)],
                      body: @expr) -> @ast::method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
@@ -571,7 +571,7 @@ impl<'self> MethodDef<'self> {
                                  cx: @ExtCtxt,
                                  span: Span,
                                  struct_def: &struct_def,
-                                 type_ident: ident,
+                                 type_ident: Ident,
                                  self_args: &[@expr],
                                  nonself_args: &[@expr])
         -> @expr {
@@ -625,7 +625,7 @@ impl<'self> MethodDef<'self> {
                                         cx: @ExtCtxt,
                                         span: Span,
                                         struct_def: &struct_def,
-                                        type_ident: ident,
+                                        type_ident: Ident,
                                         self_args: &[@expr],
                                         nonself_args: &[@expr])
         -> @expr {
@@ -667,7 +667,7 @@ impl<'self> MethodDef<'self> {
                                cx: @ExtCtxt,
                                span: Span,
                                enum_def: &enum_def,
-                               type_ident: ident,
+                               type_ident: Ident,
                                self_args: &[@expr],
                                nonself_args: &[@expr])
         -> @expr {
@@ -702,12 +702,12 @@ impl<'self> MethodDef<'self> {
     fn build_enum_match(&self,
                         cx: @ExtCtxt, span: Span,
                         enum_def: &enum_def,
-                        type_ident: ident,
+                        type_ident: Ident,
                         self_args: &[@expr],
                         nonself_args: &[@expr],
                         matching: Option<uint>,
                         matches_so_far: &mut ~[(uint, ast::variant,
-                                              ~[(Option<ident>, @expr)])],
+                                              ~[(Option<Ident>, @expr)])],
                         match_count: uint) -> @expr {
         if match_count == self_args.len() {
             // we've matched against all arguments, so make the final
@@ -852,7 +852,7 @@ impl<'self> MethodDef<'self> {
                                cx: @ExtCtxt,
                                span: Span,
                                enum_def: &enum_def,
-                               type_ident: ident,
+                               type_ident: Ident,
                                self_args: &[@expr],
                                nonself_args: &[@expr])
         -> @expr {
@@ -874,7 +874,7 @@ impl<'self> MethodDef<'self> {
 }
 
 fn summarise_struct(cx: @ExtCtxt, span: Span,
-                    struct_def: &struct_def) -> Either<uint, ~[ident]> {
+                    struct_def: &struct_def) -> Either<uint, ~[Ident]> {
     let mut named_idents = ~[];
     let mut unnamed_count = 0;
     for field in struct_def.fields.iter() {
@@ -913,11 +913,11 @@ enum StructType {
 
 fn create_struct_pattern(cx: @ExtCtxt,
                              span: Span,
-                             struct_ident: ident,
+                             struct_ident: Ident,
                              struct_def: &struct_def,
                              prefix: &str,
                              mutbl: ast::mutability)
-    -> (@ast::pat, ~[(Option<ident>, @expr)]) {
+    -> (@ast::pat, ~[(Option<Ident>, @expr)]) {
     if struct_def.fields.is_empty() {
         return (
             cx.pat_ident_binding_mode(
@@ -977,7 +977,7 @@ fn create_enum_variant_pattern(cx: @ExtCtxt,
                                    variant: &ast::variant,
                                    prefix: &str,
                                    mutbl: ast::mutability)
-    -> (@ast::pat, ~[(Option<ident>, @expr)]) {
+    -> (@ast::pat, ~[(Option<Ident>, @expr)]) {
 
     let variant_ident = variant.node.name;
     match variant.node.kind {

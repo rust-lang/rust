@@ -76,22 +76,22 @@ pub enum Token {
     LIT_INT(i64, ast::int_ty),
     LIT_UINT(u64, ast::uint_ty),
     LIT_INT_UNSUFFIXED(i64),
-    LIT_FLOAT(ast::ident, ast::float_ty),
-    LIT_FLOAT_UNSUFFIXED(ast::ident),
-    LIT_STR(ast::ident),
+    LIT_FLOAT(ast::Ident, ast::float_ty),
+    LIT_FLOAT_UNSUFFIXED(ast::Ident),
+    LIT_STR(ast::Ident),
 
     /* Name components */
     // an identifier contains an "is_mod_name" boolean,
     // indicating whether :: follows this token with no
     // whitespace in between.
-    IDENT(ast::ident, bool),
+    IDENT(ast::Ident, bool),
     UNDERSCORE,
-    LIFETIME(ast::ident),
+    LIFETIME(ast::Ident),
 
     /* For interpolation */
     INTERPOLATED(nonterminal),
 
-    DOC_COMMENT(ast::ident),
+    DOC_COMMENT(ast::Ident),
     EOF,
 }
 
@@ -104,7 +104,7 @@ pub enum nonterminal {
     nt_pat( @ast::pat),
     nt_expr(@ast::expr),
     nt_ty(  ~ast::Ty),
-    nt_ident(~ast::ident, bool),
+    nt_ident(~ast::Ident, bool),
     nt_attr(@ast::Attribute),   // #[foo]
     nt_path(~ast::Path),
     nt_tt(  @ast::token_tree), //needs @ed to break a circularity
@@ -307,46 +307,46 @@ pub fn is_bar(t: &Token) -> bool {
 
 
 pub mod special_idents {
-    use ast::ident;
+    use ast::Ident;
 
-    pub static underscore : ident = ident { name: 0, ctxt: 0};
-    pub static anon : ident = ident { name: 1, ctxt: 0};
-    pub static invalid : ident = ident { name: 2, ctxt: 0}; // ''
-    pub static unary : ident = ident { name: 3, ctxt: 0};
-    pub static not_fn : ident = ident { name: 4, ctxt: 0};
-    pub static idx_fn : ident = ident { name: 5, ctxt: 0};
-    pub static unary_minus_fn : ident = ident { name: 6, ctxt: 0};
-    pub static clownshoes_extensions : ident = ident { name: 7, ctxt: 0};
+    pub static underscore : Ident = Ident { name: 0, ctxt: 0};
+    pub static anon : Ident = Ident { name: 1, ctxt: 0};
+    pub static invalid : Ident = Ident { name: 2, ctxt: 0}; // ''
+    pub static unary : Ident = Ident { name: 3, ctxt: 0};
+    pub static not_fn : Ident = Ident { name: 4, ctxt: 0};
+    pub static idx_fn : Ident = Ident { name: 5, ctxt: 0};
+    pub static unary_minus_fn : Ident = Ident { name: 6, ctxt: 0};
+    pub static clownshoes_extensions : Ident = Ident { name: 7, ctxt: 0};
 
-    pub static self_ : ident = ident { name: 8, ctxt: 0}; // 'self'
+    pub static self_ : Ident = Ident { name: 8, ctxt: 0}; // 'self'
 
     /* for matcher NTs */
-    pub static item : ident = ident { name: 9, ctxt: 0};
-    pub static block : ident = ident { name: 10, ctxt: 0};
-    pub static stmt : ident = ident { name: 11, ctxt: 0};
-    pub static pat : ident = ident { name: 12, ctxt: 0};
-    pub static expr : ident = ident { name: 13, ctxt: 0};
-    pub static ty : ident = ident { name: 14, ctxt: 0};
-    pub static ident : ident = ident { name: 15, ctxt: 0};
-    pub static path : ident = ident { name: 16, ctxt: 0};
-    pub static tt : ident = ident { name: 17, ctxt: 0};
-    pub static matchers : ident = ident { name: 18, ctxt: 0};
+    pub static item : Ident = Ident { name: 9, ctxt: 0};
+    pub static block : Ident = Ident { name: 10, ctxt: 0};
+    pub static stmt : Ident = Ident { name: 11, ctxt: 0};
+    pub static pat : Ident = Ident { name: 12, ctxt: 0};
+    pub static expr : Ident = Ident { name: 13, ctxt: 0};
+    pub static ty : Ident = Ident { name: 14, ctxt: 0};
+    pub static ident : Ident = Ident { name: 15, ctxt: 0};
+    pub static path : Ident = Ident { name: 16, ctxt: 0};
+    pub static tt : Ident = Ident { name: 17, ctxt: 0};
+    pub static matchers : Ident = Ident { name: 18, ctxt: 0};
 
-    pub static str : ident = ident { name: 19, ctxt: 0}; // for the type
+    pub static str : Ident = Ident { name: 19, ctxt: 0}; // for the type
 
     /* outside of libsyntax */
-    pub static arg : ident = ident { name: 20, ctxt: 0};
-    pub static descrim : ident = ident { name: 21, ctxt: 0};
-    pub static clownshoe_abi : ident = ident { name: 22, ctxt: 0};
-    pub static clownshoe_stack_shim : ident = ident { name: 23, ctxt: 0};
-    pub static main : ident = ident { name: 24, ctxt: 0};
-    pub static opaque : ident = ident { name: 25, ctxt: 0};
-    pub static blk : ident = ident { name: 26, ctxt: 0};
-    pub static statik : ident = ident { name: 27, ctxt: 0};
-    pub static clownshoes_foreign_mod: ident = ident { name: 28, ctxt: 0};
-    pub static unnamed_field: ident = ident { name: 29, ctxt: 0};
-    pub static c_abi: ident = ident { name: 30, ctxt: 0};
-    pub static type_self: ident = ident { name: 31, ctxt: 0};    // `Self`
+    pub static arg : Ident = Ident { name: 20, ctxt: 0};
+    pub static descrim : Ident = Ident { name: 21, ctxt: 0};
+    pub static clownshoe_abi : Ident = Ident { name: 22, ctxt: 0};
+    pub static clownshoe_stack_shim : Ident = Ident { name: 23, ctxt: 0};
+    pub static main : Ident = Ident { name: 24, ctxt: 0};
+    pub static opaque : Ident = Ident { name: 25, ctxt: 0};
+    pub static blk : Ident = Ident { name: 26, ctxt: 0};
+    pub static statik : Ident = Ident { name: 27, ctxt: 0};
+    pub static clownshoes_foreign_mod: Ident = Ident { name: 28, ctxt: 0};
+    pub static unnamed_field: Ident = Ident { name: 29, ctxt: 0};
+    pub static c_abi: Ident = Ident { name: 30, ctxt: 0};
+    pub static type_self: Ident = Ident { name: 31, ctxt: 0};    // `Self`
 }
 
 /**
@@ -525,18 +525,18 @@ pub fn interner_get(name : Name) -> @str {
 }
 
 // maps an identifier to the string that it corresponds to
-pub fn ident_to_str(id : &ast::ident) -> @str {
+pub fn ident_to_str(id : &ast::Ident) -> @str {
     interner_get(id.name)
 }
 
 // maps a string to an identifier with an empty syntax context
-pub fn str_to_ident(str : &str) -> ast::ident {
-    ast::new_ident(intern(str))
+pub fn str_to_ident(str : &str) -> ast::Ident {
+    ast::Ident::new(intern(str))
 }
 
 // maps a string to a gensym'ed identifier
-pub fn gensym_ident(str : &str) -> ast::ident {
-    ast::new_ident(gensym(str))
+pub fn gensym_ident(str : &str) -> ast::Ident {
+    ast::Ident::new(gensym(str))
 }
 
 
@@ -561,7 +561,7 @@ pub fn fresh_name(src_name : &str) -> Name {
  * the language and may not appear as identifiers.
  */
 pub mod keywords {
-    use ast::ident;
+    use ast::Ident;
 
     pub enum Keyword {
         // Strict keywords
@@ -608,46 +608,46 @@ pub mod keywords {
     }
 
     impl Keyword {
-        pub fn to_ident(&self) -> ident {
+        pub fn to_ident(&self) -> Ident {
             match *self {
-                As => ident { name: 32, ctxt: 0 },
-                Break => ident { name: 33, ctxt: 0 },
-                Const => ident { name: 34, ctxt: 0 },
-                Do => ident { name: 35, ctxt: 0 },
-                Else => ident { name: 36, ctxt: 0 },
-                Enum => ident { name: 37, ctxt: 0 },
-                Extern => ident { name: 38, ctxt: 0 },
-                False => ident { name: 39, ctxt: 0 },
-                Fn => ident { name: 40, ctxt: 0 },
-                For => ident { name: 41, ctxt: 0 },
-                If => ident { name: 42, ctxt: 0 },
-                Impl => ident { name: 43, ctxt: 0 },
-                In => ident { name: 63, ctxt: 0 },
-                Let => ident { name: 44, ctxt: 0 },
-                __Log => ident { name: 45, ctxt: 0 },
-                Loop => ident { name: 46, ctxt: 0 },
-                Match => ident { name: 47, ctxt: 0 },
-                Mod => ident { name: 48, ctxt: 0 },
-                Mut => ident { name: 49, ctxt: 0 },
-                Once => ident { name: 50, ctxt: 0 },
-                Priv => ident { name: 51, ctxt: 0 },
-                Pub => ident { name: 52, ctxt: 0 },
-                Ref => ident { name: 53, ctxt: 0 },
-                Return => ident { name: 54, ctxt: 0 },
-                Static => ident { name: 27, ctxt: 0 },
-                Self => ident { name: 8, ctxt: 0 },
-                Struct => ident { name: 55, ctxt: 0 },
-                Super => ident { name: 56, ctxt: 0 },
-                True => ident { name: 57, ctxt: 0 },
-                Trait => ident { name: 58, ctxt: 0 },
-                Type => ident { name: 59, ctxt: 0 },
-                Typeof => ident { name: 67, ctxt: 0 },
-                Unsafe => ident { name: 60, ctxt: 0 },
-                Use => ident { name: 61, ctxt: 0 },
-                While => ident { name: 62, ctxt: 0 },
-                Be => ident { name: 64, ctxt: 0 },
-                Pure => ident { name: 65, ctxt: 0 },
-                Yield => ident { name: 66, ctxt: 0 },
+                As => Ident { name: 32, ctxt: 0 },
+                Break => Ident { name: 33, ctxt: 0 },
+                Const => Ident { name: 34, ctxt: 0 },
+                Do => Ident { name: 35, ctxt: 0 },
+                Else => Ident { name: 36, ctxt: 0 },
+                Enum => Ident { name: 37, ctxt: 0 },
+                Extern => Ident { name: 38, ctxt: 0 },
+                False => Ident { name: 39, ctxt: 0 },
+                Fn => Ident { name: 40, ctxt: 0 },
+                For => Ident { name: 41, ctxt: 0 },
+                If => Ident { name: 42, ctxt: 0 },
+                Impl => Ident { name: 43, ctxt: 0 },
+                In => Ident { name: 63, ctxt: 0 },
+                Let => Ident { name: 44, ctxt: 0 },
+                __Log => Ident { name: 45, ctxt: 0 },
+                Loop => Ident { name: 46, ctxt: 0 },
+                Match => Ident { name: 47, ctxt: 0 },
+                Mod => Ident { name: 48, ctxt: 0 },
+                Mut => Ident { name: 49, ctxt: 0 },
+                Once => Ident { name: 50, ctxt: 0 },
+                Priv => Ident { name: 51, ctxt: 0 },
+                Pub => Ident { name: 52, ctxt: 0 },
+                Ref => Ident { name: 53, ctxt: 0 },
+                Return => Ident { name: 54, ctxt: 0 },
+                Static => Ident { name: 27, ctxt: 0 },
+                Self => Ident { name: 8, ctxt: 0 },
+                Struct => Ident { name: 55, ctxt: 0 },
+                Super => Ident { name: 56, ctxt: 0 },
+                True => Ident { name: 57, ctxt: 0 },
+                Trait => Ident { name: 58, ctxt: 0 },
+                Type => Ident { name: 59, ctxt: 0 },
+                Typeof => Ident { name: 67, ctxt: 0 },
+                Unsafe => Ident { name: 60, ctxt: 0 },
+                Use => Ident { name: 61, ctxt: 0 },
+                While => Ident { name: 62, ctxt: 0 },
+                Be => Ident { name: 64, ctxt: 0 },
+                Pure => Ident { name: 65, ctxt: 0 },
+                Yield => Ident { name: 66, ctxt: 0 },
             }
         }
     }

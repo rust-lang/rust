@@ -47,8 +47,8 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
                        substr: &Substructure) -> @expr {
     let to_str = cx.ident_of("to_str");
 
-    let doit = |start: &str, end: @str, name: ast::ident,
-                fields: &[(Option<ast::ident>, @expr, ~[@expr])]| {
+    let doit = |start: &str, end: @str, name: ast::Ident,
+                fields: &[(Option<ast::Ident>, @expr, ~[@expr])]| {
         if fields.len() == 0 {
             cx.expr_str_uniq(span, cx.str_of(name))
         } else {

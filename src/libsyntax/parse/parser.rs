@@ -34,7 +34,7 @@ use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, expr_for_loop, extern_fn, Field, fn_decl};
 use ast::{expr_vstore_uniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
-use ast::{ident, impure_fn, inherited, item, item_, item_static};
+use ast::{Ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
@@ -95,7 +95,7 @@ enum restriction {
 }
 
 type arg_or_capture_item = Either<arg, ()>;
-type item_info = (ident, item_, Option<~[Attribute]>);
+type item_info = (Ident, item_, Option<~[Attribute]>);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -476,7 +476,7 @@ impl Parser {
         self.commit_stmt(s, &[edible], &[])
     }
 
-    pub fn parse_ident(&self) -> ast::ident {
+    pub fn parse_ident(&self) -> ast::Ident {
         self.check_strict_keywords();
         self.check_reserved_keywords();
         match *self.token {
@@ -756,7 +756,7 @@ impl Parser {
     }
     pub fn get_id(&self) -> NodeId { next_node_id(self.sess) }
 
-    pub fn id_to_str(&self, id: ident) -> @str {
+    pub fn id_to_str(&self, id: Ident) -> @str {
         get_ident_interner().get(id.name)
     }
 
@@ -775,7 +775,7 @@ impl Parser {
         }
     }
 
-    pub fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+    pub fn get_lifetime(&self, tok: &token::Token) -> ast::Ident {
         match *tok {
             token::LIFETIME(ref ident) => *ident,
             _ => self.bug("not a lifetime"),
@@ -1664,7 +1664,7 @@ impl Parser {
 
     pub fn mk_method_call(&self,
                       rcvr: @expr,
-                      ident: ident,
+                      ident: Ident,
                       tps: ~[Ty],
                       args: ~[@expr],
                       sugar: CallSugar) -> ast::expr_ {
@@ -1675,7 +1675,7 @@ impl Parser {
         expr_index(self.get_id(), expr, idx)
     }
 
-    pub fn mk_field(&self, expr: @expr, ident: ident, tys: ~[Ty]) -> ast::expr_ {
+    pub fn mk_field(&self, expr: @expr, ident: Ident, tys: ~[Ty]) -> ast::expr_ {
         expr_field(expr, ident, tys)
     }
 
@@ -2550,7 +2550,7 @@ impl Parser {
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
-    pub fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
+    pub fn parse_loop_expr(&self, opt_ident: Option<ast::Ident>) -> @expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
@@ -3713,13 +3713,13 @@ impl Parser {
     }
 
     // parse the name and optional generic types of a function header.
-    fn parse_fn_header(&self) -> (ident, ast::Generics) {
+    fn parse_fn_header(&self) -> (Ident, ast::Generics) {
         let id = self.parse_ident();
         let generics = self.parse_generics();
         (id, generics)
     }
 
-    fn mk_item(&self, lo: BytePos, hi: BytePos, ident: ident,
+    fn mk_item(&self, lo: BytePos, hi: BytePos, ident: Ident,
                node: item_, vis: visibility,
                attrs: ~[Attribute]) -> @item {
         @ast::item { ident: ident,
@@ -4107,7 +4107,7 @@ impl Parser {
         }
     }
 
-    fn push_mod_path(&self, id: ident, attrs: &[Attribute]) {
+    fn push_mod_path(&self, id: Ident, attrs: &[Attribute]) {
         let default_path = token::interner_get(id.name);
         let file_path = match ::attr::first_attr_value_str_by_name(attrs,
                                                                    "path") {
@@ -4123,7 +4123,7 @@ impl Parser {
 
     // read a module from a source file.
     fn eval_src_mod(&self,
-                    id: ast::ident,
+                    id: ast::Ident,
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {

@@ -25,10 +25,12 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Clone, Eq, IterBytes, ToStr)]
-pub struct ident { name: Name, ctxt: SyntaxContext }
+pub struct Ident { name: Name, ctxt: SyntaxContext }
 
-/// Construct an identifier with the given name and an empty context:
-pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
+impl Ident {
+    /// Construct an identifier with the given name and an empty context:
+    pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: empty_ctxt}}
+}
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
@@ -48,7 +50,7 @@ pub type SyntaxContext = uint;
 pub struct SCTable {
     table : ~[SyntaxContext_],
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
-    rename_memo : HashMap<(SyntaxContext,ident,Name),SyntaxContext>
+    rename_memo : HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
 }
 // NB: these must be placed in any SCTable...
 pub static empty_ctxt : uint = 0;
@@ -66,7 +68,7 @@ pub enum SyntaxContext_ {
     // "to" slot must have the same name and context
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
-    Rename (ident,Name,SyntaxContext),
+    Rename (Ident,Name,SyntaxContext),
     IllegalCtxt()
 }
 
@@ -76,27 +78,27 @@ pub type Name = uint;
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = uint;
 
-impl<S:Encoder> Encodable<S> for ident {
+impl<S:Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
         s.emit_str(interner_get(self.name));
     }
 }
 
 #[deriving(IterBytes)]
-impl<D:Decoder> Decodable<D> for ident {
-    fn decode(d: &mut D) -> ident {
+impl<D:Decoder> Decodable<D> for Ident {
+    fn decode(d: &mut D) -> Ident {
         str_to_ident(d.read_str())
     }
 }
 
 /// Function name (not all functions have names)
-pub type fn_ident = Option<ident>;
+pub type fn_ident = Option<Ident>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Lifetime {
     id: NodeId,
     span: Span,
-    ident: ident
+    ident: Ident
 }
 
 // a "Path" is essentially Rust's notion of a name;
@@ -118,7 +120,7 @@ pub struct Path {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
-    identifier: ident,
+    identifier: Ident,
     /// The lifetime parameter for this path segment. Currently only one
     /// lifetime parameter is allowed.
     lifetime: Option<Lifetime>,
@@ -151,7 +153,7 @@ pub enum TyParamBound {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct TyParam {
-    ident: ident,
+    ident: Ident,
     id: NodeId,
     bounds: OptVec<TyParamBound>
 }
@@ -275,7 +277,7 @@ pub struct pat {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct field_pat {
-    ident: ident,
+    ident: Ident,
     pat: @pat,
 }
 
@@ -430,7 +432,7 @@ pub struct arm {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Field {
-    ident: ident,
+    ident: Ident,
     expr: @expr,
     span: Span,
 }
@@ -473,7 +475,7 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(NodeId, @expr, ident, ~[Ty], ~[@expr], CallSugar),
+    expr_method_call(NodeId, @expr, Ident, ~[Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
     expr_binary(NodeId, binop, @expr, @expr),
     expr_unary(NodeId, unop, @expr),
@@ -485,7 +487,7 @@ pub enum expr_ {
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(Block, Option<ident>),
+    expr_loop(Block, Option<Ident>),
     expr_match(@expr, ~[arm]),
     expr_fn_block(fn_decl, Block),
     expr_do_body(@expr),
@@ -493,15 +495,15 @@ pub enum expr_ {
 
     expr_assign(@expr, @expr),
     expr_assign_op(NodeId, binop, @expr, @expr),
-    expr_field(@expr, ident, ~[Ty]),
+    expr_field(@expr, Ident, ~[Ty]),
     expr_index(NodeId, @expr, @expr),
     expr_path(Path),
 
     /// The special identifier `self`.
     expr_self,
     expr_addr_of(mutability, @expr),
-    expr_break(Option<ident>),
-    expr_again(Option<ident>),
+    expr_break(Option<Ident>),
+    expr_again(Option<Ident>),
     expr_ret(Option<@expr>),
     expr_log(@expr, @expr),
 
@@ -550,7 +552,7 @@ pub enum token_tree {
     tt_seq(Span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
-    tt_nonterminal(Span, ident)
+    tt_nonterminal(Span, Ident)
 }
 
 //
@@ -615,7 +617,7 @@ pub enum matcher_ {
     // lo, hi position-in-match-array used:
     match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
-    match_nonterminal(ident, ident, uint)
+    match_nonterminal(Ident, Ident, uint)
 }
 
 pub type mac = Spanned<mac_>;
@@ -649,14 +651,14 @@ pub struct mt {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct TypeField {
-    ident: ident,
+    ident: Ident,
     mt: mt,
     span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct TypeMethod {
-    ident: ident,
+    ident: Ident,
     attrs: ~[Attribute],
     purity: purity,
     decl: fn_decl,
@@ -868,7 +870,7 @@ pub type explicit_self = Spanned<explicit_self_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct method {
-    ident: ident,
+    ident: Ident,
     attrs: ~[Attribute],
     generics: Generics,
     explicit_self: explicit_self,
@@ -921,7 +923,7 @@ pub struct enum_def {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct variant_ {
-    name: ident,
+    name: Ident,
     attrs: ~[Attribute],
     kind: variant_kind,
     id: NodeId,
@@ -933,7 +935,7 @@ pub type variant = Spanned<variant_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct path_list_ident_ {
-    name: ident,
+    name: Ident,
     id: NodeId,
 }
 
@@ -949,7 +951,7 @@ pub enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, Path, NodeId),
+    view_path_simple(Ident, Path, NodeId),
 
     // foo::bar::*
     view_path_glob(Path, NodeId),
@@ -972,7 +974,7 @@ pub enum view_item_ {
     // optional @str: if present, this is a location (containing
     // arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
-    view_item_extern_mod(ident, Option<@str>, ~[@MetaItem], NodeId),
+    view_item_extern_mod(Ident, Option<@str>, ~[@MetaItem], NodeId),
     view_item_use(~[@view_path]),
 }
 
@@ -1037,7 +1039,7 @@ pub type struct_field = Spanned<struct_field_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum struct_field_kind {
-    named_field(ident, visibility),
+    named_field(Ident, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
@@ -1055,7 +1057,7 @@ pub struct struct_def {
  */
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct item {
-    ident: ident,
+    ident: Ident,
     attrs: ~[Attribute],
     id: NodeId,
     node: item_,
@@ -1083,7 +1085,7 @@ pub enum item_ {
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct foreign_item {
-    ident: ident,
+    ident: Ident,
     attrs: ~[Attribute],
     node: foreign_item_,
     id: NodeId,

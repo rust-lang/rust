@@ -27,8 +27,8 @@ use std::vec;
 
 #[deriving(Clone, Eq)]
 pub enum path_elt {
-    path_mod(ident),
-    path_name(ident)
+    path_mod(Ident),
+    path_name(Ident)
 }
 
 pub type path = ~[path_elt];
@@ -44,7 +44,7 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
     strs.connect(sep)
 }
 
-pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {
+pub fn path_ident_to_str(p: &path, i: Ident, itr: @ident_interner) -> ~str {
     if p.is_empty() {
         itr.get(i.name).to_owned()
     } else {
@@ -74,7 +74,7 @@ pub enum ast_node {
     node_expr(@expr),
     node_stmt(@stmt),
     node_arg,
-    node_local(ident),
+    node_local(Ident),
     node_block(Block),
     node_struct_ctor(@struct_def, @item, @path),
     node_callee_scope(@expr)
@@ -89,7 +89,7 @@ pub struct Ctx {
 }
 
 impl Ctx {
-    fn extend(&self, elt: ident) -> @path {
+    fn extend(&self, elt: Ident) -> @path {
         @vec::append(self.path.clone(), [path_name(elt)])
     }
 
@@ -110,7 +110,7 @@ impl Ctx {
     fn map_struct_def(&mut self,
                       struct_def: @ast::struct_def,
                       parent_node: ast_node,
-                      ident: ast::ident) {
+                      ident: ast::Ident) {
         let p = self.extend(ident);
 
         // If this is a tuple-like struct, register the constructor.
@@ -356,7 +356,7 @@ impl Visitor<()> for Ctx {
 
     fn visit_struct_def(&mut self,
                         struct_def: @struct_def,
-                        ident: ident,
+                        ident: Ident,
                         generics: &Generics,
                         node_id: NodeId,
                         _: ()) {

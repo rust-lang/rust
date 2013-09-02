@@ -894,7 +894,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::expr) -> DatumBlock {
 
     fn trans_rec_field(bcx: @mut Block,
                        base: @ast::expr,
-                       field: ast::ident) -> DatumBlock {
+                       field: ast::Ident) -> DatumBlock {
         //! Translates `base.field`.
 
         let mut bcx = bcx;

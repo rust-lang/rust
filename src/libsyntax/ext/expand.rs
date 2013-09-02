@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, NodeId, expr_, expr_mac, ident, mac_invoc_tt};
+use ast::{Block, Crate, NodeId, expr_, expr_mac, Ident, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{illegal_ctxt};
 use ast;
@@ -140,7 +140,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                 }
             }
 
-            fn mk_simple_path(ident: ast::ident, span: Span) -> ast::Path {
+            fn mk_simple_path(ident: ast::Ident, span: Span) -> ast::Path {
                 ast::Path {
                     span: span,
                     global: false,
@@ -523,7 +523,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 #[deriving(Clone)]
 struct NewNameFinderContext {
-    ident_accumulator: @mut ~[ast::ident],
+    ident_accumulator: @mut ~[ast::Ident],
 }
 
 impl Visitor<()> for NewNameFinderContext {
@@ -645,7 +645,7 @@ impl Visitor<()> for NewNameFinderContext {
 
     fn visit_struct_def(&mut self,
                         struct_def: @ast::struct_def,
-                        ident: ident,
+                        ident: Ident,
                         generics: &ast::Generics,
                         node_id: NodeId,
                         _: ()) {
@@ -667,7 +667,7 @@ impl Visitor<()> for NewNameFinderContext {
 // return a visitor that extracts the pat_ident paths
 // from a given pattern and puts them in a mutable
 // array (passed in to the traversal)
-pub fn new_name_finder(idents: @mut ~[ast::ident]) -> @mut Visitor<()> {
+pub fn new_name_finder(idents: @mut ~[ast::Ident]) -> @mut Visitor<()> {
     let context = @mut NewNameFinderContext {
         ident_accumulator: idents,
     };
@@ -697,7 +697,7 @@ fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
+fn renames_to_fold(renames : @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns {
         fold_ident: |id,_| {
@@ -706,7 +706,7 @@ fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
             let new_ctxt = renames.iter().fold(id.ctxt,|ctxt,&(from,to)| {
                 new_rename(from,to,ctxt)
             });
-            ast::ident{name:id.name,ctxt:new_ctxt}
+            ast::Ident{name:id.name,ctxt:new_ctxt}
         },
         .. *afp
     };
@@ -1144,7 +1144,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
 
 // given a function from idents to idents, produce
 // an ast_fold that applies that function:
-pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
+pub fn fun_to_ident_folder(f: @fn(ast::Ident)->ast::Ident) -> @ast_fold{
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns{
         fold_ident : |id, _| f(id),
@@ -1154,11 +1154,11 @@ pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
 }
 
 // update the ctxts in a path to get a rename node
-pub fn new_ident_renamer(from: ast::ident,
+pub fn new_ident_renamer(from: ast::Ident,
                       to: ast::Name) ->
-    @fn(ast::ident)->ast::ident {
-    |id : ast::ident|
-    ast::ident{
+    @fn(ast::Ident)->ast::Ident {
+    |id : ast::Ident|
+    ast::Ident{
         name: id.name,
         ctxt: new_rename(from,to,id.ctxt)
     }
@@ -1167,9 +1167,9 @@ pub fn new_ident_renamer(from: ast::ident,
 
 // update the ctxts in a path to get a mark node
 pub fn new_ident_marker(mark: uint) ->
-    @fn(ast::ident)->ast::ident {
-    |id : ast::ident|
-    ast::ident{
+    @fn(ast::Ident)->ast::Ident {
+    |id : ast::Ident|
+    ast::Ident{
         name: id.name,
         ctxt: new_mark(mark,id.ctxt)
     }
@@ -1178,9 +1178,9 @@ pub fn new_ident_marker(mark: uint) ->
 // perform resolution (in the MTWT sense) on all of the
 // idents in the tree. This is the final step in expansion.
 pub fn new_ident_resolver() ->
-    @fn(ast::ident)->ast::ident {
-    |id : ast::ident|
-    ast::ident {
+    @fn(ast::Ident)->ast::Ident {
+    |id : ast::Ident|
+    ast::Ident {
         name : resolve(id),
         ctxt : illegal_ctxt
     }
@@ -1304,7 +1304,7 @@ mod test {
         };
         let a_name = intern("a");
         let a2_name = intern("a2");
-        let renamer = new_ident_renamer(ast::ident{name:a_name,ctxt:empty_ctxt},
+        let renamer = new_ident_renamer(ast::Ident{name:a_name,ctxt:empty_ctxt},
                                         a2_name);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).unwrap();
         let resolver = new_ident_resolver();

@@ -20,7 +20,7 @@ use middle::typeck::{method_static, method_object};
 use std::util::ignore;
 use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
-use syntax::ast::{expr_struct, expr_unary, ident, inherited, item_enum};
+use syntax::ast::{expr_struct, expr_unary, Ident, inherited, item_enum};
 use syntax::ast::{item_foreign_mod, item_fn, item_impl, item_struct};
 use syntax::ast::{item_trait, LOCAL_CRATE, NodeId, pat_struct, Path};
 use syntax::ast::{private, provided, public, required, stmt_decl, visibility};
@@ -203,7 +203,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private field is in scope.
-    fn check_field(&mut self, span: Span, id: ast::def_id, ident: ast::ident) {
+    fn check_field(&mut self, span: Span, id: ast::def_id, ident: ast::Ident) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for field in fields.iter() {
             if field.ident != ident { loop; }
@@ -216,7 +216,7 @@ impl PrivacyVisitor {
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
-    fn check_method_common(&mut self, span: Span, method_id: def_id, name: &ident) {
+    fn check_method_common(&mut self, span: Span, method_id: def_id, name: &Ident) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         // Having to do this this is really unfortunate.
@@ -280,7 +280,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private method is in scope.
-    fn check_method(&mut self, span: Span, origin: &method_origin, ident: ast::ident) {
+    fn check_method(&mut self, span: Span, origin: &method_origin, ident: ast::Ident) {
         match *origin {
             method_static(method_id) => {
                 self.check_method_common(span, method_id, &ident)

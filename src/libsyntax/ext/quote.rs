@@ -68,7 +68,7 @@ pub mod rt {
         fn to_source(&self) -> @str;
     }
 
-    impl ToSource for ast::ident {
+    impl ToSource for ast::Ident {
         fn to_source(&self) -> @str {
             ident_to_str(self)
         }
@@ -216,7 +216,7 @@ pub mod rt {
         )
     )
 
-    impl_to_tokens!(ast::ident)
+    impl_to_tokens!(ast::Ident)
     impl_to_tokens!(@ast::item)
     impl_to_tokens_self!(&'self [@ast::item])
     impl_to_tokens!(ast::Ty)
@@ -334,16 +334,16 @@ pub fn expand_quote_stmt(cx: @ExtCtxt,
                                     ~[e_attrs], tts))
 }
 
-fn ids_ext(strs: ~[~str]) -> ~[ast::ident] {
+fn ids_ext(strs: ~[~str]) -> ~[ast::Ident] {
     strs.map(|str| str_to_ident(*str))
 }
 
-fn id_ext(str: &str) -> ast::ident {
+fn id_ext(str: &str) -> ast::Ident {
     str_to_ident(str)
 }
 
 // Lift an ident to the expr that evaluates to that ident.
-fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::ident) -> @ast::expr {
+fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::expr {
     let e_str = cx.expr_str(sp, cx.str_of(ident));
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),

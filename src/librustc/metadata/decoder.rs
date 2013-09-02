@@ -312,12 +312,12 @@ fn item_path(item_doc: ebml::Doc) -> ast_map::path {
     return result;
 }
 
-fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
+fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::Ident {
     let name = reader::get_doc(item, tag_paths_data_name);
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
         None => token::str_to_ident(string),
-        Some(val) => ast::new_ident(val),
+        Some(val) => ast::Ident::new(val),
     }
 }
 
@@ -452,7 +452,7 @@ pub fn get_impl_vtables(cdata: Cmd,
 
 
 pub fn get_impl_method(intr: @ident_interner, cdata: Cmd, id: ast::NodeId,
-                       name: ast::ident) -> Option<ast::def_id> {
+                       name: ast::Ident) -> Option<ast::def_id> {
     let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     let mut found = None;
     do reader::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
@@ -706,7 +706,7 @@ fn each_child_of_item_or_crate(intr: @ident_interner,
                                cdata: Cmd,
                                item_doc: ebml::Doc,
                                get_crate_data: GetCrateDataCb,
-                               callback: &fn(DefLike, ast::ident)) {
+                               callback: &fn(DefLike, ast::Ident)) {
     // Iterate over all children.
     let _ = do reader::tagged_docs(item_doc, tag_mod_child) |child_info_doc| {
         let child_def_id = reader::with_doc_data(child_info_doc,
@@ -829,7 +829,7 @@ pub fn each_child_of_item(intr: @ident_interner,
                           cdata: Cmd,
                           id: ast::NodeId,
                           get_crate_data: GetCrateDataCb,
-                          callback: &fn(DefLike, ast::ident)) {
+                          callback: &fn(DefLike, ast::Ident)) {
     // Find the item.
     let root_doc = reader::Doc(cdata.data);
     let items = reader::get_doc(root_doc, tag_items);
@@ -849,7 +849,7 @@ pub fn each_child_of_item(intr: @ident_interner,
 pub fn each_top_level_item_of_crate(intr: @ident_interner,
                                     cdata: Cmd,
                                     get_crate_data: GetCrateDataCb,
-                                    callback: &fn(DefLike, ast::ident)) {
+                                    callback: &fn(DefLike, ast::Ident)) {
     let root_doc = reader::Doc(cdata.data);
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);
     let crate_items_doc = reader::get_doc(misc_info_doc,
@@ -995,7 +995,7 @@ pub fn get_impl(intr: @ident_interner, cdata: Cmd, impl_id: ast::NodeId,
 pub fn get_method_name_and_explicit_self(
     intr: @ident_interner,
     cdata: Cmd,
-    id: ast::NodeId) -> (ast::ident, ast::explicit_self_)
+    id: ast::NodeId) -> (ast::Ident, ast::explicit_self_)
 {
     let method_doc = lookup_item(id, cdata.data);
     let name = item_name(intr, method_doc);
@@ -1093,7 +1093,7 @@ pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
 }
 
 pub fn get_type_name_if_impl(cdata: Cmd,
-                             node_id: ast::NodeId) -> Option<ast::ident> {
+                             node_id: ast::NodeId) -> Option<ast::Ident> {
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Impl {
         return None;
@@ -1352,7 +1352,7 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::Attribute] {
 #[deriving(Clone)]
 pub struct CrateDep {
     cnum: ast::CrateNum,
-    name: ast::ident,
+    name: ast::Ident,
     vers: @str,
     hash: @str
 }
