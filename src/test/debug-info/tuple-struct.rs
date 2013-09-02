@@ -34,7 +34,8 @@
 
 
 // This test case mainly makes sure that no field names are generated for tuple structs (as opposed
-// to all fields having the name "__field__"). Otherwise they are handled the same a normal structs.
+// to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal
+// structs.
 
 struct NoPadding16(u16, i16);
 struct NoPadding32(i32, f32, u32);
