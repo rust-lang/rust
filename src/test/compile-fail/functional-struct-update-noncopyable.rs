@@ -8,32 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait T {
-    fn print(&self);
+// issue 7327
+
+// xfail-fast #7103
+extern mod extra;
+use extra::arc::*;
+
+struct A { y: Arc<int>, x: Arc<int> }
+
+impl Drop for A {
+    fn drop(&self) { println(fmt!("x=%?", self.x.get())); }
 }
-
-struct S {
-    s: int,
-}
-
-impl T for S {
-    fn print(&self) {
-        printfln!(self);
-    }
-}
-
-fn print_t(t: &T) {
-    t.print();
-}
-
-fn print_s(s: &S) {
-    s.print();
-}
-
-pub fn main() {
-    let s: @S = @S { s: 5 };
-    print_s(s);
-    let t: @T = s as @T;
-    print_t(t);
-
+fn main() {
+    let a = A { y: Arc::new(1), x: Arc::new(2) };
+    let _b = A { y: Arc::new(3), ..a };
+    let _c = a; //~ ERROR use of moved value
 }
