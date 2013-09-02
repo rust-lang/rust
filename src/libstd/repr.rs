@@ -381,10 +381,11 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         }
     }
 
-    fn visit_evec_fixed(&mut self, _n: uint, sz: uint, _align: uint,
+    fn visit_evec_fixed(&mut self, n: uint, sz: uint, _align: uint,
                         mtbl: uint, inner: *TyDesc) -> bool {
+        let assumed_size = if sz == 0 { n } else { sz };
         do self.get::<()> |this, b| {
-            this.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), sz, inner);
+            this.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), assumed_size, inner);
         }
     }
 
