@@ -96,6 +96,28 @@ pub fn read_u32v_le(dst: &mut[u32], input: &[u8]) {
     }
 }
 
+/// Read the value of a vector of bytes as a u32 value in little-endian format.
+pub fn read_u32_le(input: &[u8]) -> u32 {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(input.len() == 4);
+    unsafe {
+        let tmp: *i32 = transmute(input.unsafe_ref(0));
+        return to_le32(*tmp) as u32;
+    }
+}
+
+/// Read the value of a vector of bytes as a u32 value in big-endian format.
+pub fn read_u32_be(input: &[u8]) -> u32 {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_be32;
+    assert!(input.len() == 4);
+    unsafe {
+        let tmp: *i32 = transmute(input.unsafe_ref(0));
+        return to_be32(*tmp) as u32;
+    }
+}
+
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
