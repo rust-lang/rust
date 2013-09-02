@@ -220,11 +220,11 @@ pub trait TyVisitor {
     fn visit_leave_rec(&mut self, n_fields: uint,
                        sz: uint, align: uint) -> bool;
 
-    fn visit_enter_class(&mut self, name: &str, n_fields: uint,
+    fn visit_enter_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
                          sz: uint, align: uint) -> bool;
-    fn visit_class_field(&mut self, i: uint, name: &str,
+    fn visit_class_field(&mut self, i: uint, name: &str, named: bool,
                          mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_leave_class(&mut self, name: &str, n_fields: uint,
+    fn visit_leave_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
                          sz: uint, align: uint) -> bool;
 
     fn visit_enter_tup(&mut self, n_fields: uint,
@@ -256,7 +256,7 @@ pub trait TyVisitor {
     fn visit_leave_fn(&mut self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
 
-    fn visit_trait(&mut self) -> bool;
+    fn visit_trait(&mut self, name: &str) -> bool;
     fn visit_param(&mut self, i: uint) -> bool;
     fn visit_self(&mut self) -> bool;
     fn visit_type(&mut self) -> bool;

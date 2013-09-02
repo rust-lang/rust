@@ -51,6 +51,10 @@ impl Reflector {
         C_int(self.bcx.ccx(), i)
     }
 
+    pub fn c_bool(&mut self, b: bool) -> ValueRef {
+        C_bool(b)
+    }
+
     pub fn c_slice(&mut self, s: @str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
@@ -146,6 +150,7 @@ impl Reflector {
     // Entrypoint
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
+        let tcx = bcx.ccx().tcx;
         debug!("reflect::visit_ty %s", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
@@ -248,17 +253,20 @@ impl Reflector {
           }
 
           ty::ty_struct(did, ref substs) => {
-              let bcx = self.bcx;
-              let tcx = bcx.ccx().tcx;
               let fields = ty::struct_fields(tcx, did, substs);
+              let mut named_fields = false;
+              if !fields.is_empty() {
+                  named_fields = fields[0].ident != special_idents::unnamed_field;
+              }
 
               let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
+                            self.c_bool(named_fields),
                             self.c_uint(fields.len())] + self.c_size_and_align(t);
               do self.bracketed("class", extra) |this| {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[this.c_uint(i),
-                                    this.c_slice(
-                                        bcx.ccx().sess.str_of(field.ident))]
+                                    this.c_slice(bcx.ccx().sess.str_of(field.ident)),
+                                    this.c_bool(named_fields)]
                           + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
                   }
@@ -270,7 +278,6 @@ impl Reflector {
           // let the visitor tell us if it wants to visit only a particular
           // variant?
           ty::ty_enum(did, ref substs) => {
-            let bcx = self.bcx;
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
@@ -336,8 +343,12 @@ impl Reflector {
             }
           }
 
-          // Miscallaneous extra types
-          ty::ty_trait(_, _, _, _, _) => self.leaf("trait"),
+          ty::ty_trait(_, _, _, _, _) => {
+              let extra = [self.c_slice(ty_to_str(tcx, t).to_managed())];
+              self.visit("trait", extra);
+          }
+
+          // Miscellaneous extra types
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
           ty::ty_param(ref p) => {
