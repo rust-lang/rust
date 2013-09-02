@@ -337,9 +337,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
     // segmented stacks are enabled.  However, unwind info directives in assembly
     // output are OK, so we generate assembly first and then run it through
     // an external assembler.
-    // Same for Android.
-    if (sess.targ_cfg.os == session::OsAndroid ||
-        sess.targ_cfg.os == session::OsWin32) &&
+    if sess.targ_cfg.os == session::OsWin32 &&
         (sess.opts.output_type == link::output_type_object ||
          sess.opts.output_type == link::output_type_exe) {
         let output_type = link::output_type_assembly;
