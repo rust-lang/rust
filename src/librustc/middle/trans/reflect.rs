@@ -51,6 +51,10 @@ impl Reflector {
         C_int(self.bcx.ccx(), i)
     }
 
+    pub fn c_bool(&mut self, b: bool) -> ValueRef {
+        C_bool(b)
+    }
+
     pub fn c_slice(&mut self, s: @str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
@@ -250,14 +254,19 @@ impl Reflector {
 
           ty::ty_struct(did, ref substs) => {
               let fields = ty::struct_fields(tcx, did, substs);
+              let mut named_fields = false;
+              if !fields.is_empty() {
+                  named_fields = fields[0].ident != special_idents::unnamed_field;
+              }
 
               let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
+                            self.c_bool(named_fields),
                             self.c_uint(fields.len())] + self.c_size_and_align(t);
               do self.bracketed("class", extra) |this| {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[this.c_uint(i),
-                                    this.c_slice(
-                                        bcx.ccx().sess.str_of(field.ident))]
+                                    this.c_slice(bcx.ccx().sess.str_of(field.ident)),
+                                    this.c_bool(named_fields)]
                           + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
                   }
