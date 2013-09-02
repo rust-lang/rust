@@ -412,31 +412,40 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_enter_class(&mut self, name: &str, n_fields: uint,
+    fn visit_enter_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
         self.writer.write(name.as_bytes());
         if n_fields != 0 {
-            self.writer.write(['{' as u8]);
+            if named_fields {
+                self.writer.write(['{' as u8]);
+            } else {
+                self.writer.write(['(' as u8]);
+            }
         }
         true
     }
 
-    fn visit_class_field(&mut self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_class_field(&mut self, i: uint, name: &str, named: bool,
+                         _mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
             self.writer.write(", ".as_bytes());
         }
-        self.write_mut_qualifier(mtbl);
-        self.writer.write(name.as_bytes());
-        self.writer.write(": ".as_bytes());
+        if named {
+            self.writer.write(name.as_bytes());
+            self.writer.write(": ".as_bytes());
+        }
         self.visit_inner(inner);
         true
     }
 
-    fn visit_leave_class(&mut self, _name: &str, n_fields: uint,
+    fn visit_leave_class(&mut self, _name: &str, named_fields: bool, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
         if n_fields != 0 {
-            self.writer.write(['}' as u8]);
+            if named_fields {
+                self.writer.write(['}' as u8]);
+            } else {
+                self.writer.write([')' as u8]);
+            }
         }
         true
     }
@@ -669,4 +678,7 @@ fn test_repr() {
 
     struct Foo;
     exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
+
+    struct Bar(int, int);
+    exact_test(&(Bar(2, 2)), "repr::test_repr::Bar(2, 2)");
 }
