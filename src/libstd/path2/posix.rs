@@ -97,12 +97,12 @@ impl GenericPathUnsafe for Path {
             Some(0) if self.repr.len() == 1 && self.repr[0] == sep => {
                 self.repr = Path::normalize(dirname);
             }
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
+                self.repr = Path::normalize(dirname);
+            }
             Some(idx) if dirname.is_empty() => {
                 let v = Path::normalize(self.repr.slice_from(idx+1));
                 self.repr = v;
-            }
-            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
-                self.repr = Path::normalize(dirname);
             }
             Some(idx) => {
                 let mut v = vec::with_capacity(dirname.len() + self.repr.len() - idx);
@@ -444,7 +444,9 @@ mod tests {
         t!(s: Path::from_str(""), ".");
         t!(s: Path::from_str("/"), "/");
         t!(s: Path::from_str("hi"), "hi");
+        t!(s: Path::from_str("hi/"), "hi");
         t!(s: Path::from_str("/lib"), "/lib");
+        t!(s: Path::from_str("/lib/"), "/lib");
         t!(s: Path::from_str("hi/there"), "hi/there");
         t!(s: Path::from_str("hi/there.txt"), "hi/there.txt");
 
@@ -800,6 +802,8 @@ mod tests {
         t!(s: Path::from_str("/foo").with_dirname_str("bar"), "bar/foo");
         t!(s: Path::from_str("..").with_dirname_str("foo"), "foo");
         t!(s: Path::from_str("../..").with_dirname_str("foo"), "foo");
+        t!(s: Path::from_str("..").with_dirname_str(""), ".");
+        t!(s: Path::from_str("../..").with_dirname_str(""), ".");
         t!(s: Path::from_str("foo").with_dirname_str(".."), "../foo");
         t!(s: Path::from_str("foo").with_dirname_str("../.."), "../../foo");
 
@@ -813,6 +817,8 @@ mod tests {
         t!(s: Path::from_str("/").with_filename_str("foo"), "/foo");
         t!(s: Path::from_str("/a").with_filename_str("foo"), "/foo");
         t!(s: Path::from_str("foo").with_filename_str("bar"), "bar");
+        t!(s: Path::from_str("/").with_filename_str("foo/"), "/foo");
+        t!(s: Path::from_str("/a").with_filename_str("foo/"), "/foo");
         t!(s: Path::from_str("a/b/c").with_filename_str(""), "a/b");
         t!(s: Path::from_str("a/b/c").with_filename_str("."), "a/b");
         t!(s: Path::from_str("a/b/c").with_filename_str(".."), "a");
@@ -822,6 +828,8 @@ mod tests {
         t!(s: Path::from_str("a/b/c").with_filename_str("/d"), "a/b/d");
         t!(s: Path::from_str("..").with_filename_str("foo"), "../foo");
         t!(s: Path::from_str("../..").with_filename_str("foo"), "../../foo");
+        t!(s: Path::from_str("..").with_filename_str(""), "..");
+        t!(s: Path::from_str("../..").with_filename_str(""), "../..");
 
         t!(v: Path::new(b!("hi/there", 0x80, ".txt")).with_filestem(b!(0xff)),
               b!("hi/", 0xff, ".txt"));
