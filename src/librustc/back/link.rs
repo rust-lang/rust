@@ -607,8 +607,8 @@ pub fn build_link_meta(sess: Session,
     fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
         -> @str {
         match opt_name {
-            Some(v) => v,
-            None => {
+            Some(v) if !v.is_empty() => v,
+            _ => {
                 // to_managed could go away if there was a version of
                 // filestem that returned an @str
                 let name = session::expect(sess,
@@ -624,8 +624,8 @@ pub fn build_link_meta(sess: Session,
 
     fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
         match opt_vers {
-            Some(v) => v,
-            None => {
+            Some(v) if !v.is_empty() => v,
+            _ => {
                 let vers = @"0.0";
                 warn_missing(sess, "vers", vers);
                 vers
