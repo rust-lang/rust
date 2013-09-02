@@ -78,6 +78,8 @@ pub mod mac;
 pub mod md5;
 #[path="crypto/pbkdf2.rs"]
 pub mod pbkdf2;
+#[path="crypto/scrypt.rs"]
+pub mod scrypt;
 #[path="crypto/sha1.rs"]
 pub mod sha1;
 #[path="crypto/sha2.rs"]
