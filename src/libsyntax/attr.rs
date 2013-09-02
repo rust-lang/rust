@@ -319,7 +319,6 @@ pub fn require_unique_names(diagnostic: @mut span_handler,
     for meta in metas.iter() {
         let name = meta.name();
 
-        // FIXME: How do I silence the warnings? --pcw (#2619)
         if !set.insert(name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
