@@ -428,9 +428,9 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_trait(&mut self) -> bool {
+    fn visit_trait(&mut self, name: &str) -> bool {
         self.align_to::<@TyVisitor>();
-        if ! self.inner.visit_trait() { return false; }
+        if ! self.inner.visit_trait(name) { return false; }
         self.bump_past::<@TyVisitor>();
         true
     }
@@ -616,7 +616,7 @@ impl TyVisitor for my_visitor {
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&mut self) -> bool { true }
+    fn visit_trait(&mut self, _name: &str) -> bool { true }
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }

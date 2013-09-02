@@ -146,6 +146,7 @@ impl Reflector {
     // Entrypoint
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
+        let tcx = bcx.ccx().tcx;
         debug!("reflect::visit_ty %s", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
@@ -248,8 +249,6 @@ impl Reflector {
           }
 
           ty::ty_struct(did, ref substs) => {
-              let bcx = self.bcx;
-              let tcx = bcx.ccx().tcx;
               let fields = ty::struct_fields(tcx, did, substs);
 
               let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
@@ -270,7 +269,6 @@ impl Reflector {
           // let the visitor tell us if it wants to visit only a particular
           // variant?
           ty::ty_enum(did, ref substs) => {
-            let bcx = self.bcx;
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
@@ -336,8 +334,12 @@ impl Reflector {
             }
           }
 
-          // Miscallaneous extra types
-          ty::ty_trait(_, _, _, _, _) => self.leaf("trait"),
+          ty::ty_trait(_, _, _, _, _) => {
+              let extra = [self.c_slice(ty_to_str(tcx, t).to_managed())];
+              self.visit("trait", extra);
+          }
+
+          // Miscellaneous extra types
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
           ty::ty_param(ref p) => {

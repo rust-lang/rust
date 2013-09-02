@@ -139,7 +139,7 @@ impl TyVisitor for MyVisitor {
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&mut self) -> bool { true }
+    fn visit_trait(&mut self, _name: &str) -> bool { true }
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
