@@ -22,7 +22,7 @@ use syntax::parse::token;
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
 // Hack-Becomes-Feature: using thread-local-state everywhere...
-pub fn to_str(id: ast::ident) -> ~str {
+pub fn to_str(id: ast::Ident) -> ~str {
     /* bad */ ident_to_str(&id).to_owned()
 }
 

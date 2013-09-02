@@ -102,13 +102,13 @@ pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
 
 fn encode_name(ecx: &EncodeContext,
                ebml_w: &mut writer::Encoder,
-               name: ident) {
+               name: Ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
 }
 
 fn encode_impl_type_basename(ecx: &EncodeContext,
                              ebml_w: &mut writer::Encoder,
-                             name: ident) {
+                             name: Ident) {
     ebml_w.wr_tagged_str(tag_item_impl_type_basename,
                          ecx.tcx.sess.str_of(name));
 }
@@ -135,9 +135,9 @@ struct entry<T> {
 }
 
 fn add_to_index(ebml_w: &mut writer::Encoder,
-                path: &[ident],
+                path: &[Ident],
                 index: &mut ~[entry<~str>],
-                name: ident) {
+                name: Ident) {
     let mut full_path = ~[];
     full_path.push_all(path);
     full_path.push(name);
@@ -379,7 +379,7 @@ fn encode_reexported_static_method(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    exp: &middle::resolve::Export2,
                                    method_def_id: def_id,
-                                   method_ident: ident) {
+                                   method_ident: Ident) {
     debug!("(encode reexported static method) %s::%s",
             exp.name, ecx.tcx.sess.str_of(method_ident));
     ebml_w.start_tag(tag_items_data_item_reexport);
@@ -541,7 +541,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                        md: &_mod,
                        id: NodeId,
                        path: &[ast_map::path_elt],
-                       name: ident,
+                       name: Ident,
                        vis: visibility) {
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
@@ -700,7 +700,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ebml_w: &mut writer::Encoder,
                                path: &[ast_map::path_elt],
-                               name: ast::ident,
+                               name: ast::Ident,
                                ctor_id: NodeId,
                                index: @mut ~[entry<i64>]) {
     index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });

@@ -82,7 +82,7 @@ pub fn string_to_pat(source_str : @str) -> @ast::pat {
 }
 
 // convert a vector of strings to a vector of ast::idents
-pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::ident] {
+pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::Ident] {
     ids.map(|u| token::str_to_ident(*u))
 }
 

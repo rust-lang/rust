@@ -57,7 +57,7 @@ pub struct SyntaxExpanderTTItem {
 
 pub type SyntaxExpanderTTItemFun = @fn(@ExtCtxt,
                                        Span,
-                                       ast::ident,
+                                       ast::Ident,
                                        ~[ast::token_tree])
                                     -> MacResult;
 
@@ -114,7 +114,7 @@ pub struct BlockInfo {
 }
 
 // a list of ident->name renamings
-type RenameList = ~[(ast::ident,Name)];
+type RenameList = ~[(ast::Ident,Name)];
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
@@ -228,7 +228,7 @@ pub struct ExtCtxt {
     // and there are bugs in the code for object
     // types that make this hard to get right at the
     // moment. - nmatsakis
-    mod_path: @mut ~[ast::ident],
+    mod_path: @mut ~[ast::Ident],
     trace_mac: @mut bool
 }
 
@@ -255,9 +255,9 @@ impl ExtCtxt {
     }
     pub fn print_backtrace(&self) { }
     pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
-    pub fn mod_push(&self, i: ast::ident) { self.mod_path.push(i); }
+    pub fn mod_push(&self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&self) { self.mod_path.pop(); }
-    pub fn mod_path(&self) -> ~[ast::ident] { (*self.mod_path).clone() }
+    pub fn mod_path(&self) -> ~[ast::Ident] { (*self.mod_path).clone() }
     pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {
@@ -311,10 +311,10 @@ impl ExtCtxt {
     pub fn set_trace_macros(&self, x: bool) {
         *self.trace_mac = x
     }
-    pub fn str_of(&self, id: ast::ident) -> @str {
+    pub fn str_of(&self, id: ast::Ident) -> @str {
         ident_to_str(&id)
     }
-    pub fn ident_of(&self, st: &str) -> ast::ident {
+    pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
 }

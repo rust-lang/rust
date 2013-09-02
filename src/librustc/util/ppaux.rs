@@ -305,7 +305,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn bare_fn_to_str(cx: ctxt,
                       purity: ast::purity,
                       abis: AbiSet,
-                      ident: Option<ast::ident>,
+                      ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
                       -> ~str {
         let mut s = ~"extern ";
@@ -693,7 +693,7 @@ impl Repr for ty::Method {
     }
 }
 
-impl Repr for ast::ident {
+impl Repr for ast::Ident {
     fn repr(&self, _tcx: ctxt) -> ~str {
         token::ident_to_str(self).to_owned()
     }

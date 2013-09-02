@@ -1256,7 +1256,7 @@ trait fake_ext_ctxt {
     fn cfg(&self) -> ast::CrateConfig;
     fn parse_sess(&self) -> @mut parse::ParseSess;
     fn call_site(&self) -> Span;
-    fn ident_of(&self, st: &str) -> ast::ident;
+    fn ident_of(&self, st: &str) -> ast::Ident;
 }
 
 #[cfg(test)]
@@ -1273,7 +1273,7 @@ impl fake_ext_ctxt for fake_session {
             expn_info: None
         }
     }
-    fn ident_of(&self, st: &str) -> ast::ident {
+    fn ident_of(&self, st: &str) -> ast::Ident {
         token::str_to_ident(st)
     }
 }

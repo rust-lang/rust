@@ -23,12 +23,12 @@ use std::local_data;
 use std::num;
 use std::option;
 
-pub fn path_name_i(idents: &[ident]) -> ~str {
+pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
-pub fn path_to_ident(path: &Path) -> ident {
+pub fn path_to_ident(path: &Path) -> Ident {
     path.segments.last().identifier
 }
 
@@ -217,7 +217,7 @@ pub fn default_block(
     }
 }
 
-pub fn ident_to_path(s: Span, identifier: ident) -> Path {
+pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     ast::Path {
         span: s,
         global: false,
@@ -231,7 +231,7 @@ pub fn ident_to_path(s: Span, identifier: ident) -> Path {
     }
 }
 
-pub fn ident_to_pat(id: NodeId, s: Span, i: ident) -> @pat {
+pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @pat {
     @ast::pat { id: id,
                 node: pat_ident(bind_infer, ident_to_path(s, i), None),
                 span: s }
@@ -302,13 +302,13 @@ pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
 }
 
 pub trait inlined_item_utils {
-    fn ident(&self) -> ident;
+    fn ident(&self) -> Ident;
     fn id(&self) -> ast::NodeId;
     fn accept<E: Clone, V:Visitor<E>>(&self, e: E, v: &mut V);
 }
 
 impl inlined_item_utils for inlined_item {
-    fn ident(&self) -> ident {
+    fn ident(&self) -> Ident {
         match *self {
             ii_item(i) => i.ident,
             ii_foreign(i) => i.ident,
@@ -608,7 +608,7 @@ impl Visitor<()> for IdVisitor {
     // XXX: Default
     fn visit_struct_def(&mut self,
                         struct_definition: @struct_def,
-                        identifier: ident,
+                        identifier: Ident,
                         generics: &Generics,
                         node_id: NodeId,
                         env: ()) {
@@ -749,7 +749,7 @@ impl SimpleVisitor for EachViewItemData {
     }
     fn visit_struct_def(&mut self,
                         _: @struct_def,
-                        _: ident,
+                        _: Ident,
                         _: &Generics,
                         _: NodeId) {
         // XXX: Default method.
@@ -827,7 +827,7 @@ pub fn pat_is_ident(pat: @ast::pat) -> bool {
 // HYGIENE FUNCTIONS
 
 /// Construct an identifier with the given name and an empty context:
-pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: 0}}
+pub fn new_ident(name: Name) -> Ident { Ident {name: name, ctxt: 0}}
 
 /// Extend a syntax context with a given mark
 pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
@@ -859,13 +859,13 @@ pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
 }
 
 /// Extend a syntax context with a given rename
-pub fn new_rename(id:ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
+pub fn new_rename(id:Ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
     new_rename_internal(id, to, tail, get_sctable())
 }
 
 // Extend a syntax context with a given rename and sctable
 // FIXME #4536 : currently pub to allow testing
-pub fn new_rename_internal(id:ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
+pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
     -> SyntaxContext {
     let key = (tail,id,to);
     // FIXME #5074
@@ -916,22 +916,22 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
 }
 
 /// Resolve a syntax object to a name, per MTWT.
-pub fn resolve(id : ident) -> Name {
+pub fn resolve(id : Ident) -> Name {
     resolve_internal(id, get_sctable())
 }
 
 // Resolve a syntax object to a name, per MTWT.
 // FIXME #4536 : currently pub to allow testing
-pub fn resolve_internal(id : ident, table : &mut SCTable) -> Name {
+pub fn resolve_internal(id : Ident, table : &mut SCTable) -> Name {
     match table.table[id.ctxt] {
         EmptyCtxt => id.name,
         // ignore marks here:
-        Mark(_,subctxt) => resolve_internal(ident{name:id.name, ctxt: subctxt},table),
+        Mark(_,subctxt) => resolve_internal(Ident{name:id.name, ctxt: subctxt},table),
         // do the rename if necessary:
-        Rename(ident{name,ctxt},toname,subctxt) => {
+        Rename(Ident{name,ctxt},toname,subctxt) => {
             // this could be cached or computed eagerly:
-            let resolvedfrom = resolve_internal(ident{name:name,ctxt:ctxt},table);
-            let resolvedthis = resolve_internal(ident{name:id.name,ctxt:subctxt},table);
+            let resolvedfrom = resolve_internal(Ident{name:name,ctxt:ctxt},table);
+            let resolvedthis = resolve_internal(Ident{name:id.name,ctxt:subctxt},table);
             if ((resolvedthis == resolvedfrom)
                 && (marksof(ctxt,resolvedthis,table)
                     == marksof(subctxt,resolvedthis,table))) {
@@ -1014,12 +1014,12 @@ mod test {
 
     // convert a list of uints to an @[ident]
     // (ignores the interner completely)
-    fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
-        @uints.map(|u| ident {name:*u, ctxt: empty_ctxt})
+    fn uints_to_idents (uints: &~[uint]) -> @~[Ident] {
+        @uints.map(|u| Ident {name:*u, ctxt: empty_ctxt})
     }
 
-    fn id (u : uint, s: SyntaxContext) -> ident {
-        ident{name:u, ctxt: s}
+    fn id (u : uint, s: SyntaxContext) -> Ident {
+        Ident{name:u, ctxt: s}
     }
 
     // because of the SCTable, I now need a tidy way of
@@ -1027,7 +1027,7 @@ mod test {
     #[deriving(Clone, Eq)]
     enum TestSC {
         M(Mrk),
-        R(ident,Name)
+        R(Ident,Name)
     }
 
     // unfold a vector of TestSC values into a SCTable,

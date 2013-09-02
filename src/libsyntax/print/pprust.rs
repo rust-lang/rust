@@ -185,7 +185,7 @@ pub fn path_to_str(p: &ast::Path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
-pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::ident,
+pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::Ident,
                   opt_explicit_self: Option<ast::explicit_self_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
@@ -639,7 +639,7 @@ fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
 }
 
 pub fn print_enum_def(s: @ps, enum_definition: &ast::enum_def,
-                      generics: &ast::Generics, ident: ast::ident,
+                      generics: &ast::Generics, ident: ast::Ident,
                       span: codemap::Span, visibility: ast::visibility) {
     head(s, visibility_qualified(visibility, "enum"));
     print_ident(s, ident);
@@ -691,7 +691,7 @@ pub fn print_visibility(s: @ps, vis: ast::visibility) {
 pub fn print_struct(s: @ps,
                     struct_def: &ast::struct_def,
                     generics: &ast::Generics,
-                    ident: ast::ident,
+                    ident: ast::Ident,
                     span: codemap::Span) {
     print_ident(s, ident);
     print_generics(s, generics);
@@ -1495,7 +1495,7 @@ pub fn print_decl(s: @ps, decl: &ast::decl) {
     }
 }
 
-pub fn print_ident(s: @ps, ident: ast::ident) {
+pub fn print_ident(s: @ps, ident: ast::Ident) {
     word(s.s, ident_to_str(&ident));
 }
 
@@ -1698,7 +1698,7 @@ pub fn print_fn(s: @ps,
                 decl: &ast::fn_decl,
                 purity: Option<ast::purity>,
                 abis: AbiSet,
-                name: ast::ident,
+                name: ast::Ident,
                 generics: &ast::Generics,
                 opt_explicit_self: Option<ast::explicit_self_>,
                 vis: ast::visibility) {
@@ -1946,7 +1946,7 @@ pub fn print_ty_fn(s: @ps,
                    purity: ast::purity,
                    onceness: ast::Onceness,
                    decl: &ast::fn_decl,
-                   id: Option<ast::ident>,
+                   id: Option<ast::Ident>,
                    opt_bounds: &Option<OptVec<ast::TyParamBound>>,
                    generics: Option<&ast::Generics>,
                    opt_explicit_self: Option<ast::explicit_self_>) {

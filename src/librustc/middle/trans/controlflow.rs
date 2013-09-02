@@ -27,7 +27,7 @@ use util::ppaux;
 use middle::trans::type_::Type;
 
 use syntax::ast;
-use syntax::ast::ident;
+use syntax::ast::Ident;
 use syntax::ast_map::path_mod;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -194,7 +194,7 @@ pub fn trans_while(bcx: @mut Block, cond: @ast::expr, body: &ast::Block) -> @mut
 
 pub fn trans_loop(bcx:@mut Block,
                   body: &ast::Block,
-                  opt_label: Option<ident>)
+                  opt_label: Option<Ident>)
                -> @mut Block {
     let _icx = push_ctxt("trans_loop");
     let next_bcx = sub_block(bcx, "next");
@@ -273,7 +273,7 @@ pub fn trans_log(log_ex: &ast::expr,
 }
 
 pub fn trans_break_cont(bcx: @mut Block,
-                        opt_label: Option<ident>,
+                        opt_label: Option<Ident>,
                         to_end: bool)
                      -> @mut Block {
     let _icx = push_ctxt("trans_break_cont");
@@ -326,11 +326,11 @@ pub fn trans_break_cont(bcx: @mut Block,
     return bcx;
 }
 
-pub fn trans_break(bcx: @mut Block, label_opt: Option<ident>) -> @mut Block {
+pub fn trans_break(bcx: @mut Block, label_opt: Option<Ident>) -> @mut Block {
     return trans_break_cont(bcx, label_opt, true);
 }
 
-pub fn trans_cont(bcx: @mut Block, label_opt: Option<ident>) -> @mut Block {
+pub fn trans_cont(bcx: @mut Block, label_opt: Option<Ident>) -> @mut Block {
     return trans_break_cont(bcx, label_opt, false);
 }
 

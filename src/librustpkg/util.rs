@@ -54,14 +54,14 @@ pub fn is_cmd(cmd: &str) -> bool {
 struct ListenerFn {
     cmds: ~[~str],
     span: codemap::Span,
-    path: ~[ast::ident]
+    path: ~[ast::Ident]
 }
 
 struct ReadyCtx {
     sess: session::Session,
     crate: @ast::Crate,
     ext_cx: @ExtCtxt,
-    path: ~[ast::ident],
+    path: ~[ast::Ident],
     fns: ~[ListenerFn]
 }
 

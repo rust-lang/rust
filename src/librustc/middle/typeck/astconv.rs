@@ -555,7 +555,7 @@ pub fn ty_of_arg<AC:AstConv,
 
 pub fn bound_lifetimes<AC:AstConv>(
     this: &AC,
-    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::ident>
+    ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::Ident>
 {
     /*!
      *

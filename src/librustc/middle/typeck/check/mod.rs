@@ -557,7 +557,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
 }
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
-                                 fields: ~[(ast::ident, Span)]) {
+                                 fields: ~[(ast::Ident, Span)]) {
     let mut field_names = HashMap::new();
 
     for p in fields.iter() {
@@ -714,7 +714,7 @@ impl RegionScope for FnCtxt {
     }
     fn named_region(&self,
                     span: Span,
-                    id: ast::ident) -> Result<ty::Region, RegionError> {
+                    id: ast::Ident) -> Result<ty::Region, RegionError> {
         self.search_in_scope_regions(span, ty::br_named(id))
     }
 }
@@ -1116,7 +1116,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
 pub fn lookup_field_ty(tcx: ty::ctxt,
                        class_id: ast::def_id,
                        items: &[ty::field_ty],
-                       fieldname: ast::ident,
+                       fieldname: ast::Ident,
                        substs: &ty::substs) -> Option<ty::t> {
 
     let o_field = items.iter().find(|f| f.ident == fieldname);
@@ -1536,7 +1536,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                          callee_id: ast::NodeId,
                          expr: @ast::expr,
                          rcvr: @ast::expr,
-                         method_name: ast::ident,
+                         method_name: ast::Ident,
                          args: &[@ast::expr],
                          tps: &[ast::Ty],
                          sugar: ast::CallSugar) {
@@ -1636,7 +1636,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         op_ex: @ast::expr,
                         self_ex: @ast::expr,
                         self_t: ty::t,
-                        opname: ast::ident,
+                        opname: ast::Ident,
                         args: ~[@ast::expr],
                         deref_args: DerefArgs,
                         autoderef_receiver: AutoderefReceiverFlag,
@@ -1936,7 +1936,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_field(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    base: @ast::expr,
-                   field: ast::ident,
+                   field: ast::Ident,
                    tys: &[ast::Ty]) {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base);

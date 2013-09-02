@@ -90,13 +90,13 @@ fn scan<R>(st: &mut PState, is_last: &fn(char) -> bool,
     return op(st.data.slice(start_pos, end_pos));
 }
 
-pub fn parse_ident(st: &mut PState, last: char) -> ast::ident {
+pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     return parse_ident_(st, |a| is_last(last, a) );
 }
 
 fn parse_ident_(st: &mut PState, is_last: @fn(char) -> bool) ->
-   ast::ident {
+   ast::Ident {
     let rslt = scan(st, is_last, str::from_bytes);
     return st.tcx.sess.ident_of(rslt);
 }
@@ -130,7 +130,7 @@ pub fn parse_trait_ref_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctx
 }
 
 fn parse_path(st: &mut PState) -> @ast::Path {
-    let mut idents: ~[ast::ident] = ~[];
+    let mut idents: ~[ast::Ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
     idents.push(parse_ident_(st, is_last));
     loop {

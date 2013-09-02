@@ -222,7 +222,7 @@ use util::ppaux::{Repr, vec_map_to_str};
 use std::hashmap::HashMap;
 use std::vec;
 use syntax::ast;
-use syntax::ast::ident;
+use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
 use syntax::codemap::{Span, dummy_sp};
@@ -390,7 +390,7 @@ struct BindingInfo {
     ty: ty::t,
 }
 
-type BindingsMap = HashMap<ident, BindingInfo>;
+type BindingsMap = HashMap<Ident, BindingInfo>;
 
 #[deriving(Clone)]
 struct ArmData<'self> {
@@ -409,7 +409,7 @@ struct ArmData<'self> {
 struct Match<'self> {
     pats: ~[@ast::pat],
     data: ArmData<'self>,
-    bound_ptrs: ~[(ident, ValueRef)]
+    bound_ptrs: ~[(Ident, ValueRef)]
 }
 
 impl<'self> Repr for Match<'self> {
@@ -736,7 +736,7 @@ fn enter_rec_or_struct<'r>(bcx: @mut Block,
                                dm: DefMap,
                                m: &[Match<'r>],
                                col: uint,
-                               fields: &[ast::ident],
+                               fields: &[ast::Ident],
                                val: ValueRef)
                             -> ~[Match<'r>] {
     debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%s)",
@@ -1076,8 +1076,8 @@ fn extract_vec_elems(bcx: @mut Block,
 fn collect_record_or_struct_fields(bcx: @mut Block,
                                        m: &[Match],
                                        col: uint)
-                                    -> Option<~[ast::ident]> {
-    let mut fields: ~[ast::ident] = ~[];
+                                    -> Option<~[ast::Ident]> {
+    let mut fields: ~[ast::Ident] = ~[];
     let mut found = false;
     for br in m.iter() {
         match br.pats[col].node {
@@ -1099,7 +1099,7 @@ fn collect_record_or_struct_fields(bcx: @mut Block,
         return None;
     }
 
-    fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
+    fn extend(idents: &mut ~[ast::Ident], field_pats: &[ast::field_pat]) {
         for field_pat in field_pats.iter() {
             let field_ident = field_pat.ident;
             if !idents.iter().any(|x| *x == field_ident) {

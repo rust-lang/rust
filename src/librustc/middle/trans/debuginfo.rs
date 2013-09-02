@@ -155,7 +155,7 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata(bcx: @mut Block,
-                                     variable_ident: ast::ident,
+                                     variable_ident: ast::Ident,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
                                      span: Span) {
@@ -640,7 +640,7 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
 }
 
 fn declare_local(bcx: @mut Block,
-                 variable_ident: ast::ident,
+                 variable_ident: ast::Ident,
                  node_id: ast::NodeId,
                  variable_type: ty::t,
                  span: Span) {
@@ -1539,7 +1539,7 @@ fn populate_scope_map(cx: &mut CrateContext,
 
     struct ScopeStackEntry {
         scope_metadata: DIScope,
-        ident: Option<ast::ident>
+        ident: Option<ast::Ident>
     }
 
     let mut scope_stack = ~[ScopeStackEntry { scope_metadata: fn_metadata, ident: None }];

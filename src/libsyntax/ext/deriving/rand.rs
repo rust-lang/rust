@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, expr, ident};
+use ast::{MetaItem, item, expr, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
@@ -129,8 +129,8 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
     };
 
     fn rand_thing(cx: @ExtCtxt, span: Span,
-                  ctor_ident: ident,
-                  summary: &Either<uint, ~[ident]>,
+                  ctor_ident: Ident,
+                  summary: &Either<uint, ~[Ident]>,
                   rand_call: &fn() -> @expr) -> @expr {
         match *summary {
             Left(count) => {

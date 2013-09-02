@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
+use ast::{Ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
 use codemap::{Span, Spanned, dummy_sp};
@@ -25,7 +25,7 @@ use print;
 
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: Span,
-                         name: ident,
+                         name: Ident,
                          arg: ~[ast::token_tree])
                       -> base::MacResult {
     // these spans won't matter, anyways
@@ -74,7 +74,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: @ExtCtxt, sp: Span, name: ident,
+    fn generic_extension(cx: @ExtCtxt, sp: Span, name: Ident,
                          arg: &[ast::token_tree],
                          lhses: &[@named_match], rhses: &[@named_match])
     -> MacResult {
