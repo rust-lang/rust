@@ -35,7 +35,7 @@ use std::libc::c_uint;
 use std::vec;
 use syntax::{ast, ast_util, ast_map};
 
-pub fn const_lit(cx: &mut CrateContext, e: &ast::expr, lit: ast::lit)
+pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
@@ -82,7 +82,7 @@ pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
     }
 }
 
-pub fn const_vec(cx: @mut CrateContext, e: &ast::expr, es: &[@ast::expr])
+pub fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr])
     -> (ValueRef, ValueRef, Type) {
     unsafe {
         let vec_ty = ty::expr_ty(cx.tcx, e);
@@ -134,7 +134,7 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
     match ty::deref(cx.tcx, t, explicit) {
         Some(ref mt) => {
-            assert!(mt.mutbl != ast::m_mutbl);
+            assert!(mt.mutbl != ast::MutMutable);
             let dv = match ty::get(t).sty {
                 ty::ty_ptr(*) | ty::ty_rptr(*) => {
                      const_deref_ptr(cx, v)
@@ -156,7 +156,7 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     }
 }
 
-pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef {
+pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::DefId) -> ValueRef {
     let contains_key = cx.const_values.contains_key(&def_id.node);
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
@@ -164,9 +164,9 @@ pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef
         }
         match cx.tcx.items.get_copy(&def_id.node) {
             ast_map::node_item(@ast::item {
-                node: ast::item_static(_, ast::m_imm, _), _
+                node: ast::item_static(_, ast::MutImmutable, _), _
             }, _) => {
-                trans_const(cx, ast::m_imm, def_id.node);
+                trans_const(cx, ast::MutImmutable, def_id.node);
             }
             _ => cx.tcx.sess.bug("expected a const to be an item")
         }
@@ -174,7 +174,7 @@ pub fn get_const_val(cx: @mut CrateContext, mut def_id: ast::def_id) -> ValueRef
     cx.const_values.get_copy(&def_id.node)
 }
 
-pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
+pub fn const_expr(cx: @mut CrateContext, e: @ast::Expr) -> ValueRef {
     let mut llconst = const_expr_unadjusted(cx, e);
     let ety = ty::expr_ty(cx.tcx, e);
     let adjustment = cx.tcx.adjustments.find_copy(&e.id);
@@ -208,11 +208,11 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
                     match *autoref {
                         ty::AutoUnsafe(m) |
                         ty::AutoPtr(ty::re_static, m) => {
-                            assert!(m != ast::m_mutbl);
+                            assert!(m != ast::MutMutable);
                             llconst = llptr;
                         }
                         ty::AutoBorrowVec(ty::re_static, m) => {
-                            assert!(m != ast::m_mutbl);
+                            assert!(m != ast::MutMutable);
                             assert_eq!(abi::slice_elt_base, 0);
                             assert_eq!(abi::slice_elt_len, 1);
 
@@ -252,12 +252,12 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     llconst
 }
 
-fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
+fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::Expr) -> ValueRef {
     unsafe {
         let _icx = push_ctxt("const_expr");
         return match e.node {
-          ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
-          ast::expr_binary(_, b, e1, e2) => {
+          ast::ExprLit(lit) => consts::const_lit(cx, e, *lit),
+          ast::ExprBinary(_, b, e1, e2) => {
             let te1 = const_expr(cx, e1);
             let te2 = const_expr(cx, e2);
 
@@ -269,68 +269,68 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
             let is_float = ty::type_is_fp(ty);
             let signed = ty::type_is_signed(ty);
             return match b {
-              ast::add   => {
+              ast::BiAdd   => {
                 if is_float { llvm::LLVMConstFAdd(te1, te2) }
                 else        { llvm::LLVMConstAdd(te1, te2) }
               }
-              ast::subtract => {
+              ast::BiSub => {
                 if is_float { llvm::LLVMConstFSub(te1, te2) }
                 else        { llvm::LLVMConstSub(te1, te2) }
               }
-              ast::mul    => {
+              ast::BiMul    => {
                 if is_float { llvm::LLVMConstFMul(te1, te2) }
                 else        { llvm::LLVMConstMul(te1, te2) }
               }
-              ast::div    => {
+              ast::BiDiv    => {
                 if is_float    { llvm::LLVMConstFDiv(te1, te2) }
                 else if signed { llvm::LLVMConstSDiv(te1, te2) }
                 else           { llvm::LLVMConstUDiv(te1, te2) }
               }
-              ast::rem    => {
+              ast::BiRem    => {
                 if is_float    { llvm::LLVMConstFRem(te1, te2) }
                 else if signed { llvm::LLVMConstSRem(te1, te2) }
                 else           { llvm::LLVMConstURem(te1, te2) }
               }
-              ast::and    => llvm::LLVMConstAnd(te1, te2),
-              ast::or     => llvm::LLVMConstOr(te1, te2),
-              ast::bitxor => llvm::LLVMConstXor(te1, te2),
-              ast::bitand => llvm::LLVMConstAnd(te1, te2),
-              ast::bitor  => llvm::LLVMConstOr(te1, te2),
-              ast::shl    => llvm::LLVMConstShl(te1, te2),
-              ast::shr    => {
+              ast::BiAnd    => llvm::LLVMConstAnd(te1, te2),
+              ast::BiOr     => llvm::LLVMConstOr(te1, te2),
+              ast::BiBitXor => llvm::LLVMConstXor(te1, te2),
+              ast::BiBitAnd => llvm::LLVMConstAnd(te1, te2),
+              ast::BiBitOr  => llvm::LLVMConstOr(te1, te2),
+              ast::BiShl    => llvm::LLVMConstShl(te1, te2),
+              ast::BiShr    => {
                 if signed { llvm::LLVMConstAShr(te1, te2) }
                 else      { llvm::LLVMConstLShr(te1, te2) }
               }
-              ast::eq     => {
+              ast::BiEq     => {
                   if is_float { ConstFCmp(RealOEQ, te1, te2) }
                   else        { ConstICmp(IntEQ, te1, te2)   }
               },
-              ast::lt     => {
+              ast::BiLt     => {
                   if is_float { ConstFCmp(RealOLT, te1, te2) }
                   else        {
                       if signed { ConstICmp(IntSLT, te1, te2) }
                       else      { ConstICmp(IntULT, te1, te2) }
                   }
               },
-              ast::le     => {
+              ast::BiLe     => {
                   if is_float { ConstFCmp(RealOLE, te1, te2) }
                   else        {
                       if signed { ConstICmp(IntSLE, te1, te2) }
                       else      { ConstICmp(IntULE, te1, te2) }
                   }
               },
-              ast::ne     => {
+              ast::BiNe     => {
                   if is_float { ConstFCmp(RealONE, te1, te2) }
                   else        { ConstICmp(IntNE, te1, te2) }
               },
-              ast::ge     => {
+              ast::BiGe     => {
                   if is_float { ConstFCmp(RealOGE, te1, te2) }
                   else        {
                       if signed { ConstICmp(IntSGE, te1, te2) }
                       else      { ConstICmp(IntUGE, te1, te2) }
                   }
               },
-              ast::gt     => {
+              ast::BiGt     => {
                   if is_float { ConstFCmp(RealOGT, te1, te2) }
                   else        {
                       if signed { ConstICmp(IntSGT, te1, te2) }
@@ -339,18 +339,18 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               },
             };
           },
-          ast::expr_unary(_, u, e) => {
+          ast::ExprUnary(_, u, e) => {
             let te = const_expr(cx, e);
             let ty = ty::expr_ty(cx.tcx, e);
             let is_float = ty::type_is_fp(ty);
             return match u {
-              ast::box(_)  |
-              ast::uniq |
-              ast::deref  => {
+              ast::UnBox(_)  |
+              ast::UnUniq |
+              ast::UnDeref  => {
                 let (dv, _dt) = const_deref(cx, te, ty, true);
                 dv
               }
-              ast::not    => {
+              ast::UnNot    => {
                 match ty::get(ty).sty {
                     ty::ty_bool => {
                         // Somewhat questionable, but I believe this is
@@ -362,13 +362,13 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                     _ => llvm::LLVMConstNot(te),
                 }
               }
-              ast::neg    => {
+              ast::UnNeg    => {
                 if is_float { llvm::LLVMConstFNeg(te) }
                 else        { llvm::LLVMConstNeg(te) }
               }
             }
           }
-          ast::expr_field(base, field, _) => {
+          ast::ExprField(base, field, _) => {
               let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let brepr = adt::represent_type(cx, bt);
               let bv = const_expr(cx, base);
@@ -378,7 +378,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               }
           }
 
-          ast::expr_index(_, base, index) => {
+          ast::ExprIndex(_, base, index) => {
               let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let bv = const_expr(cx, base);
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {
@@ -423,7 +423,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               }
               const_get_elt(cx, arr, [iv as c_uint])
           }
-          ast::expr_cast(base, _) => {
+          ast::ExprCast(base, _) => {
             let ety = ty::expr_ty(cx.tcx, e);
             let llty = type_of::type_of(cx, ety);
             let basety = ty::expr_ty(cx.tcx, base);
@@ -477,17 +477,17 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               }
             }
           }
-          ast::expr_addr_of(ast::m_imm, sub) => {
+          ast::ExprAddrOf(ast::MutImmutable, sub) => {
               let e = const_expr(cx, sub);
               const_addr_of(cx, e)
           }
-          ast::expr_tup(ref es) => {
+          ast::ExprTup(ref es) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               let vals = es.map(|&e| const_expr(cx, e));
               adt::trans_const(cx, repr, 0, vals)
           }
-          ast::expr_struct(_, ref fs, ref base_opt) => {
+          ast::ExprStruct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               let tcx = cx.tcx;
@@ -514,19 +514,19 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                   adt::trans_const(cx, repr, discr, cs)
               }
           }
-          ast::expr_vec(ref es, ast::m_imm) => {
+          ast::ExprVec(ref es, ast::MutImmutable) => {
             let (v, _, _) = const_vec(cx, e, *es);
             v
           }
-          ast::expr_vstore(sub, ast::expr_vstore_slice) => {
+          ast::ExprVstore(sub, ast::ExprVstoreSlice) => {
             match sub.node {
-              ast::expr_lit(ref lit) => {
+              ast::ExprLit(ref lit) => {
                 match lit.node {
                   ast::lit_str(*) => { const_expr(cx, sub) }
                   _ => { cx.sess.span_bug(e.span, "bad const-slice lit") }
                 }
               }
-              ast::expr_vec(ref es, ast::m_imm) => {
+              ast::ExprVec(ref es, ast::MutImmutable) => {
                 let (cv, sz, llunitty) = const_vec(cx, e, *es);
                 let llty = val_ty(cv);
                 let gv = do "const".with_c_str |name| {
@@ -541,7 +541,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
           }
-          ast::expr_repeat(elem, count, _) => {
+          ast::ExprRepeat(elem, count, _) => {
             let vec_ty = ty::expr_ty(cx.tcx, e);
             let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
             let llunitty = type_of::type_of(cx, unit_ty);
@@ -558,13 +558,13 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
             };
             v
           }
-          ast::expr_path(ref pth) => {
+          ast::ExprPath(ref pth) => {
             // Assert that there are no type parameters in this path.
             assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
 
             let tcx = cx.tcx;
             match tcx.def_map.find(&e.id) {
-                Some(&ast::def_fn(def_id, _purity)) => {
+                Some(&ast::DefFn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         base::trans_external_path(cx, def_id, ty)
@@ -573,10 +573,10 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                         base::get_item_val(cx, def_id.node)
                     }
                 }
-                Some(&ast::def_static(def_id, false)) => {
+                Some(&ast::DefStatic(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(&ast::def_variant(enum_did, variant_did)) => {
+                Some(&ast::DefVariant(enum_did, variant_did)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -584,7 +584,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                                                          variant_did);
                     adt::trans_const(cx, repr, vinfo.disr_val, [])
                 }
-                Some(&ast::def_struct(_)) => {
+                Some(&ast::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
                     C_null(llty)
@@ -594,16 +594,16 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                 }
             }
           }
-          ast::expr_call(callee, ref args, _) => {
+          ast::ExprCall(callee, ref args, _) => {
               let tcx = cx.tcx;
               match tcx.def_map.find(&callee.id) {
-                  Some(&ast::def_struct(_)) => {
+                  Some(&ast::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let arg_vals = args.map(|a| const_expr(cx, *a));
                       adt::trans_const(cx, repr, 0, arg_vals)
                   }
-                  Some(&ast::def_variant(enum_did, variant_did)) => {
+                  Some(&ast::DefVariant(enum_did, variant_did)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -615,14 +615,14 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::expr) -> ValueRef {
                   _ => cx.sess.span_bug(e.span, "expected a struct or variant def")
               }
           }
-          ast::expr_paren(e) => { return const_expr(cx, e); }
+          ast::ExprParen(e) => { return const_expr(cx, e); }
           _ => cx.sess.span_bug(e.span,
                   "bad constant expression type in consts::const_expr")
         };
     }
 }
 
-pub fn trans_const(ccx: @mut CrateContext, m: ast::mutability, id: ast::NodeId) {
+pub fn trans_const(ccx: @mut CrateContext, m: ast::Mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
@@ -630,7 +630,7 @@ pub fn trans_const(ccx: @mut CrateContext, m: ast::mutability, id: ast::NodeId) 
         // constant's initializer to determine its LLVM type.
         let v = ccx.const_values.get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
-        if m != ast::m_mutbl {
+        if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);
         }
     }

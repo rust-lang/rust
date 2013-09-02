@@ -441,7 +441,7 @@ fn is_extra(cx: &TestCtxt) -> bool {
     }
 }
 
-fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
+fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for test in cx.testfns.iter() {
@@ -449,21 +449,21 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 
     let sess = cx.sess;
-    let inner_expr = @ast::expr {
+    let inner_expr = @ast::Expr {
         id: sess.next_node_id(),
-        node: ast::expr_vec(descs, ast::m_imm),
+        node: ast::ExprVec(descs, ast::MutImmutable),
         span: dummy_sp(),
     };
 
-    @ast::expr {
+    @ast::Expr {
         id: sess.next_node_id(),
-        node: ast::expr_vstore(inner_expr, ast::expr_vstore_slice),
+        node: ast::ExprVstore(inner_expr, ast::ExprVstoreSlice),
         span: dummy_sp(),
     }
 }
 
 #[cfg(stage0)]
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
 
@@ -474,17 +474,17 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let name_lit: ast::lit =
         nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
 
-    let name_expr = @ast::expr {
+    let name_expr = @ast::Expr {
           id: cx.sess.next_node_id(),
-          node: ast::expr_lit(@name_lit),
+          node: ast::ExprLit(@name_lit),
           span: span
     };
 
     let fn_path = path_node_global(path);
 
-    let fn_expr = @ast::expr {
+    let fn_expr = @ast::Expr {
         id: cx.sess.next_node_id(),
-        node: ast::expr_path(fn_path),
+        node: ast::ExprPath(fn_path),
         span: span,
     };
 
@@ -519,7 +519,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     e
 }
 #[cfg(not(stage0))]
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
 
@@ -528,17 +528,17 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     let name_lit: ast::lit =
         nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
 
-    let name_expr = @ast::expr {
+    let name_expr = @ast::Expr {
           id: cx.sess.next_node_id(),
-          node: ast::expr_lit(@name_lit),
+          node: ast::ExprLit(@name_lit),
           span: span
     };
 
     let fn_path = path_node_global(path);
 
-    let fn_expr = @ast::expr {
+    let fn_expr = @ast::Expr {
         id: cx.sess.next_node_id(),
-        node: ast::expr_path(fn_path),
+        node: ast::ExprPath(fn_path),
         span: span,
     };
 

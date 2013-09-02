@@ -104,7 +104,7 @@ pub mod rt {
         }
     }
 
-    impl ToSource for @ast::expr {
+    impl ToSource for @ast::Expr {
         fn to_source(&self) -> @str {
             pprust::expr_to_str(*self, get_ident_interner()).to_managed()
         }
@@ -222,7 +222,7 @@ pub mod rt {
     impl_to_tokens!(ast::Ty)
     impl_to_tokens_self!(&'self [ast::Ty])
     impl_to_tokens!(Generics)
-    impl_to_tokens!(@ast::expr)
+    impl_to_tokens!(@ast::Expr)
     impl_to_tokens!(ast::Block)
     impl_to_tokens_self!(&'self str)
     impl_to_tokens!(int)
@@ -238,8 +238,8 @@ pub mod rt {
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: @str) -> @ast::item;
-        fn parse_expr(&self, s: @str) -> @ast::expr;
-        fn parse_stmt(&self, s: @str) -> @ast::stmt;
+        fn parse_expr(&self, s: @str) -> @ast::Expr;
+        fn parse_stmt(&self, s: @str) -> @ast::Stmt;
         fn parse_tts(&self, s: @str) -> ~[ast::token_tree];
     }
 
@@ -261,7 +261,7 @@ pub mod rt {
             }
         }
 
-        fn parse_stmt(&self, s: @str) -> @ast::stmt {
+        fn parse_stmt(&self, s: @str) -> @ast::Stmt {
             parse::parse_stmt_from_source_str(
                 @"<quote expansion>",
                 s,
@@ -270,7 +270,7 @@ pub mod rt {
                 self.parse_sess())
         }
 
-        fn parse_expr(&self, s: @str) -> @ast::expr {
+        fn parse_expr(&self, s: @str) -> @ast::Expr {
             parse::parse_expr_from_source_str(
                 @"<quote expansion>",
                 s,
@@ -343,7 +343,7 @@ fn id_ext(str: &str) -> ast::Ident {
 }
 
 // Lift an ident to the expr that evaluates to that ident.
-fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::expr {
+fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::Expr {
     let e_str = cx.expr_str(sp, cx.str_of(ident));
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
@@ -351,13 +351,13 @@ fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::expr {
                         ~[e_str])
 }
 
-fn mk_bytepos(cx: @ExtCtxt, sp: Span, bpos: BytePos) -> @ast::expr {
+fn mk_bytepos(cx: @ExtCtxt, sp: Span, bpos: BytePos) -> @ast::Expr {
     let path = id_ext("BytePos");
     let arg = cx.expr_uint(sp, bpos.to_uint());
     cx.expr_call_ident(sp, path, ~[arg])
 }
 
-fn mk_binop(cx: @ExtCtxt, sp: Span, bop: token::binop) -> @ast::expr {
+fn mk_binop(cx: @ExtCtxt, sp: Span, bop: token::binop) -> @ast::Expr {
     let name = match bop {
         PLUS => "PLUS",
         MINUS => "MINUS",
@@ -373,7 +373,7 @@ fn mk_binop(cx: @ExtCtxt, sp: Span, bop: token::binop) -> @ast::expr {
     cx.expr_ident(sp, id_ext(name))
 }
 
-fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::expr {
+fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
     match *tok {
         BINOP(binop) => {
@@ -515,7 +515,7 @@ fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::expr {
 
 
 fn mk_tt(cx: @ExtCtxt, sp: Span, tt: &ast::token_tree)
-    -> ~[@ast::stmt] {
+    -> ~[@ast::Stmt] {
 
     match *tt {
 
@@ -557,7 +557,7 @@ fn mk_tt(cx: @ExtCtxt, sp: Span, tt: &ast::token_tree)
 }
 
 fn mk_tts(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
-    -> ~[@ast::stmt] {
+    -> ~[@ast::Stmt] {
     let mut ss = ~[];
     for tt in tts.iter() {
         ss.push_all_move(mk_tt(cx, sp, tt));
@@ -567,7 +567,7 @@ fn mk_tts(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 
 fn expand_tts(cx: @ExtCtxt,
               sp: Span,
-              tts: &[ast::token_tree]) -> (@ast::expr, @ast::expr) {
+              tts: &[ast::token_tree]) -> (@ast::Expr, @ast::Expr) {
 
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
@@ -640,8 +640,8 @@ fn expand_tts(cx: @ExtCtxt,
 
 fn expand_wrapper(cx: @ExtCtxt,
                   sp: Span,
-                  cx_expr: @ast::expr,
-                  expr: @ast::expr) -> @ast::expr {
+                  cx_expr: @ast::Expr,
+                  expr: @ast::Expr) -> @ast::Expr {
     let uses = ~[ cx.view_use_glob(sp, ast::public,
                                    ids_ext(~[~"syntax",
                                              ~"ext",
@@ -656,8 +656,8 @@ fn expand_wrapper(cx: @ExtCtxt,
 fn expand_parse_call(cx: @ExtCtxt,
                      sp: Span,
                      parse_method: &str,
-                     arg_exprs: ~[@ast::expr],
-                     tts: &[ast::token_tree]) -> @ast::expr {
+                     arg_exprs: ~[@ast::Expr],
+                     tts: &[ast::token_tree]) -> @ast::Expr {
     let (cx_expr, tts_expr) = expand_tts(cx, sp, tts);
 
     let cfg_call = || cx.expr_method_call(

@@ -15,7 +15,7 @@ encodable.rs for more.
 
 use std::vec;
 
-use ast::{MetaItem, item, expr, m_mutbl};
+use ast::{MetaItem, item, Expr, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -39,7 +39,7 @@ pub fn expand_deriving_decodable(cx: @ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
                 args: ~[Ptr(~Literal(Path::new_local("__D")),
-                            Borrowed(None, m_mutbl))],
+                            Borrowed(None, MutMutable))],
                 ret_ty: Self,
                 const_nonmatching: true,
                 combine_substructure: decodable_substructure,
@@ -51,7 +51,7 @@ pub fn expand_deriving_decodable(cx: @ExtCtxt,
 }
 
 fn decodable_substructure(cx: @ExtCtxt, span: Span,
-                          substr: &Substructure) -> @expr {
+                          substr: &Substructure) -> @Expr {
     let decoder = substr.nonself_args[0];
     let recurse = ~[cx.ident_of("extra"),
                     cx.ident_of("serialize"),

@@ -67,17 +67,17 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
 pub enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, AbiSet, visibility, @path),
-    node_trait_method(@trait_method, def_id /* trait did */,
+    node_trait_method(@trait_method, DefId /* trait did */,
                       @path /* path to the trait */),
-    node_method(@method, def_id /* impl did */, @path /* path to the impl */),
+    node_method(@method, DefId /* impl did */, @path /* path to the impl */),
     node_variant(variant, @item, @path),
-    node_expr(@expr),
-    node_stmt(@stmt),
+    node_expr(@Expr),
+    node_stmt(@Stmt),
     node_arg,
     node_local(Ident),
     node_block(Block),
     node_struct_ctor(@struct_def, @item, @path),
-    node_callee_scope(@expr)
+    node_callee_scope(@Expr)
 }
 
 pub type map = @mut HashMap<NodeId, ast_node>;
@@ -94,7 +94,7 @@ impl Ctx {
     }
 
     fn map_method(&mut self,
-                  impl_did: def_id,
+                  impl_did: DefId,
                   impl_path: @path,
                   m: @method,
                   is_provided: bool) {
@@ -130,7 +130,7 @@ impl Ctx {
         }
     }
 
-    fn map_expr(&mut self, ex: @expr) {
+    fn map_expr(&mut self, ex: @Expr) {
         self.map.insert(ex.id, node_expr(ex));
 
         // Expressions which are or might be calls:
@@ -156,7 +156,7 @@ impl Ctx {
         visit::walk_fn(self, fk, decl, body, sp, id, ());
     }
 
-    fn map_stmt(&mut self, stmt: @stmt) {
+    fn map_stmt(&mut self, stmt: @Stmt) {
         self.map.insert(stmt_id(stmt), node_stmt(stmt));
         visit::walk_stmt(self, stmt, ());
     }
@@ -167,9 +167,9 @@ impl Ctx {
         visit::walk_block(self, b, ());
     }
 
-    fn map_pat(&mut self, pat: @pat) {
+    fn map_pat(&mut self, pat: @Pat) {
         match pat.node {
-            pat_ident(_, ref path, _) => {
+            PatIdent(_, ref path, _) => {
                 // Note: this is at least *potentially* a pattern...
                 self.map.insert(pat.id,
                                 node_local(ast_util::path_to_ident(path)));
@@ -265,16 +265,16 @@ impl Visitor<()> for Ctx {
         self.path.pop();
     }
 
-    fn visit_pat(&mut self, pat: @pat, _: ()) {
+    fn visit_pat(&mut self, pat: @Pat, _: ()) {
         self.map_pat(pat);
         visit::walk_pat(self, pat, ())
     }
 
-    fn visit_expr(&mut self, expr: @expr, _: ()) {
+    fn visit_expr(&mut self, expr: @Expr, _: ()) {
         self.map_expr(expr)
     }
 
-    fn visit_stmt(&mut self, stmt: @stmt, _: ()) {
+    fn visit_stmt(&mut self, stmt: @Stmt, _: ()) {
         self.map_stmt(stmt)
     }
 
@@ -310,15 +310,15 @@ impl Visitor<()> for Ctx {
         visit::walk_local(self, local, ())
     }
 
-    fn visit_arm(&mut self, arm: &arm, _: ()) {
+    fn visit_arm(&mut self, arm: &Arm, _: ()) {
         visit::walk_arm(self, arm, ())
     }
 
-    fn visit_decl(&mut self, decl: @decl, _: ()) {
+    fn visit_decl(&mut self, decl: @Decl, _: ()) {
         visit::walk_decl(self, decl, ())
     }
 
-    fn visit_expr_post(&mut self, _: @expr, _: ()) {
+    fn visit_expr_post(&mut self, _: @Expr, _: ()) {
         // Empty!
     }
 

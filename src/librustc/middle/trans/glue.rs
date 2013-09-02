@@ -400,8 +400,8 @@ pub fn make_free_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
     }
 }
 
-pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
-                              class_did: ast::def_id, substs: &ty::substs) -> @mut Block {
+pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
+                              class_did: ast::DefId, substs: &ty::substs) -> @mut Block {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
@@ -438,8 +438,8 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
     }
 }
 
-pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::def_id,
-                         class_did: ast::def_id, substs: &ty::substs) -> @mut Block {
+pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
+                         class_did: ast::DefId, substs: &ty::substs) -> @mut Block {
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor

@@ -62,11 +62,11 @@ pub type SyntaxExpanderTTItemFun = @fn(@ExtCtxt,
                                     -> MacResult;
 
 pub enum MacResult {
-    MRExpr(@ast::expr),
+    MRExpr(@ast::Expr),
     MRItem(@ast::item),
-    MRAny(@fn() -> @ast::expr,
+    MRAny(@fn() -> @ast::Expr,
           @fn() -> Option<@ast::item>,
-          @fn() -> @ast::stmt),
+          @fn() -> @ast::Stmt),
     MRDef(MacroDef)
 }
 
@@ -319,9 +319,9 @@ impl ExtCtxt {
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: &str) -> @str {
+pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> @str {
     match expr.node {
-      ast::expr_lit(l) => match l.node {
+      ast::ExprLit(l) => match l.node {
         ast::lit_str(s) => s,
         _ => cx.span_fatal(l.span, err_msg)
       },
@@ -353,7 +353,7 @@ pub fn get_single_str_from_tts(cx: @ExtCtxt,
 
 pub fn get_exprs_from_tts(cx: @ExtCtxt,
                           sp: Span,
-                          tts: &[ast::token_tree]) -> ~[@ast::expr] {
+                          tts: &[ast::token_tree]) -> ~[@ast::Expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
                                        tts.to_owned());

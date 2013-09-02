@@ -16,14 +16,14 @@ use middle::ty;
 use middle::typeck::method_map;
 use util::ppaux;
 
-use syntax::ast::{deref, expr_call, expr_inline_asm, expr_method_call};
-use syntax::ast::{expr_unary, unsafe_fn, expr_path};
+use syntax::ast::{UnDeref, ExprCall, ExprInlineAsm, ExprMethodCall};
+use syntax::ast::{ExprUnary, unsafe_fn, ExprPath};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit::{fk_item_fn, fk_method};
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{fn_decl,Block,NodeId,expr};
+use syntax::ast::{fn_decl,Block,NodeId,Expr};
 
 #[deriving(Eq)]
 enum UnsafeContext {
@@ -112,10 +112,10 @@ impl Visitor<()> for EffectCheckVisitor {
             self.context.unsafe_context = old_unsafe_context
     }
 
-    fn visit_expr(&mut self, expr:@expr, _:()) {
+    fn visit_expr(&mut self, expr:@Expr, _:()) {
 
             match expr.node {
-                expr_method_call(callee_id, _, _, _, _, _) => {
+                ExprMethodCall(callee_id, _, _, _, _, _) => {
                     let base_type = ty::node_id_to_type(self.tcx, callee_id);
                     debug!("effect: method call case, base type is %s",
                            ppaux::ty_to_str(self.tcx, base_type));
@@ -124,7 +124,7 @@ impl Visitor<()> for EffectCheckVisitor {
                                        "invocation of unsafe method")
                     }
                 }
-                expr_call(base, _, _) => {
+                ExprCall(base, _, _) => {
                     let base_type = ty::node_id_to_type(self.tcx, base.id);
                     debug!("effect: call case, base type is %s",
                            ppaux::ty_to_str(self.tcx, base_type));
@@ -132,7 +132,7 @@ impl Visitor<()> for EffectCheckVisitor {
                         self.require_unsafe(expr.span, "call to unsafe function")
                     }
                 }
-                expr_unary(_, deref, base) => {
+                ExprUnary(_, UnDeref, base) => {
                     let base_type = ty::node_id_to_type(self.tcx, base.id);
                     debug!("effect: unary case, base type is %s",
                            ppaux::ty_to_str(self.tcx, base_type));
@@ -144,12 +144,12 @@ impl Visitor<()> for EffectCheckVisitor {
                         _ => {}
                     }
                 }
-                expr_inline_asm(*) => {
+                ExprInlineAsm(*) => {
                     self.require_unsafe(expr.span, "use of inline assembly")
                 }
-                expr_path(*) => {
+                ExprPath(*) => {
                     match ty::resolve_expr(self.tcx, expr) {
-                        ast::def_static(_, true) => {
+                        ast::DefStatic(_, true) => {
                             self.require_unsafe(expr.span, "use of mutable static")
                         }
                         _ => {}

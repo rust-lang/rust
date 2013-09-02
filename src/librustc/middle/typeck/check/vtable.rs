@@ -473,7 +473,7 @@ fn search_for_vtable(vcx: &VtableContext,
 
 fn fixup_substs(vcx: &VtableContext,
                 location_info: &LocationInfo,
-                id: ast::def_id,
+                id: ast::DefId,
                 substs: ty::substs,
                 is_early: bool)
                 -> Option<ty::substs> {
@@ -482,7 +482,7 @@ fn fixup_substs(vcx: &VtableContext,
     let t = ty::mk_trait(tcx,
                          id, substs,
                          ty::RegionTraitStore(ty::re_static),
-                         ast::m_imm,
+                         ast::MutImmutable,
                          ty::EmptyBuiltinBounds());
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
@@ -516,7 +516,7 @@ fn connect_trait_tps(vcx: &VtableContext,
                      location_info: &LocationInfo,
                      impl_substs: &ty::substs,
                      trait_ref: @ty::TraitRef,
-                     impl_did: ast::def_id)
+                     impl_did: ast::DefId)
 {
     let tcx = vcx.tcx();
 
@@ -538,7 +538,7 @@ fn insert_vtables(fcx: @mut FnCtxt,
     fcx.inh.vtable_map.insert(callee_id, vtables);
 }
 
-pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
+pub fn location_info_for_expr(expr: @ast::Expr) -> LocationInfo {
     LocationInfo {
         span: expr.span,
         id: expr.id
@@ -551,7 +551,7 @@ pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
     }
 }
 
-pub fn early_resolve_expr(ex: @ast::expr,
+pub fn early_resolve_expr(ex: @ast::Expr,
                           fcx: @mut FnCtxt,
                           is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
@@ -560,7 +560,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
 
     let cx = fcx.ccx;
     match ex.node {
-      ast::expr_path(*) => {
+      ast::ExprPath(*) => {
         do fcx.opt_node_ty_substs(ex.id) |substs| {
             debug!("vtable resolution on parameter bounds for expr %s",
                    ex.repr(fcx.tcx()));
@@ -584,16 +584,16 @@ pub fn early_resolve_expr(ex: @ast::expr,
         };
       }
 
-      ast::expr_paren(e) => {
+      ast::ExprParen(e) => {
           early_resolve_expr(e, fcx, is_early);
       }
 
       // Must resolve bounds on methods with bounded params
-      ast::expr_binary(callee_id, _, _, _) |
-      ast::expr_unary(callee_id, _, _) |
-      ast::expr_assign_op(callee_id, _, _, _) |
-      ast::expr_index(callee_id, _, _) |
-      ast::expr_method_call(callee_id, _, _, _, _, _) => {
+      ast::ExprBinary(callee_id, _, _, _) |
+      ast::ExprUnary(callee_id, _, _) |
+      ast::ExprAssignOp(callee_id, _, _, _) |
+      ast::ExprIndex(callee_id, _, _) |
+      ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
             debug!("vtable resolution on parameter bounds for method call %s",
@@ -611,17 +611,17 @@ pub fn early_resolve_expr(ex: @ast::expr,
           None => ()
         }
       }
-      ast::expr_cast(src, _) => {
+      ast::ExprCast(src, _) => {
           debug!("vtable resolution on expr %s", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
               // Bounds of type's contents are not checked here, but in kind.rs.
               ty::ty_trait(target_def_id, ref target_substs, store,
                            target_mutbl, _bounds) => {
-                  fn mutability_allowed(a_mutbl: ast::mutability,
-                                        b_mutbl: ast::mutability) -> bool {
+                  fn mutability_allowed(a_mutbl: ast::Mutability,
+                                        b_mutbl: ast::Mutability) -> bool {
                       a_mutbl == b_mutbl ||
-                      (a_mutbl == ast::m_mutbl && b_mutbl == ast::m_imm)
+                      (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
                   }
                   // Look up vtables for the type we're casting to,
                   // passing in the source and target type.  The source
@@ -721,7 +721,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
 }
 
 fn resolve_expr(v: &mut VtableResolveVisitor,
-                ex: @ast::expr,
+                ex: @ast::Expr,
                 fcx: @mut FnCtxt) {
     early_resolve_expr(ex, fcx, false);
     visit::walk_expr(v, ex, fcx);
@@ -774,7 +774,7 @@ pub fn resolve_impl(ccx: @mut CrateCtxt, impl_item: @ast::item) {
 struct VtableResolveVisitor;
 
 impl visit::Visitor<@mut FnCtxt> for VtableResolveVisitor {
-    fn visit_expr(&mut self, ex:@ast::expr, e:@mut FnCtxt) {
+    fn visit_expr(&mut self, ex:@ast::Expr, e:@mut FnCtxt) {
         resolve_expr(self, ex, e);
     }
     fn visit_item(&mut self, _:@ast::item, _:@mut FnCtxt) {

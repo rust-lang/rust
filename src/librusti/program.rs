@@ -295,7 +295,7 @@ impl Program {
                         // &T encoded will decode to T, so we need to be sure to
                         // re-take a loan after decoding
                         ty::ty_rptr(_, mt) => {
-                            if mt.mutbl == ast::m_mutbl {
+                            if mt.mutbl == ast::MutMutable {
                                 tystr.push_str("&mut ");
                             } else {
                                 tystr.push_str("&");
@@ -354,9 +354,9 @@ impl Program {
             do find_user_block(blk) |blk| {
                 for stmt in blk.stmts.iter() {
                     match stmt.node {
-                        ast::stmt_decl(d, _) => {
+                        ast::StmtDecl(d, _) => {
                             match d.node {
-                                ast::decl_local(l) => { f(l); }
+                                ast::DeclLocal(l) => { f(l); }
                                 _ => {}
                             }
                         }
@@ -369,9 +369,9 @@ impl Program {
         fn find_user_block(blk: &ast::Block, f: &fn(&ast::Block)) {
             for stmt in blk.stmts.iter() {
                 match stmt.node {
-                    ast::stmt_semi(e, _) => {
+                    ast::StmtSemi(e, _) => {
                         match e.node {
-                            ast::expr_block(ref blk) => { return f(blk); }
+                            ast::ExprBlock(ref blk) => { return f(blk); }
                             _ => {}
                         }
                     }

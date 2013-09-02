@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, expr};
+use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -44,11 +44,11 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
 // to_str() method on each field. Hence we mirror the logic of the log_str()
 // method, but with tweaks to call to_str() on sub-fields.
 fn to_str_substructure(cx: @ExtCtxt, span: Span,
-                       substr: &Substructure) -> @expr {
+                       substr: &Substructure) -> @Expr {
     let to_str = cx.ident_of("to_str");
 
     let doit = |start: &str, end: @str, name: ast::Ident,
-                fields: &[(Option<ast::Ident>, @expr, ~[@expr])]| {
+                fields: &[(Option<ast::Ident>, @Expr, ~[@Expr])]| {
         if fields.len() == 0 {
             cx.expr_str_uniq(span, cx.str_of(name))
         } else {
@@ -58,7 +58,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: Span,
             let mut stmts = ~[cx.stmt_let(span, true, buf, init)];
             let push_str = cx.ident_of("push_str");
 
-            let push = |s: @expr| {
+            let push = |s: @Expr| {
                 let ebuf = cx.expr_ident(span, buf);
                 let call = cx.expr_method_call(span, ebuf, push_str, ~[s]);
                 stmts.push(cx.stmt_expr(call));

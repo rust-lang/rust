@@ -61,7 +61,7 @@ struct KindAnalysisVisitor;
 
 impl Visitor<Context> for KindAnalysisVisitor {
 
-    fn visit_expr(&mut self, ex:@expr, e:Context) {
+    fn visit_expr(&mut self, ex:@Expr, e:Context) {
         check_expr(self, ex, e);
     }
 
@@ -92,7 +92,7 @@ pub fn check_crate(tcx: ty::ctxt,
 
 fn check_struct_safe_for_destructor(cx: Context,
                                     span: Span,
-                                    struct_did: def_id) {
+                                    struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
@@ -260,7 +260,7 @@ fn check_fn(
     visit::walk_fn(v, fk, decl, body, sp, fn_id, cx);
 }
 
-pub fn check_expr(v: &mut KindAnalysisVisitor, e: @expr, cx: Context) {
+pub fn check_expr(v: &mut KindAnalysisVisitor, e: @Expr, cx: Context) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
@@ -272,7 +272,7 @@ pub fn check_expr(v: &mut KindAnalysisVisitor, e: @expr, cx: Context) {
         let r = cx.tcx.node_type_substs.find(&type_parameter_id);
         for ts in r.iter() {
             let type_param_defs = match e.node {
-              expr_path(_) => {
+              ExprPath(_) => {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
               }
@@ -301,11 +301,11 @@ pub fn check_expr(v: &mut KindAnalysisVisitor, e: @expr, cx: Context) {
     }
 
     match e.node {
-        expr_unary(_, box(_), interior) => {
+        ExprUnary(_, UnBox(_), interior) => {
             let interior_type = ty::expr_ty(cx.tcx, interior);
             let _ = check_durable(cx.tcx, interior_type, interior.span);
         }
-        expr_cast(source, _) => {
+        ExprCast(source, _) => {
             check_cast_for_escaping_regions(cx, source, e);
             match ty::get(ty::expr_ty(cx.tcx, e)).sty {
                 ty::ty_trait(_, _, _, _, bounds) => {
@@ -315,7 +315,7 @@ pub fn check_expr(v: &mut KindAnalysisVisitor, e: @expr, cx: Context) {
                 _ => { }
             }
         }
-        expr_repeat(element, count_expr, _) => {
+        ExprRepeat(element, count_expr, _) => {
             let count = ty::eval_repeat_count(&cx.tcx, count_expr);
             if count > 1 {
                 let element_ty = ty::expr_ty(cx.tcx, element);
@@ -412,11 +412,11 @@ pub fn check_trait_cast_bounds(cx: Context, sp: Span, ty: ty::t,
     }
 }
 
-fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
+fn is_nullary_variant(cx: Context, ex: @Expr) -> bool {
     match ex.node {
-      expr_path(_) => {
+      ExprPath(_) => {
         match cx.tcx.def_map.get_copy(&ex.id) {
-          def_variant(edid, vdid) => {
+          DefVariant(edid, vdid) => {
               ty::enum_variant_with_id(cx.tcx, edid, vdid).args.is_empty()
           }
           _ => false
@@ -426,18 +426,18 @@ fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     }
 }
 
-fn check_imm_free_var(cx: Context, def: def, sp: Span) {
+fn check_imm_free_var(cx: Context, def: Def, sp: Span) {
     match def {
-        def_local(_, is_mutbl) => {
+        DefLocal(_, is_mutbl) => {
             if is_mutbl {
                 cx.tcx.sess.span_err(
                     sp,
                     "mutable variables cannot be implicitly captured");
             }
         }
-        def_arg(*) => { /* ok */ }
-        def_upvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
-        def_binding(*) | def_self(*) => { /*ok*/ }
+        DefArg(*) => { /* ok */ }
+        DefUpvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
+        DefBinding(*) | DefSelf(*) => { /*ok*/ }
         _ => {
             cx.tcx.sess.span_bug(
                 sp,
@@ -515,8 +515,8 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
     cx: Context,
-    source: &expr,
-    target: &expr)
+    source: &Expr,
+    target: &Expr)
 {
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.

@@ -27,7 +27,7 @@ use util::ppaux::ty_to_str;
 use std::libc::c_uint;
 use std::option::None;
 use std::vec;
-use syntax::ast::def_id;
+use syntax::ast::DefId;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::parse::token::special_idents;
@@ -283,7 +283,8 @@ impl Reflector {
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
             let opaquety = ty::get_opaque_ty(ccx.tcx).unwrap();
-            let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
+            let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety,
+                                                           mutbl: ast::MutImmutable });
 
             let make_get_disr = || {
                 let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];
@@ -384,7 +385,7 @@ impl Reflector {
 pub fn emit_calls_to_trait_visit_ty(bcx: @mut Block,
                                     t: ty::t,
                                     visitor_val: ValueRef,
-                                    visitor_trait_id: def_id)
+                                    visitor_trait_id: DefId)
                                  -> @mut Block {
     let final = sub_block(bcx, "final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();

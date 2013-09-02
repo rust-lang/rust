@@ -50,9 +50,9 @@ pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Bl
 }
 
 pub fn trans_if(bcx: @mut Block,
-            cond: @ast::expr,
+            cond: @ast::Expr,
             thn: &ast::Block,
-            els: Option<@ast::expr>,
+            els: Option<@ast::Expr>,
             dest: expr::Dest)
          -> @mut Block {
     debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
@@ -121,14 +121,14 @@ pub fn trans_if(bcx: @mut Block,
     return next_bcx;
 
     // trans `else [ if { .. } ... | { .. } ]`
-    fn trans_if_else(else_bcx_in: @mut Block, elexpr: @ast::expr,
+    fn trans_if_else(else_bcx_in: @mut Block, elexpr: @ast::Expr,
                      dest: expr::Dest) -> @mut Block {
         let else_bcx_out = match elexpr.node {
-            ast::expr_if(_, _, _) => {
+            ast::ExprIf(_, _, _) => {
                 let elseif_blk = ast_util::block_from_expr(elexpr);
                 trans_block(else_bcx_in, &elseif_blk, dest)
             }
-            ast::expr_block(ref blk) => {
+            ast::ExprBlock(ref blk) => {
                 trans_block(else_bcx_in, blk, dest)
             }
             // would be nice to have a constraint on ifs
@@ -153,7 +153,7 @@ pub fn join_blocks(parent_bcx: @mut Block, in_cxs: &[@mut Block]) -> @mut Block 
     return out;
 }
 
-pub fn trans_while(bcx: @mut Block, cond: @ast::expr, body: &ast::Block) -> @mut Block {
+pub fn trans_while(bcx: @mut Block, cond: @ast::Expr, body: &ast::Block) -> @mut Block {
     let _icx = push_ctxt("trans_while");
     let next_bcx = sub_block(bcx, "while next");
 
@@ -206,10 +206,10 @@ pub fn trans_loop(bcx:@mut Block,
     return next_bcx;
 }
 
-pub fn trans_log(log_ex: &ast::expr,
-                 lvl: @ast::expr,
+pub fn trans_log(log_ex: &ast::Expr,
+                 lvl: @ast::Expr,
                  bcx: @mut Block,
-                 e: @ast::expr) -> @mut Block {
+                 e: @ast::Expr) -> @mut Block {
     let _icx = push_ctxt("trans_log");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
@@ -334,7 +334,7 @@ pub fn trans_cont(bcx: @mut Block, label_opt: Option<Ident>) -> @mut Block {
     return trans_break_cont(bcx, label_opt, false);
 }
 
-pub fn trans_ret(bcx: @mut Block, e: Option<@ast::expr>) -> @mut Block {
+pub fn trans_ret(bcx: @mut Block, e: Option<@ast::Expr>) -> @mut Block {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
     let dest = match bcx.fcx.llretptr {
@@ -354,7 +354,7 @@ pub fn trans_ret(bcx: @mut Block, e: Option<@ast::expr>) -> @mut Block {
 
 pub fn trans_fail_expr(bcx: @mut Block,
                        sp_opt: Option<Span>,
-                       fail_expr: Option<@ast::expr>)
+                       fail_expr: Option<@ast::Expr>)
                     -> @mut Block {
     let _icx = push_ctxt("trans_fail_expr");
     let mut bcx = bcx;

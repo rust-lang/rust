@@ -33,10 +33,10 @@ impl Visitor<bool> for CheckCrateVisitor {
     fn visit_item(&mut self, i:@item, env:bool) {
         check_item(self, self.sess, self.ast_map, self.def_map, i, env);
     }
-    fn visit_pat(&mut self, p:@pat, env:bool) {
+    fn visit_pat(&mut self, p:@Pat, env:bool) {
         check_pat(self, p, env);
     }
-    fn visit_expr(&mut self, ex:@expr, env:bool) {
+    fn visit_expr(&mut self, ex:@Expr, env:bool) {
         check_expr(self, self.sess, self.def_map, self.method_map,
                    self.tcx, ex, env);
     }
@@ -81,23 +81,23 @@ pub fn check_item(v: &mut CheckCrateVisitor,
     }
 }
 
-pub fn check_pat(v: &mut CheckCrateVisitor, p: @pat, _is_const: bool) {
-    fn is_str(e: @expr) -> bool {
+pub fn check_pat(v: &mut CheckCrateVisitor, p: @Pat, _is_const: bool) {
+    fn is_str(e: @Expr) -> bool {
         match e.node {
-            expr_vstore(
-                @expr { node: expr_lit(@codemap::Spanned {
+            ExprVstore(
+                @Expr { node: ExprLit(@codemap::Spanned {
                     node: lit_str(_),
                     _}),
                        _ },
-                expr_vstore_uniq
+                ExprVstoreUniq
             ) => true,
             _ => false
         }
     }
     match p.node {
       // Let through plain ~-string literals here
-      pat_lit(a) => if !is_str(a) { v.visit_expr(a, true); },
-      pat_range(a, b) => {
+      PatLit(a) => if !is_str(a) { v.visit_expr(a, true); },
+      PatRange(a, b) => {
         if !is_str(a) { v.visit_expr(a, true); }
         if !is_str(b) { v.visit_expr(b, true); }
       }
@@ -110,25 +110,25 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                   def_map: resolve::DefMap,
                   method_map: typeck::method_map,
                   tcx: ty::ctxt,
-                  e: @expr,
+                  e: @Expr,
                   is_const: bool) {
     if is_const {
         match e.node {
-          expr_unary(_, deref, _) => { }
-          expr_unary(_, box(_), _) | expr_unary(_, uniq, _) => {
+          ExprUnary(_, UnDeref, _) => { }
+          ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) => {
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             return;
           }
-          expr_lit(@codemap::Spanned {node: lit_str(_), _}) => { }
-          expr_binary(*) | expr_unary(*) => {
+          ExprLit(@codemap::Spanned {node: lit_str(_), _}) => { }
+          ExprBinary(*) | ExprUnary(*) => {
             if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }
           }
-          expr_lit(_) => (),
-          expr_cast(_, _) => {
+          ExprLit(_) => (),
+          ExprCast(_, _) => {
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
@@ -136,7 +136,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                               "` in a constant expression");
             }
           }
-          expr_path(ref pth) => {
+          ExprPath(ref pth) => {
             // NB: In the future you might wish to relax this slightly
             // to handle on-demand instantiation of functions via
             // foo::<bar> in a const. Currently that is only done on
@@ -147,10 +147,10 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                              items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(&def_static(*)) |
-              Some(&def_fn(_, _)) |
-              Some(&def_variant(_, _)) |
-              Some(&def_struct(_)) => { }
+              Some(&DefStatic(*)) |
+              Some(&DefFn(_, _)) |
+              Some(&DefVariant(_, _)) |
+              Some(&DefStruct(_)) => { }
 
               Some(&def) => {
                 debug!("(checking const) found bad def: %?", def);
@@ -164,10 +164,10 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
               }
             }
           }
-          expr_call(callee, _, NoSugar) => {
+          ExprCall(callee, _, NoSugar) => {
             match def_map.find(&callee.id) {
-                Some(&def_struct(*)) => {}    // OK.
-                Some(&def_variant(*)) => {}    // OK.
+                Some(&DefStruct(*)) => {}    // OK.
+                Some(&DefVariant(*)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,
@@ -176,17 +176,17 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                 }
             }
           }
-          expr_paren(e) => { check_expr(v, sess, def_map, method_map,
+          ExprParen(e) => { check_expr(v, sess, def_map, method_map,
                                         tcx, e, is_const); }
-          expr_vstore(_, expr_vstore_slice) |
-          expr_vec(_, m_imm) |
-          expr_addr_of(m_imm, _) |
-          expr_field(*) |
-          expr_index(*) |
-          expr_tup(*) |
-          expr_repeat(*) |
-          expr_struct(*) => { }
-          expr_addr_of(*) => {
+          ExprVstore(_, ExprVstoreSlice) |
+          ExprVec(_, MutImmutable) |
+          ExprAddrOf(MutImmutable, _) |
+          ExprField(*) |
+          ExprIndex(*) |
+          ExprTup(*) |
+          ExprRepeat(*) |
+          ExprStruct(*) => { }
+          ExprAddrOf(*) => {
                 sess.span_err(
                     e.span,
                     "borrowed pointers in constants may only refer to \
@@ -200,7 +200,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
         }
     }
     match e.node {
-      expr_lit(@codemap::Spanned {node: lit_int(v, t), _}) => {
+      ExprLit(@codemap::Spanned {node: lit_int(v, t), _}) => {
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
@@ -208,7 +208,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             }
         }
       }
-      expr_lit(@codemap::Spanned {node: lit_uint(v, t), _}) => {
+      ExprLit(@codemap::Spanned {node: lit_uint(v, t), _}) => {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
             sess.span_err(e.span, "literal out of range for its type");
@@ -258,10 +258,10 @@ impl Visitor<env> for CheckItemRecursionVisitor {
         env.idstack.pop();
     }
 
-    fn visit_expr(&mut self, e: @expr, env: env) {
+    fn visit_expr(&mut self, e: @Expr, env: env) {
         match e.node {
-            expr_path(*) => match env.def_map.find(&e.id) {
-                Some(&def_static(def_id, _)) if ast_util::is_local(def_id) =>
+            ExprPath(*) => match env.def_map.find(&e.id) {
+                Some(&DefStatic(def_id, _)) if ast_util::is_local(def_id) =>
                     match env.ast_map.get_copy(&def_id.node) {
                         ast_map::node_item(it, _) => {
                             self.visit_item(it, env);
