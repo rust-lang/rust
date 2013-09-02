@@ -100,9 +100,9 @@ pub enum Token {
 pub enum nonterminal {
     nt_item(@ast::item),
     nt_block(~ast::Block),
-    nt_stmt(@ast::stmt),
-    nt_pat( @ast::pat),
-    nt_expr(@ast::expr),
+    nt_stmt(@ast::Stmt),
+    nt_pat( @ast::Pat),
+    nt_expr(@ast::Expr),
     nt_ty(  ~ast::Ty),
     nt_ident(~ast::Ident, bool),
     nt_attr(@ast::Attribute),   // #[foo]
@@ -353,26 +353,26 @@ pub mod special_idents {
  * Maps a token to a record specifying the corresponding binary
  * operator
  */
-pub fn token_to_binop(tok: &Token) -> Option<ast::binop> {
+pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
   match *tok {
-      BINOP(STAR)    => Some(ast::mul),
-      BINOP(SLASH)   => Some(ast::div),
-      BINOP(PERCENT) => Some(ast::rem),
-      BINOP(PLUS)    => Some(ast::add),
-      BINOP(MINUS)   => Some(ast::subtract),
-      BINOP(SHL)     => Some(ast::shl),
-      BINOP(SHR)     => Some(ast::shr),
-      BINOP(AND)     => Some(ast::bitand),
-      BINOP(CARET)   => Some(ast::bitxor),
-      BINOP(OR)      => Some(ast::bitor),
-      LT             => Some(ast::lt),
-      LE             => Some(ast::le),
-      GE             => Some(ast::ge),
-      GT             => Some(ast::gt),
-      EQEQ           => Some(ast::eq),
-      NE             => Some(ast::ne),
-      ANDAND         => Some(ast::and),
-      OROR           => Some(ast::or),
+      BINOP(STAR)    => Some(ast::BiMul),
+      BINOP(SLASH)   => Some(ast::BiDiv),
+      BINOP(PERCENT) => Some(ast::BiRem),
+      BINOP(PLUS)    => Some(ast::BiAdd),
+      BINOP(MINUS)   => Some(ast::BiSub),
+      BINOP(SHL)     => Some(ast::BiShl),
+      BINOP(SHR)     => Some(ast::BiShr),
+      BINOP(AND)     => Some(ast::BiBitAnd),
+      BINOP(CARET)   => Some(ast::BiBitXor),
+      BINOP(OR)      => Some(ast::BiBitOr),
+      LT             => Some(ast::BiLt),
+      LE             => Some(ast::BiLe),
+      GE             => Some(ast::BiGe),
+      GT             => Some(ast::BiGt),
+      EQEQ           => Some(ast::BiEq),
+      NE             => Some(ast::BiNe),
+      ANDAND         => Some(ast::BiAnd),
+      OROR           => Some(ast::BiOr),
       _              => None
   }
 }

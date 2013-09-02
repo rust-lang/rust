@@ -72,12 +72,12 @@ impl Combine for Sub {
         }
 
         match b.mutbl {
-          m_mutbl => {
+          MutMutable => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
             eq_tys(self, a.ty, b.ty).then(|| Ok(*a))
           }
-          m_imm => {
+          MutImmutable => {
             // Otherwise we can be covariant:
             self.tys(a.ty, b.ty).chain(|_t| Ok(*a) )
           }

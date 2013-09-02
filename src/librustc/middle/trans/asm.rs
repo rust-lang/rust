@@ -46,7 +46,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         }));
 
         let e = match out.node {
-            ast::expr_addr_of(_, e) => e,
+            ast::ExprAddrOf(_, e) => e,
             _ => fail!("Expression must be addr of")
         };
 

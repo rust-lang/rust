@@ -101,7 +101,7 @@ pub fn parse_expr_from_source_str(
     source: @str,
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
-) -> @ast::expr {
+) -> @ast::Expr {
     let p = new_parser_from_source_str(
         sess,
         cfg,
@@ -148,7 +148,7 @@ pub fn parse_stmt_from_source_str(
     cfg: ast::CrateConfig,
     attrs: ~[ast::Attribute],
     sess: @mut ParseSess
-) -> @ast::stmt {
+) -> @ast::Stmt {
     let p = new_parser_from_source_str(
         sess,
         cfg,
@@ -363,9 +363,9 @@ mod test {
 
     #[test] fn path_exprs_1() {
         assert_eq!(string_to_expr(@"a"),
-                   @ast::expr{
+                   @ast::Expr{
                     id: 1,
-                    node: ast::expr_path(ast::Path {
+                    node: ast::ExprPath(ast::Path {
                         span: sp(0, 1),
                         global: false,
                         segments: ~[
@@ -382,9 +382,9 @@ mod test {
 
     #[test] fn path_exprs_2 () {
         assert_eq!(string_to_expr(@"::a::b"),
-                   @ast::expr {
+                   @ast::Expr {
                     id:1,
-                    node: ast::expr_path(ast::Path {
+                    node: ast::ExprPath(ast::Path {
                             span: sp(0, 6),
                             global: true,
                             segments: ~[
@@ -440,11 +440,11 @@ mod test {
 
     #[test] fn ret_expr() {
         assert_eq!(string_to_expr(@"return d"),
-                   @ast::expr{
+                   @ast::Expr{
                     id:2,
-                    node:ast::expr_ret(Some(@ast::expr{
+                    node:ast::ExprRet(Some(@ast::Expr{
                         id:1,
-                        node:ast::expr_path(ast::Path{
+                        node:ast::ExprPath(ast::Path{
                             span: sp(7, 8),
                             global: false,
                             segments: ~[
@@ -464,9 +464,9 @@ mod test {
     #[test] fn parse_stmt_1 () {
         assert_eq!(string_to_stmt(@"b;"),
                    @Spanned{
-                       node: ast::stmt_expr(@ast::expr {
+                       node: ast::StmtExpr(@ast::Expr {
                            id: 1,
-                           node: ast::expr_path(ast::Path {
+                           node: ast::ExprPath(ast::Path {
                                span:sp(0,1),
                                global:false,
                                segments: ~[
@@ -490,9 +490,9 @@ mod test {
     #[test] fn parse_ident_pat () {
         let parser = string_to_parser(@"b");
         assert_eq!(parser.parse_pat(),
-                   @ast::pat{id:1, // fixme
-                             node: ast::pat_ident(
-                                ast::bind_infer,
+                   @ast::Pat{id:1, // fixme
+                             node: ast::PatIdent(
+                                ast::BindInfer,
                                 ast::Path {
                                     span:sp(0,1),
                                     global:false,
@@ -536,10 +536,10 @@ mod test {
                                         }, None, 2),
                                         span:sp(10,13)
                                     },
-                                    pat: @ast::pat {
+                                    pat: @ast::Pat {
                                         id:1, // fixme
-                                        node: ast::pat_ident(
-                                            ast::bind_infer,
+                                        node: ast::PatIdent(
+                                            ast::BindInfer,
                                             ast::Path {
                                                 span:sp(6,7),
                                                 global:false,
@@ -572,9 +572,9 @@ mod test {
                                     ast::Block {
                                         view_items: ~[],
                                         stmts: ~[@Spanned{
-                                            node: ast::stmt_semi(@ast::expr{
+                                            node: ast::StmtSemi(@ast::Expr{
                                                 id: 6,
-                                                node: ast::expr_path(
+                                                node: ast::ExprPath(
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,

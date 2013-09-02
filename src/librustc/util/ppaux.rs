@@ -81,11 +81,11 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
           }
           Some(&ast_map::node_expr(expr)) => {
             match expr.node {
-              ast::expr_call(*) => explain_span(cx, "call", expr.span),
-              ast::expr_method_call(*) => {
+              ast::ExprCall(*) => explain_span(cx, "call", expr.span),
+              ast::ExprMethodCall(*) => {
                 explain_span(cx, "method call", expr.span)
               },
-              ast::expr_match(*) => explain_span(cx, "match", expr.span),
+              ast::ExprMatch(*) => explain_span(cx, "match", expr.span),
               _ => explain_span(cx, "expression", expr.span)
             }
           }
@@ -173,18 +173,18 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
       }
       Some(&ast_map::node_expr(expr)) => {
         match expr.node {
-          ast::expr_call(*) => {
+          ast::ExprCall(*) => {
             fmt!("<call at %s>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
-          ast::expr_match(*) => {
+          ast::ExprMatch(*) => {
             fmt!("<match at %s>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
-          ast::expr_assign_op(*) |
-          ast::expr_unary(*) |
-          ast::expr_binary(*) |
-          ast::expr_index(*) => {
+          ast::ExprAssignOp(*) |
+          ast::ExprUnary(*) |
+          ast::ExprBinary(*) |
+          ast::ExprIndex(*) => {
             fmt!("<method at %s>",
                  cx.sess.codemap.span_to_str(expr.span))
           }
@@ -235,10 +235,10 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     }
 }
 
-fn mutability_to_str(m: ast::mutability) -> ~str {
+fn mutability_to_str(m: ast::Mutability) -> ~str {
     match m {
-        ast::m_mutbl => ~"mut ",
-        ast::m_imm => ~"",
+        ast::MutMutable => ~"mut ",
+        ast::MutImmutable => ~"",
     }
 }
 
@@ -613,7 +613,7 @@ impl Repr for ty::TraitRef {
     }
 }
 
-impl Repr for ast::expr {
+impl Repr for ast::Expr {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("expr(%d: %s)",
              self.id,
@@ -621,7 +621,7 @@ impl Repr for ast::expr {
     }
 }
 
-impl Repr for ast::pat {
+impl Repr for ast::Pat {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("pat(%d: %s)",
              self.id,
@@ -641,7 +641,7 @@ impl Repr for ty::Region {
     }
 }
 
-impl Repr for ast::def_id {
+impl Repr for ast::DefId {
     fn repr(&self, tcx: ctxt) -> ~str {
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now

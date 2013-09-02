@@ -166,9 +166,9 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
         for stmt in blk.stmts.iter() {
             let s = do with_pp(intr) |pp, _| { pprust::print_stmt(pp, *stmt); };
             match stmt.node {
-                ast::stmt_decl(d, _) => {
+                ast::StmtDecl(d, _) => {
                     match d.node {
-                        ast::decl_item(it) => {
+                        ast::DeclItem(it) => {
                             let name = sess.str_of(it.ident);
                             match it.node {
                                 // Structs are treated specially because to make
@@ -184,7 +184,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
 
                         // Local declarations must be specially dealt with,
                         // record all local declarations for use later on
-                        ast::decl_local(l) => {
+                        ast::DeclLocal(l) => {
                             let mutbl = l.is_mutbl;
                             do each_binding(l) |path, _| {
                                 let s = do with_pp(intr) |pp, _| {
@@ -198,7 +198,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 }
 
                 // run statements with expressions (they have effects)
-                ast::stmt_mac(*) | ast::stmt_semi(*) | ast::stmt_expr(*) => {
+                ast::StmtMac(*) | ast::StmtSemi(*) | ast::StmtExpr(*) => {
                     to_run.push(s);
                 }
             }

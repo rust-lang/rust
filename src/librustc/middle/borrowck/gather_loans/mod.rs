@@ -32,7 +32,7 @@ use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::ast::{expr, fn_kind, fn_decl, Block, NodeId, stmt, pat, Local};
+use syntax::ast::{Expr, fn_kind, fn_decl, Block, NodeId, Stmt, Pat, Local};
 
 mod lifetime;
 mod restrictions;
@@ -76,7 +76,7 @@ struct GatherLoanCtxt {
 struct GatherLoanVisitor;
 
 impl visit::Visitor<@mut GatherLoanCtxt> for GatherLoanVisitor {
-    fn visit_expr(&mut self, ex:@expr, e:@mut GatherLoanCtxt) {
+    fn visit_expr(&mut self, ex:@Expr, e:@mut GatherLoanCtxt) {
         gather_loans_in_expr(self, ex, e);
     }
     fn visit_block(&mut self, b:&Block, e:@mut GatherLoanCtxt) {
@@ -86,10 +86,10 @@ impl visit::Visitor<@mut GatherLoanCtxt> for GatherLoanVisitor {
                 s:Span, n:NodeId, e:@mut GatherLoanCtxt) {
         gather_loans_in_fn(self, fk, fd, b, s, n, e);
     }
-    fn visit_stmt(&mut self, s:@stmt, e:@mut GatherLoanCtxt) {
+    fn visit_stmt(&mut self, s:@Stmt, e:@mut GatherLoanCtxt) {
         add_stmt_to_map(self, s, e);
     }
-    fn visit_pat(&mut self, p:@pat, e:@mut GatherLoanCtxt) {
+    fn visit_pat(&mut self, p:@Pat, e:@mut GatherLoanCtxt) {
         add_pat_to_id_range(self, p, e);
     }
     fn visit_local(&mut self, l:@Local, e:@mut GatherLoanCtxt) {
@@ -117,7 +117,7 @@ pub fn gather_loans(bccx: @BorrowckCtxt,
 }
 
 fn add_pat_to_id_range(v: &mut GatherLoanVisitor,
-                       p: @ast::pat,
+                       p: @ast::Pat,
                        this: @mut GatherLoanCtxt) {
     // NB: This visitor function just adds the pat ids into the id
     // range. We gather loans that occur in patterns using the
@@ -196,7 +196,7 @@ fn gather_loans_in_local(v: &mut GatherLoanVisitor,
 
 
 fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
-                        ex: @ast::expr,
+                        ex: @ast::Expr,
                         this: @mut GatherLoanCtxt) {
     let bccx = this.bccx;
     let tcx = bccx.tcx;
@@ -230,7 +230,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
 
     // Special checks for various kinds of expressions:
     match ex.node {
-      ast::expr_addr_of(mutbl, base) => {
+      ast::ExprAddrOf(mutbl, base) => {
         let base_cmt = this.bccx.cat_expr(base);
 
         // make sure that the thing we are pointing out stays valid
@@ -244,7 +244,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
         visit::walk_expr(v, ex, this);
       }
 
-      ast::expr_assign(l, _) | ast::expr_assign_op(_, _, l, _) => {
+      ast::ExprAssign(l, _) | ast::ExprAssignOp(_, _, l, _) => {
           let l_cmt = this.bccx.cat_expr(l);
           match opt_loan_path(l_cmt) {
               Some(l_lp) => {
@@ -261,7 +261,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
           visit::walk_expr(v, ex, this);
       }
 
-      ast::expr_match(ex_v, ref arms) => {
+      ast::ExprMatch(ex_v, ref arms) => {
         let cmt = this.bccx.cat_expr(ex_v);
         for arm in arms.iter() {
             for pat in arm.pats.iter() {
@@ -271,8 +271,8 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
         visit::walk_expr(v, ex, this);
       }
 
-      ast::expr_index(_, _, arg) |
-      ast::expr_binary(_, _, _, arg)
+      ast::ExprIndex(_, _, arg) |
+      ast::ExprBinary(_, _, _, arg)
       if this.bccx.method_map.contains_key(&ex.id) => {
           // Arguments in method calls are always passed by ref.
           //
@@ -290,7 +290,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_while(cond, ref body) => {
+      ast::ExprWhile(cond, ref body) => {
           // during the condition, can only root for the condition
           this.push_repeating_id(cond.id);
           v.visit_expr(cond, this);
@@ -303,13 +303,13 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_loop(ref body, _) => {
+      ast::ExprLoop(ref body, _) => {
           this.push_repeating_id(body.id);
           visit::walk_expr(v, ex, this);
           this.pop_repeating_id(body.id);
       }
 
-      ast::expr_fn_block(*) => {
+      ast::ExprFnBlock(*) => {
           gather_moves::gather_captures(this.bccx, this.move_data, ex);
           visit::walk_expr(v, ex, this);
       }
@@ -333,7 +333,7 @@ impl GatherLoanCtxt {
     }
 
     pub fn guarantee_adjustments(&mut self,
-                                 expr: @ast::expr,
+                                 expr: @ast::Expr,
                                  adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
                expr.repr(self.tcx()), adjustment);
@@ -668,7 +668,7 @@ impl GatherLoanCtxt {
 
     fn gather_pat(&mut self,
                   discr_cmt: mc::cmt,
-                  root_pat: @ast::pat,
+                  root_pat: @ast::Pat,
                   arm_match_ids: Option<(ast::NodeId, ast::NodeId)>) {
         /*!
          * Walks patterns, examining the bindings to determine if they
@@ -678,9 +678,9 @@ impl GatherLoanCtxt {
 
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
-              ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
+              ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
                 match bm {
-                  ast::bind_by_ref(mutbl) => {
+                  ast::BindByRef(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
                     // remain valid for the scope of the match
 
@@ -715,7 +715,7 @@ impl GatherLoanCtxt {
                                          loan_mutability,
                                          scope_r);
                   }
-                  ast::bind_infer => {
+                  ast::BindInfer => {
                       // No borrows here, but there may be moves
                       if self.bccx.is_move(pat.id) {
                           gather_moves::gather_move_from_pat(
@@ -725,7 +725,7 @@ impl GatherLoanCtxt {
                 }
               }
 
-              ast::pat_vec(_, Some(slice_pat), _) => {
+              ast::PatVec(_, Some(slice_pat), _) => {
                   // The `slice_pat` here creates a slice into the
                   // original vector.  This is effectively a borrow of
                   // the elements of the vector being matched.
@@ -768,8 +768,8 @@ impl GatherLoanCtxt {
         }
     }
 
-    pub fn vec_slice_info(&self, pat: @ast::pat, slice_ty: ty::t)
-                          -> (ast::mutability, ty::Region) {
+    pub fn vec_slice_info(&self, pat: @ast::Pat, slice_ty: ty::t)
+                          -> (ast::Mutability, ty::Region) {
         /*!
          *
          * In a pattern like [a, b, ..c], normally `c` has slice type,
@@ -795,11 +795,11 @@ impl GatherLoanCtxt {
         }
     }
 
-    pub fn pat_is_variant_or_struct(&self, pat: @ast::pat) -> bool {
+    pub fn pat_is_variant_or_struct(&self, pat: @ast::Pat) -> bool {
         pat_util::pat_is_variant_or_struct(self.bccx.tcx.def_map, pat)
     }
 
-    pub fn pat_is_binding(&self, pat: @ast::pat) -> bool {
+    pub fn pat_is_binding(&self, pat: @ast::Pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
     }
 }
@@ -807,10 +807,10 @@ impl GatherLoanCtxt {
 // Setting up info that preserve needs.
 // This is just the most convenient place to do it.
 fn add_stmt_to_map(v: &mut GatherLoanVisitor,
-                   stmt: @ast::stmt,
+                   stmt: @ast::Stmt,
                    this: @mut GatherLoanCtxt) {
     match stmt.node {
-        ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {
+        ast::StmtExpr(_, id) | ast::StmtSemi(_, id) => {
             this.bccx.stmt_map.insert(id);
         }
         _ => ()

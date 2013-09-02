@@ -484,7 +484,7 @@ pub trait get_node_info {
     fn info(&self) -> Option<NodeInfo>;
 }
 
-impl get_node_info for ast::expr {
+impl get_node_info for ast::Expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo {id: self.id,
                        callee_id: self.get_callee_id(),
@@ -500,7 +500,7 @@ impl get_node_info for ast::Block {
     }
 }
 
-impl get_node_info for Option<@ast::expr> {
+impl get_node_info for Option<@ast::Expr> {
     fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }
@@ -570,19 +570,19 @@ impl Block {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    pub fn expr_to_str(&self, e: @ast::expr) -> ~str {
+    pub fn expr_to_str(&self, e: @ast::Expr) -> ~str {
         e.repr(self.tcx())
     }
 
-    pub fn expr_is_lval(&self, e: &ast::expr) -> bool {
+    pub fn expr_is_lval(&self, e: &ast::Expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn expr_kind(&self, e: &ast::expr) -> ty::ExprKind {
+    pub fn expr_kind(&self, e: &ast::Expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn def(&self, nid: ast::NodeId) -> ast::def {
+    pub fn def(&self, nid: ast::NodeId) -> ast::Def {
         match self.tcx().def_map.find(&nid) {
             Some(&v) => v,
             None => {
@@ -681,7 +681,7 @@ pub fn block_parent(cx: @mut Block) -> @mut Block {
 pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let ptr = ty::mk_ptr(
         tcx,
-        ty::mt {ty: ty::mk_i8(), mutbl: ast::m_imm}
+        ty::mt {ty: ty::mk_i8(), mutbl: ast::MutImmutable}
     );
     return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
                          ptr, ptr,
@@ -920,7 +920,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
 
 #[deriving(Eq,IterBytes)]
 pub struct mono_id_ {
-    def: ast::def_id,
+    def: ast::DefId,
     params: ~[mono_param_id]
 }
 
@@ -979,11 +979,11 @@ pub fn node_id_type(bcx: @mut Block, id: ast::NodeId) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: @mut Block, ex: &ast::expr) -> ty::t {
+pub fn expr_ty(bcx: @mut Block, ex: &ast::Expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: @mut Block, ex: &ast::expr) -> ty::t {
+pub fn expr_ty_adjusted(bcx: @mut Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::expr_ty_adjusted(tcx, ex);
     monomorphize_type(bcx, t)
@@ -1124,7 +1124,7 @@ pub fn bool_to_i1(bcx: @mut Block, llval: ValueRef) -> ValueRef {
 }
 
 pub fn langcall(bcx: @mut Block, span: Option<Span>, msg: &str,
-                li: LangItem) -> ast::def_id {
+                li: LangItem) -> ast::DefId {
     match bcx.tcx().lang_items.require(li) {
         Ok(id) => id,
         Err(s) => {

@@ -158,8 +158,8 @@ impl VecTypes {
 }
 
 pub fn trans_fixed_vstore(bcx: @mut Block,
-                          vstore_expr: @ast::expr,
-                          content_expr: &ast::expr,
+                          vstore_expr: @ast::Expr,
+                          content_expr: &ast::Expr,
                           dest: expr::Dest)
                        -> @mut Block {
     //!
@@ -187,8 +187,8 @@ pub fn trans_fixed_vstore(bcx: @mut Block,
 }
 
 pub fn trans_slice_vstore(bcx: @mut Block,
-                          vstore_expr: @ast::expr,
-                          content_expr: @ast::expr,
+                          vstore_expr: @ast::Expr,
+                          content_expr: @ast::Expr,
                           dest: expr::Dest)
                        -> @mut Block {
     //!
@@ -205,7 +205,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 
     // Handle the &"..." case:
     match content_expr.node {
-        ast::expr_lit(@codemap::Spanned {node: ast::lit_str(s), span: _}) => {
+        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s), span: _}) => {
             return trans_lit_str(bcx, content_expr, s, dest);
         }
         _ => {}
@@ -222,7 +222,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 
     // Arrange for the backing array to be cleaned up.
     let fixed_ty = ty::mk_evec(bcx.tcx(),
-                               ty::mt {ty: vt.unit_ty, mutbl: ast::m_mutbl},
+                               ty::mt {ty: vt.unit_ty, mutbl: ast::MutMutable},
                                ty::vstore_fixed(count));
     let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
     let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
@@ -246,7 +246,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 }
 
 pub fn trans_lit_str(bcx: @mut Block,
-                     lit_expr: @ast::expr,
+                     lit_expr: @ast::Expr,
                      str_lit: @str,
                      dest: Dest)
                   -> @mut Block {
@@ -280,8 +280,8 @@ pub fn trans_lit_str(bcx: @mut Block,
 }
 
 
-pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @ast::expr,
-                                    content_expr: &ast::expr) -> DatumBlock {
+pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @ast::Expr,
+                                    content_expr: &ast::Expr) -> DatumBlock {
     //!
     //
     // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
@@ -295,7 +295,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @a
     match heap {
         heap_exchange => {
             match content_expr.node {
-                ast::expr_lit(@codemap::Spanned {
+                ast::ExprLit(@codemap::Spanned {
                     node: ast::lit_str(s), span
                 }) => {
                     let llptrval = C_cstr(bcx.ccx(), s);
@@ -343,8 +343,8 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @a
 
 pub fn write_content(bcx: @mut Block,
                      vt: &VecTypes,
-                     vstore_expr: @ast::expr,
-                     content_expr: &ast::expr,
+                     vstore_expr: @ast::Expr,
+                     content_expr: &ast::Expr,
                      dest: Dest)
                   -> @mut Block {
     let _icx = push_ctxt("tvec::write_content");
@@ -357,7 +357,7 @@ pub fn write_content(bcx: @mut Block,
     let _indenter = indenter();
 
     match content_expr.node {
-        ast::expr_lit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
+        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
             match dest {
                 Ignore => {
                     return bcx;
@@ -371,7 +371,7 @@ pub fn write_content(bcx: @mut Block,
                 }
             }
         }
-        ast::expr_vec(ref elements, _) => {
+        ast::ExprVec(ref elements, _) => {
             match dest {
                 Ignore => {
                     for element in elements.iter() {
@@ -397,7 +397,7 @@ pub fn write_content(bcx: @mut Block,
             }
             return bcx;
         }
-        ast::expr_repeat(element, count_expr, _) => {
+        ast::ExprRepeat(element, count_expr, _) => {
             match dest {
                 Ignore => {
                     return expr::trans_into(bcx, element, Ignore);
@@ -469,7 +469,7 @@ pub fn write_content(bcx: @mut Block,
     }
 }
 
-pub fn vec_types_from_expr(bcx: @mut Block, vec_expr: &ast::expr) -> VecTypes {
+pub fn vec_types_from_expr(bcx: @mut Block, vec_expr: &ast::Expr) -> VecTypes {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, vec_ty)
 }
@@ -486,15 +486,15 @@ pub fn vec_types(bcx: @mut Block, vec_ty: ty::t) -> VecTypes {
               llunit_size: llunit_size}
 }
 
-pub fn elements_required(bcx: @mut Block, content_expr: &ast::expr) -> uint {
+pub fn elements_required(bcx: @mut Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::expr_lit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
+        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s), _ }) => {
             s.len()
         },
-        ast::expr_vec(ref es, _) => es.len(),
-        ast::expr_repeat(_, count_expr, _) => {
+        ast::ExprVec(ref es, _) => es.len(),
+        ast::ExprRepeat(_, count_expr, _) => {
             ty::eval_repeat_count(&bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,

@@ -216,13 +216,13 @@ struct WbCtxt {
 
 type wb_vt = oldvisit::vt<@mut WbCtxt>;
 
-fn visit_stmt(s: @ast::stmt, (wbcx, v): (@mut WbCtxt, wb_vt)) {
+fn visit_stmt(s: @ast::Stmt, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     oldvisit::visit_stmt(s, (wbcx, v));
 }
 
-fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
+fn visit_expr(e: @ast::Expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
@@ -246,20 +246,20 @@ fn visit_expr(e: @ast::expr, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     }
 
     match e.node {
-        ast::expr_fn_block(ref decl, _) => {
+        ast::ExprFnBlock(ref decl, _) => {
             for input in decl.inputs.iter() {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }
 
-        ast::expr_binary(callee_id, _, _, _) |
-        ast::expr_unary(callee_id, _, _) |
-        ast::expr_assign_op(callee_id, _, _, _) |
-        ast::expr_index(callee_id, _, _) => {
+        ast::ExprBinary(callee_id, _, _, _) |
+        ast::ExprUnary(callee_id, _, _) |
+        ast::ExprAssignOp(callee_id, _, _, _) |
+        ast::ExprIndex(callee_id, _, _) => {
             maybe_resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
-        ast::expr_method_call(callee_id, _, _, _, _, _) => {
+        ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
             // We must always have written in a callee ID type for these.
             resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
@@ -279,7 +279,7 @@ fn visit_block(b: &ast::Block, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     oldvisit::visit_block(b, (wbcx, v));
 }
 
-fn visit_pat(p: @ast::pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
+fn visit_pat(p: @ast::Pat, (wbcx, v): (@mut WbCtxt, wb_vt)) {
     if !wbcx.success {
         return;
     }
@@ -329,7 +329,7 @@ fn mk_visitor() -> oldvisit::vt<@mut WbCtxt> {
                                   .. *oldvisit::default_visitor()})
 }
 
-pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
+pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::Expr) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_expr)(e, (wbcx, visit));

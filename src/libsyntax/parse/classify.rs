@@ -21,25 +21,25 @@ use ast;
 // 'if true {...} else {...}
 //  |x| 5 '
 // isn't parsed as (if true {...} else {...} | x) | 5
-pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
+pub fn expr_requires_semi_to_be_stmt(e: @ast::Expr) -> bool {
     match e.node {
-      ast::expr_if(*)
-      | ast::expr_match(*)
-      | ast::expr_block(_)
-      | ast::expr_while(*)
-      | ast::expr_loop(*)
-      | ast::expr_for_loop(*)
-      | ast::expr_call(_, _, ast::DoSugar)
-      | ast::expr_call(_, _, ast::ForSugar)
-      | ast::expr_method_call(_, _, _, _, _, ast::DoSugar)
-      | ast::expr_method_call(_, _, _, _, _, ast::ForSugar) => false,
+      ast::ExprIf(*)
+      | ast::ExprMatch(*)
+      | ast::ExprBlock(_)
+      | ast::ExprWhile(*)
+      | ast::ExprLoop(*)
+      | ast::ExprForLoop(*)
+      | ast::ExprCall(_, _, ast::DoSugar)
+      | ast::ExprCall(_, _, ast::ForSugar)
+      | ast::ExprMethodCall(_, _, _, _, _, ast::DoSugar)
+      | ast::ExprMethodCall(_, _, _, _, _, ast::ForSugar) => false,
       _ => true
     }
 }
 
-pub fn expr_is_simple_block(e: @ast::expr) -> bool {
+pub fn expr_is_simple_block(e: @ast::Expr) -> bool {
     match e.node {
-        ast::expr_block(
+        ast::ExprBlock(
             ast::Block { rules: ast::DefaultBlock, _ }
         ) => true,
       _ => false
@@ -49,16 +49,16 @@ pub fn expr_is_simple_block(e: @ast::expr) -> bool {
 // this statement requires a semicolon after it.
 // note that in one case (stmt_semi), we've already
 // seen the semicolon, and thus don't need another.
-pub fn stmt_ends_with_semi(stmt: &ast::stmt) -> bool {
+pub fn stmt_ends_with_semi(stmt: &ast::Stmt) -> bool {
     return match stmt.node {
-        ast::stmt_decl(d, _) => {
+        ast::StmtDecl(d, _) => {
             match d.node {
-                ast::decl_local(_) => true,
-                ast::decl_item(_) => false
+                ast::DeclLocal(_) => true,
+                ast::DeclItem(_) => false
             }
         }
-        ast::stmt_expr(e, _) => { expr_requires_semi_to_be_stmt(e) }
-        ast::stmt_semi(*) => { false }
-        ast::stmt_mac(*) => { false }
+        ast::StmtExpr(e, _) => { expr_requires_semi_to_be_stmt(e) }
+        ast::StmtSemi(*) => { false }
+        ast::StmtMac(*) => { false }
     }
 }

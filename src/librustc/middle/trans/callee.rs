@@ -77,13 +77,13 @@ pub struct Callee {
     data: CalleeData
 }
 
-pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
+pub fn trans(bcx: @mut Block, expr: @ast::Expr) -> Callee {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
-        ast::expr_path(_) => {
+        ast::ExprPath(_) => {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         _ => {}
@@ -92,7 +92,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
     // any other expressions are closures:
     return datum_callee(bcx, expr);
 
-    fn datum_callee(bcx: @mut Block, expr: @ast::expr) -> Callee {
+    fn datum_callee(bcx: @mut Block, expr: @ast::Expr) -> Callee {
         let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
         match ty::get(datum.ty).sty {
             ty::ty_bare_fn(*) => {
@@ -115,42 +115,42 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
         return Callee {bcx: bcx, data: Fn(fd)};
     }
 
-    fn trans_def(bcx: @mut Block, def: ast::def, ref_expr: @ast::expr) -> Callee {
+    fn trans_def(bcx: @mut Block, def: ast::Def, ref_expr: @ast::Expr) -> Callee {
         match def {
-            ast::def_fn(did, _) |
-            ast::def_static_method(did, ast::FromImpl(_), _) => {
+            ast::DefFn(did, _) |
+            ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ref_expr.id))
             }
-            ast::def_static_method(impl_did,
+            ast::DefStaticMethod(impl_did,
                                    ast::FromTrait(trait_did),
                                    _) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx, impl_did,
                                                                 trait_did,
                                                                 ref_expr.id))
             }
-            ast::def_variant(tid, vid) => {
+            ast::DefVariant(tid, vid) => {
                 // nullary variants are not callable
                 assert!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,
                                                       vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ref_expr.id))
             }
-            ast::def_struct(def_id) => {
+            ast::DefStruct(def_id) => {
                 fn_callee(bcx, trans_fn_ref(bcx, def_id, ref_expr.id))
             }
-            ast::def_static(*) |
-            ast::def_arg(*) |
-            ast::def_local(*) |
-            ast::def_binding(*) |
-            ast::def_upvar(*) |
-            ast::def_self(*) => {
+            ast::DefStatic(*) |
+            ast::DefArg(*) |
+            ast::DefLocal(*) |
+            ast::DefBinding(*) |
+            ast::DefUpvar(*) |
+            ast::DefSelf(*) => {
                 datum_callee(bcx, ref_expr)
             }
-            ast::def_mod(*) | ast::def_foreign_mod(*) | ast::def_trait(*) |
-            ast::def_ty(*) | ast::def_prim_ty(*) |
-            ast::def_use(*) | ast::def_typaram_binder(*) |
-            ast::def_region(*) | ast::def_label(*) | ast::def_ty_param(*) |
-            ast::def_self_ty(*) | ast::def_method(*) => {
+            ast::DefMod(*) | ast::DefForeignMod(*) | ast::DefTrait(*) |
+            ast::DefTy(*) | ast::DefPrimTy(*) |
+            ast::DefUse(*) | ast::DefTyParamBinder(*) |
+            ast::DefRegion(*) | ast::DefLabel(*) | ast::DefTyParam(*) |
+            ast::DefSelfTy(*) | ast::DefMethod(*) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     fmt!("Cannot translate def %? \
@@ -161,14 +161,14 @@ pub fn trans(bcx: @mut Block, expr: @ast::expr) -> Callee {
 }
 
 pub fn trans_fn_ref_to_callee(bcx: @mut Block,
-                              def_id: ast::def_id,
+                              def_id: ast::DefId,
                               ref_id: ast::NodeId) -> Callee {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref(bcx, def_id, ref_id))}
 }
 
 pub fn trans_fn_ref(bcx: @mut Block,
-                    def_id: ast::def_id,
+                    def_id: ast::DefId,
                     ref_id: ast::NodeId) -> FnData {
     /*!
      *
@@ -188,7 +188,7 @@ pub fn trans_fn_ref(bcx: @mut Block,
 
 pub fn trans_fn_ref_with_vtables_to_callee(
         bcx: @mut Block,
-        def_id: ast::def_id,
+        def_id: ast::DefId,
         ref_id: ast::NodeId,
         type_params: &[ty::t],
         vtables: Option<typeck::vtable_res>)
@@ -199,7 +199,7 @@ pub fn trans_fn_ref_with_vtables_to_callee(
 }
 
 fn resolve_default_method_vtables(bcx: @mut Block,
-                                  impl_id: ast::def_id,
+                                  impl_id: ast::DefId,
                                   method: &ty::Method,
                                   substs: &ty::substs,
                                   impl_vtables: Option<typeck::vtable_res>)
@@ -242,7 +242,7 @@ fn resolve_default_method_vtables(bcx: @mut Block,
 
 pub fn trans_fn_ref_with_vtables(
         bcx: @mut Block,       //
-        def_id: ast::def_id,   // def id of fn
+        def_id: ast::DefId,   // def id of fn
         ref_id: ast::NodeId,  // node id of use of fn; may be zero if N/A
         type_params: &[ty::t], // values for fn's ty params
         vtables: Option<typeck::vtable_res>) // vtables for the call
@@ -447,8 +447,8 @@ pub fn trans_fn_ref_with_vtables(
 // Translating calls
 
 pub fn trans_call(in_cx: @mut Block,
-                  call_ex: @ast::expr,
-                  f: @ast::expr,
+                  call_ex: @ast::Expr,
+                  f: @ast::Expr,
                   args: CallArgs,
                   id: ast::NodeId,
                   dest: expr::Dest)
@@ -465,9 +465,9 @@ pub fn trans_call(in_cx: @mut Block,
 }
 
 pub fn trans_method_call(in_cx: @mut Block,
-                         call_ex: @ast::expr,
+                         call_ex: @ast::Expr,
                          callee_id: ast::NodeId,
-                         rcvr: @ast::expr,
+                         rcvr: @ast::Expr,
                          args: CallArgs,
                          dest: expr::Dest)
                          -> @mut Block {
@@ -503,7 +503,7 @@ pub fn trans_method_call(in_cx: @mut Block,
 }
 
 pub fn trans_lang_call(bcx: @mut Block,
-                       did: ast::def_id,
+                       did: ast::DefId,
                        args: &[ValueRef],
                        dest: Option<expr::Dest>)
     -> Result {
@@ -530,7 +530,7 @@ pub fn trans_lang_call(bcx: @mut Block,
 }
 
 pub fn trans_lang_call_with_type_params(bcx: @mut Block,
-                                        did: ast::def_id,
+                                        did: ast::DefId,
                                         args: &[ValueRef],
                                         type_params: &[ty::t],
                                         dest: expr::Dest)
@@ -576,11 +576,11 @@ impl Visitor<@mut bool> for CalleeTranslationVisitor {
 
     fn visit_item(&mut self, _:@ast::item, _:@mut bool) { }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut bool) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut bool) {
 
             if !*cx {
                 match e.node {
-                  ast::expr_ret(_) => *cx = true,
+                  ast::ExprRet(_) => *cx = true,
                   _ => visit::walk_expr(self, e, cx),
                 }
             }
@@ -757,7 +757,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
 }
 
 pub enum CallArgs<'self> {
-    ArgExprs(&'self [@ast::expr]),
+    ArgExprs(&'self [@ast::Expr]),
     ArgVals(&'self [ValueRef])
 }
 
@@ -815,7 +815,7 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: @mut Block,
                       formal_arg_ty: ty::t,
                       self_mode: ty::SelfMode,
-                      arg_expr: @ast::expr,
+                      arg_expr: @ast::Expr,
                       temp_cleanups: &mut ~[ValueRef],
                       autoref_arg: AutorefArg) -> Result {
     let _icx = push_ctxt("trans_arg_expr");

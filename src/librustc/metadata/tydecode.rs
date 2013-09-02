@@ -51,7 +51,7 @@ pub enum DefIdSource {
     TypeParameter
 }
 type conv_did<'self> =
-    &'self fn(source: DefIdSource, ast::def_id) -> ast::def_id;
+    &'self fn(source: DefIdSource, ast::DefId) -> ast::DefId;
 
 pub struct PState<'self> {
     data: &'self [u8],
@@ -422,10 +422,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
     }
 }
 
-fn parse_mutability(st: &mut PState) -> ast::mutability {
+fn parse_mutability(st: &mut PState) -> ast::Mutability {
     match peek(st) {
-      'm' => { next(st); ast::m_mutbl }
-      _ => { ast::m_imm }
+      'm' => { next(st); ast::MutMutable }
+      _ => { ast::MutImmutable }
     }
 }
 
@@ -435,7 +435,7 @@ fn parse_mt(st: &mut PState, conv: conv_did) -> ty::mt {
 }
 
 fn parse_def(st: &mut PState, source: DefIdSource,
-             conv: conv_did) -> ast::def_id {
+             conv: conv_did) -> ast::DefId {
     return conv(source, scan(st, |c| { c == '|' }, parse_def_id));
 }
 
@@ -535,7 +535,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
 }
 
 // Rust metadata parsing
-pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
+pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
     let mut colon_idx = 0u;
     let len = buf.len();
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
@@ -557,7 +557,7 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
        None => fail!("internal error: parse_def_id: id expected, but found %?",
                      def_part)
     };
-    ast::def_id { crate: crate_num, node: def_num }
+    ast::DefId { crate: crate_num, node: def_num }
 }
 
 pub fn parse_type_param_def_data(data: &[u8], start: uint,

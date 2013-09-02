@@ -15,7 +15,7 @@ use std::vec;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
-use syntax::ast::{m_imm, m_mutbl};
+use syntax::ast::{MutImmutable, MutMutable};
 use syntax::codemap::Span;
 
 pub enum RestrictionResult {
@@ -115,13 +115,13 @@ impl RestrictionsContext {
 
             mc::cat_copied_upvar(*) | // FIXME(#2152) allow mutation of upvars
             mc::cat_static_item(*) |
-            mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) |
-            mc::cat_deref(_, _, mc::gc_ptr(m_imm)) => {
+            mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) |
+            mc::cat_deref(_, _, mc::gc_ptr(MutImmutable)) => {
                 // R-Deref-Imm-Borrowed
                 Safe
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::gc_ptr(m_mutbl)) => {
+            mc::cat_deref(cmt_base, _, pk @ mc::gc_ptr(MutMutable)) => {
                 // R-Deref-Managed-Borrowed
                 //
                 // Technically, no restrictions are *necessary* here.
@@ -169,7 +169,7 @@ impl RestrictionsContext {
                 }
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(m_mutbl, _)) => {
+            mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(MutMutable, _)) => {
                 // Because an `&mut` pointer does not inherit its
                 // mutability, we can only prevent mutation or prevent
                 // freezing if it is not aliased. Therefore, in such

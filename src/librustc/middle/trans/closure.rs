@@ -208,7 +208,7 @@ pub fn store_environment(bcx: @mut Block,
     // tuple.  This could be a ptr in uniq or a box or on stack,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    let cboxptr_ty = ty::mk_ptr(tcx, ty::mt {ty:cbox_ty, mutbl:ast::m_imm});
+    let cboxptr_ty = ty::mk_ptr(tcx, ty::mt {ty:cbox_ty, mutbl:ast::MutImmutable});
     let llboxptr_ty = type_of(ccx, cboxptr_ty);
 
     // If there are no bound values, no point in allocating anything.

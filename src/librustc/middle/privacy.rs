@@ -18,12 +18,12 @@ use middle::typeck::{method_map, method_origin, method_param};
 use middle::typeck::{method_static, method_object};
 
 use std::util::ignore;
-use syntax::ast::{decl_item, def, def_fn, def_id, def_static_method};
-use syntax::ast::{def_variant, expr_field, expr_method_call, expr_path};
-use syntax::ast::{expr_struct, expr_unary, Ident, inherited, item_enum};
+use syntax::ast::{DeclItem, Def, DefFn, DefId, DefStaticMethod};
+use syntax::ast::{DefVariant, ExprField, ExprMethodCall, ExprPath};
+use syntax::ast::{ExprStruct, ExprUnary, Ident, inherited, item_enum};
 use syntax::ast::{item_foreign_mod, item_fn, item_impl, item_struct};
-use syntax::ast::{item_trait, LOCAL_CRATE, NodeId, pat_struct, Path};
-use syntax::ast::{private, provided, public, required, stmt_decl, visibility};
+use syntax::ast::{item_trait, LOCAL_CRATE, NodeId, PatStruct, Path};
+use syntax::ast::{private, provided, public, required, StmtDecl, visibility};
 use syntax::ast;
 use syntax::ast_map::{node_foreign_item, node_item, node_method};
 use syntax::ast_map::{node_trait_method};
@@ -35,7 +35,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::ast::{_mod,expr,item,Block,pat};
+use syntax::ast::{_mod,Expr,item,Block,Pat};
 
 struct PrivacyVisitor {
     tcx: ty::ctxt,
@@ -79,7 +79,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that an enum variant is in scope
-    fn check_variant(&mut self, span: Span, enum_id: ast::def_id) {
+    fn check_variant(&mut self, span: Span, enum_id: ast::DefId) {
         let variant_info = ty::enum_variants(self.tcx, enum_id)[0];
         let parental_privacy = if is_local(enum_id) {
             let parent_vis = ast_map::node_item_query(self.tcx.items,
@@ -109,7 +109,7 @@ impl PrivacyVisitor {
 
     // Returns true if a crate-local method is private and false otherwise.
     fn method_is_private(&mut self, span: Span, method_id: NodeId) -> bool {
-        let check = |vis: visibility, container_id: def_id| {
+        let check = |vis: visibility, container_id: DefId| {
             let mut is_private = false;
             if vis == private {
                 is_private = true;
@@ -203,7 +203,7 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private field is in scope.
-    fn check_field(&mut self, span: Span, id: ast::def_id, ident: ast::Ident) {
+    fn check_field(&mut self, span: Span, id: ast::DefId, ident: ast::Ident) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for field in fields.iter() {
             if field.ident != ident { loop; }
@@ -216,7 +216,7 @@ impl PrivacyVisitor {
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
-    fn check_method_common(&mut self, span: Span, method_id: def_id, name: &Ident) {
+    fn check_method_common(&mut self, span: Span, method_id: DefId, name: &Ident) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         // Having to do this this is really unfortunate.
@@ -245,16 +245,16 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private path is in scope.
-    fn check_path(&mut self, span: Span, def: def, path: &Path) {
+    fn check_path(&mut self, span: Span, def: Def, path: &Path) {
         debug!("checking path");
         match def {
-            def_static_method(method_id, _, _) => {
+            DefStaticMethod(method_id, _, _) => {
                 debug!("found static method def, checking it");
                 self.check_method_common(span,
                                          method_id,
                                          &path.segments.last().identifier)
             }
-            def_fn(def_id, _) => {
+            DefFn(def_id, _) => {
                 if def_id.crate == LOCAL_CRATE {
                     if self.local_item_is_private(span, def_id.node) &&
                             !self.privileged_items.iter().any(|x| x == &def_id.node) {
@@ -371,9 +371,9 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
             let mut n_added = 0;
             for stmt in block.stmts.iter() {
                 match stmt.node {
-                    stmt_decl(decl, _) => {
+                    StmtDecl(decl, _) => {
                         match decl.node {
-                            decl_item(item) => {
+                            DeclItem(item) => {
                                 self.add_privileged_item(item, &mut n_added);
                             }
                             _ => {}
@@ -391,10 +391,10 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
 
     }
 
-    fn visit_expr<'mm>(&mut self, expr:@expr, method_map:&'mm method_map) {
+    fn visit_expr<'mm>(&mut self, expr:@Expr, method_map:&'mm method_map) {
 
             match expr.node {
-                expr_field(base, ident, _) => {
+                ExprField(base, ident, _) => {
                     // Method calls are now a special syntactic form,
                     // so `a.b` should always be a field.
                     assert!(!method_map.contains_key(&expr.id));
@@ -412,7 +412,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                         _ => {}
                     }
                 }
-                expr_method_call(_, base, ident, _, _, _) => {
+                ExprMethodCall(_, base, ident, _, _, _) => {
                     // Ditto
                     match ty::get(ty::type_autoderef(self.tcx, ty::expr_ty(self.tcx,
                                                           base))).sty {
@@ -436,10 +436,10 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                         _ => {}
                     }
                 }
-                expr_path(ref path) => {
+                ExprPath(ref path) => {
                     self.check_path(expr.span, self.tcx.def_map.get_copy(&expr.id), path);
                 }
-                expr_struct(_, ref fields, _) => {
+                ExprStruct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(self.tcx, expr)).sty {
                         ty_struct(id, _) => {
                             if id.crate != LOCAL_CRATE ||
@@ -455,7 +455,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                             if id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &(id.node)) {
                                 match self.tcx.def_map.get_copy(&expr.id) {
-                                    def_variant(_, variant_id) => {
+                                    DefVariant(_, variant_id) => {
                                         for field in (*fields).iter() {
                                                 debug!("(privacy checking) \
                                                         checking field in \
@@ -481,7 +481,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                         }
                     }
                 }
-                expr_unary(_, ast::deref, operand) => {
+                ExprUnary(_, ast::UnDeref, operand) => {
                     // In *e, we need to check that if e's type is an
                     // enum type t, then t's first variant is public or
                     // privileged. (We can assume it has only one variant
@@ -503,10 +503,10 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
 
     }
 
-    fn visit_pat<'mm>(&mut self, pattern:@pat, method_map:&'mm method_map) {
+    fn visit_pat<'mm>(&mut self, pattern:@Pat, method_map:&'mm method_map) {
 
             match pattern.node {
-                pat_struct(_, ref fields, _) => {
+                PatStruct(_, ref fields, _) => {
                     match ty::get(ty::pat_ty(self.tcx, pattern)).sty {
                         ty_struct(id, _) => {
                             if id.crate != LOCAL_CRATE ||
@@ -522,7 +522,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                             if enum_id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &enum_id.node) {
                                 match self.tcx.def_map.find(&pattern.id) {
-                                    Some(&def_variant(_, variant_id)) => {
+                                    Some(&DefVariant(_, variant_id)) => {
                                         for field in fields.iter() {
                                             debug!("(privacy checking) \
                                                     checking field in \

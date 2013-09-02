@@ -35,7 +35,7 @@ use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 
 pub fn monomorphic_fn(ccx: @mut CrateContext,
-                      fn_id: ast::def_id,
+                      fn_id: ast::DefId,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
@@ -296,7 +296,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 }
 
 pub fn make_mono_id(ccx: @mut CrateContext,
-                    item: ast::def_id,
+                    item: ast::DefId,
                     substs: &param_substs,
                     param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
