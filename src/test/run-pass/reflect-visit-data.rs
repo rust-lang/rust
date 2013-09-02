@@ -317,26 +317,26 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_enter_class(&mut self, name: &str, n_fields: uint, sz: uint, align: uint)
-                      -> bool {
+    fn visit_enter_class(&mut self, name: &str, named_fields: bool, n_fields: uint, sz: uint,
+                         align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_enter_class(name, n_fields, sz, align) {
+        if ! self.inner.visit_enter_class(name, named_fields, n_fields, sz, align) {
             return false;
         }
         true
     }
 
-    fn visit_class_field(&mut self, i: uint, name: &str,
+    fn visit_class_field(&mut self, i: uint, name: &str, named: bool,
                          mtbl: uint, inner: *TyDesc) -> bool {
-        if ! self.inner.visit_class_field(i, name, mtbl, inner) {
+        if ! self.inner.visit_class_field(i, name, named, mtbl, inner) {
             return false;
         }
         true
     }
 
-    fn visit_leave_class(&mut self, name: &str, n_fields: uint, sz: uint, align: uint)
-                      -> bool {
-        if ! self.inner.visit_leave_class(name, n_fields, sz, align) {
+    fn visit_leave_class(&mut self, name: &str, named_fields: bool, n_fields: uint, sz: uint,
+                         align: uint) -> bool {
+        if ! self.inner.visit_leave_class(name, named_fields, n_fields, sz, align) {
             return false;
         }
         true
@@ -428,9 +428,9 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_trait(&mut self) -> bool {
+    fn visit_trait(&mut self, name: &str) -> bool {
         self.align_to::<@TyVisitor>();
-        if ! self.inner.visit_trait() { return false; }
+        if ! self.inner.visit_trait(name) { return false; }
         self.bump_past::<@TyVisitor>();
         true
     }
@@ -565,13 +565,13 @@ impl TyVisitor for my_visitor {
     fn visit_leave_rec(&mut self, _n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
 
-    fn visit_enter_class(&mut self, _name: &str, _n_fields: uint,
+    fn visit_enter_class(&mut self, _name: &str, _named_fields: bool, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
-    fn visit_class_field(&mut self, _i: uint, _name: &str,
+    fn visit_class_field(&mut self, _i: uint, _name: &str, _named: bool,
                          _mtbl: uint, inner: *TyDesc) -> bool {
         self.visit_inner(inner)
     }
-    fn visit_leave_class(&mut self, _name: &str, _n_fields: uint,
+    fn visit_leave_class(&mut self, _name: &str, _named_fields: bool, _n_fields: uint,
                          _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_tup(&mut self, _n_fields: uint,
@@ -616,7 +616,7 @@ impl TyVisitor for my_visitor {
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&mut self) -> bool { true }
+    fn visit_trait(&mut self, _name: &str) -> bool { true }
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }

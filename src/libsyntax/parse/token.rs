@@ -436,7 +436,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "blk",                // 26
         "static",             // 27
         "__foreign_mod__",    // 28
-        "__field__",          // 29
+        "<unnamed_field>",    // 29
         "C",                  // 30
         "Self",               // 31
 

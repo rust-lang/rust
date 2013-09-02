@@ -413,31 +413,40 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_enter_class(&mut self, name: &str, n_fields: uint,
+    fn visit_enter_class(&mut self, name: &str, named_fields: bool, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
         self.writer.write(name.as_bytes());
         if n_fields != 0 {
-            self.writer.write(['{' as u8]);
+            if named_fields {
+                self.writer.write(['{' as u8]);
+            } else {
+                self.writer.write(['(' as u8]);
+            }
         }
         true
     }
 
-    fn visit_class_field(&mut self, i: uint, name: &str,
-                         mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_class_field(&mut self, i: uint, name: &str, named: bool,
+                         _mtbl: uint, inner: *TyDesc) -> bool {
         if i != 0 {
             self.writer.write(", ".as_bytes());
         }
-        self.write_mut_qualifier(mtbl);
-        self.writer.write(name.as_bytes());
-        self.writer.write(": ".as_bytes());
+        if named {
+            self.writer.write(name.as_bytes());
+            self.writer.write(": ".as_bytes());
+        }
         self.visit_inner(inner);
         true
     }
 
-    fn visit_leave_class(&mut self, _name: &str, n_fields: uint,
+    fn visit_leave_class(&mut self, _name: &str, named_fields: bool, n_fields: uint,
                          _sz: uint, _align: uint) -> bool {
         if n_fields != 0 {
-            self.writer.write(['}' as u8]);
+            if named_fields {
+                self.writer.write(['}' as u8]);
+            } else {
+                self.writer.write([')' as u8]);
+            }
         }
         true
     }
@@ -552,13 +561,19 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     }
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
-                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+                      _n_inputs: uint, _retstyle: uint) -> bool {
+        self.writer.write("fn(".as_bytes());
+        true
+    }
 
     fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
+        // FIXME: #8917: should print out the parameter types here, separated by commas
         true
     }
 
     fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
+        self.writer.write(")".as_bytes());
+        // FIXME: #8917: should print out the output type here, as `-> T`
         true
     }
 
@@ -566,7 +581,11 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&mut self) -> bool { true }
+    fn visit_trait(&mut self, name: &str) -> bool {
+        self.writer.write(name.as_bytes());
+        true
+    }
+
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
@@ -597,6 +616,7 @@ struct P {a: int, b: float}
 
 #[test]
 fn test_repr() {
+    use prelude::*;
     use str;
     use str::Str;
     use rt::io::Decorator;
@@ -654,6 +674,12 @@ fn test_repr() {
     exact_test(&(10u64, ~"hello"),
                "(10u64, ~\"hello\")");
 
+    exact_test(&(&println), "&fn()");
+    exact_test(&(~5 as ~ToStr), "~to_str::ToStr:Send");
+
     struct Foo;
     exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
+
+    struct Bar(int, int);
+    exact_test(&(Bar(2, 2)), "repr::test_repr::Bar(2, 2)");
 }
