@@ -15,7 +15,7 @@ extern mod extra;
 fn f() {
 }
 
-use extra::net;    //~ ERROR view items must be declared at the top
+use extra::net;    //~ ERROR `use` and `extern mod` declarations must precede items
 
 fn main() {
 }
