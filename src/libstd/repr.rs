@@ -571,7 +571,11 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
 
-    fn visit_trait(&mut self) -> bool { true }
+    fn visit_trait(&mut self, name: &str) -> bool {
+        self.writer.write(name.as_bytes());
+        true
+    }
+
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
@@ -661,6 +665,7 @@ fn test_repr() {
                "(10u64, ~\"hello\")");
 
     exact_test(&(&println), "&fn()");
+    exact_test(&(~5 as ~ToStr), "~to_str::ToStr:Send");
 
     struct Foo;
     exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");

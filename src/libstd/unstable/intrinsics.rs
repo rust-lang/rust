@@ -256,7 +256,7 @@ pub trait TyVisitor {
     fn visit_leave_fn(&mut self, purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool;
 
-    fn visit_trait(&mut self) -> bool;
+    fn visit_trait(&mut self, name: &str) -> bool;
     fn visit_param(&mut self, i: uint) -> bool;
     fn visit_self(&mut self) -> bool;
     fn visit_type(&mut self) -> bool;

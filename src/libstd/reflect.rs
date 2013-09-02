@@ -450,9 +450,9 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_trait(&mut self) -> bool {
+    fn visit_trait(&mut self, name: &str) -> bool {
         self.align_to::<@TyVisitor>();
-        if ! self.inner.visit_trait() { return false; }
+        if ! self.inner.visit_trait(name) { return false; }
         self.bump_past::<@TyVisitor>();
         true
     }
