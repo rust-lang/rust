@@ -474,17 +474,43 @@ pub trait Seek {
     fn seek(&mut self, pos: i64, style: SeekStyle);
 }
 
-/// A listener is a value that listens for connections
-pub trait Listener<S> {
-    /// Wait for and accept an incoming connection
-    ///
-    /// Returns `None` on timeout.
+/// A listener is a value that can consume itself to start listening for connections.
+/// Doing so produces some sort of Acceptor.
+pub trait Listener<T, A: Acceptor<T>> {
+    /// Spin up the listener and start queueing incoming connections
     ///
     /// # Failure
     ///
     /// Raises `io_error` condition. If the condition is handled,
+    /// then `listen` returns `None`.
+    fn listen(self) -> Option<A>;
+}
+
+/// An acceptor is a value that presents incoming connections
+pub trait Acceptor<T> {
+    /// Wait for and accept an incoming connection
+    ///
+    /// # Failure
+    /// Raise `io_error` condition. If the condition is handled,
     /// then `accept` returns `None`.
-    fn accept(&mut self) -> Option<S>;
+    fn accept(&mut self) -> Option<T>;
+
+    /// Create an iterator over incoming connections
+    fn incoming<'r>(&'r mut self) -> IncomingIterator<'r, Self> {
+        IncomingIterator { inc: self }
+    }
+}
+
+/// An infinite iterator over incoming connection attempts.
+/// Calling `next` will block the task until a connection is attempted.
+struct IncomingIterator<'self, A> {
+    priv inc: &'self mut A,
+}
+
+impl<'self, T, A: Acceptor<T>> Iterator<T> for IncomingIterator<'self, A> {
+    fn next(&mut self) -> Option<T> {
+        self.inc.accept()
+    }
 }
 
 /// Common trait for decorator types.
