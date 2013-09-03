@@ -215,6 +215,11 @@ pub fn main() {
 
     test_write();
     test_print();
+
+    // make sure that format! doesn't move out of local variables
+    let a = ~3;
+    format!("{:?}", a);
+    format!("{:?}", a);
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
