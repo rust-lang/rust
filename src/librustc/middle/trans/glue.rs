@@ -678,12 +678,16 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }
     };
+
+    let ty_name = C_estr_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
+
     let inf = @mut tydesc_info {
         ty: t,
         tydesc: gvar,
         size: llsize,
         align: llalign,
         borrow_offset: borrow_offset,
+        name: ty_name,
         take_glue: None,
         drop_glue: None,
         free_glue: None,
@@ -809,14 +813,14 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
                                      drop_glue, // drop_glue
                                      free_glue, // free_glue
                                      visit_glue, // visit_glue
-                                     ti.borrow_offset]); // borrow_offset
+                                     ti.borrow_offset, // borrow_offset
+                                     ti.name]); // name
 
         unsafe {
             let gvar = ti.tydesc;
             llvm::LLVMSetInitializer(gvar, tydesc);
             llvm::LLVMSetGlobalConstant(gvar, True);
             lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
-
         }
     };
 }

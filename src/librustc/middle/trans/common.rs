@@ -56,6 +56,7 @@ pub struct tydesc_info {
     size: ValueRef,
     align: ValueRef,
     borrow_offset: ValueRef,
+    name: ValueRef,
     take_glue: Option<ValueRef>,
     drop_glue: Option<ValueRef>,
     free_glue: Option<ValueRef>,
