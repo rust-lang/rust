@@ -667,7 +667,7 @@ done
 make_dir llvm
 for t in $CFG_HOST_TRIPLES
 do
-    make_dir llvm/$t
+    make_dir $t/llvm
 done
 
 make_dir rustllvm
@@ -791,7 +791,7 @@ do
 
     if [ -z $CFG_LLVM_ROOT ]
     then
-        LLVM_BUILD_DIR=${CFG_BUILD_DIR}llvm/$t
+        LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
         if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
         then
             LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
