@@ -348,10 +348,7 @@ impl Drop for Parser {
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
-    match *t {
-        token::IDENT(_, false) | token::UNDERSCORE => true,
-        _ => false,
-    }
+    is_plain_ident(t) || *t == token::UNDERSCORE
 }
 
 impl Parser {
