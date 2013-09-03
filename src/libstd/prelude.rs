@@ -52,7 +52,7 @@ pub use hash::Hash;
 pub use num::Times;
 pub use iterator::{FromIterator, Extendable};
 pub use iterator::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
-pub use iterator::{OrdIterator, MutableDoubleEndedIterator};
+pub use iterator::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
