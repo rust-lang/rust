@@ -52,6 +52,11 @@ static inline void *box_body(rust_opaque_box *box) {
     return (void*)(box + 1);
 }
 
+struct slice {
+    void *data;
+    size_t length;
+};
+
 struct type_desc {
     size_t size;
     size_t align;
@@ -60,6 +65,7 @@ struct type_desc {
     glue_fn *free_glue;
     glue_fn *visit_glue;
     size_t borrow_offset;
+    slice name;
 };
 
 #endif
