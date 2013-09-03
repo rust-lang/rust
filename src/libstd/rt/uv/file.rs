@@ -183,8 +183,9 @@ impl FsRequest {
     // accessors/utility funcs
     fn sync_cleanup(self, result: c_int)
           -> Result<c_int, UvError> {
+        let loop_ = self.get_loop().native_handle();
         self.cleanup_and_delete();
-        match status_to_maybe_uv_error(result as i32) {
+        match status_to_maybe_uv_error_with_loop(loop_,result as i32) {
             Some(err) => Err(err),
             None => Ok(result)
         }
