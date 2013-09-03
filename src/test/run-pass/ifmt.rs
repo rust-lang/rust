@@ -213,6 +213,12 @@ pub fn main() {
     t!(format!("{:+10.3f}", 1.0f),  "    +1.000");
     t!(format!("{:+10.3f}", -1.0f), "    -1.000");
 
+    // Escaping
+    t!(format!("\\{"), "{");
+    t!(format!("\\}"), "}");
+    t!(format!("\\#"), "#");
+    t!(format!("\\\\"), "\\");
+
     test_write();
     test_print();
 
