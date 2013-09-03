@@ -2000,6 +2000,9 @@ pub fn store_arg(mut bcx: @mut Block,
     let arg_ty = node_id_type(bcx, pat.id);
     add_clean(bcx, llval, arg_ty);
 
+    // Debug information (the llvm.dbg.declare intrinsic to be precise) always expects to get an
+    // alloca, which only is the case on the general path, so lets disable the optimized path when
+    // debug info is enabled.
     let fast_path = !bcx.ccx().sess.opts.extra_debuginfo && simple_identifier(pat).is_some();
 
     if fast_path {

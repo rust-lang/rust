@@ -163,11 +163,12 @@ struct FunctionDebugContextData {
     source_locations_enabled: bool,
 }
 
-enum VariableAccess {
-    // The value given is a pointer to the data (T*)
-    DirectVariable,
-    // The value given has to be dereferenced once to get the pointer to data (T**)
-    IndirectVariable
+enum VariableAccess<'self> {
+    // The llptr given is an alloca containing the variable's value
+    DirectVariable { alloca: ValueRef },
+    // The llptr given is an alloca containing the start of some pointer chain leading to the
+    // variable's content.
+    IndirectVariable { alloca: ValueRef, address_operations: &'self [ValueRef] }
 }
 
 enum VariableKind {
@@ -213,11 +214,10 @@ pub fn create_local_var_metadata(bcx: @mut Block,
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
         declare_local(bcx,
-                      llptr,
                       var_ident,
                       var_type,
                       scope_metadata,
-                      DirectVariable,
+                      DirectVariable { alloca: llptr },
                       LocalVariable,
                       span);
     }
@@ -228,7 +228,10 @@ pub fn create_local_var_metadata(bcx: @mut Block,
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_captured_var_metadata(bcx: @mut Block,
                                     node_id: ast::NodeId,
-                                    llptr: ValueRef,
+                                    env_data_type: ty::t,
+                                    env_pointer: ValueRef,
+                                    env_index: uint,
+                                    closure_sigil: ast::Sigil,
                                     span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -250,15 +253,39 @@ pub fn create_captured_var_metadata(bcx: @mut Block,
                 Captured var-id refers to unexpected ast_map variant: %?", ast_item));
         }
     };
+
     let variable_type = node_id_type(bcx, node_id);
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, span).fn_metadata;
 
+    let llvm_env_data_type = type_of::type_of(cx, env_data_type);
+    let byte_offset_of_var_in_env = machine::llelement_offset(cx, llvm_env_data_type, env_index);
+
+    let address_operations = unsafe {
+        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()),
+         llvm::LLVMDIBuilderCreateOpPlus(Type::i64().to_ref()),
+         C_i64(byte_offset_of_var_in_env as i64),
+         llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref())]
+    };
+
+    let address_op_count = match closure_sigil {
+        ast::BorrowedSigil => {
+            address_operations.len()
+        }
+        ast::ManagedSigil | ast::OwnedSigil => {
+            address_operations.len() - 1
+        }
+    };
+
+    let variable_access = IndirectVariable {
+        alloca: env_pointer,
+        address_operations: address_operations.slice_to(address_op_count)
+    };
+
     declare_local(bcx,
-                  llptr,
                   variable_ident,
                   variable_type,
                   scope_metadata,
-                  IndirectVariable,
+                  variable_access,
                   CapturedVariable,
                   span);
 }
@@ -285,11 +312,10 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
     let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
     declare_local(bcx,
-                  llptr,
                   variable_ident,
                   variable_type,
                   scope_metadata,
-                  DirectVariable,
+                  DirectVariable { alloca: llptr },
                   LocalVariable,
                   span);
 }
@@ -333,14 +359,17 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
         argument_index
     };
 
+    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()) }];
+
     let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
-        DirectVariable
+        DirectVariable { alloca: llptr }
     } else {
-        IndirectVariable
+        // This is not stable and may break with future LLVM versions. llptr should really always
+        // be an alloca. Anything else is not supported and just works by chance.
+        IndirectVariable { alloca: llptr, address_operations: address_operations }
     };
 
     declare_local(bcx,
-                  llptr,
                   special_idents::self_,
                   type_of_self,
                   scope_metadata,
@@ -373,11 +402,10 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
-        let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
-            DirectVariable
-        } else {
-            IndirectVariable
-        };
+        if unsafe { llvm::LLVMIsAAllocaInst(llptr) } == ptr::null() {
+            cx.sess.span_bug(span, "debuginfo::create_argument_metadata() - \
+                                    Referenced variable location is not an alloca!");
+        }
 
         let argument_type = node_id_type(bcx, node_id);
         let argument_ident = ast_util::path_to_ident(path_ref);
@@ -390,11 +418,10 @@ pub fn create_argument_metadata(bcx: @mut Block,
         };
 
         declare_local(bcx,
-                      llptr,
                       argument_ident,
                       argument_type,
                       scope_metadata,
-                      variable_access,
+                      DirectVariable { alloca: llptr },
                       ArgumentVariable(argument_index),
                       span);
     }
@@ -783,7 +810,6 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
 }
 
 fn declare_local(bcx: @mut Block,
-                 llptr: ValueRef,
                  variable_ident: ast::Ident,
                  variable_type: ty::t,
                  scope_metadata: DIScope,
@@ -805,37 +831,40 @@ fn declare_local(bcx: @mut Block,
         CapturedVariable => 0
     } as c_uint;
 
-    let var_metadata = do name.with_c_str |name| {
+    let (var_alloca, var_metadata) = do name.with_c_str |name| {
         match variable_access {
-            DirectVariable => unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(
-                    DIB(cx),
-                    DW_TAG_auto_variable,
-                    scope_metadata,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
-                    cx.sess.opts.optimize != session::No,
-                    0,
-                    argument_index)
-            },
-            IndirectVariable => unsafe {
-                let address_op = llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref());
-                let address_op_count = 1;
-
-                llvm::LLVMDIBuilderCreateComplexVariable(
-                    DIB(cx),
-                    DW_TAG_auto_variable,
-                    scope_metadata,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
-                    ptr::to_unsafe_ptr(&address_op),
-                    address_op_count,
-                    argument_index)
-            }
+            DirectVariable { alloca } => (
+                alloca,
+                unsafe {
+                    llvm::LLVMDIBuilderCreateLocalVariable(
+                        DIB(cx),
+                        DW_TAG_auto_variable,
+                        scope_metadata,
+                        name,
+                        file_metadata,
+                        loc.line as c_uint,
+                        type_metadata,
+                        cx.sess.opts.optimize != session::No,
+                        0,
+                        argument_index)
+                }
+            ),
+            IndirectVariable { alloca, address_operations } => (
+                alloca,
+                unsafe {
+                    llvm::LLVMDIBuilderCreateComplexVariable(
+                        DIB(cx),
+                        DW_TAG_auto_variable,
+                        scope_metadata,
+                        name,
+                        file_metadata,
+                        loc.line as c_uint,
+                        type_metadata,
+                        vec::raw::to_ptr(address_operations),
+                        address_operations.len() as c_uint,
+                        argument_index)
+                }
+            )
         }
     };
 
@@ -843,7 +872,7 @@ fn declare_local(bcx: @mut Block,
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
-            llptr,
+            var_alloca,
             var_metadata,
             bcx.llbb);
 
