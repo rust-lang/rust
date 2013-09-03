@@ -487,6 +487,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
             let did = ast_util::local_def(id);
             ty::mk_self(tcx, did)
           }
+          ast::def_mod(id) => {
+            tcx.sess.span_fatal(ast_ty.span,
+                                fmt!("expected type but found module"));
+          }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
                                 fmt!("found value name used as a type: %?", a_def));
