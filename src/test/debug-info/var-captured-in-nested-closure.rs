@@ -29,6 +29,23 @@
 // check:$7 = 8
 // debugger:continue
 
+// debugger:finish
+// debugger:print variable
+// check:$8 = 1
+// debugger:print constant
+// check:$9 = 2
+// debugger:print a_struct
+// check:$10 = {a = -3, b = 4.5, c = 5}
+// debugger:print *struct_ref
+// check:$11 = {a = -3, b = 4.5, c = 5}
+// debugger:print *owned
+// check:$12 = 6
+// debugger:print managed->val
+// check:$13 = 7
+// debugger:print closure_local
+// check:$14 = 8
+// debugger:continue
+
 #[allow(unused_variable)];
 
 struct Struct {
@@ -59,11 +76,7 @@ fn main() {
             variable = constant + a_struct.a + struct_ref.a + *owned + *managed + closure_local;
         };
 
-        // breaking here will yield a wrong value for 'constant'. In particular, GDB will
-        // read the value of the register that supposedly contains the pointer to 'constant'
-        // and try derefence it. The register, however, already contains the actual value, and
-        // not a pointer to it. -mw
-        // zzz();
+        zzz();
 
         nested_closure();
     };
