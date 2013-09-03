@@ -525,7 +525,7 @@ impl BigUint {
     #[inline]
     pub fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
-        let new_len = v.rposition(|n| *n != 0).map_move_default(0, |p| p + 1);
+        let new_len = v.iter().rposition(|n| *n != 0).map_move_default(0, |p| p + 1);
 
         if new_len == v.len() { return BigUint { data: v }; }
         let mut v = v;
