@@ -1630,6 +1630,7 @@ pub enum cast_kind {
 
 pub fn cast_type_kind(t: ty::t) -> cast_kind {
     match ty::get(t).sty {
+        ty::ty_char       => cast_integral,
         ty::ty_float(*)   => cast_float,
         ty::ty_ptr(*)     => cast_pointer,
         ty::ty_rptr(*)    => cast_pointer,

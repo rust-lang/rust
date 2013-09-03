@@ -163,13 +163,14 @@ impl<'self> Parser<'self> {
     // Read digit
     fn read_digit(&mut self, radix: u8) -> Option<u8> {
         fn parse_digit(c: char, radix: u8) -> Option<u8> {
+            let c = c as u8;
             // assuming radix is either 10 or 16
-            if c >= '0' && c <= '9' {
-                Some((c - '0') as u8)
-            } else if radix > 10 && c >= 'a' && c < 'a' + (radix - 10) as char {
-                Some((c - 'a' + (10 as char)) as u8)
-            } else if radix > 10 && c >= 'A' && c < 'A' + (radix - 10) as char {
-                Some((c - 'A' + (10 as char)) as u8)
+            if c >= '0' as u8 && c <= '9' as u8 {
+                Some((c - '0' as u8) as u8)
+            } else if radix > 10 && c >= 'a' as u8 && c < 'a' as u8 + (radix - 10) {
+                Some((c - 'a' as u8 + 10) as u8)
+            } else if radix > 10 && c >= 'A' as u8 && c < 'A' as u8 + (radix - 10) {
+                Some((c - 'A' as u8 + 10) as u8)
             } else {
                 None
             }

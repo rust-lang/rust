@@ -17,6 +17,7 @@
 
 use at_vec;
 use cast;
+use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
@@ -875,18 +876,18 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
-            f(u as char);
+            f(unsafe { cast::transmute(u as u32) });
             i += 1u;
 
         } else {
             let u2 = v[i+1u];
             assert!(u >= 0xD800_u16 && u <= 0xDBFF_u16);
             assert!(u2 >= 0xDC00_u16 && u2 <= 0xDFFF_u16);
-            let mut c = (u - 0xD800_u16) as char;
+            let mut c: u32 = (u - 0xD800_u16) as u32;
             c = c << 10;
-            c |= (u2 - 0xDC00_u16) as char;
-            c |= 0x1_0000_u32 as char;
-            f(c);
+            c |= (u2 - 0xDC00_u16) as u32;
+            c |= 0x1_0000_u32 as u32;
+            f(unsafe { cast::transmute(c) });
             i += 2u;
         }
     }
@@ -953,7 +954,6 @@ macro_rules! utf8_acc_cont_byte(
 )
 
 static TAG_CONT_U8: u8 = 128u8;
-static MAX_UNICODE: uint = 1114112u;
 
 /// Unsafe operations
 pub mod raw {
@@ -1942,7 +1942,7 @@ impl<'self> StrSlice<'self> for &'self str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: val as char, next: i + w};
+            return CharRange {ch: unsafe { transmute(val as u32) }, next: i + w};
         }
 
         return multibyte_char_range_at(*self, i);
@@ -1980,7 +1980,7 @@ impl<'self> StrSlice<'self> for &'self str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: val as char, next: i};
+            return CharRange {ch: unsafe { transmute(val as u32) }, next: i};
         }
 
         return multibyte_char_range_at_rev(*self, prev);
@@ -2236,7 +2236,6 @@ impl OwnedStr for ~str {
     /// Appends a character to the back of a string
     #[inline]
     fn push_char(&mut self, c: char) {
-        assert!((c as uint) < MAX_UNICODE); // FIXME: #7609: should be enforced on all `char`
         let cur_len = self.len();
         self.reserve_at_least(cur_len + 4); // may use up to 4 bytes
 
@@ -2433,8 +2432,6 @@ impl Default for @str {
 mod tests {
     use container::Container;
     use option::{None, Some};
-    use libc::c_char;
-    use libc;
     use ptr;
     use str::*;
     use vec;
@@ -3179,13 +3176,6 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
-        #[fixed_stack_segment]; #[inline(never)];
-        assert_eq!(~"", "".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
-        assert_eq!(~"YMCA", "ymca".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
-    }
-
-    #[test]
     fn test_utf16() {
         let pairs =
             [(~"𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n",
@@ -3900,26 +3890,6 @@ mod bench {
         assert_eq!(100, s.len());
         do bh.iter {
             is_utf8(s);
-        }
-    }
-
-    #[bench]
-    fn map_chars_100_ascii(bh: &mut BenchHarness) {
-        let s = "HelloHelloHelloHelloHelloHelloHelloHelloHelloHello\
-                 HelloHelloHelloHelloHelloHelloHelloHelloHelloHello";
-        do bh.iter {
-            s.map_chars(|c| ((c as uint) + 1) as char);
-        }
-    }
-
-    #[bench]
-    fn map_chars_100_multibytes(bh: &mut BenchHarness) {
-        let s = "𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
-                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
-                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑\
-                 𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑𐌀𐌖𐌋𐌄𐌑";
-        do bh.iter {
-            s.map_chars(|c| ((c as uint) + 1) as char);
         }
     }
 

@@ -158,6 +158,7 @@ def emit_property_module(f, mod, tbl):
     keys.sort()
     emit_bsearch_range_table(f);
     for cat in keys:
+        if cat == "Cs": continue
         f.write("    static %s_table : &'static [(char,char)] = &[\n" % cat)
         ix = 0
         for pair in tbl[cat]:

@@ -47,6 +47,7 @@ implement `Reader` and `Writer`, where appropriate.
 #[allow(missing_doc)];
 
 use cast;
+use cast::transmute;
 use clone::Clone;
 use c_str::ToCStr;
 use container::Container;
@@ -661,7 +662,9 @@ impl<T:Reader> ReaderUtil for T {
                 i += 1;
                 assert!((w > 0));
                 if w == 1 {
-                    chars.push(b0 as char);
+                    unsafe {
+                        chars.push(transmute(b0 as u32));
+                    }
                     loop;
                 }
                 // can't satisfy this char with the existing data
@@ -680,7 +683,9 @@ impl<T:Reader> ReaderUtil for T {
                 // See str::StrSlice::char_at
                 val += ((b0 << ((w + 1) as u8)) as uint)
                     << (w - 1) * 6 - w - 1u;
-                chars.push(val as char);
+                unsafe {
+                    chars.push(transmute(val as u32));
+                }
             }
             return (i, 0);
         }
@@ -712,7 +717,7 @@ impl<T:Reader> ReaderUtil for T {
     fn read_char(&self) -> char {
         let c = self.read_chars(1);
         if c.len() == 0 {
-            return -1 as char; // FIXME will this stay valid? // #2004
+            return unsafe { transmute(-1u32) }; // FIXME: #8971: unsound
         }
         assert_eq!(c.len(), 1);
         return c[0];
@@ -739,9 +744,11 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn each_char(&self, it: &fn(char) -> bool) -> bool {
+        // FIXME: #8971: unsound
+        let eof: char = unsafe { transmute(-1u32) };
         loop {
             match self.read_char() {
-                eof if eof == (-1 as char) => break,
+                c if c == eof => break,
                 ch => if !it(ch) { return false; }
             }
         }
@@ -1896,6 +1903,7 @@ mod tests {
     use result::{Ok, Err};
     use u64;
     use vec;
+    use cast::transmute;
 
     #[test]
     fn test_simple() {
@@ -2002,7 +2010,7 @@ mod tests {
     #[test]
     fn test_readchar() {
         do io::with_str_reader("生") |inp| {
-            let res : char = inp.read_char();
+            let res = inp.read_char();
             assert_eq!(res as int, 29983);
         }
     }
@@ -2010,8 +2018,8 @@ mod tests {
     #[test]
     fn test_readchar_empty() {
         do io::with_str_reader("") |inp| {
-            let res : char = inp.read_char();
-            assert_eq!(res as int, -1);
+            let res = inp.read_char();
+            assert_eq!(res, unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
         }
     }
 

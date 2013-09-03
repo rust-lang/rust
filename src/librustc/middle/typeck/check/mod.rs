@@ -1021,6 +1021,7 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 
     match lit.node {
       ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
+      ast::lit_char(_) => ty::mk_char(),
       ast::lit_int(_, t) => ty::mk_mach_int(t),
       ast::lit_uint(_, t) => ty::mk_mach_uint(t),
       ast::lit_int_unsuffixed(_) => {
@@ -2695,10 +2696,20 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         }, t_e, None);
                     }
 
-                    let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
-                    if type_is_c_like_enum(fcx,expr.span,t_e)
-                        && t_1_is_scalar {
-                        /* this case is allowed */
+                    let te = structurally_resolved_type(fcx, e.span, t_e);
+                    let t_1_is_char = type_is_char(fcx, expr.span, t_1);
+
+                    // casts to scalars other than `char` are allowed
+                    let t_1_is_trivial = type_is_scalar(fcx, expr.span, t_1) && !t_1_is_char;
+
+                    if type_is_c_like_enum(fcx, expr.span, t_e) && t_1_is_trivial {
+                        // casts from C-like enums are allowed
+                    } else if t_1_is_char {
+                        if ty::get(te).sty != ty::ty_uint(ast::ty_u8) {
+                            fcx.type_error_message(expr.span, |actual| {
+                                fmt!("only `u8` can be cast as `char`, not `%s`", actual)
+                            }, t_e, None);
+                        }
                     } else if type_is_region_ptr(fcx, expr.span, t_e) &&
                         type_is_unsafe_ptr(fcx, expr.span, t_1) {
 
@@ -2729,7 +2740,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                         /* this cast is only allowed from &[T] to *T or
                         &T to *T. */
-                        let te = structurally_resolved_type(fcx, e.span, t_e);
                         match (&ty::get(te).sty, &ty::get(t_1).sty) {
                             (&ty::ty_rptr(_, mt1), &ty::ty_ptr(mt2))
                             if types_compatible(fcx, e.span,
@@ -2741,7 +2751,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             }
                         }
                     } else if !(type_is_scalar(fcx,expr.span,t_e)
-                                && t_1_is_scalar) {
+                                && t_1_is_trivial) {
                         /*
                         If more type combinations should be supported than are
                         supported here, then file an enhancement issue and
@@ -3437,6 +3447,11 @@ pub fn type_is_integral(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
 pub fn type_is_scalar(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_scalar(typ_s);
+}
+
+pub fn type_is_char(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_char(typ_s);
 }
 
 pub fn type_is_unsafe_ptr(fcx: @mut FnCtxt, sp: Span, typ: ty::t) -> bool {

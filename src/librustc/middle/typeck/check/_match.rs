@@ -434,7 +434,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
             || ~"mismatched types in range")
         {
             // no-op
-        } else if !ty::type_is_numeric(b_ty) {
+        } else if !ty::type_is_numeric(b_ty) && !ty::type_is_char(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
         } else {
             match valid_range_bounds(fcx.ccx, begin, end) {
