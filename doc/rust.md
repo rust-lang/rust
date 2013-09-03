@@ -1038,7 +1038,7 @@ code_. They are defined in the same way as any other Rust function,
 except that they have the `extern` modifier.
 
 ~~~
-// Declares an extern fn, the ABI defaults to "C" 
+// Declares an extern fn, the ABI defaults to "C"
 extern fn new_vec() -> ~[int] { ~[] }
 
 // Declares an extern fn with "stdcall" ABI
@@ -1722,6 +1722,62 @@ Supported traits for `deriving` are:
   `obj.to_str()` has similar output as `fmt!("%?", obj)`, but it differs in that
   each constituent field of the type must also implement `ToStr` and will have
   `field.to_str()` invoked to build up the result.
+
+### Stability
+One can indicate the stability of an API using the following attributes:
+
+* `deprecated`: This item should no longer be used, e.g. it has been
+  replaced. No guarantee of backwards-compatibility.
+* `experimental`: This item was only recently introduced or is
+  otherwise in a state of flux. It may change significantly, or even
+  be removed. No guarantee of backwards-compatibility.
+* `unstable`: This item is still under development, but requires more
+  testing to be considered stable. No guarantee of backwards-compatibility.
+* `stable`: This item is considered stable, and will not change
+  significantly. Guarantee of backwards-compatibility.
+* `frozen`: This item is very stable, and is unlikely to
+  change. Guarantee of backwards-compatibility.
+* `locked`: This item will never change unless a serious bug is
+  found. Guarantee of backwards-compatibility.
+
+These levels are directly inspired by
+[Node.js' "stability index"](http://nodejs.org/api/documentation.html).
+
+There are lints for disallowing items marked with certain levels:
+`deprecated`, `experimental` and `unstable`; the first two will warn
+by default. Items with not marked with a stability are considered to
+be unstable for the purposes of the lint. One can give an optional
+string that will be displayed when the lint flags the use of an item.
+
+~~~ {.xfail-test}
+#[warn(unstable)];
+
+#[deprecated="replaced by `best`"]
+fn bad() {
+    // delete everything
+}
+
+fn better() {
+    // delete fewer things
+}
+
+#[stable]
+fn best() {
+    // delete nothing
+}
+
+fn main() {
+    bad(); // "warning: use of deprecated item: replaced by `best`"
+
+    better(); // "warning: use of unmarked item"
+
+    best(); // no warning
+}
+~~~
+
+> **Note:** Currently these are only checked when applied to
+> individual functions, structs, methods and enum variants, *not* to
+> entire modules, traits, impls or enums themselves.
 
 # Statements and expressions
 
