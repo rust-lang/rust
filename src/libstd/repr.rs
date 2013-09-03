@@ -566,14 +566,22 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
         true
     }
 
-    fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
-        // FIXME: #8917: should print out the parameter types here, separated by commas
+    fn visit_fn_input(&mut self, i: uint, _mode: uint, inner: *TyDesc) -> bool {
+        if i != 0 {
+            self.writer.write(", ".as_bytes());
+        }
+        let name = unsafe { (*inner).name };
+        self.writer.write(name.as_bytes());
         true
     }
 
-    fn visit_fn_output(&mut self, _retstyle: uint, _inner: *TyDesc) -> bool {
+    fn visit_fn_output(&mut self, _retstyle: uint, inner: *TyDesc) -> bool {
         self.writer.write(")".as_bytes());
-        // FIXME: #8917: should print out the output type here, as `-> T`
+        let name = unsafe { (*inner).name };
+        if name != "()" {
+            self.writer.write(" -> ".as_bytes());
+            self.writer.write(name.as_bytes());
+        }
         true
     }
 
@@ -620,6 +628,8 @@ fn test_repr() {
     use str;
     use str::Str;
     use rt::io::Decorator;
+    use util::swap;
+    use char::is_alphabetic;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::mem::MemWriter::new();
@@ -674,7 +684,9 @@ fn test_repr() {
     exact_test(&(10u64, ~"hello"),
                "(10u64, ~\"hello\")");
 
-    exact_test(&(&println), "&fn()");
+    exact_test(&println, "fn(&str)");
+    exact_test(&swap::<int>, "fn(&mut int, &mut int)");
+    exact_test(&is_alphabetic, "fn(char) -> bool");
     exact_test(&(~5 as ~ToStr), "~to_str::ToStr:Send");
 
     struct Foo;
