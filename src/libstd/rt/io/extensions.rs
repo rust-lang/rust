@@ -71,7 +71,7 @@ pub trait ReaderUtil {
     /// Raises the same conditions as the `read` method, for
     /// each call to its `.next()` method.
     /// Ends the iteration if the condition is handled.
-    fn bytes(self) -> Bytes<Self>;
+    fn bytes(self) -> ByteIterator<Self>;
 
 }
 
@@ -349,30 +349,36 @@ impl<T: Reader> ReaderUtil for T {
         return buf;
     }
 
-    fn bytes(self) -> Bytes<T> {
-        Bytes{reader: self}
+    fn bytes(self) -> ByteIterator<T> {
+        ByteIterator{reader: self}
     }
 }
 
 /// An iterator that reads a single byte on each iteration,
-/// until EOF.
+/// until `.read_byte()` returns `None`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `ByteIterator` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
 ///
 /// # Failure
 ///
 /// Raises the same conditions as the `read` method, for
 /// each call to its `.next()` method.
-/// Ends the iteration if the condition is handled.
-pub struct Bytes<T> {
+/// Yields `None` if the condition is handled.
+pub struct ByteIterator<T> {
     priv reader: T,
 }
 
-impl<R> Decorator<R> for Bytes<R> {
+impl<R> Decorator<R> for ByteIterator<R> {
     fn inner(self) -> R { self.reader }
     fn inner_ref<'a>(&'a self) -> &'a R { &self.reader }
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.reader }
 }
 
-impl<'self, R: Reader> Iterator<u8> for Bytes<R> {
+impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
         self.reader.read_byte()
