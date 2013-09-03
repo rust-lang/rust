@@ -66,6 +66,9 @@ pub struct TyDesc {
     // `U`, but in the case of `@Trait` or `~Trait` objects, the type
     // `U` is unknown.
     borrow_offset: uint,
+
+    // Name corresponding to the type
+    name: &'static str
 }
 
 #[lang="opaque"]
