@@ -205,10 +205,10 @@ struct MarkSymbolVisitor {
 
 impl Visitor<()> for MarkSymbolVisitor {
 
-    fn visit_expr(&mut self, expr:@expr, _:()) {
+    fn visit_expr(&mut self, expr:@Expr, _:()) {
 
                 match expr.node {
-                    expr_path(_) => {
+                    ExprPath(_) => {
                         let def = match self.tcx.def_map.find(&expr.id) {
                             Some(&def) => def,
                             None => {
@@ -225,7 +225,7 @@ impl Visitor<()> for MarkSymbolVisitor {
                         }
                         self.reachable_symbols.insert(def_id.node);
                     }
-                    expr_method_call(*) => {
+                    ExprMethodCall(*) => {
                         match self.method_map.find(&expr.id) {
                             Some(&typeck::method_map_entry {
                                 origin: typeck::method_static(def_id),
@@ -283,7 +283,7 @@ impl ReachableContext {
 
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
-    fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: def_id)
+    fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: DefId)
                                             -> bool {
         if def_id.crate != LOCAL_CRATE {
             return false

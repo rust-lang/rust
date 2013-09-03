@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, item, expr};
+use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -69,7 +69,7 @@ pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
 fn cs_clone(
     name: &str,
     cx: @ExtCtxt, span: Span,
-    substr: &Substructure) -> @expr {
+    substr: &Substructure) -> @Expr {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;

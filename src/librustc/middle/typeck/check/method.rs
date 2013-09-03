@@ -100,9 +100,9 @@ use std::hashmap::HashSet;
 use std::result;
 use std::vec;
 use extra::list::Nil;
-use syntax::ast::{def_id, sty_value, sty_region, sty_box};
+use syntax::ast::{DefId, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, NodeId};
-use syntax::ast::{m_mutbl, m_imm};
+use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::ast_map;
 
@@ -122,8 +122,8 @@ pub fn lookup(
         fcx: @mut FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
-        expr: @ast::expr,                   // The expression `a.b(...)`.
-        self_expr: @ast::expr,              // The expression `a`.
+        expr: @ast::Expr,                   // The expression `a.b(...)`.
+        self_expr: @ast::Expr,              // The expression `a`.
         callee_id: NodeId,                  /* Where to store `a.b`'s type,
                                              * also the scope of the call */
         m_name: ast::Ident,                 // The ident `b`.
@@ -170,12 +170,12 @@ pub fn lookup(
 
 pub struct LookupContext<'self> {
     fcx: @mut FnCtxt,
-    expr: @ast::expr,
-    self_expr: @ast::expr,
+    expr: @ast::Expr,
+    self_expr: @ast::Expr,
     callee_id: NodeId,
     m_name: ast::Ident,
     supplied_tps: &'self [ty::t],
-    impl_dups: @mut HashSet<def_id>,
+    impl_dups: @mut HashSet<DefId>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
@@ -205,7 +205,7 @@ pub struct Candidate {
 /// because traits are not types, this is a pain to do.
 #[deriving(Clone)]
 enum RcvrMatchCondition {
-    RcvrMatchesIfObject(ast::def_id),
+    RcvrMatchesIfObject(ast::DefId),
     RcvrMatchesIfSubtype(ty::t)
 }
 
@@ -371,7 +371,7 @@ impl<'self> LookupContext<'self> {
     // to a trait and its supertraits.
     fn get_method_index(&self,
                         trait_ref: @TraitRef,
-                        subtrait_id: ast::def_id,
+                        subtrait_id: ast::DefId,
                         n_method: uint) -> uint {
         let tcx = self.tcx();
 
@@ -395,7 +395,7 @@ impl<'self> LookupContext<'self> {
 
 
     fn push_inherent_candidates_from_object(&self,
-                                            did: def_id,
+                                            did: DefId,
                                             substs: &ty::substs) {
         debug!("push_inherent_candidates_from_object(did=%s, substs=%s)",
                self.did_to_str(did),
@@ -468,7 +468,7 @@ impl<'self> LookupContext<'self> {
 
     fn push_inherent_candidates_from_self(&self,
                                               self_ty: ty::t,
-                                              did: def_id) {
+                                              did: DefId) {
         let tcx = self.tcx();
 
         let trait_ref = ty::lookup_trait_def(tcx, did).trait_ref;
@@ -537,7 +537,7 @@ impl<'self> LookupContext<'self> {
     }
 
 
-    fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
+    fn push_inherent_impl_candidates_for_type(&self, did: DefId) {
         // Read the inherent implementation candidates for this type from the
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
@@ -686,7 +686,7 @@ impl<'self> LookupContext<'self> {
             // the default method code fails when you try to reborrow
             // because it is not handling types correctly. In lieu of
             // fixing that, I am introducing this horrible hack. - ndm
-            self_mt.mutbl == m_imm && ty::type_is_self(self_mt.ty)
+            self_mt.mutbl == MutImmutable && ty::type_is_self(self_mt.ty)
         }
     }
 
@@ -708,7 +708,7 @@ impl<'self> LookupContext<'self> {
             ty_evec(mt, vstore_fixed(_)) => {
                 // First try to borrow to a slice
                 let entry = self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVec, autoderefs, [m_imm, m_mutbl],
+                    AutoBorrowVec, autoderefs, [MutImmutable, MutMutable],
                     |m,r| ty::mk_evec(tcx,
                                       ty::mt {ty:mt.ty, mutbl:m},
                                       vstore_slice(r)));
@@ -717,7 +717,7 @@ impl<'self> LookupContext<'self> {
 
                 // Then try to borrow to a slice *and* borrow a pointer.
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVecRef, autoderefs, [m_imm, m_mutbl],
+                    AutoBorrowVecRef, autoderefs, [MutImmutable, MutMutable],
                     |m,r| {
                         let slice_ty = ty::mk_evec(tcx,
                                                    ty::mt {ty:mt.ty, mutbl:m},
@@ -727,7 +727,7 @@ impl<'self> LookupContext<'self> {
                         // to a temporary pointer (the borrowed
                         // slice), so any update the callee makes to
                         // it can't be observed.
-                        ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m_imm})
+                        ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:MutImmutable})
                     })
             }
 
@@ -735,13 +735,13 @@ impl<'self> LookupContext<'self> {
             ty_estr(vstore_uniq) |
             ty_estr(vstore_fixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVec, autoderefs, [m_imm],
+                    AutoBorrowVec, autoderefs, [MutImmutable],
                     |_m,r| ty::mk_estr(tcx, vstore_slice(r)));
 
                 if entry.is_some() { return entry; }
 
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVecRef, autoderefs, [m_imm],
+                    AutoBorrowVecRef, autoderefs, [MutImmutable],
                     |m,r| {
                         let slice_ty = ty::mk_estr(tcx, vstore_slice(r));
                         ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m})
@@ -752,7 +752,7 @@ impl<'self> LookupContext<'self> {
                 // Coerce ~/@/&Trait instances to &Trait.
 
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowObj, autoderefs, [m_imm, m_mutbl],
+                    AutoBorrowObj, autoderefs, [MutImmutable, MutMutable],
                     |trt_mut, reg| {
                         ty::mk_trait(tcx, trt_did, trt_substs.clone(),
                                      RegionTraitStore(reg), trt_mut, b)
@@ -787,7 +787,7 @@ impl<'self> LookupContext<'self> {
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
             ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
                 self.search_for_some_kind_of_autorefd_method(
-                    AutoPtr, autoderefs, [m_imm, m_mutbl],
+                    AutoPtr, autoderefs, [MutImmutable, MutMutable],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
             }
 
@@ -803,10 +803,10 @@ impl<'self> LookupContext<'self> {
 
     fn search_for_some_kind_of_autorefd_method(
         &self,
-        kind: &fn(Region, ast::mutability) -> ty::AutoRef,
+        kind: &fn(Region, ast::Mutability) -> ty::AutoRef,
         autoderefs: uint,
-        mutbls: &[ast::mutability],
-        mk_autoref_ty: &fn(ast::mutability, ty::Region) -> ty::t)
+        mutbls: &[ast::Mutability],
+        mk_autoref_ty: &fn(ast::Mutability, ty::Region) -> ty::t)
         -> Option<method_map_entry> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
@@ -1050,7 +1050,7 @@ impl<'self> LookupContext<'self> {
 
     fn construct_transformed_self_ty_for_object(
         &self,
-        trait_def_id: ast::def_id,
+        trait_def_id: ast::DefId,
         rcvr_substs: &ty::substs,
         method_ty: &ty::Method) -> ty::t
     {
@@ -1252,7 +1252,7 @@ impl<'self> LookupContext<'self> {
             }
         };
 
-        fn rcvr_matches_object(self_did: ast::def_id,
+        fn rcvr_matches_object(self_did: ast::DefId,
                                candidate: &Candidate) -> bool {
             match candidate.rcvr_match_condition {
                 RcvrMatchesIfObject(desired_did) => {
@@ -1277,8 +1277,8 @@ impl<'self> LookupContext<'self> {
             }
         }
 
-        fn mutability_matches(self_mutbl: ast::mutability,
-                              candidate_mutbl: ast::mutability)
+        fn mutability_matches(self_mutbl: ast::Mutability,
+                              candidate_mutbl: ast::Mutability)
                               -> bool {
             //! True if `self_mutbl <: candidate_mutbl`
             self_mutbl == candidate_mutbl
@@ -1299,7 +1299,7 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    fn report_static_candidate(&self, idx: uint, did: def_id) {
+    fn report_static_candidate(&self, idx: uint, did: DefId) {
         let span = if did.crate == ast::LOCAL_CRATE {
             match self.tcx().items.find(&did.node) {
               Some(&ast_map::node_method(m, _, _)) => m.span,
@@ -1315,7 +1315,7 @@ impl<'self> LookupContext<'self> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_param_candidate(&self, idx: uint, did: def_id) {
+    fn report_param_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the bound `%s`",
@@ -1323,7 +1323,7 @@ impl<'self> LookupContext<'self> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_trait_candidate(&self, idx: uint, did: def_id) {
+    fn report_trait_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the type of the receiver, \
@@ -1351,7 +1351,7 @@ impl<'self> LookupContext<'self> {
              cand.origin)
     }
 
-    fn did_to_str(&self, did: def_id) -> ~str {
+    fn did_to_str(&self, did: DefId) -> ~str {
         ty::item_path_str(self.tcx(), did)
     }
 

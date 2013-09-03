@@ -41,7 +41,7 @@ use std::result;
 use std::vec;
 use extra::list::Nil;
 use extra::smallintmap::SmallIntMap;
-use syntax::ast::{m_imm, m_mutbl};
+use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
@@ -106,7 +106,7 @@ pub enum TypeOrigin {
     MethodCompatCheck(Span),
 
     // Checking that this expression can be assigned where it needs to be
-    ExprAssignable(@ast::expr),
+    ExprAssignable(@ast::Expr),
 
     // Relating trait refs when resolving vtables
     RelateTraitRefs(Span),
@@ -678,7 +678,7 @@ impl InferCtxt {
                                   trait_ref.def_id,
                                   trait_ref.substs.clone(),
                                   ty::UniqTraitStore,
-                                  ast::m_imm,
+                                  ast::MutImmutable,
                                   ty::EmptyBuiltinBounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {

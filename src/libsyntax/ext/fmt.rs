@@ -48,8 +48,8 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
 // expressions.  Also: Cleanup the naming of these functions.
 // Note: Moved many of the common ones to build.rs --kevina
 fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
-                  pieces: ~[Piece], args: ~[@ast::expr])
-   -> @ast::expr {
+                  pieces: ~[Piece], args: ~[@ast::Expr])
+   -> @ast::Expr {
     fn make_path_vec(ident: &str) -> ~[ast::Ident] {
         return ~[str_to_ident("std"),
                  str_to_ident("unstable"),
@@ -57,15 +57,15 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                  str_to_ident("rt"),
                  str_to_ident(ident)];
     }
-    fn make_rt_path_expr(cx: @ExtCtxt, sp: Span, nm: &str) -> @ast::expr {
+    fn make_rt_path_expr(cx: @ExtCtxt, sp: Span, nm: &str) -> @ast::Expr {
         let path = make_path_vec(nm);
         cx.expr_path(cx.path_global(sp, path))
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
 
-    fn make_rt_conv_expr(cx: @ExtCtxt, sp: Span, cnv: &Conv) -> @ast::expr {
-        fn make_flags(cx: @ExtCtxt, sp: Span, flags: &[Flag]) -> @ast::expr {
+    fn make_rt_conv_expr(cx: @ExtCtxt, sp: Span, cnv: &Conv) -> @ast::Expr {
+        fn make_flags(cx: @ExtCtxt, sp: Span, flags: &[Flag]) -> @ast::Expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
             for f in flags.iter() {
                 let fstr = match *f {
@@ -75,12 +75,12 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                   FlagSignAlways => "flag_sign_always",
                   FlagAlternate => "flag_alternate"
                 };
-                tmp_expr = cx.expr_binary(sp, ast::bitor, tmp_expr,
+                tmp_expr = cx.expr_binary(sp, ast::BiBitOr, tmp_expr,
                                           make_rt_path_expr(cx, sp, fstr));
             }
             return tmp_expr;
         }
-        fn make_count(cx: @ExtCtxt, sp: Span, cnt: Count) -> @ast::expr {
+        fn make_count(cx: @ExtCtxt, sp: Span, cnt: Count) -> @ast::Expr {
             match cnt {
               CountImplied => {
                 return make_rt_path_expr(cx, sp, "CountImplied");
@@ -94,7 +94,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
               _ => cx.span_unimpl(sp, "unimplemented fmt! conversion")
             }
         }
-        fn make_ty(cx: @ExtCtxt, sp: Span, t: Ty) -> @ast::expr {
+        fn make_ty(cx: @ExtCtxt, sp: Span, t: Ty) -> @ast::Expr {
             let rt_type = match t {
               TyHex(c) => match c {
                 CaseUpper =>  "TyHexUpper",
@@ -106,9 +106,9 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
             };
             return make_rt_path_expr(cx, sp, rt_type);
         }
-        fn make_conv_struct(cx: @ExtCtxt, sp: Span, flags_expr: @ast::expr,
-                         width_expr: @ast::expr, precision_expr: @ast::expr,
-                         ty_expr: @ast::expr) -> @ast::expr {
+        fn make_conv_struct(cx: @ExtCtxt, sp: Span, flags_expr: @ast::Expr,
+                         width_expr: @ast::Expr, precision_expr: @ast::Expr,
+                         ty_expr: @ast::Expr) -> @ast::Expr {
             cx.expr_struct(
                 sp,
                 cx.path_global(sp, make_path_vec("Conv")),
@@ -128,7 +128,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
                          rt_conv_precision, rt_conv_ty)
     }
     fn make_conv_call(cx: @ExtCtxt, sp: Span, conv_type: &str, cnv: &Conv,
-                      arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
+                      arg: @ast::Expr, buf: @ast::Expr) -> @ast::Expr {
         let fname = ~"conv_" + conv_type;
         let path = make_path_vec(fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
@@ -137,7 +137,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: Span,
     }
 
     fn make_new_conv(cx: @ExtCtxt, sp: Span, cnv: &Conv,
-                     arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
+                     arg: @ast::Expr, buf: @ast::Expr) -> @ast::Expr {
         fn is_signed_type(cnv: &Conv) -> bool {
             match cnv.ty {
               TyInt(s) => match s {

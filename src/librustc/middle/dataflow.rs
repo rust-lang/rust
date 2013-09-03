@@ -390,40 +390,40 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_stmt(&mut self,
-                 stmt: @ast::stmt,
+                 stmt: @ast::Stmt,
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         match stmt.node {
-            ast::stmt_decl(decl, _) => {
+            ast::StmtDecl(decl, _) => {
                 self.walk_decl(decl, in_out, loop_scopes);
             }
 
-            ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
+            ast::StmtExpr(expr, _) | ast::StmtSemi(expr, _) => {
                 self.walk_expr(expr, in_out, loop_scopes);
             }
 
-            ast::stmt_mac(*) => {
+            ast::StmtMac(*) => {
                 self.tcx().sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
 
     fn walk_decl(&mut self,
-                 decl: @ast::decl,
+                 decl: @ast::Decl,
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
-            ast::decl_local(local) => {
+            ast::DeclLocal(local) => {
                 self.walk_opt_expr(local.init, in_out, loop_scopes);
                 self.walk_pat(local.pat, in_out, loop_scopes);
             }
 
-            ast::decl_item(_) => {}
+            ast::DeclItem(_) => {}
         }
     }
 
     fn walk_expr(&mut self,
-                 expr: @ast::expr,
+                 expr: @ast::Expr,
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_expr(expr=%s, in_out=%s)",
@@ -432,7 +432,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         self.merge_with_entry_set(expr.id, in_out);
 
         match expr.node {
-            ast::expr_fn_block(ref decl, ref body) => {
+            ast::ExprFnBlock(ref decl, ref body) => {
                 if self.dfcx.oper.walk_closures() {
                     // In the absence of once fns, we must assume that
                     // every function body will execute more than
@@ -521,7 +521,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 }
             }
 
-            ast::expr_if(cond, ref then, els) => {
+            ast::ExprIf(cond, ref then, els) => {
                 //
                 //     (cond)
                 //       |
@@ -544,7 +544,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 join_bits(&self.dfcx.oper, then_bits, in_out);
             }
 
-            ast::expr_while(cond, ref blk) => {
+            ast::ExprWhile(cond, ref blk) => {
                 //
                 //     (expr) <--+
                 //       |       |
@@ -570,9 +570,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
-            ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
-            ast::expr_loop(ref blk, _) => {
+            ast::ExprLoop(ref blk, _) => {
                 //
                 //     (expr) <--+
                 //       |       |
@@ -596,7 +596,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
-            ast::expr_match(discr, ref arms) => {
+            ast::ExprMatch(discr, ref arms) => {
                 //
                 //    (discr)
                 //     / | \
@@ -630,100 +630,100 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 }
             }
 
-            ast::expr_ret(o_e) => {
+            ast::ExprRet(o_e) => {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
                 self.reset(in_out);
             }
 
-            ast::expr_break(label) => {
+            ast::ExprBreak(label) => {
                 let scope = self.find_scope(expr, label, loop_scopes);
                 self.break_from_to(expr, scope, in_out);
                 self.reset(in_out);
             }
 
-            ast::expr_again(label) => {
+            ast::ExprAgain(label) => {
                 let scope = self.find_scope(expr, label, loop_scopes);
                 self.pop_scopes(expr, scope, in_out);
                 self.add_to_entry_set(scope.loop_id, reslice(in_out));
                 self.reset(in_out);
             }
 
-            ast::expr_assign(l, r) |
-            ast::expr_assign_op(_, _, l, r) => {
+            ast::ExprAssign(l, r) |
+            ast::ExprAssignOp(_, _, l, r) => {
                 self.walk_expr(r, in_out, loop_scopes);
                 self.walk_expr(l, in_out, loop_scopes);
             }
 
-            ast::expr_vec(ref exprs, _) => {
+            ast::ExprVec(ref exprs, _) => {
                 self.walk_exprs(*exprs, in_out, loop_scopes)
             }
 
-            ast::expr_repeat(l, r, _) => {
+            ast::ExprRepeat(l, r, _) => {
                 self.walk_expr(l, in_out, loop_scopes);
                 self.walk_expr(r, in_out, loop_scopes);
             }
 
-            ast::expr_struct(_, ref fields, with_expr) => {
+            ast::ExprStruct(_, ref fields, with_expr) => {
                 for field in fields.iter() {
                     self.walk_expr(field.expr, in_out, loop_scopes);
                 }
                 self.walk_opt_expr(with_expr, in_out, loop_scopes);
             }
 
-            ast::expr_call(f, ref args, _) => {
+            ast::ExprCall(f, ref args, _) => {
                 self.walk_call(f.id, expr.id,
                                f, *args, in_out, loop_scopes);
             }
 
-            ast::expr_method_call(callee_id, rcvr, _, _, ref args, _) => {
+            ast::ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => {
                 self.walk_call(callee_id, expr.id,
                                rcvr, *args, in_out, loop_scopes);
             }
 
-            ast::expr_index(callee_id, l, r) |
-            ast::expr_binary(callee_id, _, l, r) if self.is_method_call(expr) => {
+            ast::ExprIndex(callee_id, l, r) |
+            ast::ExprBinary(callee_id, _, l, r) if self.is_method_call(expr) => {
                 self.walk_call(callee_id, expr.id,
                                l, [r], in_out, loop_scopes);
             }
 
-            ast::expr_unary(callee_id, _, e) if self.is_method_call(expr) => {
+            ast::ExprUnary(callee_id, _, e) if self.is_method_call(expr) => {
                 self.walk_call(callee_id, expr.id,
                                e, [], in_out, loop_scopes);
             }
 
-            ast::expr_tup(ref exprs) => {
+            ast::ExprTup(ref exprs) => {
                 self.walk_exprs(*exprs, in_out, loop_scopes);
             }
 
-            ast::expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
+            ast::ExprBinary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 self.walk_expr(l, in_out, loop_scopes);
                 let temp = reslice(in_out).to_owned();
                 self.walk_expr(r, in_out, loop_scopes);
                 join_bits(&self.dfcx.oper, temp, in_out);
             }
 
-            ast::expr_log(l, r) |
-            ast::expr_index(_, l, r) |
-            ast::expr_binary(_, _, l, r) => {
+            ast::ExprLog(l, r) |
+            ast::ExprIndex(_, l, r) |
+            ast::ExprBinary(_, _, l, r) => {
                 self.walk_exprs([l, r], in_out, loop_scopes);
             }
 
-            ast::expr_lit(*) |
-            ast::expr_path(*) |
-            ast::expr_self => {
+            ast::ExprLit(*) |
+            ast::ExprPath(*) |
+            ast::ExprSelf => {
             }
 
-            ast::expr_addr_of(_, e) |
-            ast::expr_do_body(e) |
-            ast::expr_cast(e, _) |
-            ast::expr_unary(_, _, e) |
-            ast::expr_paren(e) |
-            ast::expr_vstore(e, _) |
-            ast::expr_field(e, _, _) => {
+            ast::ExprAddrOf(_, e) |
+            ast::ExprDoBody(e) |
+            ast::ExprCast(e, _) |
+            ast::ExprUnary(_, _, e) |
+            ast::ExprParen(e) |
+            ast::ExprVstore(e, _) |
+            ast::ExprField(e, _, _) => {
                 self.walk_expr(e, in_out, loop_scopes);
             }
 
-            ast::expr_inline_asm(ref inline_asm) => {
+            ast::ExprInlineAsm(ref inline_asm) => {
                 for &(_, expr) in inline_asm.inputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);
                 }
@@ -732,11 +732,11 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 }
             }
 
-            ast::expr_block(ref blk) => {
+            ast::ExprBlock(ref blk) => {
                 self.walk_block(blk, in_out, loop_scopes);
             }
 
-            ast::expr_mac(*) => {
+            ast::ExprMac(*) => {
                 self.tcx().sess.span_bug(expr.span, "unexpanded macro");
             }
         }
@@ -745,7 +745,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn pop_scopes(&mut self,
-                  from_expr: @ast::expr,
+                  from_expr: @ast::Expr,
                   to_scope: &mut LoopScope,
                   in_out: &mut [uint]) {
         //! Whenever you have a `break` or a `loop` statement, flow
@@ -779,7 +779,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn break_from_to(&mut self,
-                     from_expr: @ast::expr,
+                     from_expr: @ast::Expr,
                      to_scope: &mut LoopScope,
                      in_out: &mut [uint]) {
         self.pop_scopes(from_expr, to_scope, in_out);
@@ -792,7 +792,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_exprs(&mut self,
-                  exprs: &[@ast::expr],
+                  exprs: &[@ast::Expr],
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
         for &expr in exprs.iter() {
@@ -801,7 +801,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_opt_expr(&mut self,
-                     opt_expr: Option<@ast::expr>,
+                     opt_expr: Option<@ast::Expr>,
                      in_out: &mut [uint],
                      loop_scopes: &mut ~[LoopScope]) {
         for &expr in opt_expr.iter() {
@@ -812,8 +812,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     fn walk_call(&mut self,
                  _callee_id: ast::NodeId,
                  call_id: ast::NodeId,
-                 arg0: @ast::expr,
-                 args: &[@ast::expr],
+                 arg0: @ast::Expr,
+                 args: &[@ast::Expr],
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         self.walk_expr(arg0, in_out, loop_scopes);
@@ -831,7 +831,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_pat(&mut self,
-                pat: @ast::pat,
+                pat: @ast::Pat,
                 in_out: &mut [uint],
                 _loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_pat(pat=%s, in_out=%s)",
@@ -846,7 +846,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn walk_pat_alternatives(&mut self,
-                             pats: &[@ast::pat],
+                             pats: &[@ast::Pat],
                              in_out: &mut [uint],
                              loop_scopes: &mut ~[LoopScope]) {
         if pats.len() == 1 {
@@ -866,7 +866,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
     }
 
     fn find_scope<'a>(&self,
-                      expr: @ast::expr,
+                      expr: @ast::Expr,
                       label: Option<ast::Ident>,
                       loop_scopes: &'a mut ~[LoopScope]) -> &'a mut LoopScope {
         let index = match label {
@@ -877,7 +877,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             Some(_) => {
                 match self.tcx().def_map.find(&expr.id) {
-                    Some(&ast::def_label(loop_id)) => {
+                    Some(&ast::DefLabel(loop_id)) => {
                         match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
                             Some(i) => i,
                             None => {
@@ -900,7 +900,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         &mut loop_scopes[index]
     }
 
-    fn is_method_call(&self, expr: @ast::expr) -> bool {
+    fn is_method_call(&self, expr: @ast::Expr) -> bool {
         self.dfcx.method_map.contains_key(&expr.id)
     }
 

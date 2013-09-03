@@ -35,7 +35,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
-use syntax::ast::{Crate, def_id, def_struct, def_ty};
+use syntax::ast::{Crate, DefId, DefStruct, DefTy};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
 use syntax::ast::{LOCAL_CRATE, trait_ref, ty_path};
 use syntax::ast;
@@ -123,7 +123,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                             span: Span,
                             original_type: t)
-                         -> Option<def_id> {
+                         -> Option<DefId> {
     match get_base_type(inference_context, span, original_type) {
         None => {
             return None;
@@ -322,7 +322,7 @@ impl CoherenceChecker {
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
     pub fn instantiate_default_methods(&self,
-                                       impl_id: ast::def_id,
+                                       impl_id: ast::DefId,
                                        trait_ref: &ty::TraitRef,
                                        all_methods: &mut ~[@Method]) {
         let tcx = self.crate_context.tcx;
@@ -378,7 +378,7 @@ impl CoherenceChecker {
     }
 
     pub fn add_inherent_impl(&self,
-                             base_def_id: def_id,
+                             base_def_id: DefId,
                              implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
@@ -396,7 +396,7 @@ impl CoherenceChecker {
     }
 
     pub fn add_trait_impl(&self,
-                          base_def_id: def_id,
+                          base_def_id: DefId,
                           implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
@@ -420,7 +420,7 @@ impl CoherenceChecker {
         };
     }
 
-    pub fn check_implementation_coherence_of(&self, trait_def_id: def_id) {
+    pub fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
         // Unify pairs of polytypes.
         do self.iter_impls_of_trait(trait_def_id) |a| {
             let implementation_a = a;
@@ -452,7 +452,7 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
+    pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: &fn(@Impl)) {
         match self.crate_context.tcx.trait_impls.find(&trait_def_id) {
             Some(impls) => {
                 for &im in impls.iter() {
@@ -533,7 +533,7 @@ impl CoherenceChecker {
         visit::walk_crate(&mut visitor, crate, ());
     }
 
-    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> def_id {
+    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> DefId {
         let def_map = self.crate_context.tcx.def_map;
         let trait_def = def_map.get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
@@ -545,7 +545,7 @@ impl CoherenceChecker {
     pub fn check_trait_methods_are_implemented(
         &self,
         all_methods: &mut ~[@Method],
-        trait_did: def_id,
+        trait_did: DefId,
         trait_ref_span: Span) {
 
         let tcx = self.crate_context.tcx;
@@ -575,7 +575,7 @@ impl CoherenceChecker {
         match original_type.node {
             ty_path(_, _, path_id) => {
                 match self.crate_context.tcx.def_map.get_copy(&path_id) {
-                    def_ty(def_id) | def_struct(def_id) => {
+                    DefTy(def_id) | DefStruct(def_id) => {
                         if def_id.crate != LOCAL_CRATE {
                             return false;
                         }
@@ -663,8 +663,8 @@ impl CoherenceChecker {
     // External crate handling
 
     pub fn add_external_impl(&self,
-                             impls_seen: &mut HashSet<def_id>,
-                             impl_def_id: def_id) {
+                             impls_seen: &mut HashSet<DefId>,
+                             impl_def_id: DefId) {
         let tcx = self.crate_context.tcx;
         let implementation = @csearch::get_impl(tcx, impl_def_id);
 
@@ -766,7 +766,7 @@ impl CoherenceChecker {
 }
 
 pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
-                                      impl_id: ast::def_id,
+                                      impl_id: ast::DefId,
                                       trait_ref: &ty::TraitRef,
                                       method: &ty::Method)
                                       -> ty::substs {
@@ -814,11 +814,11 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
 }
 
 fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
-                                     impl_id: ast::def_id,
+                                     impl_id: ast::DefId,
                                      trait_ref: &ty::TraitRef,
-                                     new_def_id: ast::def_id,
+                                     new_def_id: ast::DefId,
                                      method: &ty::Method,
-                                     provided_source: Option<ast::def_id>)
+                                     provided_source: Option<ast::DefId>)
                                      -> ty::Method {
 
     let combined_substs = make_substs_for_receiver_types(

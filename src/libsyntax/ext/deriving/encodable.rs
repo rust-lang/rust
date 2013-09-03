@@ -75,7 +75,7 @@ would yield functions like:
     }
 */
 
-use ast::{MetaItem, item, expr, m_imm, m_mutbl};
+use ast::{MetaItem, item, Expr, MutImmutable, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -97,9 +97,9 @@ pub fn expand_deriving_encodable(cx: @ExtCtxt,
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds::empty(),
-                explicit_self: Some(Some(Borrowed(None, m_imm))),
+                explicit_self: Some(Some(Borrowed(None, MutImmutable))),
                 args: ~[Ptr(~Literal(Path::new_local("__E")),
-                            Borrowed(None, m_mutbl))],
+                            Borrowed(None, MutMutable))],
                 ret_ty: nil_ty(),
                 const_nonmatching: true,
                 combine_substructure: encodable_substructure,
@@ -111,7 +111,7 @@ pub fn expand_deriving_encodable(cx: @ExtCtxt,
 }
 
 fn encodable_substructure(cx: @ExtCtxt, span: Span,
-                          substr: &Substructure) -> @expr {
+                          substr: &Substructure) -> @Expr {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_e");

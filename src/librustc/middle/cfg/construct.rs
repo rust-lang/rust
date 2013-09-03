@@ -62,67 +62,67 @@ impl CFGBuilder {
         self.add_node(blk.id, [expr_exit])
     }
 
-    fn stmt(&mut self, stmt: @ast::stmt, pred: CFGIndex) -> CFGIndex {
+    fn stmt(&mut self, stmt: @ast::Stmt, pred: CFGIndex) -> CFGIndex {
         match stmt.node {
-            ast::stmt_decl(decl, _) => {
+            ast::StmtDecl(decl, _) => {
                 self.decl(decl, pred)
             }
 
-            ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
+            ast::StmtExpr(expr, _) | ast::StmtSemi(expr, _) => {
                 self.expr(expr, pred)
             }
 
-            ast::stmt_mac(*) => {
+            ast::StmtMac(*) => {
                 self.tcx.sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
 
-    fn decl(&mut self, decl: @ast::decl, pred: CFGIndex) -> CFGIndex {
+    fn decl(&mut self, decl: @ast::Decl, pred: CFGIndex) -> CFGIndex {
         match decl.node {
-            ast::decl_local(local) => {
+            ast::DeclLocal(local) => {
                 let init_exit = self.opt_expr(local.init, pred);
                 self.pat(local.pat, init_exit)
             }
 
-            ast::decl_item(_) => {
+            ast::DeclItem(_) => {
                 pred
             }
         }
     }
 
-    fn pat(&mut self, pat: @ast::pat, pred: CFGIndex) -> CFGIndex {
+    fn pat(&mut self, pat: @ast::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
-            ast::pat_ident(_, _, None) |
-            ast::pat_enum(_, None) |
-            ast::pat_lit(*) |
-            ast::pat_range(*) |
-            ast::pat_wild => {
+            ast::PatIdent(_, _, None) |
+            ast::PatEnum(_, None) |
+            ast::PatLit(*) |
+            ast::PatRange(*) |
+            ast::PatWild => {
                 self.add_node(pat.id, [pred])
             }
 
-            ast::pat_box(subpat) |
-            ast::pat_uniq(subpat) |
-            ast::pat_region(subpat) |
-            ast::pat_ident(_, _, Some(subpat)) => {
+            ast::PatBox(subpat) |
+            ast::PatUniq(subpat) |
+            ast::PatRegion(subpat) |
+            ast::PatIdent(_, _, Some(subpat)) => {
                 let subpat_exit = self.pat(subpat, pred);
                 self.add_node(pat.id, [subpat_exit])
             }
 
-            ast::pat_enum(_, Some(ref subpats)) |
-            ast::pat_tup(ref subpats) => {
+            ast::PatEnum(_, Some(ref subpats)) |
+            ast::PatTup(ref subpats) => {
                 let pats_exit =
                     self.pats_all(subpats.iter().map(|p| *p), pred);
                 self.add_node(pat.id, [pats_exit])
             }
 
-            ast::pat_struct(_, ref subpats, _) => {
+            ast::PatStruct(_, ref subpats, _) => {
                 let pats_exit =
                     self.pats_all(subpats.iter().map(|f| f.pat), pred);
                 self.add_node(pat.id, [pats_exit])
             }
 
-            ast::pat_vec(ref pre, ref vec, ref post) => {
+            ast::PatVec(ref pre, ref vec, ref post) => {
                 let pre_exit =
                     self.pats_all(pre.iter().map(|p| *p), pred);
                 let vec_exit =
@@ -134,7 +134,7 @@ impl CFGBuilder {
         }
     }
 
-    fn pats_all<I: Iterator<@ast::pat>>(&mut self,
+    fn pats_all<I: Iterator<@ast::Pat>>(&mut self,
                                         pats: I,
                                         pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
@@ -143,7 +143,7 @@ impl CFGBuilder {
     }
 
     fn pats_any(&mut self,
-                pats: &[@ast::pat],
+                pats: &[@ast::Pat],
                 pred: CFGIndex) -> CFGIndex {
         //! Handles case where just one of the patterns must match.
 
@@ -159,14 +159,14 @@ impl CFGBuilder {
         }
     }
 
-    fn expr(&mut self, expr: @ast::expr, pred: CFGIndex) -> CFGIndex {
+    fn expr(&mut self, expr: @ast::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
-            ast::expr_block(ref blk) => {
+            ast::ExprBlock(ref blk) => {
                 let blk_exit = self.block(blk, pred);
                 self.add_node(expr.id, [blk_exit])
             }
 
-            ast::expr_if(cond, ref then, None) => {
+            ast::ExprIf(cond, ref then, None) => {
                 //
                 //     [pred]
                 //       |
@@ -186,7 +186,7 @@ impl CFGBuilder {
                 self.add_node(expr.id, [cond_exit, then_exit])        // 3,4
             }
 
-            ast::expr_if(cond, ref then, Some(otherwise)) => {
+            ast::ExprIf(cond, ref then, Some(otherwise)) => {
                 //
                 //     [pred]
                 //       |
@@ -207,7 +207,7 @@ impl CFGBuilder {
                 self.add_node(expr.id, [then_exit, else_exit])        // 4, 5
             }
 
-            ast::expr_while(cond, ref body) => {
+            ast::ExprWhile(cond, ref body) => {
                 //
                 //         [pred]
                 //           |
@@ -239,9 +239,9 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+            ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
-            ast::expr_loop(ref body, _) => {
+            ast::ExprLoop(ref body, _) => {
                 //
                 //     [pred]
                 //       |
@@ -269,7 +269,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::expr_match(discr, ref arms) => {
+            ast::ExprMatch(discr, ref arms) => {
                 //
                 //     [pred]
                 //       |
@@ -306,7 +306,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
+            ast::ExprBinary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 //
                 //     [pred]
                 //       |
@@ -326,7 +326,7 @@ impl CFGBuilder {
                 self.add_node(expr.id, [l_exit, r_exit])                 // 3,4
             }
 
-            ast::expr_ret(v) => {
+            ast::ExprRet(v) => {
                 let v_exit = self.opt_expr(v, pred);
                 let loop_scope = self.loop_scopes[0];
                 self.add_exiting_edge(expr, v_exit,
@@ -334,99 +334,99 @@ impl CFGBuilder {
                 self.add_node(expr.id, [])
             }
 
-            ast::expr_break(label) => {
+            ast::ExprBreak(label) => {
                 let loop_scope = self.find_scope(expr, label);
                 self.add_exiting_edge(expr, pred,
                                       loop_scope, loop_scope.break_index);
                 self.add_node(expr.id, [])
             }
 
-            ast::expr_again(label) => {
+            ast::ExprAgain(label) => {
                 let loop_scope = self.find_scope(expr, label);
                 self.add_exiting_edge(expr, pred,
                                       loop_scope, loop_scope.continue_index);
                 self.add_node(expr.id, [])
             }
 
-            ast::expr_vec(ref elems, _) => {
+            ast::ExprVec(ref elems, _) => {
                 self.straightline(expr, pred, *elems)
             }
 
-            ast::expr_call(func, ref args, _) => {
+            ast::ExprCall(func, ref args, _) => {
                 self.call(expr, pred, func, *args)
             }
 
-            ast::expr_method_call(_, rcvr, _, _, ref args, _) => {
+            ast::ExprMethodCall(_, rcvr, _, _, ref args, _) => {
                 self.call(expr, pred, rcvr, *args)
             }
 
-            ast::expr_index(_, l, r) |
-            ast::expr_binary(_, _, l, r) if self.is_method_call(expr) => {
+            ast::ExprIndex(_, l, r) |
+            ast::ExprBinary(_, _, l, r) if self.is_method_call(expr) => {
                 self.call(expr, pred, l, [r])
             }
 
-            ast::expr_unary(_, _, e) if self.is_method_call(expr) => {
+            ast::ExprUnary(_, _, e) if self.is_method_call(expr) => {
                 self.call(expr, pred, e, [])
             }
 
-            ast::expr_tup(ref exprs) => {
+            ast::ExprTup(ref exprs) => {
                 self.straightline(expr, pred, *exprs)
             }
 
-            ast::expr_struct(_, ref fields, base) => {
+            ast::ExprStruct(_, ref fields, base) => {
                 let base_exit = self.opt_expr(base, pred);
-                let field_exprs: ~[@ast::expr] =
+                let field_exprs: ~[@ast::Expr] =
                     fields.iter().map(|f| f.expr).collect();
                 self.straightline(expr, base_exit, field_exprs)
             }
 
-            ast::expr_repeat(elem, count, _) => {
+            ast::ExprRepeat(elem, count, _) => {
                 self.straightline(expr, pred, [elem, count])
             }
 
-            ast::expr_assign(l, r) |
-            ast::expr_assign_op(_, _, l, r) => {
+            ast::ExprAssign(l, r) |
+            ast::ExprAssignOp(_, _, l, r) => {
                 self.straightline(expr, pred, [r, l])
             }
 
-            ast::expr_log(l, r) |
-            ast::expr_index(_, l, r) |
-            ast::expr_binary(_, _, l, r) => { // NB: && and || handled earlier
+            ast::ExprLog(l, r) |
+            ast::ExprIndex(_, l, r) |
+            ast::ExprBinary(_, _, l, r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r])
             }
 
-            ast::expr_addr_of(_, e) |
-            ast::expr_do_body(e) |
-            ast::expr_cast(e, _) |
-            ast::expr_unary(_, _, e) |
-            ast::expr_paren(e) |
-            ast::expr_vstore(e, _) |
-            ast::expr_field(e, _, _) => {
+            ast::ExprAddrOf(_, e) |
+            ast::ExprDoBody(e) |
+            ast::ExprCast(e, _) |
+            ast::ExprUnary(_, _, e) |
+            ast::ExprParen(e) |
+            ast::ExprVstore(e, _) |
+            ast::ExprField(e, _, _) => {
                 self.straightline(expr, pred, [e])
             }
 
-            ast::expr_mac(*) |
-            ast::expr_inline_asm(*) |
-            ast::expr_self |
-            ast::expr_fn_block(*) |
-            ast::expr_lit(*) |
-            ast::expr_path(*) => {
+            ast::ExprMac(*) |
+            ast::ExprInlineAsm(*) |
+            ast::ExprSelf |
+            ast::ExprFnBlock(*) |
+            ast::ExprLit(*) |
+            ast::ExprPath(*) => {
                 self.straightline(expr, pred, [])
             }
         }
     }
 
     fn call(&mut self,
-            call_expr: @ast::expr,
+            call_expr: @ast::Expr,
             pred: CFGIndex,
-            func_or_rcvr: @ast::expr,
-            args: &[@ast::expr]) -> CFGIndex {
+            func_or_rcvr: @ast::Expr,
+            args: &[@ast::Expr]) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         self.straightline(call_expr, func_or_rcvr_exit, args)
     }
 
     fn exprs(&mut self,
-             exprs: &[@ast::expr],
+             exprs: &[@ast::Expr],
              pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
 
@@ -434,7 +434,7 @@ impl CFGBuilder {
     }
 
     fn opt_expr(&mut self,
-                opt_expr: Option<@ast::expr>,
+                opt_expr: Option<@ast::Expr>,
                 pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `opt_expr` evaluated, if Some
 
@@ -442,9 +442,9 @@ impl CFGBuilder {
     }
 
     fn straightline(&mut self,
-                    expr: @ast::expr,
+                    expr: @ast::Expr,
                     pred: CFGIndex,
-                    subexprs: &[@ast::expr]) -> CFGIndex {
+                    subexprs: &[@ast::Expr]) -> CFGIndex {
         //! Handles case of an expression that evaluates `subexprs` in order
 
         let subexprs_exit = self.exprs(subexprs, pred);
@@ -473,7 +473,7 @@ impl CFGBuilder {
     }
 
     fn add_exiting_edge(&mut self,
-                        from_expr: @ast::expr,
+                        from_expr: @ast::Expr,
                         from_index: CFGIndex,
                         to_loop: LoopScope,
                         to_index: CFGIndex) {
@@ -487,7 +487,7 @@ impl CFGBuilder {
     }
 
     fn find_scope(&self,
-                  expr: @ast::expr,
+                  expr: @ast::Expr,
                   label: Option<ast::Ident>) -> LoopScope {
         match label {
             None => {
@@ -496,7 +496,7 @@ impl CFGBuilder {
 
             Some(_) => {
                 match self.tcx.def_map.find(&expr.id) {
-                    Some(&ast::def_label(loop_id)) => {
+                    Some(&ast::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {
                                 return *l;
@@ -517,7 +517,7 @@ impl CFGBuilder {
         }
     }
 
-    fn is_method_call(&self, expr: &ast::expr) -> bool {
+    fn is_method_call(&self, expr: &ast::Expr) -> bool {
         self.method_map.contains_key(&expr.id)
     }
 }

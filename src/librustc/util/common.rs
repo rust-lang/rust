@@ -54,23 +54,23 @@ pub fn indenter() -> _indenter {
     _indenter(())
 }
 
-pub fn field_expr(f: ast::Field) -> @ast::expr { return f.expr; }
+pub fn field_expr(f: ast::Field) -> @ast::Expr { return f.expr; }
 
-pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::expr] {
+pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
     fields.map(|f| f.expr)
 }
 
 struct LoopQueryVisitor {
-    p: @fn(&ast::expr_) -> bool
+    p: @fn(&ast::Expr_) -> bool
 }
 
 impl Visitor<@mut bool> for LoopQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::expr, flag:@mut bool) {
+    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
         *flag |= (self.p)(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
-          ast::expr_loop(*) | ast::expr_while(*) => {}
+          ast::ExprLoop(*) | ast::ExprWhile(*) => {}
           _ => visit::walk_expr(self, e, flag)
         }
     }
@@ -78,7 +78,7 @@ impl Visitor<@mut bool> for LoopQueryVisitor {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: @fn(&ast::Expr_) -> bool) -> bool {
     let rs = @mut false;
     let mut v = LoopQueryVisitor { p: p };
     visit::walk_block(&mut v, b, rs);
@@ -86,11 +86,11 @@ pub fn loop_query(b: &ast::Block, p: @fn(&ast::expr_) -> bool) -> bool {
 }
 
 struct BlockQueryVisitor {
-    p: @fn(@ast::expr) -> bool
+    p: @fn(@ast::Expr) -> bool
 }
 
 impl Visitor<@mut bool> for BlockQueryVisitor {
-    fn visit_expr(&mut self, e:@ast::expr, flag:@mut bool) {
+    fn visit_expr(&mut self, e:@ast::Expr, flag:@mut bool) {
         *flag |= (self.p)(e);
         visit::walk_expr(self, e, flag)
     }
@@ -98,7 +98,7 @@ impl Visitor<@mut bool> for BlockQueryVisitor {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: &ast::Block, p: @fn(@ast::expr) -> bool) -> bool {
+pub fn block_query(b: &ast::Block, p: @fn(@ast::Expr) -> bool) -> bool {
     let rs = @mut false;
     let mut v = BlockQueryVisitor { p: p };
     visit::walk_block(&mut v, b, rs);

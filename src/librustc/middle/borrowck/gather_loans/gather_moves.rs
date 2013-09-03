@@ -33,7 +33,7 @@ pub fn gather_decl(bccx: @BorrowckCtxt,
 
 pub fn gather_move_from_expr(bccx: @BorrowckCtxt,
                              move_data: &mut MoveData,
-                             move_expr: @ast::expr,
+                             move_expr: @ast::Expr,
                              cmt: mc::cmt) {
     gather_move_from_expr_or_pat(bccx, move_data, move_expr.id,
                                  MoveExpr(move_expr), cmt);
@@ -41,7 +41,7 @@ pub fn gather_move_from_expr(bccx: @BorrowckCtxt,
 
 pub fn gather_move_from_pat(bccx: @BorrowckCtxt,
                             move_data: &mut MoveData,
-                            move_pat: @ast::pat,
+                            move_pat: @ast::Pat,
                             cmt: mc::cmt) {
     gather_move_from_expr_or_pat(bccx, move_data, move_pat.id,
                                  MovePat(move_pat), cmt);
@@ -68,7 +68,7 @@ fn gather_move_from_expr_or_pat(bccx: @BorrowckCtxt,
 
 pub fn gather_captures(bccx: @BorrowckCtxt,
                        move_data: &mut MoveData,
-                       closure_expr: @ast::expr) {
+                       closure_expr: @ast::Expr) {
     let captured_vars = bccx.capture_map.get(&closure_expr.id);
     for captured_var in captured_vars.iter() {
         match captured_var.mode {

@@ -292,7 +292,7 @@ pub fn malloc_raw_dyn(bcx: @mut Block,
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    fn require_alloc_fn(bcx: @mut Block, t: ty::t, it: LangItem) -> ast::def_id {
+    fn require_alloc_fn(bcx: @mut Block, t: ty::t, it: LangItem) -> ast::DefId {
         let li = &bcx.tcx().lang_items;
         match li.require(it) {
             Ok(id) => id,
@@ -498,8 +498,8 @@ pub fn note_unique_llvm_symbol(ccx: &mut CrateContext, sym: @str) {
 
 
 pub fn get_res_dtor(ccx: @mut CrateContext,
-                    did: ast::def_id,
-                    parent_id: ast::def_id,
+                    did: ast::DefId,
+                    parent_id: ast::DefId,
                     substs: &[ty::t])
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
@@ -559,7 +559,7 @@ pub fn compare_scalar_types(cx: @mut Block,
                             lhs: ValueRef,
                             rhs: ValueRef,
                             t: ty::t,
-                            op: ast::binop)
+                            op: ast::BinOp)
                          -> Result {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
@@ -590,7 +590,7 @@ pub fn compare_scalar_values(cx: @mut Block,
                              lhs: ValueRef,
                              rhs: ValueRef,
                              nt: scalar_type,
-                             op: ast::binop)
+                             op: ast::BinOp)
                           -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
     fn die(cx: @mut Block) -> ! {
@@ -602,44 +602,44 @@ pub fn compare_scalar_values(cx: @mut Block,
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         match op {
-          ast::eq | ast::le | ast::ge => return C_i1(true),
-          ast::ne | ast::lt | ast::gt => return C_i1(false),
+          ast::BiEq | ast::BiLe | ast::BiGe => return C_i1(true),
+          ast::BiNe | ast::BiLt | ast::BiGt => return C_i1(false),
           // refinements would be nice
           _ => die(cx)
         }
       }
       floating_point => {
         let cmp = match op {
-          ast::eq => lib::llvm::RealOEQ,
-          ast::ne => lib::llvm::RealUNE,
-          ast::lt => lib::llvm::RealOLT,
-          ast::le => lib::llvm::RealOLE,
-          ast::gt => lib::llvm::RealOGT,
-          ast::ge => lib::llvm::RealOGE,
+          ast::BiEq => lib::llvm::RealOEQ,
+          ast::BiNe => lib::llvm::RealUNE,
+          ast::BiLt => lib::llvm::RealOLT,
+          ast::BiLe => lib::llvm::RealOLE,
+          ast::BiGt => lib::llvm::RealOGT,
+          ast::BiGe => lib::llvm::RealOGE,
           _ => die(cx)
         };
         return FCmp(cx, cmp, lhs, rhs);
       }
       signed_int => {
         let cmp = match op {
-          ast::eq => lib::llvm::IntEQ,
-          ast::ne => lib::llvm::IntNE,
-          ast::lt => lib::llvm::IntSLT,
-          ast::le => lib::llvm::IntSLE,
-          ast::gt => lib::llvm::IntSGT,
-          ast::ge => lib::llvm::IntSGE,
+          ast::BiEq => lib::llvm::IntEQ,
+          ast::BiNe => lib::llvm::IntNE,
+          ast::BiLt => lib::llvm::IntSLT,
+          ast::BiLe => lib::llvm::IntSLE,
+          ast::BiGt => lib::llvm::IntSGT,
+          ast::BiGe => lib::llvm::IntSGE,
           _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
       }
       unsigned_int => {
         let cmp = match op {
-          ast::eq => lib::llvm::IntEQ,
-          ast::ne => lib::llvm::IntNE,
-          ast::lt => lib::llvm::IntULT,
-          ast::le => lib::llvm::IntULE,
-          ast::gt => lib::llvm::IntUGT,
-          ast::ge => lib::llvm::IntUGE,
+          ast::BiEq => lib::llvm::IntEQ,
+          ast::BiNe => lib::llvm::IntNE,
+          ast::BiLt => lib::llvm::IntULT,
+          ast::BiLe => lib::llvm::IntULE,
+          ast::BiGt => lib::llvm::IntUGT,
+          ast::BiGe => lib::llvm::IntUGE,
           _ => die(cx)
         };
         return ICmp(cx, cmp, lhs, rhs);
@@ -750,21 +750,21 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
     return cx;
 }
 
-pub fn cast_shift_expr_rhs(cx: @mut Block, op: ast::binop,
+pub fn cast_shift_expr_rhs(cx: @mut Block, op: ast::BinOp,
                            lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a,b| Trunc(cx, a, b),
                    |a,b| ZExt(cx, a, b))
 }
 
-pub fn cast_shift_const_rhs(op: ast::binop,
+pub fn cast_shift_const_rhs(op: ast::BinOp,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
                    |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
-pub fn cast_shift_rhs(op: ast::binop,
+pub fn cast_shift_rhs(op: ast::BinOp,
                       lhs: ValueRef, rhs: ValueRef,
                       trunc: &fn(ValueRef, Type) -> ValueRef,
                       zext: &fn(ValueRef, Type) -> ValueRef)
@@ -791,9 +791,9 @@ pub fn cast_shift_rhs(op: ast::binop,
     }
 }
 
-pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::binop,
+pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::BinOp,
                     rhs: ValueRef, rhs_t: ty::t) -> @mut Block {
-    let text = if divrem == ast::div {
+    let text = if divrem == ast::BiDiv {
         @"attempted to divide by zero"
     } else {
         @"attempted remainder with a divisor of zero"
@@ -821,7 +821,7 @@ pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
     C_null(Type::opaque_box(ccx).ptr_to())
 }
 
-pub fn trans_external_path(ccx: &mut CrateContext, did: ast::def_id, t: ty::t)
+pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t)
     -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
@@ -1088,7 +1088,7 @@ pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
 
 pub fn ignore_lhs(_bcx: @mut Block, local: &ast::Local) -> bool {
     match local.pat.node {
-        ast::pat_wild => true, _ => false
+        ast::PatWild => true, _ => false
     }
 }
 
@@ -1113,7 +1113,7 @@ pub fn init_local(bcx: @mut Block, local: &ast::Local) -> @mut Block {
     _match::store_local(bcx, local.pat, local.init)
 }
 
-pub fn trans_stmt(cx: @mut Block, s: &ast::stmt) -> @mut Block {
+pub fn trans_stmt(cx: @mut Block, s: &ast::Stmt) -> @mut Block {
     let _icx = push_ctxt("trans_stmt");
     debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
@@ -1124,22 +1124,22 @@ pub fn trans_stmt(cx: @mut Block, s: &ast::stmt) -> @mut Block {
     let mut bcx = cx;
 
     match s.node {
-        ast::stmt_expr(e, _) | ast::stmt_semi(e, _) => {
+        ast::StmtExpr(e, _) | ast::StmtSemi(e, _) => {
             bcx = expr::trans_into(cx, e, expr::Ignore);
         }
-        ast::stmt_decl(d, _) => {
+        ast::StmtDecl(d, _) => {
             match d.node {
-                ast::decl_local(ref local) => {
+                ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, *local);
                     if cx.sess().opts.extra_debuginfo
                         && fcx_has_nonzero_span(bcx.fcx) {
                         debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
-                ast::decl_item(i) => trans_item(cx.fcx.ccx, i)
+                ast::DeclItem(i) => trans_item(cx.fcx.ccx, i)
             }
         }
-        ast::stmt_mac(*) => cx.tcx().sess.bug("unexpanded macro")
+        ast::StmtMac(*) => cx.tcx().sess.bug("unexpanded macro")
     }
 
     return bcx;
@@ -1444,9 +1444,9 @@ pub fn with_scope_datumblock(bcx: @mut Block, opt_node_info: Option<NodeInfo>,
 pub fn block_locals(b: &ast::Block, it: &fn(@ast::Local)) {
     for s in b.stmts.iter() {
         match s.node {
-          ast::stmt_decl(d, _) => {
+          ast::StmtDecl(d, _) => {
             match d.node {
-              ast::decl_local(ref local) => it(*local),
+              ast::DeclLocal(ref local) => it(*local),
               _ => {} /* fall through */
             }
           }
@@ -2231,7 +2231,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(item.attrs, "static_assert") {
-              if m == ast::m_mutbl {
+              if m == ast::MutMutable {
                   ccx.sess.span_fatal(expr.span,
                                       "cannot have static_assert on a mutable \
                                        static");
@@ -2488,7 +2488,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // LLVM type is not fully determined by the Rust type.
                             let v = consts::const_expr(ccx, expr);
                             ccx.const_values.insert(id, v);
-                            exprt = (m == ast::m_mutbl || i.vis == ast::public);
+                            exprt = (m == ast::MutMutable || i.vis == ast::public);
 
                             unsafe {
                                 let llty = llvm::LLVMTypeOf(v);

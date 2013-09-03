@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, expr, Ident};
+use ast::{MetaItem, item, Expr, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
@@ -37,7 +37,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                 explicit_self: None,
                 args: ~[
                     Ptr(~Literal(Path::new_local("R")),
-                        Borrowed(None, ast::m_mutbl))
+                        Borrowed(None, ast::MutMutable))
                 ],
                 ret_ty: Self,
                 const_nonmatching: false,
@@ -48,7 +48,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
+fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let rng = match substr.nonself_args {
         [rng] => ~[ rng ],
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -100,7 +100,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
             // rand() % variants.len()
             let value_ref = cx.expr_ident(span, value_ident);
             let rand_variant = cx.expr_binary(span,
-                                              ast::rem,
+                                              ast::BiRem,
                                               value_ref,
                                               variant_count);
 
@@ -115,7 +115,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
                                rand_thing(cx, span, ident, summary, || rand_call()))
                     }
                 }
-            }.collect::<~[ast::arm]>();
+            }.collect::<~[ast::Arm]>();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(span));
@@ -131,7 +131,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
     fn rand_thing(cx: @ExtCtxt, span: Span,
                   ctor_ident: Ident,
                   summary: &Either<uint, ~[Ident]>,
-                  rand_call: &fn() -> @expr) -> @expr {
+                  rand_call: &fn() -> @Expr) -> @Expr {
         match *summary {
             Left(count) => {
                 if count == 0 {

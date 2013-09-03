@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, expr};
+use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -54,7 +54,7 @@ pub fn ordering_const(cx: @ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
 }
 
 pub fn cs_cmp(cx: @ExtCtxt, span: Span,
-              substr: &Substructure) -> @expr {
+              substr: &Substructure) -> @Expr {
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);
 
@@ -89,7 +89,7 @@ pub fn cs_cmp(cx: @ExtCtxt, span: Span,
 
             let assign = cx.stmt_let(span, false, test_id, new);
 
-            let cond = cx.expr_binary(span, ast::eq,
+            let cond = cx.expr_binary(span, ast::BiEq,
                                       cx.expr_ident(span, test_id),
                                       cx.expr_path(equals_path.clone()));
             let if_ = cx.expr_if(span,

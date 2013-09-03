@@ -726,7 +726,7 @@ impl Datum {
     }
 
     /// expr: The deref expression.
-    pub fn deref(&self, bcx: @mut Block, expr: &ast::expr, derefs: uint)
+    pub fn deref(&self, bcx: @mut Block, expr: &ast::Expr, derefs: uint)
                  -> DatumBlock {
         match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },

@@ -57,10 +57,10 @@ pub struct Context {
     uses: @mut ~[type_uses]
 }
 
-pub fn type_uses_for(ccx: @mut CrateContext, fn_id: def_id, n_tps: uint)
+pub fn type_uses_for(ccx: @mut CrateContext, fn_id: DefId, n_tps: uint)
     -> @~[type_uses] {
 
-    fn store_type_uses(cx: Context, fn_id: def_id) -> @~[type_uses] {
+    fn store_type_uses(cx: Context, fn_id: DefId) -> @~[type_uses] {
         let Context { uses, ccx } = cx;
         let uses = @(*uses).clone(); // freeze
         ccx.type_use_cache.insert(fn_id, uses);
@@ -231,7 +231,7 @@ pub fn type_needs(cx: &Context, use_: uint, ty: ty::t) {
 pub fn type_needs_inner(cx: &Context,
                         use_: uint,
                         ty: ty::t,
-                        enums_seen: @List<def_id>) {
+                        enums_seen: @List<DefId>) {
     do ty::maybe_walk_ty(ty) |ty| {
         if ty::type_has_params(ty) {
             match ty::get(ty).sty {
@@ -311,14 +311,14 @@ pub fn mark_for_method_call(cx: &Context, e_id: NodeId, callee_id: NodeId) {
     }
 }
 
-pub fn mark_for_expr(cx: &Context, e: &expr) {
+pub fn mark_for_expr(cx: &Context, e: &Expr) {
     match e.node {
-      expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
-      expr_unary(_, box(_), _) | expr_unary(_, uniq, _) |
-      expr_binary(_, add, _, _) | expr_repeat(*) => {
+      ExprVstore(_, _) | ExprVec(_, _) | ExprStruct(*) | ExprTup(_) |
+      ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) |
+      ExprBinary(_, BiAdd, _, _) | ExprRepeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
-      expr_cast(base, _) => {
+      ExprCast(base, _) => {
         let result_t = ty::node_id_to_type(cx.ccx.tcx, e.id);
         match ty::get(result_t).sty {
             ty::ty_trait(*) => {
@@ -329,15 +329,15 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
             _ => ()
         }
       }
-      expr_binary(_, op, lhs, _) => {
+      ExprBinary(_, op, lhs, _) => {
         match op {
-          eq | lt | le | ne | ge | gt => {
+          BiEq | BiLt | BiLe | BiNe | BiGe | BiGt => {
             node_type_needs(cx, use_tydesc, lhs.id)
           }
           _ => ()
         }
       }
-      expr_path(_) | expr_self => {
+      ExprPath(_) | ExprSelf => {
         let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
         for ts in opt_ts.iter() {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
@@ -347,7 +347,7 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
             }
         }
       }
-      expr_fn_block(*) => {
+      ExprFnBlock(*) => {
           match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
               ast::OwnedSigil => {}
               ast::BorrowedSigil | ast::ManagedSigil => {
@@ -358,18 +358,18 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
               }
           }
       }
-      expr_assign(val, _) | expr_assign_op(_, _, val, _) |
-      expr_ret(Some(val)) => {
+      ExprAssign(val, _) | ExprAssignOp(_, _, val, _) |
+      ExprRet(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
-      expr_index(callee_id, base, _) => {
+      ExprIndex(callee_id, base, _) => {
         // FIXME (#2537): could be more careful and not count fields after
         // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
         mark_for_method_call(cx, e.id, callee_id);
       }
-      expr_field(base, _, _) => {
+      ExprField(base, _, _) => {
         // Method calls are now a special syntactic form,
         // so `a.b` should always be a field.
         assert!(!cx.ccx.maps.method_map.contains_key(&e.id));
@@ -377,16 +377,16 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
       }
-      expr_log(_, val) => {
+      ExprLog(_, val) => {
         node_type_needs(cx, use_tydesc, val.id);
       }
-      expr_call(f, _, _) => {
+      ExprCall(f, _, _) => {
           let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id));
           for a in r.iter() {
               type_needs(cx, use_repr, *a);
           }
       }
-      expr_method_call(callee_id, rcvr, _, _, _, _) => {
+      ExprMethodCall(callee_id, rcvr, _, _, _, _) => {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
@@ -397,7 +397,7 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
         mark_for_method_call(cx, e.id, callee_id);
       }
 
-      expr_inline_asm(ref ia) => {
+      ExprInlineAsm(ref ia) => {
         for &(_, input) in ia.inputs.iter() {
           node_type_needs(cx, use_repr, input.id);
         }
@@ -406,14 +406,14 @@ pub fn mark_for_expr(cx: &Context, e: &expr) {
         }
       }
 
-      expr_paren(e) => mark_for_expr(cx, e),
+      ExprParen(e) => mark_for_expr(cx, e),
 
-      expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
-      expr_break(_) | expr_again(_) | expr_unary(*) | expr_lit(_) |
-      expr_mac(_) | expr_addr_of(*) | expr_ret(_) | expr_loop(*) |
-      expr_do_body(_) => (),
+      ExprMatch(*) | ExprBlock(_) | ExprIf(*) | ExprWhile(*) |
+      ExprBreak(_) | ExprAgain(_) | ExprUnary(*) | ExprLit(_) |
+      ExprMac(_) | ExprAddrOf(*) | ExprRet(_) | ExprLoop(*) |
+      ExprDoBody(_) => (),
 
-      expr_for_loop(*) => fail!("non-desugared expr_for_loop")
+      ExprForLoop(*) => fail!("non-desugared expr_for_loop")
     }
 }
 
@@ -421,7 +421,7 @@ struct TypeUseVisitor;
 
 impl<'self> Visitor<&'self Context> for TypeUseVisitor {
 
-    fn visit_expr<'a>(&mut self, e:@expr, cx: &'a Context) {
+    fn visit_expr<'a>(&mut self, e:@Expr, cx: &'a Context) {
             visit::walk_expr(self, e, cx);
             mark_for_expr(cx, e);
     }
@@ -431,7 +431,7 @@ impl<'self> Visitor<&'self Context> for TypeUseVisitor {
             node_type_needs(cx, use_repr, l.id);
     }
 
-    fn visit_pat<'a>(&mut self, p:@pat, cx: &'a Context) {
+    fn visit_pat<'a>(&mut self, p:@Pat, cx: &'a Context) {
             visit::walk_pat(self, p, cx);
             node_type_needs(cx, use_repr, p.id);
     }

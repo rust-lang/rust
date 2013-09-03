@@ -82,7 +82,7 @@ pub enum param_index {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum method_origin {
     // fully statically resolved method
-    method_static(ast::def_id),
+    method_static(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
     method_param(method_param),
@@ -97,7 +97,7 @@ pub enum method_origin {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct method_param {
     // the trait containing the method to be invoked
-    trait_id: ast::def_id,
+    trait_id: ast::DefId,
 
     // index of the method to be invoked amongst the trait's methods
     method_num: uint,
@@ -114,10 +114,10 @@ pub struct method_param {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct method_object {
     // the (super)trait containing the method to be invoked
-    trait_id: ast::def_id,
+    trait_id: ast::DefId,
 
     // the actual base trait id of the object
-    object_trait_id: ast::def_id,
+    object_trait_id: ast::DefId,
 
     // index of the method to be invoked amongst the trait's methods
     method_num: uint,
@@ -161,7 +161,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::def_id, ~[ty::t], vtable_res),
+    vtable_static(ast::DefId, ~[ty::t], vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -214,7 +214,7 @@ impl Repr for impl_res {
     }
 }
 
-pub type impl_vtable_map = @mut HashMap<ast::def_id, impl_res>;
+pub type impl_vtable_map = @mut HashMap<ast::DefId, impl_res>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -249,7 +249,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::def {
+pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
     match tcx.def_map.find(&id) {
       Some(&x) => x,
       _ => {
@@ -259,7 +259,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::def {
 }
 
 pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
-                   -> ast::def {
+                   -> ast::Def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 
