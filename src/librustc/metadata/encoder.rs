@@ -330,6 +330,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, variant.node.name);
         encode_parent_item(ebml_w, local_def(id));
         encode_visibility(ebml_w, variant.node.vis);
+        encode_attributes(ebml_w, variant.node.attrs);
         match variant.node.kind {
             ast::tuple_variant_kind(ref args)
                     if args.len() > 0 && generics.ty_params.len() == 0 => {
