@@ -889,7 +889,11 @@ pub fn std_macros() -> @str {
         { pub $c:ident: $input:ty -> $out:ty; } => {
 
             pub mod $c {
+                #[allow(unused_imports)];
                 #[allow(non_uppercase_statics)];
+
+                use super::*;
+
                 static key: ::std::local_data::Key<
                     @::std::condition::Handler<$input, $out>> =
                     &::std::local_data::Key;
@@ -907,7 +911,11 @@ pub fn std_macros() -> @str {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
+                #[allow(unused_imports)];
                 #[allow(non_uppercase_statics)];
+
+                use super::*;
+
                 static key: ::std::local_data::Key<
                     @::std::condition::Handler<$input, $out>> =
                     &::std::local_data::Key;

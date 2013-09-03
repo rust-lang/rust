@@ -29,6 +29,8 @@ pub enum NullByteResolution {
 
 condition! {
     // this should be &[u8] but there's a lifetime issue
+    // NOTE: this super::NullByteResolution should be NullByteResolution
+    // Change this next time the snapshot it updated.
     null_byte: (~[u8]) -> super::NullByteResolution;
 }
 
