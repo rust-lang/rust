@@ -144,6 +144,12 @@ mod darwin_fd_limit {
     pub unsafe fn raise_fd_limit() {}
 }
 
+#[doc(hidden)]
+pub fn prepare_for_lots_of_tests() {
+    // Bump the fd limit on OS X. See darwin_fd_limit for an explanation.
+    unsafe { darwin_fd_limit::raise_fd_limit() }
+}
+
 /// Create more than one scheduler and run a function in a task
 /// in one of the schedulers. The schedulers will stay alive
 /// until the function `f` returns.
@@ -153,8 +159,8 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     use rt::sched::Shutdown;
     use rt::util;
 
-    // Bump the fd limit on OS X. See darwin_fd_limit for an explanation.
-    unsafe { darwin_fd_limit::raise_fd_limit() }
+    // see comment in other function (raising fd limits)
+    prepare_for_lots_of_tests();
 
     let f = Cell::new(f);
 
