@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 struct x(());
 impl x {
-    pub unsafe fn with() { } // This should fail
+    pub unsafe fn with(&self) { }
 }
 
 fn main() {
-    x(()).with();
+    x(()).with(); //~ ERROR requires unsafe function or block
 }

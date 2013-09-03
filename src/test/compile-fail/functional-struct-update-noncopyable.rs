@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// issue 7327
 
-struct X { x: (), }
+// xfail-fast #7103
+extern mod extra;
+use extra::arc::*;
 
-impl Drop for X {
-    fn drop(&self) {
-        error!("destructor runs");
-    }
+struct A { y: Arc<int>, x: Arc<int> }
+
+impl Drop for A {
+    fn drop(&self) { println(fmt!("x=%?", self.x.get())); }
 }
-
-struct Y { y: Option<X> }
-
 fn main() {
-    let x = Y { y: Some(X { x: () }) };
-    match x.y {
-        Some(_z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
-        None => fail!()
-    }
+    let a = A { y: Arc::new(1), x: Arc::new(2) };
+    let _b = A { y: Arc::new(3), ..a };
+    let _c = a; //~ ERROR use of moved value
 }

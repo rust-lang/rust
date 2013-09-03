@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-struct HasNested {
-    mut nest: ~[~[int]],
-}
+/*
+# Corrupted initialization in the static struct
 
-impl HasNested {
-    fn method_push_local(&self) {
-        self.nest[0].push(0);
+...should print &[1, 2, 3] but instead prints something like
+&[4492532864, 24]. It is pretty evident that the compiler messed up
+with the representation of [int, ..n] and [int] somehow, or at least
+failed to typecheck correctly.
+*/
+
+struct X { vec: &'static [int] }
+static V: &'static [X] = &[X { vec: &[1, 2, 3] }];
+fn main() {
+    for &v in V.iter() {
+        println(fmt!("%?", v.vec));
     }
 }
-
-fn main() {}
