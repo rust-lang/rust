@@ -13,6 +13,25 @@ use common::config;
 use std::io;
 use std::os::getenv;
 
+/// Conversion table from triple OS name to Rust SYSNAME
+static OS_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("mingw32", "win32"),
+    ("win32", "win32"),
+    ("darwin", "macos"),
+    ("android", "android"),
+    ("linux", "linux"),
+    ("freebsd", "freebsd"),
+];
+
+pub fn get_os(triple: &str) -> &'static str {
+    for &(triple_os, os) in OS_TABLE.iter() {
+        if triple.contains(triple_os) {
+            return os
+        }
+    }
+    fail!("Cannot determine OS from triple");
+}
+
 pub fn make_new_path(path: &str) -> ~str {
 
     // Windows just uses PATH as the library search path, so we have to
