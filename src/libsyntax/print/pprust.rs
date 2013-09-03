@@ -27,6 +27,7 @@ use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
 
+use std::char;
 use std::io;
 
 // The @ps is stored here to prevent recursive type.
@@ -2044,9 +2045,9 @@ pub fn print_literal(s: @ps, lit: &ast::lit) {
     }
     match lit.node {
       ast::lit_str(st) => print_string(s, st),
-      ast::lit_int(ch, ast::ty_char) => {
+      ast::lit_char(ch) => {
           let mut res = ~"'";
-          do (ch as char).escape_default |c| {
+          do char::from_u32(ch).unwrap().escape_default |c| {
               res.push_char(c);
           }
           res.push_char('\'');

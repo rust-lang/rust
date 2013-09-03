@@ -239,10 +239,10 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
       ty::ty_bool => w.write_char('b'),
+      ty::ty_char => w.write_char('c'),
       ty::ty_int(t) => {
         match t {
           ty_i => w.write_char('i'),
-          ty_char => w.write_char('c'),
           ty_i8 => w.write_str(&"MB"),
           ty_i16 => w.write_str(&"MW"),
           ty_i32 => w.write_str(&"ML"),

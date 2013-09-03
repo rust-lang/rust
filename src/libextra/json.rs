@@ -16,6 +16,8 @@
 
 //! json parsing and serialization
 
+use std::char;
+use std::cast::transmute;
 use std::iterator;
 use std::float;
 use std::hashmap::HashMap;
@@ -490,7 +492,7 @@ pub struct Parser<T> {
 pub fn Parser<T : iterator::Iterator<char>>(rdr: ~T) -> Parser<T> {
     let mut p = Parser {
         rdr: rdr,
-        ch: 0 as char,
+        ch: '\x00',
         line: 1,
         col: 0,
     };
@@ -517,12 +519,13 @@ impl<T: iterator::Iterator<char>> Parser<T> {
 }
 
 impl<T : iterator::Iterator<char>> Parser<T> {
-    fn eof(&self) -> bool { self.ch == -1 as char }
+    // FIXME: #8971: unsound
+    fn eof(&self) -> bool { self.ch == unsafe { transmute(-1u32) } }
 
     fn bump(&mut self) {
         match self.rdr.next() {
             Some(ch) => self.ch = ch,
-            None() => self.ch = -1 as char,
+            None() => self.ch = unsafe { transmute(-1u32) }, // FIXME: #8971: unsound
         }
 
         if self.ch == '\n' {
@@ -755,7 +758,7 @@ impl<T : iterator::Iterator<char>> Parser<T> {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      res.push_char(n as char);
+                      res.push_char(char::from_u32(n as u32).unwrap());
                   }
                   _ => return self.error(~"invalid escape")
                 }

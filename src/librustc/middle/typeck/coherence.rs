@@ -20,7 +20,7 @@ use metadata::csearch;
 use metadata::cstore::iter_crate_data;
 use middle::ty::get;
 use middle::ty::{ImplContainer, lookup_item_type, subst};
-use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
+use middle::ty::{substs, t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
@@ -81,7 +81,7 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
             Some(resolved_type)
         }
 
-        ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
+        ty_nil | ty_bot | ty_bool | ty_char | ty_int(*) | ty_uint(*) | ty_float(*) |
         ty_estr(*) | ty_evec(*) | ty_bare_fn(*) | ty_closure(*) | ty_tup(*) |
         ty_infer(*) | ty_param(*) | ty_self(*) | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err | ty_box(_) |

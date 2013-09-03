@@ -783,7 +783,7 @@ impl<'self> LookupContext<'self> {
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
             ty_self(_) | ty_param(*) | ty_nil | ty_bot | ty_bool |
-            ty_int(*) | ty_uint(*) |
+            ty_char | ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
             ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
                 self.search_for_some_kind_of_autorefd_method(

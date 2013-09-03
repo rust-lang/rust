@@ -37,7 +37,7 @@ use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
 use ast::{Ident, impure_fn, inherited, item, item_, item_static};
 use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
-use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
+use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int, lit_char};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local};
 use ast::{MutImmutable, MutMutable, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, BiMul, Mutability};
@@ -1334,6 +1334,7 @@ impl Parser {
     // matches token_lit = LIT_INT | ...
     pub fn lit_from_token(&self, tok: &token::Token) -> lit_ {
         match *tok {
+            token::LIT_CHAR(i) => lit_char(i),
             token::LIT_INT(i, it) => lit_int(i, it),
             token::LIT_UINT(u, ut) => lit_uint(u, ut),
             token::LIT_INT_UNSUFFIXED(i) => lit_int_unsuffixed(i),

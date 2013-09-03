@@ -15,6 +15,7 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use std::char;
 use std::cmp::Equiv;
 use std::local_data;
 use std::rand;
@@ -73,6 +74,7 @@ pub enum Token {
     DOLLAR,
 
     /* Literals */
+    LIT_CHAR(u32),
     LIT_INT(i64, ast::int_ty),
     LIT_UINT(u64, ast::uint_ty),
     LIT_INT_UNSUFFIXED(i64),
@@ -164,9 +166,9 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
       DOLLAR => ~"$",
 
       /* Literals */
-      LIT_INT(c, ast::ty_char) => {
+      LIT_CHAR(c) => {
           let mut res = ~"'";
-          do (c as char).escape_default |c| {
+          do char::from_u32(c).unwrap().escape_default |c| {
               res.push_char(c);
           }
           res.push_char('\'');
@@ -236,6 +238,7 @@ pub fn can_begin_expr(t: &Token) -> bool {
       IDENT(_, _) => true,
       UNDERSCORE => true,
       TILDE => true,
+      LIT_CHAR(_) => true,
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
@@ -276,6 +279,7 @@ pub fn flip_delimiter(t: &token::Token) -> token::Token {
 
 pub fn is_lit(t: &Token) -> bool {
     match *t {
+      LIT_CHAR(_) => true,
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
