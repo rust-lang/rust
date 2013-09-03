@@ -29,9 +29,9 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
             get_ident_interner()));
 
     //trivial expression
-    MRExpr(@ast::expr {
+    MRExpr(@ast::Expr {
         id: cx.next_id(),
-        node: ast::expr_lit(@codemap::Spanned {
+        node: ast::ExprLit(@codemap::Spanned {
             node: ast::lit_nil,
             span: sp
         }),

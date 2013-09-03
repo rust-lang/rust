@@ -39,30 +39,30 @@ impl Visitor<Context> for CheckLoopVisitor {
                                   });
     }
 
-    fn visit_expr(&mut self, e:@expr, cx:Context) {
+    fn visit_expr(&mut self, e:@Expr, cx:Context) {
 
             match e.node {
-              expr_while(e, ref b) => {
+              ExprWhile(e, ref b) => {
                 self.visit_expr(e, cx);
                 self.visit_block(b, Context { in_loop: true,.. cx });
               }
-              expr_loop(ref b, _) => {
+              ExprLoop(ref b, _) => {
                 self.visit_block(b, Context { in_loop: true,.. cx });
               }
-              expr_fn_block(_, ref b) => {
+              ExprFnBlock(_, ref b) => {
                 self.visit_block(b, Context { in_loop: false, can_ret: false });
               }
-              expr_break(_) => {
+              ExprBreak(_) => {
                 if !cx.in_loop {
                     self.tcx.sess.span_err(e.span, "`break` outside of loop");
                 }
               }
-              expr_again(_) => {
+              ExprAgain(_) => {
                 if !cx.in_loop {
                     self.tcx.sess.span_err(e.span, "`loop` outside of loop");
                 }
               }
-              expr_ret(oe) => {
+              ExprRet(oe) => {
                 if !cx.can_ret {
                     self.tcx.sess.span_err(e.span, "`return` in block function");
                 }

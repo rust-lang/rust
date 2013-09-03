@@ -77,7 +77,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 use util::common::indenter;
 
-use syntax::ast::m_imm;
+use syntax::ast::MutImmutable;
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
@@ -238,7 +238,7 @@ impl Coerce {
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
-            autoref: Some(AutoBorrowVec(r_a, m_imm))
+            autoref: Some(AutoBorrowVec(r_a, MutImmutable))
         })))
     }
 
@@ -275,7 +275,7 @@ impl Coerce {
                               a: ty::t,
                               sty_a: &ty::sty,
                               b: ty::t,
-                              b_mutbl: ast::mutability) -> CoerceResult
+                              b_mutbl: ast::Mutability) -> CoerceResult
     {
         debug!("coerce_borrowed_object(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, expr};
+use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -48,8 +48,8 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
-    let op = if less {ast::lt} else {ast::gt};
+fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+    let op = if less {ast::BiLt} else {ast::BiGt};
     cs_fold(
         false, // need foldr,
         |cx, span, subexpr, self_f, other_fs| {
@@ -79,13 +79,13 @@ fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: Span, substr: &Substructur
                                      cx.expr_deref(span, self_f),
                                      cx.expr_deref(span, other_f));
 
-            let not_cmp = cx.expr_unary(span, ast::not,
+            let not_cmp = cx.expr_unary(span, ast::UnNot,
                                         cx.expr_binary(span, op,
                                                        cx.expr_deref(span, other_f),
                                                        cx.expr_deref(span, self_f)));
 
-            let and = cx.expr_binary(span, ast::and, not_cmp, subexpr);
-            cx.expr_binary(span, ast::or, cmp, and)
+            let and = cx.expr_binary(span, ast::BiAnd, not_cmp, subexpr);
+            cx.expr_binary(span, ast::BiOr, cmp, and)
         },
         cx.expr_bool(span, equal),
         |cx, span, args, _| {

@@ -52,7 +52,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 use util::common::indenter;
 
-use syntax::ast::{m_imm, m_mutbl};
+use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust;
@@ -84,9 +84,9 @@ pub struct CopiedUpvar {
 #[deriving(Eq, IterBytes)]
 pub enum PointerKind {
     uniq_ptr,
-    gc_ptr(ast::mutability),
-    region_ptr(ast::mutability, ty::Region),
-    unsafe_ptr(ast::mutability)
+    gc_ptr(ast::Mutability),
+    region_ptr(ast::Mutability, ty::Region),
+    unsafe_ptr(ast::Mutability)
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -174,7 +174,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         ty::ty_estr(ty::vstore_slice(r)) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
                                       region: r, _}) => {
-            Some(deref_ptr(region_ptr(ast::m_imm, r)))
+            Some(deref_ptr(region_ptr(ast::MutImmutable, r)))
         }
 
         ty::ty_box(ref mt) |
@@ -188,7 +188,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
 
         ty::ty_estr(ty::vstore_box) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::ManagedSigil, _}) => {
-            Some(deref_ptr(gc_ptr(ast::m_imm)))
+            Some(deref_ptr(gc_ptr(ast::MutImmutable)))
         }
 
         ty::ty_ptr(ref mt) => {
@@ -222,7 +222,7 @@ pub fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
 
 pub fn cat_expr(tcx: ty::ctxt,
                 method_map: typeck::method_map,
-                expr: @ast::expr)
+                expr: @ast::Expr)
              -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
@@ -232,7 +232,7 @@ pub fn cat_expr(tcx: ty::ctxt,
 
 pub fn cat_expr_unadjusted(tcx: ty::ctxt,
                            method_map: typeck::method_map,
-                           expr: @ast::expr)
+                           expr: @ast::Expr)
                         -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
@@ -243,7 +243,7 @@ pub fn cat_expr_unadjusted(tcx: ty::ctxt,
 pub fn cat_expr_autoderefd(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    expr: @ast::expr,
+    expr: @ast::Expr,
     autoderefs: uint) -> cmt
 {
     let mcx = &mem_categorization_ctxt {
@@ -258,7 +258,7 @@ pub fn cat_def(
     expr_id: ast::NodeId,
     expr_span: Span,
     expr_ty: ty::t,
-    def: ast::def) -> cmt {
+    def: ast::Def) -> cmt {
 
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
@@ -271,12 +271,12 @@ pub trait ast_node {
     fn span(&self) -> Span;
 }
 
-impl ast_node for @ast::expr {
+impl ast_node for @ast::Expr {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
 
-impl ast_node for @ast::pat {
+impl ast_node for @ast::Pat {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
@@ -293,10 +293,10 @@ impl ToStr for MutabilityCategory {
 }
 
 impl MutabilityCategory {
-    pub fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
+    pub fn from_mutbl(m: ast::Mutability) -> MutabilityCategory {
         match m {
-            m_imm => McImmutable,
-            m_mutbl => McDeclared
+            MutImmutable => McImmutable,
+            MutMutable => McDeclared
         }
     }
 
@@ -331,15 +331,15 @@ impl MutabilityCategory {
 }
 
 impl mem_categorization_ctxt {
-    pub fn expr_ty(&self, expr: @ast::expr) -> ty::t {
+    pub fn expr_ty(&self, expr: @ast::Expr) -> ty::t {
         ty::expr_ty(self.tcx, expr)
     }
 
-    pub fn pat_ty(&self, pat: @ast::pat) -> ty::t {
+    pub fn pat_ty(&self, pat: @ast::Pat) -> ty::t {
         ty::node_id_to_type(self.tcx, pat.id)
     }
 
-    pub fn cat_expr(&self, expr: @ast::expr) -> cmt {
+    pub fn cat_expr(&self, expr: @ast::Expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
             None => {
                 // No adjustments.
@@ -373,7 +373,7 @@ impl mem_categorization_ctxt {
         }
     }
 
-    pub fn cat_expr_autoderefd(&self, expr: @ast::expr, autoderefs: uint)
+    pub fn cat_expr_autoderefd(&self, expr: @ast::Expr, autoderefs: uint)
                                -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
         for deref in range(1u, autoderefs + 1) {
@@ -382,13 +382,13 @@ impl mem_categorization_ctxt {
         return cmt;
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
+    pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> cmt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let expr_ty = self.expr_ty(expr);
         match expr.node {
-          ast::expr_unary(_, ast::deref, e_base) => {
+          ast::ExprUnary(_, ast::UnDeref, e_base) => {
             if self.method_map.contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
@@ -397,7 +397,7 @@ impl mem_categorization_ctxt {
             self.cat_deref(expr, base_cmt, 0)
           }
 
-          ast::expr_field(base, f_name, _) => {
+          ast::ExprField(base, f_name, _) => {
             // Method calls are now a special syntactic form,
             // so `a.b` should always be a field.
             assert!(!self.method_map.contains_key(&expr.id));
@@ -406,7 +406,7 @@ impl mem_categorization_ctxt {
             self.cat_field(expr, base_cmt, f_name, self.expr_ty(expr))
           }
 
-          ast::expr_index(_, base, _) => {
+          ast::ExprIndex(_, base, _) => {
             if self.method_map.contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
@@ -415,28 +415,28 @@ impl mem_categorization_ctxt {
             self.cat_index(expr, base_cmt, 0)
           }
 
-          ast::expr_path(_) | ast::expr_self => {
+          ast::ExprPath(_) | ast::ExprSelf => {
             let def = self.tcx.def_map.get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::expr_paren(e) => self.cat_expr_unadjusted(e),
+          ast::ExprParen(e) => self.cat_expr_unadjusted(e),
 
-          ast::expr_addr_of(*) | ast::expr_call(*) |
-          ast::expr_assign(*) | ast::expr_assign_op(*) |
-          ast::expr_fn_block(*) | ast::expr_ret(*) |
-          ast::expr_do_body(*) | ast::expr_unary(*) |
-          ast::expr_method_call(*) | ast::expr_cast(*) | ast::expr_vstore(*) |
-          ast::expr_vec(*) | ast::expr_tup(*) | ast::expr_if(*) |
-          ast::expr_log(*) | ast::expr_binary(*) | ast::expr_while(*) |
-          ast::expr_block(*) | ast::expr_loop(*) | ast::expr_match(*) |
-          ast::expr_lit(*) | ast::expr_break(*) | ast::expr_mac(*) |
-          ast::expr_again(*) | ast::expr_struct(*) | ast::expr_repeat(*) |
-          ast::expr_inline_asm(*) => {
+          ast::ExprAddrOf(*) | ast::ExprCall(*) |
+          ast::ExprAssign(*) | ast::ExprAssignOp(*) |
+          ast::ExprFnBlock(*) | ast::ExprRet(*) |
+          ast::ExprDoBody(*) | ast::ExprUnary(*) |
+          ast::ExprMethodCall(*) | ast::ExprCast(*) | ast::ExprVstore(*) |
+          ast::ExprVec(*) | ast::ExprTup(*) | ast::ExprIf(*) |
+          ast::ExprLog(*) | ast::ExprBinary(*) | ast::ExprWhile(*) |
+          ast::ExprBlock(*) | ast::ExprLoop(*) | ast::ExprMatch(*) |
+          ast::ExprLit(*) | ast::ExprBreak(*) | ast::ExprMac(*) |
+          ast::ExprAgain(*) | ast::ExprStruct(*) | ast::ExprRepeat(*) |
+          ast::ExprInlineAsm(*) => {
             return self.cat_rvalue_node(expr, expr_ty);
           }
 
-          ast::expr_for_loop(*) => fail!("non-desugared expr_for_loop")
+          ast::ExprForLoop(*) => fail!("non-desugared expr_for_loop")
         }
     }
 
@@ -444,16 +444,16 @@ impl mem_categorization_ctxt {
                    id: ast::NodeId,
                    span: Span,
                    expr_ty: ty::t,
-                   def: ast::def)
+                   def: ast::Def)
                    -> cmt {
         match def {
-          ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
-          ast::def_foreign_mod(_) | ast::def_static(_, false) |
-          ast::def_use(_) | ast::def_variant(*) |
-          ast::def_trait(_) | ast::def_ty(_) | ast::def_prim_ty(_) |
-          ast::def_ty_param(*) | ast::def_struct(*) |
-          ast::def_typaram_binder(*) | ast::def_region(_) |
-          ast::def_label(_) | ast::def_self_ty(*) | ast::def_method(*) => {
+          ast::DefFn(*) | ast::DefStaticMethod(*) | ast::DefMod(_) |
+          ast::DefForeignMod(_) | ast::DefStatic(_, false) |
+          ast::DefUse(_) | ast::DefVariant(*) |
+          ast::DefTrait(_) | ast::DefTy(_) | ast::DefPrimTy(_) |
+          ast::DefTyParam(*) | ast::DefStruct(*) |
+          ast::DefTyParamBinder(*) | ast::DefRegion(_) |
+          ast::DefLabel(_) | ast::DefSelfTy(*) | ast::DefMethod(*) => {
               @cmt_ {
                   id:id,
                   span:span,
@@ -463,7 +463,7 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::def_static(_, true) => {
+          ast::DefStatic(_, true) => {
               @cmt_ {
                   id:id,
                   span:span,
@@ -473,7 +473,7 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::def_arg(vid, mutbl) => {
+          ast::DefArg(vid, mutbl) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
@@ -488,7 +488,7 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_self(self_id) => {
+          ast::DefSelf(self_id) => {
             @cmt_ {
                 id:id,
                 span:span,
@@ -498,7 +498,7 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_upvar(upvar_id, inner, fn_node_id, _) => {
+          ast::DefUpvar(upvar_id, inner, fn_node_id, _) => {
               let ty = ty::node_id_to_type(self.tcx, fn_node_id);
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
@@ -549,7 +549,7 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::def_local(vid, mutbl) => {
+          ast::DefLocal(vid, mutbl) => {
             let m = if mutbl {McDeclared} else {McImmutable};
             @cmt_ {
                 id:id,
@@ -560,7 +560,7 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::def_binding(vid, _) => {
+          ast::DefBinding(vid, _) => {
             // by-value/by-ref bindings are local variables
             @cmt_ {
                 id:id,
@@ -602,11 +602,11 @@ impl mem_categorization_ctxt {
     /// or if the container is mutable.
     pub fn inherited_mutability(&self,
                                 base_m: MutabilityCategory,
-                                interior_m: ast::mutability)
+                                interior_m: ast::Mutability)
                                 -> MutabilityCategory {
         match interior_m {
-            m_imm => base_m.inherit(),
-            m_mutbl => McDeclared
+            MutImmutable => base_m.inherit(),
+            MutMutable => McDeclared
         }
     }
 
@@ -824,8 +824,8 @@ impl mem_categorization_ctxt {
 
     pub fn cat_pattern(&self,
                        cmt: cmt,
-                       pat: @ast::pat,
-                       op: &fn(cmt, @ast::pat)) {
+                       pat: @ast::Pat,
+                       op: &fn(cmt, @ast::Pat)) {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //
@@ -879,16 +879,16 @@ impl mem_categorization_ctxt {
         op(cmt, pat);
 
         match pat.node {
-          ast::pat_wild => {
+          ast::PatWild => {
             // _
           }
 
-          ast::pat_enum(_, None) => {
+          ast::PatEnum(_, None) => {
             // variant(*)
           }
-          ast::pat_enum(_, Some(ref subpats)) => {
+          ast::PatEnum(_, Some(ref subpats)) => {
             match self.tcx.def_map.find(&pat.id) {
-                Some(&ast::def_variant(enum_did, _)) => {
+                Some(&ast::DefVariant(enum_did, _)) => {
                     // variant(x, y, z)
 
                     let downcast_cmt = {
@@ -910,8 +910,8 @@ impl mem_categorization_ctxt {
                         self.cat_pattern(subcmt, subpat, |x,y| op(x,y));
                     }
                 }
-                Some(&ast::def_fn(*)) |
-                Some(&ast::def_struct(*)) => {
+                Some(&ast::DefFn(*)) |
+                Some(&ast::DefStruct(*)) => {
                     for (i, &subpat) in subpats.iter().enumerate() {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
                         let cmt_field =
@@ -921,7 +921,7 @@ impl mem_categorization_ctxt {
                         self.cat_pattern(cmt_field, subpat, |x,y| op(x,y));
                     }
                 }
-                Some(&ast::def_static(*)) => {
+                Some(&ast::DefStatic(*)) => {
                     for &subpat in subpats.iter() {
                         self.cat_pattern(cmt, subpat, |x,y| op(x,y));
                     }
@@ -934,15 +934,15 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::pat_ident(_, _, Some(subpat)) => {
+          ast::PatIdent(_, _, Some(subpat)) => {
               self.cat_pattern(cmt, subpat, op);
           }
 
-          ast::pat_ident(_, _, None) => {
+          ast::PatIdent(_, _, None) => {
               // nullary variant or identifier: ignore
           }
 
-          ast::pat_struct(_, ref field_pats, _) => {
+          ast::PatStruct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats.iter() {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
@@ -951,7 +951,7 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::pat_tup(ref subpats) => {
+          ast::PatTup(ref subpats) => {
             // (p1, ..., pN)
             for (i, &subpat) in subpats.iter().enumerate() {
                 let subpat_ty = self.pat_ty(subpat); // see (*)
@@ -963,14 +963,14 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::pat_box(subpat) | ast::pat_uniq(subpat) |
-          ast::pat_region(subpat) => {
+          ast::PatBox(subpat) | ast::PatUniq(subpat) |
+          ast::PatRegion(subpat) => {
             // @p1, ~p1
             let subcmt = self.cat_deref(pat, cmt, 0);
             self.cat_pattern(subcmt, subpat, op);
           }
 
-          ast::pat_vec(ref before, slice, ref after) => {
+          ast::PatVec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
               for &before_pat in before.iter() {
                   self.cat_pattern(elt_cmt, before_pat, |x,y| op(x,y));
@@ -985,16 +985,16 @@ impl mem_categorization_ctxt {
               }
           }
 
-          ast::pat_lit(_) | ast::pat_range(_, _) => {
+          ast::PatLit(_) | ast::PatRange(_, _) => {
               /*always ok*/
           }
         }
     }
 
-    pub fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
+    pub fn mut_to_str(&self, mutbl: ast::Mutability) -> ~str {
         match mutbl {
-          m_mutbl => ~"mutable",
-          m_imm => ~"immutable"
+          MutMutable => ~"mutable",
+          MutImmutable => ~"immutable"
         }
     }
 
@@ -1060,24 +1060,24 @@ pub fn field_mutbl(tcx: ty::ctxt,
                    base_ty: ty::t,
                    f_name: ast::Ident,
                    node_id: ast::NodeId)
-                -> Option<ast::mutability> {
+                -> Option<ast::Mutability> {
     // Need to refactor so that struct/enum fields can be treated uniformly.
     match ty::get(base_ty).sty {
       ty::ty_struct(did, _) => {
         let r = ty::lookup_struct_fields(tcx, did);
         for fld in r.iter() {
             if fld.ident == f_name {
-                return Some(ast::m_imm);
+                return Some(ast::MutImmutable);
             }
         }
       }
       ty::ty_enum(*) => {
         match tcx.def_map.get_copy(&node_id) {
-          ast::def_variant(_, variant_id) => {
+          ast::DefVariant(_, variant_id) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {
                 if fld.ident == f_name {
-                    return Some(ast::m_imm);
+                    return Some(ast::MutImmutable);
                 }
             }
           }
@@ -1091,8 +1091,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
 }
 
 pub enum AliasableReason {
-    AliasableManaged(ast::mutability),
-    AliasableBorrowed(ast::mutability),
+    AliasableManaged(ast::Mutability),
+    AliasableBorrowed(ast::Mutability),
     AliasableOther
 }
 
@@ -1145,7 +1145,7 @@ impl cmt_ {
             cat_arg(_) |
             cat_self(*) |
             cat_deref(_, _, unsafe_ptr(*)) | // of course it is aliasable, but...
-            cat_deref(_, _, region_ptr(m_mutbl, _)) => {
+            cat_deref(_, _, region_ptr(MutMutable, _)) => {
                 None
             }
 
@@ -1158,7 +1158,7 @@ impl cmt_ {
                 Some(AliasableManaged(m))
             }
 
-            cat_deref(_, _, region_ptr(m @ m_imm, _)) => {
+            cat_deref(_, _, region_ptr(m @ MutImmutable, _)) => {
                 Some(AliasableBorrowed(m))
             }
 

@@ -77,12 +77,12 @@ pub struct Visitor<E> {
     visit_item: @fn(@item, (E, vt<E>)),
     visit_local: @fn(@Local, (E, vt<E>)),
     visit_block: @fn(&Block, (E, vt<E>)),
-    visit_stmt: @fn(@stmt, (E, vt<E>)),
-    visit_arm: @fn(&arm, (E, vt<E>)),
-    visit_pat: @fn(@pat, (E, vt<E>)),
-    visit_decl: @fn(@decl, (E, vt<E>)),
-    visit_expr: @fn(@expr, (E, vt<E>)),
-    visit_expr_post: @fn(@expr, (E, vt<E>)),
+    visit_stmt: @fn(@Stmt, (E, vt<E>)),
+    visit_arm: @fn(&Arm, (E, vt<E>)),
+    visit_pat: @fn(@Pat, (E, vt<E>)),
+    visit_decl: @fn(@Decl, (E, vt<E>)),
+    visit_expr: @fn(@Expr, (E, vt<E>)),
+    visit_expr_post: @fn(@Expr, (E, vt<E>)),
     visit_ty: @fn(&Ty, (E, vt<E>)),
     visit_generics: @fn(&Generics, (E, vt<E>)),
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId, (E, vt<E>)),
@@ -294,9 +294,9 @@ pub fn visit_path<E:Clone>(p: &Path, (e, v): (E, vt<E>)) {
     }
 }
 
-pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {
+pub fn visit_pat<E:Clone>(p: &Pat, (e, v): (E, vt<E>)) {
     match p.node {
-        pat_enum(ref path, ref children) => {
+        PatEnum(ref path, ref children) => {
             visit_path(path, (e.clone(), v));
             for children in children.iter() {
                 for child in children.iter() {
@@ -304,33 +304,33 @@ pub fn visit_pat<E:Clone>(p: &pat, (e, v): (E, vt<E>)) {
                 }
             }
         }
-        pat_struct(ref path, ref fields, _) => {
+        PatStruct(ref path, ref fields, _) => {
             visit_path(path, (e.clone(), v));
             for f in fields.iter() {
                 (v.visit_pat)(f.pat, (e.clone(), v));
             }
         }
-        pat_tup(ref elts) => {
+        PatTup(ref elts) => {
             for elt in elts.iter() {
                 (v.visit_pat)(*elt, (e.clone(), v))
             }
         },
-        pat_box(inner) | pat_uniq(inner) | pat_region(inner) => {
+        PatBox(inner) | PatUniq(inner) | PatRegion(inner) => {
             (v.visit_pat)(inner, (e, v))
         },
-        pat_ident(_, ref path, ref inner) => {
+        PatIdent(_, ref path, ref inner) => {
             visit_path(path, (e.clone(), v));
             for subpat in inner.iter() {
                 (v.visit_pat)(*subpat, (e.clone(), v))
             }
         }
-        pat_lit(ex) => (v.visit_expr)(ex, (e, v)),
-        pat_range(e1, e2) => {
+        PatLit(ex) => (v.visit_expr)(ex, (e, v)),
+        PatRange(e1, e2) => {
             (v.visit_expr)(e1, (e.clone(), v));
             (v.visit_expr)(e2, (e, v));
         }
-        pat_wild => (),
-        pat_vec(ref before, ref slice, ref after) => {
+        PatWild => (),
+        PatVec(ref before, ref slice, ref after) => {
             for elt in before.iter() {
                 (v.visit_pat)(*elt, (e.clone(), v));
             }
@@ -446,27 +446,27 @@ pub fn visit_block<E:Clone>(b: &Block, (e, v): (E, vt<E>)) {
     visit_expr_opt(b.expr, (e, v));
 }
 
-pub fn visit_stmt<E>(s: &stmt, (e, v): (E, vt<E>)) {
+pub fn visit_stmt<E>(s: &Stmt, (e, v): (E, vt<E>)) {
     match s.node {
-      stmt_decl(d, _) => (v.visit_decl)(d, (e, v)),
-      stmt_expr(ex, _) => (v.visit_expr)(ex, (e, v)),
-      stmt_semi(ex, _) => (v.visit_expr)(ex, (e, v)),
-      stmt_mac(ref mac, _) => visit_mac(mac, (e, v))
+      StmtDecl(d, _) => (v.visit_decl)(d, (e, v)),
+      StmtExpr(ex, _) => (v.visit_expr)(ex, (e, v)),
+      StmtSemi(ex, _) => (v.visit_expr)(ex, (e, v)),
+      StmtMac(ref mac, _) => visit_mac(mac, (e, v))
     }
 }
 
-pub fn visit_decl<E:Clone>(d: &decl, (e, v): (E, vt<E>)) {
+pub fn visit_decl<E:Clone>(d: &Decl, (e, v): (E, vt<E>)) {
     match d.node {
-        decl_local(ref loc) => (v.visit_local)(*loc, (e, v)),
-        decl_item(it) => (v.visit_item)(it, (e, v))
+        DeclLocal(ref loc) => (v.visit_local)(*loc, (e, v)),
+        DeclItem(it) => (v.visit_item)(it, (e, v))
     }
 }
 
-pub fn visit_expr_opt<E>(eo: Option<@expr>, (e, v): (E, vt<E>)) {
+pub fn visit_expr_opt<E>(eo: Option<@Expr>, (e, v): (E, vt<E>)) {
     match eo { None => (), Some(ex) => (v.visit_expr)(ex, (e, v)) }
 }
 
-pub fn visit_exprs<E:Clone>(exprs: &[@expr], (e, v): (E, vt<E>)) {
+pub fn visit_exprs<E:Clone>(exprs: &[@Expr], (e, v): (E, vt<E>)) {
     for ex in exprs.iter() { (v.visit_expr)(*ex, (e.clone(), v)); }
 }
 
@@ -474,66 +474,66 @@ pub fn visit_mac<E>(_m: &mac, (_e, _v): (E, vt<E>)) {
     /* no user-serviceable parts inside */
 }
 
-pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
+pub fn visit_expr<E:Clone>(ex: @Expr, (e, v): (E, vt<E>)) {
     match ex.node {
-        expr_vstore(x, _) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_vec(ref es, _) => visit_exprs(*es, (e.clone(), v)),
-        expr_repeat(element, count, _) => {
+        ExprVstore(x, _) => (v.visit_expr)(x, (e.clone(), v)),
+        ExprVec(ref es, _) => visit_exprs(*es, (e.clone(), v)),
+        ExprRepeat(element, count, _) => {
             (v.visit_expr)(element, (e.clone(), v));
             (v.visit_expr)(count, (e.clone(), v));
         }
-        expr_struct(ref p, ref flds, base) => {
+        ExprStruct(ref p, ref flds, base) => {
             visit_path(p, (e.clone(), v));
             for f in flds.iter() {
                 (v.visit_expr)(f.expr, (e.clone(), v));
             }
             visit_expr_opt(base, (e.clone(), v));
         }
-        expr_tup(ref elts) => {
+        ExprTup(ref elts) => {
             for el in elts.iter() { (v.visit_expr)(*el, (e.clone(), v)) }
         }
-        expr_call(callee, ref args, _) => {
+        ExprCall(callee, ref args, _) => {
             visit_exprs(*args, (e.clone(), v));
             (v.visit_expr)(callee, (e.clone(), v));
         }
-        expr_method_call(_, callee, _, ref tys, ref args, _) => {
+        ExprMethodCall(_, callee, _, ref tys, ref args, _) => {
             visit_exprs(*args, (e.clone(), v));
             for tp in tys.iter() {
                 (v.visit_ty)(tp, (e.clone(), v));
             }
             (v.visit_expr)(callee, (e.clone(), v));
         }
-        expr_binary(_, _, a, b) => {
+        ExprBinary(_, _, a, b) => {
             (v.visit_expr)(a, (e.clone(), v));
             (v.visit_expr)(b, (e.clone(), v));
         }
-        expr_addr_of(_, x) | expr_unary(_, _, x) |
-        expr_do_body(x) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_lit(_) => (),
-        expr_cast(x, ref t) => {
+        ExprAddrOf(_, x) | ExprUnary(_, _, x) |
+        ExprDoBody(x) => (v.visit_expr)(x, (e.clone(), v)),
+        ExprLit(_) => (),
+        ExprCast(x, ref t) => {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_ty)(t, (e.clone(), v));
         }
-        expr_if(x, ref b, eo) => {
+        ExprIf(x, ref b, eo) => {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_block)(b, (e.clone(), v));
             visit_expr_opt(eo, (e.clone(), v));
         }
-        expr_while(x, ref b) => {
+        ExprWhile(x, ref b) => {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_block)(b, (e.clone(), v));
         }
-        expr_for_loop(pattern, subexpression, ref block) => {
+        ExprForLoop(pattern, subexpression, ref block) => {
             (v.visit_pat)(pattern, (e.clone(), v));
             (v.visit_expr)(subexpression, (e.clone(), v));
             (v.visit_block)(block, (e.clone(), v))
         }
-        expr_loop(ref b, _) => (v.visit_block)(b, (e.clone(), v)),
-        expr_match(x, ref arms) => {
+        ExprLoop(ref b, _) => (v.visit_block)(b, (e.clone(), v)),
+        ExprMatch(x, ref arms) => {
             (v.visit_expr)(x, (e.clone(), v));
             for a in arms.iter() { (v.visit_arm)(a, (e.clone(), v)); }
         }
-        expr_fn_block(ref decl, ref body) => {
+        ExprFnBlock(ref decl, ref body) => {
             (v.visit_fn)(
                 &fk_fn_block,
                 decl,
@@ -543,37 +543,37 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
                 (e.clone(), v)
             );
         }
-        expr_block(ref b) => (v.visit_block)(b, (e.clone(), v)),
-        expr_assign(a, b) => {
+        ExprBlock(ref b) => (v.visit_block)(b, (e.clone(), v)),
+        ExprAssign(a, b) => {
             (v.visit_expr)(b, (e.clone(), v));
             (v.visit_expr)(a, (e.clone(), v));
         }
-        expr_assign_op(_, _, a, b) => {
+        ExprAssignOp(_, _, a, b) => {
             (v.visit_expr)(b, (e.clone(), v));
             (v.visit_expr)(a, (e.clone(), v));
         }
-        expr_field(x, _, ref tys) => {
+        ExprField(x, _, ref tys) => {
             (v.visit_expr)(x, (e.clone(), v));
             for tp in tys.iter() {
                 (v.visit_ty)(tp, (e.clone(), v));
             }
         }
-        expr_index(_, a, b) => {
+        ExprIndex(_, a, b) => {
             (v.visit_expr)(a, (e.clone(), v));
             (v.visit_expr)(b, (e.clone(), v));
         }
-        expr_path(ref p) => visit_path(p, (e.clone(), v)),
-        expr_self => (),
-        expr_break(_) => (),
-        expr_again(_) => (),
-        expr_ret(eo) => visit_expr_opt(eo, (e.clone(), v)),
-        expr_log(lv, x) => {
+        ExprPath(ref p) => visit_path(p, (e.clone(), v)),
+        ExprSelf => (),
+        ExprBreak(_) => (),
+        ExprAgain(_) => (),
+        ExprRet(eo) => visit_expr_opt(eo, (e.clone(), v)),
+        ExprLog(lv, x) => {
             (v.visit_expr)(lv, (e.clone(), v));
             (v.visit_expr)(x, (e.clone(), v));
         }
-        expr_mac(ref mac) => visit_mac(mac, (e.clone(), v)),
-        expr_paren(x) => (v.visit_expr)(x, (e.clone(), v)),
-        expr_inline_asm(ref a) => {
+        ExprMac(ref mac) => visit_mac(mac, (e.clone(), v)),
+        ExprParen(x) => (v.visit_expr)(x, (e.clone(), v)),
+        ExprInlineAsm(ref a) => {
             for &(_, input) in a.inputs.iter() {
                 (v.visit_expr)(input, (e.clone(), v));
             }
@@ -585,7 +585,7 @@ pub fn visit_expr<E:Clone>(ex: @expr, (e, v): (E, vt<E>)) {
     (v.visit_expr_post)(ex, (e, v));
 }
 
-pub fn visit_arm<E:Clone>(a: &arm, (e, v): (E, vt<E>)) {
+pub fn visit_arm<E:Clone>(a: &Arm, (e, v): (E, vt<E>)) {
     for p in a.pats.iter() { (v.visit_pat)(*p, (e.clone(), v)); }
     visit_expr_opt(a.guard, (e.clone(), v));
     (v.visit_block)(&a.body, (e.clone(), v));
@@ -601,12 +601,12 @@ pub struct SimpleVisitor {
     visit_item: @fn(@item),
     visit_local: @fn(@Local),
     visit_block: @fn(&Block),
-    visit_stmt: @fn(@stmt),
-    visit_arm: @fn(&arm),
-    visit_pat: @fn(@pat),
-    visit_decl: @fn(@decl),
-    visit_expr: @fn(@expr),
-    visit_expr_post: @fn(@expr),
+    visit_stmt: @fn(@Stmt),
+    visit_arm: @fn(&Arm),
+    visit_pat: @fn(@Pat),
+    visit_decl: @fn(@Decl),
+    visit_expr: @fn(@Expr),
+    visit_expr_post: @fn(@Expr),
     visit_ty: @fn(&Ty),
     visit_generics: @fn(&Generics),
     visit_fn: @fn(&fn_kind, &fn_decl, &Block, Span, NodeId),
@@ -677,27 +677,27 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(bl);
         visit_block(bl, (e, v));
     }
-    fn v_stmt(f: @fn(@stmt), st: @stmt, (e, v): ((), vt<()>)) {
+    fn v_stmt(f: @fn(@Stmt), st: @Stmt, (e, v): ((), vt<()>)) {
         f(st);
         visit_stmt(st, (e, v));
     }
-    fn v_arm(f: @fn(&arm), a: &arm, (e, v): ((), vt<()>)) {
+    fn v_arm(f: @fn(&Arm), a: &Arm, (e, v): ((), vt<()>)) {
         f(a);
         visit_arm(a, (e, v));
     }
-    fn v_pat(f: @fn(@pat), p: @pat, (e, v): ((), vt<()>)) {
+    fn v_pat(f: @fn(@Pat), p: @Pat, (e, v): ((), vt<()>)) {
         f(p);
         visit_pat(p, (e, v));
     }
-    fn v_decl(f: @fn(@decl), d: @decl, (e, v): ((), vt<()>)) {
+    fn v_decl(f: @fn(@Decl), d: @Decl, (e, v): ((), vt<()>)) {
         f(d);
         visit_decl(d, (e, v));
     }
-    fn v_expr(f: @fn(@expr), ex: @expr, (e, v): ((), vt<()>)) {
+    fn v_expr(f: @fn(@Expr), ex: @Expr, (e, v): ((), vt<()>)) {
         f(ex);
         visit_expr(ex, (e, v));
     }
-    fn v_expr_post(f: @fn(@expr), ex: @expr, (_e, _v): ((), vt<()>)) {
+    fn v_expr_post(f: @fn(@Expr), ex: @Expr, (_e, _v): ((), vt<()>)) {
         f(ex);
     }
     fn v_ty(f: @fn(&Ty), ty: &Ty, (e, v): ((), vt<()>)) {

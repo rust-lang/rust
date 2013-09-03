@@ -26,7 +26,7 @@ use syntax::ast::{item};
 // (The def_upvar will already have been stripped).
 #[deriving(Encodable, Decodable)]
 pub struct freevar_entry {
-    def: ast::def, //< The variable being accessed free.
+    def: ast::Def, //< The variable being accessed free.
     span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
@@ -44,13 +44,13 @@ impl Visitor<int> for CollectFreevarsVisitor {
         // ignore_item
     }
 
-    fn visit_expr(&mut self, expr:@ast::expr, depth:int) {
+    fn visit_expr(&mut self, expr:@ast::Expr, depth:int) {
 
             match expr.node {
-              ast::expr_fn_block(*) => {
+              ast::ExprFnBlock(*) => {
                 visit::walk_expr(self, expr, depth + 1)
               }
-              ast::expr_path(*) | ast::expr_self => {
+              ast::ExprPath(*) | ast::ExprSelf => {
                   let mut i = 0;
                   match self.def_map.find(&expr.id) {
                     None => fail!("path not found"),
@@ -58,7 +58,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
                       let mut def = df;
                       while i < depth {
                         match def {
-                          ast::def_upvar(_, inner, _, _) => { def = *inner; }
+                          ast::DefUpvar(_, inner, _, _) => { def = *inner; }
                           _ => break
                         }
                         i += 1;

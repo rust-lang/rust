@@ -74,8 +74,8 @@ use util::common::indenter;
 
 pub trait AstConv {
     fn tcx(&self) -> ty::ctxt;
-    fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty;
-    fn get_trait_def(&self, id: ast::def_id) -> @ty::TraitDef;
+    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty;
+    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef;
 
     // what type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> ty::t;
@@ -132,7 +132,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:RegionScope + Clone + 'static>(
 fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
-    def_id: ast::def_id,
+    def_id: ast::DefId,
     decl_generics: &ty::Generics,
     self_ty: Option<ty::t>,
     path: &ast::Path) -> ty::substs
@@ -203,7 +203,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
                                  RS:RegionScope + Clone + 'static>(
                                  this: &AC,
                                  rscope: &RS,
-                                 did: ast::def_id,
+                                 did: ast::DefId,
                                  path: &ast::Path)
                                  -> ty_param_substs_and_ty {
     let tcx = this.tcx();
@@ -220,7 +220,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
 pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope + Clone + 'static>(
     this: &AC,
     rscope: &RS,
-    trait_def_id: ast::def_id,
+    trait_def_id: ast::DefId,
     self_ty: Option<ty::t>,
     path: &ast::Path) -> @ty::TraitRef
 {
@@ -243,7 +243,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope + Clone + 'static>(
 pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope + Clone + 'static>(
         this: &AC,
         rscope: &RS,
-        did: ast::def_id,
+        did: ast::DefId,
         path: &ast::Path)
      -> ty_param_substs_and_ty
 {
@@ -286,7 +286,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
         match a_seq_ty.ty.node {
             ast::ty_vec(ref mt) => {
                 let mut mt = ast_mt_to_mt(this, rscope, mt);
-                if a_seq_ty.mutbl == ast::m_mutbl {
+                if a_seq_ty.mutbl == ast::MutMutable {
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
                 return ty::mk_evec(tcx, mt, vst);
@@ -296,11 +296,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
                 match tcx.def_map.find(&id) {
-                    Some(&ast::def_prim_ty(ast::ty_str)) if a_seq_ty.mutbl == ast::m_imm => {
+                    Some(&ast::DefPrimTy(ast::ty_str)) if a_seq_ty.mutbl == ast::MutImmutable => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
                     }
-                    Some(&ast::def_trait(trait_def_id)) => {
+                    Some(&ast::DefTrait(trait_def_id)) => {
                         let result = ast_path_to_trait_ref(
                             this, rscope, trait_def_id, None, path);
                         let trait_store = match vst {
@@ -430,14 +430,14 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
         // Kind bounds on path types are only supported for traits.
         match a_def {
             // But don't emit the error if the user meant to do a trait anyway.
-            ast::def_trait(*) => { },
+            ast::DefTrait(*) => { },
             _ if bounds.is_some() =>
                 tcx.sess.span_err(ast_ty.span,
                     "kind bounds can only be used on trait types"),
             _ => { },
         }
         match a_def {
-          ast::def_trait(_) => {
+          ast::DefTrait(_) => {
               let path_str = path_to_str(path, tcx.sess.intr());
               tcx.sess.span_err(
                   ast_ty.span,
@@ -446,10 +446,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
                        path_str, path_str, path_str, path_str));
               ty::mk_err()
           }
-          ast::def_ty(did) | ast::def_struct(did) => {
+          ast::DefTy(did) | ast::DefStruct(did) => {
             ast_path_to_ty(this, rscope, did, path).ty
           }
-          ast::def_prim_ty(nty) => {
+          ast::DefPrimTy(nty) => {
             match nty {
               ast::ty_bool => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -475,11 +475,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
               }
             }
           }
-          ast::def_ty_param(id, n) => {
+          ast::DefTyParam(id, n) => {
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self_ty(id) => {
+          ast::DefSelfTy(id) => {
             // n.b.: resolve guarantees that the this type only appears in a
             // trait, which we rely upon in various places when creating
             // substs
@@ -684,7 +684,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
             ast::sty_uniq => {
                 Some(ty::mk_uniq(this.tcx(),
                                  ty::mt {ty: self_info.untransformed_self_ty,
-                                         mutbl: ast::m_imm}))
+                                         mutbl: ast::MutImmutable}))
             }
         }
     }
@@ -788,7 +788,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
                 match *ast_bound {
                     ast::TraitTyParamBound(ref b) => {
                         match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
-                            ast::def_trait(trait_did) => {
+                            ast::DefTrait(trait_did) => {
                                 if ty::try_add_builtin_trait(tcx, trait_did,
                                                              &mut builtin_bounds) {
                                     loop; // success

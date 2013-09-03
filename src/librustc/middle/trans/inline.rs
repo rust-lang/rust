@@ -22,8 +22,8 @@ use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 
-pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::def_id)
-    -> ast::def_id {
+pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
+    -> ast::DefId {
     let _icx = push_ctxt("maybe_instantiate_inline");
     match ccx.external.find(&fn_id) {
         Some(&Some(node_id)) => {

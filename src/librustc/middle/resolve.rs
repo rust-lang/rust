@@ -43,18 +43,18 @@ use std::hashmap::{HashMap, HashSet};
 use std::util;
 
 // Definition mapping
-pub type DefMap = @mut HashMap<NodeId,def>;
+pub type DefMap = @mut HashMap<NodeId,Def>;
 
 pub struct binding_info {
     span: Span,
-    binding_mode: binding_mode,
+    binding_mode: BindingMode,
 }
 
 // Map from the name in a pattern to its binding mode.
 pub type BindingMap = HashMap<Ident,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<NodeId,@mut ~[def_id]>;
+pub type TraitMap = HashMap<NodeId,@mut ~[DefId]>;
 
 // A summary of the generics on a trait.
 struct TraitGenerics {
@@ -68,7 +68,7 @@ pub type ExportMap2 = @mut HashMap<NodeId, ~[Export2]>;
 
 pub struct Export2 {
     name: @str,        // The name of the target.
-    def_id: def_id,     // The definition of the target.
+    def_id: DefId,     // The definition of the target.
     reexport: bool,     // Whether this is a reexport.
 }
 
@@ -120,8 +120,8 @@ impl NamespaceResult {
 
 pub enum NameDefinition {
     NoNameDefinition,           //< The name was unbound.
-    ChildNameDefinition(def),   //< The name identifies an immediate child.
-    ImportNameDefinition(def)   //< The name identifies an import.
+    ChildNameDefinition(Def),   //< The name identifies an immediate child.
+    ImportNameDefinition(Def)   //< The name identifies an import.
 }
 
 #[deriving(Eq)]
@@ -143,13 +143,13 @@ impl Visitor<()> for ResolveVisitor {
     fn visit_item(&mut self, item:@item, _:()) {
         self.resolver.resolve_item(item, self);
     }
-    fn visit_arm(&mut self, arm:&arm, _:()) {
+    fn visit_arm(&mut self, arm:&Arm, _:()) {
         self.resolver.resolve_arm(arm, self);
     }
     fn visit_block(&mut self, block:&Block, _:()) {
         self.resolver.resolve_block(block, self);
     }
-    fn visit_expr(&mut self, expr:@expr, _:()) {
+    fn visit_expr(&mut self, expr:@Expr, _:()) {
         self.resolver.resolve_expr(expr, self);
     }
     fn visit_local(&mut self, local:@Local, _:()) {
@@ -293,8 +293,8 @@ enum NameSearchType {
 }
 
 pub enum BareIdentifierPatternResolution {
-    FoundStructOrEnumVariant(def),
-    FoundConst(def),
+    FoundStructOrEnumVariant(Def),
+    FoundConst(Def),
     BareIdentifierPatternUnresolved
 }
 
@@ -442,7 +442,7 @@ pub enum ModuleKind {
 /// One node in the tree of modules.
 pub struct Module {
     parent_link: ParentLink,
-    def_id: Option<def_id>,
+    def_id: Option<DefId>,
     kind: ModuleKind,
 
     children: @mut HashMap<Ident, @mut NameBindings>,
@@ -485,7 +485,7 @@ pub struct Module {
 
 impl Module {
     pub fn new(parent_link: ParentLink,
-                def_id: Option<def_id>,
+                def_id: Option<DefId>,
                 kind: ModuleKind,
                 external: bool)
                 -> Module {
@@ -514,14 +514,14 @@ impl Module {
 pub struct TypeNsDef {
     privacy: Privacy,
     module_def: Option<@mut Module>,
-    type_def: Option<def>,
+    type_def: Option<Def>,
     type_span: Option<Span>
 }
 
 // Records a possibly-private value definition.
 pub struct ValueNsDef {
     privacy: Privacy,
-    def: def,
+    def: Def,
     value_span: Option<Span>,
 }
 
@@ -544,7 +544,7 @@ impl NameBindings {
     pub fn define_module(@mut self,
                          privacy: Privacy,
                          parent_link: ParentLink,
-                         def_id: Option<def_id>,
+                         def_id: Option<DefId>,
                          kind: ModuleKind,
                          external: bool,
                          sp: Span) {
@@ -574,7 +574,7 @@ impl NameBindings {
     pub fn set_module_kind(@mut self,
                            privacy: Privacy,
                            parent_link: ParentLink,
-                           def_id: Option<def_id>,
+                           def_id: Option<DefId>,
                            kind: ModuleKind,
                            external: bool,
                            _sp: Span) {
@@ -609,7 +609,7 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    pub fn define_type(@mut self, privacy: Privacy, def: def, sp: Span) {
+    pub fn define_type(@mut self, privacy: Privacy, def: Def, sp: Span) {
         // Merges the type with the existing type def or creates a new one.
         match self.type_def {
             None => {
@@ -632,7 +632,7 @@ impl NameBindings {
     }
 
     /// Records a value definition.
-    pub fn define_value(@mut self, privacy: Privacy, def: def, sp: Span) {
+    pub fn define_value(@mut self, privacy: Privacy, def: Def, sp: Span) {
         self.value_def = Some(ValueNsDef { privacy: privacy, def: def, value_span: Some(sp) });
     }
 
@@ -678,7 +678,7 @@ impl NameBindings {
         }
     }
 
-    pub fn def_for_namespace(&self, namespace: Namespace) -> Option<def> {
+    pub fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
         match namespace {
             TypeNS => {
                 match self.type_def {
@@ -690,7 +690,7 @@ impl NameBindings {
                                 match type_def.module_def {
                                     Some(module) => {
                                         match module.def_id {
-                                            Some(did) => Some(def_mod(did)),
+                                            Some(did) => Some(DefMod(did)),
                                             None => None,
                                         }
                                     }
@@ -814,7 +814,7 @@ pub fn Resolver(session: Session,
 
     graph_root.define_module(Public,
                              NoParentLink,
-                             Some(def_id { crate: 0, node: 0 }),
+                             Some(DefId { crate: 0, node: 0 }),
                              NormalModuleKind,
                              false,
                              crate.span);
@@ -873,8 +873,8 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    method_map: @mut HashMap<Ident, HashSet<def_id>>,
-    structs: HashSet<def_id>,
+    method_map: @mut HashMap<Ident, HashSet<DefId>>,
+    structs: HashSet<DefId>,
 
     // The number of imports that are currently unresolved.
     unresolved_imports: uint,
@@ -897,7 +897,7 @@ pub struct Resolver {
     xray_context: XrayFlag,
 
     // The trait that the current context can refer to.
-    current_trait_refs: Option<~[def_id]>,
+    current_trait_refs: Option<~[DefId]>,
 
     // The ident for the keyword "self".
     self_ident: Ident,
@@ -1071,7 +1071,7 @@ impl Resolver {
                     }
                     ForbidDuplicateTypes => {
                         match child.def_for_namespace(TypeNS) {
-                            Some(def_mod(_)) | None => {}
+                            Some(DefMod(_)) | None => {}
                             Some(_) => duplicate_type = TypeError
                         }
                         Some(TypeNS)
@@ -1085,7 +1085,7 @@ impl Resolver {
                     ForbidDuplicateTypesAndValues => {
                         let mut n = None;
                         match child.def_for_namespace(TypeNS) {
-                            Some(def_mod(_)) | None => {}
+                            Some(DefMod(_)) | None => {}
                             Some(_) => {
                                 n = Some(TypeNS);
                                 duplicate_type = TypeError;
@@ -1131,9 +1131,9 @@ impl Resolver {
         // Check each statement.
         for statement in block.stmts.iter() {
             match statement.node {
-                stmt_decl(declaration, _) => {
+                StmtDecl(declaration, _) => {
                     match declaration.node {
-                        decl_item(_) => {
+                        DeclItem(_) => {
                             return true;
                         }
                         _ => {
@@ -1177,7 +1177,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(new_parent, ident);
-                let def_id = def_id { crate: 0, node: item.id };
+                let def_id = DefId { crate: 0, node: item.id };
                 name_bindings.define_module(privacy,
                                             parent_link,
                                             Some(def_id),
@@ -1200,7 +1200,7 @@ impl Resolver {
 
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
-                        let def_id = def_id { crate: 0, node: item.id };
+                        let def_id = DefId { crate: 0, node: item.id };
                         name_bindings.define_module(privacy,
                                                     parent_link,
                                                     Some(def_id),
@@ -1223,16 +1223,16 @@ impl Resolver {
             item_static(_, m, _) => {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateValues, sp);
-                let mutbl = m == ast::m_mutbl;
+                let mutbl = m == ast::MutMutable;
 
                 name_bindings.define_value
-                    (privacy, def_static(local_def(item.id), mutbl), sp);
+                    (privacy, DefStatic(local_def(item.id), mutbl), sp);
             }
             item_fn(_, purity, _, _, _) => {
               let (name_bindings, new_parent) =
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
-                let def = def_fn(local_def(item.id), purity);
+                let def = DefFn(local_def(item.id), purity);
                 name_bindings.define_value(privacy, def, sp);
                 visit::walk_item(visitor, item, new_parent);
             }
@@ -1243,7 +1243,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 name_bindings.define_type
-                    (privacy, def_ty(local_def(item.id)), sp);
+                    (privacy, DefTy(local_def(item.id)), sp);
             }
 
             item_enum(ref enum_definition, _) => {
@@ -1251,7 +1251,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
                 name_bindings.define_type
-                    (privacy, def_ty(local_def(item.id)), sp);
+                    (privacy, DefTy(local_def(item.id)), sp);
 
                 for variant in (*enum_definition).variants.iter() {
                     self.build_reduced_graph_for_variant(
@@ -1275,12 +1275,12 @@ impl Resolver {
                 let (name_bindings, new_parent) = self.add_child(ident, parent, forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(privacy, def_ty(local_def(item.id)), sp);
+                name_bindings.define_type(privacy, DefTy(local_def(item.id)), sp);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
                 do ctor_id.while_some |cid| {
-                    name_bindings.define_value(privacy, def_struct(local_def(cid)), sp);
+                    name_bindings.define_value(privacy, DefStruct(local_def(cid)), sp);
                     None
                 }
 
@@ -1351,7 +1351,7 @@ impl Resolver {
                                 sty_static => {
                                     // Static methods become
                                     // `def_static_method`s.
-                                    def_static_method(local_def(method.id),
+                                    DefStaticMethod(local_def(method.id),
                                                       FromImpl(local_def(
                                                         item.id)),
                                                       method.purity)
@@ -1359,7 +1359,7 @@ impl Resolver {
                                 _ => {
                                     // Non-static methods become
                                     // `def_method`s.
-                                    def_method(local_def(method.id), None)
+                                    DefMethod(local_def(method.id), None)
                                 }
                             };
 
@@ -1404,13 +1404,13 @@ impl Resolver {
                     let def = match ty_m.explicit_self.node {
                         sty_static => {
                             // Static methods become `def_static_method`s.
-                            def_static_method(local_def(ty_m.id),
+                            DefStaticMethod(local_def(ty_m.id),
                                               FromTrait(local_def(item.id)),
                                               ty_m.purity)
                         }
                         _ => {
                             // Non-static methods become `def_method`s.
-                            def_method(local_def(ty_m.id),
+                            DefMethod(local_def(ty_m.id),
                                        Some(local_def(item.id)))
                         }
                     };
@@ -1442,7 +1442,7 @@ impl Resolver {
                     }
                 }
 
-                name_bindings.define_type(privacy, def_trait(def_id), sp);
+                name_bindings.define_type(privacy, DefTrait(def_id), sp);
                 visit::walk_item(visitor, item, new_parent);
             }
 
@@ -1456,7 +1456,7 @@ impl Resolver {
     // type and/or value namespaces.
     pub fn build_reduced_graph_for_variant(@mut self,
                                            variant: &variant,
-                                           item_id: def_id,
+                                           item_id: DefId,
                                            parent_privacy: Privacy,
                                            parent: ReducedGraphParent,
                                            _: &mut BuildReducedGraphVisitor) {
@@ -1474,7 +1474,7 @@ impl Resolver {
                 let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                                 variant.span);
                 child.define_value(privacy,
-                                   def_variant(item_id,
+                                   DefVariant(item_id,
                                                local_def(variant.node.id)),
                                    variant.span);
             }
@@ -1482,7 +1482,7 @@ impl Resolver {
                 let (child, _) = self.add_child(ident, parent, ForbidDuplicateTypesAndValues,
                                                 variant.span);
                 child.define_type(privacy,
-                                  def_variant(item_id,
+                                  DefVariant(item_id,
                                               local_def(variant.node.id)),
                                   variant.span);
                 self.structs.insert(local_def(variant.node.id));
@@ -1573,7 +1573,7 @@ impl Resolver {
                 match find_extern_mod_stmt_cnum(self.session.cstore,
                                                         node_id) {
                     Some(crate_id) => {
-                        let def_id = def_id { crate: crate_id, node: 0 };
+                        let def_id = DefId { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(parent), name);
                         let external_module = @mut Module::new(parent_link,
@@ -1607,7 +1607,7 @@ impl Resolver {
 
         match foreign_item.node {
             foreign_item_fn(_, ref generics) => {
-                let def = def_fn(local_def(foreign_item.id), unsafe_fn);
+                let def = DefFn(local_def(foreign_item.id), unsafe_fn);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib(
@@ -1618,7 +1618,7 @@ impl Resolver {
                 }
             }
             foreign_item_static(_, m) => {
-                let def = def_static(local_def(foreign_item.id), m);
+                let def = DefStatic(local_def(foreign_item.id), m);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
                 visit::walk_foreign_item(visitor, foreign_item, new_parent);
@@ -1655,7 +1655,7 @@ impl Resolver {
     }
 
     fn handle_external_def(@mut self,
-                           def: def,
+                           def: Def,
                            visibility: ast::visibility,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
@@ -1663,8 +1663,8 @@ impl Resolver {
                            new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
         match def {
-          def_mod(def_id) | def_foreign_mod(def_id) | def_struct(def_id) |
-          def_ty(def_id) => {
+          DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
+          DefTy(def_id) => {
             match child_name_bindings.type_def {
               Some(TypeNsDef { module_def: Some(module_def), _ }) => {
                 debug!("(building reduced graph for external crate) \
@@ -1690,8 +1690,8 @@ impl Resolver {
         }
 
         match def {
-          def_mod(_) | def_foreign_mod(_) => {}
-          def_variant(*) => {
+          DefMod(_) | DefForeignMod(_) => {}
+          DefVariant(*) => {
             debug!("(building reduced graph for external crate) building \
                     variant %s",
                    final_ident);
@@ -1700,12 +1700,12 @@ impl Resolver {
             let privacy = variant_visibility_to_privacy(visibility, true);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
-          def_fn(*) | def_static_method(*) | def_static(*) => {
+          DefFn(*) | DefStaticMethod(*) | DefStatic(*) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) %s", final_ident);
             child_name_bindings.define_value(privacy, def, dummy_sp());
           }
-          def_trait(def_id) => {
+          DefTrait(def_id) => {
               debug!("(building reduced graph for external \
                       crate) building type %s", final_ident);
 
@@ -1751,13 +1751,13 @@ impl Resolver {
                                                   true,
                                                   dummy_sp())
           }
-          def_ty(_) => {
+          DefTy(_) => {
               debug!("(building reduced graph for external \
                       crate) building type %s", final_ident);
 
               child_name_bindings.define_type(privacy, def, dummy_sp());
           }
-          def_struct(def_id) => {
+          DefStruct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type and value for %s",
                    final_ident);
@@ -1767,13 +1767,13 @@ impl Resolver {
             }
             self.structs.insert(def_id);
           }
-          def_method(*) => {
+          DefMethod(*) => {
             // Ignored; handled elsewhere.
           }
-          def_self(*) | def_arg(*) | def_local(*) |
-          def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
-          def_use(*) | def_upvar(*) | def_region(*) |
-          def_typaram_binder(*) | def_label(*) | def_self_ty(*) => {
+          DefSelf(*) | DefArg(*) | DefLocal(*) |
+          DefPrimTy(*) | DefTyParam(*) | DefBinding(*) |
+          DefUse(*) | DefUpvar(*) | DefRegion(*) |
+          DefTyParamBinder(*) | DefLabel(*) | DefSelfTy(*) => {
             fail!("didn't expect `%?`", def);
           }
         }
@@ -1788,7 +1788,7 @@ impl Resolver {
             DlDef(def) => {
                 // Add the new child item, if necessary.
                 match def {
-                    def_foreign_mod(def_id) => {
+                    DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
                         do csearch::each_child_of_item(self.session.cstore,
@@ -1889,7 +1889,7 @@ impl Resolver {
                                                        new_parent,
                                                        OverwriteDuplicates,
                                                        dummy_sp());
-                                    let def = def_fn(
+                                    let def = DefFn(
                                         static_method_info.def_id,
                                         static_method_info.purity);
                                     method_name_bindings.define_value(
@@ -3395,16 +3395,16 @@ impl Resolver {
         let is_ty_param;
 
         match def_like {
-            DlDef(d @ def_local(*)) | DlDef(d @ def_upvar(*)) |
-            DlDef(d @ def_arg(*)) | DlDef(d @ def_binding(*)) => {
+            DlDef(d @ DefLocal(*)) | DlDef(d @ DefUpvar(*)) |
+            DlDef(d @ DefArg(*)) | DlDef(d @ DefBinding(*)) => {
                 def = d;
                 is_ty_param = false;
             }
-            DlDef(d @ def_ty_param(*)) => {
+            DlDef(d @ DefTyParam(*)) => {
                 def = d;
                 is_ty_param = true;
             }
-            DlDef(d @ def_self(*))
+            DlDef(d @ DefSelf(*))
                     if allow_capturing_self == DontAllowCapturingSelf => {
                 def = d;
                 is_ty_param = false;
@@ -3422,7 +3422,7 @@ impl Resolver {
                 }
                 FunctionRibKind(function_id, body_id) => {
                     if !is_ty_param {
-                        def = def_upvar(def_id_of_def(def).node,
+                        def = DefUpvar(def_id_of_def(def).node,
                                         @def,
                                         function_id,
                                         body_id);
@@ -3432,9 +3432,9 @@ impl Resolver {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
                   match def {
-                    def_ty_param(did, _)
+                    DefTyParam(did, _)
                         if self.def_map.find(&did.node).map_move(|x| *x)
-                            == Some(def_typaram_binder(item_id)) => {
+                            == Some(DefTyParamBinder(item_id)) => {
                       // ok
                     }
                     _ => {
@@ -3592,7 +3592,7 @@ impl Resolver {
                 let self_type_rib = @Rib::new(NormalRibKind);
                 self.type_ribs.push(self_type_rib);
                 self_type_rib.bindings.insert(self.type_self_ident,
-                                              DlDef(def_self_ty(item.id)));
+                                              DlDef(DefSelfTy(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
@@ -3726,13 +3726,13 @@ impl Resolver {
                     let name = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
-                    let def_like = DlDef(def_ty_param
+                    let def_like = DlDef(DefTyParam
                         (local_def(type_parameter.id),
                          index + initial_index));
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
-                                    def_typaram_binder(node_id));
+                                    DefTyParamBinder(node_id));
                     function_type_rib.bindings.insert(name, def_like);
                 }
             }
@@ -3801,7 +3801,7 @@ impl Resolver {
                     // Nothing to do.
                 }
                 HasSelfBinding(self_node_id) => {
-                    let def_like = DlDef(def_self(self_node_id));
+                    let def_like = DlDef(DefSelf(self_node_id));
                     *function_value_rib.self_binding = Some(def_like);
                 }
             }
@@ -4064,7 +4064,7 @@ impl Resolver {
                              None, visitor);
     }
 
-    pub fn binding_mode_map(@mut self, pat: @pat) -> BindingMap {
+    pub fn binding_mode_map(@mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
             let ident = path_to_ident(path);
@@ -4075,7 +4075,7 @@ impl Resolver {
         return result;
     }
 
-    pub fn check_consistent_bindings(@mut self, arm: &arm) {
+    pub fn check_consistent_bindings(@mut self, arm: &Arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
         for (i, p) in arm.pats.iter().enumerate() {
@@ -4114,7 +4114,7 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_arm(@mut self, arm: &arm, visitor: &mut ResolveVisitor) {
+    pub fn resolve_arm(@mut self, arm: &Arm, visitor: &mut ResolveVisitor) {
         self.value_ribs.push(@Rib::new(NormalRibKind));
 
         let bindings_list = @mut HashMap::new();
@@ -4178,7 +4178,7 @@ impl Resolver {
 
                         Some(&primitive_type) => {
                             result_def =
-                                Some(def_prim_ty(primitive_type));
+                                Some(DefPrimTy(primitive_type));
 
                             if path.segments
                                    .iter()
@@ -4267,7 +4267,7 @@ impl Resolver {
     }
 
     pub fn resolve_pattern(@mut self,
-                           pattern: @pat,
+                           pattern: @Pat,
                            mode: PatternBindingMode,
                            mutability: Mutability,
                            // Maps idents to the node ID for the (outermost)
@@ -4277,7 +4277,7 @@ impl Resolver {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             match pattern.node {
-                pat_ident(binding_mode, ref path, _)
+                PatIdent(binding_mode, ref path, _)
                         if !path.global && path.segments.len() == 1 => {
 
                     // The meaning of pat_ident with no type parameters
@@ -4340,15 +4340,15 @@ impl Resolver {
                                     // For pattern arms, we must use
                                     // `def_binding` definitions.
 
-                                    def_binding(pattern.id, binding_mode)
+                                    DefBinding(pattern.id, binding_mode)
                                 }
                                 LocalIrrefutableMode => {
                                     // But for locals, we use `def_local`.
-                                    def_local(pattern.id, is_mutable)
+                                    DefLocal(pattern.id, is_mutable)
                                 }
                                 ArgumentIrrefutableMode => {
                                     // And for function arguments, `def_arg`.
-                                    def_arg(pattern.id, is_mutable)
+                                    DefArg(pattern.id, is_mutable)
                                 }
                             };
 
@@ -4406,14 +4406,14 @@ impl Resolver {
                     }
                 }
 
-                pat_ident(binding_mode, ref path, _) => {
+                PatIdent(binding_mode, ref path, _) => {
                     // This must be an enum variant, struct, or constant.
                     match self.resolve_path(pat_id, path, ValueNS, false, visitor) {
-                        Some(def @ def_variant(*)) |
-                                Some(def @ def_struct(*)) => {
+                        Some(def @ DefVariant(*)) |
+                                Some(def @ DefStruct(*)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some(def @ def_static(*)) => {
+                        Some(def @ DefStatic(*)) => {
                             self.enforce_default_binding_mode(
                                 pattern,
                                 binding_mode,
@@ -4441,13 +4441,13 @@ impl Resolver {
                     }
                 }
 
-                pat_enum(ref path, _) => {
+                PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(pat_id, path, ValueNS, false, visitor) {
-                        Some(def @ def_fn(*))      |
-                        Some(def @ def_variant(*)) |
-                        Some(def @ def_struct(*))  |
-                        Some(def @ def_static(*)) => {
+                        Some(def @ DefFn(*))      |
+                        Some(def @ DefVariant(*)) |
+                        Some(def @ DefStruct(*))  |
+                        Some(def @ DefStatic(*)) => {
                             self.record_def(pattern.id, def);
                         }
                         Some(_) => {
@@ -4461,8 +4461,12 @@ impl Resolver {
                         }
                         None => {
                             self.resolve_error(path.span,
-                                                  "unresolved enum variant, \
-                                                   struct or const");
+                                               fmt!("unresolved enum variant, \
+                                                    struct or const `%s`",
+                                                    self.session
+                                                        .str_of(path.segments
+                                                                    .last()
+                                                                    .identifier)));
                         }
                     }
 
@@ -4474,27 +4478,27 @@ impl Resolver {
                     }
                 }
 
-                pat_lit(expr) => {
+                PatLit(expr) => {
                     self.resolve_expr(expr, visitor);
                 }
 
-                pat_range(first_expr, last_expr) => {
+                PatRange(first_expr, last_expr) => {
                     self.resolve_expr(first_expr, visitor);
                     self.resolve_expr(last_expr, visitor);
                 }
 
-                pat_struct(ref path, _, _) => {
+                PatStruct(ref path, _, _) => {
                     match self.resolve_path(pat_id, path, TypeNS, false, visitor) {
-                        Some(def_ty(class_id))
+                        Some(DefTy(class_id))
                                 if self.structs.contains(&class_id) => {
-                            let class_def = def_struct(class_id);
+                            let class_def = DefStruct(class_id);
                             self.record_def(pattern.id, class_def);
                         }
-                        Some(definition @ def_struct(class_id)) => {
+                        Some(definition @ DefStruct(class_id)) => {
                             assert!(self.structs.contains(&class_id));
                             self.record_def(pattern.id, definition);
                         }
-                        Some(definition @ def_variant(_, variant_id))
+                        Some(definition @ DefVariant(_, variant_id))
                                 if self.structs.contains(&variant_id) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -4532,10 +4536,10 @@ impl Resolver {
                     }
                     Some(def) => {
                         match def.def {
-                            def @ def_variant(*) | def @ def_struct(*) => {
+                            def @ DefVariant(*) | def @ DefStruct(*) => {
                                 return FoundStructOrEnumVariant(def);
                             }
-                            def @ def_static(_, false) => {
+                            def @ DefStatic(_, false) => {
                                 return FoundConst(def);
                             }
                             _ => {
@@ -4564,7 +4568,7 @@ impl Resolver {
                         namespace: Namespace,
                         check_ribs: bool,
                         visitor: &mut ResolveVisitor)
-                        -> Option<def> {
+                        -> Option<Def> {
         // First, resolve the types.
         for ty in path.segments.iter().flat_map(|s| s.types.iter()) {
             self.resolve_type(ty, visitor);
@@ -4608,7 +4612,7 @@ impl Resolver {
                               namespace: Namespace,
                               check_ribs: bool,
                               span: Span)
-                              -> Option<def> {
+                              -> Option<Def> {
         if check_ribs {
             match self.resolve_identifier_in_local_ribs(identifier,
                                                       namespace,
@@ -4692,7 +4696,7 @@ impl Resolver {
                     match module.def_id {
                         None => {} // Continue.
                         Some(def_id) => {
-                            return ChildNameDefinition(def_mod(def_id));
+                            return ChildNameDefinition(DefMod(def_id));
                         }
                     }
                 }
@@ -4719,7 +4723,7 @@ impl Resolver {
                                         path: &Path,
                                         xray: XrayFlag,
                                         namespace: Namespace)
-                                        -> Option<def> {
+                                        -> Option<Def> {
         let module_path_idents = self.intern_module_part_of_path(path);
 
         let containing_module;
@@ -4785,7 +4789,7 @@ impl Resolver {
                                        path: &Path,
                                        xray: XrayFlag,
                                        namespace: Namespace)
-                                       -> Option<def> {
+                                       -> Option<Def> {
         let module_path_idents = self.intern_module_part_of_path(path);
 
         let root_module = self.graph_root.get_module();
@@ -4832,7 +4836,7 @@ impl Resolver {
                                             ident: Ident,
                                             namespace: Namespace,
                                             span: Span)
-                                            -> Option<def> {
+                                            -> Option<Def> {
         // Check the local set of ribs.
         let search_result;
         match namespace {
@@ -4862,7 +4866,7 @@ impl Resolver {
     }
 
     pub fn resolve_self_value_in_local_ribs(@mut self, span: Span)
-                                            -> Option<def> {
+                                            -> Option<Def> {
         // FIXME #4950: This should not use a while loop.
         let ribs = &mut self.value_ribs;
         let mut i = ribs.len();
@@ -4897,7 +4901,7 @@ impl Resolver {
     pub fn resolve_item_by_identifier_in_lexical_scope(@mut self,
                                                        ident: Ident,
                                                        namespace: Namespace)
-                                                       -> Option<def> {
+                                                       -> Option<Def> {
         // Check the items.
         match self.resolve_item_in_lexical_scope(self.current_module,
                                                  ident,
@@ -5014,7 +5018,7 @@ impl Resolver {
       return false;
     }
 
-    pub fn resolve_expr(@mut self, expr: @expr, visitor: &mut ResolveVisitor) {
+    pub fn resolve_expr(@mut self, expr: @Expr, visitor: &mut ResolveVisitor) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -5025,7 +5029,7 @@ impl Resolver {
             // The interpretation of paths depends on whether the path has
             // multiple elements in it or not.
 
-            expr_path(ref path) => {
+            ExprPath(ref path) => {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
@@ -5038,7 +5042,7 @@ impl Resolver {
                         // First-class methods are not supported yet; error
                         // out here.
                         match def {
-                            def_method(*) => {
+                            DefMethod(*) => {
                                 self.resolve_error(expr.span,
                                                       "first-class methods \
                                                        are not supported");
@@ -5068,7 +5072,7 @@ impl Resolver {
                             // structs, which wouldn't result in this error.)
                             match self.with_no_errors(||
                                 self.resolve_path(expr.id, path, TypeNS, false, visitor)) {
-                                Some(def_ty(struct_id))
+                                Some(DefTy(struct_id))
                                   if self.structs.contains(&struct_id) => {
                                     self.resolve_error(expr.span,
                                             fmt!("`%s` is a structure name, but this expression \
@@ -5102,7 +5106,7 @@ impl Resolver {
                 visit::walk_expr(visitor, expr, ());
             }
 
-            expr_fn_block(ref fn_decl, ref block) => {
+            ExprFnBlock(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
                                       Some(fn_decl),
                                       NoTypeParameters,
@@ -5111,15 +5115,15 @@ impl Resolver {
                                       visitor);
             }
 
-            expr_struct(ref path, _, _) => {
+            ExprStruct(ref path, _, _) => {
                 // Resolve the path to the structure it goes to.
                 match self.resolve_path(expr.id, path, TypeNS, false, visitor) {
-                    Some(def_ty(class_id)) | Some(def_struct(class_id))
+                    Some(DefTy(class_id)) | Some(DefStruct(class_id))
                             if self.structs.contains(&class_id) => {
-                        let class_def = def_struct(class_id);
+                        let class_def = DefStruct(class_id);
                         self.record_def(expr.id, class_def);
                     }
-                    Some(definition @ def_variant(_, class_id))
+                    Some(definition @ DefVariant(_, class_id))
                             if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
@@ -5136,11 +5140,11 @@ impl Resolver {
                 visit::walk_expr(visitor, expr, ());
             }
 
-            expr_loop(_, Some(label)) => {
+            ExprLoop(_, Some(label)) => {
                 do self.with_label_rib {
                     {
                         let this = &mut *self;
-                        let def_like = DlDef(def_label(expr.id));
+                        let def_like = DlDef(DefLabel(expr.id));
                         let rib = this.label_ribs[this.label_ribs.len() - 1];
                         rib.bindings.insert(label, def_like);
                     }
@@ -5149,9 +5153,9 @@ impl Resolver {
                 }
             }
 
-            expr_for_loop(*) => fail!("non-desugared expr_for_loop"),
+            ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
-            expr_break(Some(label)) | expr_again(Some(label)) => {
+            ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 match self.search_ribs(self.label_ribs, label, expr.span,
                                        DontAllowCapturingSelf) {
                     None =>
@@ -5160,7 +5164,7 @@ impl Resolver {
                                                    `%s`",
                                                    self.session.str_of(
                                                        label))),
-                    Some(DlDef(def @ def_label(_))) => {
+                    Some(DlDef(def @ DefLabel(_))) => {
                         self.record_def(expr.id, def)
                     }
                     Some(_) => {
@@ -5171,7 +5175,7 @@ impl Resolver {
                 }
             }
 
-            expr_self => {
+            ExprSelf => {
                 match self.resolve_self_value_in_local_ribs(expr.span) {
                     None => {
                         self.resolve_error(expr.span,
@@ -5189,9 +5193,9 @@ impl Resolver {
     }
 
     pub fn record_candidate_traits_for_expr_if_necessary(@mut self,
-                                                         expr: @expr) {
+                                                         expr: @Expr) {
         match expr.node {
-            expr_field(_, ident, _) => {
+            ExprField(_, ident, _) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
@@ -5199,71 +5203,71 @@ impl Resolver {
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
-            expr_method_call(_, _, ident, _, _, _) => {
+            ExprMethodCall(_, _, ident, _, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for %d",
                        expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
-            expr_binary(_, add, _, _) | expr_assign_op(_, add, _, _) => {
+            ExprBinary(_, BiAdd, _, _) | ExprAssignOp(_, BiAdd, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.add_trait());
             }
-            expr_binary(_, subtract, _, _) | expr_assign_op(_, subtract, _, _) => {
+            ExprBinary(_, BiSub, _, _) | ExprAssignOp(_, BiSub, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.sub_trait());
             }
-            expr_binary(_, mul, _, _) | expr_assign_op(_, mul, _, _) => {
+            ExprBinary(_, BiMul, _, _) | ExprAssignOp(_, BiMul, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.mul_trait());
             }
-            expr_binary(_, div, _, _) | expr_assign_op(_, div, _, _) => {
+            ExprBinary(_, BiDiv, _, _) | ExprAssignOp(_, BiDiv, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.div_trait());
             }
-            expr_binary(_, rem, _, _) | expr_assign_op(_, rem, _, _) => {
+            ExprBinary(_, BiRem, _, _) | ExprAssignOp(_, BiRem, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.rem_trait());
             }
-            expr_binary(_, bitxor, _, _) | expr_assign_op(_, bitxor, _, _) => {
+            ExprBinary(_, BiBitXor, _, _) | ExprAssignOp(_, BiBitXor, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitxor_trait());
             }
-            expr_binary(_, bitand, _, _) | expr_assign_op(_, bitand, _, _) => {
+            ExprBinary(_, BiBitAnd, _, _) | ExprAssignOp(_, BiBitAnd, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitand_trait());
             }
-            expr_binary(_, bitor, _, _) | expr_assign_op(_, bitor, _, _) => {
+            ExprBinary(_, BiBitOr, _, _) | ExprAssignOp(_, BiBitOr, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitor_trait());
             }
-            expr_binary(_, shl, _, _) | expr_assign_op(_, shl, _, _) => {
+            ExprBinary(_, BiShl, _, _) | ExprAssignOp(_, BiShl, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shl_trait());
             }
-            expr_binary(_, shr, _, _) | expr_assign_op(_, shr, _, _) => {
+            ExprBinary(_, BiShr, _, _) | ExprAssignOp(_, BiShr, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shr_trait());
             }
-            expr_binary(_, lt, _, _) | expr_binary(_, le, _, _) |
-            expr_binary(_, ge, _, _) | expr_binary(_, gt, _, _) => {
+            ExprBinary(_, BiLt, _, _) | ExprBinary(_, BiLe, _, _) |
+            ExprBinary(_, BiGe, _, _) | ExprBinary(_, BiGt, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.ord_trait());
             }
-            expr_binary(_, eq, _, _) | expr_binary(_, ne, _, _) => {
+            ExprBinary(_, BiEq, _, _) | ExprBinary(_, BiNe, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.eq_trait());
             }
-            expr_unary(_, neg, _) => {
+            ExprUnary(_, UnNeg, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.neg_trait());
             }
-            expr_unary(_, not, _) => {
+            ExprUnary(_, UnNot, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.not_trait());
             }
-            expr_index(*) => {
+            ExprIndex(*) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.index_trait());
             }
@@ -5274,7 +5278,7 @@ impl Resolver {
     }
 
     pub fn search_for_traits_containing_method(@mut self, name: Ident)
-                                               -> ~[def_id] {
+                                               -> ~[DefId] {
         debug!("(searching for traits containing method) looking for '%s'",
                self.session.str_of(name));
 
@@ -5305,7 +5309,7 @@ impl Resolver {
                     match child_name_bindings.def_for_namespace(TypeNS) {
                         Some(def) => {
                             match def {
-                                def_trait(trait_def_id) => {
+                                DefTrait(trait_def_id) => {
                                     if candidate_traits.contains(&trait_def_id) {
                                         self.add_trait_info(
                                             &mut found_traits,
@@ -5333,7 +5337,7 @@ impl Resolver {
                             match target.bindings.def_for_namespace(TypeNS) {
                                 Some(def) => {
                                     match def {
-                                        def_trait(trait_def_id) => {
+                                        DefTrait(trait_def_id) => {
                                             if candidate_traits.contains(&trait_def_id) {
                                                 self.add_trait_info(
                                                     &mut found_traits,
@@ -5374,8 +5378,8 @@ impl Resolver {
     }
 
     pub fn add_trait_info(&self,
-                          found_traits: &mut ~[def_id],
-                          trait_def_id: def_id,
+                          found_traits: &mut ~[DefId],
+                          trait_def_id: DefId,
                           name: Ident) {
         debug!("(adding trait info) found trait %d:%d for method '%s'",
                trait_def_id.crate,
@@ -5386,7 +5390,7 @@ impl Resolver {
 
     pub fn add_fixed_trait_for_expr(@mut self,
                                     expr_id: NodeId,
-                                    trait_id: Option<def_id>) {
+                                    trait_id: Option<DefId>) {
         match trait_id {
             Some(trait_id) => {
                 self.trait_map.insert(expr_id, @mut ~[trait_id]);
@@ -5395,18 +5399,18 @@ impl Resolver {
         }
     }
 
-    pub fn record_def(@mut self, node_id: NodeId, def: def) {
+    pub fn record_def(@mut self, node_id: NodeId, def: Def) {
         debug!("(recording def) recording %? for %?", def, node_id);
         self.def_map.insert(node_id, def);
     }
 
     pub fn enforce_default_binding_mode(@mut self,
-                                        pat: @pat,
-                                        pat_binding_mode: binding_mode,
+                                        pat: @Pat,
+                                        pat_binding_mode: BindingMode,
                                         descr: &str) {
         match pat_binding_mode {
-            bind_infer => {}
-            bind_by_ref(*) => {
+            BindInfer => {}
+            BindByRef(*) => {
                 self.resolve_error(
                     pat.span,
                     fmt!("cannot use `ref` binding mode with %s",

@@ -20,9 +20,9 @@ struct EachBindingVisitor {
 }
 
 impl visit::Visitor<()> for EachBindingVisitor {
-    fn visit_pat(&mut self, pat:@ast::pat, _:()) {
+    fn visit_pat(&mut self, pat:@ast::Pat, _:()) {
                 match pat.node {
-                    ast::pat_ident(_, ref path, _) => {
+                    ast::PatIdent(_, ref path, _) => {
                         (self.f)(path, pat.id);
                     }
                     _ => {}

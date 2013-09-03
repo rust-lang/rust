@@ -42,7 +42,7 @@ impl Visitor<Context> for StackCheckVisitor {
                 b:&ast::Block, s:Span, n:ast::NodeId, e:Context) {
         stack_check_fn(*self, fk, fd, b, s, n, e);
     }
-    fn visit_expr(&mut self, ex:@ast::expr, e:Context) {
+    fn visit_expr(&mut self, ex:@ast::Expr, e:Context) {
         stack_check_expr(*self, ex, e);
     }
 }
@@ -121,13 +121,13 @@ fn stack_check_fn<'a>(v: StackCheckVisitor,
 }
 
 fn stack_check_expr<'a>(v: StackCheckVisitor,
-                        expr: @ast::expr,
+                        expr: @ast::Expr,
                         cx: Context) {
     debug!("stack_check_expr(safe_stack=%b, expr=%s)",
            cx.safe_stack, expr.repr(cx.tcx));
     if !cx.safe_stack {
         match expr.node {
-            ast::expr_call(callee, _, _) => {
+            ast::ExprCall(callee, _, _) => {
                 let callee_ty = ty::expr_ty(cx.tcx, callee);
                 debug!("callee_ty=%s", callee_ty.repr(cx.tcx));
                 match ty::get(callee_ty).sty {
@@ -146,13 +146,13 @@ fn stack_check_expr<'a>(v: StackCheckVisitor,
     visit::walk_expr(&mut v, expr, cx);
 }
 
-fn call_to_extern_fn(cx: Context, callee: @ast::expr) {
+fn call_to_extern_fn(cx: Context, callee: @ast::Expr) {
     // Permit direct calls to extern fns that are annotated with
     // #[rust_stack]. This is naturally a horrible pain to achieve.
     match callee.node {
-        ast::expr_path(*) => {
+        ast::ExprPath(*) => {
             match cx.tcx.def_map.find(&callee.id) {
-                Some(&ast::def_fn(id, _)) if id.crate == ast::LOCAL_CRATE => {
+                Some(&ast::DefFn(id, _)) if id.crate == ast::LOCAL_CRATE => {
                     match cx.tcx.items.find(&id.node) {
                         Some(&ast_map::node_foreign_item(item, _, _, _)) => {
                             if attr::contains_name(item.attrs, "rust_stack") {

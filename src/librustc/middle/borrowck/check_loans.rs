@@ -23,7 +23,7 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
-use syntax::ast::{m_imm, m_mutbl};
+use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -43,7 +43,7 @@ struct CheckLoanCtxt<'self> {
 struct CheckLoanVisitor;
 
 impl<'self> Visitor<CheckLoanCtxt<'self>> for CheckLoanVisitor {
-    fn visit_expr<'a>(&mut self, ex:@ast::expr, e:CheckLoanCtxt<'a>) {
+    fn visit_expr<'a>(&mut self, ex:@ast::Expr, e:CheckLoanCtxt<'a>) {
         check_loans_in_expr(self, ex, e);
     }
     fn visit_local(&mut self, l:@ast::Local, e:CheckLoanCtxt) {
@@ -52,7 +52,7 @@ impl<'self> Visitor<CheckLoanCtxt<'self>> for CheckLoanVisitor {
     fn visit_block(&mut self, b:&ast::Block, e:CheckLoanCtxt) {
         check_loans_in_block(self, b, e);
     }
-    fn visit_pat(&mut self, p:@ast::pat, e:CheckLoanCtxt) {
+    fn visit_pat(&mut self, p:@ast::Pat, e:CheckLoanCtxt) {
         check_loans_in_pat(self, p, e);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
@@ -332,7 +332,7 @@ impl<'self> CheckLoanCtxt<'self> {
         };
     }
 
-    pub fn check_assignment(&self, expr: @ast::expr) {
+    pub fn check_assignment(&self, expr: @ast::Expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
         let cmt = match self.bccx.tcx.adjustments.find(&expr.id) {
@@ -432,7 +432,7 @@ impl<'self> CheckLoanCtxt<'self> {
         }
 
         fn check_for_aliasable_mutable_writes(this: &CheckLoanCtxt,
-                                              expr: @ast::expr,
+                                              expr: @ast::Expr,
                                               cmt: mc::cmt) -> bool {
             //! Safety checks related to writes to aliasable, mutable locations
 
@@ -440,13 +440,13 @@ impl<'self> CheckLoanCtxt<'self> {
             debug!("check_for_aliasable_mutable_writes(cmt=%s, guarantor=%s)",
                    cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
             match guarantor.cat {
-                mc::cat_deref(b, _, mc::region_ptr(m_mutbl, _)) => {
+                mc::cat_deref(b, _, mc::region_ptr(MutMutable, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
 
                     check_for_aliasability_violation(this, expr, b);
                 }
 
-                mc::cat_deref(_, deref_count, mc::gc_ptr(ast::m_mutbl)) => {
+                mc::cat_deref(_, deref_count, mc::gc_ptr(ast::MutMutable)) => {
                     // Dynamically check writes to `@mut`
 
                     let key = root_map_key {
@@ -464,13 +464,13 @@ impl<'self> CheckLoanCtxt<'self> {
         }
 
         fn check_for_aliasability_violation(this: &CheckLoanCtxt,
-                                            expr: @ast::expr,
+                                            expr: @ast::Expr,
                                             cmt: mc::cmt) -> bool {
             let mut cmt = cmt;
 
             loop {
                 match cmt.cat {
-                    mc::cat_deref(b, _, mc::region_ptr(m_mutbl, _)) |
+                    mc::cat_deref(b, _, mc::region_ptr(MutMutable, _)) |
                     mc::cat_downcast(b) |
                     mc::cat_stack_upvar(b) |
                     mc::cat_deref(b, _, mc::uniq_ptr) |
@@ -488,7 +488,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     mc::cat_deref(_, _, mc::unsafe_ptr(*)) |
                     mc::cat_static_item(*) |
                     mc::cat_deref(_, _, mc::gc_ptr(_)) |
-                    mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) => {
+                    mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) => {
                         // Aliasability is independent of base cmt
                         match cmt.freely_aliasable() {
                             None => {
@@ -509,7 +509,7 @@ impl<'self> CheckLoanCtxt<'self> {
 
         fn check_for_assignment_to_restricted_or_frozen_location(
             this: &CheckLoanCtxt,
-            expr: @ast::expr,
+            expr: @ast::Expr,
             cmt: mc::cmt) -> bool
         {
             //! Check for assignments that violate the terms of an
@@ -612,7 +612,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     // with inherited mutability and with `&mut`
                     // pointers.
                     LpExtend(lp_base, mc::McInherited, _) |
-                    LpExtend(lp_base, _, LpDeref(mc::region_ptr(ast::m_mutbl, _))) => {
+                    LpExtend(lp_base, _, LpDeref(mc::region_ptr(ast::MutMutable, _))) => {
                         loan_path = lp_base;
                     }
 
@@ -643,7 +643,7 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn report_illegal_mutation(&self,
-                                   expr: @ast::expr,
+                                   expr: @ast::Expr,
                                    loan_path: &LoanPath,
                                    loan: &Loan) {
         self.bccx.span_err(
@@ -656,9 +656,9 @@ impl<'self> CheckLoanCtxt<'self> {
                  self.bccx.loan_path_to_str(loan_path)));
     }
 
-    fn check_move_out_from_expr(&self, expr: @ast::expr) {
+    fn check_move_out_from_expr(&self, expr: @ast::Expr) {
         match expr.node {
-            ast::expr_fn_block(*) => {
+            ast::ExprFnBlock(*) => {
                 // moves due to capture clauses are checked
                 // in `check_loans_in_fn`, so that we can
                 // give a better error message
@@ -710,11 +710,11 @@ impl<'self> CheckLoanCtxt<'self> {
     }
 
     pub fn check_call(&self,
-                      _expr: @ast::expr,
-                      _callee: Option<@ast::expr>,
+                      _expr: @ast::Expr,
+                      _callee: Option<@ast::Expr>,
                       _callee_id: ast::NodeId,
                       _callee_span: Span,
-                      _args: &[@ast::expr]) {
+                      _args: &[@ast::Expr]) {
         // NB: This call to check for conflicting loans is not truly
         // necessary, because the callee_id never issues new loans.
         // However, I added it for consistency and lest the system
@@ -795,7 +795,7 @@ fn check_loans_in_local<'a>(vt: &mut CheckLoanVisitor,
 }
 
 fn check_loans_in_expr<'a>(vt: &mut CheckLoanVisitor,
-                           expr: @ast::expr,
+                           expr: @ast::Expr,
                            this: CheckLoanCtxt<'a>) {
     visit::walk_expr(vt, expr, this);
 
@@ -806,8 +806,8 @@ fn check_loans_in_expr<'a>(vt: &mut CheckLoanVisitor,
     this.check_move_out_from_expr(expr);
 
     match expr.node {
-      ast::expr_self |
-      ast::expr_path(*) => {
+      ast::ExprSelf |
+      ast::ExprPath(*) => {
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt=%s", cmt.repr(this.tcx()));
@@ -817,18 +817,18 @@ fn check_loans_in_expr<'a>(vt: &mut CheckLoanVisitor,
               }
           }
       }
-      ast::expr_assign(dest, _) |
-      ast::expr_assign_op(_, _, dest, _) => {
+      ast::ExprAssign(dest, _) |
+      ast::ExprAssignOp(_, _, dest, _) => {
         this.check_assignment(dest);
       }
-      ast::expr_call(f, ref args, _) => {
+      ast::ExprCall(f, ref args, _) => {
         this.check_call(expr, Some(f), f.id, f.span, *args);
       }
-      ast::expr_method_call(callee_id, _, _, _, ref args, _) => {
+      ast::ExprMethodCall(callee_id, _, _, _, ref args, _) => {
         this.check_call(expr, None, callee_id, expr.span, *args);
       }
-      ast::expr_index(callee_id, _, rval) |
-      ast::expr_binary(callee_id, _, _, rval)
+      ast::ExprIndex(callee_id, _, rval) |
+      ast::ExprBinary(callee_id, _, _, rval)
       if this.bccx.method_map.contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
@@ -836,7 +836,7 @@ fn check_loans_in_expr<'a>(vt: &mut CheckLoanVisitor,
                         expr.span,
                         [rval]);
       }
-      ast::expr_unary(callee_id, _, _) | ast::expr_index(callee_id, _, _)
+      ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
       if this.bccx.method_map.contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
@@ -849,7 +849,7 @@ fn check_loans_in_expr<'a>(vt: &mut CheckLoanVisitor,
 }
 
 fn check_loans_in_pat<'a>(vt: &mut CheckLoanVisitor,
-                          pat: @ast::pat,
+                          pat: @ast::Pat,
                           this: CheckLoanCtxt<'a>)
 {
     this.check_for_conflicting_loans(pat.id);

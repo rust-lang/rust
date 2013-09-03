@@ -61,11 +61,11 @@ impl Combine for Lub {
 
         let m = a.mutbl;
         match m {
-          m_imm => {
+          MutImmutable => {
             self.tys(a.ty, b.ty).chain(|t| Ok(ty::mt {ty: t, mutbl: m}) )
           }
 
-          m_mutbl => {
+          MutMutable => {
             self.infcx.try(|| {
                 eq_tys(self, a.ty, b.ty).then(|| {
                     Ok(ty::mt {ty: a.ty, mutbl: m})

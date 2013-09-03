@@ -32,121 +32,121 @@ pub fn path_to_ident(path: &Path) -> Ident {
     path.segments.last().identifier
 }
 
-pub fn local_def(id: NodeId) -> def_id {
-    ast::def_id { crate: LOCAL_CRATE, node: id }
+pub fn local_def(id: NodeId) -> DefId {
+    ast::DefId { crate: LOCAL_CRATE, node: id }
 }
 
-pub fn is_local(did: ast::def_id) -> bool { did.crate == LOCAL_CRATE }
+pub fn is_local(did: ast::DefId) -> bool { did.crate == LOCAL_CRATE }
 
-pub fn stmt_id(s: &stmt) -> NodeId {
+pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
-      stmt_decl(_, id) => id,
-      stmt_expr(_, id) => id,
-      stmt_semi(_, id) => id,
-      stmt_mac(*) => fail!("attempted to analyze unexpanded stmt")
+      StmtDecl(_, id) => id,
+      StmtExpr(_, id) => id,
+      StmtSemi(_, id) => id,
+      StmtMac(*) => fail!("attempted to analyze unexpanded stmt")
     }
 }
 
-pub fn variant_def_ids(d: def) -> Option<(def_id, def_id)> {
+pub fn variant_def_ids(d: Def) -> Option<(DefId, DefId)> {
     match d {
-      def_variant(enum_id, var_id) => {
+      DefVariant(enum_id, var_id) => {
           Some((enum_id, var_id))
       }
       _ => None
     }
 }
 
-pub fn def_id_of_def(d: def) -> def_id {
+pub fn def_id_of_def(d: Def) -> DefId {
     match d {
-      def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
-      def_foreign_mod(id) | def_static(id, _) |
-      def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_struct(id) | def_trait(id) | def_method(id, _) => {
+      DefFn(id, _) | DefStaticMethod(id, _, _) | DefMod(id) |
+      DefForeignMod(id) | DefStatic(id, _) |
+      DefVariant(_, id) | DefTy(id) | DefTyParam(id, _) |
+      DefUse(id) | DefStruct(id) | DefTrait(id) | DefMethod(id, _) => {
         id
       }
-      def_arg(id, _) | def_local(id, _) | def_self(id) | def_self_ty(id)
-      | def_upvar(id, _, _, _) | def_binding(id, _) | def_region(id)
-      | def_typaram_binder(id) | def_label(id) => {
+      DefArg(id, _) | DefLocal(id, _) | DefSelf(id) | DefSelfTy(id)
+      | DefUpvar(id, _, _, _) | DefBinding(id, _) | DefRegion(id)
+      | DefTyParamBinder(id) | DefLabel(id) => {
         local_def(id)
       }
 
-      def_prim_ty(_) => fail!()
+      DefPrimTy(_) => fail!()
     }
 }
 
-pub fn binop_to_str(op: binop) -> ~str {
+pub fn binop_to_str(op: BinOp) -> ~str {
     match op {
-      add => return ~"+",
-      subtract => return ~"-",
-      mul => return ~"*",
-      div => return ~"/",
-      rem => return ~"%",
-      and => return ~"&&",
-      or => return ~"||",
-      bitxor => return ~"^",
-      bitand => return ~"&",
-      bitor => return ~"|",
-      shl => return ~"<<",
-      shr => return ~">>",
-      eq => return ~"==",
-      lt => return ~"<",
-      le => return ~"<=",
-      ne => return ~"!=",
-      ge => return ~">=",
-      gt => return ~">"
+      BiAdd => return ~"+",
+      BiSub => return ~"-",
+      BiMul => return ~"*",
+      BiDiv => return ~"/",
+      BiRem => return ~"%",
+      BiAnd => return ~"&&",
+      BiOr => return ~"||",
+      BiBitXor => return ~"^",
+      BiBitAnd => return ~"&",
+      BiBitOr => return ~"|",
+      BiShl => return ~"<<",
+      BiShr => return ~">>",
+      BiEq => return ~"==",
+      BiLt => return ~"<",
+      BiLe => return ~"<=",
+      BiNe => return ~"!=",
+      BiGe => return ~">=",
+      BiGt => return ~">"
     }
 }
 
-pub fn binop_to_method_name(op: binop) -> Option<~str> {
+pub fn binop_to_method_name(op: BinOp) -> Option<~str> {
     match op {
-      add => return Some(~"add"),
-      subtract => return Some(~"sub"),
-      mul => return Some(~"mul"),
-      div => return Some(~"div"),
-      rem => return Some(~"rem"),
-      bitxor => return Some(~"bitxor"),
-      bitand => return Some(~"bitand"),
-      bitor => return Some(~"bitor"),
-      shl => return Some(~"shl"),
-      shr => return Some(~"shr"),
-      lt => return Some(~"lt"),
-      le => return Some(~"le"),
-      ge => return Some(~"ge"),
-      gt => return Some(~"gt"),
-      eq => return Some(~"eq"),
-      ne => return Some(~"ne"),
-      and | or => return None
+      BiAdd => return Some(~"add"),
+      BiSub => return Some(~"sub"),
+      BiMul => return Some(~"mul"),
+      BiDiv => return Some(~"div"),
+      BiRem => return Some(~"rem"),
+      BiBitXor => return Some(~"bitxor"),
+      BiBitAnd => return Some(~"bitand"),
+      BiBitOr => return Some(~"bitor"),
+      BiShl => return Some(~"shl"),
+      BiShr => return Some(~"shr"),
+      BiLt => return Some(~"lt"),
+      BiLe => return Some(~"le"),
+      BiGe => return Some(~"ge"),
+      BiGt => return Some(~"gt"),
+      BiEq => return Some(~"eq"),
+      BiNe => return Some(~"ne"),
+      BiAnd | BiOr => return None
     }
 }
 
-pub fn lazy_binop(b: binop) -> bool {
+pub fn lazy_binop(b: BinOp) -> bool {
     match b {
-      and => true,
-      or => true,
+      BiAnd => true,
+      BiOr => true,
       _ => false
     }
 }
 
-pub fn is_shift_binop(b: binop) -> bool {
+pub fn is_shift_binop(b: BinOp) -> bool {
     match b {
-      shl => true,
-      shr => true,
+      BiShl => true,
+      BiShr => true,
       _ => false
     }
 }
 
-pub fn unop_to_str(op: unop) -> ~str {
+pub fn unop_to_str(op: UnOp) -> ~str {
     match op {
-      box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
-      uniq => ~"~",
-      deref => ~"*",
-      not => ~"!",
-      neg => ~"-"
+      UnBox(mt) => if mt == MutMutable { ~"@mut " } else { ~"@" },
+      UnUniq => ~"~",
+      UnDeref => ~"*",
+      UnNot => ~"!",
+      UnNeg => ~"-"
     }
 }
 
-pub fn is_path(e: @expr) -> bool {
-    return match e.node { expr_path(_) => true, _ => false };
+pub fn is_path(e: @Expr) -> bool {
+    return match e.node { ExprPath(_) => true, _ => false };
 }
 
 pub fn int_ty_to_str(t: int_ty) -> ~str {
@@ -192,19 +192,19 @@ pub fn float_ty_to_str(t: float_ty) -> ~str {
     match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
-pub fn is_call_expr(e: @expr) -> bool {
-    match e.node { expr_call(*) => true, _ => false }
+pub fn is_call_expr(e: @Expr) -> bool {
+    match e.node { ExprCall(*) => true, _ => false }
 }
 
-pub fn block_from_expr(e: @expr) -> Block {
-    let mut blk = default_block(~[], option::Some::<@expr>(e), e.id);
+pub fn block_from_expr(e: @Expr) -> Block {
+    let mut blk = default_block(~[], option::Some::<@Expr>(e), e.id);
     blk.span = e.span;
     return blk;
 }
 
 pub fn default_block(
-    stmts1: ~[@stmt],
-    expr1: Option<@expr>,
+    stmts1: ~[@Stmt],
+    expr1: Option<@Expr>,
     id1: NodeId
 ) -> Block {
     ast::Block {
@@ -231,20 +231,20 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     }
 }
 
-pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @pat {
-    @ast::pat { id: id,
-                node: pat_ident(bind_infer, ident_to_path(s, i), None),
+pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @Pat {
+    @ast::Pat { id: id,
+                node: PatIdent(BindInfer, ident_to_path(s, i), None),
                 span: s }
 }
 
-pub fn is_unguarded(a: &arm) -> bool {
+pub fn is_unguarded(a: &Arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pub fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
+pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
     if is_unguarded(a) {
         Some(/* FIXME (#2543) */ a.pats.clone())
     } else {
@@ -335,28 +335,28 @@ impl inlined_item_utils for inlined_item {
 
 /* True if d is either a def_self, or a chain of def_upvars
  referring to a def_self */
-pub fn is_self(d: ast::def) -> bool {
+pub fn is_self(d: ast::Def) -> bool {
   match d {
-    def_self(*)           => true,
-    def_upvar(_, d, _, _) => is_self(*d),
+    DefSelf(*)           => true,
+    DefUpvar(_, d, _, _) => is_self(*d),
     _                     => false
   }
 }
 
 /// Maps a binary operator to its precedence
-pub fn operator_prec(op: ast::binop) -> uint {
+pub fn operator_prec(op: ast::BinOp) -> uint {
   match op {
       // 'as' sits here with 12
-      mul | div | rem   => 11u,
-      add | subtract    => 10u,
-      shl | shr         =>  9u,
-      bitand            =>  8u,
-      bitxor            =>  7u,
-      bitor             =>  6u,
-      lt | le | ge | gt =>  4u,
-      eq | ne           =>  3u,
-      and               =>  2u,
-      or                =>  1u
+      BiMul | BiDiv | BiRem     => 11u,
+      BiAdd | BiSub             => 10u,
+      BiShl | BiShr             =>  9u,
+      BiBitAnd                  =>  8u,
+      BiBitXor                  =>  7u,
+      BiBitOr                   =>  6u,
+      BiLt | BiLe | BiGe | BiGt =>  4u,
+      BiEq | BiNe               =>  3u,
+      BiAnd                     =>  2u,
+      BiOr                      =>  1u
   }
 }
 
@@ -497,27 +497,27 @@ impl Visitor<()> for IdVisitor {
         visit::walk_block(self, block, env)
     }
 
-    fn visit_stmt(&mut self, statement: @stmt, env: ()) {
+    fn visit_stmt(&mut self, statement: @Stmt, env: ()) {
         (self.visit_callback)(ast_util::stmt_id(statement));
         visit::walk_stmt(self, statement, env)
     }
 
     // XXX: Default
-    fn visit_arm(&mut self, arm: &arm, env: ()) {
+    fn visit_arm(&mut self, arm: &Arm, env: ()) {
         visit::walk_arm(self, arm, env)
     }
 
-    fn visit_pat(&mut self, pattern: @pat, env: ()) {
+    fn visit_pat(&mut self, pattern: @Pat, env: ()) {
         (self.visit_callback)(pattern.id);
         visit::walk_pat(self, pattern, env)
     }
 
     // XXX: Default
-    fn visit_decl(&mut self, declaration: @decl, env: ()) {
+    fn visit_decl(&mut self, declaration: @Decl, env: ()) {
         visit::walk_decl(self, declaration, env)
     }
 
-    fn visit_expr(&mut self, expression: @expr, env: ()) {
+    fn visit_expr(&mut self, expression: @Expr, env: ()) {
         {
             let optional_callee_id = expression.get_callee_id();
             for callee_id in optional_callee_id.iter() {
@@ -529,7 +529,7 @@ impl Visitor<()> for IdVisitor {
     }
 
     // XXX: Default
-    fn visit_expr_post(&mut self, _: @expr, _: ()) {
+    fn visit_expr_post(&mut self, _: @Expr, _: ()) {
         // Empty!
     }
 
@@ -654,29 +654,29 @@ pub fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
+pub fn walk_pat(pat: @Pat, it: &fn(@Pat) -> bool) -> bool {
     if !it(pat) {
         return false;
     }
 
     match pat.node {
-        pat_ident(_, _, Some(p)) => walk_pat(p, it),
-        pat_struct(_, ref fields, _) => {
+        PatIdent(_, _, Some(p)) => walk_pat(p, it),
+        PatStruct(_, ref fields, _) => {
             fields.iter().advance(|f| walk_pat(f.pat, |p| it(p)))
         }
-        pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
+        PatEnum(_, Some(ref s)) | PatTup(ref s) => {
             s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        pat_box(s) | pat_uniq(s) | pat_region(s) => {
+        PatBox(s) | PatUniq(s) | PatRegion(s) => {
             walk_pat(s, it)
         }
-        pat_vec(ref before, ref slice, ref after) => {
+        PatVec(ref before, ref slice, ref after) => {
             before.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 slice.iter().advance(|&p| walk_pat(p, |p| it(p))) &&
                 after.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
-        pat_enum(_, _) => {
+        PatWild | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
+        PatEnum(_, _) => {
             true
         }
     }
@@ -709,22 +709,22 @@ impl SimpleVisitor for EachViewItemData {
     fn visit_block(&mut self, _: &Block) {
         // XXX: Default method.
     }
-    fn visit_stmt(&mut self, _: @stmt) {
+    fn visit_stmt(&mut self, _: @Stmt) {
         // XXX: Default method.
     }
-    fn visit_arm(&mut self, _: &arm) {
+    fn visit_arm(&mut self, _: &Arm) {
         // XXX: Default method.
     }
-    fn visit_pat(&mut self, _: @pat) {
+    fn visit_pat(&mut self, _: @Pat) {
         // XXX: Default method.
     }
-    fn visit_decl(&mut self, _: @decl) {
+    fn visit_decl(&mut self, _: @Decl) {
         // XXX: Default method.
     }
-    fn visit_expr(&mut self, _: @expr) {
+    fn visit_expr(&mut self, _: @Expr) {
         // XXX: Default method.
     }
-    fn visit_expr_post(&mut self, _: @expr) {
+    fn visit_expr_post(&mut self, _: @Expr) {
         // XXX: Default method.
     }
     fn visit_ty(&mut self, _: &Ty) {
@@ -817,9 +817,9 @@ pub enum Privacy {
 
 /// Returns true if the given pattern consists solely of an identifier
 /// and false otherwise.
-pub fn pat_is_ident(pat: @ast::pat) -> bool {
+pub fn pat_is_ident(pat: @ast::Pat) -> bool {
     match pat.node {
-        ast::pat_ident(*) => true,
+        ast::PatIdent(*) => true,
         _ => false,
     }
 }
@@ -1015,7 +1015,7 @@ mod test {
     // convert a list of uints to an @[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[Ident] {
-        @uints.map(|u| Ident {name:*u, ctxt: empty_ctxt})
+        @uints.map(|u| Ident {name:*u, ctxt: EMPTY_CTXT})
     }
 
     fn id (u : uint, s: SyntaxContext) -> Ident {
@@ -1065,7 +1065,7 @@ mod test {
         let mut t = new_sctable_internal();
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
-        assert_eq!(unfold_test_sc(test_sc.clone(),empty_ctxt,&mut t),4);
+        assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         assert_eq!(t.table[2],Mark(9,0));
         assert_eq!(t.table[3],Rename(id(101,0),14,2));
         assert_eq!(t.table[4],Mark(3,3));
@@ -1082,7 +1082,7 @@ mod test {
     #[test] fn unfold_marks_test() {
         let mut t = new_sctable_internal();
 
-        assert_eq!(unfold_marks(~[3,7],empty_ctxt,&mut t),3);
+        assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
         assert_eq!(t.table[2],Mark(7,0));
         assert_eq!(t.table[3],Mark(3,2));
     }
@@ -1091,31 +1091,31 @@ mod test {
         let stopname = 242;
         let name1 = 243;
         let mut t = new_sctable_internal();
-        assert_eq!(marksof (empty_ctxt,stopname,&t),~[]);
+        assert_eq!(marksof (EMPTY_CTXT,stopname,&t),~[]);
         // FIXME #5074: ANF'd to dodge nested calls
-        { let ans = unfold_marks(~[4,98],empty_ctxt,&mut t);
+        { let ans = unfold_marks(~[4,98],EMPTY_CTXT,&mut t);
          assert_eq! (marksof (ans,stopname,&t),~[4,98]);}
         // does xoring work?
-        { let ans = unfold_marks(~[5,5,16],empty_ctxt,&mut t);
+        { let ans = unfold_marks(~[5,5,16],EMPTY_CTXT,&mut t);
          assert_eq! (marksof (ans,stopname,&t), ~[16]);}
         // does nested xoring work?
-        { let ans = unfold_marks(~[5,10,10,5,16],empty_ctxt,&mut t);
+        { let ans = unfold_marks(~[5,10,10,5,16],EMPTY_CTXT,&mut t);
          assert_eq! (marksof (ans, stopname,&t), ~[16]);}
         // rename where stop doesn't match:
         { let chain = ~[M(9),
                         R(id(name1,
-                             new_mark_internal (4, empty_ctxt,&mut t)),
+                             new_mark_internal (4, EMPTY_CTXT,&mut t)),
                           100101102),
                         M(14)];
-         let ans = unfold_test_sc(chain,empty_ctxt,&mut t);
+         let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
          assert_eq! (marksof (ans, stopname, &t), ~[9,14]);}
         // rename where stop does match
-        { let name1sc = new_mark_internal(4, empty_ctxt, &mut t);
+        { let name1sc = new_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = ~[M(9),
                        R(id(name1, name1sc),
                          stopname),
                        M(14)];
-         let ans = unfold_test_sc(chain,empty_ctxt,&mut t);
+         let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
          assert_eq! (marksof (ans, stopname, &t), ~[9]); }
     }
 
@@ -1124,38 +1124,38 @@ mod test {
         let a = 40;
         let mut t = new_sctable_internal();
         // - ctxt is MT
-        assert_eq!(resolve_internal(id(a,empty_ctxt),&mut t),a);
+        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t),a);
         // - simple ignored marks
-        { let sc = unfold_marks(~[1,2,3],empty_ctxt,&mut t);
+        { let sc = unfold_marks(~[1,2,3],EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
         // - orthogonal rename where names don't match
-        { let sc = unfold_test_sc(~[R(id(50,empty_ctxt),51),M(12)],empty_ctxt,&mut t);
+        { let sc = unfold_test_sc(~[R(id(50,EMPTY_CTXT),51),M(12)],EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
         // - rename where names do match, but marks don't
-        { let sc1 = new_mark_internal(1,empty_ctxt,&mut t);
+        { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),
                                    M(1),
                                    M(2)],
-                                 empty_ctxt,&mut t);
+                                 EMPTY_CTXT,&mut t);
         assert_eq!(resolve_internal(id(a,sc),&mut t), a);}
         // - rename where names and marks match
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],empty_ctxt,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],empty_ctxt,&mut t);
+        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
+         let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
         // - rename where names and marks match by literal sharing
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],empty_ctxt,&mut t);
+        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
         io::println("about to run bad test");
-        { let sc = unfold_test_sc(~[R(id(a,empty_ctxt),50),
-                                    R(id(a,empty_ctxt),51)],
-                                  empty_ctxt,&mut t);
+        { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
+                                    R(id(a,EMPTY_CTXT),51)],
+                                  EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t), 51); }
         // the simplest double-rename:
-        { let a_to_a50 = new_rename_internal(id(a,empty_ctxt),50,empty_ctxt,&mut t);
+        { let a_to_a50 = new_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
          let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
          assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t),51);
          // mark on the outside doesn't stop rename:
@@ -1171,10 +1171,10 @@ mod test {
 
     #[test] fn hashing_tests () {
         let mut t = new_sctable_internal();
-        assert_eq!(new_mark_internal(12,empty_ctxt,&mut t),2);
-        assert_eq!(new_mark_internal(13,empty_ctxt,&mut t),3);
+        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        assert_eq!(new_mark_internal(13,EMPTY_CTXT,&mut t),3);
         // using the same one again should result in the same index:
-        assert_eq!(new_mark_internal(12,empty_ctxt,&mut t),2);
+        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
         // I'm assuming that the rename table will behave the same....
     }
 

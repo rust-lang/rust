@@ -79,7 +79,7 @@ impl visit::Visitor<()> for CollectItemTypesVisitor {
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
-                              lang_item: ast::def_id) {
+                              lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, _ } =
             ccx.get_item_ty(lang_item);
         ccx.tcx.intrinsic_defs.insert(lang_item, ty);
@@ -117,7 +117,7 @@ impl ToTy for CrateCtxt {
 impl AstConv for CrateCtxt {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
-    fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         if id.crate != ast::LOCAL_CRATE {
             csearch::get_type(self.tcx, id)
         } else {
@@ -136,7 +136,7 @@ impl AstConv for CrateCtxt {
         }
     }
 
-    fn get_trait_def(&self, id: ast::def_id) -> @ty::TraitDef {
+    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef {
         get_trait_def(self, id)
     }
 
@@ -288,7 +288,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         let tcx = ccx.tcx;
 
-        let dummy_defid = ast::def_id {crate: 0, node: 0};
+        let dummy_defid = ast::DefId {crate: 0, node: 0};
 
         // Represents [A',B',C']
         let num_trait_bounds = trait_ty_generics.type_param_defs.len();
@@ -1027,7 +1027,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     let rscope = TypeRscope(rp);
 
     match lookup_def_tcx(ccx.tcx, ast_trait_ref.path.span, ast_trait_ref.ref_id) {
-        ast::def_trait(trait_did) => {
+        ast::DefTrait(trait_did) => {
             let trait_ref =
                 astconv::ast_path_to_trait_ref(
                     ccx, &rscope, trait_did, Some(self_ty), &ast_trait_ref.path);
@@ -1045,7 +1045,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     }
 }
 
-fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::def_id) -> @ty::TraitDef {
+fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
     if trait_id.crate != ast::LOCAL_CRATE {
         ty::lookup_trait_def(ccx.tcx, trait_id)
     } else {
@@ -1276,7 +1276,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
 
 pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              decl: &ast::fn_decl,
-                             def_id: ast::def_id,
+                             def_id: ast::DefId,
                              ast_generics: &ast::Generics,
                              abis: AbiSet)
                           -> ty::ty_param_bounds_and_ty {

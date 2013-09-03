@@ -249,11 +249,11 @@ pub enum LoanMutability {
 }
 
 impl LoanMutability {
-    pub fn from_ast_mutability(ast_mutability: ast::mutability)
+    pub fn from_ast_mutability(ast_mutability: ast::Mutability)
                                -> LoanMutability {
         match ast_mutability {
-            ast::m_imm => ImmutableMutability,
-            ast::m_mutbl => MutableMutability,
+            ast::MutImmutable => ImmutableMutability,
+            ast::MutMutable => MutableMutability,
         }
     }
 }
@@ -487,16 +487,16 @@ impl BorrowckCtxt {
         self.moves_map.contains(&id)
     }
 
-    pub fn cat_expr(&self, expr: @ast::expr) -> mc::cmt {
+    pub fn cat_expr(&self, expr: @ast::Expr) -> mc::cmt {
         mc::cat_expr(self.tcx, self.method_map, expr)
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: @ast::expr) -> mc::cmt {
+    pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> mc::cmt {
         mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
     }
 
     pub fn cat_expr_autoderefd(&self,
-                               expr: @ast::expr,
+                               expr: @ast::Expr,
                                adj: @ty::AutoAdjustment)
                                -> mc::cmt {
         match *adj {
@@ -518,7 +518,7 @@ impl BorrowckCtxt {
                    id: ast::NodeId,
                    span: Span,
                    ty: ty::t,
-                   def: ast::def)
+                   def: ast::Def)
                    -> mc::cmt {
         mc::cat_def(self.tcx, self.method_map, id, span, ty, def)
     }
@@ -536,8 +536,8 @@ impl BorrowckCtxt {
 
     pub fn cat_pattern(&self,
                        cmt: mc::cmt,
-                       pat: @ast::pat,
-                       op: &fn(mc::cmt, @ast::pat)) {
+                       pat: @ast::Pat,
+                       op: &fn(mc::cmt, @ast::Pat)) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }
@@ -691,7 +691,7 @@ impl BorrowckCtxt {
                     span,
                     fmt!("%s in an aliasable location", prefix));
             }
-            mc::AliasableManaged(ast::m_mutbl) => {
+            mc::AliasableManaged(ast::MutMutable) => {
                 // FIXME(#6269) reborrow @mut to &mut
                 self.tcx.sess.span_err(
                     span,
@@ -825,10 +825,10 @@ impl BorrowckCtxt {
         mutbl.to_str()
     }
 
-    pub fn mut_to_keyword(&self, mutbl: ast::mutability) -> &'static str {
+    pub fn mut_to_keyword(&self, mutbl: ast::Mutability) -> &'static str {
         match mutbl {
-            ast::m_imm => "",
-            ast::m_mutbl => "mut",
+            ast::MutImmutable => "",
+            ast::MutMutable => "mut",
         }
     }
 }
