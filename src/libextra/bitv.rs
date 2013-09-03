@@ -608,6 +608,8 @@ impl<'self> DoubleEndedIterator<bool> for BitvIterator<'self> {
     }
 }
 
+impl<'self> ExactSize<bool> for BitvIterator<'self> {}
+
 impl<'self> RandomAccessIterator<bool> for BitvIterator<'self> {
     #[inline]
     fn indexable(&self) -> uint {

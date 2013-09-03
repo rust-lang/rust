@@ -18,7 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use num::{Zero, One, Integer, CheckedAdd, Saturating};
+use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::Ord;
@@ -641,6 +641,7 @@ impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator 
     }
 }
 
+
 /// An object implementing random access indexing by `uint`
 ///
 /// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
@@ -652,6 +653,48 @@ pub trait RandomAccessIterator<A>: Iterator<A> {
     /// Return an element at an index
     fn idx(&self, index: uint) -> Option<A>;
 }
+
+/// An iterator that knows its exact length
+///
+/// This trait is a helper for iterators like the vector iterator, so that
+/// it can support double-ended enumeration.
+///
+/// `Iterator::size_hint` *must* return the exact size of the iterator.
+/// Note that the size must fit in `uint`.
+pub trait ExactSize<A> : DoubleEndedIterator<A> {
+    /// Return the index of the last element satisfying the specified predicate
+    ///
+    /// If no element matches, None is returned.
+    #[inline]
+    fn rposition(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+        let (lower, upper) = self.size_hint();
+        assert!(upper == Some(lower));
+        let mut i = lower;
+        loop {
+            match self.next_back() {
+                None => break,
+                Some(x) => {
+                    i = match i.checked_sub(&1) {
+                        Some(x) => x,
+                        None => fail!("rposition: incorrect ExactSize")
+                    };
+                    if predicate(x) {
+                        return Some(i)
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+// All adaptors that preserve the size of the wrapped iterator are fine
+// Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
+impl<A, T: ExactSize<A>> ExactSize<(uint, A)> for Enumerate<T> {}
+impl<'self, A, T: ExactSize<A>> ExactSize<A> for Inspect<'self, A, T> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Invert<T> {}
+impl<'self, A, B, T: ExactSize<A>> ExactSize<B> for Map<'self, A, B, T> {}
+impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
@@ -956,6 +999,29 @@ impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for Zip<T, U> {
     }
 }
 
+impl<A, B, T: ExactSize<A>, U: ExactSize<B>> DoubleEndedIterator<(A, B)>
+for Zip<T, U> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(A, B)> {
+        let (a_sz, a_upper) = self.a.size_hint();
+        let (b_sz, b_upper) = self.b.size_hint();
+        assert!(a_upper == Some(a_sz));
+        assert!(b_upper == Some(b_sz));
+        if a_sz < b_sz {
+            for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
+        } else if a_sz > b_sz {
+            for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+        }
+        let (a_sz, _) = self.a.size_hint();
+        let (b_sz, _) = self.b.size_hint();
+        assert!(a_sz == b_sz);
+        match (self.a.next_back(), self.b.next_back()) {
+            (Some(x), Some(y)) => Some((x, y)),
+            _ => None
+        }
+    }
+}
+
 impl<A, B, T: RandomAccessIterator<A>, U: RandomAccessIterator<B>>
 RandomAccessIterator<(A, B)> for Zip<T, U> {
     #[inline]
@@ -1134,6 +1200,20 @@ impl<A, T: Iterator<A>> Iterator<(uint, A)> for Enumerate<T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
+    }
+}
+
+impl<A, T: ExactSize<A>> DoubleEndedIterator<(uint, A)> for Enumerate<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<(uint, A)> {
+        match self.iter.next_back() {
+            Some(a) => {
+                let (lower, upper) = self.iter.size_hint();
+                assert!(upper == Some(lower));
+                Some((self.count + lower, a))
+            }
+            _ => None
+        }
     }
 }
 
@@ -2332,6 +2412,33 @@ mod tests {
     }
 
     #[test]
+    fn test_double_ended_enumerate() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().map(|&x| x).enumerate();
+        assert_eq!(it.next(), Some((0, 1)));
+        assert_eq!(it.next(), Some((1, 2)));
+        assert_eq!(it.next_back(), Some((5, 6)));
+        assert_eq!(it.next_back(), Some((4, 5)));
+        assert_eq!(it.next_back(), Some((3, 4)));
+        assert_eq!(it.next_back(), Some((2, 3)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_double_ended_zip() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let ys = [1, 2, 3, 7];
+        let a = xs.iter().map(|&x| x);
+        let b = ys.iter().map(|&x| x);
+        let mut it = a.zip(b);
+        assert_eq!(it.next(), Some((1, 1)));
+        assert_eq!(it.next(), Some((2, 2)));
+        assert_eq!(it.next_back(), Some((4, 7)));
+        assert_eq!(it.next_back(), Some((3, 3)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
     fn test_double_ended_filter() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter(|&x| *x & 1 == 0);
@@ -2366,6 +2473,31 @@ mod tests {
         assert_eq!(it.next_back().unwrap(), &7)
         assert_eq!(it.next_back(), None)
     }
+
+    #[test]
+    fn test_rposition() {
+        fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
+        fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+
+        assert_eq!(v.iter().rposition(f), Some(3u));
+        assert!(v.iter().rposition(g).is_none());
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_rposition_fail() {
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut i = 0;
+        do v.iter().rposition |_elt| {
+            if i == 2 {
+                fail!()
+            }
+            i += 1;
+            false
+        };
+    }
+
 
     #[cfg(test)]
     fn check_randacc_iter<A: Eq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)

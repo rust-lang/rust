@@ -24,7 +24,7 @@ use container::{Container, Mutable};
 use num::Times;
 use iterator::{Iterator, FromIterator, Extendable};
 use iterator::{Filter, AdditiveIterator, Map};
-use iterator::{Invert, DoubleEndedIterator};
+use iterator::{Invert, DoubleEndedIterator, ExactSize};
 use libc;
 use num::{Saturating};
 use option::{None, Option, Some};
@@ -484,9 +484,8 @@ for CharSplitIterator<'self, Sep> {
         let mut next_split = None;
 
         if self.only_ascii {
-            for (j, byte) in self.string.byte_rev_iter().enumerate() {
+            for (idx, byte) in self.string.byte_iter().enumerate().invert() {
                 if self.sep.matches(byte as char) && byte < 128u8 {
-                    let idx = len - j - 1;
                     next_split = Some((idx, idx + 1));
                     break;
                 }
@@ -2006,16 +2005,13 @@ impl<'self> StrSlice<'self> for &'self str {
     /// or `None` if there is no match
     fn find<C: CharEq>(&self, search: C) -> Option<uint> {
         if search.only_ascii() {
-            for (i, b) in self.byte_iter().enumerate() {
-                if search.matches(b as char) { return Some(i) }
-            }
+            self.byte_iter().position(|b| search.matches(b as char))
         } else {
             for (index, c) in self.char_offset_iter() {
                 if search.matches(c) { return Some(index); }
             }
+            None
         }
-
-        None
     }
 
     /// Returns the byte index of the last character of `self` that matches `search`
@@ -2026,18 +2022,13 @@ impl<'self> StrSlice<'self> for &'self str {
     /// or `None` if there is no match
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
         if search.only_ascii() {
-            let mut index = self.len();
-            for b in self.byte_rev_iter() {
-                index -= 1;
-                if search.matches(b as char) { return Some(index); }
-            }
+            self.byte_iter().rposition(|b| search.matches(b as char))
         } else {
             for (index, c) in self.char_offset_rev_iter() {
                 if search.matches(c) { return Some(index); }
             }
+            None
         }
-
-        None
     }
 
     /// Returns the byte index of the first matching substring
