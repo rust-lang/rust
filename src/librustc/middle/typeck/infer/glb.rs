@@ -21,7 +21,7 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::isr_alist;
-use syntax::ast::{Many, Once, extern_fn, impure_fn, m_imm, m_mutbl};
+use syntax::ast::{Many, Once, extern_fn, impure_fn, MutImmutable, MutMutable};
 use syntax::ast::{unsafe_fn};
 use syntax::ast::{Onceness, purity};
 use util::common::{indenter};
@@ -52,23 +52,23 @@ impl Combine for Glb {
         match (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
-          (m_mutbl, m_mutbl) => {
+          (MutMutable, MutMutable) => {
             eq_tys(self, a.ty, b.ty).then(|| {
-                Ok(ty::mt {ty: a.ty, mutbl: m_mutbl})
+                Ok(ty::mt {ty: a.ty, mutbl: MutMutable})
             })
           }
 
           // If one side or both is immutable, we can use the GLB of
-          // both sides but mutbl must be `m_imm`.
-          (m_imm, m_imm) => {
+          // both sides but mutbl must be `MutImmutable`.
+          (MutImmutable, MutImmutable) => {
             self.tys(a.ty, b.ty).chain(|t| {
-                Ok(ty::mt {ty: t, mutbl: m_imm})
+                Ok(ty::mt {ty: t, mutbl: MutImmutable})
             })
           }
 
           // There is no mutual subtype of these combinations.
-          (m_mutbl, m_imm) |
-          (m_imm, m_mutbl) => {
+          (MutMutable, MutImmutable) |
+          (MutImmutable, MutMutable) => {
               Err(ty::terr_mutability)
           }
         }

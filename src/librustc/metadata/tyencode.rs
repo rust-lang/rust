@@ -26,7 +26,7 @@ use syntax::print::pprust::*;
 pub struct ctxt {
     diag: @mut span_handler,
     // Def -> str Callback:
-    ds: @fn(def_id) -> ~str,
+    ds: @fn(DefId) -> ~str,
     // The type context.
     tcx: ty::ctxt,
     abbrevs: abbrev_ctxt
@@ -95,10 +95,10 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
     }
 }
 
-fn enc_mutability(w: @io::Writer, mt: ast::mutability) {
+fn enc_mutability(w: @io::Writer, mt: ast::Mutability) {
     match mt {
-      m_imm => (),
-      m_mutbl => w.write_char('m'),
+      MutImmutable => (),
+      MutMutable => w.write_char('m'),
     }
 }
 

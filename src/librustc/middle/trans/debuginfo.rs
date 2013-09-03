@@ -357,7 +357,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
-                ast::expr_fn_block(ref fn_decl, ref top_level_block) => {
+                ast::ExprFnBlock(ref fn_decl, ref top_level_block) => {
                     let name = gensym_name("fn");
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit the generics of the
@@ -864,7 +864,7 @@ fn tuple_metadata(cx: &mut CrateContext,
 
 fn enum_metadata(cx: &mut CrateContext,
                  enum_type: ty::t,
-                 enum_def_id: ast::def_id,
+                 enum_def_id: ast::DefId,
                  span: Span)
               -> DIType {
 
@@ -1236,7 +1236,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
 
     assert!(slice_layout_is_correct(cx, member_llvm_types, element_type));
 
-    let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::m_imm });
+    let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::MutImmutable });
 
     let member_type_metadata = &[type_metadata(cx, data_ptr_type, span),
                                  type_metadata(cx, ty::mk_uint(), span)];
@@ -1531,7 +1531,7 @@ fn assert_fcx_has_span(fcx: &FunctionContext) {
 // descriptors where necessary. These artificial scopes allow GDB to correctly handle name
 // shadowing.
 fn populate_scope_map(cx: &mut CrateContext,
-                      arg_pats: &[@ast::pat],
+                      arg_pats: &[@ast::Pat],
                       fn_entry_block: Option<&ast::Block>,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
@@ -1608,10 +1608,10 @@ fn populate_scope_map(cx: &mut CrateContext,
             scope_map.insert(ast_util::stmt_id(statement), scope_stack.last().scope_metadata);
 
             match statement.node {
-                ast::stmt_decl(@ref decl, _) => walk_decl(cx, decl, scope_stack, scope_map),
-                ast::stmt_expr(@ref exp, _) |
-                ast::stmt_semi(@ref exp, _) => walk_expr(cx, exp, scope_stack, scope_map),
-                ast::stmt_mac(*) => () // ignore macros (which should be expanded anyway)
+                ast::StmtDecl(@ref decl, _) => walk_decl(cx, decl, scope_stack, scope_map),
+                ast::StmtExpr(@ref exp, _) |
+                ast::StmtSemi(@ref exp, _) => walk_expr(cx, exp, scope_stack, scope_map),
+                ast::StmtMac(*) => () // ignore macros (which should be expanded anyway)
             }
         }
 
@@ -1621,11 +1621,11 @@ fn populate_scope_map(cx: &mut CrateContext,
     }
 
     fn walk_decl(cx: &mut CrateContext,
-                 decl: &ast::decl,
+                 decl: &ast::Decl,
                  scope_stack: &mut ~[ScopeStackEntry],
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
-            codemap::Spanned { node: ast::decl_local(@ref local), _ } => {
+            codemap::Spanned { node: ast::DeclLocal(@ref local), _ } => {
                 scope_map.insert(local.id, scope_stack.last().scope_metadata);
 
                 walk_pattern(cx, local.pat, scope_stack, scope_map);
@@ -1639,7 +1639,7 @@ fn populate_scope_map(cx: &mut CrateContext,
     }
 
     fn walk_pattern(cx: &mut CrateContext,
-                    pat: @ast::pat,
+                    pat: @ast::Pat,
                     scope_stack: &mut ~[ScopeStackEntry],
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
@@ -1649,7 +1649,7 @@ fn populate_scope_map(cx: &mut CrateContext,
         // because we have to visit *all* nodes in order to put them into the scope map. The above
         // functions don't do that.
         match pat.node {
-            ast::pat_ident(_, ref path_ref, ref sub_pat_opt) => {
+            ast::PatIdent(_, ref path_ref, ref sub_pat_opt) => {
 
                 // Check if this is a binding. If so we need to put it on the scope stack and maybe
                 // introduce an articial scope
@@ -1716,11 +1716,11 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::pat_wild => {
+            ast::PatWild => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
             }
 
-            ast::pat_enum(_, ref sub_pats_opt) => {
+            ast::PatEnum(_, ref sub_pats_opt) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
 
                 for ref sub_pats in sub_pats_opt.iter() {
@@ -1730,15 +1730,15 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::pat_struct(_, ref field_pats, _) => {
+            ast::PatStruct(_, ref field_pats, _) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
 
-                for &ast::field_pat { pat: sub_pat, _ } in field_pats.iter() {
+                for &ast::FieldPat { pat: sub_pat, _ } in field_pats.iter() {
                     walk_pattern(cx, sub_pat, scope_stack, scope_map);
                 }
             }
 
-            ast::pat_tup(ref sub_pats) => {
+            ast::PatTup(ref sub_pats) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
 
                 for &sub_pat in sub_pats.iter() {
@@ -1746,25 +1746,25 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::pat_box(sub_pat)    |
-            ast::pat_uniq(sub_pat)   |
-            ast::pat_region(sub_pat) => {
+            ast::PatBox(sub_pat)    |
+            ast::PatUniq(sub_pat)   |
+            ast::PatRegion(sub_pat) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
                 walk_pattern(cx, sub_pat, scope_stack, scope_map);
             }
 
-            ast::pat_lit(@ref exp) => {
+            ast::PatLit(@ref exp) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
                 walk_expr(cx, exp, scope_stack, scope_map);
             }
 
-            ast::pat_range(@ref exp1, @ref exp2) => {
+            ast::PatRange(@ref exp1, @ref exp2) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
                 walk_expr(cx, exp1, scope_stack, scope_map);
                 walk_expr(cx, exp2, scope_stack, scope_map);
             }
 
-            ast::pat_vec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
+            ast::PatVec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
                 scope_map.insert(pat.id, scope_stack.last().scope_metadata);
 
                 for &sub_pat in front_sub_pats.iter() {
@@ -1783,58 +1783,58 @@ fn populate_scope_map(cx: &mut CrateContext,
     }
 
     fn walk_expr(cx: &mut CrateContext,
-                 exp: &ast::expr,
+                 exp: &ast::Expr,
                  scope_stack: &mut ~[ScopeStackEntry],
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
         scope_map.insert(exp.id, scope_stack.last().scope_metadata);
 
         match exp.node {
-            ast::expr_self     |
-            ast::expr_lit(_)   |
-            ast::expr_break(_) |
-            ast::expr_again(_) |
-            ast::expr_path(_)  => (),
+            ast::ExprSelf     |
+            ast::ExprLit(_)   |
+            ast::ExprBreak(_) |
+            ast::ExprAgain(_) |
+            ast::ExprPath(_)  => (),
 
-            ast::expr_vstore(@ref sub_exp, _)   |
-            ast::expr_cast(@ref sub_exp, _)     |
-            ast::expr_addr_of(_, @ref sub_exp)  |
-            ast::expr_field(@ref sub_exp, _, _) |
-            ast::expr_paren(@ref sub_exp)       => walk_expr(cx, sub_exp, scope_stack, scope_map),
+            ast::ExprVstore(@ref sub_exp, _)   |
+            ast::ExprCast(@ref sub_exp, _)     |
+            ast::ExprAddrOf(_, @ref sub_exp)  |
+            ast::ExprField(@ref sub_exp, _, _) |
+            ast::ExprParen(@ref sub_exp)       => walk_expr(cx, sub_exp, scope_stack, scope_map),
 
-            ast::expr_ret(exp_opt) => match exp_opt {
+            ast::ExprRet(exp_opt) => match exp_opt {
                 Some(@ref sub_exp) => walk_expr(cx, sub_exp, scope_stack, scope_map),
                 None => ()
             },
 
-            ast::expr_unary(node_id, _, @ref sub_exp) => {
+            ast::ExprUnary(node_id, _, @ref sub_exp) => {
                 scope_map.insert(node_id, scope_stack.last().scope_metadata);
                 walk_expr(cx, sub_exp, scope_stack, scope_map);
             }
 
-            ast::expr_assign_op(node_id, _, @ref lhs, @ref rhs) |
-            ast::expr_index(node_id, @ref lhs, @ref rhs)        |
-            ast::expr_binary(node_id, _, @ref lhs, @ref rhs)    => {
+            ast::ExprAssignOp(node_id, _, @ref lhs, @ref rhs) |
+            ast::ExprIndex(node_id, @ref lhs, @ref rhs)        |
+            ast::ExprBinary(node_id, _, @ref lhs, @ref rhs)    => {
                 scope_map.insert(node_id, scope_stack.last().scope_metadata);
                 walk_expr(cx, lhs, scope_stack, scope_map);
                 walk_expr(cx, rhs, scope_stack, scope_map);
             }
 
-            ast::expr_vec(ref init_expressions, _) |
-            ast::expr_tup(ref init_expressions)    => {
+            ast::ExprVec(ref init_expressions, _) |
+            ast::ExprTup(ref init_expressions)    => {
                 for &@ref ie in init_expressions.iter() {
                     walk_expr(cx, ie, scope_stack, scope_map);
                 }
             }
 
-            ast::expr_assign(@ref sub_exp1, @ref sub_exp2)    |
-            ast::expr_log(@ref sub_exp1, @ref sub_exp2)       |
-            ast::expr_repeat(@ref sub_exp1, @ref sub_exp2, _) => {
+            ast::ExprAssign(@ref sub_exp1, @ref sub_exp2)    |
+            ast::ExprLog(@ref sub_exp1, @ref sub_exp2)       |
+            ast::ExprRepeat(@ref sub_exp1, @ref sub_exp2, _) => {
                 walk_expr(cx, sub_exp1, scope_stack, scope_map);
                 walk_expr(cx, sub_exp2, scope_stack, scope_map);
             }
 
-            ast::expr_if(@ref cond_exp, ref then_block, ref opt_else_exp) => {
+            ast::ExprIf(@ref cond_exp, ref then_block, ref opt_else_exp) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
                 do with_new_scope(cx, then_block.span, scope_stack, scope_map) |cx,
@@ -1849,7 +1849,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_while(@ref cond_exp, ref loop_body) => {
+            ast::ExprWhile(@ref cond_exp, ref loop_body) => {
                 walk_expr(cx, cond_exp, scope_stack, scope_map);
 
                 do with_new_scope(cx, loop_body.span, scope_stack, scope_map) |cx,
@@ -1859,18 +1859,18 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_for_loop(_, _, _) => {
+            ast::ExprForLoop(_, _, _) => {
                 cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
                                             Found unexpanded for-loop.");
             }
 
-            ast::expr_mac(_) => {
+            ast::ExprMac(_) => {
                 cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
                                             Found unexpanded macro.");
             }
 
-            ast::expr_loop(ref block, _) |
-            ast::expr_block(ref block)   => {
+            ast::ExprLoop(ref block, _) |
+            ast::ExprBlock(ref block)   => {
                 do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
                                                                            scope_stack,
                                                                            scope_map| {
@@ -1878,7 +1878,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_fn_block(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
+            ast::ExprFnBlock(ast::fn_decl { inputs: ref inputs, _ }, ref block) => {
                 do with_new_scope(cx, block.span, scope_stack, scope_map) |cx,
                                                                            scope_stack,
                                                                            scope_map| {
@@ -1891,9 +1891,9 @@ fn populate_scope_map(cx: &mut CrateContext,
             }
 
             // ast::expr_loop_body(@ref inner_exp) |
-            ast::expr_do_body(@ref inner_exp)   => {
+            ast::ExprDoBody(@ref inner_exp)   => {
                 let inner_expr_is_expr_fn_block = match *inner_exp {
-                    ast::expr { node: ast::expr_fn_block(*), _ } => true,
+                    ast::Expr { node: ast::ExprFnBlock(*), _ } => true,
                     _ => false
                 };
 
@@ -1905,7 +1905,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 walk_expr(cx, inner_exp, scope_stack, scope_map);
             }
 
-            ast::expr_call(@ref fn_exp, ref args, _) => {
+            ast::ExprCall(@ref fn_exp, ref args, _) => {
                 walk_expr(cx, fn_exp, scope_stack, scope_map);
 
                 for &@ref arg_exp in args.iter() {
@@ -1913,7 +1913,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_method_call(node_id, @ref receiver_exp, _, _, ref args, _) => {
+            ast::ExprMethodCall(node_id, @ref receiver_exp, _, _, ref args, _) => {
                 scope_map.insert(node_id, scope_stack.last().scope_metadata);
                 walk_expr(cx, receiver_exp, scope_stack, scope_map);
 
@@ -1922,7 +1922,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_match(@ref discriminant_exp, ref arms) => {
+            ast::ExprMatch(@ref discriminant_exp, ref arms) => {
                 walk_expr(cx, discriminant_exp, scope_stack, scope_map);
 
                 // for each arm we have to first walk the pattern as these might introduce new
@@ -1948,7 +1948,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_struct(_, ref fields, ref base_exp) => {
+            ast::ExprStruct(_, ref fields, ref base_exp) => {
                 for &ast::Field { expr: @ref exp, _ } in fields.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
                 }
@@ -1959,7 +1959,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::expr_inline_asm(ast::inline_asm { inputs: ref inputs,
+            ast::ExprInlineAsm(ast::inline_asm { inputs: ref inputs,
                                                    outputs: ref outputs,
                                                    _ }) => {
                 // inputs, outputs: ~[(@str, @expr)]

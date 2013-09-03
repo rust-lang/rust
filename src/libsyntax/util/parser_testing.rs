@@ -47,7 +47,7 @@ pub fn string_to_crate (source_str : @str) -> @ast::Crate {
 }
 
 // parse a string, return an expr
-pub fn string_to_expr (source_str : @str) -> @ast::expr {
+pub fn string_to_expr (source_str : @str) -> @ast::Expr {
     do with_error_checking_parse(source_str) |p| {
         p.parse_expr()
     }
@@ -69,7 +69,7 @@ pub fn string_to_item_and_sess (source_str : @str) -> (Option<@ast::item>,@mut P
 }
 
 // parse a string, return a stmt
-pub fn string_to_stmt(source_str : @str) -> @ast::stmt {
+pub fn string_to_stmt(source_str : @str) -> @ast::Stmt {
     do with_error_checking_parse(source_str) |p| {
         p.parse_stmt(~[])
     }
@@ -77,7 +77,7 @@ pub fn string_to_stmt(source_str : @str) -> @ast::stmt {
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't
 // (currently) affect parsing.
-pub fn string_to_pat(source_str : @str) -> @ast::pat {
+pub fn string_to_pat(source_str : @str) -> @ast::Pat {
     string_to_parser(source_str).parse_pat()
 }
 

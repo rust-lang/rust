@@ -14,7 +14,7 @@ explicit `Self` type to use when specifying impls to be derived.
 */
 
 use ast;
-use ast::{expr,Generics,Ident};
+use ast::{Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
@@ -23,8 +23,8 @@ use opt_vec;
 /// The types of pointers
 pub enum PtrTy<'self> {
     Send, // ~
-    Managed(ast::mutability), // @[mut]
-    Borrowed(Option<&'self str>, ast::mutability), // &['lifetime] [mut]
+    Managed(ast::Mutability), // @[mut]
+    Borrowed(Option<&'self str>, ast::Mutability), // &['lifetime] [mut]
 }
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
@@ -91,7 +91,7 @@ pub enum Ty<'self> {
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
-    Borrowed(None, ast::m_imm)
+    Borrowed(None, ast::MutImmutable)
 }
 pub fn borrowed<'r>(ty: ~Ty<'r>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())
@@ -236,7 +236,7 @@ impl<'self> LifetimeBounds<'self> {
 
 
 pub fn get_explicit_self(cx: @ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
-    -> (@expr, ast::explicit_self) {
+    -> (@Expr, ast::explicit_self) {
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {

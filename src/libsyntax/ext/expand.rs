@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, NodeId, expr_, expr_mac, Ident, mac_invoc_tt};
-use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
-use ast::{illegal_ctxt};
+use ast::{Block, Crate, NodeId, Expr_, ExprMac, Ident, mac_invoc_tt};
+use ast::{item_mac, Stmt_, StmtMac, StmtExpr, StmtSemi};
+use ast::{ILLEGAL_CTXT};
 use ast;
 use ast_util::{new_rename, new_mark, resolve};
 use attr;
@@ -31,15 +31,15 @@ use std::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
-                   e: &expr_,
+                   e: &Expr_,
                    s: Span,
                    fld: @ast_fold,
-                   orig: @fn(&expr_, Span, @ast_fold) -> (expr_, Span))
-                -> (expr_, Span) {
+                   orig: @fn(&Expr_, Span, @ast_fold) -> (Expr_, Span))
+                -> (Expr_, Span) {
     match *e {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
-        expr_mac(ref mac) => {
+        ExprMac(ref mac) => {
             match (*mac).node {
                 // Token-tree macros:
                 mac_invoc_tt(ref pth, ref tts) => {
@@ -104,7 +104,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
         // Desugar expr_for_loop
         // From: `for <src_pat> in <src_expr> <src_loop_block>`
-        ast::expr_for_loop(src_pat, src_expr, ref src_loop_block) => {
+        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block) => {
             let src_pat = src_pat.clone();
             let src_expr = src_expr.clone();
 
@@ -118,8 +118,8 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             let hi = s.hi;
 
             pub fn mk_expr(cx: @ExtCtxt, span: Span,
-                           node: expr_) -> @ast::expr {
-                @ast::expr {
+                           node: Expr_) -> @ast::Expr {
+                @ast::Expr {
                     id: cx.next_id(),
                     node: node,
                     span: span,
@@ -127,8 +127,8 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             }
 
             fn mk_block(cx: @ExtCtxt,
-                        stmts: &[@ast::stmt],
-                        expr: Option<@ast::expr>,
+                        stmts: &[@ast::Stmt],
+                        expr: Option<@ast::Expr>,
                         span: Span) -> ast::Block {
                 ast::Block {
                     view_items: ~[],
@@ -186,33 +186,33 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                 let local = @ast::Local {
                     is_mutbl: false,
                     ty: ty,
-                    pat: @ast::pat {
+                    pat: @ast::Pat {
                         id: cx.next_id(),
-                        node: ast::pat_ident(ast::bind_infer, local_path_1, None),
+                        node: ast::PatIdent(ast::BindInfer, local_path_1, None),
                         span: src_expr.span
                     },
                     init: Some(mk_expr(cx, src_expr.span,
-                                       ast::expr_addr_of(ast::m_mutbl, src_expr))),
+                                       ast::ExprAddrOf(ast::MutMutable, src_expr))),
                     id: cx.next_id(),
                     span: src_expr.span,
                 };
                 let e = @spanned(src_expr.span.lo,
                                  src_expr.span.hi,
-                                 ast::decl_local(local));
-                @spanned(lo, hi, ast::stmt_decl(e, cx.next_id()))
+                                 ast::DeclLocal(local));
+                @spanned(lo, hi, ast::StmtDecl(e, cx.next_id()))
             };
 
             // `None => break;`
             let none_arm = {
-                let break_expr = mk_expr(cx, span, ast::expr_break(None));
-                let break_stmt = @spanned(lo, hi, ast::stmt_expr(break_expr, cx.next_id()));
+                let break_expr = mk_expr(cx, span, ast::ExprBreak(None));
+                let break_stmt = @spanned(lo, hi, ast::StmtExpr(break_expr, cx.next_id()));
                 let none_block = mk_block(cx, [break_stmt], None, span);
-                let none_pat = @ast::pat {
+                let none_pat = @ast::Pat {
                     id: cx.next_id(),
-                    node: ast::pat_ident(ast::bind_infer, none_path, None),
+                    node: ast::PatIdent(ast::BindInfer, none_path, None),
                     span: span
                 };
-                ast::arm {
+                ast::Arm {
                     pats: ~[none_pat],
                     guard: None,
                     body: none_block
@@ -221,12 +221,12 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
             // `Some(<src_pat>) => <src_loop_block>`
             let some_arm = {
-                let pat = @ast::pat {
+                let pat = @ast::Pat {
                     id: cx.next_id(),
-                    node: ast::pat_enum(some_path, Some(~[src_pat])),
+                    node: ast::PatEnum(some_path, Some(~[src_pat])),
                     span: src_pat.span
                 };
-                ast::arm {
+                ast::Arm {
                     pats: ~[pat],
                     guard: None,
                     body: src_loop_block
@@ -235,27 +235,27 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
             // `match i.next() { ... }`
             let match_stmt = {
-                let local_expr = mk_expr(cx, span, ast::expr_path(local_path_2));
+                let local_expr = mk_expr(cx, span, ast::ExprPath(local_path_2));
                 let next_call_expr = mk_expr(cx, span,
-                                             ast::expr_method_call(cx.next_id(),
+                                             ast::ExprMethodCall(cx.next_id(),
                                                                    local_expr, next_ident,
                                                                    ~[], ~[], ast::NoSugar));
-                let match_expr = mk_expr(cx, span, ast::expr_match(next_call_expr,
+                let match_expr = mk_expr(cx, span, ast::ExprMatch(next_call_expr,
                                                                    ~[none_arm, some_arm]));
-                @spanned(lo, hi, ast::stmt_expr(match_expr, cx.next_id()))
+                @spanned(lo, hi, ast::StmtExpr(match_expr, cx.next_id()))
             };
 
             // `loop { ... }`
             let loop_block = {
                 let loop_body_block = mk_block(cx, [match_stmt], None, span);
-                let loop_body_expr = mk_expr(cx, span, ast::expr_loop(loop_body_block, None));
-                let loop_body_stmt = @spanned(lo, hi, ast::stmt_expr(loop_body_expr, cx.next_id()));
+                let loop_body_expr = mk_expr(cx, span, ast::ExprLoop(loop_body_block, None));
+                let loop_body_stmt = @spanned(lo, hi, ast::StmtExpr(loop_body_expr, cx.next_id()));
                 mk_block(cx, [iter_decl_stmt,
                               loop_body_stmt],
                          None, span)
             };
 
-            (ast::expr_block(loop_block), span)
+            (ast::ExprBlock(loop_block), span)
         }
 
         _ => orig(e, s, fld)
@@ -448,14 +448,14 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
 // expand a stmt
 pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
-                   s: &stmt_,
+                   s: &Stmt_,
                    sp: Span,
                    fld: @ast_fold,
-                   orig: @fn(&stmt_, Span, @ast_fold)
-                             -> (Option<stmt_>, Span))
-                -> (Option<stmt_>, Span) {
+                   orig: @fn(&Stmt_, Span, @ast_fold)
+                             -> (Option<Stmt_>, Span))
+                -> (Option<Stmt_>, Span) {
     let (mac, pth, tts, semi) = match *s {
-        stmt_mac(ref mac, semi) => {
+        StmtMac(ref mac, semi) => {
             match mac.node {
                 mac_invoc_tt(ref pth, ref tts) => {
                     ((*mac).clone(), pth, (*tts).clone(), semi)
@@ -484,7 +484,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             });
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
-                    @codemap::Spanned { node: stmt_expr(e, cx.next_id()),
+                    @codemap::Spanned { node: StmtExpr(e, cx.next_id()),
                                     span: e.span},
                 MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
@@ -515,7 +515,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     };
 
     (match fully_expanded {
-        stmt_expr(e, stmt_id) if semi => Some(stmt_semi(e, stmt_id)),
+        StmtExpr(e, stmt_id) if semi => Some(StmtSemi(e, stmt_id)),
         _ => { Some(fully_expanded) } /* might already have a semi */
     }, sp)
 
@@ -527,12 +527,12 @@ struct NewNameFinderContext {
 }
 
 impl Visitor<()> for NewNameFinderContext {
-    fn visit_pat(&mut self, pattern: @ast::pat, _: ()) {
+    fn visit_pat(&mut self, pattern: @ast::Pat, _: ()) {
         match *pattern {
             // we found a pat_ident!
-            ast::pat {
+            ast::Pat {
                 id: _,
-                node: ast::pat_ident(_, ref path, ref inner),
+                node: ast::PatIdent(_, ref path, ref inner),
                 span: _
             } => {
                 match path {
@@ -589,23 +589,23 @@ impl Visitor<()> for NewNameFinderContext {
         visit::walk_block(self, block, ())
     }
 
-    fn visit_stmt(&mut self, stmt: @ast::stmt, _: ()) {
+    fn visit_stmt(&mut self, stmt: @ast::Stmt, _: ()) {
         visit::walk_stmt(self, stmt, ())
     }
 
-    fn visit_arm(&mut self, arm: &ast::arm, _: ()) {
+    fn visit_arm(&mut self, arm: &ast::Arm, _: ()) {
         visit::walk_arm(self, arm, ())
     }
 
-    fn visit_decl(&mut self, decl: @ast::decl, _: ()) {
+    fn visit_decl(&mut self, decl: @ast::Decl, _: ()) {
         visit::walk_decl(self, decl, ())
     }
 
-    fn visit_expr(&mut self, expr: @ast::expr, _: ()) {
+    fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
         visit::walk_expr(self, expr, ())
     }
 
-    fn visit_expr_post(&mut self, _: @ast::expr, _: ()) {
+    fn visit_expr_post(&mut self, _: @ast::Expr, _: ()) {
         // Empty!
     }
 
@@ -714,7 +714,7 @@ fn renames_to_fold(renames : @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
 }
 
 // perform a bunch of renames
-fn apply_pending_renames(folder : @ast_fold, stmt : ast::stmt) -> @ast::stmt {
+fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
     match folder.fold_stmt(&stmt) {
         Some(s) => s,
         None => fail!(fmt!("renaming of stmt produced None"))
@@ -1182,7 +1182,7 @@ pub fn new_ident_resolver() ->
     |id : ast::Ident|
     ast::Ident {
         name : resolve(id),
-        ctxt : illegal_ctxt
+        ctxt : ILLEGAL_CTXT
     }
 }
 
@@ -1191,7 +1191,7 @@ pub fn new_ident_resolver() ->
 mod test {
     use super::*;
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord, empty_ctxt};
+    use ast::{Attribute_, AttrOuter, MetaWord, EMPTY_CTXT};
     use codemap;
     use codemap::Spanned;
     use parse;
@@ -1304,7 +1304,7 @@ mod test {
         };
         let a_name = intern("a");
         let a2_name = intern("a2");
-        let renamer = new_ident_renamer(ast::Ident{name:a_name,ctxt:empty_ctxt},
+        let renamer = new_ident_renamer(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
                                         a2_name);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).unwrap();
         let resolver = new_ident_resolver();

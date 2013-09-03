@@ -674,12 +674,12 @@ impl Visitor<@mut Context> for WhileTrueLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
 
             match e.node {
-                ast::expr_while(cond, _) => {
+                ast::ExprWhile(cond, _) => {
                     match cond.node {
-                        ast::expr_lit(@codemap::Spanned {
+                        ast::ExprLit(@codemap::Spanned {
                             node: ast::lit_bool(true), _}) =>
                         {
                             cx.span_lint(while_true, e.span,
@@ -725,24 +725,24 @@ impl SubitemStoppableVisitor for TypeLimitsLintVisitor {
 }
 
 impl TypeLimitsLintVisitor {
-    fn is_valid<T:cmp::Ord>(&mut self, binop: ast::binop, v: T,
+    fn is_valid<T:cmp::Ord>(&mut self, binop: ast::BinOp, v: T,
             min: T, max: T) -> bool {
         match binop {
-            ast::lt => v <= max,
-            ast::le => v < max,
-            ast::gt => v >= min,
-            ast::ge => v > min,
-            ast::eq | ast::ne => v >= min && v <= max,
+            ast::BiLt => v <= max,
+            ast::BiLe => v < max,
+            ast::BiGt => v >= min,
+            ast::BiGe => v > min,
+            ast::BiEq | ast::BiNe => v >= min && v <= max,
             _ => fail!()
         }
     }
 
-    fn rev_binop(&mut self, binop: ast::binop) -> ast::binop {
+    fn rev_binop(&mut self, binop: ast::BinOp) -> ast::BinOp {
         match binop {
-            ast::lt => ast::gt,
-            ast::le => ast::ge,
-            ast::gt => ast::lt,
-            ast::ge => ast::le,
+            ast::BiLt => ast::BiGt,
+            ast::BiLe => ast::BiGe,
+            ast::BiGt => ast::BiLt,
+            ast::BiGe => ast::BiLe,
             _ => binop
         }
     }
@@ -772,13 +772,13 @@ impl TypeLimitsLintVisitor {
 
     fn check_limits(&mut self,
                     cx: &Context,
-                    binop: ast::binop,
-                    l: @ast::expr,
-                    r: @ast::expr)
+                    binop: ast::BinOp,
+                    l: @ast::Expr,
+                    r: @ast::Expr)
                     -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
-            (&ast::expr_lit(_), _) => (l, r, true),
-            (_, &ast::expr_lit(_)) => (r, l, false),
+            (&ast::ExprLit(_), _) => (l, r, true),
+            (_, &ast::ExprLit(_)) => (r, l, false),
             _ => return true
         };
         // Normalize the binop so that the literal is always on the RHS in
@@ -792,7 +792,7 @@ impl TypeLimitsLintVisitor {
             ty::ty_int(int_ty) => {
                 let (min, max) = self.int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
-                    ast::expr_lit(@li) => match li.node {
+                    ast::ExprLit(@li) => match li.node {
                         ast::lit_int(v, _) => v,
                         ast::lit_uint(v, _) => v as i64,
                         ast::lit_int_unsuffixed(v) => v,
@@ -805,7 +805,7 @@ impl TypeLimitsLintVisitor {
             ty::ty_uint(uint_ty) => {
                 let (min, max): (u64, u64) = self.uint_ty_range(uint_ty);
                 let lit_val: u64 = match lit.node {
-                    ast::expr_lit(@li) => match li.node {
+                    ast::ExprLit(@li) => match li.node {
                         ast::lit_int(v, _) => v as u64,
                         ast::lit_uint(v, _) => v,
                         ast::lit_int_unsuffixed(v) => v as u64,
@@ -819,10 +819,10 @@ impl TypeLimitsLintVisitor {
         }
     }
 
-    fn is_comparison(&mut self, binop: ast::binop) -> bool {
+    fn is_comparison(&mut self, binop: ast::BinOp) -> bool {
         match binop {
-            ast::eq | ast::lt | ast::le |
-            ast::ne | ast::ge | ast::gt => true,
+            ast::BiEq | ast::BiLt | ast::BiLe |
+            ast::BiNe | ast::BiGe | ast::BiGt => true,
             _ => false
         }
     }
@@ -838,10 +838,10 @@ impl Visitor<@mut Context> for TypeLimitsLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
 
             match e.node {
-                ast::expr_binary(_, ref binop, l, r) => {
+                ast::ExprBinary(_, ref binop, l, r) => {
                     if self.is_comparison(*binop)
                         && !self.check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,
@@ -865,12 +865,12 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
         match ty.node {
             ast::ty_path(_, _, id) => {
                 match cx.tcx.def_map.get_copy(&id) {
-                    ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
+                    ast::DefPrimTy(ast::ty_int(ast::ty_i)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `int` in foreign module, while \
                                 libc::c_int or libc::c_long should be used");
                     }
-                    ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
+                    ast::DefPrimTy(ast::ty_uint(ast::ty_u)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
@@ -979,7 +979,7 @@ impl Visitor<@mut Context> for HeapLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
             let ty = ty::expr_ty(cx.tcx, e);
             check_type(cx, e.span, ty);
             visit::walk_expr(self, e, cx);
@@ -1010,10 +1010,10 @@ impl Visitor<@mut Context> for PathStatementLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_stmt(&mut self, s:@ast::stmt, cx:@mut Context) {
+    fn visit_stmt(&mut self, s:@ast::Stmt, cx:@mut Context) {
             match s.node {
-                ast::stmt_semi(
-                    @ast::expr { node: ast::expr_path(_), _ },
+                ast::StmtSemi(
+                    @ast::Expr { node: ast::ExprPath(_), _ },
                     _
                 ) => {
                     cx.span_lint(path_statement, s.span,
@@ -1073,7 +1073,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
 fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
     match it.node {
         // only check static constants
-        ast::item_static(_, ast::m_imm, _) => {
+        ast::item_static(_, ast::MutImmutable, _) => {
             let s = cx.tcx.sess.str_of(it.ident);
             // check for lowercase letters rather than non-uppercase
             // ones (some scripts don't have a concept of
@@ -1103,10 +1103,10 @@ impl Visitor<@mut Context> for UnusedUnsafeLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
 
             match e.node {
-                ast::expr_block(ref blk) if blk.rules == ast::UnsafeBlock => {
+                ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock => {
                     if !cx.tcx.used_unsafe.contains(&blk.id) {
                         cx.span_lint(unused_unsafe, blk.span,
                                      "unnecessary `unsafe` block");
@@ -1127,7 +1127,7 @@ fn lint_unused_unsafe() -> @mut OuterLint {
 struct UnusedMutLintVisitor { stopping_on_items: bool }
 
 impl UnusedMutLintVisitor {
-    fn check_pat(&mut self, cx: &Context, p: @ast::pat) {
+    fn check_pat(&mut self, cx: &Context, p: @ast::Pat) {
         let mut used = false;
         let mut bindings = 0;
         do pat_util::pat_bindings(cx.tcx.def_map, p) |_, id, _, _| {
@@ -1229,7 +1229,7 @@ impl Visitor<@mut Context> for UnnecessaryAllocationLintVisitor {
         self.OVERRIDE_visit_fn(fk, fd, b, s, n, e);
     }
 
-    fn visit_expr(&mut self, e:@ast::expr, cx:@mut Context) {
+    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
             self.check(cx, e);
             visit::walk_expr(self, e, cx);
     }
@@ -1238,14 +1238,14 @@ impl Visitor<@mut Context> for UnnecessaryAllocationLintVisitor {
 impl UnnecessaryAllocationLintVisitor {
     // Warn if string and vector literals with sigils are immediately borrowed.
     // Those can have the sigil removed.
-    fn check(&mut self, cx: &Context, e: &ast::expr) {
+    fn check(&mut self, cx: &Context, e: &ast::Expr) {
         match e.node {
-            ast::expr_vstore(e2, ast::expr_vstore_uniq) |
-            ast::expr_vstore(e2, ast::expr_vstore_box) => {
+            ast::ExprVstore(e2, ast::ExprVstoreUniq) |
+            ast::ExprVstore(e2, ast::ExprVstoreBox) => {
                 match e2.node {
-                    ast::expr_lit(@codemap::Spanned{
+                    ast::ExprLit(@codemap::Spanned{
                             node: ast::lit_str(*), _}) |
-                    ast::expr_vec(*) => {}
+                    ast::ExprVec(*) => {}
                     _ => return
                 }
             }

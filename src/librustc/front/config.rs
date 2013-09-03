@@ -116,12 +116,12 @@ fn fold_item_underscore(cx: @Context, item: &ast::item_,
     fold::noop_fold_item_underscore(&item, fld)
 }
 
-fn filter_stmt(cx: @Context, stmt: @ast::stmt) ->
-   Option<@ast::stmt> {
+fn filter_stmt(cx: @Context, stmt: @ast::Stmt) ->
+   Option<@ast::Stmt> {
     match stmt.node {
-      ast::stmt_decl(decl, _) => {
+      ast::StmtDecl(decl, _) => {
         match decl.node {
-          ast::decl_item(item) => {
+          ast::DeclItem(item) => {
             if item_in_cfg(cx, item) {
                 option::Some(stmt)
             } else { option::None }

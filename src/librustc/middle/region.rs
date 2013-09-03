@@ -36,7 +36,7 @@ use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::{ast, visit};
 use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{Block,item,fn_decl,NodeId,arm,pat,stmt,expr,Local};
+use syntax::ast::{Block,item,fn_decl,NodeId,Arm,Pat,Stmt,Expr,Local};
 use syntax::ast::{Ty,TypeMethod,struct_field};
 
 /**
@@ -340,13 +340,13 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_arm(visitor: &mut RegionResolutionVisitor,
-               arm: &ast::arm,
+               arm: &ast::Arm,
                cx: Context) {
     visit::walk_arm(visitor, arm, cx);
 }
 
 fn resolve_pat(visitor: &mut RegionResolutionVisitor,
-               pat: @ast::pat,
+               pat: @ast::Pat,
                cx: Context) {
     assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, pat.id, pat.span);
@@ -354,32 +354,32 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_stmt(visitor: &mut RegionResolutionVisitor,
-                stmt: @ast::stmt,
+                stmt: @ast::Stmt,
                 cx: Context) {
     match stmt.node {
-        ast::stmt_decl(*) => {
+        ast::StmtDecl(*) => {
             visit::walk_stmt(visitor, stmt, cx);
         }
-        ast::stmt_expr(_, stmt_id) |
-        ast::stmt_semi(_, stmt_id) => {
+        ast::StmtExpr(_, stmt_id) |
+        ast::StmtSemi(_, stmt_id) => {
             parent_to_expr(cx, stmt_id, stmt.span);
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
             visit::walk_stmt(visitor, stmt, expr_cx);
         }
-        ast::stmt_mac(*) => cx.sess.bug("unexpanded macro")
+        ast::StmtMac(*) => cx.sess.bug("unexpanded macro")
     }
 }
 
 fn resolve_expr(visitor: &mut RegionResolutionVisitor,
-                expr: @ast::expr,
+                expr: @ast::Expr,
                 cx: Context) {
     parent_to_expr(cx, expr.id, expr.span);
 
     let mut new_cx = cx;
     new_cx.parent = Some(expr.id);
     match expr.node {
-        ast::expr_assign_op(*) | ast::expr_index(*) | ast::expr_binary(*) |
-        ast::expr_unary(*) | ast::expr_call(*) | ast::expr_method_call(*) => {
+        ast::ExprAssignOp(*) | ast::ExprIndex(*) | ast::ExprBinary(*) |
+        ast::ExprUnary(*) | ast::ExprCall(*) | ast::ExprMethodCall(*) => {
             // FIXME(#6268) Nested method calls
             //
             // The lifetimes for a call or method call look as follows:
@@ -400,7 +400,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             // parent_to_expr(new_cx, expr.callee_id);
         }
 
-        ast::expr_match(*) => {
+        ast::ExprMatch(*) => {
             new_cx.var_parent = Some(expr.id);
         }
 
@@ -485,16 +485,16 @@ impl Visitor<Context> for RegionResolutionVisitor {
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, cx:Context) {
         resolve_fn(self, fk, fd, b, s, n, cx);
     }
-    fn visit_arm(&mut self, a:&arm, cx:Context) {
+    fn visit_arm(&mut self, a:&Arm, cx:Context) {
         resolve_arm(self, a, cx);
     }
-    fn visit_pat(&mut self, p:@pat, cx:Context) {
+    fn visit_pat(&mut self, p:@Pat, cx:Context) {
         resolve_pat(self, p, cx);
     }
-    fn visit_stmt(&mut self, s:@stmt, cx:Context) {
+    fn visit_stmt(&mut self, s:@Stmt, cx:Context) {
         resolve_stmt(self, s, cx);
     }
-    fn visit_expr(&mut self, ex:@expr, cx:Context) {
+    fn visit_expr(&mut self, ex:@Expr, cx:Context) {
         resolve_expr(self, ex, cx);
     }
     fn visit_local(&mut self, l:@Local, cx:Context) {
@@ -823,9 +823,9 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
     match ty.node {
       ast::ty_path(ref path, _, id) => {
         match cx.def_map.find(&id) {
-          Some(&ast::def_ty(did)) |
-          Some(&ast::def_trait(did)) |
-          Some(&ast::def_struct(did)) => {
+          Some(&ast::DefTy(did)) |
+          Some(&ast::DefTrait(did)) |
+          Some(&ast::DefStruct(did)) => {
             if did.crate == ast::LOCAL_CRATE {
                 if cx.region_is_relevant(&path.segments.last().lifetime) {
                     cx.add_dep(did.node);
@@ -890,7 +890,7 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
                 mt: &ast::mt,
                 cx: @mut DetermineRpCtxt) {
         // mutability is invariant
-        if mt.mutbl == ast::m_mutbl {
+        if mt.mutbl == ast::MutMutable {
             do cx.with_ambient_variance(rv_invariant) {
                 visitor.visit_ty(mt.ty, cx);
             }

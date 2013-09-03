@@ -15,7 +15,7 @@
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
-use syntax::ast::{m_imm, m_mutbl};
+use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::{note_and_explain_region};
@@ -90,7 +90,7 @@ impl GuaranteeLifetimeContext {
 
                 // L-Deref-Managed-Imm-User-Root
                 let omit_root = (
-                    ptr_mutbl == m_imm &&
+                    ptr_mutbl == MutImmutable &&
                     self.bccx.is_subregion_of(self.loan_region, base_scope) &&
                     self.is_rvalue_or_immutable(base) &&
                     !self.is_moved(base)
@@ -187,7 +187,7 @@ impl GuaranteeLifetimeContext {
                   cmt_deref: mc::cmt,
                   cmt_base: mc::cmt,
                   derefs: uint,
-                  ptr_mutbl: ast::mutability,
+                  ptr_mutbl: ast::Mutability,
                   discr_scope: Option<ast::NodeId>) {
         debug!("check_root(cmt_deref=%s, cmt_base=%s, derefs=%?, ptr_mutbl=%?, \
                 discr_scope=%?)",
@@ -235,8 +235,8 @@ impl GuaranteeLifetimeContext {
         // we need to dynamically mark it to prevent incompatible
         // borrows from happening later.
         let opt_dyna = match ptr_mutbl {
-            m_imm => None,
-            m_mutbl => {
+            MutImmutable => None,
+            MutMutable => {
                 match self.loan_mutbl {
                     MutableMutability => Some(DynaMut),
                     ImmutableMutability | ConstMutability => Some(DynaImm)

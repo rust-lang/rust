@@ -72,7 +72,7 @@ trait tr {
 }
 
 trait tr_intern {
-    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::def_id;
+    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::DefId;
 }
 
 // ______________________________________________________________________
@@ -179,7 +179,7 @@ impl ExtendedDecodeContext {
         assert!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
-    pub fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_def_id(&self, did: ast::DefId) -> ast::DefId {
         /*!
          * Translates an EXTERNAL def-id, converting the crate number
          * from the one used in the encoded data to the current crate
@@ -203,7 +203,7 @@ impl ExtendedDecodeContext {
 
         decoder::translate_def_id(self.dcx.cdata, did)
     }
-    pub fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_intern_def_id(&self, did: ast::DefId) -> ast::DefId {
         /*!
          * Translates an INTERNAL def-id, meaning a def-id that is
          * known to refer to some part of the item currently being
@@ -212,21 +212,21 @@ impl ExtendedDecodeContext {
          */
 
         assert_eq!(did.crate, ast::LOCAL_CRATE);
-        ast::def_id { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
+        ast::DefId { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: Span) -> Span {
         codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
 
-impl tr_intern for ast::def_id {
-    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::def_id {
+impl tr_intern for ast::DefId {
+    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::DefId {
         xcx.tr_intern_def_id(*self)
     }
 }
 
-impl tr for ast::def_id {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def_id {
+impl tr for ast::DefId {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::DefId {
         xcx.tr_def_id(*self)
     }
 }
@@ -238,30 +238,30 @@ impl tr for Span {
 }
 
 trait def_id_encoder_helpers {
-    fn emit_def_id(&mut self, did: ast::def_id);
+    fn emit_def_id(&mut self, did: ast::DefId);
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S {
-    fn emit_def_id(&mut self, did: ast::def_id) {
+    fn emit_def_id(&mut self, did: ast::DefId) {
         did.encode(self)
     }
 }
 
 trait def_id_decoder_helpers {
-    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::def_id;
+    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::DefId;
     fn read_def_id_noxcx(&mut self,
-                         cdata: @cstore::crate_metadata) -> ast::def_id;
+                         cdata: @cstore::crate_metadata) -> ast::DefId;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D {
-    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::def_id {
-        let did: ast::def_id = Decodable::decode(self);
+    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::DefId {
+        let did: ast::DefId = Decodable::decode(self);
         did.tr(xcx)
     }
 
     fn read_def_id_noxcx(&mut self,
-                         cdata: @cstore::crate_metadata) -> ast::def_id {
-        let did: ast::def_id = Decodable::decode(self);
+                         cdata: @cstore::crate_metadata) -> ast::DefId {
+        let did: ast::DefId = Decodable::decode(self);
         decoder::translate_def_id(cdata, did)
     }
 }
@@ -301,12 +301,12 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
     fn drop_nested_items(blk: &ast::Block, fld: @fold::ast_fold) -> ast::Block {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
-              ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@codemap::Spanned { node: ast::decl_local(_), span: _}, _)
+              ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
+              ast::StmtDecl(@codemap::Spanned { node: ast::DeclLocal(_), span: _}, _)
                 => Some(*stmt),
-              ast::stmt_decl(@codemap::Spanned { node: ast::decl_item(_), span: _}, _)
+              ast::StmtDecl(@codemap::Spanned { node: ast::DeclItem(_), span: _}, _)
                 => None,
-              ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
+              ast::StmtMac(*) => fail!("unexpanded macro in astencode")
             }
         }.collect();
         let blk_sans_items = ast::Block {
@@ -360,22 +360,22 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn encode_def(ebml_w: &mut writer::Encoder, def: ast::def) {
+fn encode_def(ebml_w: &mut writer::Encoder, def: ast::Def) {
     def.encode(ebml_w)
 }
 
-fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::def {
+fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
     let mut dsr = reader::Decoder(doc);
-    let def: ast::def = Decodable::decode(&mut dsr);
+    let def: ast::Def = Decodable::decode(&mut dsr);
     def.tr(xcx)
 }
 
-impl tr for ast::def {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def {
+impl tr for ast::Def {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::Def {
         match *self {
-          ast::def_fn(did, p) => ast::def_fn(did.tr(xcx), p),
-          ast::def_static_method(did, wrapped_did2, p) => {
-            ast::def_static_method(did.tr(xcx),
+          ast::DefFn(did, p) => ast::DefFn(did.tr(xcx), p),
+          ast::DefStaticMethod(did, wrapped_did2, p) => {
+            ast::DefStaticMethod(did.tr(xcx),
                                    match wrapped_did2 {
                                     ast::FromTrait(did2) => {
                                         ast::FromTrait(did2.tr(xcx))
@@ -386,37 +386,37 @@ impl tr for ast::def {
                                    },
                                    p)
           }
-          ast::def_method(did0, did1) => {
-            ast::def_method(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
+          ast::DefMethod(did0, did1) => {
+            ast::DefMethod(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
           }
-          ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
-          ast::def_self(nid) => { ast::def_self(xcx.tr_id(nid)) }
-          ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
-          ast::def_foreign_mod(did) => { ast::def_foreign_mod(did.tr(xcx)) }
-          ast::def_static(did, m) => { ast::def_static(did.tr(xcx), m) }
-          ast::def_arg(nid, b) => { ast::def_arg(xcx.tr_id(nid), b) }
-          ast::def_local(nid, b) => { ast::def_local(xcx.tr_id(nid), b) }
-          ast::def_variant(e_did, v_did) => {
-            ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
+          ast::DefSelfTy(nid) => { ast::DefSelfTy(xcx.tr_id(nid)) }
+          ast::DefSelf(nid) => { ast::DefSelf(xcx.tr_id(nid)) }
+          ast::DefMod(did) => { ast::DefMod(did.tr(xcx)) }
+          ast::DefForeignMod(did) => { ast::DefForeignMod(did.tr(xcx)) }
+          ast::DefStatic(did, m) => { ast::DefStatic(did.tr(xcx), m) }
+          ast::DefArg(nid, b) => { ast::DefArg(xcx.tr_id(nid), b) }
+          ast::DefLocal(nid, b) => { ast::DefLocal(xcx.tr_id(nid), b) }
+          ast::DefVariant(e_did, v_did) => {
+            ast::DefVariant(e_did.tr(xcx), v_did.tr(xcx))
           },
-          ast::def_trait(did) => ast::def_trait(did.tr(xcx)),
-          ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
-          ast::def_prim_ty(p) => ast::def_prim_ty(p),
-          ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),
-          ast::def_binding(nid, bm) => ast::def_binding(xcx.tr_id(nid), bm),
-          ast::def_use(did) => ast::def_use(did.tr(xcx)),
-          ast::def_upvar(nid1, def, nid2, nid3) => {
-            ast::def_upvar(xcx.tr_id(nid1),
+          ast::DefTrait(did) => ast::DefTrait(did.tr(xcx)),
+          ast::DefTy(did) => ast::DefTy(did.tr(xcx)),
+          ast::DefPrimTy(p) => ast::DefPrimTy(p),
+          ast::DefTyParam(did, v) => ast::DefTyParam(did.tr(xcx), v),
+          ast::DefBinding(nid, bm) => ast::DefBinding(xcx.tr_id(nid), bm),
+          ast::DefUse(did) => ast::DefUse(did.tr(xcx)),
+          ast::DefUpvar(nid1, def, nid2, nid3) => {
+            ast::DefUpvar(xcx.tr_id(nid1),
                            @(*def).tr(xcx),
                            xcx.tr_id(nid2),
                            xcx.tr_id(nid3))
           }
-          ast::def_struct(did) => ast::def_struct(did.tr(xcx)),
-          ast::def_region(nid) => ast::def_region(xcx.tr_id(nid)),
-          ast::def_typaram_binder(nid) => {
-            ast::def_typaram_binder(xcx.tr_id(nid))
+          ast::DefStruct(did) => ast::DefStruct(did.tr(xcx)),
+          ast::DefRegion(nid) => ast::DefRegion(xcx.tr_id(nid)),
+          ast::DefTyParamBinder(nid) => {
+            ast::DefTyParamBinder(xcx.tr_id(nid))
           }
-          ast::def_label(nid) => ast::def_label(xcx.tr_id(nid))
+          ast::DefLabel(nid) => ast::DefLabel(xcx.tr_id(nid))
         }
     }
 }
@@ -914,7 +914,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = ast::def_id { crate: ast::LOCAL_CRATE, node: id };
+    let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
     {
         let r = tcx.tcache.find(&lid);
         for &tpbt in r.iter() {
@@ -1012,8 +1012,8 @@ trait ebml_decoder_decoder_helpers {
     fn convert_def_id(&mut self,
                       xcx: @ExtendedDecodeContext,
                       source: DefIdSource,
-                      did: ast::def_id)
-                      -> ast::def_id;
+                      did: ast::DefId)
+                      -> ast::DefId;
 
     // Versions of the type reading functions that don't need the full
     // ExtendedDecodeContext.
@@ -1122,8 +1122,8 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
     fn convert_def_id(&mut self,
                       xcx: @ExtendedDecodeContext,
                       source: tydecode::DefIdSource,
-                      did: ast::def_id)
-                      -> ast::def_id {
+                      did: ast::DefId)
+                      -> ast::DefId {
         /*!
          *
          * Converts a def-id that appears in a type.  The correct
@@ -1192,7 +1192,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
-                        let lid = ast::def_id { crate: ast::LOCAL_CRATE, node: id };
+                        let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
                         dcx.tcx.tcache.insert(lid, tpbt);
                     }
                     c::tag_table_param_defs => {

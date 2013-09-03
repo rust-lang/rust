@@ -29,7 +29,7 @@ pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
-    pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: empty_ctxt}}
+    pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
 }
 
 /// A SyntaxContext represents a chain of macro-expandings
@@ -52,9 +52,10 @@ pub struct SCTable {
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
     rename_memo : HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
 }
+
 // NB: these must be placed in any SCTable...
-pub static empty_ctxt : uint = 0;
-pub static illegal_ctxt : uint = 1;
+pub static EMPTY_CTXT : uint = 0;
+pub static ILLEGAL_CTXT : uint = 1;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum SyntaxContext_ {
@@ -69,7 +70,7 @@ pub enum SyntaxContext_ {
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
     Rename (Ident,Name,SyntaxContext),
-    IllegalCtxt()
+    IllegalCtxt
 }
 
 /// A name is a part of an identifier, representing a string or gensym. It's
@@ -92,7 +93,7 @@ impl<D:Decoder> Decodable<D> for Ident {
 }
 
 /// Function name (not all functions have names)
-pub type fn_ident = Option<Ident>;
+pub type FnIdent = Option<Ident>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Lifetime {
@@ -133,7 +134,7 @@ pub type CrateNum = int;
 pub type NodeId = int;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
-pub struct def_id {
+pub struct DefId {
     crate: CrateNum,
     node: NodeId,
 }
@@ -178,39 +179,38 @@ impl Generics {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum MethodProvenance {
-    FromTrait(def_id),
-    FromImpl(def_id),
+    FromTrait(DefId),
+    FromImpl(DefId),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum def {
-    def_fn(def_id, purity),
-    def_static_method(/* method */ def_id, MethodProvenance, purity),
-    def_self(NodeId),
-    def_self_ty(/* trait id */ NodeId),
-    def_mod(def_id),
-    def_foreign_mod(def_id),
-    def_static(def_id, bool /* is_mutbl */),
-    def_arg(NodeId, bool /* is_mutbl */),
-    def_local(NodeId, bool /* is_mutbl */),
-    def_variant(def_id /* enum */, def_id /* variant */),
-    def_ty(def_id),
-    def_trait(def_id),
-    def_prim_ty(prim_ty),
-    def_ty_param(def_id, uint),
-    def_binding(NodeId, binding_mode),
-    def_use(def_id),
-    def_upvar(NodeId,  // id of closed over var
-              @def,     // closed over def
+pub enum Def {
+    DefFn(DefId, purity),
+    DefStaticMethod(/* method */ DefId, MethodProvenance, purity),
+    DefSelf(NodeId),
+    DefSelfTy(/* trait id */ NodeId),
+    DefMod(DefId),
+    DefForeignMod(DefId),
+    DefStatic(DefId, bool /* is_mutbl */),
+    DefArg(NodeId, bool /* is_mutbl */),
+    DefLocal(NodeId, bool /* is_mutbl */),
+    DefVariant(DefId /* enum */, DefId /* variant */),
+    DefTy(DefId),
+    DefTrait(DefId),
+    DefPrimTy(prim_ty),
+    DefTyParam(DefId, uint),
+    DefBinding(NodeId, BindingMode),
+    DefUse(DefId),
+    DefUpvar(NodeId,  // id of closed over var
+              @Def,     // closed over def
               NodeId,  // expr node that creates the closure
               NodeId), // id for the block/body of the closure expr
-    def_struct(def_id),
-    def_typaram_binder(NodeId), /* struct, impl or trait with ty params */
-    def_region(NodeId),
-    def_label(NodeId),
-    def_method(def_id /* method */, Option<def_id> /* trait */),
+    DefStruct(DefId),
+    DefTyParamBinder(NodeId), /* struct, impl or trait with ty params */
+    DefRegion(NodeId),
+    DefLabel(NodeId),
+    DefMethod(DefId /* method */, Option<DefId> /* trait */),
 }
-
 
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
@@ -261,35 +261,35 @@ impl Eq for MetaItem_ {
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct Block {
     view_items: ~[view_item],
-    stmts: ~[@stmt],
-    expr: Option<@expr>,
+    stmts: ~[@Stmt],
+    expr: Option<@Expr>,
     id: NodeId,
     rules: BlockCheckMode,
     span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct pat {
+pub struct Pat {
     id: NodeId,
-    node: pat_,
+    node: Pat_,
     span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct field_pat {
+pub struct FieldPat {
     ident: Ident,
-    pat: @pat,
+    pat: @Pat,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum binding_mode {
-    bind_by_ref(mutability),
-    bind_infer
+pub enum BindingMode {
+    BindByRef(Mutability),
+    BindInfer
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum pat_ {
-    pat_wild,
+pub enum Pat_ {
+    PatWild,
     // A pat_ident may either be a new bound variable,
     // or a nullary enum (in which case the second field
     // is None).
@@ -297,25 +297,25 @@ pub enum pat_ {
     // which it is. The resolver determines this, and
     // records this pattern's NodeId in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, Path, Option<@pat>),
-    pat_enum(Path, Option<~[@pat]>), /* "none" means a * pattern where
+    PatIdent(BindingMode, Path, Option<@Pat>),
+    PatEnum(Path, Option<~[@Pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_struct(Path, ~[field_pat], bool),
-    pat_tup(~[@pat]),
-    pat_box(@pat),
-    pat_uniq(@pat),
-    pat_region(@pat), // borrowed pointer pattern
-    pat_lit(@expr),
-    pat_range(@expr, @expr),
+    PatStruct(Path, ~[FieldPat], bool),
+    PatTup(~[@Pat]),
+    PatBox(@Pat),
+    PatUniq(@Pat),
+    PatRegion(@Pat), // borrowed pointer pattern
+    PatLit(@Expr),
+    PatRange(@Expr, @Expr),
     // [a, b, ..i, y, z] is represented as
     // pat_vec(~[a, b], Some(i), ~[y, z])
-    pat_vec(~[@pat], Option<@pat>, ~[@pat])
+    PatVec(~[@Pat], Option<@Pat>, ~[@Pat])
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum mutability {
-    m_mutbl,
-    m_imm,
+pub enum Mutability {
+    MutMutable,
+    MutImmutable,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -336,69 +336,69 @@ impl ToStr for Sigil {
 }
 
 #[deriving(Eq, Encodable, Decodable, IterBytes)]
-pub enum vstore {
+pub enum Vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
-    vstore_fixed(Option<uint>),     // [1,2,3,4]
-    vstore_uniq,                    // ~[1,2,3,4]
-    vstore_box,                     // @[1,2,3,4]
-    vstore_slice(Option<Lifetime>) // &'foo? [1,2,3,4]
+    VstoreFixed(Option<uint>),     // [1,2,3,4]
+    VstoreUniq,                    // ~[1,2,3,4]
+    VstoreBox,                     // @[1,2,3,4]
+    VstoreSlice(Option<Lifetime>)  // &'foo? [1,2,3,4]
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum expr_vstore {
-    expr_vstore_uniq,                  // ~[1,2,3,4]
-    expr_vstore_box,                   // @[1,2,3,4]
-    expr_vstore_mut_box,               // @mut [1,2,3,4]
-    expr_vstore_slice,                 // &[1,2,3,4]
-    expr_vstore_mut_slice,             // &mut [1,2,3,4]
+pub enum ExprVstore {
+    ExprVstoreUniq,                 // ~[1,2,3,4]
+    ExprVstoreBox,                  // @[1,2,3,4]
+    ExprVstoreMutBox,               // @mut [1,2,3,4]
+    ExprVstoreSlice,                // &[1,2,3,4]
+    ExprVstoreMutSlice,             // &mut [1,2,3,4]
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum binop {
-    add,
-    subtract,
-    mul,
-    div,
-    rem,
-    and,
-    or,
-    bitxor,
-    bitand,
-    bitor,
-    shl,
-    shr,
-    eq,
-    lt,
-    le,
-    ne,
-    ge,
-    gt,
+pub enum BinOp {
+    BiAdd,
+    BiSub,
+    BiMul,
+    BiDiv,
+    BiRem,
+    BiAnd,
+    BiOr,
+    BiBitXor,
+    BiBitAnd,
+    BiBitOr,
+    BiShl,
+    BiShr,
+    BiEq,
+    BiLt,
+    BiLe,
+    BiNe,
+    BiGe,
+    BiGt,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum unop {
-    box(mutability),
-    uniq,
-    deref,
-    not,
-    neg
+pub enum UnOp {
+    UnBox(Mutability),
+    UnUniq,
+    UnDeref,
+    UnNot,
+    UnNeg
 }
 
-pub type stmt = Spanned<stmt_>;
+pub type Stmt = Spanned<Stmt_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum stmt_ {
+pub enum Stmt_ {
     // could be an item or a local (let) binding:
-    stmt_decl(@decl, NodeId),
+    StmtDecl(@Decl, NodeId),
 
     // expr without trailing semi-colon (must have unit type):
-    stmt_expr(@expr, NodeId),
+    StmtExpr(@Expr, NodeId),
 
     // expr with trailing semi-colon (may have any type):
-    stmt_semi(@expr, NodeId),
+    StmtSemi(@Expr, NodeId),
 
     // bool: is there a trailing sem-colon?
-    stmt_mac(mac, bool),
+    StmtMac(mac, bool),
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
@@ -407,33 +407,33 @@ pub enum stmt_ {
 pub struct Local {
     is_mutbl: bool,
     ty: Ty,
-    pat: @pat,
-    init: Option<@expr>,
+    pat: @Pat,
+    init: Option<@Expr>,
     id: NodeId,
     span: Span,
 }
 
-pub type decl = Spanned<decl_>;
+pub type Decl = Spanned<Decl_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub enum decl_ {
+pub enum Decl_ {
     // a local (let) binding:
-    decl_local(@Local),
+    DeclLocal(@Local),
     // an item binding:
-    decl_item(@item),
+    DeclItem(@item),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct arm {
-    pats: ~[@pat],
-    guard: Option<@expr>,
+pub struct Arm {
+    pats: ~[@Pat],
+    guard: Option<@Expr>,
     body: Block,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Field {
     ident: Ident,
-    expr: @expr,
+    expr: @Expr,
     span: Span,
 }
 
@@ -444,20 +444,20 @@ pub enum BlockCheckMode {
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct expr {
+pub struct Expr {
     id: NodeId,
-    node: expr_,
+    node: Expr_,
     span: Span,
 }
 
-impl expr {
+impl Expr {
     pub fn get_callee_id(&self) -> Option<NodeId> {
         match self.node {
-            expr_method_call(callee_id, _, _, _, _, _) |
-            expr_index(callee_id, _, _) |
-            expr_binary(callee_id, _, _, _) |
-            expr_assign_op(callee_id, _, _, _) |
-            expr_unary(callee_id, _, _) => Some(callee_id),
+            ExprMethodCall(callee_id, _, _, _, _, _) |
+            ExprIndex(callee_id, _, _) |
+            ExprBinary(callee_id, _, _, _) |
+            ExprAssignOp(callee_id, _, _, _) |
+            ExprUnary(callee_id, _, _) => Some(callee_id),
             _ => None,
         }
     }
@@ -471,54 +471,54 @@ pub enum CallSugar {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum expr_ {
-    expr_vstore(@expr, expr_vstore),
-    expr_vec(~[@expr], mutability),
-    expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(NodeId, @expr, Ident, ~[Ty], ~[@expr], CallSugar),
-    expr_tup(~[@expr]),
-    expr_binary(NodeId, binop, @expr, @expr),
-    expr_unary(NodeId, unop, @expr),
-    expr_lit(@lit),
-    expr_cast(@expr, Ty),
-    expr_if(@expr, Block, Option<@expr>),
-    expr_while(@expr, Block),
-    expr_for_loop(@pat, @expr, Block),
+pub enum Expr_ {
+    ExprVstore(@Expr, ExprVstore),
+    ExprVec(~[@Expr], Mutability),
+    ExprCall(@Expr, ~[@Expr], CallSugar),
+    ExprMethodCall(NodeId, @Expr, Ident, ~[Ty], ~[@Expr], CallSugar),
+    ExprTup(~[@Expr]),
+    ExprBinary(NodeId, BinOp, @Expr, @Expr),
+    ExprUnary(NodeId, UnOp, @Expr),
+    ExprLit(@lit),
+    ExprCast(@Expr, Ty),
+    ExprIf(@Expr, Block, Option<@Expr>),
+    ExprWhile(@Expr, Block),
+    ExprForLoop(@Pat, @Expr, Block),
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(Block, Option<Ident>),
-    expr_match(@expr, ~[arm]),
-    expr_fn_block(fn_decl, Block),
-    expr_do_body(@expr),
-    expr_block(Block),
+    ExprLoop(Block, Option<Ident>),
+    ExprMatch(@Expr, ~[Arm]),
+    ExprFnBlock(fn_decl, Block),
+    ExprDoBody(@Expr),
+    ExprBlock(Block),
 
-    expr_assign(@expr, @expr),
-    expr_assign_op(NodeId, binop, @expr, @expr),
-    expr_field(@expr, Ident, ~[Ty]),
-    expr_index(NodeId, @expr, @expr),
-    expr_path(Path),
+    ExprAssign(@Expr, @Expr),
+    ExprAssignOp(NodeId, BinOp, @Expr, @Expr),
+    ExprField(@Expr, Ident, ~[Ty]),
+    ExprIndex(NodeId, @Expr, @Expr),
+    ExprPath(Path),
 
     /// The special identifier `self`.
-    expr_self,
-    expr_addr_of(mutability, @expr),
-    expr_break(Option<Ident>),
-    expr_again(Option<Ident>),
-    expr_ret(Option<@expr>),
-    expr_log(@expr, @expr),
+    ExprSelf,
+    ExprAddrOf(Mutability, @Expr),
+    ExprBreak(Option<Ident>),
+    ExprAgain(Option<Ident>),
+    ExprRet(Option<@Expr>),
+    ExprLog(@Expr, @Expr),
 
-    expr_inline_asm(inline_asm),
+    ExprInlineAsm(inline_asm),
 
-    expr_mac(mac),
+    ExprMac(mac),
 
     // A struct literal expression.
-    expr_struct(Path, ~[Field], Option<@expr> /* base */),
+    ExprStruct(Path, ~[Field], Option<@Expr> /* base */),
 
     // A vector literal constructed from one repeated element.
-    expr_repeat(@expr /* element */, @expr /* count */, mutability),
+    ExprRepeat(@Expr /* element */, @Expr /* count */, Mutability),
 
     // No-op: used solely so we can pretty-print faithfully
-    expr_paren(@expr)
+    ExprParen(@Expr)
 }
 
 // When the main rust parser encounters a syntax-extension invocation, it
@@ -646,7 +646,7 @@ pub enum lit_ {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct mt {
     ty: ~Ty,
-    mutbl: mutability,
+    mutbl: Mutability,
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
@@ -785,7 +785,7 @@ pub enum ty_ {
     ty_box(mt),
     ty_uniq(mt),
     ty_vec(mt),
-    ty_fixed_length_vec(mt, @expr),
+    ty_fixed_length_vec(mt, @Expr),
     ty_ptr(mt),
     ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
@@ -793,7 +793,7 @@ pub enum ty_ {
     ty_tup(~[Ty]),
     ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     ty_mac(mac),
-    ty_typeof(@expr),
+    ty_typeof(@Expr),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.
@@ -810,8 +810,8 @@ pub enum asm_dialect {
 pub struct inline_asm {
     asm: @str,
     clobbers: @str,
-    inputs: ~[(@str, @expr)],
-    outputs: ~[(@str, @expr)],
+    inputs: ~[(@str, @Expr)],
+    outputs: ~[(@str, @Expr)],
     volatile: bool,
     alignstack: bool,
     dialect: asm_dialect
@@ -821,7 +821,7 @@ pub struct inline_asm {
 pub struct arg {
     is_mutbl: bool,
     ty: Ty,
-    pat: @pat,
+    pat: @Pat,
     id: NodeId,
 }
 
@@ -861,8 +861,8 @@ pub enum ret_style {
 pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
-    sty_region(Option<Lifetime>, mutability), // `&'lt self`
-    sty_box(mutability),                       // `@self`
+    sty_region(Option<Lifetime>, Mutability), // `&'lt self`
+    sty_box(Mutability),                       // `@self`
     sty_uniq                                   // `~self`
 }
 
@@ -927,7 +927,7 @@ pub struct variant_ {
     attrs: ~[Attribute],
     kind: variant_kind,
     id: NodeId,
-    disr_expr: Option<@expr>,
+    disr_expr: Option<@Expr>,
     vis: visibility,
 }
 
@@ -1067,7 +1067,7 @@ pub struct item {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum item_ {
-    item_static(Ty, mutability, @expr),
+    item_static(Ty, Mutability, @Expr),
     item_fn(fn_decl, purity, AbiSet, Generics, Block),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
@@ -1105,7 +1105,7 @@ pub enum foreign_item_ {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub enum inlined_item {
     ii_item(@item),
-    ii_method(def_id /* impl id */, bool /* is provided */, @method),
+    ii_method(DefId /* impl id */, bool /* is provided */, @method),
     ii_foreign(@foreign_item),
 }
 

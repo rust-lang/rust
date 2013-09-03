@@ -75,7 +75,7 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
     cs.fold(integral_const, |a, b| join(a, b))
 }
 
-pub fn classify(e: &expr,
+pub fn classify(e: &Expr,
                 tcx: ty::ctxt)
              -> constness {
     let did = ast_util::local_def(e.id);
@@ -84,7 +84,7 @@ pub fn classify(e: &expr,
       None => {
         let cn =
             match e.node {
-              ast::expr_lit(lit) => {
+              ast::ExprLit(lit) => {
                 match lit.node {
                   ast::lit_str(*) |
                   ast::lit_float(*) => general_const,
@@ -92,39 +92,39 @@ pub fn classify(e: &expr,
                 }
               }
 
-              ast::expr_unary(_, _, inner) |
-              ast::expr_paren(inner) => {
+              ast::ExprUnary(_, _, inner) |
+              ast::ExprParen(inner) => {
                 classify(inner, tcx)
               }
 
-              ast::expr_binary(_, _, a, b) => {
+              ast::ExprBinary(_, _, a, b) => {
                 join(classify(a, tcx),
                      classify(b, tcx))
               }
 
-              ast::expr_tup(ref es) |
-              ast::expr_vec(ref es, ast::m_imm) => {
+              ast::ExprTup(ref es) |
+              ast::ExprVec(ref es, ast::MutImmutable) => {
                 join_all(es.iter().map(|e| classify(*e, tcx)))
               }
 
-              ast::expr_vstore(e, vstore) => {
+              ast::ExprVstore(e, vstore) => {
                   match vstore {
-                      ast::expr_vstore_slice => classify(e, tcx),
-                      ast::expr_vstore_uniq |
-                      ast::expr_vstore_box |
-                      ast::expr_vstore_mut_box |
-                      ast::expr_vstore_mut_slice => non_const
+                      ast::ExprVstoreSlice => classify(e, tcx),
+                      ast::ExprVstoreUniq |
+                      ast::ExprVstoreBox |
+                      ast::ExprVstoreMutBox |
+                      ast::ExprVstoreMutSlice => non_const
                   }
               }
 
-              ast::expr_struct(_, ref fs, None) => {
+              ast::ExprStruct(_, ref fs, None) => {
                 let cs = do fs.iter().map |f| {
                     classify(f.expr, tcx)
                 };
                 join_all(cs)
               }
 
-              ast::expr_cast(base, _) => {
+              ast::ExprCast(base, _) => {
                 let ty = ty::expr_ty(tcx, e);
                 let base = classify(base, tcx);
                 if ty::type_is_integral(ty) {
@@ -136,26 +136,26 @@ pub fn classify(e: &expr,
                 }
               }
 
-              ast::expr_field(base, _, _) => {
+              ast::ExprField(base, _, _) => {
                 classify(base, tcx)
               }
 
-              ast::expr_index(_, base, idx) => {
+              ast::ExprIndex(_, base, idx) => {
                 join(classify(base, tcx),
                      classify(idx, tcx))
               }
 
-              ast::expr_addr_of(ast::m_imm, base) => {
+              ast::ExprAddrOf(ast::MutImmutable, base) => {
                 classify(base, tcx)
               }
 
               // FIXME: (#3728) we can probably do something CCI-ish
               // surrounding nonlocal constants. But we don't yet.
-              ast::expr_path(_) => {
+              ast::ExprPath(_) => {
                 lookup_constness(tcx, e)
               }
 
-              ast::expr_repeat(*) => general_const,
+              ast::ExprRepeat(*) => general_const,
 
               _ => non_const
             };
@@ -165,10 +165,10 @@ pub fn classify(e: &expr,
     }
 }
 
-pub fn lookup_const(tcx: ty::ctxt, e: &expr) -> Option<@expr> {
+pub fn lookup_const(tcx: ty::ctxt, e: &Expr) -> Option<@Expr> {
     match tcx.def_map.find(&e.id) {
-        Some(&ast::def_static(def_id, false)) => lookup_const_by_id(tcx, def_id),
-        Some(&ast::def_variant(enum_def, variant_def)) => lookup_variant_by_id(tcx,
+        Some(&ast::DefStatic(def_id, false)) => lookup_const_by_id(tcx, def_id),
+        Some(&ast::DefVariant(enum_def, variant_def)) => lookup_variant_by_id(tcx,
                                                                                enum_def,
                                                                                variant_def),
         _ => None
@@ -176,10 +176,10 @@ pub fn lookup_const(tcx: ty::ctxt, e: &expr) -> Option<@expr> {
 }
 
 pub fn lookup_variant_by_id(tcx: ty::ctxt,
-                            enum_def: ast::def_id,
-                            variant_def: ast::def_id)
-                       -> Option<@expr> {
-    fn variant_expr(variants: &[ast::variant], id: ast::NodeId) -> Option<@expr> {
+                            enum_def: ast::DefId,
+                            variant_def: ast::DefId)
+                       -> Option<@Expr> {
+    fn variant_expr(variants: &[ast::variant], id: ast::NodeId) -> Option<@Expr> {
         for variant in variants.iter() {
             if variant.node.id == id {
                 return variant.node.disr_expr;
@@ -225,13 +225,13 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
 }
 
 pub fn lookup_const_by_id(tcx: ty::ctxt,
-                          def_id: ast::def_id)
-                       -> Option<@expr> {
+                          def_id: ast::DefId)
+                       -> Option<@Expr> {
     if ast_util::is_local(def_id) {
         match tcx.items.find(&def_id.node) {
             None => None,
             Some(&ast_map::node_item(it, _)) => match it.node {
-                item_static(_, ast::m_imm, const_expr) => Some(const_expr),
+                item_static(_, ast::MutImmutable, const_expr) => Some(const_expr),
                 _ => None
             },
             Some(_) => None
@@ -247,7 +247,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
             csearch::found(ast::ii_item(item)) => match item.node {
-                item_static(_, ast::m_imm, const_expr) => Some(const_expr),
+                item_static(_, ast::MutImmutable, const_expr) => Some(const_expr),
                 _ => None
             },
             _ => None
@@ -255,7 +255,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
+pub fn lookup_constness(tcx: ty::ctxt, e: &Expr) -> constness {
     match lookup_const(tcx, e) {
         Some(rhs) => {
             let ty = ty::expr_ty(tcx, rhs);
@@ -272,7 +272,7 @@ pub fn lookup_constness(tcx: ty::ctxt, e: &expr) -> constness {
 struct ConstEvalVisitor { tcx: ty::ctxt }
 
 impl Visitor<()> for ConstEvalVisitor {
-    fn visit_expr_post(&mut self, e:@expr, _:()) {
+    fn visit_expr_post(&mut self, e:@Expr, _:()) {
         classify(e, self.tcx);
     }
 }
@@ -296,19 +296,19 @@ pub enum const_val {
     const_bool(bool)
 }
 
-pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &expr) -> const_val {
+pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(&tcx, e) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
-pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
+pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                             -> Result<const_val, ~str> {
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
-      expr_unary(_, neg, inner) => {
+      ExprUnary(_, UnNeg, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
@@ -318,7 +318,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
           ref err => ((*err).clone())
         }
       }
-      expr_unary(_, not, inner) => {
+      ExprUnary(_, UnNot, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
@@ -326,100 +326,100 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
           _ => Err(~"Not on float or string")
         }
       }
-      expr_binary(_, op, a, b) => {
+      ExprBinary(_, op, a, b) => {
         match (eval_const_expr_partial(tcx, a),
                eval_const_expr_partial(tcx, b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {
             match op {
-              add => Ok(const_float(a + b)),
-              subtract => Ok(const_float(a - b)),
-              mul => Ok(const_float(a * b)),
-              div => Ok(const_float(a / b)),
-              rem => Ok(const_float(a % b)),
-              eq => fromb(a == b),
-              lt => fromb(a < b),
-              le => fromb(a <= b),
-              ne => fromb(a != b),
-              ge => fromb(a >= b),
-              gt => fromb(a > b),
+              BiAdd => Ok(const_float(a + b)),
+              BiSub => Ok(const_float(a - b)),
+              BiMul => Ok(const_float(a * b)),
+              BiDiv => Ok(const_float(a / b)),
+              BiRem => Ok(const_float(a % b)),
+              BiEq => fromb(a == b),
+              BiLt => fromb(a < b),
+              BiLe => fromb(a <= b),
+              BiNe => fromb(a != b),
+              BiGe => fromb(a >= b),
+              BiGt => fromb(a > b),
               _ => Err(~"Can't do this op on floats")
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
             match op {
-              add => Ok(const_int(a + b)),
-              subtract => Ok(const_int(a - b)),
-              mul => Ok(const_int(a * b)),
-              div if b == 0 => Err(~"attempted to divide by zero"),
-              div => Ok(const_int(a / b)),
-              rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
-              rem => Ok(const_int(a % b)),
-              and | bitand => Ok(const_int(a & b)),
-              or | bitor => Ok(const_int(a | b)),
-              bitxor => Ok(const_int(a ^ b)),
-              shl => Ok(const_int(a << b)),
-              shr => Ok(const_int(a >> b)),
-              eq => fromb(a == b),
-              lt => fromb(a < b),
-              le => fromb(a <= b),
-              ne => fromb(a != b),
-              ge => fromb(a >= b),
-              gt => fromb(a > b)
+              BiAdd => Ok(const_int(a + b)),
+              BiSub => Ok(const_int(a - b)),
+              BiMul => Ok(const_int(a * b)),
+              BiDiv if b == 0 => Err(~"attempted to divide by zero"),
+              BiDiv => Ok(const_int(a / b)),
+              BiRem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
+              BiRem => Ok(const_int(a % b)),
+              BiAnd | BiBitAnd => Ok(const_int(a & b)),
+              BiOr | BiBitOr => Ok(const_int(a | b)),
+              BiBitXor => Ok(const_int(a ^ b)),
+              BiShl => Ok(const_int(a << b)),
+              BiShr => Ok(const_int(a >> b)),
+              BiEq => fromb(a == b),
+              BiLt => fromb(a < b),
+              BiLe => fromb(a <= b),
+              BiNe => fromb(a != b),
+              BiGe => fromb(a >= b),
+              BiGt => fromb(a > b)
             }
           }
           (Ok(const_uint(a)), Ok(const_uint(b))) => {
             match op {
-              add => Ok(const_uint(a + b)),
-              subtract => Ok(const_uint(a - b)),
-              mul => Ok(const_uint(a * b)),
-              div if b == 0 => Err(~"attempted to divide by zero"),
-              div => Ok(const_uint(a / b)),
-              rem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
-              rem => Ok(const_uint(a % b)),
-              and | bitand => Ok(const_uint(a & b)),
-              or | bitor => Ok(const_uint(a | b)),
-              bitxor => Ok(const_uint(a ^ b)),
-              shl => Ok(const_uint(a << b)),
-              shr => Ok(const_uint(a >> b)),
-              eq => fromb(a == b),
-              lt => fromb(a < b),
-              le => fromb(a <= b),
-              ne => fromb(a != b),
-              ge => fromb(a >= b),
-              gt => fromb(a > b),
+              BiAdd => Ok(const_uint(a + b)),
+              BiSub => Ok(const_uint(a - b)),
+              BiMul => Ok(const_uint(a * b)),
+              BiDiv if b == 0 => Err(~"attempted to divide by zero"),
+              BiDiv => Ok(const_uint(a / b)),
+              BiRem if b == 0 => Err(~"attempted remainder with a divisor of zero"),
+              BiRem => Ok(const_uint(a % b)),
+              BiAnd | BiBitAnd => Ok(const_uint(a & b)),
+              BiOr | BiBitOr => Ok(const_uint(a | b)),
+              BiBitXor => Ok(const_uint(a ^ b)),
+              BiShl => Ok(const_uint(a << b)),
+              BiShr => Ok(const_uint(a >> b)),
+              BiEq => fromb(a == b),
+              BiLt => fromb(a < b),
+              BiLe => fromb(a <= b),
+              BiNe => fromb(a != b),
+              BiGe => fromb(a >= b),
+              BiGt => fromb(a > b),
             }
           }
           // shifts can have any integral type as their rhs
           (Ok(const_int(a)), Ok(const_uint(b))) => {
             match op {
-              shl => Ok(const_int(a << b)),
-              shr => Ok(const_int(a >> b)),
+              BiShl => Ok(const_int(a << b)),
+              BiShr => Ok(const_int(a >> b)),
               _ => Err(~"Can't do this op on an int and uint")
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
-              shl => Ok(const_uint(a << b)),
-              shr => Ok(const_uint(a >> b)),
+              BiShl => Ok(const_uint(a << b)),
+              BiShr => Ok(const_uint(a >> b)),
               _ => Err(~"Can't do this op on a uint and int")
             }
           }
           (Ok(const_bool(a)), Ok(const_bool(b))) => {
             Ok(const_bool(match op {
-              and => a && b,
-              or => a || b,
-              bitxor => a ^ b,
-              bitand => a & b,
-              bitor => a | b,
-              eq => a == b,
-              ne => a != b,
+              BiAnd => a && b,
+              BiOr => a || b,
+              BiBitXor => a ^ b,
+              BiBitAnd => a & b,
+              BiBitOr => a | b,
+              BiEq => a == b,
+              BiNe => a != b,
               _ => return Err(~"Can't do this op on bools")
              }))
           }
           _ => Err(~"Bad operands for binary")
         }
       }
-      expr_cast(base, _) => {
+      ExprCast(base, _) => {
         let ety = tcx.expr_ty(e);
         let base = eval_const_expr_partial(tcx, base);
         match base {
@@ -455,16 +455,16 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &expr)
             }
         }
       }
-      expr_path(_) => {
+      ExprPath(_) => {
           match lookup_const(tcx.ty_ctxt(), e) {
               Some(actual_e) => eval_const_expr_partial(&tcx.ty_ctxt(), actual_e),
               None => Err(~"Non-constant path in constant expr")
           }
       }
-      expr_lit(lit) => Ok(lit_to_const(lit)),
+      ExprLit(lit) => Ok(lit_to_const(lit)),
       // If we have a vstore, just keep going; it has to be a string
-      expr_vstore(e, _) => eval_const_expr_partial(tcx, e),
-      expr_paren(e)     => eval_const_expr_partial(tcx, e),
+      ExprVstore(e, _) => eval_const_expr_partial(tcx, e),
+      ExprParen(e)     => eval_const_expr_partial(tcx, e),
       _ => Err(~"Unsupported constant expr")
     }
 }
@@ -497,11 +497,11 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
     }
 }
 
-pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: &expr, b: &expr) -> Option<int> {
+pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: &Expr, b: &Expr) -> Option<int> {
     compare_const_vals(&eval_const_expr(tcx, a), &eval_const_expr(tcx, b))
 }
 
-pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: &expr, b: &expr) -> Option<bool> {
+pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: &Expr, b: &Expr) -> Option<bool> {
     compare_lit_exprs(tcx, a, b).map_move(|val| val == 0)
 }
 

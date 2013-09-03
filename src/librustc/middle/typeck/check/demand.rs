@@ -57,7 +57,7 @@ pub fn eqtype(fcx: @mut FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 pub fn coerce(fcx: @mut FnCtxt,
               sp: Span,
               expected: ty::t,
-              expr: @ast::expr) {
+              expr: @ast::Expr) {
     let expr_ty = fcx.expr_ty(expr);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }

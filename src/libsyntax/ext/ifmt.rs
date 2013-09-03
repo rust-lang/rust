@@ -34,14 +34,14 @@ struct Context {
 
     // Parsed argument expressions and the types that we've found so far for
     // them.
-    args: ~[@ast::expr],
+    args: ~[@ast::Expr],
     arg_types: ~[Option<ArgumentType>],
     // Parsed named expressions and the types that we've found for them so far
-    names: HashMap<@str, @ast::expr>,
+    names: HashMap<@str, @ast::Expr>,
     name_types: HashMap<@str, ArgumentType>,
 
     // Collection of the compiled `rt::Piece` structures
-    pieces: ~[@ast::expr],
+    pieces: ~[@ast::Expr],
     name_positions: HashMap<@str, uint>,
     method_statics: ~[@ast::item],
 
@@ -55,8 +55,8 @@ impl Context {
     /// there's a parse error so we can continue parsing other fmt! expressions.
     fn parse_args(&mut self, sp: Span,
                   leading_expr: bool,
-                  tts: &[ast::token_tree]) -> (Option<@ast::expr>,
-                                               Option<@ast::expr>) {
+                  tts: &[ast::token_tree]) -> (Option<@ast::Expr>,
+                                               Option<@ast::Expr>) {
         let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
                                              self.ecx.cfg(),
                                              tts.to_owned());
@@ -327,7 +327,7 @@ impl Context {
     }
 
     /// Translate a `parse::Piece` to a static `rt::Piece`
-    fn trans_piece(&mut self, piece: &parse::Piece) -> @ast::expr {
+    fn trans_piece(&mut self, piece: &parse::Piece) -> @ast::Expr {
         let sp = self.fmtsp;
         let parsepath = |s: &str| {
             ~[self.ecx.ident_of("std"), self.ecx.ident_of("fmt"),
@@ -345,7 +345,7 @@ impl Context {
             let p = self.ecx.path(sp, ~[self.ecx.ident_of("None")]);
             self.ecx.expr_path(p)
         };
-        let some = |e: @ast::expr| {
+        let some = |e: @ast::Expr| {
             self.ecx.expr_call_ident(sp, self.ecx.ident_of("Some"), ~[e])
         };
         let trans_count = |c: parse::Count| {
@@ -444,7 +444,7 @@ impl Context {
                 Some(life),
                 ~[]
             ), None);
-            let st = ast::item_static(ty, ast::m_imm, method);
+            let st = ast::item_static(ty, ast::MutImmutable, method);
             let static_name = self.ecx.ident_of(fmt!("__static_method_%u",
                                                      self.method_statics.len()));
             // Flag these statics as `address_insignificant` so LLVM can
@@ -542,16 +542,16 @@ impl Context {
 
     /// Actually builds the expression which the ifmt! block will be expanded
     /// to
-    fn to_expr(&self, extra: Option<@ast::expr>, f: &str) -> @ast::expr {
+    fn to_expr(&self, extra: Option<@ast::Expr>, f: &str) -> @ast::Expr {
         let mut lets = ~[];
         let mut locals = ~[];
         let mut names = vec::from_fn(self.name_positions.len(), |_| None);
 
         // First, declare all of our methods that are statics
         for &method in self.method_statics.iter() {
-            let decl = respan(self.fmtsp, ast::decl_item(method));
+            let decl = respan(self.fmtsp, ast::DeclItem(method));
             lets.push(@respan(self.fmtsp,
-                              ast::stmt_decl(@decl, self.ecx.next_id())));
+                              ast::StmtDecl(@decl, self.ecx.next_id())));
         }
 
         // Next, build up the static array which will become our precompiled
@@ -570,19 +570,19 @@ impl Context {
                     Some(self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
                     ~[]
                 ), None),
-                ast::m_imm
+                ast::MutImmutable
             ),
             self.ecx.expr_uint(self.fmtsp, self.pieces.len())
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
-        let st = ast::item_static(ty, ast::m_imm, fmt);
+        let st = ast::item_static(ty, ast::MutImmutable, fmt);
         let static_name = self.ecx.ident_of("__static_fmtstr");
         // see above comment for `address_insignificant` and why we do it
         let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
         let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
         let item = self.ecx.item(self.fmtsp, static_name, ~[unnamed], st);
-        let decl = respan(self.fmtsp, ast::decl_item(item));
-        lets.push(@respan(self.fmtsp, ast::stmt_decl(@decl, self.ecx.next_id())));
+        let decl = respan(self.fmtsp, ast::DeclItem(item));
+        lets.push(@respan(self.fmtsp, ast::StmtDecl(@decl, self.ecx.next_id())));
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
@@ -637,7 +637,7 @@ impl Context {
     }
 
     fn format_arg(&self, sp: Span, arg: Either<uint, @str>,
-                  ident: ast::Ident) -> @ast::expr {
+                  ident: ast::Ident) -> @ast::Expr {
         let ty = match arg {
             Left(i) => self.arg_types[i].unwrap(),
             Right(s) => *self.name_types.get(&s)

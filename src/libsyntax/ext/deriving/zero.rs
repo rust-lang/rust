@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, item, expr};
+use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -55,7 +55,7 @@ pub fn expand_deriving_zero(cx: @ExtCtxt,
     trait_def.expand(cx, span, mitem, in_items)
 }
 
-fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @expr {
+fn zero_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let zero_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("num"),

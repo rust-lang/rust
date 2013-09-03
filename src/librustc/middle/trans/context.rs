@@ -53,19 +53,19 @@ pub struct CrateContext {
      item_symbols: HashMap<ast::NodeId, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
-     discrims: HashMap<ast::def_id, ValueRef>,
+     discrims: HashMap<ast::DefId, ValueRef>,
      discrim_symbols: HashMap<ast::NodeId, @str>,
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      finished_tydescs: bool,
      // Track mapping of external ids to local items imported for inlining
-     external: HashMap<ast::def_id, Option<ast::NodeId>>,
+     external: HashMap<ast::DefId, Option<ast::NodeId>>,
      // Cache instances of monomorphized functions
      monomorphized: HashMap<mono_id, ValueRef>,
-     monomorphizing: HashMap<ast::def_id, uint>,
+     monomorphizing: HashMap<ast::DefId, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: HashMap<ast::def_id, @~[type_use::type_uses]>,
+     type_use_cache: HashMap<ast::DefId, @~[type_use::type_uses]>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
@@ -85,9 +85,9 @@ pub struct CrateContext {
      const_values: HashMap<ast::NodeId, ValueRef>,
 
      // Cache of external const values
-     extern_const_values: HashMap<ast::def_id, ValueRef>,
+     extern_const_values: HashMap<ast::DefId, ValueRef>,
 
-     impl_method_cache: HashMap<(ast::def_id, ast::Ident), ast::def_id>,
+     impl_method_cache: HashMap<(ast::DefId, ast::Ident), ast::DefId>,
 
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, Type>,

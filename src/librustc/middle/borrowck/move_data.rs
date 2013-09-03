@@ -108,9 +108,9 @@ pub struct MovePath {
 
 pub enum MoveKind {
     Declared,               // When declared, variables start out "moved".
-    MoveExpr(@ast::expr),   // Expression or binding that moves a variable
-    MovePat(@ast::pat),     // By-move binding
-    Captured(@ast::expr),   // Closure creation that moves a value
+    MoveExpr(@ast::Expr),   // Expression or binding that moves a variable
+    MovePat(@ast::Pat),     // By-move binding
+    Captured(@ast::Expr),   // Closure creation that moves a value
 }
 
 pub struct Move {
