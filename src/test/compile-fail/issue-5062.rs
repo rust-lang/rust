@@ -8,5 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-fn main() { fmt!("%?", None); } //~ ERROR can't resolve type variable
+fn main() { fmt!("%?", None); } //~ ERROR unconstrained type

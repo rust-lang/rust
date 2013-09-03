@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 fn foo<T, U>(x: T, y: U) {
     let mut xx = x;
-    xx = y; // error message should mention T and U, not 'a and 'b
+    xx = y; //~ ERROR expected `T` but found `U`
 }
 
 fn main() {

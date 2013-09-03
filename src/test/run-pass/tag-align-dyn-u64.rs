@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-test #7340 fails on 32-bit linux
+use std::ptr;
 
 enum a_tag<A> {
     a_tag(A)
