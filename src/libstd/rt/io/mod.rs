@@ -385,6 +385,8 @@ impl ToStr for IoErrorKind {
 // Raised by `I/O` operations on error.
 condition! {
     // FIXME (#6009): uncomment `pub` after expansion support lands.
+    // NOTE: this super::IoError should be IoError
+    // Change this next time the snapshot it updated.
     /*pub*/ io_error: super::IoError -> ();
 }
 
@@ -392,6 +394,8 @@ condition! {
 // Raised by `read` on error
 condition! {
     // FIXME (#6009): uncomment `pub` after expansion support lands.
+    // NOTE: this super::IoError should be IoError
+    // Change this next time the snapshot it updated.
     /*pub*/ read_error: super::IoError -> ();
 }
 
