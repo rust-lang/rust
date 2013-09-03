@@ -347,6 +347,10 @@ impl Drop for Parser {
     fn drop(&self) {}
 }
 
+fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
+    is_plain_ident(t) || *t == token::UNDERSCORE
+}
+
 impl Parser {
     // convert a token to a string using self's reader
     pub fn token_to_str(&self, token: &token::Token) -> ~str {
@@ -1242,11 +1246,13 @@ impl Parser {
             _ => 0
         };
 
+        debug!("parser is_named_argument offset:%u", offset);
+
         if offset == 0 {
-            is_plain_ident(&*self.token)
+            is_plain_ident_or_underscore(&*self.token)
                 && self.look_ahead(1, |t| *t == token::COLON)
         } else {
-            self.look_ahead(offset, |t| is_plain_ident(t))
+            self.look_ahead(offset, |t| is_plain_ident_or_underscore(t))
                 && self.look_ahead(offset + 1, |t| *t == token::COLON)
         }
     }
@@ -1256,6 +1262,8 @@ impl Parser {
     pub fn parse_arg_general(&self, require_name: bool) -> arg {
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = if require_name || self.is_named_argument() {
+            debug!("parse_arg_general parse_pat (require_name:%?)",
+                   require_name);
             self.parse_arg_mode();
             let pat = self.parse_pat();
 
@@ -1266,6 +1274,7 @@ impl Parser {
             self.expect(&token::COLON);
             pat
         } else {
+            debug!("parse_arg_general ident_to_pat");
             ast_util::ident_to_pat(self.get_id(),
                                    *self.last_span,
                                    special_idents::invalid)
