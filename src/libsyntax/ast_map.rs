@@ -80,6 +80,26 @@ pub enum ast_node {
     node_callee_scope(@Expr)
 }
 
+impl ast_node {
+    pub fn with_attrs<T>(&self, f: &fn(Option<&[Attribute]>) -> T) -> T {
+        let attrs = match *self {
+            node_item(i, _) => Some(i.attrs.as_slice()),
+            node_foreign_item(fi, _, _, _) => Some(fi.attrs.as_slice()),
+            node_trait_method(tm, _, _) => match *tm {
+                required(ref type_m) => Some(type_m.attrs.as_slice()),
+                provided(m) => Some(m.attrs.as_slice())
+            },
+            node_method(m, _, _) => Some(m.attrs.as_slice()),
+            node_variant(ref v, _, _) => Some(v.node.attrs.as_slice()),
+            // unit/tuple structs take the attributes straight from
+            // the struct definition.
+            node_struct_ctor(_, strct, _) => Some(strct.attrs.as_slice()),
+            _ => None
+        };
+        f(attrs)
+    }
+}
+
 pub type map = @mut HashMap<NodeId, ast_node>;
 
 pub struct Ctx {

@@ -313,6 +313,44 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
     no_cfgs || some_cfg_matches
 }
 
+/// Represents the #[deprecated="foo"] (etc) attributes.
+pub struct Stability {
+    level: StabilityLevel,
+    text: Option<@str>
+}
+
+/// The available stability levels.
+#[deriving(Eq,Ord,Clone)]
+pub enum StabilityLevel {
+    Deprecated,
+    Experimental,
+    Unstable,
+    Stable,
+    Frozen,
+    Locked
+}
+
+/// Find the first stability attribute. `None` if none exists.
+pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> Option<Stability> {
+    for m in metas {
+        let level = match m.name().as_slice() {
+            "deprecated" => Deprecated,
+            "experimental" => Experimental,
+            "unstable" => Unstable,
+            "stable" => Stable,
+            "frozen" => Frozen,
+            "locked" => Locked,
+            _ => loop // not a stability level
+        };
+
+        return Some(Stability {
+                level: level,
+                text: m.value_str()
+            });
+    }
+    None
+}
+
 pub fn require_unique_names(diagnostic: @mut span_handler,
                             metas: &[@MetaItem]) {
     let mut set = HashSet::new();
