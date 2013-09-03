@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test #5744 fails on 32 bit
+
 // Test a foreign function that accepts and returns a struct
 // by value.
-
-// xfail-test #5744
 
 #[deriving(Eq)]
 struct TwoU16s {
@@ -22,6 +22,7 @@ extern {
     pub fn rust_dbg_extern_identity_TwoU16s(v: TwoU16s) -> TwoU16s;
 }
 
+#[fixed_stack_segment] #[inline(never)]
 pub fn main() {
     unsafe {
         let x = TwoU16s {one: 22, two: 23};
