@@ -588,11 +588,14 @@ impl Context {
         //      foo(bar(&1))
         // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
         // vald for the call to `foo`. To work around this all arguments to the
-        // fmt! string are shoved into locals.
+        // fmt! string are shoved into locals. Furthermore, we shove the address
+        // of each variable because we don't want to move out of the arguments
+        // passed to this function.
         for (i, &e) in self.args.iter().enumerate() {
             if self.arg_types[i].is_none() { loop } // error already generated
 
             let name = self.ecx.ident_of(fmt!("__arg%u", i));
+            let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, name, e));
             locals.push(self.format_arg(e.span, Left(i), name));
         }
@@ -600,6 +603,7 @@ impl Context {
             if !self.name_types.contains_key(&name) { loop }
 
             let lname = self.ecx.ident_of(fmt!("__arg%s", name));
+            let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, lname, e));
             names[*self.name_positions.get(&name)] =
                 Some(self.format_arg(e.span, Right(name), lname));
@@ -643,7 +647,7 @@ impl Context {
             Right(s) => *self.name_types.get(&s)
         };
 
-        let argptr = self.ecx.expr_addr_of(sp, self.ecx.expr_ident(sp, ident));
+        let argptr = self.ecx.expr_ident(sp, ident);
         let fmt_trait = match ty {
             Unknown => "Default",
             Known(tyname) => {
