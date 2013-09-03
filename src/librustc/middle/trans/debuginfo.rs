@@ -124,7 +124,7 @@ pub enum FunctionDebugContext {
 }
 
 impl FunctionDebugContext {
-    fn get_ref<'a>(&'a self, cx: &CrateContext, span: span) -> &'a FunctionDebugContextData {
+    fn get_ref<'a>(&'a self, cx: &CrateContext, span: Span) -> &'a FunctionDebugContextData {
         match *self {
             FunctionDebugContext(~ref data) => data,
             DebugInfoDisabled => {
@@ -140,7 +140,7 @@ impl FunctionDebugContext {
 
     fn get_mut_ref<'a>(&'a mut self,
                        cx: &CrateContext,
-                       span: span)
+                       span: Span)
                     -> &'a mut FunctionDebugContextData {
         match *self {
             FunctionDebugContext(~ref mut data) => data,
@@ -229,7 +229,7 @@ pub fn create_local_var_metadata(bcx: @mut Block,
 pub fn create_captured_var_metadata(bcx: @mut Block,
                                     node_id: ast::NodeId,
                                     llptr: ValueRef,
-                                    span: span) {
+                                    span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
@@ -270,7 +270,7 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
                                      variable_ident: ast::Ident,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
-                                     span: span) {
+                                     span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
@@ -406,7 +406,7 @@ pub fn create_argument_metadata(bcx: @mut Block,
 /// reliably find the correct visibility scope for the code position.
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
-                           span: span) {
+                           span: Span) {
     if fn_should_be_ignored(fcx) {
         return;
     }
@@ -784,12 +784,12 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
 
 fn declare_local(bcx: @mut Block,
                  llptr: ValueRef,
-                 variable_ident: ast::ident,
+                 variable_ident: ast::Ident,
                  variable_type: ty::t,
                  scope_metadata: DIScope,
                  variable_access: VariableAccess,
                  variable_kind: VariableKind,
-                 span: span) {
+                 span: Span) {
     let cx: &mut CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name;
@@ -890,7 +890,7 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
 /// Finds the scope metadata node for the given AST node.
 fn scope_metadata(fcx: &FunctionContext,
                   node_id: ast::NodeId,
-                  span: span)
+                  span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context.get_ref(fcx.ccx, span).scope_map;
 
@@ -1428,7 +1428,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
 
 fn subroutine_type_metadata(cx: &mut CrateContext,
                             signature: &ty::FnSig,
-                            span: span)
+                            span: Span)
                          -> DICompositeType {
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
