@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Aug 1
+" Last Change:  2013 Sep 4
 
 if version < 600
   syntax clear
@@ -74,7 +74,7 @@ syn keyword rustTrait Hash
 syn keyword rustTrait Times
 syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator ClonableIterator
-syn keyword rustTrait OrdIterator MutableDoubleEndedIterator
+syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
 syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
