@@ -60,7 +60,10 @@ impl Ascii {
 
 impl ToStr for Ascii {
     #[inline]
-    fn to_str(&self) -> ~str { str::from_bytes(['\'' as u8, self.chr, '\'' as u8]) }
+    fn to_str(&self) -> ~str {
+        // self.chr is allways a valid utf8 byte, no need for the check
+        unsafe { str::raw::from_byte(self.chr) }
+    }
 }
 
 /// Trait for converting into an ascii type.
@@ -506,4 +509,12 @@ mod tests {
             i += 1;
         }
     }
+
+    #[test]
+    fn test_to_str() {
+        let s = Ascii{ chr: 't' as u8 }.to_str();
+        assert_eq!(s, ~"t");
+    }
+
+
 }
