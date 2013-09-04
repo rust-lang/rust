@@ -664,16 +664,14 @@ do
     make_dir $i
 done
 
-make_dir llvm
 for t in $CFG_HOST_TRIPLES
 do
     make_dir $t/llvm
 done
 
-make_dir rustllvm
 for t in $CFG_HOST_TRIPLES
 do
-    make_dir rustllvm/$t
+    make_dir $t/rustllvm
 done
 
 make_dir rt

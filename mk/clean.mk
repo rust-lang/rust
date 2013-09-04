@@ -33,7 +33,7 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)/test \
+	$(Q)find $(CFG_BUILD_TRIPLE)/rustllvm rt $(CFG_BUILD_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
