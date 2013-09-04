@@ -201,10 +201,10 @@ impl<T:Send> MutexArc<T> {
      * The reason this function is 'unsafe' is because it is possible to
      * construct a circular reference among multiple Arcs by mutating the
      * underlying data. This creates potential for deadlock, but worse, this
-     * will guarantee a memory leak of all involved Arcs. Using mutex Arcs
+     * will guarantee a memory leak of all involved Arcs. Using MutexArcs
      * inside of other Arcs is safe in absence of circular references.
      *
-     * If you wish to nest mutex_arcs, one strategy for ensuring safety at
+     * If you wish to nest MutexArcs, one strategy for ensuring safety at
      * runtime is to add a "nesting level counter" inside the stored data, and
      * when traversing the arcs, assert that they monotonically decrease.
      *
@@ -272,9 +272,9 @@ impl<T:Freeze + Send> MutexArc<T> {
      * requires the Freeze bound, which prohibits access on MutexArcs which
      * might contain nested MutexArcs inside.
      *
-     * The purpose of this is to offer a safe implementation of both methods
-     * access and access_cond to be used instead of rwlock in cases where no
-     * readers are needed and sightly better performance is required.
+     * The purpose of this is to offer a safe implementation of MutexArc to be
+     * used instead of RWArc in cases where no readers are needed and sightly
+     * better performance is required.
      *
      * Both methods have the same failure behaviour as unsafe_access and
      * unsafe_access_cond.
