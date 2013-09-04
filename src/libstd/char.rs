@@ -14,6 +14,8 @@ use option::{None, Option, Some};
 use int;
 use str::StrSlice;
 use unicode::{derived_property, general_category, decompose};
+use to_str::ToStr;
+use str;
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -316,6 +318,13 @@ pub fn len_utf8_bytes(c: char) -> uint {
     )
 }
 
+impl ToStr for char {
+    #[inline]
+    fn to_str(&self) -> ~str {
+        str::from_char(*self)
+    }
+}
+
 #[allow(missing_doc)]
 pub trait Char {
     fn is_alphabetic(&self) -> bool;
@@ -501,4 +510,10 @@ fn test_escape_unicode() {
     assert_eq!(string('a'), ~"\\x61");
     assert_eq!(string('\u011b'), ~"\\u011b");
     assert_eq!(string('\U0001d4b6'), ~"\\U0001d4b6");
+}
+
+#[test]
+fn test_to_str() {
+    let s = 't'.to_str();
+    assert_eq!(s, ~"t");
 }
