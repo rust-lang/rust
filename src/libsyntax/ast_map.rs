@@ -73,7 +73,7 @@ pub enum ast_node {
     node_variant(variant, @item, @path),
     node_expr(@Expr),
     node_stmt(@Stmt),
-    node_arg,
+    node_arg(@Pat),
     node_local(Ident),
     node_block(Block),
     node_struct_ctor(@struct_def, @item, @path),
@@ -171,7 +171,7 @@ impl Ctx {
               sp: codemap::Span,
               id: NodeId) {
         for a in decl.inputs.iter() {
-            self.map.insert(a.id, node_arg);
+            self.map.insert(a.id, node_arg(a.pat));
         }
         visit::walk_fn(self, fk, decl, body, sp, id, ());
     }
@@ -487,8 +487,8 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
         fmt!("stmt %s (id=%?)",
              pprust::stmt_to_str(stmt, itr), id)
       }
-      Some(&node_arg) => {
-        fmt!("arg (id=%?)", id)
+      Some(&node_arg(pat)) => {
+        fmt!("arg %s (id=%?)", pprust::pat_to_str(pat, itr), id)
       }
       Some(&node_local(ident)) => {
         fmt!("local (id=%?, name=%s)", id, itr.get(ident.name))

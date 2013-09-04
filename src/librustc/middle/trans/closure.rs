@@ -17,6 +17,7 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, INIT};
+use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::type_of::*;
@@ -307,7 +308,17 @@ pub fn load_environment(fcx: @mut FunctionContext,
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv);
 
-    // Populate the upvars from the environment.
+    // Store the pointer to closure data in an alloca for debug info because that's what the
+    // llvm.dbg.declare intrinsic expects
+    let env_pointer_alloca = if fcx.ccx.sess.opts.extra_debuginfo {
+        let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), cdata_ty), "__debuginfo_env_ptr");
+        Store(bcx, llcdata, alloc);
+        Some(alloc)
+    } else {
+        None
+    };
+
+    // Populate the upvars from the environment
     let mut i = 0u;
     for cap_var in cap_vars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
@@ -317,6 +328,18 @@ pub fn load_environment(fcx: @mut FunctionContext,
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
         fcx.llupvars.insert(def_id.node, upvarptr);
+
+        for &env_pointer_alloca in env_pointer_alloca.iter() {
+            debuginfo::create_captured_var_metadata(
+                bcx,
+                def_id.node,
+                cdata_ty,
+                env_pointer_alloca,
+                i,
+                sigil,
+                cap_var.span);
+        }
+
         i += 1u;
     }
 }

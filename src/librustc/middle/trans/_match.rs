@@ -2000,19 +2000,20 @@ pub fn store_arg(mut bcx: @mut Block,
     let arg_ty = node_id_type(bcx, pat.id);
     add_clean(bcx, llval, arg_ty);
 
-    match simple_identifier(pat) {
-        Some(_) => {
-            // Optimized path for `x: T` case. This just adopts
-            // `llval` wholesale as the pointer for `x`, avoiding the
-            // general logic which may copy out of `llval`.
-            bcx.fcx.llargs.insert(pat.id, llval);
-        }
+    // Debug information (the llvm.dbg.declare intrinsic to be precise) always expects to get an
+    // alloca, which only is the case on the general path, so lets disable the optimized path when
+    // debug info is enabled.
+    let fast_path = !bcx.ccx().sess.opts.extra_debuginfo && simple_identifier(pat).is_some();
 
-        None => {
-            // General path. Copy out the values that are used in the
-            // pattern.
-            bcx = bind_irrefutable_pat(bcx, pat, llval, BindArgument);
-        }
+    if fast_path {
+        // Optimized path for `x: T` case. This just adopts
+        // `llval` wholesale as the pointer for `x`, avoiding the
+        // general logic which may copy out of `llval`.
+        bcx.fcx.llargs.insert(pat.id, llval);
+    } else {
+        // General path. Copy out the values that are used in the
+        // pattern.
+        bcx = bind_irrefutable_pat(bcx, pat, llval, BindArgument);
     }
 
     return bcx;
