@@ -68,7 +68,7 @@ impl PkgId {
         if path.components.len() < 1 {
             return cond.raise((path, ~"0-length pkgid"));
         }
-        let short_name = path.clone().filestem().expect(fmt!("Strange path! %s", s));
+        let short_name = path.filestem().expect(fmt!("Strange path! %s", s));
 
         let version = match given_version {
             Some(v) => v,
@@ -83,8 +83,8 @@ impl PkgId {
 
         debug!("path = %s", path.to_str());
         PkgId {
-            path: path,
-            short_name: short_name,
+            path: path.clone(),
+            short_name: short_name.to_owned(),
             version: version
         }
     }

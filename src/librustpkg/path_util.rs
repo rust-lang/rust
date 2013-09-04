@@ -234,14 +234,14 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
                                Some(j) => {
                                    debug!("Maybe %s equals %s", f_name.slice(0, j), lib_prefix);
                                    if f_name.slice(0, j) == lib_prefix {
-                                       result_filename = Some(p_path);
+                                       result_filename = Some(p_path.clone());
                                    }
                                    break;
                                }
                                None => break
                            }
                        }
-                       _ => { f_name = f_name.slice(0, i).to_owned(); }
+                       _ => { f_name = f_name.slice(0, i); }
                  }
                }
                None => break
