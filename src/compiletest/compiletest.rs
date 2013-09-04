@@ -16,6 +16,7 @@
 extern mod extra;
 
 use std::os;
+use std::rt;
 use std::f64;
 
 use extra::getopts;
@@ -223,6 +224,10 @@ pub fn mode_str(mode: mode) -> ~str {
 pub fn run_tests(config: &config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
+    // sadly osx needs some file descriptor limits raised for running tests in
+    // parallel (especially when we have lots and lots of child processes).
+    // For context, see #8904
+    rt::test::prepare_for_lots_of_tests();
     let res = test::run_tests_console(&opts, tests);
     if !res { fail!("Some tests failed"); }
 }
