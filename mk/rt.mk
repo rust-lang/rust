@@ -76,7 +76,6 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_crate_map.cpp \
-              rt/rust_log.cpp \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
               rt/memory_region.cpp \
