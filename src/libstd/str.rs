@@ -799,6 +799,8 @@ pub fn is_utf8(v: &[u8]) -> bool {
             //        first  C2 80        last DF BF
             // 3-byte encoding is for codepoints  \u0800 to  \uffff
             //        first  E0 A0 80     last EF BF BF
+            //   excluding surrogates codepoints  \ud800 to  \udfff
+            //               ED A0 80 to       ED BF BF
             // 4-byte encoding is for codepoints \u10000 to \u10ffff
             //        first  F0 90 80 80  last F4 8F BF BF
             //
@@ -812,8 +814,6 @@ pub fn is_utf8(v: &[u8]) -> bool {
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
             // UTF8-tail   = %x80-BF
-            // --
-            // This code allows surrogate pairs: \uD800 to \uDFFF -> ED A0 80 to ED BF BF
             match w {
                 2 => if unsafe_get(v, i + 1) & 192u8 != TAG_CONT_U8 {
                     return false
@@ -822,7 +822,9 @@ pub fn is_utf8(v: &[u8]) -> bool {
                             unsafe_get(v, i + 1),
                             unsafe_get(v, i + 2) & 192u8) {
                     (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) => (),
-                    (0xE1 .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
+                    (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) => (),
+                    (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) => (),
+                    (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
                     _ => return false,
                 },
                 _ => match (v_i,
@@ -3012,6 +3014,7 @@ mod tests {
 
     #[test]
     fn test_is_utf8() {
+        // deny overlong encodings
         assert!(!is_utf8([0xc0, 0x80]));
         assert!(!is_utf8([0xc0, 0xae]));
         assert!(!is_utf8([0xe0, 0x80, 0x80]));
@@ -3020,9 +3023,15 @@ mod tests {
         assert!(!is_utf8([0xf0, 0x82, 0x82, 0xac]));
         assert!(!is_utf8([0xf4, 0x90, 0x80, 0x80]));
 
+        // deny surrogates
+        assert!(!is_utf8([0xED, 0xA0, 0x80]));
+        assert!(!is_utf8([0xED, 0xBF, 0xBF]));
+
         assert!(is_utf8([0xC2, 0x80]));
         assert!(is_utf8([0xDF, 0xBF]));
         assert!(is_utf8([0xE0, 0xA0, 0x80]));
+        assert!(is_utf8([0xED, 0x9F, 0xBF]));
+        assert!(is_utf8([0xEE, 0x80, 0x80]));
         assert!(is_utf8([0xEF, 0xBF, 0xBF]));
         assert!(is_utf8([0xF0, 0x90, 0x80, 0x80]));
         assert!(is_utf8([0xF4, 0x8F, 0xBF, 0xBF]));
