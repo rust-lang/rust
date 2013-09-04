@@ -584,6 +584,8 @@ pub fn homedir() -> Option<Path> {
  *
  * On Unix, returns the value of the 'TMPDIR' environment variable if it is
  * set and non-empty and '/tmp' otherwise.
+ * On Android, there is no global temporary folder (it is usually allocated
+ * per-app), hence returns '/data/tmp' which is commonly used.
  *
  * On Windows, returns the value of, in order, the 'TMP', 'TEMP',
  * 'USERPROFILE' environment variable  if any are set and not the empty
@@ -606,7 +608,11 @@ pub fn tmpdir() -> Path {
 
     #[cfg(unix)]
     fn lookup() -> Path {
-        getenv_nonempty("TMPDIR").unwrap_or_default(Path("/tmp"))
+        if cfg!(target_os = "android") {
+            Path("/data/tmp")
+        } else {
+            getenv_nonempty("TMPDIR").unwrap_or_default(Path("/tmp"))
+        }
     }
 
     #[cfg(windows)]
