@@ -616,6 +616,10 @@ pub fn build_link_meta(sess: Session,
                                            || fmt!("output file name `%s` doesn't\
                                                     appear to have a stem",
                                                    output.to_str())).to_managed();
+                if name.is_empty() {
+                    sess.fatal("missing crate link meta `name`, and the \
+                                inferred name is blank");
+                }
                 warn_missing(sess, "name", name);
                 name
             }
