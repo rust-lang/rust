@@ -21,7 +21,9 @@ else
 	setlocal comments=s0:/*!,m:\ ,ex:*/,s1:/*,mb:*,ex:*/,:///,://!,://
 endif
 setlocal commentstring=//%s
-setlocal formatoptions-=t formatoptions+=croqnlj
+setlocal formatoptions-=t formatoptions+=croqnl
+" j was only added in 7.3.541, so stop complaints about its nonexistence
+silent! setlocal formatoptions+=j
 
 " This includeexpr isn't perfect, but it's a good start
 setlocal includeexpr=substitute(v:fname,'::','/','g')
