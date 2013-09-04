@@ -193,7 +193,8 @@ mod test {
     // Issue #6009
     mod m {
         condition! {
-            sadness: int -> int;
+            // #6009, #8215: should this truly need a `pub` for access from n?
+            pub sadness: int -> int;
         }
 
         mod n {
