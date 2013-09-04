@@ -10,9 +10,9 @@
 
 use common::config;
 use common;
+use util;
 
 use std::io;
-use std::os;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -89,13 +89,13 @@ pub fn load_props(testfile: &Path) -> TestProps {
 }
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
-    fn xfail_target() -> ~str {
-        ~"xfail-" + os::SYSNAME
+    fn xfail_target(config: &config) -> ~str {
+        ~"xfail-" + util::get_os(config.target)
     }
 
     let val = do iter_header(testfile) |ln| {
         if parse_name_directive(ln, "xfail-test") { false }
-        else if parse_name_directive(ln, xfail_target()) { false }
+        else if parse_name_directive(ln, xfail_target(config)) { false }
         else if config.mode == common::mode_pretty &&
             parse_name_directive(ln, "xfail-pretty") { false }
         else { true }
