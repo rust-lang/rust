@@ -10,8 +10,9 @@
 
 //! Utilities for manipulating the char type
 
+use cast::transmute;
 use option::{None, Option, Some};
-use int;
+use i32;
 use str::StrSlice;
 use unicode::{derived_property, general_category, decompose};
 use to_str::ToStr;
@@ -63,6 +64,19 @@ static TAG_FOUR_B: uint = 240u;
     Co  Private_Use             a private-use character
     Cn  Unassigned              a reserved unassigned code point or a noncharacter
 */
+
+/// The highest valid code point
+pub static MAX: char = '\U0010ffff';
+
+/// Convert from `u32` to a character.
+pub fn from_u32(i: u32) -> Option<char> {
+    // catch out-of-bounds and surrogates
+    if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
+        None
+    } else {
+        Some(unsafe { transmute(i) })
+    }
+}
 
 /// Returns whether the specified character is considered a unicode alphabetic
 /// character
@@ -194,10 +208,12 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
         fail!("from_digit: radix %? is to high (maximum 36)", num);
     }
     if num < radix {
-        if num < 10 {
-            Some(('0' as uint + num) as char)
-        } else {
-            Some(('a' as uint + num - 10u) as char)
+        unsafe {
+            if num < 10 {
+                Some(transmute(('0' as uint + num) as u32))
+            } else {
+                Some(transmute(('a' as uint + num - 10u) as u32))
+            }
         }
     } else {
         None
@@ -220,14 +236,16 @@ fn decompose_hangul(s: char, f: &fn(char)) {
     let si = s as uint - S_BASE;
 
     let li = si / N_COUNT;
-    f((L_BASE + li) as char);
+    unsafe {
+        f(transmute((L_BASE + li) as u32));
 
-    let vi = (si % N_COUNT) / T_COUNT;
-    f((V_BASE + vi) as char);
+        let vi = (si % N_COUNT) / T_COUNT;
+        f(transmute((V_BASE + vi) as u32));
 
-    let ti = si % T_COUNT;
-    if ti > 0 {
-        f((T_BASE + ti) as char);
+        let ti = si % T_COUNT;
+        if ti > 0 {
+            f(transmute((T_BASE + ti) as u32));
+        }
     }
 }
 
@@ -267,10 +285,12 @@ pub fn escape_unicode(c: char, f: &fn(char)) {
         (c <= '\uffff') { f('u'); 4 }
         _               { f('U'); 8 }
     );
-    do int::range_step(4 * (pad - 1), -1, -4) |offset| {
-        match ((c as u32) >> offset) & 0xf {
-            i @ 0 .. 9 => { f('0' + i as char); }
-            i => { f('a' + (i - 10) as char); }
+    do i32::range_step(4 * (pad - 1), -1, -4) |offset| {
+        unsafe {
+            match ((c as i32) >> offset) & 0xf {
+                i @ 0 .. 9 => { f(transmute('0' as i32 + i)); }
+                i => { f(transmute('a' as i32 + (i - 10))); }
+            }
         }
         true
     };
@@ -416,8 +436,8 @@ impl Ord for char {
 
 #[cfg(not(test))]
 impl Zero for char {
-    fn zero() -> char { 0 as char }
-    fn is_zero(&self) -> bool { *self == 0 as char }
+    fn zero() -> char { '\x00' }
+    fn is_zero(&self) -> bool { *self == '\x00' }
 }
 
 #[test]

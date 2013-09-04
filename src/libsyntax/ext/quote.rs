@@ -387,10 +387,18 @@ fn mk_token(cx: @ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
                                       ~[mk_binop(cx, sp, binop)]);
         }
 
+        LIT_CHAR(i) => {
+            let s_ity = ~"ty_char";
+            let e_ity = cx.expr_ident(sp, id_ext(s_ity));
+
+            let e_char = cx.expr_lit(sp, ast::lit_char(i));
+
+            return cx.expr_call_ident(sp, id_ext("LIT_CHAR"), ~[e_char, e_ity]);
+        }
+
         LIT_INT(i, ity) => {
             let s_ity = match ity {
                 ast::ty_i => ~"ty_i",
-                ast::ty_char => ~"ty_char",
                 ast::ty_i8 => ~"ty_i8",
                 ast::ty_i16 => ~"ty_i16",
                 ast::ty_i32 => ~"ty_i32",

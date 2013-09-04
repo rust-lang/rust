@@ -495,8 +495,7 @@ impl Context {
 
                 // Translate the format
                 let fill = match arg.format.fill { Some(c) => c, None => ' ' };
-                let fill = self.ecx.expr_lit(sp, ast::lit_int(fill as i64,
-                                                              ast::ty_char));
+                let fill = self.ecx.expr_lit(sp, ast::lit_char(fill as u32));
                 let align = match arg.format.align {
                     parse::AlignLeft => {
                         self.ecx.path_global(sp, parsepath("AlignLeft"))

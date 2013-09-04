@@ -572,8 +572,8 @@ mod primitives {
 
     def_prim_ty!(TY_NIL,    super::ty_nil,                  0)
     def_prim_ty!(TY_BOOL,   super::ty_bool,                 1)
-    def_prim_ty!(TY_INT,    super::ty_int(ast::ty_i),       2)
-    def_prim_ty!(TY_CHAR,   super::ty_int(ast::ty_char),    3)
+    def_prim_ty!(TY_CHAR,   super::ty_char,                 2)
+    def_prim_ty!(TY_INT,    super::ty_int(ast::ty_i),       3)
     def_prim_ty!(TY_I8,     super::ty_int(ast::ty_i8),      4)
     def_prim_ty!(TY_I16,    super::ty_int(ast::ty_i16),     5)
     def_prim_ty!(TY_I32,    super::ty_int(ast::ty_i32),     6)
@@ -609,6 +609,7 @@ pub enum sty {
     ty_nil,
     ty_bot,
     ty_bool,
+    ty_char,
     ty_int(ast::int_ty),
     ty_uint(ast::uint_ty),
     ty_float(ast::float_ty),
@@ -1016,7 +1017,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= rflags(r);
         flags |= get(mt.ty).flags;
       }
-      &ty_nil | &ty_bool | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
+      &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
       &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
       &ty_opaque_box => (),
       // You might think that we could just return ty_err for
@@ -1147,7 +1148,6 @@ pub fn mk_u64() -> t { mk_prim_t(&primitives::TY_U64) }
 pub fn mk_mach_int(tm: ast::int_ty) -> t {
     match tm {
         ast::ty_i    => mk_int(),
-        ast::ty_char => mk_char(),
         ast::ty_i8   => mk_i8(),
         ast::ty_i16  => mk_i16(),
         ast::ty_i32  => mk_i32(),
@@ -1303,7 +1303,7 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
         return;
     }
     match get(ty).sty {
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
@@ -1400,7 +1400,7 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         ty_struct(did, ref substs) => {
             ty_struct(did, fold_substs(substs, fldop))
         }
-        ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) | ty_err |
         ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self(_) => {
             (*sty).clone()
@@ -1745,7 +1745,7 @@ pub fn type_is_unique(ty: t) -> bool {
 */
 pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
-      ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_nil | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
       ty_bare_fn(*) | ty_ptr(_) => true,
       _ => false
@@ -2079,7 +2079,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         let result = match get(ty).sty {
             // Scalar and unique types are sendable, freezable, and durable
-            ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+            ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty_ptr(_) => {
                 TC_NONE
             }
@@ -2414,6 +2414,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_nil |
             ty_bot |
             ty_bool |
+            ty_char |
             ty_int(_) |
             ty_uint(_) |
             ty_float(_) |
@@ -2551,7 +2552,7 @@ pub fn type_is_integral(ty: t) -> bool {
 
 pub fn type_is_char(ty: t) -> bool {
     match get(ty).sty {
-        ty_int(ty_char) => true,
+        ty_char => true,
         _ => false
     }
 }
@@ -2588,7 +2589,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let mut result = true;
     match get(ty).sty {
       // Scalar types
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
@@ -3428,7 +3429,7 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
 
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
-      ty_nil | ty_bot | ty_bool | ty_int(_) |
+      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_estr(_) |
       ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
         ::util::ppaux::ty_to_str(cx, t)
@@ -4262,10 +4263,11 @@ pub fn struct_fields(cx: ctxt, did: ast::DefId, substs: &substs)
 pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     static tycat_other: int = 0;
     static tycat_bool: int = 1;
-    static tycat_int: int = 2;
-    static tycat_float: int = 3;
-    static tycat_struct: int = 4;
-    static tycat_bot: int = 5;
+    static tycat_char: int = 2;
+    static tycat_int: int = 3;
+    static tycat_float: int = 4;
+    static tycat_struct: int = 5;
+    static tycat_bot: int = 6;
 
     static opcat_add: int = 0;
     static opcat_sub: int = 1;
@@ -4304,6 +4306,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
             return tycat(cx, simd_type(cx, ty))
         }
         match get(ty).sty {
+          ty_char => tycat_char,
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
@@ -4316,16 +4319,15 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     static t: bool = true;
     static f: bool = false;
 
-    let tbl = ~[
-    /*.          add,     shift,   bit
-      .             sub,     rel,     logic
-      .                mult,    eq,         */
-    /*other*/   ~[f, f, f, f, f, f, f, f],
-    /*bool*/    ~[f, f, f, f, t, t, t, t],
-    /*int*/     ~[t, t, t, t, t, t, t, f],
-    /*float*/   ~[t, t, t, f, t, t, f, f],
-    /*bot*/     ~[f, f, f, f, f, f, f, f],
-    /*struct*/  ~[t, t, t, t, f, f, t, t]];
+    let tbl = [
+    //           +, -, *, shift, rel, ==, bit, logic
+    /*other*/   [f, f, f, f,     f,   f,  f,   f],
+    /*bool*/    [f, f, f, f,     t,   t,  t,   t],
+    /*char*/    [f, f, f, f,     t,   t,  f,   f],
+    /*int*/     [t, t, t, t,     t,   t,  t,   f],
+    /*float*/   [t, t, t, f,     t,   t,  f,   f],
+    /*bot*/     [f, f, f, f,     f,   f,  f,   f],
+    /*struct*/  [t, t, t, t,     f,   f,  t,   t]];
 
     return tbl[tycat(cx, ty)][opcat(op)];
 }

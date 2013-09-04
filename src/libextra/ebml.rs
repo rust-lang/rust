@@ -10,7 +10,6 @@
 
 #[allow(missing_doc)];
 
-
 use std::str;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
@@ -90,6 +89,7 @@ pub enum EbmlEncoderTag {
 // --------------------------------------
 
 pub mod reader {
+    use std::char;
     use super::*;
 
     use serialize;
@@ -426,7 +426,7 @@ pub mod reader {
             (unsafe { transmute::<u64, f64>(bits) }) as float
         }
         fn read_char(&mut self) -> char {
-            doc_as_u32(self.next_doc(EsChar)) as char
+            char::from_u32(doc_as_u32(self.next_doc(EsChar))).unwrap()
         }
         fn read_str(&mut self) -> ~str {
             self.next_doc(EsStr).as_str()

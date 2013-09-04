@@ -17,6 +17,7 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 use parse::token::{str_to_ident};
 
+use std::cast::transmute;
 use std::char;
 use std::either;
 use std::u64;
@@ -184,7 +185,7 @@ pub fn bump(rdr: &mut StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr, rdr.pos).to_uint();
     if current_byte_offset < (rdr.src).len() {
-        assert!(rdr.curr != -1 as char);
+        assert!(rdr.curr != unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
         let last_char = rdr.curr;
         let next = rdr.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
@@ -201,17 +202,17 @@ pub fn bump(rdr: &mut StringReader) {
                 BytePos(current_byte_offset), byte_offset_diff);
         }
     } else {
-        rdr.curr = -1 as char;
+        rdr.curr = unsafe { transmute(-1u32) }; // FIXME: #8971: unsound
     }
 }
 pub fn is_eof(rdr: @mut StringReader) -> bool {
-    rdr.curr == -1 as char
+    rdr.curr == unsafe { transmute(-1u32) } // FIXME: #8971: unsound
 }
 pub fn nextch(rdr: @mut StringReader) -> char {
     let offset = byte_offset(rdr, rdr.pos).to_uint();
     if offset < (rdr.src).len() {
         return rdr.src.char_at(offset);
-    } else { return -1 as char; }
+    } else { return unsafe { transmute(-1u32) }; } // FIXME: #8971: unsound
 }
 
 fn dec_digit_val(c: char) -> int { return (c as int) - ('0' as int); }
@@ -532,7 +533,10 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
         accum_int += hex_digit_val(n);
         i -= 1u;
     }
-    return accum_int as char;
+    match char::from_u32(accum_int as u32) {
+        Some(x) => x,
+        None => rdr.fatal(fmt!("illegal numeric character escape"))
+    }
 }
 
 fn ident_start(c: char) -> bool {
@@ -707,7 +711,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             rdr.fatal(~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
-        return token::LIT_INT(c2 as i64, ast::ty_char);
+        return token::LIT_CHAR(c2 as u32);
       }
       '"' => {
         let mut accum_str = ~"";
@@ -891,21 +895,21 @@ mod test {
         let env = setup(@"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok,token::LIT_INT('a' as i64, ast::ty_char));
+        assert_eq!(tok,token::LIT_CHAR('a' as u32));
     }
 
     #[test] fn character_space() {
         let env = setup(@"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_INT(' ' as i64, ast::ty_char));
+        assert_eq!(tok, token::LIT_CHAR(' ' as u32));
     }
 
     #[test] fn character_escaped() {
         let env = setup(@"'\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_INT('\n' as i64, ast::ty_char));
+        assert_eq!(tok, token::LIT_CHAR('\n' as u32));
     }
 
     #[test] fn lifetime_name() {

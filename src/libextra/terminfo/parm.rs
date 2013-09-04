@@ -258,7 +258,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             ' ' => flags.space = true,
                             '.' => fstate = FormatStatePrecision,
                             '0'..'9' => {
-                                flags.width = (cur - '0') as uint;
+                                flags.width = (cur as uint - '0' as uint);
                                 fstate = FormatStateWidth;
                             }
                             _ => util::unreachable()
@@ -330,7 +330,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         state = Nothing;
                     }
                     '0'..'9' => {
-                        state = IntConstant(i*10 + ((cur - '0') as int));
+                        state = IntConstant(i*10 + (cur as int - '0' as int));
                         old_state = Nothing;
                     }
                     _ => return Err(~"bad int constant")
@@ -358,7 +358,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         flags.space = true;
                     }
                     (FormatStateFlags,'0'..'9') => {
-                        flags.width = (cur - '0') as uint;
+                        flags.width = (cur as uint - '0' as uint);
                         *fstate = FormatStateWidth;
                     }
                     (FormatStateFlags,'.') => {
@@ -366,7 +366,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     }
                     (FormatStateWidth,'0'..'9') => {
                         let old = flags.width;
-                        flags.width = flags.width * 10 + ((cur - '0') as uint);
+                        flags.width = flags.width * 10 + (cur as uint - '0' as uint);
                         if flags.width < old { return Err(~"format width overflow") }
                     }
                     (FormatStateWidth,'.') => {
@@ -374,7 +374,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     }
                     (FormatStatePrecision,'0'..'9') => {
                         let old = flags.precision;
-                        flags.precision = flags.precision * 10 + ((cur - '0') as uint);
+                        flags.precision = flags.precision * 10 + (cur as uint - '0' as uint);
                         if flags.precision < old { return Err(~"format precision overflow") }
                     }
                     _ => return Err(~"invalid format specifier")

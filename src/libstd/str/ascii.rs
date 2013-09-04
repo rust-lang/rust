@@ -149,7 +149,7 @@ impl AsciiCast<Ascii> for char {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        *self - ('\x7F' & *self) == '\x00'
+        *self as u32 - ('\x7F' as u32 & *self as u32) == 0
     }
 }
 
@@ -380,6 +380,7 @@ static ASCII_UPPER_MAP: &'static [u8] = &[
 mod tests {
     use super::*;
     use str::from_char;
+    use char::from_u32;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
@@ -469,9 +470,10 @@ mod tests {
 
         let mut i = 0;
         while i <= 500 {
-            let c = i as char;
-            let upper = if 'a' <= c && c <= 'z' { c + 'A' - 'a' } else { c };
-            assert_eq!(from_char(i as char).to_ascii_upper(), from_char(upper))
+            let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
+                        else { i };
+            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_upper(),
+                       from_char(from_u32(upper).unwrap()))
             i += 1;
         }
     }
@@ -484,9 +486,10 @@ mod tests {
 
         let mut i = 0;
         while i <= 500 {
-            let c = i as char;
-            let lower = if 'A' <= c && c <= 'Z' { c + 'a' - 'A' } else { c };
-            assert_eq!(from_char(i as char).to_ascii_lower(), from_char(lower))
+            let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
+                        else { i };
+            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_lower(),
+                       from_char(from_u32(lower).unwrap()))
             i += 1;
         }
     }
@@ -503,9 +506,11 @@ mod tests {
 
         let mut i = 0;
         while i <= 500 {
-            let c = i as char;
-            let lower = if 'A' <= c && c <= 'Z' { c + 'a' - 'A' } else { c };
-            assert!(from_char(i as char).eq_ignore_ascii_case(from_char(lower)));
+            let c = i;
+            let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
+                        else { c };
+            assert!(from_char(from_u32(i).unwrap()).
+                eq_ignore_ascii_case(from_char(from_u32(lower).unwrap())));
             i += 1;
         }
     }

@@ -632,6 +632,7 @@ pub type lit = Spanned<lit_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum lit_ {
     lit_str(@str),
+    lit_char(u32),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64),
@@ -680,7 +681,6 @@ pub enum trait_method {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum int_ty {
     ty_i,
-    ty_char,
     ty_i8,
     ty_i16,
     ty_i32,
@@ -737,6 +737,7 @@ pub enum prim_ty {
     ty_float(float_ty),
     ty_str,
     ty_bool,
+    ty_char
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
