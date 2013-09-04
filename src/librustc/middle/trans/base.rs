@@ -566,6 +566,7 @@ pub fn compare_scalar_types(cx: @mut Block,
     match ty::get(t).sty {
         ty::ty_nil => rslt(cx, f(nil_type)),
         ty::ty_bool | ty::ty_ptr(_) => rslt(cx, f(unsigned_int)),
+        ty::ty_char => rslt(cx, f(unsigned_int)),
         ty::ty_int(_) => rslt(cx, f(signed_int)),
         ty::ty_uint(_) => rslt(cx, f(unsigned_int)),
         ty::ty_float(_) => rslt(cx, f(floating_point)),

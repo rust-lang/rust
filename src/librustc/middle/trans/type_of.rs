@@ -108,6 +108,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
     let llsizingty = match ty::get(t).sty {
         ty::ty_nil | ty::ty_bot => Type::nil(),
         ty::ty_bool => Type::bool(),
+        ty::ty_char => Type::char(),
         ty::ty_int(t) => Type::int_from_ty(cx, t),
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
         ty::ty_float(t) => Type::float_from_ty(cx, t),
@@ -195,6 +196,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
     let mut llty = match ty::get(t).sty {
       ty::ty_nil | ty::ty_bot => Type::nil(),
       ty::ty_bool => Type::bool(),
+      ty::ty_char => Type::char(),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),

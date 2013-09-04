@@ -16,7 +16,7 @@ use middle::ty::{br_fresh, ctxt, field};
 use middle::ty::{mt, t, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
                  re_empty};
-use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
+use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
@@ -412,8 +412,8 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_nil => ~"()",
       ty_bot => ~"!",
       ty_bool => ~"bool",
+      ty_char => ~"char",
       ty_int(ast::ty_i) => ~"int",
-      ty_int(ast::ty_char) => ~"char",
       ty_int(t) => ast_util::int_ty_to_str(t),
       ty_uint(ast::ty_u) => ~"uint",
       ty_uint(t) => ast_util::uint_ty_to_str(t),

@@ -746,9 +746,9 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     let (name, encoding) = match ty::get(t).sty {
         ty::ty_nil | ty::ty_bot => (~"uint", DW_ATE_unsigned),
         ty::ty_bool => (~"bool", DW_ATE_boolean),
+        ty::ty_char => (~"char", DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
             ast::ty_i => (~"int", DW_ATE_signed),
-            ast::ty_char => (~"char", DW_ATE_signed_char),
             ast::ty_i8 => (~"i8", DW_ATE_signed),
             ast::ty_i16 => (~"i16", DW_ATE_signed),
             ast::ty_i32 => (~"i32", DW_ATE_signed),
@@ -1344,6 +1344,7 @@ fn type_metadata(cx: &mut CrateContext,
         ty::ty_nil      |
         ty::ty_bot      |
         ty::ty_bool     |
+        ty::ty_char     |
         ty::ty_int(_)   |
         ty::ty_uint(_)  |
         ty::ty_float(_) => {

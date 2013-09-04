@@ -778,7 +778,6 @@ impl TypeLimitsLintVisitor {
     fn int_ty_range(&mut self, int_ty: ast::int_ty) -> (i64, i64) {
         match int_ty {
             ast::ty_i =>    (i64::min_value,        i64::max_value),
-            ast::ty_char => (u32::min_value as i64, u32::max_value as i64),
             ast::ty_i8 =>   (i8::min_value  as i64, i8::max_value  as i64),
             ast::ty_i16 =>  (i16::min_value as i64, i16::max_value as i64),
             ast::ty_i32 =>  (i32::min_value as i64, i32::max_value as i64),

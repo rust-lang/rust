@@ -42,22 +42,6 @@ fn test_bool() {
     assert_eq!(true ^ true, false);
 }
 
-fn test_char() {
-    let ch10 = 10 as char;
-    let ch4 = 4 as char;
-    let ch2 = 2 as char;
-    assert_eq!(ch10 + ch4, 14 as char);
-    assert_eq!(ch10 - ch4, 6 as char);
-    assert_eq!(ch10 * ch4, 40 as char);
-    assert_eq!(ch10 / ch4, ch2);
-    assert_eq!(ch10 % ch4, ch2);
-    assert_eq!(ch10 >> ch2, ch2);
-    assert_eq!(ch10 << ch4, 160 as char);
-    assert_eq!(ch10 | ch4, 14 as char);
-    assert_eq!(ch10 & ch2, ch2);
-    assert_eq!(ch10 ^ ch2, 8 as char);
-}
-
 fn test_box() {
     assert_eq!(@10, @10);
 }
@@ -111,7 +95,6 @@ fn test_class() {
 pub fn main() {
     test_nil();
     test_bool();
-    test_char();
     test_box();
     test_ptr();
     test_class();

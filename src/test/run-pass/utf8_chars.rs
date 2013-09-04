@@ -14,7 +14,7 @@ use std::str;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
-    let chs: ~[char] = ~['e', 'é', '€', 0x10000 as char];
+    let chs: ~[char] = ~['e', 'é', '€', '\U00010000'];
     let s: ~str = str::from_chars(chs);
     let schs: ~[char] = s.iter().collect();
 

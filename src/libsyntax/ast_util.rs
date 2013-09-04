@@ -151,7 +151,6 @@ pub fn is_path(e: @Expr) -> bool {
 
 pub fn int_ty_to_str(t: int_ty) -> ~str {
     match t {
-      ty_char => ~"u8", // ???
       ty_i => ~"",
       ty_i8 => ~"i8",
       ty_i16 => ~"i16",
@@ -164,7 +163,7 @@ pub fn int_ty_max(t: int_ty) -> u64 {
     match t {
       ty_i8 => 0x80u64,
       ty_i16 => 0x8000u64,
-      ty_i | ty_char | ty_i32 => 0x80000000u64, // actually ni about ty_i
+      ty_i | ty_i32 => 0x80000000u64, // actually ni about ty_i
       ty_i64 => 0x8000000000000000u64
     }
 }

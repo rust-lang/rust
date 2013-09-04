@@ -18,7 +18,7 @@ pub fn main() {
 }
 
 fn test_misc() {
-    assert_eq!(1 << 1i8 << 1u8 << 1i16 << 1 as char << 1u64, 32);
+    assert_eq!(1 << 1i8 << 1u8 << 1i16 << 1u8 << 1u64, 32);
 }
 
 fn test_expr() {

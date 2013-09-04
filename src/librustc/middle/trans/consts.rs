@@ -39,6 +39,7 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
+      ast::lit_char(i) => C_integral(Type::char(), i as u64, false),
       ast::lit_int(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
       ast::lit_uint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
       ast::lit_int_unsuffixed(i) => {

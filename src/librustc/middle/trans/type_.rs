@@ -119,7 +119,6 @@ impl Type {
     pub fn int_from_ty(ctx: &CrateContext, t: ast::int_ty) -> Type {
         match t {
             ast::ty_i => ctx.int_type,
-            ast::ty_char => Type::char(),
             ast::ty_i8 => Type::i8(),
             ast::ty_i16 => Type::i16(),
             ast::ty_i32 => Type::i32(),
