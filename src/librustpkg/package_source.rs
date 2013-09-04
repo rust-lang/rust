@@ -34,6 +34,7 @@ pub struct PkgSrc {
 }
 
 condition! {
+    // #6009: should this be pub or not, when #8215 is fixed?
     build_err: (~str) -> ();
 }
 
