@@ -24,7 +24,7 @@ endif
 
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustWrapper.cpp PassWrapper.cpp)
 
-RUSTLLVM_DEF_$(1) := rustllvm/rustllvm$(CFG_DEF_SUFFIX_$(1))
+RUSTLLVM_DEF_$(1) := $(1)/rustllvm/rustllvm$(CFG_DEF_SUFFIX_$(1))
 
 RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
                      -iquote $$(LLVM_INCDIR_$(1)) \

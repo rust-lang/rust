@@ -674,20 +674,19 @@ do
     make_dir $t/rustllvm
 done
 
-make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
-  make_dir rt/$t
+  make_dir $t/rt
   for s in 0 1 2 3
   do
-    make_dir rt/$t/stage$s
+    make_dir $t/rt/stage$s
     for i in                                          \
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
       libuv libuv/src/ares libuv/src/eio libuv/src/ev \
       jemalloc
     do
-      make_dir rt/$t/stage$s/$i
+      make_dir $t/rt/stage$s/$i
     done
   done
 done
