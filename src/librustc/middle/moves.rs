@@ -143,7 +143,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::codemap::Span;
 
-#[deriving(Encodable, Decodable)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum CaptureMode {
     CapCopy, // Copy the value into the closure.
     CapMove, // Move the value into the closure.

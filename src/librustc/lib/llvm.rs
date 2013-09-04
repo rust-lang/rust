@@ -2084,6 +2084,31 @@ pub mod llvm {
                                                         ColumnNo: c_uint)
                                                         -> ValueRef;
 
+        #[fast_ffi]
+        pub fn LLVMDIBuilderCreateOpDeref(IntType: TypeRef) -> ValueRef;
+
+        #[fast_ffi]
+        pub fn LLVMDIBuilderCreateOpPlus(IntType: TypeRef) -> ValueRef;
+
+        #[fast_ffi]
+        pub fn LLVMDIBuilderCreateComplexVariable(Builder: DIBuilderRef,
+            Tag: c_uint,
+            Scope: ValueRef,
+            Name: *c_char,
+            File: ValueRef,
+            LineNo: c_uint,
+            Ty: ValueRef,
+            AddrOps: *ValueRef,
+            AddrOpsCount: c_uint,
+            ArgNo: c_uint)
+            -> ValueRef;
+
+        #[fast_ffi]
+        pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
+
+        #[fast_ffi]
+        pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
+
         pub fn LLVMInitializeX86TargetInfo();
         pub fn LLVMInitializeX86Target();
         pub fn LLVMInitializeX86TargetMC();
