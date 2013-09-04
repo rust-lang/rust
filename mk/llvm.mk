@@ -24,11 +24,21 @@ define DEF_LLVM_RULES
 # If CFG_LLVM_ROOT is defined then we don't build LLVM ourselves
 ifeq ($(CFG_LLVM_ROOT),)
 
-$$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS)
+LLVM_STAMP_$(1) = $$(CFG_LLVM_BUILD_DIR_$(1))/llvm-auto-clean-stamp
+
+$$(LLVM_CONFIG_$(1)): $$(LLVM_DEPS) $$(LLVM_STAMP_$(1))
 	@$$(call E, make: llvm)
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) $$(CFG_LLVM_BUILD_ENV)
 	$$(Q)touch $$(LLVM_CONFIG_$(1))
 endif
+
+# This is used to independently force an LLVM clean rebuild
+# when we changed something not otherwise captured by builtin
+# dependencies. In these cases, commit a change that touches
+# the stamp in the source dir.
+$$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
+	$(Q)$(MAKE) clean-llvm
+	touch $$@
 
 endef
 
