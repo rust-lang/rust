@@ -905,8 +905,7 @@ pub fn std_macros() -> @str {
 
         { $c:ident: $input:ty -> $out:ty; } => {
 
-            // FIXME (#6009): remove mod's `pub` below once variant above lands.
-            pub mod $c {
+            mod $c {
                 #[allow(non_uppercase_statics)];
                 static key: ::std::local_data::Key<
                     @::std::condition::Handler<$input, $out>> =
