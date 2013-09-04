@@ -16,7 +16,7 @@ pub enum Color {
 }
 
 condition! {
-    pub oops: (int,float,~str) -> ::Color;
+    pub oops: (int,float,~str) -> Color;
 }
 
 pub trait Thunk<T> {
@@ -26,4 +26,3 @@ pub trait Thunk<T> {
 pub fn callback<T,TH:Thunk<T>>(t:TH) -> T {
     t.call()
 }
-

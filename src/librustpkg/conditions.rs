@@ -14,33 +14,33 @@ pub use std::path::Path;
 pub use package_id::PkgId;
 
 condition! {
-    bad_path: (super::Path, ~str) -> super::Path;
+    bad_path: (Path, ~str) -> Path;
 }
 
 condition! {
-    nonexistent_package: (super::PkgId, ~str) -> super::Path;
+    nonexistent_package: (PkgId, ~str) -> Path;
 }
 
 condition! {
-    copy_failed: (super::Path, super::Path) -> ();
+    copy_failed: (Path, Path) -> ();
 }
 
 condition! {
-    missing_pkg_files: (super::PkgId) -> ();
+    missing_pkg_files: (PkgId) -> ();
 }
 
 condition! {
-    bad_pkg_id: (super::Path, ~str) -> super::PkgId;
+    bad_pkg_id: (Path, ~str) -> PkgId;
 }
 
 condition! {
-    no_rust_path: (~str) -> super::Path;
+    no_rust_path: (~str) -> Path;
 }
 
 condition! {
-    not_a_workspace: (~str) -> super::Path;
+    not_a_workspace: (~str) -> Path;
 }
 
 condition! {
-    failed_to_create_temp_dir: (~str) -> super::Path;
+    failed_to_create_temp_dir: (~str) -> Path;
 }
