@@ -56,14 +56,6 @@ pub mod general_category {
         bsearch_range_table(c, Co_table)
     }
 
-    static Cs_table : &'static [(char,char)] = &[
-        ('\ud800', '\udfff')
-    ];
-
-    pub fn Cs(c: char) -> bool {
-        bsearch_range_table(c, Cs_table)
-    }
-
     static Ll_table : &'static [(char,char)] = &[
         ('\x61', '\x7a'), ('\xb5', '\xb5'),
         ('\xdf', '\xf6'), ('\xf8', '\xff'),

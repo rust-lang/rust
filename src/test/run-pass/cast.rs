@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 // -*- rust -*-
 pub fn main() {
     let i: int = 'Q' as int;
@@ -20,7 +17,7 @@ pub fn main() {
     assert_eq!(u, 'Q' as u32);
     assert_eq!(i as u8, 'Q' as u8);
     assert_eq!(i as u8 as i8, 'Q' as u8 as i8);
-    assert_eq!(0x51 as char, 'Q');
+    assert_eq!(0x51u8 as char, 'Q');
     assert_eq!(true, 1 as bool);
     assert_eq!(0 as u32, false as u32);
 }

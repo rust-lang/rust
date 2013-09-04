@@ -174,13 +174,6 @@ impl Rand for f64 {
     }
 }
 
-impl Rand for char {
-    #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> char {
-        rng.next() as char
-    }
-}
-
 impl Rand for bool {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> bool {
@@ -1137,7 +1130,7 @@ mod test {
         let _f : f32 = random();
         let _o : Option<Option<i8>> = random();
         let _many : ((),
-                     (~uint, @int, ~Option<~(@char, ~(@bool,))>),
+                     (~uint, @int, ~Option<~(@u32, ~(@bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (float,)))) = random();
     }

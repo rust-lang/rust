@@ -610,14 +610,10 @@ pub fn super_tys<C:Combine>(
         vid: ty::IntVid,
         val: ty::IntVarValue) -> cres<ty::t>
     {
-        if val == IntType(ast::ty_char) {
-            Err(ty::terr_integer_as_char)
-        } else {
-            if_ok!(this.infcx().simple_var_t(vid_is_expected, vid, val));
-            match val {
-                IntType(v) => Ok(ty::mk_mach_int(v)),
-                UintType(v) => Ok(ty::mk_mach_uint(v))
-            }
+        if_ok!(this.infcx().simple_var_t(vid_is_expected, vid, val));
+        match val {
+            IntType(v) => Ok(ty::mk_mach_int(v)),
+            UintType(v) => Ok(ty::mk_mach_uint(v))
         }
     }
 

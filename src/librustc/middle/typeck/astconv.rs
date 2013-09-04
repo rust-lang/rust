@@ -455,6 +455,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_bool()
               }
+              ast::ty_char => {
+                check_path_args(tcx, path, NO_TPS | NO_REGIONS);
+                ty::mk_char()
+              }
               ast::ty_int(it) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_mach_int(it)

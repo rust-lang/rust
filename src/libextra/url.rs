@@ -72,7 +72,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
         let mut out = ~"";
 
         while !rdr.eof() {
-            let ch = rdr.read_byte() as char;
+            let ch = rdr.read_byte() as u8 as char;
             match ch {
               // unreserved:
               'A' .. 'Z' |
@@ -135,7 +135,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
             match rdr.read_char() {
               '%' => {
                 let bytes = rdr.read_bytes(2u);
-                let ch = uint::parse_bytes(bytes, 16u).unwrap() as char;
+                let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
 
                 if full_url {
                     // Only decode some characters:
@@ -186,7 +186,7 @@ fn encode_plus(s: &str) -> ~str {
         let mut out = ~"";
 
         while !rdr.eof() {
-            let ch = rdr.read_byte() as char;
+            let ch = rdr.read_byte() as u8 as char;
             match ch {
               'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
                 out.push_char(ch);
@@ -258,7 +258,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                     let ch = match ch {
                         '%' => {
                             let bytes = rdr.read_bytes(2u);
-                            uint::parse_bytes(bytes, 16u).unwrap() as char
+                            uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
                         }
                         '+' => ' ',
                         ch => ch
@@ -295,7 +295,7 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     do io::with_str_reader(s) |rdr| {
         let mut ch;
         while !rdr.eof() {
-            ch = rdr.read_byte() as char;
+            ch = rdr.read_byte() as u8 as char;
             if ch == c {
                 // found a match, adjust markers
                 index = rdr.tell()-1;
