@@ -18,7 +18,7 @@ fn test_mutex_arc_nested() {
     let arc2 = ~MutexArc::new(*arc);
 
     do task::spawn || {
-        do (*arc2).access |mutex| { // This should fail because MutexArc is not Freeze
+        do (*arc2).access |mutex| { //~ ERROR instantiating a type parameter with an incompatible type
         }
     };
 }
