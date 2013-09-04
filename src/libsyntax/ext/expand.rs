@@ -909,8 +909,7 @@ pub fn std_macros() -> @str {
 
         { $c:ident: $input:ty -> $out:ty; } => {
 
-            // FIXME (#6009): remove mod's `pub` below once variant above lands.
-            pub mod $c {
+            mod $c {
                 #[allow(unused_imports)];
                 #[allow(non_uppercase_statics)];
 
