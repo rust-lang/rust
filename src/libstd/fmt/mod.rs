@@ -308,6 +308,13 @@ For integral types, this has no meaning currently.
 For floating-point types, this indicates how many digits after the decimal point
 should be printed.
 
+## Escaping
+
+The literal characters `{`, `}`, or `#` may be included in a string by
+preceding them with the `\` character. Since `\` is already an
+escape character in Rust strings, a string literal using this escape
+will look like `"\\{"`.
+
 */
 
 use prelude::*;
