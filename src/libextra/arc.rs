@@ -192,35 +192,6 @@ impl<T:Send> MutexArc<T> {
         MutexArc { x: UnsafeArc::new(data) }
     }
 
-
-    /// Refer unsafe_access and access methods for the documentaiton. 
-    #[inline]
-    unsafe fn lock_and_access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        let state = self.x.get();
-        // Borrowck would complain about this if the function were
-        // not already unsafe. See borrow_rwlock, far below.
-        do (&(*state).lock).lock {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail(&mut (*state).failed);
-            blk(&mut (*state).data)
-        }
-    }
-
-    #[inline]
-    unsafe fn lock_and_access_cond<'x, 'c, U>(&self,
-                                         blk: &fn(x: &'x mut T,
-                                                  c: &'c Condvar) -> U)
-                                         -> U {
-        let state = self.x.get();
-        do (&(*state).lock).lock_cond |cond| {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail(&mut (*state).failed);
-            blk(&mut (*state).data,
-                &Condvar {is_mutex: true,
-                          failed: &mut (*state).failed,
-                          cond: cond })
-        }
-    }
     /**
      * Access the underlying mutable data with mutual exclusion from other
      * tasks. The argument closure will be run with the mutex locked; all
@@ -246,7 +217,14 @@ impl<T:Send> MutexArc<T> {
      */
     #[inline]
     pub unsafe fn unsafe_access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        self.lock_and_access(blk)
+        let state = self.x.get();
+        // Borrowck would complain about this if the function were
+        // not already unsafe. See borrow_rwlock, far below.
+        do (&(*state).lock).lock {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data)
+        }
     }
 
     /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
@@ -255,7 +233,15 @@ impl<T:Send> MutexArc<T> {
                                          blk: &fn(x: &'x mut T,
                                                   c: &'c Condvar) -> U)
                                          -> U {
-        self.lock_and_access_cond(blk)
+        let state = self.x.get();
+        do (&(*state).lock).lock_cond |cond| {
+            check_poison(true, (*state).failed);
+            let _z = PoisonOnFail(&mut (*state).failed);
+            blk(&mut (*state).data,
+                &Condvar {is_mutex: true,
+                          failed: &mut (*state).failed,
+                          cond: cond })
+        }
     }
 
     /**
@@ -281,25 +267,30 @@ impl<T:Freeze + Send> MutexArc<T> {
      * As unsafe_access.
      *
      * The difference between access and unsafe_access is that the former
-     * forbids mutexes to be nested. The purpose of this is to offer a safe
-     * implementation of both methods access and access_cond to be used instead
-     * of rwlock in cases where no readers are needed and sightly better performance
-     * is required.
+     * forbids mutexes to be nested. While unsafe_access can be used on
+     * MutexArcs without freezable interiors, this safe version of access
+     * requires the Freeze bound, which prohibits access on MutexArcs which
+     * might contain nested MutexArcs inside.
+     *
+     * The purpose of this is to offer a safe implementation of both methods
+     * access and access_cond to be used instead of rwlock in cases where no
+     * readers are needed and sightly better performance is required.
      *
      * Both methods have the same failure behaviour as unsafe_access and
      * unsafe_access_cond.
      */
     #[inline]
     pub fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        unsafe { self.lock_and_access(blk) }
+        unsafe { self.unsafe_access(blk) }
     }
-    
+
+    /// As unsafe_access_cond but safe and Freeze.
     #[inline]
     pub fn access_cond<'x, 'c, U>(&self,
                                   blk: &fn(x: &'x mut T,
                                            c: &'c Condvar) -> U)
                                   -> U {
-        unsafe { self.lock_and_access_cond(blk) }
+        unsafe { self.unsafe_access_cond(blk) }
     }
 }
 
@@ -707,7 +698,7 @@ mod tests {
         let one = arc.unwrap();
         assert!(one == 1);
     }
-    
+
     #[test]
     fn test_unsafe_mutex_arc_nested() {
         unsafe {
@@ -722,90 +713,7 @@ mod tests {
                     }
                 }
             };
-        } 
-    }
-
-    #[test]
-    fn test_unsafe_mutex_arc_condvar() {
-        unsafe {
-            let arc = MutexArc::new(false);
-            let arc2 = arc.clone();
-            let (p, c) = comm::oneshot();
-            let (c, p) = (Cell::new(c), Cell::new(p));
-            do task::spawn {
-                // wait until parent gets in
-                p.take().recv();
-                do arc2.unsafe_access_cond |state, cond| {
-                    *state = true;
-                    cond.signal();
-                }
-            }
-            do arc.unsafe_access_cond |state, cond| {
-                c.take().send(());
-                assert!(!*state);
-                while !*state {
-                    cond.wait();
-                }
-            }
         }
-    }
-
-    #[test] #[should_fail]
-    fn test_unsafe_arc_condvar_poison() {
-        unsafe {
-            let arc = MutexArc::new(1);
-            let arc2 = arc.clone();
-            let (p, c) = comm::stream();
-
-            do task::spawn_unlinked {
-                let _ = p.recv();
-                do arc2.unsafe_access_cond |one, cond| {
-                    cond.signal();
-                    // Parent should fail when it wakes up.
-                    assert_eq!(*one, 0);
-                }
-            }
-
-            do arc.unsafe_access_cond |one, cond| {
-                c.send(());
-                while *one == 1 {
-                    cond.wait();
-                }
-            }
-        }
-    }
-    #[test] #[should_fail]
-    fn test_unsafe_mutex_arc_poison() {
-        unsafe {
-            let arc = MutexArc::new(1);
-            let arc2 = arc.clone();
-            do task::try {
-                do arc2.unsafe_access |one| {
-                    assert_eq!(*one, 2);
-                }
-            };
-            do arc.unsafe_access |one| {
-                assert_eq!(*one, 1);
-            }
-        }
-    }
-
-    #[test] #[should_fail]
-    pub fn test_unsafe_mutex_arc_unwrap_poison() {
-        let arc = MutexArc::new(1);
-        let arc2 = arc.clone();
-        let (p, c) = comm::stream();
-        do task::spawn {
-            unsafe {
-                do arc2.unsafe_access |one| {
-                    c.send(());
-                    assert!(*one == 2);
-                }
-            }
-        }
-        let _ = p.recv();
-        let one = arc.unwrap();
-        assert!(one == 1);
     }
 
     #[test] #[should_fail]
