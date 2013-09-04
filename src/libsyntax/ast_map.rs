@@ -73,7 +73,7 @@ pub enum ast_node {
     node_variant(variant, @item, @path),
     node_expr(@Expr),
     node_stmt(@Stmt),
-    node_arg(@pat),
+    node_arg(@Pat),
     node_local(Ident),
     node_block(Block),
     node_struct_ctor(@struct_def, @item, @path),
