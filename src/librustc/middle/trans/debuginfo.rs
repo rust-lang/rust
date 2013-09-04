@@ -27,7 +27,7 @@ where possible. This will hopefully ease the adaption of this module to future L
 
 The public API of the module is a set of functions that will insert the correct metadata into the
 LLVM IR when called with the right parameters. The module is thus driven from an outside client with
-functions like `debuginfo::local_var_metadata(bcx: block, local: &ast::local)`.
+functions like `debuginfo::create_local_var_metadata(bcx: block, local: &ast::local)`.
 
 Internally the module will try to reuse already created metadata by utilizing a cache. The way to
 get a shared metadata node when needed is thus to just call the corresponding function in this
@@ -37,9 +37,8 @@ module:
 
 The function will take care of probing the cache for an existing node for that exact file path.
 
-All private state used by the module is stored within a DebugContext struct, which in turn is
-contained in the CrateContext.
-
+All private state used by the module is stored within either the CrateDebugContext struct (owned by
+the CrateContext) or the FunctionDebugContext (owned by the FunctionContext).
 
 This file consists of three conceptual sections:
 1. The public interface of the module
@@ -72,7 +71,7 @@ use syntax::codemap::Span;
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token::special_idents;
 
-static DW_LANG_RUST: int = 0x9000;
+static DW_LANG_RUST: c_uint = 0x9000;
 
 static DW_TAG_auto_variable: c_uint = 0x100;
 static DW_TAG_arg_variable: c_uint = 0x101;
@@ -92,7 +91,7 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 //=-------------------------------------------------------------------------------------------------
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct DebugContext {
+pub struct CrateDebugContext {
     priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
@@ -101,13 +100,13 @@ pub struct DebugContext {
     priv created_types: HashMap<uint, DIType>,
 }
 
-impl DebugContext {
-    pub fn new(llmod: ModuleRef, crate: ~str) -> DebugContext {
-        debug!("DebugContext::new");
+impl CrateDebugContext {
+    pub fn new(llmod: ModuleRef, crate: ~str) -> CrateDebugContext {
+        debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
-        return DebugContext {
+        return CrateDebugContext {
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
@@ -118,11 +117,64 @@ impl DebugContext {
     }
 }
 
-pub struct FunctionDebugContext {
-    priv scope_map: HashMap<ast::NodeId, DIScope>,
-    priv fn_metadata: DISubprogram,
-    priv argument_counter: uint,
-    priv source_locations_enabled: bool,
+pub enum FunctionDebugContext {
+    priv FunctionDebugContext(~FunctionDebugContextData),
+    priv DebugInfoDisabled,
+    priv FunctionWithoutDebugInfo,
+}
+
+impl FunctionDebugContext {
+    fn get_ref<'a>(&'a self, cx: &CrateContext, span: Span) -> &'a FunctionDebugContextData {
+        match *self {
+            FunctionDebugContext(~ref data) => data,
+            DebugInfoDisabled => {
+                cx.sess.span_bug(span, "debuginfo: Error trying to access FunctionDebugContext \
+                                        although debug info is disabled!");
+            }
+            FunctionWithoutDebugInfo => {
+                cx.sess.span_bug(span, "debuginfo: Error trying to access FunctionDebugContext \
+                                        for function that should be ignored by debug info!");
+            }
+        }
+    }
+
+    fn get_mut_ref<'a>(&'a mut self,
+                       cx: &CrateContext,
+                       span: Span)
+                    -> &'a mut FunctionDebugContextData {
+        match *self {
+            FunctionDebugContext(~ref mut data) => data,
+            DebugInfoDisabled => {
+                cx.sess.span_bug(span, "debuginfo: Error trying to access FunctionDebugContext \
+                                        although debug info is disabled!");
+            }
+            FunctionWithoutDebugInfo => {
+                cx.sess.span_bug(span, "debuginfo: Error trying to access FunctionDebugContext \
+                                        for function that should be ignored by debug info!");
+            }
+        }
+    }
+}
+
+struct FunctionDebugContextData {
+    scope_map: HashMap<ast::NodeId, DIScope>,
+    fn_metadata: DISubprogram,
+    argument_counter: uint,
+    source_locations_enabled: bool,
+}
+
+enum VariableAccess<'self> {
+    // The llptr given is an alloca containing the variable's value
+    DirectVariable { alloca: ValueRef },
+    // The llptr given is an alloca containing the start of some pointer chain leading to the
+    // variable's content.
+    IndirectVariable { alloca: ValueRef, address_operations: &'self [ValueRef] }
+}
+
+enum VariableKind {
+    ArgumentVariable(uint /*index*/),
+    LocalVariable,
+    CapturedVariable,
 }
 
 /// Create any deferred debug metadata nodes
@@ -138,7 +190,12 @@ pub fn finalize(cx: @mut CrateContext) {
 /// Creates debug information for the given local variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
+pub fn create_local_var_metadata(bcx: @mut Block,
+                                 local: &ast::Local) {
+    if fn_should_be_ignored(bcx.fcx) {
+        return;
+    }
+
     let cx = bcx.ccx();
     let def_map = cx.tcx.def_map;
 
@@ -147,8 +204,90 @@ pub fn create_local_var_metadata(bcx: @mut Block, local: &ast::Local) {
         let var_ident = ast_util::path_to_ident(path_ref);
         let var_type = node_id_type(bcx, node_id);
 
-        declare_local(bcx, var_ident, node_id, var_type, span);
+        let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
+            Some(v) => v,
+            None => {
+                bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
+            }
+        };
+
+        let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
+
+        declare_local(bcx,
+                      var_ident,
+                      var_type,
+                      scope_metadata,
+                      DirectVariable { alloca: llptr },
+                      LocalVariable,
+                      span);
     }
+}
+
+/// Creates debug information for a variable captured in a closure.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_captured_var_metadata(bcx: @mut Block,
+                                    node_id: ast::NodeId,
+                                    env_data_type: ty::t,
+                                    env_pointer: ValueRef,
+                                    env_index: uint,
+                                    closure_sigil: ast::Sigil,
+                                    span: Span) {
+    if fn_should_be_ignored(bcx.fcx) {
+        return;
+    }
+
+    let cx = bcx.ccx();
+
+    let ast_item = cx.tcx.items.find_copy(&node_id);
+    let variable_ident = match ast_item {
+        None => {
+            cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
+        }
+        Some(ast_map::node_local(ident)) => ident,
+        Some(ast_map::node_arg(@ast::Pat { node: ast::PatIdent(_, ref path, _), _ })) => {
+            ast_util::path_to_ident(path)
+        }
+        _ => {
+            cx.sess.span_bug(span, fmt!("debuginfo::create_captured_var_metadata() - \
+                Captured var-id refers to unexpected ast_map variant: %?", ast_item));
+        }
+    };
+
+    let variable_type = node_id_type(bcx, node_id);
+    let scope_metadata = bcx.fcx.debug_context.get_ref(cx, span).fn_metadata;
+
+    let llvm_env_data_type = type_of::type_of(cx, env_data_type);
+    let byte_offset_of_var_in_env = machine::llelement_offset(cx, llvm_env_data_type, env_index);
+
+    let address_operations = unsafe {
+        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()),
+         llvm::LLVMDIBuilderCreateOpPlus(Type::i64().to_ref()),
+         C_i64(byte_offset_of_var_in_env as i64),
+         llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref())]
+    };
+
+    let address_op_count = match closure_sigil {
+        ast::BorrowedSigil => {
+            address_operations.len()
+        }
+        ast::ManagedSigil | ast::OwnedSigil => {
+            address_operations.len() - 1
+        }
+    };
+
+    let variable_access = IndirectVariable {
+        alloca: env_pointer,
+        address_operations: address_operations.slice_to(address_op_count)
+    };
+
+    declare_local(bcx,
+                  variable_ident,
+                  variable_type,
+                  scope_metadata,
+                  variable_access,
+                  CapturedVariable,
+                  span);
 }
 
 /// Creates debug information for a local variable introduced in the head of a match-statement arm.
@@ -159,61 +298,84 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
                                      span: Span) {
-    declare_local(bcx, variable_ident, node_id, variable_type, span);
+    if fn_should_be_ignored(bcx.fcx) {
+        return;
+    }
+
+    let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
+        }
+    };
+
+    let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
+
+    declare_local(bcx,
+                  variable_ident,
+                  variable_type,
+                  scope_metadata,
+                  DirectVariable { alloca: llptr },
+                  LocalVariable,
+                  span);
 }
 
 /// Creates debug information for the self argument of a method.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_self_argument_metadata(bcx: @mut Block,
-                                     variable_type: ty::t,
+                                     type_of_self: ty::t,
                                      llptr: ValueRef) {
-    assert_fcx_has_span(bcx.fcx);
-    let span = bcx.fcx.span.unwrap();
+    if fn_should_be_ignored(bcx.fcx) {
+        return;
+    }
 
-    let cx = bcx.ccx();
+    // Extract the span of the self argument from the method's AST
+    let fnitem = bcx.ccx().tcx.items.get_copy(&bcx.fcx.id);
+    let span = match fnitem {
+        ast_map::node_method(@ast::method { explicit_self: explicit_self, _ }, _, _) => {
+            explicit_self.span
+        }
+        ast_map::node_trait_method(
+            @ast::provided(
+                @ast::method {
+                    explicit_self: explicit_self,
+                    _
+                }),
+            _,
+            _) => {
+            explicit_self.span
+        }
+        _ => bcx.ccx().sess.bug(
+                fmt!("create_self_argument_metadata: unexpected sort of node: %?", fnitem))
+    };
 
-    let filename = span_start(cx, span).file.name;
-    let file_metadata = file_metadata(cx, filename);
-
-    let loc = span_start(cx, span);
-    let type_metadata = type_metadata(cx, variable_type, span);
-    let scope = bcx.fcx.debug_context.get_ref().fn_metadata;
+    let scope_metadata = bcx.fcx.debug_context.get_ref(bcx.ccx(), span).fn_metadata;
 
     let argument_index = {
-        let counter = &mut bcx.fcx.debug_context.get_mut_ref().argument_counter;
+        let counter = &mut bcx.fcx.debug_context.get_mut_ref(bcx.ccx(), span).argument_counter;
         let argument_index = *counter;
         *counter += 1;
-        argument_index as c_uint
+        argument_index
     };
 
-    let var_metadata = do cx.sess.str_of(special_idents::self_).to_c_str().with_ref |name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateLocalVariable(
-                DIB(cx),
-                DW_TAG_arg_variable,
-                scope,
-                name,
-                file_metadata,
-                loc.line as c_uint,
-                type_metadata,
-                false,
-                0,
-                argument_index)
-        }
+    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()) }];
+
+    let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
+        DirectVariable { alloca: llptr }
+    } else {
+        // This is not stable and may break with future LLVM versions. llptr should really always
+        // be an alloca. Anything else is not supported and just works by chance.
+        IndirectVariable { alloca: llptr, address_operations: address_operations }
     };
 
-    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
-    unsafe {
-        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-            DIB(cx),
-            llptr,
-            var_metadata,
-            bcx.llbb);
-
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
-    }
-    set_debug_location(cx, UnknownLocation);
+    declare_local(bcx,
+                  special_idents::self_,
+                  type_of_self,
+                  scope_metadata,
+                  variable_access,
+                  ArgumentVariable(argument_index),
+                  span);
 }
 
 /// Creates debug information for the given function argument.
@@ -221,53 +383,17 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: @mut Block,
                                 arg: &ast::arg) {
-    let fcx = bcx.fcx;
-    let cx = fcx.ccx;
-
-    let pattern = arg.pat;
-    let filename = span_start(cx, pattern.span).file.name;
-
-    if fcx.id == -1 ||
-       fcx.span.is_none() ||
-       "<intrinsic>" == filename {
+    if fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
+    let fcx = bcx.fcx;
+    let cx = fcx.ccx;
+
     let def_map = cx.tcx.def_map;
-    let file_metadata = file_metadata(cx, filename);
-    let scope = bcx.fcx.debug_context.get_ref().fn_metadata;//create_function_metadata(fcx);
+    let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
-    do pat_util::pat_bindings(def_map, pattern) |_, node_id, span, path_ref| {
-
-        let ty = node_id_type(bcx, node_id);
-        let type_metadata = type_metadata(cx, ty, codemap::dummy_sp());
-        let loc = span_start(cx, span);
-        let ident = ast_util::path_to_ident(path_ref);
-        let name: &str = cx.sess.str_of(ident);
-        debug!("create_argument_metadata: %s", name);
-
-        let argument_index = {
-            let counter = &mut fcx.debug_context.get_mut_ref().argument_counter;
-            let argument_index = *counter;
-            *counter += 1;
-            argument_index as c_uint
-        };
-
-        let arg_metadata = do name.with_c_str |name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(
-                    DIB(cx),
-                    DW_TAG_arg_variable,
-                    scope,
-                    name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
-                    false,
-                    0,
-                    argument_index)
-            }
-        };
+    do pat_util::pat_bindings(def_map, arg.pat) |_, node_id, span, path_ref| {
 
         let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
             Some(v) => v,
@@ -276,17 +402,28 @@ pub fn create_argument_metadata(bcx: @mut Block,
             }
         };
 
-        set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
-        unsafe {
-            let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-                DIB(cx),
-                llptr,
-                arg_metadata,
-                bcx.llbb);
-
-            llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+        if unsafe { llvm::LLVMIsAAllocaInst(llptr) } == ptr::null() {
+            cx.sess.span_bug(span, "debuginfo::create_argument_metadata() - \
+                                    Referenced variable location is not an alloca!");
         }
-        set_debug_location(cx, UnknownLocation);
+
+        let argument_type = node_id_type(bcx, node_id);
+        let argument_ident = ast_util::path_to_ident(path_ref);
+
+        let argument_index = {
+            let counter = &mut fcx.debug_context.get_mut_ref(cx, span).argument_counter;
+            let argument_index = *counter;
+            *counter += 1;
+            argument_index
+        };
+
+        declare_local(bcx,
+                      argument_ident,
+                      argument_type,
+                      scope_metadata,
+                      DirectVariable { alloca: llptr },
+                      ArgumentVariable(argument_index),
+                      span);
     }
 }
 
@@ -297,15 +434,15 @@ pub fn create_argument_metadata(bcx: @mut Block,
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
-    let cx: &mut CrateContext = fcx.ccx;
-
-    if !cx.sess.opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
+    if fn_should_be_ignored(fcx) {
         return;
     }
 
+    let cx = fcx.ccx;
+
     debug!("set_source_location: %s", cx.sess.codemap.span_to_str(span));
 
-    if fcx.debug_context.get_ref().source_locations_enabled {
+    if fcx.debug_context.get_ref(cx, span).source_locations_enabled {
         let loc = span_start(cx, span);
         let scope = scope_metadata(fcx, node_id, span);
 
@@ -315,17 +452,35 @@ pub fn set_source_location(fcx: &FunctionContext,
     }
 }
 
+/// Enables emitting source locations for the given functions.
+///
+/// Since we don't want source locations to be emitted for the function prelude, they are disabled
+/// when beginning to translate a new function. This functions switches source location emitting on
+/// and must therefore be called before the first real statement/expression of the function is
+/// translated.
 pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
-    for debug_context in fcx.debug_context.mut_iter() {
-        debug_context.source_locations_enabled = true;
+    match fcx.debug_context {
+        FunctionDebugContext(~ref mut data) => data.source_locations_enabled = true,
+        _ => { /* safe to ignore */ }
     }
 }
 
+/// Creates the function-specific debug context.
+///
+/// Returns the FunctionDebugContext for the function which holds state needed for debug info
+/// creation. The function may also return another variant of the FunctionDebugContext enum which
+/// indicates why no debuginfo should be created for the function.
 pub fn create_function_debug_context(cx: &mut CrateContext,
                                      fn_ast_id: ast::NodeId,
                                      param_substs: Option<@param_substs>,
-                                     llfn: ValueRef) -> ~FunctionDebugContext {
-    assert!(fn_ast_id != -1);
+                                     llfn: ValueRef) -> FunctionDebugContext {
+    if !cx.sess.opts.debuginfo {
+        return DebugInfoDisabled;
+    }
+
+    if fn_ast_id == -1 {
+        return FunctionWithoutDebugInfo;
+    }
 
     let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
@@ -395,8 +550,17 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             _) => {
             (ident, fn_decl, generics, None, span)
         }
+        ast_map::node_variant(*)     |
+        ast_map::node_struct_ctor(*) => {
+            return FunctionWithoutDebugInfo;
+        }
         _ => cx.sess.bug(fmt!("create_function_debug_context: unexpected sort of node: %?", fnitem))
     };
+
+    // This can be the case for functions inlined from another crate
+    if span == codemap::dummy_sp() {
+        return FunctionWithoutDebugInfo;
+    }
 
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
@@ -438,7 +602,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     };
 
     // Initialize fn debug context (including scope map)
-    let mut fn_debug_context = ~FunctionDebugContext {
+    let mut fn_debug_context = ~FunctionDebugContextData {
         scope_map: HashMap::new(),
         fn_metadata: fn_metadata,
         argument_counter: 1,
@@ -448,7 +612,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
     populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
 
-    return fn_debug_context;
+    return FunctionDebugContext(fn_debug_context);
 
     fn get_function_signature(cx: &mut CrateContext,
                               fn_ast_id: ast::NodeId,
@@ -631,18 +795,26 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     do "".with_c_str |flags| {
     do "".with_c_str |split_name| {
         unsafe {
-            llvm::LLVMDIBuilderCreateCompileUnit(dcx.builder,
-                DW_LANG_RUST as c_uint, crate_name, work_dir, producer,
+            llvm::LLVMDIBuilderCreateCompileUnit(
+                dcx.builder,
+                DW_LANG_RUST,
+                crate_name,
+                work_dir,
+                producer,
                 cx.sess.opts.optimize != session::No,
-                flags, 0, split_name);
+                flags,
+                0,
+                split_name);
         }
     }}}}};
 }
 
 fn declare_local(bcx: @mut Block,
                  variable_ident: ast::Ident,
-                 node_id: ast::NodeId,
                  variable_type: ty::t,
+                 scope_metadata: DIScope,
+                 variable_access: VariableAccess,
+                 variable_kind: VariableKind,
                  span: Span) {
     let cx: &mut CrateContext = bcx.ccx();
 
@@ -652,40 +824,67 @@ fn declare_local(bcx: @mut Block,
     let name: &str = cx.sess.str_of(variable_ident);
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let scope = scope_metadata(bcx.fcx, node_id, span);
 
-    let var_metadata = do name.with_c_str |name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateLocalVariable(
-                DIB(cx),
-                DW_TAG_auto_variable,
-                scope,
-                name,
-                file_metadata,
-                loc.line as c_uint,
-                type_metadata,
-                false,
-                0,
-                0)
+    let argument_index = match variable_kind {
+        ArgumentVariable(index) => index,
+        LocalVariable    |
+        CapturedVariable => 0
+    } as c_uint;
+
+    let (var_alloca, var_metadata) = do name.with_c_str |name| {
+        match variable_access {
+            DirectVariable { alloca } => (
+                alloca,
+                unsafe {
+                    llvm::LLVMDIBuilderCreateLocalVariable(
+                        DIB(cx),
+                        DW_TAG_auto_variable,
+                        scope_metadata,
+                        name,
+                        file_metadata,
+                        loc.line as c_uint,
+                        type_metadata,
+                        cx.sess.opts.optimize != session::No,
+                        0,
+                        argument_index)
+                }
+            ),
+            IndirectVariable { alloca, address_operations } => (
+                alloca,
+                unsafe {
+                    llvm::LLVMDIBuilderCreateComplexVariable(
+                        DIB(cx),
+                        DW_TAG_auto_variable,
+                        scope_metadata,
+                        name,
+                        file_metadata,
+                        loc.line as c_uint,
+                        type_metadata,
+                        vec::raw::to_ptr(address_operations),
+                        address_operations.len() as c_uint,
+                        argument_index)
+                }
+            )
         }
     };
 
-    let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
-        Some(v) => v,
-        None => {
-            bcx.tcx().sess.span_bug(span, fmt!("No entry in lllocals table for %?", node_id));
-        }
-    };
-
-    set_debug_location(cx, DebugLocation::new(scope, loc.line, *loc.col));
+    set_debug_location(cx, DebugLocation::new(scope_metadata, loc.line, *loc.col));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
-            llptr,
+            var_alloca,
             var_metadata,
             bcx.llbb);
 
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+    }
+
+    match variable_kind {
+        ArgumentVariable(_) | CapturedVariable => {
+            assert!(!bcx.fcx.debug_context.get_ref(cx, span).source_locations_enabled);
+            set_debug_location(cx, UnknownLocation);
+        }
+        _ => { /* fallthrough */ }
     }
 }
 
@@ -720,13 +919,9 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
 /// Finds the scope metadata node for the given AST node.
 fn scope_metadata(fcx: &FunctionContext,
                   node_id: ast::NodeId,
-                  span: Span) -> DIScope {
-    if fcx.debug_context.is_none() {
-        fcx.ccx.sess.span_bug(span, "debuginfo: FunctionDebugContext should be initialized \
-                                     but is not!");
-    }
-
-    let scope_map = &fcx.debug_context.get_ref().scope_map;
+                  span: Span)
+               -> DIScope {
+    let scope_map = &fcx.debug_context.get_ref(fcx.ccx, span).scope_map;
 
     match scope_map.find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
@@ -1260,30 +1455,31 @@ fn vec_slice_metadata(cx: &mut CrateContext,
     }
 }
 
-fn bare_fn_metadata(cx: &mut CrateContext,
-                    _fn_ty: ty::t,
-                    inputs: ~[ty::t],
-                    output: ty::t,
-                    span: Span)
-                 -> DICompositeType {
-
-    debug!("bare_fn_metadata: %?", ty::get(_fn_ty));
-
+fn subroutine_type_metadata(cx: &mut CrateContext,
+                            signature: &ty::FnSig,
+                            span: Span)
+                         -> DICompositeType {
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let nil_pointer_type_metadata = type_metadata(cx, ty::mk_nil_ptr(cx.tcx), span);
-    let output_metadata = type_metadata(cx, output, span);
-    let output_ptr_metadata = pointer_type_metadata(cx, output, output_metadata);
+    let mut signature_metadata: ~[DIType] = vec::with_capacity(signature.inputs.len() + 1);
 
-    let inputs_vals = do inputs.map |arg| { type_metadata(cx, *arg, span) };
-    let members = ~[output_ptr_metadata, nil_pointer_type_metadata] + inputs_vals;
+    // return type
+    signature_metadata.push(match ty::get(signature.output).sty {
+        ty::ty_nil => ptr::null(),
+        _ => type_metadata(cx, signature.output, span)
+    });
+
+    // regular arguments
+    for &argument_type in signature.inputs.iter() {
+        signature_metadata.push(type_metadata(cx, argument_type, span));
+    }
 
     return unsafe {
         llvm::LLVMDIBuilderCreateSubroutineType(
             DIB(cx),
             file_metadata,
-            create_DIArray(DIB(cx), members))
+            create_DIArray(DIB(cx), signature_metadata))
     };
 }
 
@@ -1407,13 +1603,10 @@ fn type_metadata(cx: &mut CrateContext,
             pointer_type_metadata(cx, t, pointee)
         },
         ty::ty_bare_fn(ref barefnty) => {
-            let inputs = barefnty.sig.inputs.map(|a| *a);
-            let output = barefnty.sig.output;
-            bare_fn_metadata(cx, t, inputs, output, span)
+            subroutine_type_metadata(cx, &barefnty.sig, span)
         },
-        ty::ty_closure(ref _closurety) => {
-            cx.sess.span_note(span, "debuginfo for closure NYI");
-            unimplemented_type_metadata(cx, t)
+        ty::ty_closure(ref closurety) => {
+            subroutine_type_metadata(cx, &closurety.sig, span)
         },
         ty::ty_trait(_did, ref _substs, ref _vstore, _, _bounds) => {
             cx.sess.span_note(span, "debuginfo for trait NYI");
@@ -1457,7 +1650,6 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
     if debug_location == dbg_cx(cx).curr_loc {
         return;
     }
-
 
     let metadata_node;
 
@@ -1507,7 +1699,7 @@ fn bytes_to_bits(bytes: uint) -> c_ulonglong {
 }
 
 #[inline]
-fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut DebugContext {
+fn dbg_cx<'a>(cx: &'a mut CrateContext) -> &'a mut CrateDebugContext {
     cx.dbg_cx.get_mut_ref()
 }
 
@@ -1521,6 +1713,13 @@ fn assert_fcx_has_span(fcx: &FunctionContext) {
         fcx.ccx.sess.bug(fmt!("debuginfo: Encountered function %s with invalid source span. \
             This function should have been ignored by debuginfo generation.",
             ast_map::path_to_str(fcx.path, fcx.ccx.sess.intr())));
+    }
+}
+
+fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
+    match fcx.debug_context {
+        FunctionDebugContext(_) => false,
+        _ => true
     }
 }
 

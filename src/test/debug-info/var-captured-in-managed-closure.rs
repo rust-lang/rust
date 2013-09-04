@@ -8,30 +8,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Does not work yet, see issue #8512
-// xfail-test
-
 // compile-flags:-Z extra-debug-info
 // debugger:break zzz
 // debugger:run
-
 // debugger:finish
-// debugger:print s
-// check:$1 = {a = 1, b = 2.5}
-// debugger:continue
 
-#[deriving(Clone)]
+// debugger:print constant
+// check:$1 = 1
+// debugger:print a_struct
+// check:$2 = {a = -2, b = 3.5, c = 4}
+// debugger:print *owned
+// check:$3 = 5
+// debugger:print managed->val
+// check:$4 = 6
+
+#[allow(unused_variable)];
+
 struct Struct {
     a: int,
-    b: float
-}
-
-fn fun(s: Struct) {
-    zzz();
+    b: float,
+    c: uint
 }
 
 fn main() {
-    fun(Struct { a: 1, b: 2.5 });
+    let constant = 1;
+
+    let a_struct = Struct {
+        a: -2,
+        b: 3.5,
+        c: 4
+    };
+
+    let owned = ~5;
+    let managed = @6;
+
+    let closure: @fn() = || {
+        zzz();
+        do_something(&constant, &a_struct.a, owned, managed);
+    };
+
+    closure();
+}
+
+fn do_something(_: &int, _:&int, _:&int, _:&int) {
 }
 
 fn zzz() {()}

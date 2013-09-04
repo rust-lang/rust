@@ -228,7 +228,7 @@ pub struct FunctionContext {
     ccx: @mut CrateContext,
 
     // Used and maintained by the debuginfo module.
-    debug_context: Option<~debuginfo::FunctionDebugContext>
+    debug_context: debuginfo::FunctionDebugContext,
 }
 
 impl FunctionContext {

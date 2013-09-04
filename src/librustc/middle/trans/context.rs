@@ -111,7 +111,7 @@ pub struct CrateContext {
      // decl_gc_metadata knows whether to link to the module metadata, which
      // is not emitted by LLVM's GC pass when no functions use GC.
      uses_gc: bool,
-     dbg_cx: Option<debuginfo::DebugContext>,
+     dbg_cx: Option<debuginfo::CrateDebugContext>,
      do_not_commit_warning_issued: bool
 }
 
@@ -161,7 +161,7 @@ impl CrateContext {
 
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
-                Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
+                Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
