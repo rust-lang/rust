@@ -384,15 +384,13 @@ impl ToStr for IoErrorKind {
 // XXX: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
-    // FIXME (#6009): uncomment `pub` after expansion support lands.
-    /*pub*/ io_error: super::IoError -> ();
+    pub io_error: super::IoError -> ();
 }
 
 // XXX: Can't put doc comments on macros
 // Raised by `read` on error
 condition! {
-    // FIXME (#6009): uncomment `pub` after expansion support lands.
-    /*pub*/ read_error: super::IoError -> ();
+    pub read_error: super::IoError -> ();
 }
 
 pub trait Reader {
