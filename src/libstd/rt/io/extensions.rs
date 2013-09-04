@@ -15,8 +15,9 @@
 
 use uint;
 use int;
+use iterator::Iterator;
 use vec;
-use rt::io::{Reader, Writer};
+use rt::io::{Reader, Writer, Decorator};
 use rt::io::{read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
@@ -61,6 +62,16 @@ pub trait ReaderUtil {
     ///
     /// Raises the same conditions as the `read` method.
     fn read_to_end(&mut self) -> ~[u8];
+
+    /// Create an iterator that reads a single byte on
+    /// each iteration, until EOF.
+    ///
+    /// # Failure
+    ///
+    /// Raises the same conditions as the `read` method, for
+    /// each call to its `.next()` method.
+    /// Ends the iteration if the condition is handled.
+    fn bytes(self) -> ByteIterator<Self>;
 
 }
 
@@ -336,6 +347,41 @@ impl<T: Reader> ReaderUtil for T {
             }
         }
         return buf;
+    }
+
+    fn bytes(self) -> ByteIterator<T> {
+        ByteIterator{reader: self}
+    }
+}
+
+/// An iterator that reads a single byte on each iteration,
+/// until `.read_byte()` returns `None`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `ByteIterator` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
+///
+/// # Failure
+///
+/// Raises the same conditions as the `read` method, for
+/// each call to its `.next()` method.
+/// Yields `None` if the condition is handled.
+pub struct ByteIterator<T> {
+    priv reader: T,
+}
+
+impl<R> Decorator<R> for ByteIterator<R> {
+    fn inner(self) -> R { self.reader }
+    fn inner_ref<'a>(&'a self) -> &'a R { &self.reader }
+    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.reader }
+}
+
+impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.reader.read_byte()
     }
 }
 
@@ -645,6 +691,48 @@ mod test {
             assert!(byte == None);
         }
     }
+
+    #[test]
+    fn bytes_0_bytes() {
+        let mut reader = MockReader::new();
+        let count = Cell::new(0);
+        reader.read = |buf| {
+            do count.with_mut_ref |count| {
+                if *count == 0 {
+                    *count = 1;
+                    Some(0)
+                } else {
+                    buf[0] = 10;
+                    Some(1)
+                }
+            }
+        };
+        let byte = reader.bytes().next();
+        assert!(byte == Some(10));
+    }
+
+    #[test]
+    fn bytes_eof() {
+        let mut reader = MockReader::new();
+        reader.read = |_| None;
+        let byte = reader.bytes().next();
+        assert!(byte == None);
+    }
+
+    #[test]
+    fn bytes_error() {
+        let mut reader = MockReader::new();
+        reader.read = |_| {
+            read_error::cond.raise(placeholder_error());
+            None
+        };
+        let mut it = reader.bytes();
+        do read_error::cond.trap(|_| ()).inside {
+            let byte = it.next();
+            assert!(byte == None);
+        }
+    }
+
 
     #[test]
     fn read_bytes() {
