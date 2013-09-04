@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Aug 1
+" Last Change:  2013 Sep 4
 
 if version < 600
   syntax clear
@@ -11,6 +11,8 @@ elseif exists("b:current_syntax")
   finish
 endif
 
+" Syntax definitions {{{1
+" Basic keywords {{{2
 syn keyword   rustConditional match if else
 syn keyword   rustOperator    as
 
@@ -32,27 +34,80 @@ syn keyword   rustStorage     const mut ref static
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
-" reserved
+" Reserved (but not yet used) keywords {{{2
 syn keyword   rustKeyword     be yield typeof
 
+" Built-in types {{{2
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str Self
-syn keyword   rustType        Option Either
 
-" Types from libc
-syn keyword   rustType        c_float c_double c_void FILE fpos_t
-syn keyword   rustType        DIR dirent
-syn keyword   rustType        c_char c_schar c_uchar
-syn keyword   rustType        c_short c_ushort c_int c_uint c_long c_ulong
-syn keyword   rustType        size_t ptrdiff_t clock_t time_t
-syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
-syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
+" Things from the prelude (src/libstd/prelude.rs) {{{2
+" This section is just straight transformation of the contents of the prelude,
+" to make it easy to update.
 
-syn keyword   rustTrait       Const Copy Send Owned Sized " inherent traits
-syn keyword   rustTrait       Clone Decodable Encodable IterBytes Rand ToStr
-syn keyword   rustTrait       Eq Ord TotalEq TotalOrd Num Ptr
-syn keyword   rustTrait       Drop Add Sub Mul Quot Rem Neg BitAnd BitOr
-syn keyword   rustTrait       BitXor Shl Shr Index
+" Core operators {{{3
+syn keyword   rustEnum        Either
+syn keyword   rustEnumVariant Left Right
+syn keyword   rustTrait       Sized
+syn keyword   rustTrait       Freeze Send
+syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
+syn keyword   rustTrait       BitAnd BitOr BitXor
+syn keyword   rustTrait       Drop
+syn keyword   rustTrait       Shl Shr Index
+syn keyword   rustEnum        Option
+syn keyword   rustEnumVariant Some None
+syn keyword   rustEnum        Result
+syn keyword   rustEnumVariant Ok Err
+
+" Functions {{{3
+"syn keyword rustFunction print println
+"syn keyword rustFunction range
+
+" Types and traits {{{3
+syn keyword rustTrait ToCStr
+syn keyword rustTrait Clone DeepClone
+syn keyword rustTrait Eq ApproxEq Ord TotalEq TotalOrd Ordering Equiv
+syn keyword rustEnumVariant Less Equal Greater
+syn keyword rustTrait Char
+syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
+syn keyword rustTrait Hash
+syn keyword rustTrait Times
+syn keyword rustTrait FromIterator Extendable
+syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator ClonableIterator
+syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
+syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
+syn keyword rustTrait Orderable Signed Unsigned Round
+syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
+syn keyword rustTrait Integer Fractional Real RealExt
+syn keyword rustTrait Bitwise BitCount Bounded
+syn keyword rustTrait Primitive Int Float ToStrRadix
+syn keyword rustTrait GenericPath
+syn keyword rustTrait Path
+syn keyword rustTrait PosixPath
+syn keyword rustTrait WindowsPath
+syn keyword rustTrait RawPtr
+syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr ToBytesConsume
+syn keyword rustTrait Str StrVector StrSlice OwnedStr
+syn keyword rustTrait FromStr
+syn keyword rustTrait IterBytes
+syn keyword rustTrait ToStr ToStrConsume
+syn keyword rustTrait CopyableTuple ImmutableTuple
+syn keyword rustTrait CloneableTuple1 ImmutableTuple1
+syn keyword rustTrait CloneableTuple2 CloneableTuple3 CloneableTuple4 CloneableTuple5
+syn keyword rustTrait CloneableTuple6 CloneableTuple7 CloneableTuple8 CloneableTuple9
+syn keyword rustTrait CloneableTuple10 CloneableTuple11 CloneableTuple12
+syn keyword rustTrait ImmutableTuple2 ImmutableTuple3 ImmutableTuple4 ImmutableTuple5
+syn keyword rustTrait ImmutableTuple6 ImmutableTuple7 ImmutableTuple8 ImmutableTuple9
+syn keyword rustTrait ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
+syn keyword rustTrait Vector VectorVector CopyableVector ImmutableVector
+syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCopyableVector
+syn keyword rustTrait OwnedVector OwnedCopyableVector OwnedEqVector MutableVector
+syn keyword rustTrait Reader ReaderUtil Writer WriterUtil
+syn keyword rustTrait Default
+
+"syn keyword rustFunction stream
+syn keyword rustTrait Port Chan GenericChan GenericSmartChan GenericPort Peekable
+"syn keyword rustFunction spawn
 
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
@@ -60,19 +115,9 @@ syn keyword   rustBoolean     true false
 syn keyword   rustConstant    Some None       " option
 syn keyword   rustConstant    Left Right      " either
 syn keyword   rustConstant    Ok Err          " result
-syn keyword   rustConstant    Success Failure " task
-syn keyword   rustConstant    Cons Nil        " list
-" syn keyword   rustConstant    empty node      " tree
+syn keyword   rustConstant    Less Equal Greater " Ordering
 
-" Constants from libc
-syn keyword   rustConstant    EXIT_FAILURE EXIT_SUCCESS RAND_MAX
-syn keyword   rustConstant    EOF SEEK_SET SEEK_CUR SEEK_END _IOFBF _IONBF
-syn keyword   rustConstant    _IOLBF BUFSIZ FOPEN_MAX FILENAME_MAX L_tmpnam
-syn keyword   rustConstant    TMP_MAX O_RDONLY O_WRONLY O_RDWR O_APPEND O_CREAT
-syn keyword   rustConstant    O_EXCL O_TRUNC S_IFIFO S_IFCHR S_IFBLK S_IFDIR
-syn keyword   rustConstant    S_IFREG S_IFMT S_IEXEC S_IWRITE S_IREAD S_IRWXU
-syn keyword   rustConstant    S_IXUSR S_IWUSR S_IRUSR F_OK R_OK W_OK X_OK
-syn keyword   rustConstant    STDIN_FILENO STDOUT_FILENO STDERR_FILENO
+" Other syntax {{{2
 
 " If foo::bar changes to foo.bar, change this ("::" to "\.").
 " If foo::bar changes to Foo::bar, change this (first "\w" to "\u").
@@ -102,7 +147,8 @@ syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
 syn match     rustFormat      display "%%" contained
 syn match     rustSpecial     display contained /\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
-syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial
+syn match     rustStringContinuation display contained /\\\n\s*/
+syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial,rustStringContinuation
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
@@ -137,18 +183,20 @@ syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit
 syn match   rustCharacter   /'\([^'\\]\|\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial
 
 syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
-syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustComment     start="//" end="$" contains=rustTodo keepend
 syn region    rustCommentMLDoc start="/\*\%(!\|\*/\@!\)" end="\*/" contains=rustTodo
-syn region    rustCommentDoc  start="//[/!]" skip="\\$" end="$" contains=rustTodo keepend
+syn region    rustCommentDoc  start="//[/!]" end="$" contains=rustTodo keepend
 
 syn keyword rustTodo contained TODO FIXME XXX NB NOTE
 
+" Folding rules {{{2
 " Trivial folding rules to begin with.
 " TODO: use the AST to make really good folding
 syn region rustFoldBraces start="{" end="}" transparent fold
 " If you wish to enable this, setlocal foldmethod=syntax
 " It's not enabled by default as it would drive some people mad.
 
+" Default highlighting {{{1
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
@@ -157,10 +205,13 @@ hi def link rustTrait           rustType
 hi def link rustSigil         StorageClass
 hi def link rustFormat        Special
 hi def link rustSpecial       Special
+hi def link rustStringContinuation Special
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
+hi def link rustEnum          rustType
+hi def link rustEnumVariant   rustConstant
 hi def link rustConstant      Constant
 hi def link rustSelf          Constant
 hi def link rustFloat         Float
@@ -171,6 +222,7 @@ hi def link rustIdentifier    Identifier
 hi def link rustCapsIdent     rustIdentifier
 hi def link rustModPath       Include
 hi def link rustModPathSep    Delimiter
+hi def link rustFunction      Function
 hi def link rustFuncName      Function
 hi def link rustFuncCall      Function
 hi def link rustCommentMLDoc  rustCommentDoc
