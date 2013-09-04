@@ -43,7 +43,7 @@ Section: Conditions
 */
 
 condition! {
-    not_utf8: (~str) -> ~str;
+    pub not_utf8: (~str) -> ~str;
 }
 
 /*
