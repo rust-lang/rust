@@ -30,8 +30,11 @@
 
     table))
 
+(defgroup rust-mode nil "Support for Rust code.")
+
 (defcustom rust-indent-offset 4
-  "*Indent Rust code by this number of spaces.")
+  "*Indent Rust code by this number of spaces."
+  :group 'rust-mode)
 
 (defun rust-paren-level () (nth 0 (syntax-ppss)))
 (defun rust-in-str-or-cmnt () (nth 8 (syntax-ppss)))
@@ -215,6 +218,7 @@
 ;;;###autoload
 (define-derived-mode rust-mode rust-parent-mode "Rust"
   "Major mode for Rust code."
+  :group 'rust-mode
 
   ;; Basic syntax
   (set-syntax-table rust-mode-syntax-table)
