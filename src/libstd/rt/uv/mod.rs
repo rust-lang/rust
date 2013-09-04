@@ -132,7 +132,8 @@ pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, SocketAddr, uint, Option
 pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
 
-/// Callbacks used by StreamWatchers, set as custom data on the foreign handle
+/// Callbacks used by StreamWatchers, set as custom data on the foreign handle.
+/// XXX: Would be better not to have all watchers allocate room for all callback types.
 struct WatcherData {
     read_cb: Option<ReadCallback>,
     write_cb: Option<ConnectionCallback>,

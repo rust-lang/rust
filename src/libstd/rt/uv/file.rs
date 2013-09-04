@@ -139,15 +139,17 @@ impl NativeHandle<*uvll::uv_fs_t> for FsRequest {
         match self { &FsRequest(ptr) => ptr }
     }
 }
-    fn sync_cleanup(loop_: &Loop, result: int)
-          -> Result<int, UvError> {
-        match status_to_maybe_uv_error_with_loop(loop_.native_handle(), result as i32) {
-            Some(err) => Err(err),
-            None => Ok(result)
-        }
+
+fn sync_cleanup(loop_: &Loop, result: int)
+    -> Result<int, UvError> {
+    match status_to_maybe_uv_error_with_loop(loop_.native_handle(), result as i32) {
+        Some(err) => Err(err),
+        None => Ok(result)
     }
+}
 
 pub struct FileDescriptor(c_int);
+
 impl FileDescriptor {
     fn new(fd: c_int) -> FileDescriptor {
         FileDescriptor(fd)
