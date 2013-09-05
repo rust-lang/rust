@@ -20,6 +20,7 @@ pub trait FromStr {
     fn from_str(s: &str) -> Option<Self>;
 }
 
+/// A utility function that just calls FromStr::from_str
 pub fn from_str<A: FromStr>(s: &str) -> Option<A> {
     FromStr::from_str(s)
 }
