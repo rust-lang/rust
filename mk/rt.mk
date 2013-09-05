@@ -91,61 +91,64 @@ RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/ccall.S \
 			rt/arch/$$(HOST_$(1))/record_sp.S
 
+RT_OUTPUT_DIR_$(1) := $(1)/rt
+RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
+
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1)_$(2) := win
-  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/jemalloc.lib
+  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/jemalloc.lib
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1)_$(2) := mac
-  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
+  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1)_$(2) := unix/freebsd
-  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
+  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   LIBUV_OSTYPE_$(1)_$(2) := unix/android
-  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
+  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else
   LIBUV_OSTYPE_$(1)_$(2) := unix/linux
-  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
+  LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
+  JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 endif
 
-RUNTIME_DEF_$(1)_$(2) := rt/rustrt$(CFG_DEF_SUFFIX_$(1))
+RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
                      -I $$(S)src/rt/linenoise \
                      -I $$(S)src/libuv/include
-RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=rt/$(1)/stage$(2)/%.o) \
-                     $$(RUNTIME_CS_$(1)_$(2):rt/%.c=rt/$(1)/stage$(2)/%.o) \
-                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=rt/$(1)/stage$(2)/%.o)
+RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
+                     $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
+                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
 ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
-MORESTACK_OBJ_$(1)_$(2) := rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/morestack.o
+MORESTACK_OBJ_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
 
-rt/$(1)/stage$(2)/%.o: rt/%.cpp $$(MKFILE_DEPS)
+$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
                  $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
 
-rt/$(1)/stage$(2)/%.o: rt/%.c $$(MKFILE_DEPS)
+$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.c $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
                  $$(SNAP_DEFINES) $$(RUNTIME_CFLAGS_$(1)_$(2))) $$<
 
-rt/$(1)/stage$(2)/%.o: rt/%.S  $$(MKFILE_DEPS) \
+$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.S  $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_BUILD_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
-rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
+$$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
 	@$$(call E, link: $$@)
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
-rt/$(1)/stage$(2)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
+$$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
                         $$(RUNTIME_DEF_$(1)_$(2)) $$(LIBUV_LIB_$(1)_$(2)) $$(JEMALLOC_LIB_$(1)_$(2))
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
@@ -171,7 +174,7 @@ endif
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/$$(RT_BUILD_DIR_$(1)_$(2))/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
@@ -185,7 +188,7 @@ $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 		AR="$$(AR_$(1))" \
 		PLATFORM=android \
 		BUILDTYPE=Release \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/$$(RT_BUILD_DIR_$(1)_$(2))/libuv" \
 		host=android OS=linux \
 		V=$$(VERBOSE)
 else
@@ -196,59 +199,59 @@ $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/$$(RT_BUILD_DIR_$(1)_$(2))/libuv" \
 		V=$$(VERBOSE)
 endif
 
 ifeq ($(OSTYPE_$(1)), linux-androideabi)
 $$(JEMALLOC_LIB_$(1)_$(2)):
-	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
+	cd $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc; $(S)src/rt/jemalloc/configure \
 		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) --disable-tls \
 		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))"
-	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
+	$$(Q)$$(MAKE) -C $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc
 else
 $$(JEMALLOC_LIB_$(1)_$(2)):
-	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
+	cd $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc; $(S)src/rt/jemalloc/configure \
 		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
 		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))"
-	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
+	$$(Q)$$(MAKE) -C $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc
 endif
 
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
 # This regexp has a single $, escaped twice
-%.bsd.def:    %.def.in $$(MKFILE_DEPS)
+$(1)/%.bsd.def:    %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
-%.linux.def:    %.def.in $$(MKFILE_DEPS)
+$(1)/%.linux.def:    %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
-%.darwin.def:	%.def.in $$(MKFILE_DEPS)
+$(1)/%.darwin.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)sed 's/^./_&/' $$< > $$@
 
-%.android.def:  %.def.in $$(MKFILE_DEPS)
+$(1)/%.android.def:  %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
-%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
+$(1)/%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo LIBRARY $$* > $$@
 	$$(Q)echo EXPORTS >> $$@

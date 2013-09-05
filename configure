@@ -664,32 +664,29 @@ do
     make_dir $i
 done
 
-make_dir llvm
 for t in $CFG_HOST_TRIPLES
 do
-    make_dir llvm/$t
+    make_dir $t/llvm
 done
 
-make_dir rustllvm
 for t in $CFG_HOST_TRIPLES
 do
-    make_dir rustllvm/$t
+    make_dir $t/rustllvm
 done
 
-make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
-  make_dir rt/$t
+  make_dir $t/rt
   for s in 0 1 2 3
   do
-    make_dir rt/$t/stage$s
+    make_dir $t/rt/stage$s
     for i in                                          \
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
       libuv libuv/src/ares libuv/src/eio libuv/src/ev \
       jemalloc
     do
-      make_dir rt/$t/stage$s/$i
+      make_dir $t/rt/stage$s/$i
     done
   done
 done
@@ -791,7 +788,7 @@ do
 
     if [ -z $CFG_LLVM_ROOT ]
     then
-        LLVM_BUILD_DIR=${CFG_BUILD_DIR}llvm/$t
+        LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
         if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
         then
             LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
