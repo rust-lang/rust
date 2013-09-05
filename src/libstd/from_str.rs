@@ -19,3 +19,7 @@ pub trait FromStr {
     /// string is ill-formatted, the None is returned.
     fn from_str(s: &str) -> Option<Self>;
 }
+
+pub fn from_str<A: FromStr>(s: &str) -> Option<A> {
+    FromStr::from_str(s)
+}
