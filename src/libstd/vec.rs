@@ -1201,8 +1201,6 @@ pub trait OwnedVector<T> {
     fn shrink_to_fit(&mut self);
 
     fn push(&mut self, t: T);
-    unsafe fn push_fast(&mut self, t: T);
-
     fn push_all_move(&mut self, rhs: ~[T]);
     fn pop(&mut self) -> T;
     fn pop_opt(&mut self) -> Option<T>;
@@ -1334,7 +1332,7 @@ impl<T> OwnedVector<T> for ~[T] {
                     self.reserve_at_least(new_len);
                 }
 
-                self.push_fast(t);
+                push_fast(self, t);
             } else {
                 let repr: **Vec<()> = cast::transmute(&mut *self);
                 let fill = (**repr).fill;
@@ -1343,29 +1341,30 @@ impl<T> OwnedVector<T> for ~[T] {
                     self.reserve_at_least(new_len);
                 }
 
-                self.push_fast(t);
+                push_fast(self, t);
             }
         }
-    }
 
-    // This doesn't bother to make sure we have space.
-    #[inline] // really pretty please
-    unsafe fn push_fast(&mut self, t: T) {
-        if contains_managed::<T>() {
-            let repr: **mut Box<Vec<u8>> = cast::transmute(self);
-            let fill = (**repr).data.fill;
-            (**repr).data.fill += sys::nonzero_size_of::<T>();
-            let p = to_unsafe_ptr(&((**repr).data.data));
-            let p = ptr::offset(p, fill as int) as *mut T;
-            intrinsics::move_val_init(&mut(*p), t);
-        } else {
-            let repr: **mut Vec<u8> = cast::transmute(self);
-            let fill = (**repr).fill;
-            (**repr).fill += sys::nonzero_size_of::<T>();
-            let p = to_unsafe_ptr(&((**repr).data));
-            let p = ptr::offset(p, fill as int) as *mut T;
-            intrinsics::move_val_init(&mut(*p), t);
+        // This doesn't bother to make sure we have space.
+        #[inline] // really pretty please
+        unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
+            if contains_managed::<T>() {
+                let repr: **mut Box<Vec<u8>> = cast::transmute(this);
+                let fill = (**repr).data.fill;
+                (**repr).data.fill += sys::nonzero_size_of::<T>();
+                let p = to_unsafe_ptr(&((**repr).data.data));
+                let p = ptr::offset(p, fill as int) as *mut T;
+                intrinsics::move_val_init(&mut(*p), t);
+            } else {
+                let repr: **mut Vec<u8> = cast::transmute(this);
+                let fill = (**repr).fill;
+                (**repr).fill += sys::nonzero_size_of::<T>();
+                let p = to_unsafe_ptr(&((**repr).data));
+                let p = ptr::offset(p, fill as int) as *mut T;
+                intrinsics::move_val_init(&mut(*p), t);
+            }
         }
+
     }
 
     /// Takes ownership of the vector `rhs`, moving all elements into
