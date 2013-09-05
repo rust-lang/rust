@@ -2219,7 +2219,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
               }
               let v = ccx.const_values.get_copy(&item.id);
               unsafe {
-                  if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
+                  if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
                       ccx.sess.span_fatal(expr.span, "static assertion failed");
                   }
               }

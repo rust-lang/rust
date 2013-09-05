@@ -2696,6 +2696,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         }, t_e, None);
                     }
 
+                    let t1 = structurally_resolved_type(fcx, e.span, t_1);
                     let te = structurally_resolved_type(fcx, e.span, t_e);
                     let t_1_is_char = type_is_char(fcx, expr.span, t_1);
 
@@ -2710,6 +2711,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 fmt!("only `u8` can be cast as `char`, not `%s`", actual)
                             }, t_e, None);
                         }
+                    } else if ty::get(t1).sty == ty::ty_bool {
+                        fcx.tcx().sess.span_err(expr.span,
+                                                "cannot cast as `bool`, compare with zero instead");
                     } else if type_is_region_ptr(fcx, expr.span, t_e) &&
                         type_is_unsafe_ptr(fcx, expr.span, t_1) {
 
