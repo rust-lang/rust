@@ -19,7 +19,8 @@ pub fn list_installed_packages(f: &fn(&PkgId) -> bool) -> bool  {
     for p in workspaces.iter() {
         let binfiles = os::list_dir(&p.push("bin"));
         for exec in binfiles.iter() {
-            let exec_path = Path(*exec).filestem();
+            let p = Path(*exec);
+            let exec_path = p.filestem();
             do exec_path.iter().advance |s| {
                 f(&PkgId::new(*s))
             };
@@ -49,8 +50,8 @@ pub fn has_library(p: &Path) -> Option<~str> {
     let files = os::list_dir(p);
     for q in files.iter() {
         let as_path = Path(*q);
-        if as_path.filetype() == Some(os::consts::DLL_SUFFIX.to_owned()) {
-            let stuff : ~str = as_path.filestem().expect("has_library: weird path");
+        if as_path.filetype() == Some(os::consts::DLL_SUFFIX) {
+            let stuff : &str = as_path.filestem().expect("has_library: weird path");
             let mut stuff2 = stuff.split_str_iter(&"-");
             let stuff3: ~[&str] = stuff2.collect();
             // argh

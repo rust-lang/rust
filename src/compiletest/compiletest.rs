@@ -307,8 +307,9 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
     // Try to elide redundant long paths
     fn shorten(path: &Path) -> ~str {
         let filename = path.filename();
-        let dir = path.pop().filename();
-        fmt!("%s/%s", dir.unwrap_or_default(~""), filename.unwrap_or_default(~""))
+        let p = path.pop();
+        let dir = p.filename();
+        fmt!("%s/%s", dir.unwrap_or_default(""), filename.unwrap_or_default(""))
     }
 
     test::DynTestName(fmt!("[%s] %s",
