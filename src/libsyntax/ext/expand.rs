@@ -884,6 +884,36 @@ pub fn std_macros() -> @str {
         )
     )
 
+    // FIXME(#6266): change the /* to /** when attributes are supported on macros
+    // (Though even then—is it going to work according to the clear intent here?)
+    /*
+    A utility macro for indicating unreachable code. It will fail if
+    executed. This is occasionally useful to put after loops that never
+    terminate normally, but instead directly return from a function.
+
+    # Example
+
+    ~~~ {.rust}
+    fn choose_weighted_item(v: &[Item]) -> Item {
+        assert!(!v.is_empty());
+        let mut so_far = 0u;
+        for v.each |item| {
+            so_far += item.weight;
+            if so_far > 100 {
+                return item;
+            }
+        }
+        // The above loop always returns, so we must hint to the
+        // type checker that it isn't possible to get down here
+        unreachable!();
+    }
+    ~~~
+
+    */
+    macro_rules! unreachable (() => (
+        fail!(\"internal error: entered unreachable code\");
+    ))
+
     macro_rules! condition (
 
         { pub $c:ident: $input:ty -> $out:ty; } => {
