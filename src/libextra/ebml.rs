@@ -410,7 +410,7 @@ pub mod reader {
         }
 
         fn read_bool(&mut self) -> bool {
-            doc_as_u8(self.next_doc(EsBool)) as bool
+            doc_as_u8(self.next_doc(EsBool)) != 0
         }
 
         fn read_f64(&mut self) -> f64 {
