@@ -991,20 +991,19 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    // NOTE: ident->name in lifetimes!
-    && (a.rp == b.rp)
-    // NOTE: can a type contain an ident?
-    && (a.types == b.types)
-    && (idents_name_eq(a.idents, b.idents))
+    && (segments_name_eq(a.segments, b.segments))
 }
 
-// are two arrays of idents equal when compared unhygienically?
-pub fn idents_name_eq(a : &[ast::ident], b : &[ast::ident]) -> bool {
+// are two arrays of segments equal when compared unhygienically?
+pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> bool {
     if (a.len() != b.len()) {
         false
     } else {
-        for a.iter().enumerate().advance |(idx,id)|{
-            if (id.name != b[idx].name) {
+        for (idx,seg) in a.iter().enumerate() {
+            if (seg.identifier.name != b[idx].identifier.name)
+                // ident -> name problems in lifetime comparison?
+                || (seg.lifetime != b[idx].lifetime)
+                || (seg.types != b[idx].types) {
                 return false;
             }
         }
@@ -1017,16 +1016,21 @@ mod test {
     use ast::*;
     use super::*;
     use std::io;
+    use opt_vec;
+
+    fn ident_to_segment(id : &ident) -> PathSegment {
+        PathSegment{identifier:id.clone(), lifetime: None, types: opt_vec::Empty}
+    }
 
     #[test] fn idents_name_eq_test() {
-        assert!(idents_name_eq(~[ident{name:3,ctxt:4},
-                                 ident{name:78,ctxt:82}],
-                               ~[ident{name:3,ctxt:104},
-                                 ident{name:78,ctxt:182}]));
-        assert!(!idents_name_eq(~[ident{name:3,ctxt:4},
-                                  ident{name:78,ctxt:82}],
-                                ~[ident{name:3,ctxt:104},
-                                  ident{name:77,ctxt:182}]));
+        assert!(segments_name_eq([ident{name:3,ctxt:4},
+                                   ident{name:78,ctxt:82}].map(ident_to_segment),
+                                 [ident{name:3,ctxt:104},
+                                   ident{name:78,ctxt:182}].map(ident_to_segment)));
+        assert!(!segments_name_eq([ident{name:3,ctxt:4},
+                                    ident{name:78,ctxt:82}].map(ident_to_segment),
+                                  [ident{name:3,ctxt:104},
+                                    ident{name:77,ctxt:182}].map(ident_to_segment)));
     }
 
     #[test] fn xorpush_test () {
