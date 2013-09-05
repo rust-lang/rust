@@ -34,7 +34,7 @@ use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
 use std::vec;
-use syntax::ast_map::{path, path_mod, path_name};
+use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};
 use syntax::visit;
@@ -254,7 +254,7 @@ pub fn trans_static_method_callee(bcx: @mut Block,
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);
         match path[path.len()-1] {
-            path_name(s) => { s }
+            path_pretty_name(s, _) | path_name(s) => { s }
             path_mod(_) => { fail!("path doesn't have a name?") }
         }
     };

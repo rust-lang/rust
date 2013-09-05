@@ -799,7 +799,8 @@ impl Repr for ast_map::path_elt {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             ast_map::path_mod(id) => id.repr(tcx),
-            ast_map::path_name(id) => id.repr(tcx)
+            ast_map::path_name(id) => id.repr(tcx),
+            ast_map::path_pretty_name(id, _) => id.repr(tcx),
         }
     }
 }

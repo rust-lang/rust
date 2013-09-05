@@ -13,11 +13,11 @@ trait foo {
 }
 
 impl foo for ~[uint] {
-    fn foo(&self) -> int {1} //~ NOTE candidate #1 is `__extensions__::foo`
+    fn foo(&self) -> int {1} //~ NOTE candidate #1 is `foo$__extensions__::foo`
 }
 
 impl foo for ~[int] {
-    fn foo(&self) -> int {2} //~ NOTE candidate #2 is `__extensions__::foo`
+    fn foo(&self) -> int {2} //~ NOTE candidate #2 is `foo$__extensions__::foo`
 }
 
 fn main() {
