@@ -729,8 +729,6 @@ pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::io;
-    use std::managed;
     use ast;
     use ast_util;
 
