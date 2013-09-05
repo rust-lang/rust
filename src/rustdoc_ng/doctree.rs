@@ -2,14 +2,14 @@
 //! manner (and with prettier names) before cleaning.
 
 use syntax;
-use syntax::codemap::span;
+use syntax::codemap::Span;
 use syntax::ast;
-use syntax::ast::{ident, NodeId};
+use syntax::ast::{Ident, NodeId};
 
 pub struct Module {
-    name: Option<ident>,
+    name: Option<Ident>,
     attrs: ~[ast::Attribute],
-    where: span,
+    where: Span,
     structs: ~[Struct],
     enums: ~[Enum],
     fns: ~[Function],
@@ -24,7 +24,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(name: Option<ident>) -> Module {
+    pub fn new(name: Option<Ident>) -> Module {
         Module {
             name       : name,
             id: 0,
@@ -65,11 +65,11 @@ pub struct Struct {
     vis: ast::visibility,
     id: NodeId,
     struct_type: StructType,
-    name: ident,
+    name: Ident,
     generics: ast::Generics,
     attrs: ~[ast::Attribute],
     fields: ~[@ast::struct_field],
-    where: span,
+    where: Span,
 }
 
 pub struct Enum {
@@ -78,58 +78,58 @@ pub struct Enum {
     generics: ast::Generics,
     attrs: ~[ast::Attribute],
     id: NodeId,
-    where: span,
-    name: ident,
+    where: Span,
+    name: Ident,
 }
 
 pub struct Variant {
-    name: ident,
+    name: Ident,
     attrs: ~[ast::Attribute],
     kind: ast::variant_kind,
     id: ast::NodeId,
     vis: ast::visibility,
-    where: span,
+    where: Span,
 }
 
 pub struct Function {
     decl: ast::fn_decl,
     attrs: ~[ast::Attribute],
     id: NodeId,
-    name: ident,
+    name: Ident,
     vis: ast::visibility,
-    where: span,
+    where: Span,
     generics: ast::Generics,
 }
 
 pub struct Typedef {
     ty: ast::Ty,
     gen: ast::Generics,
-    name: ast::ident,
+    name: Ident,
     id: ast::NodeId,
     attrs: ~[ast::Attribute],
-    where: span,
+    where: Span,
     vis: ast::visibility,
 }
 
 pub struct Static {
     type_: ast::Ty,
-    mutability: ast::mutability,
-    expr: @ast::expr,
-    name: ast::ident,
+    mutability: ast::Mutability,
+    expr: @ast::Expr,
+    name: Ident,
     attrs: ~[ast::Attribute],
     vis: ast::visibility,
     id: ast::NodeId,
-    where: span,
+    where: Span,
 }
 
 pub struct Trait {
-    name: ast::ident,
+    name: Ident,
     methods: ~[ast::trait_method], //should be TraitMethod
     generics: ast::Generics,
     parents: ~[ast::trait_ref],
     attrs: ~[ast::Attribute],
     id: ast::NodeId,
-    where: span,
+    where: Span,
     vis: ast::visibility,
 }
 
@@ -139,7 +139,7 @@ pub struct Impl {
     for_: ast::Ty,
     methods: ~[@ast::method],
     attrs: ~[ast::Attribute],
-    where: span,
+    where: Span,
     vis: ast::visibility,
     id: ast::NodeId,
 }
