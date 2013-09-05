@@ -21,6 +21,8 @@ use vec;
 use str;
 use from_str::{FromStr};
 
+pub struct UvAddrInfo(*uvll::addrinfo);
+
 pub enum UvSocketAddr {
     UvIpv4SocketAddr(*sockaddr_in),
     UvIpv6SocketAddr(*sockaddr_in6),
@@ -93,6 +95,28 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
 pub fn uv_socket_addr_to_socket_addr(addr: UvSocketAddr) -> SocketAddr {
     use util;
     uv_socket_addr_as_socket_addr(addr, util::id)
+}
+
+// Traverse the addrinfo linked list, producing a vector of Rust socket addresses
+pub fn accum_sockaddrs(addr: &UvAddrInfo) -> ~[SocketAddr] {
+    unsafe {
+        let &UvAddrInfo(addr) = addr;
+        let mut addr = addr;
+
+        let mut addrs = ~[];
+        loop {
+            let uvaddr = sockaddr_to_UvSocketAddr((*addr).ai_addr);
+            let rustaddr = uv_socket_addr_to_socket_addr(uvaddr);
+            addrs.push(rustaddr);
+            if (*addr).ai_next.is_not_null() {
+                addr = (*addr).ai_next;
+            } else {
+                break;
+            }
+        }
+
+        return addrs;
+    }
 }
 
 #[cfg(test)]

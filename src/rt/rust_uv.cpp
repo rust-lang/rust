@@ -553,3 +553,8 @@ extern "C" uv_loop_t*
 rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
   return req->loop;
 }
+
+extern "C" uv_loop_t*
+rust_uv_get_loop_from_getaddrinfo_req(uv_getaddrinfo_t* req) {
+  return req->loop;
+}
