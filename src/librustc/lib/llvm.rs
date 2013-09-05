@@ -2110,6 +2110,14 @@ pub mod llvm {
             -> ValueRef;
 
         #[fast_ffi]
+        pub fn LLVMDIBuilderCreateNameSpace(Builder: DIBuilderRef,
+                                            Scope: ValueRef,
+                                            Name: *c_char,
+                                            File: ValueRef,
+                                            LineNo: c_uint)
+                                            -> ValueRef;
+
+        #[fast_ffi]
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
         #[fast_ffi]
