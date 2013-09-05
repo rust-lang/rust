@@ -159,7 +159,7 @@ fn file_test_smoke_test_impl() {
             let mut read_buf = [0, .. 1028];
             let read_str = match read_stream.read(read_buf).unwrap() {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_bytes(read_buf.slice_to(n))
+                n => str::from_utf8(read_buf.slice_to(n))
             };
             assert!(read_str == message.to_owned());
         }
@@ -230,7 +230,7 @@ fn file_test_io_non_positional_read_impl() {
             }
         }
         unlink(filename);
-        let read_str = str::from_bytes(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert!(read_str == message.to_owned());
     }
 }
@@ -262,7 +262,7 @@ fn file_test_io_seeking_impl() {
             tell_pos_post_read = read_stream.tell();
         }
         unlink(filename);
-        let read_str = str::from_bytes(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert!(read_str == message.slice(4, 8).to_owned());
         assert!(tell_pos_pre_read == set_cursor);
         assert!(tell_pos_post_read == message.len() as u64);
@@ -295,7 +295,7 @@ fn file_test_io_seek_and_write_impl() {
             read_stream.read(read_mem);
         }
         unlink(filename);
-        let read_str = str::from_bytes(read_mem);
+        let read_str = str::from_utf8(read_mem);
         io::println(fmt!("read_str: '%?' final_msg: '%?'", read_str, final_msg));
         assert!(read_str == final_msg.to_owned());
     }
@@ -324,17 +324,17 @@ fn file_test_io_seek_shakedown_impl() {
 
             read_stream.seek(-4, SeekEnd);
             read_stream.read(read_mem);
-            let read_str = str::from_bytes(read_mem);
+            let read_str = str::from_utf8(read_mem);
             assert!(read_str == chunk_three.to_owned());
 
             read_stream.seek(-9, SeekCur);
             read_stream.read(read_mem);
-            let read_str = str::from_bytes(read_mem);
+            let read_str = str::from_utf8(read_mem);
             assert!(read_str == chunk_two.to_owned());
 
             read_stream.seek(0, SeekSet);
             read_stream.read(read_mem);
-            let read_str = str::from_bytes(read_mem);
+            let read_str = str::from_utf8(read_mem);
             assert!(read_str == chunk_one.to_owned());
         }
         unlink(filename);

@@ -468,7 +468,7 @@ pub unsafe fn write(output: &mut io::Writer,
 pub unsafe fn format(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
     write(&mut output as &mut io::Writer, fmt, args);
-    return str::from_bytes_owned(output.inner());
+    return str::from_utf8_owned(output.inner());
 }
 
 impl<'self> Formatter<'self> {
@@ -589,7 +589,7 @@ impl<'self> Formatter<'self> {
 
     fn runplural(&mut self, value: uint, pieces: &[rt::Piece]) {
         do ::uint::to_str_bytes(value, 10) |buf| {
-            let valuestr = str::from_bytes_slice(buf);
+            let valuestr = str::from_utf8_slice(buf);
             for piece in pieces.iter() {
                 self.run(piece, Some(valuestr));
             }

@@ -83,7 +83,7 @@ fn uv_socket_addr_as_socket_addr<T>(addr: UvSocketAddr, f: &fn(SocketAddr) -> T)
         };
         port as u16
     };
-    let ip_str = str::from_bytes_slice(ip_name).trim_right_chars(&'\x00');
+    let ip_str = str::from_utf8_slice(ip_name).trim_right_chars(&'\x00');
     let ip_addr = FromStr::from_str(ip_str).unwrap();
 
     // finally run the closure

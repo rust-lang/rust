@@ -246,7 +246,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_bytes_owned(buf.inner());
+    let s = str::from_utf8_owned(buf.inner());
     t!(s, "34helloline\nbar\n");
 }
 

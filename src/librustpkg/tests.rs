@@ -123,7 +123,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
     let rslt = prog.finish_with_output();
     if rslt.status != 0 {
         fail!("%s [git returned %?, output = %s, error = %s]", err_msg,
-           rslt.status, str::from_bytes(rslt.output), str::from_bytes(rslt.error));
+           rslt.status, str::from_utf8(rslt.output), str::from_utf8(rslt.error));
     }
 }
 
@@ -230,8 +230,8 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
     });
     let output = prog.finish_with_output();
     debug!("Output from command %s with args %? was %s {%s}[%?]",
-                    cmd, args, str::from_bytes(output.output),
-                   str::from_bytes(output.error),
+                    cmd, args, str::from_utf8(output.output),
+                   str::from_utf8(output.error),
                    output.status);
 /*
 By the way, rustpkg *won't* return a nonzero exit code if it fails --
@@ -242,7 +242,7 @@ to make sure the command succeeded
     if output.status != 0 {
         fail!("Command %s %? failed with exit code %?; its output was {{{ %s }}}",
               cmd, args, output.status,
-              str::from_bytes(output.output) + str::from_bytes(output.error));
+              str::from_utf8(output.output) + str::from_utf8(output.error));
     }
     output
 }
@@ -358,7 +358,7 @@ fn built_library_exists(repo: &Path, short_name: &str) -> bool {
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
-    let test_output = str::from_bytes(p_output.output);
+    let test_output = str::from_utf8(p_output.output);
     for s in test_output.split_iter('\n') {
         result.push(s.to_owned());
     }
@@ -368,7 +368,7 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
 fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test_with_env(args, &os::getcwd(), Some(env));
-    let test_output = str::from_bytes(p_output.output);
+    let test_output = str::from_utf8(p_output.output);
     for s in test_output.split_iter('\n') {
         result.push(s.to_owned());
     }
@@ -985,7 +985,7 @@ fn test_info() {
     let expected_info = ~"package foo"; // fill in
     let workspace = create_local_package(&PkgId::new("foo"));
     let output = command_line_test([~"info", ~"foo"], &workspace);
-    assert_eq!(str::from_bytes(output.output), expected_info);
+    assert_eq!(str::from_utf8(output.output), expected_info);
 }
 
 #[test]
@@ -994,7 +994,7 @@ fn test_rustpkg_test() {
     let expected_results = ~"1 out of 1 tests passed"; // fill in
     let workspace = create_local_package_with_test(&PkgId::new("foo"));
     let output = command_line_test([~"test", ~"foo"], &workspace);
-    assert_eq!(str::from_bytes(output.output), expected_results);
+    assert_eq!(str::from_utf8(output.output), expected_results);
 }
 
 #[test]
@@ -1004,7 +1004,7 @@ fn test_uninstall() {
     let _output = command_line_test([~"info", ~"foo"], &workspace);
     command_line_test([~"uninstall", ~"foo"], &workspace);
     let output = command_line_test([~"list"], &workspace);
-    assert!(!str::from_bytes(output.output).contains("foo"));
+    assert!(!str::from_utf8(output.output).contains("foo"));
 }
 
 #[test]
@@ -1073,8 +1073,8 @@ fn test_extern_mod() {
     let outp = prog.finish_with_output();
     if outp.status != 0 {
         fail!("output was %s, error was %s",
-              str::from_bytes(outp.output),
-              str::from_bytes(outp.error));
+              str::from_utf8(outp.output),
+              str::from_utf8(outp.error));
     }
     assert!(os::path_exists(&exec_file) && is_executable(&exec_file));
 }
