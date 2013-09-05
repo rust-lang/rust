@@ -1794,13 +1794,13 @@ mod test {
                 // create a really evil test case where a $x appears inside a binding of $x
                 // but *shouldnt* bind because it was inserted by a different macro....
             ];
-        for s in tests.iter() {
-            run_renaming_test(s);
+        for (idx,s) in tests.iter().enumerate() {
+            run_renaming_test(s,idx);
         }
     }
 
     // run one of the renaming tests
-    fn run_renaming_test(t : &renaming_test) {
+    fn run_renaming_test(t : &renaming_test, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_managed(), conns.clone(), bic)
@@ -1845,8 +1845,15 @@ mod test {
                         && (mtwt_resolve(varref.segments[0].identifier) == binding_name);
                     // temp debugging:
                     if (fail) {
-                        std::io::println("uh oh, matches but shouldn't:");
+                        println!("failure on test {}",test_idx);
+                        println!("text of test case: \"{}\"", teststr);
+                        println!("");
+                        println!("uh oh, matches but shouldn't:");
                         std::io::println(fmt!("varref: %?",varref));
+                        // good lord, you can't make a path with 0 segments, can you?
+                        println!("varref's first segment's uint: {}, and string: \"{}\"",
+                                 varref.segments[0].identifier.name,
+                                 ident_to_str(&varref.segments[0].identifier));
                         std::io::println(fmt!("binding: %?", bindings[binding_idx]));
                         ast_util::display_sctable(get_sctable());
                     }
