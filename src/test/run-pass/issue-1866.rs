@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test FIXME #1866
 mod a {
     pub type rust_task = uint;
     pub mod rustrt {
