@@ -185,17 +185,18 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 
     // Quasi-quoting expanders
     syntax_expanders.insert(intern(&"quote_tokens"),
-        @SE(NormalTT(ext::quote::expand_quote_tokens, None)));
+                            builtin_normal_tt_no_ctxt(
+                                ext::quote::expand_quote_tokens));
     syntax_expanders.insert(intern(&"quote_expr"),
-        @SE(NormalTT(ext::quote::expand_quote_expr, None)));
+                            builtin_normal_tt_no_ctxt(ext::quote::expand_quote_expr));
     syntax_expanders.insert(intern(&"quote_ty"),
-        @SE(NormalTT(ext::quote::expand_quote_ty, None)));
+                            builtin_normal_tt_no_ctxt(ext::quote::expand_quote_ty));
     syntax_expanders.insert(intern(&"quote_item"),
-        @SE(NormalTT(ext::quote::expand_quote_item, None)));
+                            builtin_normal_tt_no_ctxt(ext::quote::expand_quote_item));
     syntax_expanders.insert(intern(&"quote_pat"),
-        @SE(NormalTT(ext::quote::expand_quote_pat, None)));
+                            builtin_normal_tt_no_ctxt(ext::quote::expand_quote_pat));
     syntax_expanders.insert(intern(&"quote_stmt"),
-        @SE(NormalTT(ext::quote::expand_quote_stmt, None)));
+                            builtin_normal_tt_no_ctxt(ext::quote::expand_quote_stmt));
 
     syntax_expanders.insert(intern(&"line"),
                             builtin_normal_tt_no_ctxt(
