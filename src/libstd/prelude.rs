@@ -41,6 +41,7 @@ pub use result::{Result, Ok, Err};
 // Reexported functions
 pub use io::{print, println};
 pub use iterator::range;
+pub use from_str::from_str;
 
 // Reexported types and traits
 pub use c_str::ToCStr;
