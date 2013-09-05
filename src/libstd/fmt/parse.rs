@@ -149,6 +149,7 @@ pub struct SelectArm<'self> {
 pub struct Parser<'self> {
     priv input: &'self str,
     priv cur: str::CharOffsetIterator<'self>,
+    priv depth: uint,
 }
 
 impl<'self> iterator::Iterator<Piece<'self>> for Parser<'self> {
@@ -168,6 +169,11 @@ impl<'self> iterator::Iterator<Piece<'self>> for Parser<'self> {
                 self.escape(); // ensure it's a valid escape sequence
                 Some(String(self.string(pos + 1))) // skip the '\' character
             }
+            Some((_, '}')) if self.depth == 0 => {
+                self.cur.next();
+                self.err(~"unmatched `}` found");
+                None
+            }
             Some((_, '}')) | None => { None }
             Some((pos, _)) => {
                 Some(String(self.string(pos)))
@@ -182,6 +188,7 @@ impl<'self> Parser<'self> {
         Parser {
             input: s,
             cur: s.char_offset_iter(),
+            depth: 0,
         }
     }
 
@@ -393,7 +400,9 @@ impl<'self> Parser<'self> {
             if !self.wsconsume('{') {
                 self.err(~"selector must be followed by `{`");
             }
+            self.depth += 1;
             let pieces = self.collect();
+            self.depth -= 1;
             if !self.wsconsume('}') {
                 self.err(~"selector case must be terminated by `}`");
             }
@@ -494,7 +503,9 @@ impl<'self> Parser<'self> {
             if !self.wsconsume('{') {
                 self.err(~"selector must be followed by `{`");
             }
+            self.depth += 1;
             let pieces = self.collect();
+            self.depth -= 1;
             if !self.wsconsume('}') {
                 self.err(~"selector case must be terminated by `}`");
             }
