@@ -95,7 +95,7 @@ mod test {
 
     #[test]
     fn test_option_writer() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut writer: Option<MemWriter> = Some(MemWriter::new());
             writer.write([0, 1, 2]);
             writer.flush();
@@ -105,7 +105,7 @@ mod test {
 
     #[test]
     fn test_option_writer_error() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut writer: Option<MemWriter> = None;
 
             let mut called = false;
@@ -130,7 +130,7 @@ mod test {
 
     #[test]
     fn test_option_reader() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut reader: Option<MemReader> = Some(MemReader::new(~[0, 1, 2, 3]));
             let mut buf = [0, 0];
             reader.read(buf);

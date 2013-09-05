@@ -159,10 +159,11 @@ mod test {
     use rt::io::net::ip::{Ipv4Addr, SocketAddr};
     use rt::io::*;
     use prelude::*;
+    use rt::comm::oneshot;
 
     #[test] #[ignore]
     fn bind_error() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut called = false;
             do io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
@@ -179,7 +180,7 @@ mod test {
     #[test]
     #[ignore(cfg(windows))] // FIXME #8811
     fn connect_error() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut called = false;
             do io_error::cond.trap(|e| {
                 assert_eq!(e.kind, ConnectionRefused);
@@ -195,11 +196,15 @@ mod test {
 
     #[test]
     fn smoke_test_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 stream.read(buf);
@@ -207,6 +212,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             }
@@ -215,11 +221,15 @@ mod test {
 
     #[test]
     fn smoke_test_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 stream.read(buf);
@@ -227,6 +237,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             }
@@ -235,11 +246,15 @@ mod test {
 
     #[test]
     fn read_eof_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
@@ -247,6 +262,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -255,11 +271,15 @@ mod test {
 
     #[test]
     fn read_eof_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
@@ -267,6 +287,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -276,11 +297,15 @@ mod test {
     #[test]
     #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
@@ -290,6 +315,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -299,11 +325,15 @@ mod test {
     #[test]
     #[ignore(cfg(windows))] // FIXME #8811
     fn read_eof_twice_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
@@ -313,6 +343,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -322,11 +353,15 @@ mod test {
     #[test]
     #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let buf = [0];
                 loop {
@@ -343,6 +378,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -352,11 +388,15 @@ mod test {
     #[test]
     #[ignore(cfg(windows))] // FIXME #8811
     fn write_close_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 let mut stream = acceptor.accept();
                 let buf = [0];
                 loop {
@@ -373,6 +413,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
             }
@@ -381,12 +422,16 @@ mod test {
 
     #[test]
     fn multiple_connect_serial_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
             let max = 10;
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for ref mut stream in acceptor.incoming().take(max) {
                     let mut buf = [0];
                     stream.read(buf);
@@ -395,6 +440,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
@@ -405,12 +451,16 @@ mod test {
 
     #[test]
     fn multiple_connect_serial_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
             let max = 10;
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for ref mut stream in acceptor.incoming().take(max) {
                     let mut buf = [0];
                     stream.read(buf);
@@ -419,6 +469,7 @@ mod test {
             }
 
             do spawntask {
+                port.take().recv();
                 do max.times {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
@@ -429,12 +480,15 @@ mod test {
 
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
             static MAX: int = 10;
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                     let stream = Cell::new(stream);
                     // Start another task to handle the connection
@@ -448,6 +502,7 @@ mod test {
                 }
             }
 
+            port.recv();
             connect(0, addr);
 
             fn connect(i: int, addr: SocketAddr) {
@@ -467,12 +522,15 @@ mod test {
 
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
             static MAX: int = 10;
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                     let stream = Cell::new(stream);
                     // Start another task to handle the connection
@@ -486,6 +544,7 @@ mod test {
                 }
             }
 
+            port.recv();
             connect(0, addr);
 
             fn connect(i: int, addr: SocketAddr) {
@@ -505,12 +564,15 @@ mod test {
 
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip4();
             static MAX: int = 10;
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for stream in acceptor.incoming().take(MAX as uint) {
                     let stream = Cell::new(stream);
                     // Start another task to handle the connection
@@ -524,6 +586,7 @@ mod test {
                 }
             }
 
+            port.recv();
             connect(0, addr);
 
             fn connect(i: int, addr: SocketAddr) {
@@ -542,12 +605,15 @@ mod test {
     }
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let addr = next_test_ip6();
             static MAX: int = 10;
+            let (port, chan) = oneshot();
+            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
                 for stream in acceptor.incoming().take(MAX as uint) {
                     let stream = Cell::new(stream);
                     // Start another task to handle the connection
@@ -561,6 +627,7 @@ mod test {
                 }
             }
 
+            port.recv();
             connect(0, addr);
 
             fn connect(i: int, addr: SocketAddr) {
@@ -580,7 +647,7 @@ mod test {
 
     #[cfg(test)]
     fn socket_name(addr: SocketAddr) {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             do spawntask {
                 let mut listener = TcpListener::bind(addr).unwrap();
 
@@ -596,14 +663,20 @@ mod test {
 
     #[cfg(test)]
     fn peer_name(addr: SocketAddr) {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
+
             do spawntask {
                 let mut acceptor = TcpListener::bind(addr).listen();
+                chan.take().send(());
 
                 acceptor.accept();
             }
 
             do spawntask {
+                port.take().recv();
                 let stream = TcpStream::connect(addr);
 
                 assert!(stream.is_some());
