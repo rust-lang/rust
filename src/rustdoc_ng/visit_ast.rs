@@ -3,7 +3,7 @@
 
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_map};
-use syntax::codemap::span;
+use syntax::codemap::Span;
 
 use doctree::*;
 use std::local_data;
@@ -79,7 +79,7 @@ impl RustdocVisitor {
             }
         }
 
-        fn visit_mod_contents(span: span, attrs: ~[ast::Attribute], vis:
+        fn visit_mod_contents(span: Span, attrs: ~[ast::Attribute], vis:
                               ast::visibility, id: ast::NodeId, m: &ast::_mod) -> Module {
             let am = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.items;
             let name = match am.find(&id) {

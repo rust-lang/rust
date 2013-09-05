@@ -657,7 +657,7 @@ impl Clean<VariantKind> for ast::variant_kind {
     }
 }
 
-impl Clean<~str> for syntax::codemap::span {
+impl Clean<~str> for syntax::codemap::Span {
     fn clean(&self) -> ~str {
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap;
         cm.span_to_str(*self)
@@ -697,7 +697,7 @@ fn path_to_str(p: &ast::Path) -> ~str {
     s
 }
 
-impl Clean<~str> for ast::ident {
+impl Clean<~str> for ast::Ident {
     fn clean(&self) -> ~str {
         its(self).to_owned()
     }
@@ -779,15 +779,13 @@ impl Clean<Item> for doctree::Static {
 pub enum Mutability {
     Mutable,
     Immutable,
-    Const,
 }
 
-impl Clean<Mutability> for ast::mutability {
+impl Clean<Mutability> for ast::Mutability {
     fn clean(&self) -> Mutability {
         match self {
-            &ast::m_mutbl => Mutable,
-            &ast::m_imm => Immutable,
-            &ast::m_const => Const
+            &ast::MutMutable => Mutable,
+            &ast::MutImmutable => Immutable,
         }
     }
 }
@@ -885,7 +883,7 @@ trait ToSource {
     fn to_src(&self) -> ~str;
 }
 
-impl ToSource for syntax::codemap::span {
+impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
         debug!("converting span %s to snippet", self.clean());
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap.clone();
@@ -912,23 +910,23 @@ fn lit_to_str(lit: &ast::lit) -> ~str {
     }
 }
 
-fn name_from_pat(p: &ast::pat) -> ~str {
+fn name_from_pat(p: &ast::Pat) -> ~str {
     use syntax::ast::*;
     match p.node {
-        pat_wild => ~"_",
-        pat_ident(_, ref p, _) => path_to_str(p),
-        pat_enum(ref p, _) => path_to_str(p),
-        pat_struct(*) => fail!("tried to get argument name from pat_struct, \
-                                 which is not allowed in function arguments"),
-        pat_tup(*) => ~"(tuple arg NYI)",
-        pat_box(p) => name_from_pat(p),
-        pat_uniq(p) => name_from_pat(p),
-        pat_region(p) => name_from_pat(p),
-        pat_lit(*) => fail!("tried to get argument name from pat_lit, \
-                             which is not allowed in function arguments"),
-        pat_range(*) => fail!("tried to get argument name from pat_range, \
-                               which is not allowed in function arguments"),
-        pat_vec(*) => fail!("tried to get argument name from pat_vec, \
+        PatWild => ~"_",
+        PatIdent(_, ref p, _) => path_to_str(p),
+        PatEnum(ref p, _) => path_to_str(p),
+        PatStruct(*) => fail!("tried to get argument name from pat_struct, \
+                                which is not allowed in function arguments"),
+        PatTup(*) => ~"(tuple arg NYI)",
+        PatBox(p) => name_from_pat(p),
+        PatUniq(p) => name_from_pat(p),
+        PatRegion(p) => name_from_pat(p),
+        PatLit(*) => fail!("tried to get argument name from pat_lit, \
+                            which is not allowed in function arguments"),
+        PatRange(*) => fail!("tried to get argument name from pat_range, \
+                              which is not allowed in function arguments"),
+        PatVec(*) => fail!("tried to get argument name from pat_vec, \
                              which is not allowed in function arguments")
     }
 }
@@ -944,23 +942,6 @@ fn remove_comment_tags(s: &str) -> ~str {
         return s.to_owned();
     }
 }
-
-/*fn collapse_docs(attrs: ~[Attribute]) -> ~[Attribute] {
-    let mut docstr = ~"";
-    for at in attrs.iter() {
-        match *at {
-            //XXX how should these be separated?
-            NameValue(~"doc", ref s) => docstr.push_str(fmt!("%s ", clean_comment_body(s.clone()))),
-            _ => ()
-        }
-    }
-    let mut a = attrs.iter().filter(|&a| match a {
-        &NameValue(~"doc", _) => false,
-        _ => true
-    }).map(|x| x.clone()).collect::<~[Attribute]>();
-    a.push(NameValue(~"doc", docstr.trim().to_owned()));
-    a
-}*/
 
 /// Given a Type, resolve it using the def_map
 fn resolve_type(t: &Type) -> Type {
@@ -984,21 +965,21 @@ fn resolve_type(t: &Type) -> Type {
     };
 
     let def_id = match *d {
-        def_fn(i, _) => i,
-        def_self(i, _) | def_self_ty(i) => return Self(i),
-        def_ty(i) => i,
-        def_trait(i) => {
-            debug!("saw def_trait in def_to_id");
+        DefFn(i, _) => i,
+        DefSelf(i, _) | DefSelfTy(i) => return Self(i),
+        DefTy(i) => i,
+        DefTrait(i) => {
+            debug!("saw DefTrait in def_to_id");
             i
         },
-        def_prim_ty(p) => match p {
+        DefPrimTy(p) => match p {
             ty_str => return String,
             ty_bool => return Bool,
             _ => return Primitive(p)
         },
-        def_ty_param(i, _) => return Generic(i.node),
-        def_struct(i) => i,
-        def_typaram_binder(i) => { 
+        DefTyParam(i, _) => return Generic(i.node),
+        DefStruct(i) => i,
+        DefTyParamBinder(i) => { 
             debug!("found a typaram_binder, what is it? %d", i);
             return TyParamBinder(i);
         },
@@ -1011,10 +992,10 @@ fn resolve_type(t: &Type) -> Type {
         let mut ty = ~"";
         do csearch::each_path(sess.cstore, def_id.crate) |pathstr, deflike, _vis| {
             match deflike {
-                decoder::dl_def(di) => {
+                decoder::DlDef(di) => {
                     let d2 = match di {
-                        def_fn(i, _) | def_ty(i) | def_trait(i) |
-                            def_struct(i) | def_mod(i) => Some(i),
+                        DefFn(i, _) | DefTy(i) | DefTrait(i) |
+                            DefStruct(i) | DefMod(i) => Some(i),
                         _ => None,
                     };
                     if d2.is_some() {
@@ -1023,10 +1004,10 @@ fn resolve_type(t: &Type) -> Type {
                             debug!("found external def: %?", di);
                             path = pathstr.to_owned();
                             ty = match di {
-                                def_fn(*) => ~"fn",
-                                def_ty(*) => ~"enum",
-                                def_trait(*) => ~"trait",
-                                def_prim_ty(p) => match p {
+                                DefFn(*) => ~"fn",
+                                DefTy(*) => ~"enum",
+                                DefTrait(*) => ~"trait",
+                                DefPrimTy(p) => match p {
                                     ty_str => ~"str",
                                     ty_bool => ~"bool",
                                     ty_int(t) => match t.to_str() {
@@ -1036,9 +1017,9 @@ fn resolve_type(t: &Type) -> Type {
                                     ty_uint(t) => t.to_str(),
                                     ty_float(t) => t.to_str()
                                 },
-                                def_ty_param(*) => ~"generic",
-                                def_struct(*) => ~"struct",
-                                def_typaram_binder(*) => ~"typaram_binder",
+                                DefTyParam(*) => ~"generic",
+                                DefStruct(*) => ~"struct",
+                                DefTyParamBinder(*) => ~"typaram_binder",
                                 x => fail!("resolved external maps to a weird def %?", x),
                             };
 
