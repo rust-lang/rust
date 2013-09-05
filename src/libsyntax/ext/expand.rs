@@ -1856,58 +1856,6 @@ mod test {
         }
     }
 
-    #[test] fn quote_expr_test() {
-        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_expr!(dontcare);}");
-    }
-    #[test] fn quote_item_test() {
-        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_item!(dontcare);}");
-    }
-    #[test] fn quote_pat_test() {
-        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_pat!(dontcare);}");
-    }
-    #[test] fn quote_ty_test() {
-        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_ty!(dontcare);}");
-    }
-    #[test] fn quote_tokens_test() {
-        quote_ext_cx_test(@"fn main(){let ext_cx = 13; quote_tokens!(dontcare);}");
-    }
-
-    fn quote_ext_cx_test(crate_str : @str) {
-        let crate = expand_crate_str(crate_str);
-        // find the ext_cx binding
-        let bindings = @mut ~[];
-        visit::walk_crate(&mut new_name_finder(bindings), crate, ());
-        let cxbinds : ~[&ast::Ident] =
-            bindings.iter().filter(|b|{@"ext_cx" == (ident_to_str(*b))}).collect();
-        let cxbind = match cxbinds {
-            [b] => b,
-            _ => fail!("expected just one binding for ext_cx")
-        };
-        let resolved_binding = mtwt_resolve(*cxbind);
-        // find all the ext_cx varrefs:
-        let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs), crate, ());
-        // the ext_cx binding should bind all of the ext_cx varrefs:
-        for (idx,v) in varrefs.iter().filter(|p|{ p.segments.len() == 1
-                    && (@"ext_cx" == (ident_to_str(&p.segments[0].identifier)))
-            }).enumerate() {
-            if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
-                std::io::println("uh oh, ext_cx binding didn't match ext_cx varref:");
-                std::io::println(fmt!("this is varref # %?",idx));
-                std::io::println(fmt!("binding: %?",cxbind));
-                std::io::println(fmt!("resolves to: %?",resolved_binding));
-                std::io::println(fmt!("varref: %?",v.segments[0]));
-                std::io::println(fmt!("resolves to: %?",mtwt_resolve(v.segments[0].identifier)));
-                let table = get_sctable();
-                std::io::println("SC table:");
-                for (idx,val) in table.table.iter().enumerate() {
-                    std::io::println(fmt!("%4u : %?",idx,val));
-                }
-            }
-            assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);
-        };
-    }
-
     #[test] fn fmt_in_macro_used_inside_module_macro() {
         let crate_str = @"macro_rules! fmt_wrap(($b:expr)=>(fmt!(\"left: %?\", $b)))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
