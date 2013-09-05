@@ -73,6 +73,7 @@ pub trait IoFactory {
     fn fs_open<P: PathLike>(&mut self, path: &P, fm: FileMode, fa: FileAccess)
         -> Result<~RtioFileStream, IoError>;
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
+    fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
