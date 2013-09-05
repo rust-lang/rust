@@ -948,7 +948,8 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     let mut first = true;
     for e in p.iter() {
         match *e {
-            ast_map::path_name(s) | ast_map::path_mod(s) => {
+            ast_map::path_name(s) | ast_map::path_mod(s) |
+            ast_map::path_pretty_name(s, _) => {
                 if first {
                     first = false
                 } else {

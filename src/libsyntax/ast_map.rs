@@ -16,6 +16,7 @@ use ast_util;
 use codemap::Span;
 use codemap;
 use diagnostic::span_handler;
+use parse::token::get_ident_interner;
 use parse::token::ident_interner;
 use parse::token::special_idents;
 use print::pprust;
@@ -28,7 +29,13 @@ use std::vec;
 #[deriving(Clone, Eq)]
 pub enum path_elt {
     path_mod(Ident),
-    path_name(Ident)
+    path_name(Ident),
+
+    // A pretty name can come from an `impl` block. We attempt to select a
+    // reasonable name for debuggers to see, but to guarantee uniqueness with
+    // other paths the hash should also be taken into account during symbol
+    // generation.
+    path_pretty_name(Ident, u64),
 }
 
 pub type path = ~[path_elt];
@@ -37,8 +44,9 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
                          -> ~str {
     let strs = do p.map |e| {
         match *e {
-          path_mod(s) => itr.get(s.name),
-          path_name(s) => itr.get(s.name)
+            path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
+                itr.get(s.name)
+            }
         }
     };
     strs.connect(sep)
@@ -58,8 +66,9 @@ pub fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
 
 pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     match pe {
-        path_mod(s) => itr.get(s.name).to_owned(),
-        path_name(s) => itr.get(s.name).to_owned()
+        path_mod(s) | path_name(s) | path_pretty_name(s, _) => {
+            itr.get(s.name).to_owned()
+        }
     }
 }
 
@@ -109,8 +118,8 @@ pub struct Ctx {
 }
 
 impl Ctx {
-    fn extend(&self, elt: Ident) -> @path {
-        @vec::append(self.path.clone(), [path_name(elt)])
+    fn extend(&self, elt: path_elt) -> @path {
+        @vec::append(self.path.clone(), [elt])
     }
 
     fn map_method(&mut self,
@@ -131,7 +140,7 @@ impl Ctx {
                       struct_def: @ast::struct_def,
                       parent_node: ast_node,
                       ident: ast::Ident) {
-        let p = self.extend(ident);
+        let p = self.extend(path_name(ident));
 
         // If this is a tuple-like struct, register the constructor.
         match struct_def.ctor_id {
@@ -173,7 +182,15 @@ impl Ctx {
         for a in decl.inputs.iter() {
             self.map.insert(a.id, node_arg(a.pat));
         }
+        match *fk {
+            visit::fk_method(name, _, _) => { self.path.push(path_name(name)) }
+            _ => {}
+        }
         visit::walk_fn(self, fk, decl, body, sp, id, ());
+        match *fk {
+            visit::fk_method(*) => { self.path.pop(); }
+            _ => {}
+        }
     }
 
     fn map_stmt(&mut self, stmt: @Stmt) {
@@ -199,6 +216,28 @@ impl Ctx {
 
         visit::walk_pat(self, pat, ());
     }
+
+    fn impl_pretty_name(&self, trait_ref: &Option<trait_ref>,
+                        ty: &Ty, default: Ident) -> path_elt {
+        let itr = get_ident_interner();
+        let ty_ident = match ty.node {
+            ty_path(ref path, _, _) => path.segments.last().identifier,
+            _ => default
+        };
+        let hash = (trait_ref, ty).hash();
+        match *trait_ref {
+            None => path_pretty_name(ty_ident, hash),
+            Some(ref trait_ref) => {
+                // XXX: this dollar sign is actually a relic of being one of the
+                //      very few valid symbol names on unix. These kinds of
+                //      details shouldn't be exposed way up here in the ast.
+                let s = fmt!("%s$%s",
+                             itr.get(trait_ref.path.segments.last().identifier.name),
+                             itr.get(ty_ident.name));
+                path_pretty_name(Ident::new(itr.gensym(s)), hash)
+            }
+        }
+    }
 }
 
 impl Visitor<()> for Ctx {
@@ -207,20 +246,28 @@ impl Visitor<()> for Ctx {
         let item_path = @self.path.clone();
         self.map.insert(i.id, node_item(i, item_path));
         match i.node {
-            item_impl(_, _, _, ref ms) => {
+            item_impl(_, ref maybe_trait, ref ty, ref ms) => {
+                // Right now the ident on impls is __extensions__ which isn't
+                // very pretty when debugging, so attempt to select a better
+                // name to use.
+                let elt = self.impl_pretty_name(maybe_trait, ty, i.ident);
+
                 let impl_did = ast_util::local_def(i.id);
                 for m in ms.iter() {
-                    let extended = { self.extend(i.ident) };
+                    let extended = { self.extend(elt) };
                     self.map_method(impl_did, extended, *m, false)
                 }
+
+                self.path.push(elt);
             }
             item_enum(ref enum_definition, _) => {
                 for v in (*enum_definition).variants.iter() {
+                    let elt = path_name(i.ident);
                     // FIXME #2543: bad clone
                     self.map.insert(v.node.id,
                                     node_variant((*v).clone(),
                                                  i,
-                                                 self.extend(i.ident)));
+                                                 self.extend(elt)));
                 }
             }
             item_foreign_mod(ref nm) => {
@@ -239,7 +286,9 @@ impl Visitor<()> for Ctx {
                                                       // FIXME (#2543)
                                                       if nm.sort ==
                                                             ast::named {
-                                                        self.extend(i.ident)
+                                                          let e = path_name(
+                                                              i.ident);
+                                                          self.extend(e)
                                                       } else {
                                                         // Anonymous extern
                                                         // mods go in the
@@ -258,7 +307,7 @@ impl Visitor<()> for Ctx {
                     self.map.insert(p.ref_id, node_item(i, item_path));
                 }
                 for tm in methods.iter() {
-                    let ext = { self.extend(i.ident) };
+                    let ext = { self.extend(path_name(i.ident)) };
                     let d_id = ast_util::local_def(i.id);
                     match *tm {
                         required(ref m) => {
@@ -279,6 +328,7 @@ impl Visitor<()> for Ctx {
             item_mod(_) | item_foreign_mod(_) => {
                 self.path.push(path_mod(i.ident));
             }
+            item_impl(*) => {} // this was guessed above.
             _ => self.path.push(path_name(i.ident))
         }
         visit::walk_item(self, i, ());
