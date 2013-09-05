@@ -234,6 +234,19 @@ pub fn parse_or_else(
     }
 }
 
+// temporary for testing
+pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
+    if (*t1 == *t2) {
+        true
+    } else {
+        match (t1,t2) {
+            (&token::IDENT(id1,_),&token::IDENT(id2,_)) =>
+            id1.name == id2.name,
+            _ => false
+        }
+    }
+}
+
 pub fn parse(
     sess: @mut ParseSess,
     cfg: ast::CrateConfig,
@@ -343,7 +356,8 @@ pub fn parse(
                   match_nonterminal(_,_,_) => { bb_eis.push(ei) }
                   match_tok(ref t) => {
                     let mut ei_t = ei.clone();
-                    if (*t) == tok {
+                    if (token_name_eq(t,&tok)) {
+                    //if (token::mtwt_token_eq(t,&tok)) {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
                     }
