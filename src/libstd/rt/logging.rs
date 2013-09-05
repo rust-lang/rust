@@ -10,11 +10,12 @@
 use cast::transmute;
 use either::*;
 use libc::{c_void, uintptr_t, c_char, exit, STDERR_FILENO};
-use option::{Some, None};
+use option::{Some, None, Option};
 use rt::util::dumb_println;
 use str::StrSlice;
 use str::raw::from_c_str;
 use u32;
+use u32::{min};
 use unstable::raw::Closure;
 use vec::ImmutableVector;
 
@@ -30,7 +31,6 @@ struct ModEntry{
     log_level: *mut u32
 }
 
-static MAX_LOG_DIRECTIVES: u32 = 255;
 static MAX_LOG_LEVEL: u32 = 255;
 static DEFAULT_LOG_LEVEL: u32 = 1;
 
@@ -68,34 +68,60 @@ fn iter_crate_map(map: *u8, f: &fn(*mut ModEntry)) {
                     data: *c_void);
     }
 }
+static log_level_names : &'static[&'static str] = &'static["error", "warn", "info", "debug"];
+
+/// Parse an individual log level that is either a number or a symbolic log level
+fn parse_log_level(level: &str) -> Option<u32> {
+    let num = u32::from_str(level);
+    let mut log_level;
+    match (num) {
+        Some(num) => {
+            if num < MAX_LOG_LEVEL {
+                log_level = Some(num);
+            } else {
+                log_level = Some(MAX_LOG_LEVEL);
+            }
+        }
+        _ => {
+            let position = log_level_names.iter().position(|&name| name == level);
+            match (position) {
+                Some(position) => {
+                    log_level = Some(min(MAX_LOG_LEVEL, (position + 1) as u32))
+                },
+                _ => {
+                    log_level = None;
+                }
+            }
+        }
+    }
+    log_level
+}
+
 
 /// Parse a logging specification string (e.g: "crate1,crate2::mod3,crate3::x=1")
 /// and return a vector with log directives.
-/// Valid log levels are 0-255, with the most likely ones being 0-3 (defined in std::).
+/// Valid log levels are 0-255, with the most likely ones being 1-4 (defined in std::).
+/// Also supports string log levels of error, warn, info, and debug
+
 fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
     let mut dirs = ~[];
     for s in spec.split_iter(',') {
         let parts: ~[&str] = s.split_iter('=').collect();
-        let mut loglevel;
+        let mut log_level;
         match parts.len() {
-            1 => loglevel = MAX_LOG_LEVEL,
+            1 => log_level = MAX_LOG_LEVEL,
             2 => {
-                let num = u32::from_str(parts[1]);
-                match (num) {
+                let possible_log_level = parse_log_level(parts[1]);
+                match possible_log_level {
                     Some(num) => {
-                        if num < MAX_LOG_LEVEL {
-                            loglevel = num;
-                        } else {
-                            loglevel = MAX_LOG_LEVEL;
-                        }
-                    }
+                        log_level = num;
+                    },
                     _ => {
-                         dumb_println(fmt!("warning: invalid logging spec \
-                                           '%s', ignoring it", s));
-                         loop;
+                        dumb_println(fmt!("warning: invalid logging spec \
+                                           '%s', ignoring it", parts[1]));
+                        loop;
                     }
                 }
-                if loglevel > MAX_LOG_LEVEL { loglevel = MAX_LOG_LEVEL}
             },
             _ => {
                 dumb_println(fmt!("warning: invalid logging spec '%s',\
@@ -103,7 +129,7 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
                 loop;
             }
         }
-        let dir = LogDirective {name: parts[0].to_owned(), level: loglevel};
+        let dir = LogDirective {name: parts[0].to_owned(), level: log_level};
         dirs.push(dir);
     }
     return dirs;
@@ -266,6 +292,15 @@ fn parse_logging_spec_invalid_log_level() {
     assert_eq!(dirs.len(), 1);
     assert!(dirs[0].name == ~"crate2");
     assert_eq!(dirs[0].level, 4);
+}
+
+#[test]
+fn parse_logging_spec_string_log_level() {
+    // test parse_logging_spec with 'warn' as log level
+    let dirs: ~[LogDirective] = parse_logging_spec(~"crate1::mod1=wrong,crate2=warn");
+    assert_eq!(dirs.len(), 1);
+    assert!(dirs[0].name == ~"crate2");
+    assert_eq!(dirs[0].level, 2);
 }
 
 // Tests for update_entry
