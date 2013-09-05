@@ -731,13 +731,6 @@ fn run_tests(opts: &TestOpts,
     }
 }
 
-// Windows tends to dislike being overloaded with threads.
-#[cfg(windows)]
-static SCHED_OVERCOMMIT : uint = 1;
-
-#[cfg(unix)]
-static SCHED_OVERCOMMIT : uint = 4u;
-
 fn get_concurrency() -> uint {
     use std::rt;
     match os::getenv("RUST_TEST_TASKS") {
@@ -749,9 +742,7 @@ fn get_concurrency() -> uint {
             }
         }
         None => {
-            let threads = rt::util::default_sched_threads();
-            if threads == 1 { 1 }
-            else { threads * SCHED_OVERCOMMIT }
+            rt::util::default_sched_threads()
         }
     }
 }
