@@ -329,7 +329,7 @@ mod test {
                                 if nread > 0 {
                                     let read_str = unsafe {
                                         let read_buf = *read_buf_ptr;
-                                        str::from_bytes(
+                                        str::from_utf8(
                                             vec::from_buf(
                                                 read_buf.base, nread))
                                     };
@@ -393,7 +393,7 @@ mod test {
             // nread == 0 would be EOF.. we know it's >= zero because otherwise
             // the above assert would fail
             if nread > 0 {
-                let read_str = str::from_bytes(
+                let read_str = str::from_utf8(
                     read_mem.slice(0, nread as uint));
                 assert!(read_str == ~"hello");
                 // close

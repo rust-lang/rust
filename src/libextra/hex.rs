@@ -45,7 +45,7 @@ impl<'self> ToHex for &'self [u8] {
         }
 
         unsafe {
-            str::raw::from_bytes_owned(v)
+            str::raw::from_utf8_owned(v)
         }
     }
 }
@@ -62,7 +62,7 @@ impl<'self> FromHex for &'self str {
      * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.
      *
-     * You can use the `from_bytes` function in `std::str`
+     * You can use the `from_utf8` function in `std::str`
      * to turn a `[u8]` into a string with characters corresponding to those
      * values.
      *
@@ -80,7 +80,7 @@ impl<'self> FromHex for &'self str {
      *     printfln!("%s", hello_str);
      *     let bytes = hello_str.from_hex().unwrap();
      *     printfln!("%?", bytes);
-     *     let result_str = str::from_bytes(bytes);
+     *     let result_str = str::from_utf8(bytes);
      *     printfln!("%s", result_str);
      * }
      * ~~~

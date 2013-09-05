@@ -634,7 +634,7 @@ fn test_repr() {
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::mem::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t);
-        let s = str::from_bytes_owned(m.inner());
+        let s = str::from_utf8_owned(m.inner());
         assert_eq!(s.as_slice(), e);
     }
 

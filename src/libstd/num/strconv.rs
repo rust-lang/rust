@@ -417,7 +417,7 @@ pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+Round+
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
                                negative_zero, sign, digits);
-    (str::from_bytes(bytes), special)
+    (str::from_utf8(bytes), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,

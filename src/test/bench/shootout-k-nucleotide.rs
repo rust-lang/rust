@@ -60,7 +60,7 @@ impl Code {
         }
 
         reverse(result);
-        str::from_bytes(result)
+        str::from_utf8(result)
     }
 }
 

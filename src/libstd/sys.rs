@@ -99,7 +99,7 @@ pub fn log_str<T>(t: &T) -> ~str {
 
     let mut result = io::mem::MemWriter::new();
     repr::write_repr(&mut result as &mut io::Writer, t);
-    str::from_bytes_owned(result.inner())
+    str::from_utf8_owned(result.inner())
 }
 #[cfg(stage0)]
 pub fn log_str<T>(t: &T) -> ~str {

@@ -111,7 +111,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         }
 
     let mut output = None;
-    let output_text = str::from_bytes(outp.output);
+    let output_text = str::from_utf8(outp.output);
     for l in output_text.line_iter() {
         if !l.is_whitespace() {
             output = Some(l);
@@ -141,15 +141,15 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                                                 tmp_dir.to_str()]);
         if outp.status == 0 {
             debug!("Cloned it... ( %s, %s )",
-                   str::from_bytes(outp.output),
-                   str::from_bytes(outp.error));
+                   str::from_utf8(outp.output),
+                   str::from_utf8(outp.error));
             let mut output = None;
             debug!("(getting version, now getting tags) executing {git --git-dir=%s tag -l}",
                    tmp_dir.push(".git").to_str());
             let outp = run::process_output("git",
                                            [fmt!("--git-dir=%s", tmp_dir.push(".git").to_str()),
                                             ~"tag", ~"-l"]);
-            let output_text = str::from_bytes(outp.output);
+            let output_text = str::from_utf8(outp.output);
             debug!("Full output: ( %s ) [%?]", output_text, outp.status);
             for l in output_text.line_iter() {
                 debug!("A line of output: %s", l);
