@@ -95,6 +95,11 @@ impl visit::Visitor<@mut GatherLoanCtxt> for GatherLoanVisitor {
     fn visit_local(&mut self, l:@Local, e:@mut GatherLoanCtxt) {
         gather_loans_in_local(self, l, e);
     }
+
+    // #7740: Do not visit items here, not even fn items nor methods
+    // of impl items; the outer loop in borrowck/mod will visit them
+    // for us in turn.  Thus override visit_item's walk with a no-op.
+    fn visit_item(&mut self, _:@ast::item, _:@mut GatherLoanCtxt) { }
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
@@ -135,10 +140,8 @@ fn gather_loans_in_fn(v: &mut GatherLoanVisitor,
                       id: ast::NodeId,
                       this: @mut GatherLoanCtxt) {
     match fk {
-        // Do not visit items here, the outer loop in borrowck/mod
-        // will visit them for us in turn.
         &visit::fk_item_fn(*) | &visit::fk_method(*) => {
-            return;
+            fail!("cannot occur, due to visit_item override");
         }
 
         // Visit closures as part of the containing item.
