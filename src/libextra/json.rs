@@ -858,7 +858,7 @@ impl<T : iterator::Iterator<char>> Parser<T> {
 
 /// Decodes a json value from an @io::Reader
 pub fn from_reader(rdr: @io::Reader) -> Result<Json, Error> {
-    let s = str::from_bytes(rdr.read_whole_stream());
+    let s = str::from_utf8(rdr.read_whole_stream());
     let mut parser = Parser(~s.iter());
     parser.parse()
 }

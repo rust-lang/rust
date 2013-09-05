@@ -72,7 +72,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    for kv in pairs_sorted.iter() {
        let (k,v) = (*kv).clone();
        unsafe {
-           let b = str::raw::from_bytes(k);
+           let b = str::raw::from_utf8(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
            // to_ascii_move and to_str_move to not do a unnecessary copy.
            buffer.push_str(fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));

@@ -642,7 +642,7 @@ impl<T:Reader> ReaderUtil for T {
             }
             bytes.push(ch as u8);
         }
-        str::from_bytes(bytes)
+        str::from_utf8(bytes)
     }
 
     fn read_line(&self) -> ~str {
@@ -651,7 +651,7 @@ impl<T:Reader> ReaderUtil for T {
 
     fn read_chars(&self, n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes<T:Reader>(bytes: &~[u8], chars: &mut ~[char])
+        fn chars_from_utf8<T:Reader>(bytes: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
             let mut i = 0;
             let bytes_len = bytes.len();
@@ -701,7 +701,7 @@ impl<T:Reader> ReaderUtil for T {
                 break;
             }
             bytes.push_all(data);
-            let (offset, nbreq) = chars_from_bytes::<T>(&bytes, &mut chars);
+            let (offset, nbreq) = chars_from_utf8::<T>(&bytes, &mut chars);
             let ncreq = n - chars.len();
             // again we either know we need a certain number of bytes
             // to complete a character, or we make sure we don't
@@ -1761,7 +1761,7 @@ pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
 }
 
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
-    str::from_bytes(with_bytes_writer(f))
+    str::from_utf8(with_bytes_writer(f))
 }
 
 // Utility functions
@@ -1781,7 +1781,7 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     do read_whole_file(file).chain |bytes| {
         if str::is_utf8(bytes) {
-            Ok(str::from_bytes(bytes))
+            Ok(str::from_utf8(bytes))
         } else {
             Err(file.to_str() + " is not UTF-8")
         }

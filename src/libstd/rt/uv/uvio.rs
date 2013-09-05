@@ -1812,7 +1812,7 @@ fn file_test_uvio_full_simple_impl() {
             let mut fd = (*io).fs_open(&Path(path), ro_fm, ro_fa).unwrap();
             let mut read_vec = [0, .. 1028];
             let nread = fd.read(read_vec).unwrap();
-            let read_val = str::from_bytes(read_vec.slice(0, nread as uint));
+            let read_val = str::from_utf8(read_vec.slice(0, nread as uint));
             assert!(read_val == write_val.to_owned());
         }
         (*io).fs_unlink(&Path(path));

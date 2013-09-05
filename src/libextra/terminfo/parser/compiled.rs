@@ -213,7 +213,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
         return Err(~"incompatible file: more string offsets than expected");
     }
 
-    let names_str = str::from_bytes(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
+    let names_str = str::from_utf8(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
     let term_names: ~[~str] = names_str.split_iter('|').map(|s| s.to_owned()).collect();
 
     file.read_byte(); // consume NUL

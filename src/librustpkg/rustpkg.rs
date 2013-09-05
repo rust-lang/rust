@@ -153,7 +153,7 @@ impl<'self> PkgScript<'self> {
                    exe.to_str(), sysroot.to_str(), "configs");
             let output = run::process_output(exe.to_str(), [sysroot.to_str(), ~"configs"]);
             // Run the configs() function to get the configs
-            let cfgs = str::from_bytes_slice(output.output).word_iter()
+            let cfgs = str::from_utf8_slice(output.output).word_iter()
                 .map(|w| w.to_owned()).collect();
             (cfgs, output.status)
         }

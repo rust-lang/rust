@@ -396,7 +396,7 @@ impl ToStrRadix for $T {
         }
         // We know we generated valid utf-8, so we don't need to go through that
         // check.
-        unsafe { str::raw::from_bytes_owned(buf) }
+        unsafe { str::raw::from_utf8_owned(buf) }
     }
 }
 
