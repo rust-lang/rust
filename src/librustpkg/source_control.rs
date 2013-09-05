@@ -22,8 +22,8 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
         debug!("Running: git clone %s %s", source.to_str(), target.to_str());
         let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
         if outp.status != 0 {
-            io::println(str::from_bytes_owned(outp.output.clone()));
-            io::println(str::from_bytes_owned(outp.error));
+            io::println(str::from_utf8_owned(outp.output.clone()));
+            io::println(str::from_utf8_owned(outp.error));
             fail!("Couldn't `git clone` %s", source.to_str());
         }
         else {
@@ -36,8 +36,8 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
                                     fmt!("--git-dir=%s", target.push(".git").to_str()),
                                     ~"checkout", fmt!("%s", *s)]);
                     if outp.status != 0 {
-                        io::println(str::from_bytes_owned(outp.output.clone()));
-                        io::println(str::from_bytes_owned(outp.error));
+                        io::println(str::from_utf8_owned(outp.output.clone()));
+                        io::println(str::from_utf8_owned(outp.error));
                         fail!("Couldn't `git checkout %s` in %s",
                               *s, target.to_str());
                     }
@@ -64,8 +64,8 @@ pub fn git_clone(source: &Path, target: &Path, v: &Version) {
 pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
     let outp = run::process_output("git", [~"clone", source.to_str(), target.to_str()]);
     if outp.status != 0 {
-         debug!(str::from_bytes_owned(outp.output.clone()));
-         debug!(str::from_bytes_owned(outp.error));
+         debug!(str::from_utf8_owned(outp.output.clone()));
+         debug!(str::from_utf8_owned(outp.error));
          false
     }
     else {
@@ -74,8 +74,8 @@ pub fn git_clone_general(source: &str, target: &Path, v: &Version) -> bool {
                     let outp = process_output_in_cwd("git", [~"checkout", fmt!("%s", *s)],
                                                          target);
                     if outp.status != 0 {
-                        debug!(str::from_bytes_owned(outp.output.clone()));
-                        debug!(str::from_bytes_owned(outp.error));
+                        debug!(str::from_utf8_owned(outp.output.clone()));
+                        debug!(str::from_utf8_owned(outp.error));
                         false
                     }
                     else {
