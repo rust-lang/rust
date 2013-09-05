@@ -77,7 +77,7 @@ use std::local_data;
 use extra::time;
 use extra::sort;
 use syntax::ast::Ident;
-use syntax::ast_map::{path, path_elt_to_str, path_name};
+use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
 use syntax::ast_util::{local_def};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -2627,8 +2627,7 @@ pub fn register_method(ccx: @mut CrateContext,
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
     let mut path = (*path).clone();
-    path.push(path_name(gensym_name("meth")));
-    path.push(path_name(m.ident));
+    path.push(path_pretty_name(m.ident, token::gensym("meth") as u64));
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 

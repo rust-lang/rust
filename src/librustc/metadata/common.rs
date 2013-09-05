@@ -188,6 +188,10 @@ pub static tag_impls_impl: uint = 0x84;
 pub static tag_items_data_item_inherent_impl: uint = 0x85;
 pub static tag_items_data_item_extension_impl: uint = 0x86;
 
+pub static tag_path_elt_pretty_name: uint = 0x87;
+pub static tag_path_elt_pretty_name_ident: uint = 0x88;
+pub static tag_path_elt_pretty_name_extra: uint = 0x89;
+
 pub struct LinkMeta {
     name: @str,
     vers: @str,

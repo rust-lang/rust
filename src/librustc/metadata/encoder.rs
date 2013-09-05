@@ -359,12 +359,21 @@ fn encode_path(ecx: &EncodeContext,
     fn encode_path_elt(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        elt: ast_map::path_elt) {
-        let (tag, name) = match elt {
-          ast_map::path_mod(name) => (tag_path_elt_mod, name),
-          ast_map::path_name(name) => (tag_path_elt_name, name)
-        };
-
-        ebml_w.wr_tagged_str(tag, ecx.tcx.sess.str_of(name));
+        match elt {
+            ast_map::path_mod(n) => {
+                ebml_w.wr_tagged_str(tag_path_elt_mod, ecx.tcx.sess.str_of(n));
+            }
+            ast_map::path_name(n) => {
+                ebml_w.wr_tagged_str(tag_path_elt_name, ecx.tcx.sess.str_of(n));
+            }
+            ast_map::path_pretty_name(n, extra) => {
+                ebml_w.start_tag(tag_path_elt_pretty_name);
+                ebml_w.wr_tagged_str(tag_path_elt_pretty_name_ident,
+                                     ecx.tcx.sess.str_of(n));
+                ebml_w.wr_tagged_u64(tag_path_elt_pretty_name_extra, extra);
+                ebml_w.end_tag();
+            }
+        }
     }
 
     ebml_w.start_tag(tag_path);
