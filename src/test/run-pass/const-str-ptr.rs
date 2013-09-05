@@ -17,13 +17,13 @@ static C: *u8 = B as *u8;
 pub fn main() {
     unsafe {
         let foo = &A as *u8;
-        assert_eq!(str::raw::from_bytes(A), ~"hi");
+        assert_eq!(str::raw::from_utf8(A), ~"hi");
         assert_eq!(str::raw::from_buf_len(foo, A.len()), ~"hi");
         assert_eq!(str::raw::from_buf_len(C, B.len()), ~"hi");
         assert!(*C == A[0]);
         assert!(*(&B[0] as *u8) == A[0]);
 
-        let bar = str::raw::from_bytes(A).to_c_str();
+        let bar = str::raw::from_utf8(A).to_c_str();
         assert_eq!(bar.with_ref(|buf| str::raw::from_c_str(buf)), ~"hi");
     }
 }

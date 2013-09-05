@@ -161,7 +161,7 @@ Available lint options:
         max_key = num::max(name.len(), max_key);
     }
     fn padded(max: uint, s: &str) -> ~str {
-        str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
+        str::from_utf8(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
     println("\nAvailable lint checks:\n");
     printfln!("    %s  %7.7s  %s",
@@ -244,7 +244,7 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
-            let src = str::from_bytes(io::stdin().read_whole_stream());
+            let src = str::from_utf8(io::stdin().read_whole_stream());
             str_input(src.to_managed())
         } else {
             file_input(Path(ifile))

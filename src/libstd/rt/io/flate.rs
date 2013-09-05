@@ -117,7 +117,7 @@ mod test {
         let mut out_bytes = [0, .. 100];
         let bytes_read = inflate_reader.read(out_bytes).unwrap();
         assert_eq!(bytes_read, in_bytes.len());
-        let out_msg = str::from_bytes(out_bytes);
+        let out_msg = str::from_utf8(out_bytes);
         assert!(in_msg == out_msg);
     }
 }
