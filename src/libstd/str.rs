@@ -1370,8 +1370,6 @@ pub trait StrSlice<'self> {
 
     fn slice_shift_char(&self) -> (char, &'self str);
 
-    fn map_chars(&self, ff: &fn(char) -> char) -> ~str;
-
     fn lev_distance(&self, t: &str) -> uint;
 
     fn subslice_offset(&self, inner: &str) -> uint;
@@ -2086,15 +2084,6 @@ impl<'self> StrSlice<'self> for &'self str {
         let CharRange {ch, next} = self.char_range_at(0u);
         let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
         return (ch, next_s);
-    }
-
-    /// Apply a function to each character.
-    fn map_chars(&self, ff: &fn(char) -> char) -> ~str {
-        let mut result = with_capacity(self.len());
-        for cc in self.iter() {
-            result.push_char(ff(cc));
-        }
-        result
     }
 
     /// Levenshtein Distance between two strings.
