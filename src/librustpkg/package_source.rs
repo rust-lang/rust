@@ -119,7 +119,7 @@ impl PkgSrc {
             return Some(local);
         }
 
-        if (self.id.path.clone()).components().len() < 2 {
+        if self.id.path.components().len() < 2 {
             // If a non-URL, don't bother trying to fetch
             return None;
         }
@@ -157,7 +157,7 @@ impl PkgSrc {
 
     /// True if the given path's stem is self's pkg ID's stem
     fn stem_matches(&self, p: &Path) -> bool {
-        p.filestem().map_default(false, |p| { p == &self.id.short_name })
+        p.filestem().map_default(false, |p| { p == &self.id.short_name.as_slice() })
     }
 
     fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
@@ -182,10 +182,10 @@ impl PkgSrc {
         do os::walk_dir(&dir) |pth| {
             let maybe_known_crate_set = match pth.filename() {
                 Some(filename) => match filename {
-                    ~"lib.rs" => Some(&mut self.libs),
-                    ~"main.rs" => Some(&mut self.mains),
-                    ~"test.rs" => Some(&mut self.tests),
-                    ~"bench.rs" => Some(&mut self.benchs),
+                    "lib.rs" => Some(&mut self.libs),
+                    "main.rs" => Some(&mut self.mains),
+                    "test.rs" => Some(&mut self.tests),
+                    "bench.rs" => Some(&mut self.benchs),
                     _ => None
                 },
                 _ => None
