@@ -146,7 +146,7 @@ impl Seek for FileStream {
 }
 
 fn file_test_smoke_test_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let message = "it's alright. have a good time";
         let filename = &Path("./tmp/file_rt_io_file_test.txt");
         {
@@ -174,7 +174,7 @@ fn file_test_io_smoke_test() {
 }
 
 fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_that_does_not_exist.txt");
         let mut called = false;
         do io_error::cond.trap(|_| {
@@ -192,7 +192,7 @@ fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
 }
 
 fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
         let mut called = false;
         do io_error::cond.trap(|_| {
@@ -209,7 +209,7 @@ fn file_test_iounlinking_invalid_path_should_raise_condition() {
 }
 
 fn file_test_io_non_positional_read_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         use str;
         let message = "ten-four";
         let mut read_mem = [0, .. 8];
@@ -242,7 +242,7 @@ fn file_test_io_non_positional_read() {
 }
 
 fn file_test_io_seeking_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         use str;
         let message = "ten-four";
         let mut read_mem = [0, .. 4];
@@ -276,7 +276,7 @@ fn file_test_io_seek_and_tell_smoke_test() {
 
 fn file_test_io_seek_and_write_impl() {
     use io;
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         use str;
         let initial_msg =   "food-is-yummy";
         let overwrite_msg =    "-the-bar!!";
@@ -307,7 +307,7 @@ fn file_test_io_seek_and_write() {
 }
 
 fn file_test_io_seek_shakedown_impl() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         use str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
         let chunk_one = "qwer";
