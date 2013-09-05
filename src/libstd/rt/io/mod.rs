@@ -451,6 +451,8 @@ pub trait Writer {
 
 pub trait Stream: Reader + Writer { }
 
+impl<T: Reader + Writer> Stream for T;
+
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
