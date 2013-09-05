@@ -33,7 +33,9 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)/test \
+	$(Q)find $(CFG_BUILD_TRIPLE)/rustllvm \
+	         $(CFG_BUILD_TRIPLE)/rt \
+		 $(CFG_BUILD_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -41,7 +43,7 @@ clean-misc:
          -name '*.def' -o     \
          -name '*.bc'         \
          | xargs rm -f
-	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)\
+	$(Q)find $(CFG_BUILD_TRIPLE)\
          -name '*.dSYM'       \
          | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
