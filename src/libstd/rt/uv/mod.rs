@@ -70,6 +70,7 @@ pub mod net;
 pub mod idle;
 pub mod timer;
 pub mod async;
+pub mod addrinfo;
 
 /// XXX: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
