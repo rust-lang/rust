@@ -71,4 +71,7 @@ fn main() {
     format!("{0, select, other{{}}}", "a"); //~ ERROR: cannot use implicit
     format!("{0, plural, other{{}}}", 1); //~ ERROR: cannot use implicit
     format!("{0, plural, other{{1:.*d}}}", 1, 2); //~ ERROR: cannot use implicit
+
+    format!("foo } bar"); //~ ERROR: unmatched `}` found
+    format!("foo }"); //~ ERROR: unmatched `}` found
 }
