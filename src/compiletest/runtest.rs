@@ -880,7 +880,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
     let dirs = os::list_dir_path(&Path(tstr));
     for file in dirs.iter() {
 
-        if (file.filetype() == Some(~".so")) {
+        if (file.filetype() == Some(".so")) {
 
             let copy_result = procsrv::run("", config.adb_path,
                 [~"push", file.to_str(), config.adb_test_dir.clone()],

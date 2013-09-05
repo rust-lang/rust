@@ -952,13 +952,13 @@ pub fn link_args(sess: Session,
     let cstore = sess.cstore;
     let r = cstore::get_used_crate_files(cstore);
     for cratepath in r.iter() {
-        if cratepath.filetype() == Some(~".rlib") {
+        if cratepath.filetype() == Some(".rlib") {
             args.push(cratepath.to_str());
             loop;
         }
         let dir = cratepath.dirname();
         if dir != ~"" { args.push(~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem().unwrap());
+        let libarg = unlib(sess.targ_cfg, cratepath.filestem().unwrap().to_owned());
         args.push(~"-l" + libarg);
     }
 

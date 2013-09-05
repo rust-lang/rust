@@ -28,7 +28,7 @@ use option::{None, Option, Some};
 use str::{OwnedStr, Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
-use vec::{OwnedVector, ImmutableVector, OwnedCopyableVector};
+use vec::{Vector, OwnedVector, ImmutableVector, OwnedCopyableVector};
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;
@@ -65,17 +65,17 @@ pub trait GenericPath {
     fn dirname(&self) -> ~str;
     /// Returns the file component of `self`, as a string option.
     /// Returns None if `self` names a directory.
-    fn filename(&self) -> Option<~str>;
+    fn filename<'a>(&'a self) -> Option<&'a str>;
     /// Returns the stem of the file component of `self`, as a string option.
     /// The stem is the slice of a filename starting at 0 and ending just before
     /// the last '.' in the name.
     /// Returns None if `self` names a directory.
-    fn filestem(&self) -> Option<~str>;
+    fn filestem<'a>(&'a self) -> Option<&'a str>;
     /// Returns the type of the file component of `self`, as a string option.
     /// The file type is the slice of a filename starting just after the last
     /// '.' in the name and ending at the last index in the filename.
     /// Returns None if `self` names a directory.
-    fn filetype(&self) -> Option<~str>;
+    fn filetype<'a>(&'a self) -> Option<&'a str>;
 
     /// Returns a new path consisting of `self` with the parent directory component replaced
     /// with the given string.
@@ -163,7 +163,7 @@ pub trait GenericPath {
         result
     }
 
-    fn components(self) -> ~[~str];
+    fn components<'a>(&'a self) -> &'a [~str];
 }
 
 #[cfg(target_os = "linux")]
@@ -600,31 +600,31 @@ impl GenericPath for PosixPath {
         }
     }
 
-    fn filename(&self) -> Option<~str> {
+    fn filename<'a>(&'a self) -> Option<&'a str> {
         match self.components.len() {
             0 => None,
-            n => Some(self.components[n - 1].clone()),
+            n => Some(self.components[n - 1].as_slice()),
         }
     }
 
-    fn filestem(&self) -> Option<~str> {
+    fn filestem<'a>(&'a self) -> Option<&'a str> {
         match self.filename() {
             None => None,
             Some(ref f) => {
                 match f.rfind('.') {
-                    Some(p) => Some(f.slice_to(p).to_owned()),
-                    None => Some((*f).clone()),
+                    Some(p) => Some(f.slice_to(p)),
+                    None => Some((*f)),
                 }
             }
         }
     }
 
-    fn filetype(&self) -> Option<~str> {
+    fn filetype<'a>(&'a self) -> Option<&'a str> {
         match self.filename() {
             None => None,
             Some(ref f) => {
                 match f.rfind('.') {
-                    Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
+                    Some(p) if p < f.len() => Some(f.slice_from(p)),
                     _ => None,
                 }
             }
@@ -670,7 +670,7 @@ impl GenericPath for PosixPath {
     fn file_path(&self) -> PosixPath {
         let cs = match self.filename() {
           None => ~[],
-          Some(ref f) => ~[(*f).clone()]
+          Some(ref f) => ~[(*f).to_owned()]
         };
         PosixPath {
             is_absolute: false,
@@ -756,7 +756,7 @@ impl GenericPath for PosixPath {
              self.is_ancestor_of(&other.pop()))
     }
 
-   fn components(self) -> ~[~str] { self.components }
+   fn components<'a>(&'a self) -> &'a [~str] { self.components.as_slice() }
 }
 
 
@@ -842,31 +842,31 @@ impl GenericPath for WindowsPath {
         }
     }
 
-    fn filename(&self) -> Option<~str> {
+    fn filename<'a>(&'a self) -> Option<&'a str> {
         match self.components.len() {
             0 => None,
-            n => Some(self.components[n - 1].clone()),
+            n => Some(self.components[n - 1].as_slice()),
         }
     }
 
-    fn filestem(&self) -> Option<~str> {
+    fn filestem<'a>(&'a self) -> Option<&'a str> {
         match self.filename() {
             None => None,
             Some(ref f) => {
                 match f.rfind('.') {
-                    Some(p) => Some(f.slice_to(p).to_owned()),
-                    None => Some((*f).clone()),
+                    Some(p) => Some(f.slice_to(p)),
+                    None => Some((*f)),
                 }
             }
         }
     }
 
-    fn filetype(&self) -> Option<~str> {
+    fn filetype<'a>(&'a self) -> Option<&'a str> {
         match self.filename() {
           None => None,
           Some(ref f) => {
             match f.rfind('.') {
-                Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
+                Some(p) if p < f.len() => Some(f.slice_from(p)),
                 _ => None,
             }
           }
@@ -916,7 +916,7 @@ impl GenericPath for WindowsPath {
             is_absolute: false,
             components: match self.filename() {
                 None => ~[],
-                Some(ref f) => ~[(*f).clone()],
+                Some(ref f) => ~[(*f).to_owned()],
             }
         }
     }
@@ -1049,7 +1049,7 @@ impl GenericPath for WindowsPath {
              self.is_ancestor_of(&other.pop()))
     }
 
-   fn components(self) -> ~[~str] { self.components }
+   fn components<'a>(&'a self) -> &'a [~str] { self.components.as_slice() }
 }
 
 pub fn normalize(components: &[~str]) -> ~[~str] {
@@ -1143,10 +1143,10 @@ mod tests {
     #[test]
     fn test_filetype_foo_bar() {
         let wp = PosixPath("foo.bar");
-        assert_eq!(wp.filetype(), Some(~".bar"));
+        assert_eq!(wp.filetype(), Some(".bar"));
 
         let wp = WindowsPath("foo.bar");
-        assert_eq!(wp.filetype(), Some(~".bar"));
+        assert_eq!(wp.filetype(), Some(".bar"));
     }
 
     #[test]

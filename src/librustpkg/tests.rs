@@ -396,7 +396,7 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
     let contents = os::list_dir_path(&pkg_src_dir);
     for p in contents.iter() {
-        if p.filetype() == Some(~".rs") {
+        if p.filetype() == Some(".rs") {
             // should be able to do this w/o a process
             if run::process_output("touch", [p.to_str()]).status != 0 {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
@@ -413,7 +413,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     let contents = os::list_dir_path(&pkg_src_dir);
     let mut maybe_p = None;
     for p in contents.iter() {
-        if p.filetype() == Some(~".rs") {
+        if p.filetype() == Some(".rs") {
             maybe_p = Some(p);
             break;
         }
