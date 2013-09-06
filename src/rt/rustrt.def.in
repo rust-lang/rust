@@ -47,7 +47,6 @@ rust_uv_timer_start
 rust_uv_timer_stop
 rust_uv_tcp_init
 rust_uv_buf_init
-rust_uv_last_error
 rust_uv_strerror
 rust_uv_err_name
 rust_uv_ip4_addr

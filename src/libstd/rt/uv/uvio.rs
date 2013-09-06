@@ -154,7 +154,7 @@ fn socket_name<T, U: Watcher + NativeHandle<*T>>(sk: SocketNameKind,
     };
 
     if r != 0 {
-        let status = status_to_maybe_uv_error(handle, r);
+        let status = status_to_maybe_uv_error(r);
         return Err(uv_error_to_io_error(status.unwrap()));
     }
 
@@ -728,7 +728,7 @@ impl RtioTcpAcceptor for UvTcpAcceptor {
                 uvll::tcp_simultaneous_accepts(self_.listener.watcher.native_handle(), 1 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.listener.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -741,7 +741,7 @@ impl RtioTcpAcceptor for UvTcpAcceptor {
                 uvll::tcp_simultaneous_accepts(self_.listener.watcher.native_handle(), 0 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.listener.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -862,7 +862,7 @@ impl RtioTcpStream for UvTcpStream {
         do self.home_for_io |self_| {
             let r = unsafe { uvll::tcp_nodelay(self_.watcher.native_handle(), 0 as c_int) };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -873,7 +873,7 @@ impl RtioTcpStream for UvTcpStream {
         do self.home_for_io |self_| {
             let r = unsafe { uvll::tcp_nodelay(self_.watcher.native_handle(), 1 as c_int) };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -887,7 +887,7 @@ impl RtioTcpStream for UvTcpStream {
                                     delay_in_seconds as c_uint)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -900,7 +900,7 @@ impl RtioTcpStream for UvTcpStream {
                 uvll::tcp_keepalive(self_.watcher.native_handle(), 0 as c_int, 0 as c_uint)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1012,7 +1012,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 }
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1028,7 +1028,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 }
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1042,7 +1042,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_multicast_loop(self_.watcher.native_handle(), 1 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1056,7 +1056,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_multicast_loop(self_.watcher.native_handle(), 0 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1070,7 +1070,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_multicast_ttl(self_.watcher.native_handle(), ttl as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1084,7 +1084,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_ttl(self_.watcher.native_handle(), ttl as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1098,7 +1098,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_broadcast(self_.watcher.native_handle(), 1 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
@@ -1112,7 +1112,7 @@ impl RtioUdpSocket for UvUdpSocket {
                 uvll::udp_set_broadcast(self_.watcher.native_handle(), 0 as c_int)
             };
 
-            match status_to_maybe_uv_error(self_.watcher, r) {
+            match status_to_maybe_uv_error(r) {
                 Some(err) => Err(uv_error_to_io_error(err)),
                 None => Ok(())
             }
