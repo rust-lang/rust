@@ -632,7 +632,7 @@ impl Context {
            stmts: ~[],
            expr: Some(result),
            id: ast::DUMMY_NODE_ID,
-           rules: ast::UnsafeBlock,
+           rules: ast::UnsafeBlock(ast::CompilerGenerated),
            span: self.fmtsp,
         });
 

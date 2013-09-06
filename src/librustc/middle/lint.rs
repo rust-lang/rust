@@ -1133,8 +1133,9 @@ impl Visitor<@mut Context> for UnusedUnsafeLintVisitor {
             match e.node {
                 // Don't warn about generated blocks, that'll just pollute the
                 // output.
-                ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock(false) => {
-                    if !cx.tcx.used_unsafe.contains(&blk.id) {
+                ast::ExprBlock(ref blk) => {
+                    if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
+                       !cx.tcx.used_unsafe.contains(&blk.id) {
                         cx.span_lint(unused_unsafe, blk.span,
                                      "unnecessary `unsafe` block");
                     }
