@@ -19,7 +19,7 @@ define DEF_RUSTLLVM_TARGETS
 # llvm, but using it straight out of the build directory)
 ifdef CFG_WINDOWSY_$(1)
 LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
-                         -iquote llvm/$(1)/include
+                         -iquote $$(CFG_LLVM_BUILD_DIR_$(1))/include
 endif
 
 RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustWrapper.cpp PassWrapper.cpp)
