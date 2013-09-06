@@ -50,7 +50,7 @@ clean-misc:
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
 	$(Q)rm -Rf $(DOCS)
 	$(Q)rm -Rf $(GENERATED)
-	$(Q)rm -f tmp/*
+	$(Q)rm -Rf tmp/*
 	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -Rf $(foreach ext, \
                  html aux cp fn ky log pdf pg toc tp vr cps, \
