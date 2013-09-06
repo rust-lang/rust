@@ -3021,6 +3021,10 @@ pub fn trans_crate(sess: session::Session,
                                      link_meta,
                                      analysis.reachable);
 
+    if ccx.sess.opts.debuginfo {
+        debuginfo::initialize(ccx, crate);
+    }
+
     {
         let _icx = push_ctxt("text");
         trans_mod(ccx, &crate.module);
