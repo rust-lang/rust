@@ -1620,7 +1620,7 @@ mod biguint_tests {
     #[test]
     fn test_rand() {
         let mut rng = task_rng();
-        rng.gen_bigint(137);
+        let n: BigUint = rng.gen_biguint(137);
     }
 }
 
@@ -2056,7 +2056,7 @@ mod bigint_tests {
     #[test]
     fn test_rand() {
         let mut rng = task_rng();
-        rng.gen_bigint(137);
+        let n: BigInt = rng.gen_bigint(137);
         assert!(rng.gen_bigint(0).is_zero());
     }
 }
