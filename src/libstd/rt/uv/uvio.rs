@@ -719,7 +719,9 @@ impl RtioSocket for UvTcpAcceptor {
 
 impl RtioTcpAcceptor for UvTcpAcceptor {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
-        self.incoming.recv()
+        do self.home_for_io |self_| {
+            self_.incoming.recv()
+        }
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
