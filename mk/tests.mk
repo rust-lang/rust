@@ -250,6 +250,7 @@ tidy:
 		| grep '^$(S)src/test' -v \
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
+		| grep '^$(S)src/gyp' -v \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
