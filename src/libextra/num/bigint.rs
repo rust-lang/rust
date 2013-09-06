@@ -526,7 +526,7 @@ trait RandBigUInt {
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
 }
 
-impl<R: RngUtil> RandBigUInt for R {
+impl<R: Rng> RandBigUInt for R {
     /// Generate a random BigUint of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint {
         let (digits, rem) = bit_size.div_rem(&BigDigit::bits);
@@ -1078,13 +1078,27 @@ trait RandBigInt {
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt;
 }
 
-impl<R: RngUtil> RandBigInt for R {
+impl<R: Rng> RandBigInt for R {
     /// Generate a random BigUint of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt {
+        // Generate a random BigUint...
         let biguint = self.gen_biguint(bit_size);
-        let sign = if biguint.is_zero() { Zero }
-            else if self.gen() { Plus }
-            else { Minus };
+        // ...and then randomly assign it a Sign...
+        let sign = if biguint.is_zero() {
+            // ...except that if the BigUint is zero, we need to try
+            // again with probability 0.5. This is because otherwise,
+            // the probability of generating a zero BigInt would be
+            // double that of any other number.
+            if self.gen() {
+                return self.gen_bigint(bit_size);
+            } else {
+                Zero
+            }
+        } else if self.gen() {
+            Plus
+        } else {
+            Minus
+        };
         return BigInt::from_biguint(sign, biguint);
     }
 }
@@ -1620,7 +1634,8 @@ mod biguint_tests {
     #[test]
     fn test_rand() {
         let mut rng = task_rng();
-        let n: BigUint = rng.gen_biguint(137);
+        let _n: BigUint = rng.gen_biguint(137);
+        assert!(rng.gen_biguint(0).is_zero());
     }
 }
 
@@ -2056,7 +2071,7 @@ mod bigint_tests {
     #[test]
     fn test_rand() {
         let mut rng = task_rng();
-        let n: BigInt = rng.gen_bigint(137);
+        let _n: BigInt = rng.gen_bigint(137);
         assert!(rng.gen_bigint(0).is_zero());
     }
 }
