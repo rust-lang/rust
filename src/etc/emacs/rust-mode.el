@@ -45,6 +45,16 @@
     (if (/= starting (point))
         (rust-rewind-irrelevant))))
 
+(defun rust-first-indent-after-brace ()
+  (save-excursion
+    (forward-char)
+    (if (looking-at "[[:blank:]]*\\(?://.*\\)?$")
+        ;; We don't want to indent out to the open bracket if the
+        ;; open bracket ends the line
+        (* rust-indent-offset (rust-paren-level))
+      (when (looking-at "[[:space:]]") (forward-to-word 1))
+      (current-column))))
+
 (defun rust-mode-indent-line ()
   (interactive)
   (let ((indent
@@ -58,7 +68,7 @@
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
 
-              ; Doc comments in /** style with leading * indent to line up the *s
+              ;; Doc comments in /** style with leading * indent to line up the *s
               ((and (nth 4 (syntax-ppss)) (looking-at "*"))
                (+ 1 (* rust-indent-offset level)))
 
@@ -75,22 +85,9 @@
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (cond 
-                  ((and
-                      (looking-at "[[(]")
-                      ; We don't want to indent out to the open bracket if the
-                      ; open bracket ends the line
-                      (save-excursion 
-                        (forward-char)
-                        (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
-                   (+ 1 (current-column)))
-                  ;; Check for fields on the same line as the open curly brace:
-                  ((looking-at "{[[:space:]]*[^\n]*,[[:space:]]*$")
+                 (if (looking-at "[[({]")
+                     (rust-first-indent-after-brace)
                    (progn
-                    (forward-char)
-                    (when (looking-at "[[:space:]]") (forward-to-word 1))
-                    (current-column)))
-                  (t (progn
                      (goto-char pt)
                      (back-to-indentation)
                      (if (looking-at "\\<else\\>")
@@ -105,7 +102,7 @@
                            (back-to-indentation)
                            (if (looking-at "#")
                                (* rust-indent-offset level)
-                             (* rust-indent-offset (+ 1 level)))))))))))
+                             (* rust-indent-offset (+ 1 level))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
