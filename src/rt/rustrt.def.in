@@ -192,3 +192,4 @@ rust_take_change_dir_lock
 rust_drop_change_dir_lock
 rust_get_test_int
 rust_get_task
+rust_uv_get_loop_from_getaddrinfo_req

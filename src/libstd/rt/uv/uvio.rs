@@ -29,7 +29,8 @@ use rt::tube::Tube;
 use rt::task::SchedHome;
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
-use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr};
+use rt::uv::net::{UvIpv4SocketAddr, UvIpv6SocketAddr, accum_sockaddrs};
+use rt::uv::addrinfo::GetAddrInfoRequest;
 use unstable::sync::Exclusive;
 use super::super::io::support::PathLike;
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
@@ -593,6 +594,37 @@ impl IoFactory for UvIoFactory {
                 };
             };
         }
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
+    }
+
+    fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError> {
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<~[IpAddr], IoError>> = &result_cell;
+        let host_ptr: *&str = &host;
+        let addrinfo_req = GetAddrInfoRequest::new();
+        let addrinfo_req_cell = Cell::new(addrinfo_req);
+        do task::unkillable { // FIXME(#8674)
+            let scheduler: ~Scheduler = Local::take();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                let mut addrinfo_req = addrinfo_req_cell.take();
+                unsafe {
+                    do addrinfo_req.getaddrinfo(self.uv_loop(),
+                                                Some(*host_ptr),
+                                                None, None) |_, addrinfo, err| {
+                        let res = match err {
+                            None => Ok(accum_sockaddrs(addrinfo).map(|addr| addr.ip.clone())),
+                            Some(err) => Err(uv_error_to_io_error(err))
+                        };
+                        (*result_cell_ptr).put_back(res);
+                        let scheduler: ~Scheduler = Local::take();
+                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                    }
+                }
+            }
+        }
+        addrinfo_req.delete();
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
