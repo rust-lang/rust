@@ -733,7 +733,7 @@ fn run_tests(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match os::getenv("RUST_TEST_TASKS") {
+    match os::getenv("RUST_TEST_TASKS").filtered(|s| !s.is_empty()) {
         Some(s) => {
             let opt_n: Option<uint> = FromStr::from_str(s);
             match opt_n {
