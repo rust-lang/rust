@@ -62,8 +62,11 @@
            (back-to-indentation)
            (let ((level (rust-paren-level)))
              (cond
-              ;; A function return type is 1 level indented
-              ((looking-at "->") (* rust-indent-offset (+ level 1)))
+              ;; A function return type is indented to the corresponding function arguments
+              ((looking-at "->")
+               (save-excursion
+                 (backward-list)
+                 (rust-first-indent-after-brace)))
 
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
