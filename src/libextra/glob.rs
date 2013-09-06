@@ -448,10 +448,20 @@ impl MatchOptions {
 #[cfg(test)]
 mod test {
     use std::{io, os, unstable};
+    use std::unstable::finally::Finally;
     use super::*;
+    use tempfile;
 
     #[test]
     fn test_relative_pattern() {
+
+        fn change_then_remove(p: &Path, f: &fn()) {
+            do (|| {
+                unstable::change_dir_locked(p, || f());
+            }).finally {
+                os::remove_dir_recursive(p);
+            }
+        }
 
         fn mk_file(path: &str, directory: bool) {
             if directory {
@@ -469,10 +479,10 @@ mod test {
             glob(pattern).collect()
         }
 
-        mk_file("tmp", true);
-        mk_file("tmp/glob-tests", true);
+        let root = tempfile::mkdtemp(&os::tmpdir(), "glob-tests");
+        let root = root.expect("Should have created a temp directory");
 
-        do unstable::change_dir_locked(&Path("tmp/glob-tests")) {
+        do change_then_remove(&root) {
 
             mk_file("aaa", true);
             mk_file("aaa/apple", true);
