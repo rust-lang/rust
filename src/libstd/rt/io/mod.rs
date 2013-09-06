@@ -269,13 +269,7 @@ pub use self::extensions::WriterByteConversions;
 pub mod file;
 
 /// Synchronous, non-blocking network I/O.
-pub mod net {
-    pub mod tcp;
-    pub mod udp;
-    pub mod ip;
-    #[cfg(unix)]
-    pub mod unix;
-}
+pub mod net;
 
 /// Readers and Writers for memory buffers and strings.
 pub mod mem;
