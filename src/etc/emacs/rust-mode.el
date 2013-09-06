@@ -100,7 +100,7 @@
                          (beginning-of-line)
                          (rust-rewind-irrelevant)
                          (end-of-line)
-                         (if (looking-back "[,;{}(][[:space:]]*\\(?://.*\\)?")
+                         (if (looking-back "[[,;{}(][[:space:]]*\\(?://.*\\)?")
                              (* rust-indent-offset level)
                            (back-to-indentation)
                            (if (looking-at "#")
