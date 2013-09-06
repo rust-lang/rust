@@ -204,12 +204,12 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
 // XXX: Need to define the error constants like EOF so they can be
 // compared to the UvError type
 
-pub struct UvError(uvll::uv_err_t);
+pub struct UvError(c_int);
 
 impl UvError {
     pub fn name(&self) -> ~str {
         unsafe {
-            let inner = match self { &UvError(ref a) => a };
+            let inner = match self { &UvError(a) => a };
             let name_str = uvll::err_name(inner);
             assert!(name_str.is_not_null());
             from_c_str(name_str)
@@ -218,7 +218,7 @@ impl UvError {
 
     pub fn desc(&self) -> ~str {
         unsafe {
-            let inner = match self { &UvError(ref a) => a };
+            let inner = match self { &UvError(a) => a };
             let desc_str = uvll::strerror(inner);
             assert!(desc_str.is_not_null());
             from_c_str(desc_str)
@@ -226,7 +226,7 @@ impl UvError {
     }
 
     pub fn is_eof(&self) -> bool {
-        self.code == uvll::EOF
+        **self == uvll::EOF
     }
 }
 
@@ -238,16 +238,8 @@ impl ToStr for UvError {
 
 #[test]
 fn error_smoke_test() {
-    let err = uvll::uv_err_t { code: 1, sys_errno_: 1 };
-    let err: UvError = UvError(err);
+    let err: UvError = UvError(uvll::EOF);
     assert_eq!(err.to_str(), ~"EOF: end of file");
-}
-
-pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
-    unsafe {
-        let loop_ = watcher.event_loop();
-        UvError(uvll::last_error(loop_.native_handle()))
-    }
 }
 
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
@@ -257,10 +249,10 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
         use rt::io::*;
 
         // uv error descriptions are static
-        let c_desc = uvll::strerror(&*uverr);
+        let c_desc = uvll::strerror(*uverr);
         let desc = str::raw::c_str_to_static_slice(c_desc);
 
-        let kind = match uverr.code {
+        let kind = match *uverr {
             UNKNOWN => OtherIoError,
             OK => OtherIoError,
             EOF => EndOfFile,
@@ -268,8 +260,8 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             ECONNREFUSED => ConnectionRefused,
             ECONNRESET => ConnectionReset,
             EPIPE => BrokenPipe,
-            _ => {
-                rtdebug!("uverr.code %u", uverr.code as uint);
+            err => {
+                rtdebug!("uverr.code %d", err as int);
                 // XXX: Need to map remaining uv error types
                 OtherIoError
             }
@@ -284,30 +276,12 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
 }
 
 /// Given a uv handle, convert a callback status to a UvError
-pub fn status_to_maybe_uv_error_with_loop(
-    loop_: *uvll::uv_loop_t,
-    status: c_int) -> Option<UvError> {
-    if status != -1 {
+pub fn status_to_maybe_uv_error(status: c_int) -> Option<UvError>
+{
+    if status >= 0 {
         None
     } else {
-        unsafe {
-            rtdebug!("loop: %x", loop_ as uint);
-            let err = uvll::last_error(loop_);
-            Some(UvError(err))
-        }
-    }
-}
-/// Given a uv handle, convert a callback status to a UvError
-pub fn status_to_maybe_uv_error<T, U: Watcher + NativeHandle<*T>>(handle: U,
-                                                                 status: c_int) -> Option<UvError> {
-    if status != -1 {
-        None
-    } else {
-        unsafe {
-            rtdebug!("handle: %x", handle.native_handle() as uint);
-            let loop_ = uvll::get_loop_for_uv_handle(handle.native_handle());
-            status_to_maybe_uv_error_with_loop(loop_, status)
-        }
+        Some(UvError(status))
     }
 }
 
