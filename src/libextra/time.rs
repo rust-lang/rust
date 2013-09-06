@@ -321,6 +321,33 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         Some((value, pos))
     }
 
+    fn match_fractional_seconds(ss: &str, pos: uint) -> (i32, uint) {
+        let len = ss.len();
+        let mut value = 0_i32;
+        let mut multiplier = NSEC_PER_SEC / 10;
+        let mut pos = pos;
+
+        loop {
+            if pos >= len {
+                break;
+            }
+            let range = ss.char_range_at(pos);
+
+            match range.ch {
+                '0' .. '9' => {
+                    pos = range.next;
+                    // This will drop digits after the nanoseconds place
+                    let digit = range.ch as i32 - '0' as i32;
+                    value += digit * multiplier;
+                    multiplier /= 10;
+                }
+                _ => break
+            }
+        }
+
+        (value, pos)
+    }
+
     fn match_digits_in_range(ss: &str, pos: uint, digits: uint, ws: bool,
                              min: i32, max: i32) -> Option<(i32, uint)> {
         match match_digits(ss, pos, digits, ws) {
@@ -441,6 +468,11 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
             None => Err(~"Invalid day of the month")
           },
+          'f' => {
+            let (val, pos) = match_fractional_seconds(s, pos);
+            tm.tm_nsec = val;
+            Ok(pos)
+          }
           'F' => {
             parse_type(s, pos, 'Y', &mut *tm)
                 .chain(|pos| parse_char(s, pos, '-'))
@@ -773,6 +805,7 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
           }
           'd' => fmt!("%02d", tm.tm_mday as int),
           'e' => fmt!("%2d", tm.tm_mday as int),
+          'f' => fmt!("%09d", tm.tm_nsec as int),
           'F' => {
             fmt!("%s-%s-%s",
                 parse_type('Y', tm),
@@ -1011,12 +1044,12 @@ mod tests {
           Err(_) => ()
         }
 
-        let format = "%a %b %e %T %Y";
+        let format = "%a %b %e %T.%f %Y";
         assert_eq!(strptime("", format), Err(~"Invalid time"));
         assert!(strptime("Fri Feb 13 15:31:30", format)
             == Err(~"Invalid time"));
 
-        match strptime("Fri Feb 13 15:31:30 2009", format) {
+        match strptime("Fri Feb 13 15:31:30.01234 2009", format) {
           Err(e) => fail!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
@@ -1030,7 +1063,7 @@ mod tests {
             assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
             assert!(tm.tm_zone == ~"");
-            assert!(tm.tm_nsec == 0_i32);
+            assert!(tm.tm_nsec == 12340000_i32);
           }
         }
 
@@ -1187,6 +1220,7 @@ mod tests {
         assert_eq!(local.strftime("%D"), ~"02/13/09");
         assert_eq!(local.strftime("%d"), ~"13");
         assert_eq!(local.strftime("%e"), ~"13");
+        assert_eq!(local.strftime("%f"), ~"000054321");
         assert_eq!(local.strftime("%F"), ~"2009-02-13");
         // assert!(local.strftime("%G") == "2009");
         // assert!(local.strftime("%g") == "09");
