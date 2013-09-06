@@ -10,7 +10,7 @@
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print union on
-// debugger:break zzz
+// debugger:rbreak zzz
 // debugger:run
 // debugger:finish
 

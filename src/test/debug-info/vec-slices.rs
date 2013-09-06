@@ -10,7 +10,7 @@
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
-// debugger:break zzz
+// debugger:rbreak zzz
 // debugger:run
 // debugger:finish
 // debugger:print empty.size_in_bytes
