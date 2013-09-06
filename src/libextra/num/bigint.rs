@@ -589,6 +589,12 @@ impl BigUint {
         }
     }
 
+    /// Converts this BigUint into a positively-signed BigInt.
+    #[inline]
+    pub fn to_bigint(&self) -> BigInt {
+        BigInt::from_biguint(Plus, self.clone())
+    }
+
     #[inline]
     fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
@@ -1102,6 +1108,16 @@ impl BigInt {
             Minus => 0
         }
     }
+
+    /// Converts this BigInt into a BigUint. Negative BigInts are
+    /// converted to zero-valued BigUints.
+    #[inline]
+    pub fn to_biguint(&self) -> BigUint {
+        match self.sign {
+            Plus => self.data.clone(),
+            _ => Zero::zero()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1279,6 +1295,16 @@ mod biguint_tests {
 
         assert_eq!(BigUint::new(~[0, 0, 1]).to_uint(), uint::max_value);
         assert_eq!(BigUint::new(~[0, 0, -1]).to_uint(), uint::max_value);
+    }
+
+    #[test]
+    fn test_convert_to_bigint() {
+        fn check(n: BigUint, ans: BigInt) {
+            assert_eq!(n.to_bigint(), ans);
+            assert_eq!(n.to_bigint().to_biguint(), n);
+        }
+        check(Zero::zero(), Zero::zero());
+        check(BigUint::from_uint(637), BigInt::from_uint(637));
     }
 
     static sum_triples: &'static [(&'static [BigDigit],
@@ -1698,6 +1724,21 @@ mod bigint_tests {
         assert!(BigInt::from_biguint(
             Minus, BigUint::new(~[1, 2, 3])
         ).to_uint() == 0);
+    }
+
+    #[test]
+    fn test_convert_to_biguint() {
+        fn check(n: BigInt, ans_1: BigUint, ans_2: BigInt) {
+            assert_eq!(n.to_biguint(), ans_1);
+            assert_eq!(n.to_biguint().to_bigint(), ans_2);
+        }
+        let zero: BigInt = Zero::zero();
+        let unsigned_zero: BigUint = Zero::zero();
+        let positive: BigInt = BigInt::from_uint(637);
+        let negative = -positive;
+        check(zero.clone(), unsigned_zero.clone(), zero.clone());
+        check(positive.clone(), BigUint::from_uint(637), positive);
+        check(negative, unsigned_zero, zero);
     }
 
     static sum_triples: &'static [(&'static [BigDigit],
