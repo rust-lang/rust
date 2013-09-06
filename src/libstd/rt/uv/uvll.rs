@@ -72,6 +72,7 @@ pub type uv_timer_t = c_void;
 pub type uv_stream_t = c_void;
 pub type uv_fs_t = c_void;
 pub type uv_udp_send_t = c_void;
+pub type uv_getaddrinfo_t = c_void;
 
 #[cfg(stage0)]
 pub type uv_idle_cb = *u8;
@@ -97,6 +98,8 @@ pub type uv_connection_cb = *u8;
 pub type uv_timer_cb = *u8;
 #[cfg(stage0)]
 pub type uv_write_cb = *u8;
+#[cfg(stage0)]
+pub type uv_getaddrinfo_cb = *u8;
 
 #[cfg(not(stage0))]
 pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
@@ -137,11 +140,57 @@ pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t,
 #[cfg(not(stage0))]
 pub type uv_write_cb = extern "C" fn(handle: *uv_write_t,
                                      status: c_int);
+#[cfg(not(stage0))]
+pub type uv_getaddrinfo_cb = extern "C" fn(req: *uv_getaddrinfo_t,
+                                           status: c_int,
+                                           res: *addrinfo);
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
 pub type sockaddr_in6 = c_void;
 pub type sockaddr_storage = c_void;
+
+#[cfg(unix)]
+pub type socklen_t = c_int;
+
+// XXX: This is a standard C type. Could probably be defined in libc
+#[cfg(target_os = "android")]
+#[cfg(target_os = "linux")]
+pub struct addrinfo {
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: socklen_t,
+    ai_addr: *sockaddr,
+    ai_canonname: *char,
+    ai_next: *addrinfo
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+pub struct addrinfo {
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: socklen_t,
+    ai_canonname: *char,
+    ai_addr: *sockaddr,
+    ai_next: *addrinfo
+}
+
+#[cfg(windows)]
+pub struct addrinfo {
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: size_t,
+    ai_canonname: *char,
+    ai_addr: *sockaddr,
+    ai_next: *addrinfo
+}
 
 #[deriving(Eq)]
 pub enum uv_handle_type {
@@ -666,6 +715,11 @@ pub unsafe fn get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t {
 
     rust_uv_get_loop_from_fs_req(req)
 }
+pub unsafe fn get_loop_from_getaddrinfo_req(req: *uv_getaddrinfo_t) -> *uv_loop_t {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_get_loop_from_getaddrinfo_req(req)
+}
 pub unsafe fn get_loop_for_uv_handle<T>(handle: *T) -> *c_void {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -721,6 +775,18 @@ pub unsafe fn get_len_from_buf(buf: uv_buf_t) -> size_t {
 
     return rust_uv_get_len_from_buf(buf);
 }
+pub unsafe fn getaddrinfo(loop_: *uv_loop_t, req: *uv_getaddrinfo_t,
+               getaddrinfo_cb: uv_getaddrinfo_cb,
+               node: *c_char, service: *c_char,
+               hints: *addrinfo) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_getaddrinfo(loop_, req, getaddrinfo_cb, node, service, hints);
+}
+pub unsafe fn freeaddrinfo(ai: *addrinfo) {
+    #[fixed_stack_segment]; #[inline(never)];
+    rust_uv_freeaddrinfo(ai);
+}
+
 pub unsafe fn get_last_err_info(uv_loop: *c_void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::to_unsafe_ptr(&err);
@@ -845,6 +911,7 @@ extern {
     fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
     fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
     fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
+    fn rust_uv_get_loop_from_getaddrinfo_req(req: *uv_fs_t) -> *uv_loop_t;
 
     fn rust_uv_get_stream_handle_from_connect_req(connect_req: *uv_connect_t) -> *uv_stream_t;
     fn rust_uv_get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t;
@@ -857,4 +924,9 @@ extern {
     fn rust_uv_set_data_for_req(req: *c_void, data: *c_void);
     fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
     fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> size_t;
+    fn rust_uv_getaddrinfo(loop_: *uv_loop_t, req: *uv_getaddrinfo_t,
+                           getaddrinfo_cb: uv_getaddrinfo_cb,
+                           node: *c_char, service: *c_char,
+                           hints: *addrinfo) -> c_int;
+    fn rust_uv_freeaddrinfo(ai: *addrinfo);
 }
