@@ -823,7 +823,7 @@ do
         index2="${CFG_SRC_DIR}src/llvm/.git/index"
         for index in ${index1} ${index2}
         do
-            config_status="${CFG_BUILD_DIR}llvm/$t/config.status"
+            config_status="${LLVM_BUILD_DIR}/config.status"
             if test -e ${index} -a \
                     -e ${config_status} -a \
                     ${config_status} -nt ${index}
