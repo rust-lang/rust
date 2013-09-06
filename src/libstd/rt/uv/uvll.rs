@@ -154,7 +154,8 @@ pub type sockaddr_storage = c_void;
 pub type socklen_t = c_int;
 
 // XXX: This is a standard C type. Could probably be defined in libc
-#[cfg(unix)]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "linux")]
 pub struct addrinfo {
     ai_flags: c_int,
     ai_family: c_int,
@@ -163,6 +164,19 @@ pub struct addrinfo {
     ai_addrlen: socklen_t,
     ai_addr: *sockaddr,
     ai_canonname: *char,
+    ai_next: *addrinfo
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+pub struct addrinfo {
+    ai_flags: c_int,
+    ai_family: c_int,
+    ai_socktype: c_int,
+    ai_protocol: c_int,
+    ai_addrlen: socklen_t,
+    ai_canonname: *char,
+    ai_addr: *sockaddr,
     ai_next: *addrinfo
 }
 
