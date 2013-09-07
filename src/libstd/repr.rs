@@ -178,7 +178,7 @@ impl<'self> ReprVisitor<'self> {
     pub fn write_escaped_slice(&mut self, slice: &str) {
         self.writer.write(['"' as u8]);
         for ch in slice.iter() {
-            self.write_escaped_char(ch);
+            self.write_escaped_char(ch, true);
         }
         self.writer.write(['"' as u8]);
     }
@@ -230,14 +230,26 @@ impl<'self> ReprVisitor<'self> {
                              v.fill, inner)
     }
 
-    fn write_escaped_char(&mut self, ch: char) {
+    fn write_escaped_char(&mut self, ch: char, is_str: bool) {
         match ch {
             '\t' => self.writer.write("\\t".as_bytes()),
             '\r' => self.writer.write("\\r".as_bytes()),
             '\n' => self.writer.write("\\n".as_bytes()),
             '\\' => self.writer.write("\\\\".as_bytes()),
-            '\'' => self.writer.write("\\'".as_bytes()),
-            '"' => self.writer.write("\\\"".as_bytes()),
+            '\'' => {
+                if is_str {
+                    self.writer.write("'".as_bytes())
+                } else {
+                    self.writer.write("\\'".as_bytes())
+                }
+            }
+            '"' => {
+                if is_str {
+                    self.writer.write("\\\"".as_bytes())
+                } else {
+                    self.writer.write("\"".as_bytes())
+                }
+            }
             '\x20'..'\x7e' => self.writer.write([ch as u8]),
             _ => {
                 do char::escape_unicode(ch) |c| {
@@ -274,7 +286,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     fn visit_char(&mut self) -> bool {
         do self.get::<char> |this, &ch| {
             this.writer.write(['\'' as u8]);
-            this.write_escaped_char(ch);
+            this.write_escaped_char(ch, false);
             this.writer.write(['\'' as u8]);
         }
     }
@@ -683,6 +695,11 @@ fn test_repr() {
                "(10u32, ~\"hello\")");
     exact_test(&(10u64, ~"hello"),
                "(10u64, ~\"hello\")");
+
+    exact_test(&'\'', "'\\''");
+    exact_test(&'"', "'\"'");
+    exact_test(&("'"), "\"'\"");
+    exact_test(&("\""), "\"\\\"\"");
 
     exact_test(&println, "fn(&str)");
     exact_test(&swap::<int>, "fn(&mut int, &mut int)");
