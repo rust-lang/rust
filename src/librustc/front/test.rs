@@ -280,10 +280,10 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_extra,
                                             path_node(~[id_extra]),
-                                            cx.sess.next_node_id()))])
+                                            ast::DUMMY_NODE_ID))])
     } else {
         let mi = attr::mk_name_value_item_str(@"vers", @"0.8-pre");
-        ast::view_item_extern_mod(id_extra, None, ~[mi], cx.sess.next_node_id())
+        ast::view_item_extern_mod(id_extra, None, ~[mi], ast::DUMMY_NODE_ID)
     };
     ast::view_item {
         node: vi,
@@ -325,7 +325,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let item = ast::item {
         ident: cx.sess.ident_of("__test"),
         attrs: ~[resolve_unexported_attr],
-        id: cx.sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::public,
         span: dummy_sp(),
@@ -367,7 +367,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let item = ast::item {
         ident: cx.sess.ident_of("__test"),
         attrs: ~[resolve_unexported_attr],
-        id: cx.sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::public,
         span: dummy_sp(),
@@ -448,15 +448,14 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
         descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 
-    let sess = cx.sess;
     let inner_expr = @ast::Expr {
-        id: sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprVec(descs, ast::MutImmutable),
         span: dummy_sp(),
     };
 
     @ast::Expr {
-        id: sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprVstore(inner_expr, ast::ExprVstoreSlice),
         span: dummy_sp(),
     }
@@ -475,7 +474,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
         nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
 
     let name_expr = @ast::Expr {
-          id: cx.sess.next_node_id(),
+          id: ast::DUMMY_NODE_ID,
           node: ast::ExprLit(@name_lit),
           span: span
     };
@@ -483,7 +482,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let fn_path = path_node_global(path);
 
     let fn_expr = @ast::Expr {
-        id: cx.sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprPath(fn_path),
         span: span,
     };
@@ -529,7 +528,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
         nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
 
     let name_expr = @ast::Expr {
-          id: cx.sess.next_node_id(),
+          id: ast::DUMMY_NODE_ID,
           node: ast::ExprLit(@name_lit),
           span: span
     };
@@ -537,7 +536,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let fn_path = path_node_global(path);
 
     let fn_expr = @ast::Expr {
-        id: cx.sess.next_node_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprPath(fn_path),
         span: span,
     };

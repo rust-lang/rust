@@ -13,7 +13,6 @@ use ast::Ident;
 use ast;
 use ast_util;
 use codemap::{Span, respan, dummy_sp};
-use fold;
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use opt_vec;
@@ -277,7 +276,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn ty(&self, span: Span, ty: ast::ty_) -> ast::Ty {
         ast::Ty {
-            id: self.next_id(),
+            id: ast::DUMMY_NODE_ID,
             span: span,
             node: ty
         }
@@ -286,7 +285,7 @@ impl AstBuilder for @ExtCtxt {
     fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
               -> ast::Ty {
         self.ty(path.span,
-                ast::ty_path(path, bounds, self.next_id()))
+                ast::ty_path(path, bounds, ast::DUMMY_NODE_ID))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want
@@ -340,14 +339,14 @@ impl AstBuilder for @ExtCtxt {
 
     fn ty_nil(&self) -> ast::Ty {
         ast::Ty {
-            id: self.next_id(),
+            id: ast::DUMMY_NODE_ID,
             node: ast::ty_nil,
             span: dummy_sp(),
         }
     }
 
     fn typaram(&self, id: ast::Ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam {
-        ast::TyParam { ident: id, id: self.next_id(), bounds: bounds }
+        ast::TyParam { ident: id, id: ast::DUMMY_NODE_ID, bounds: bounds }
     }
 
     // these are strange, and probably shouldn't be used outside of
@@ -377,7 +376,7 @@ impl AstBuilder for @ExtCtxt {
     fn trait_ref(&self, path: ast::Path) -> ast::trait_ref {
         ast::trait_ref {
             path: path,
-            ref_id: self.next_id()
+            ref_id: ast::DUMMY_NODE_ID
         }
     }
 
@@ -386,11 +385,11 @@ impl AstBuilder for @ExtCtxt {
     }
 
     fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {
-        ast::Lifetime { id: self.next_id(), span: span, ident: ident }
+        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, ident: ident }
     }
 
     fn stmt_expr(&self, expr: @ast::Expr) -> @ast::Stmt {
-        @respan(expr.span, ast::StmtSemi(expr, self.next_id()))
+        @respan(expr.span, ast::StmtSemi(expr, ast::DUMMY_NODE_ID))
     }
 
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: @ast::Expr) -> @ast::Stmt {
@@ -400,11 +399,11 @@ impl AstBuilder for @ExtCtxt {
             ty: self.ty_infer(sp),
             pat: pat,
             init: Some(ex),
-            id: self.next_id(),
+            id: ast::DUMMY_NODE_ID,
             span: sp,
         };
         let decl = respan(sp, ast::DeclLocal(local));
-        @respan(sp, ast::StmtDecl(@decl, self.next_id()))
+        @respan(sp, ast::StmtDecl(@decl, ast::DUMMY_NODE_ID))
     }
 
     fn stmt_let_typed(&self,
@@ -420,11 +419,11 @@ impl AstBuilder for @ExtCtxt {
             ty: typ,
             pat: pat,
             init: Some(ex),
-            id: self.next_id(),
+            id: ast::DUMMY_NODE_ID,
             span: sp,
         };
         let decl = respan(sp, ast::DeclLocal(local));
-        @respan(sp, ast::StmtDecl(@decl, self.next_id()))
+        @respan(sp, ast::StmtDecl(@decl, ast::DUMMY_NODE_ID))
     }
 
     fn block(&self, span: Span, stmts: ~[@ast::Stmt], expr: Option<@Expr>) -> ast::Block {
@@ -443,7 +442,7 @@ impl AstBuilder for @ExtCtxt {
                view_items: view_items,
                stmts: stmts,
                expr: expr,
-               id: self.next_id(),
+               id: ast::DUMMY_NODE_ID,
                rules: ast::DefaultBlock,
                span: span,
            }
@@ -451,7 +450,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn expr(&self, span: Span, node: ast::Expr_) -> @ast::Expr {
         @ast::Expr {
-            id: self.next_id(),
+            id: ast::DUMMY_NODE_ID,
             node: node,
             span: span,
         }
@@ -470,7 +469,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn expr_binary(&self, sp: Span, op: ast::BinOp,
                    lhs: @ast::Expr, rhs: @ast::Expr) -> @ast::Expr {
-        self.expr(sp, ast::ExprBinary(self.next_id(), op, lhs, rhs))
+        self.expr(sp, ast::ExprBinary(ast::DUMMY_NODE_ID, op, lhs, rhs))
     }
 
     fn expr_deref(&self, sp: Span, e: @ast::Expr) -> @ast::Expr {
@@ -478,7 +477,7 @@ impl AstBuilder for @ExtCtxt {
     }
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: @ast::Expr)
         -> @ast::Expr {
-        self.expr(sp, ast::ExprUnary(self.next_id(), op, e))
+        self.expr(sp, ast::ExprUnary(ast::DUMMY_NODE_ID, op, e))
     }
 
     fn expr_managed(&self, sp: Span, e: @ast::Expr) -> @ast::Expr {
@@ -512,7 +511,7 @@ impl AstBuilder for @ExtCtxt {
                         ident: ast::Ident,
                         args: ~[@ast::Expr]) -> @ast::Expr {
         self.expr(span,
-                  ast::ExprMethodCall(self.next_id(), expr, ident, ~[], args, ast::NoSugar))
+                  ast::ExprMethodCall(ast::DUMMY_NODE_ID, expr, ident, ~[], args, ast::NoSugar))
     }
     fn expr_block(&self, b: ast::Block) -> @ast::Expr {
         self.expr(b.span, ast::ExprBlock(b))
@@ -583,7 +582,7 @@ impl AstBuilder for @ExtCtxt {
 
 
     fn pat(&self, span: Span, pat: ast::Pat_) -> @ast::Pat {
-        @ast::Pat { id: self.next_id(), node: pat, span: span }
+        @ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span: span }
     }
     fn pat_wild(&self, span: Span) -> @ast::Pat {
         self.pat(span, ast::PatWild)
@@ -695,7 +694,7 @@ impl AstBuilder for @ExtCtxt {
             is_mutbl: false,
             ty: ty,
             pat: arg_pat,
-            id: self.next_id()
+            id: ast::DUMMY_NODE_ID
         }
     }
 
@@ -714,7 +713,7 @@ impl AstBuilder for @ExtCtxt {
         // Rust coding conventions
         @ast::item { ident: name,
                     attrs: attrs,
-                    id: self.next_id(),
+                    id: ast::DUMMY_NODE_ID,
                     node: node,
                     vis: ast::public,
                     span: span }
@@ -755,7 +754,7 @@ impl AstBuilder for @ExtCtxt {
 
     fn variant(&self, span: Span, name: Ident, tys: ~[ast::Ty]) -> ast::variant {
         let args = tys.move_iter().map(|ty| {
-            ast::variant_arg { ty: ty, id: self.next_id() }
+            ast::variant_arg { ty: ty, id: ast::DUMMY_NODE_ID }
         }).collect();
 
         respan(span,
@@ -763,7 +762,7 @@ impl AstBuilder for @ExtCtxt {
                    name: name,
                    attrs: ~[],
                    kind: ast::tuple_variant_kind(args),
-                   id: self.next_id(),
+                   id: ast::DUMMY_NODE_ID,
                    disr_expr: None,
                    vis: ast::public
                })
@@ -860,43 +859,20 @@ impl AstBuilder for @ExtCtxt {
     fn view_use_list(&self, sp: Span, vis: ast::visibility,
                      path: ~[ast::Ident], imports: &[ast::Ident]) -> ast::view_item {
         let imports = do imports.map |id| {
-            respan(sp, ast::path_list_ident_ { name: *id, id: self.next_id() })
+            respan(sp, ast::path_list_ident_ { name: *id, id: ast::DUMMY_NODE_ID })
         };
 
         self.view_use(sp, vis,
                       ~[@respan(sp,
                                 ast::view_path_list(self.path(sp, path),
                                                     imports,
-                                                    self.next_id()))])
+                                                    ast::DUMMY_NODE_ID))])
     }
 
     fn view_use_glob(&self, sp: Span,
                      vis: ast::visibility, path: ~[ast::Ident]) -> ast::view_item {
         self.view_use(sp, vis,
                       ~[@respan(sp,
-                                ast::view_path_glob(self.path(sp, path), self.next_id()))])
-    }
-}
-
-
-pub trait Duplicate {
-    //
-    // Duplication functions
-    //
-    // These functions just duplicate AST nodes.
-    //
-
-    fn duplicate(&self, cx: @ExtCtxt) -> Self;
-}
-
-impl Duplicate for @ast::Expr {
-    fn duplicate(&self, cx: @ExtCtxt) -> @ast::Expr {
-        let folder = fold::default_ast_fold();
-        let folder = @fold::AstFoldFns {
-            new_id: |_| cx.next_id(),
-            ..*folder
-        };
-        let folder = fold::make_fold(folder);
-        folder.fold_expr(*self)
+                                ast::view_path_glob(self.path(sp, path), ast::DUMMY_NODE_ID))])
     }
 }

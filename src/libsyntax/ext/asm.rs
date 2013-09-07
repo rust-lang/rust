@@ -76,7 +76,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                     p.expect(&token::RPAREN);
 
                     let out = @ast::Expr {
-                        id: cx.next_id(),
+                        id: ast::DUMMY_NODE_ID,
                         span: out.span,
                         node: ast::ExprAddrOf(ast::MutMutable, out)
                     };
@@ -172,7 +172,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     }
 
     MRExpr(@ast::Expr {
-        id: cx.next_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::inline_asm {
             asm: asm,
             clobbers: cons.to_managed(),
