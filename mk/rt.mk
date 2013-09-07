@@ -178,7 +178,7 @@ export PYTHONPATH := $(PYTHONPATH):$$(S)src/gyp/pylib
 
 $$(LIBUV_MAKEFILE_$(1)_$(2)):
 	(cd $(S)src/libuv/ && \
-	 ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
+	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
 
 # XXX: Shouldn't need platform-specific conditions here
