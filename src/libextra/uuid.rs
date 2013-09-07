@@ -210,7 +210,7 @@ impl Uuid {
     ///
     /// # Arguments
     /// * `b` An array or slice of 16 bytes
-    pub fn from_utf8(b: &[u8]) -> Option<Uuid> {
+    pub fn from_bytes(b: &[u8]) -> Option<Uuid> {
         if b.len() != 16 {
             return None
         }
@@ -413,7 +413,7 @@ impl Uuid {
             ub[i] = FromStrRadix::from_str_radix(vs.slice(i*2, (i+1)*2), 16).unwrap();
         }
 
-        Ok(Uuid::from_utf8(ub).unwrap())
+        Ok(Uuid::from_bytes(ub).unwrap())
     }
 }
 
@@ -705,11 +705,11 @@ mod test {
     }
 
     #[test]
-    fn test_from_utf8() {
+    fn test_from_bytes() {
         let b = ~[ 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
                    0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 ];
 
-        let u = Uuid::from_utf8(b).unwrap();
+        let u = Uuid::from_bytes(b).unwrap();
         let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
 
         assert!(u.to_simple_str() == expected);
@@ -729,7 +729,7 @@ mod test {
         let b_in: [u8, ..16] = [ 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
                                  0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 ];
 
-        let u = Uuid::from_utf8(b_in.clone()).unwrap();
+        let u = Uuid::from_bytes(b_in.clone()).unwrap();
 
         let b_out = u.to_bytes();
 
