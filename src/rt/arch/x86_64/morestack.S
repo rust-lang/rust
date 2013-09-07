@@ -76,14 +76,10 @@ MORESTACK:
 	movq %rax, %rsi // Address of stack arguments
 	movq %r10, %rdi // The amount of stack needed
 
-#ifdef __APPLE__
+#if defined(__linux__) || defined(__FreeBSD__)
+	call UPCALL_NEW_STACK@PLT
+#else
 	call UPCALL_NEW_STACK
-#endif
-#ifdef __linux__
-	call UPCALL_NEW_STACK@PLT
-#endif
-#ifdef __FreeBSD__
-	call UPCALL_NEW_STACK@PLT
 #endif
 
 	// Pop the saved arguments
@@ -108,14 +104,10 @@ MORESTACK:
 	// Save the return value
 	pushq %rax
 
-#ifdef __APPLE__
+#if defined(__linux__) || defined(__FreeBSD__)
+	call UPCALL_DEL_STACK@PLT
+#else
 	call UPCALL_DEL_STACK
-#endif
-#ifdef __linux__
-	call UPCALL_DEL_STACK@PLT
-#endif
-#ifdef __FreeBSD__
-	call UPCALL_DEL_STACK@PLT
 #endif
 
 	popq %rax // Restore the return value
