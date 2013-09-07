@@ -49,6 +49,7 @@ pub trait Repr<T> {
     /// struct representation. This can be used to read/write different values
     /// for the struct. This is a safe method because by default it does not
     /// give write-access to the struct returned.
+    #[inline]
     fn repr(&self) -> T { unsafe { cast::transmute_copy(self) } }
 }
 
