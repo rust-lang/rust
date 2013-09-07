@@ -190,6 +190,9 @@ pub fn phase_2_configure_and_expand(sess: Session,
     crate = time(time_passes, ~"std injection", ||
                  front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
+    crate = time(time_passes, ~"renumbering AST", ||
+                 front::renumber::renumber_crate(sess, crate));
+
     return crate;
 }
 
@@ -207,6 +210,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                    crate: @ast::Crate) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
+
     let ast_map = time(time_passes, ~"ast indexing", ||
                        syntax::ast_map::map_crate(sess.diagnostic(), crate));
 

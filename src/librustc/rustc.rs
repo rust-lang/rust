@@ -80,6 +80,7 @@ pub mod front {
     pub mod config;
     pub mod test;
     pub mod std_inject;
+    pub mod renumber;
 }
 
 pub mod back {
