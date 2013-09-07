@@ -15,6 +15,7 @@
 
 #[allow(missing_doc)];
 
+use clone::{Clone, DeepClone};
 use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
@@ -274,7 +275,9 @@ pub trait Bounded {
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
-pub trait Primitive: Num
+pub trait Primitive: Clone
+                   + DeepClone
+                   + Num
                    + NumCast
                    + Bounded
                    + Neg<Self>
