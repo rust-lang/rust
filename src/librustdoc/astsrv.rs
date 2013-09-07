@@ -29,6 +29,7 @@ use rustc::driver::session::{basic_options, options};
 use rustc::front;
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_util;
 use syntax;
 
 pub struct Ctxt {
@@ -108,6 +109,16 @@ pub fn exec<T:Send>(
     po.recv()
 }
 
+fn assign_node_ids(crate: @ast::Crate) -> @ast::Crate {
+    let next_id = @mut 0;
+    let fold = ast_util::node_id_assigner(|| {
+            let i = *next_id;
+            *next_id += 1;
+            i
+        });
+    @fold.fold_crate(crate)
+}
+
 fn build_ctxt(sess: Session,
               ast: @ast::Crate) -> Ctxt {
 
@@ -121,6 +132,7 @@ fn build_ctxt(sess: Session,
                                                 sess.opts.cfg.clone(),
                                                 ast);
     let ast = front::test::modify_for_testing(sess, ast);
+    let ast = assign_node_ids(ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), ast);
 
     Ctxt {

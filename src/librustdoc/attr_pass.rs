@@ -281,6 +281,7 @@ mod test {
     fn should_extract_enum_docs() {
         let doc = mk_doc(~"#[doc = \"b\"]\
                                  enum a { v }");
+        debug!("%?", doc);
         assert!(doc.cratemod().enums()[0].desc() == Some(~"b"));
     }
 

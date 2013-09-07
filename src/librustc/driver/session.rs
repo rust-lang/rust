@@ -28,6 +28,7 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
+use std::int;
 use std::hashmap::HashMap;
 
 #[deriving(Eq)]
@@ -216,57 +217,58 @@ pub struct Session_ {
     building_library: @mut bool,
     working_dir: Path,
     lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
+    node_id: @mut uint,
 }
 
 pub type Session = @Session_;
 
 impl Session_ {
-    pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
-    pub fn fatal(@self, msg: &str) -> ! {
+    pub fn fatal(&self, msg: &str) -> ! {
         self.span_diagnostic.handler().fatal(msg)
     }
-    pub fn span_err(@self, sp: Span, msg: &str) {
+    pub fn span_err(&self, sp: Span, msg: &str) {
         self.span_diagnostic.span_err(sp, msg)
     }
-    pub fn err(@self, msg: &str) {
+    pub fn err(&self, msg: &str) {
         self.span_diagnostic.handler().err(msg)
     }
-    pub fn err_count(@self) -> uint {
+    pub fn err_count(&self) -> uint {
         self.span_diagnostic.handler().err_count()
     }
-    pub fn has_errors(@self) -> bool {
+    pub fn has_errors(&self) -> bool {
         self.span_diagnostic.handler().has_errors()
     }
-    pub fn abort_if_errors(@self) {
+    pub fn abort_if_errors(&self) {
         self.span_diagnostic.handler().abort_if_errors()
     }
-    pub fn span_warn(@self, sp: Span, msg: &str) {
+    pub fn span_warn(&self, sp: Span, msg: &str) {
         self.span_diagnostic.span_warn(sp, msg)
     }
-    pub fn warn(@self, msg: &str) {
+    pub fn warn(&self, msg: &str) {
         self.span_diagnostic.handler().warn(msg)
     }
-    pub fn span_note(@self, sp: Span, msg: &str) {
+    pub fn span_note(&self, sp: Span, msg: &str) {
         self.span_diagnostic.span_note(sp, msg)
     }
-    pub fn note(@self, msg: &str) {
+    pub fn note(&self, msg: &str) {
         self.span_diagnostic.handler().note(msg)
     }
-    pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_bug(sp, msg)
     }
-    pub fn bug(@self, msg: &str) -> ! {
+    pub fn bug(&self, msg: &str) -> ! {
         self.span_diagnostic.handler().bug(msg)
     }
-    pub fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_unimpl(sp, msg)
     }
-    pub fn unimpl(@self, msg: &str) -> ! {
+    pub fn unimpl(&self, msg: &str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    pub fn add_lint(@self,
+    pub fn add_lint(&self,
                     lint: lint::lint,
                     id: ast::NodeId,
                     sp: Span,
@@ -277,77 +279,85 @@ impl Session_ {
         }
         self.lints.insert(id, ~[(lint, sp, msg)]);
     }
-    pub fn next_node_id(@self) -> ast::NodeId {
-        return syntax::parse::next_node_id(self.parse_sess);
+    pub fn next_node_id(&self) -> ast::NodeId {
+        self.reserve_node_ids(1)
     }
-    pub fn diagnostic(@self) -> @mut diagnostic::span_handler {
+    pub fn reserve_node_ids(&self, count: uint) -> ast::NodeId {
+        let v = *self.node_id;
+        *self.node_id += count;
+        if v > (int::max_value as uint) {
+            self.bug("Input too large, ran out of node ids!");
+        }
+        v as int
+    }
+    pub fn diagnostic(&self) -> @mut diagnostic::span_handler {
         self.span_diagnostic
     }
-    pub fn debugging_opt(@self, opt: uint) -> bool {
+    pub fn debugging_opt(&self, opt: uint) -> bool {
         (self.opts.debugging_opts & opt) != 0u
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
-    pub fn impossible_case(@self, sp: Span, msg: &str) -> ! {
+    pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, fmt!("Impossible case reached: %s", msg));
     }
-    pub fn verbose(@self) -> bool { self.debugging_opt(verbose) }
-    pub fn time_passes(@self) -> bool { self.debugging_opt(time_passes) }
-    pub fn count_llvm_insns(@self) -> bool {
+    pub fn verbose(&self) -> bool { self.debugging_opt(verbose) }
+    pub fn time_passes(&self) -> bool { self.debugging_opt(time_passes) }
+    pub fn count_llvm_insns(&self) -> bool {
         self.debugging_opt(count_llvm_insns)
     }
-    pub fn count_type_sizes(@self) -> bool {
+    pub fn count_type_sizes(&self) -> bool {
         self.debugging_opt(count_type_sizes)
     }
-    pub fn time_llvm_passes(@self) -> bool {
+    pub fn time_llvm_passes(&self) -> bool {
         self.debugging_opt(time_llvm_passes)
     }
-    pub fn trans_stats(@self) -> bool { self.debugging_opt(trans_stats) }
-    pub fn meta_stats(@self) -> bool { self.debugging_opt(meta_stats) }
-    pub fn asm_comments(@self) -> bool { self.debugging_opt(asm_comments) }
-    pub fn no_verify(@self) -> bool { self.debugging_opt(no_verify) }
-    pub fn lint_llvm(@self) -> bool { self.debugging_opt(lint_llvm) }
-    pub fn trace(@self) -> bool { self.debugging_opt(trace) }
-    pub fn coherence(@self) -> bool { self.debugging_opt(coherence) }
-    pub fn borrowck_stats(@self) -> bool { self.debugging_opt(borrowck_stats) }
-    pub fn borrowck_note_pure(@self) -> bool {
+    pub fn trans_stats(&self) -> bool { self.debugging_opt(trans_stats) }
+    pub fn meta_stats(&self) -> bool { self.debugging_opt(meta_stats) }
+    pub fn asm_comments(&self) -> bool { self.debugging_opt(asm_comments) }
+    pub fn no_verify(&self) -> bool { self.debugging_opt(no_verify) }
+    pub fn lint_llvm(&self) -> bool { self.debugging_opt(lint_llvm) }
+    pub fn trace(&self) -> bool { self.debugging_opt(trace) }
+    pub fn coherence(&self) -> bool { self.debugging_opt(coherence) }
+    pub fn borrowck_stats(&self) -> bool { self.debugging_opt(borrowck_stats) }
+    pub fn borrowck_note_pure(&self) -> bool {
         self.debugging_opt(borrowck_note_pure)
     }
-    pub fn borrowck_note_loan(@self) -> bool {
+    pub fn borrowck_note_loan(&self) -> bool {
         self.debugging_opt(borrowck_note_loan)
     }
-    pub fn no_monomorphic_collapse(@self) -> bool {
+    pub fn no_monomorphic_collapse(&self) -> bool {
         self.debugging_opt(no_monomorphic_collapse)
     }
-    pub fn debug_borrows(@self) -> bool {
+    pub fn debug_borrows(&self) -> bool {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
-    pub fn once_fns(@self) -> bool { self.debugging_opt(once_fns) }
-    pub fn print_llvm_passes(@self) -> bool {
+    pub fn once_fns(&self) -> bool { self.debugging_opt(once_fns) }
+    pub fn print_llvm_passes(&self) -> bool {
         self.debugging_opt(print_llvm_passes)
     }
-    pub fn no_prepopulate_passes(@self) -> bool {
+    pub fn no_prepopulate_passes(&self) -> bool {
         self.debugging_opt(no_prepopulate_passes)
     }
-    pub fn no_vectorize_loops(@self) -> bool {
+    pub fn no_vectorize_loops(&self) -> bool {
         self.debugging_opt(no_vectorize_loops)
     }
-    pub fn no_vectorize_slp(@self) -> bool {
+    pub fn no_vectorize_slp(&self) -> bool {
         self.debugging_opt(no_vectorize_slp)
     }
 
     // pointless function, now...
-    pub fn str_of(@self, id: ast::Ident) -> @str {
+    pub fn str_of(&self, id: ast::Ident) -> @str {
         token::ident_to_str(&id)
     }
 
     // pointless function, now...
-    pub fn ident_of(@self, st: &str) -> ast::Ident {
+    pub fn ident_of(&self, st: &str) -> ast::Ident {
         token::str_to_ident(st)
     }
 
     // pointless function, now...
-    pub fn intr(@self) -> @syntax::parse::token::ident_interner {
+    pub fn intr(&self) -> @syntax::parse::token::ident_interner {
         token::get_ident_interner()
     }
 }

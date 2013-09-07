@@ -12,7 +12,7 @@ use ast;
 use ast::{MetaItem, item, Expr, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
-use ext::build::{AstBuilder, Duplicate};
+use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 
 use std::vec;
@@ -62,7 +62,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let rand_call = || {
         cx.expr_call_global(span,
                             rand_ident.clone(),
-                            ~[ rng[0].duplicate(cx) ])
+                            ~[ rng[0] ])
     };
 
     return match *substr.fields {
@@ -86,7 +86,7 @@ fn rand_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
             // ::std::rand::Rand::rand(rng)
             let rv_call = cx.expr_call(span,
                                        rand_name,
-                                       ~[ rng[0].duplicate(cx) ]);
+                                       ~[ rng[0] ]);
 
             // need to specify the uint-ness of the random number
             let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));

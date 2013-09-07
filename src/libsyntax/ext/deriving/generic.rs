@@ -539,9 +539,9 @@ impl<'self> MethodDef<'self> {
             purity: ast::impure_fn,
             decl: fn_decl,
             body: body_block,
-            id: cx.next_id(),
+            id: ast::DUMMY_NODE_ID,
             span: span,
-            self_id: cx.next_id(),
+            self_id: ast::DUMMY_NODE_ID,
             vis: ast::inherited,
         }
     }
