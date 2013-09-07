@@ -48,13 +48,12 @@
     (if (/= starting (point))
         (rust-rewind-irrelevant))))
 
-(defun rust-first-indent-after-brace ()
+(defun rust-align-to-expr-after-brace ()
   (save-excursion
     (forward-char)
-    (if (looking-at "[[:blank:]]*\\(?://.*\\)?$")
-        ;; We don't want to indent out to the open bracket if the
-        ;; open bracket ends the line
-        (* rust-indent-offset (rust-paren-level))
+    ;; We don't want to indent out to the open bracket if the
+    ;; open bracket ends the line
+    (when (not (looking-at "[[:blank:]]*\\(?://.*\\)?$"))
       (when (looking-at "[[:space:]]") (forward-to-word 1))
       (current-column))))
 
@@ -69,7 +68,8 @@
               ((looking-at "->")
                (save-excursion
                  (backward-list)
-                 (rust-first-indent-after-brace)))
+                 (or (rust-align-to-expr-after-brace)
+                     (* rust-indent-offset (+ 1 level)))))
 
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
@@ -91,24 +91,25 @@
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (if (looking-at "[[({]")
-                     (rust-first-indent-after-brace)
-                   (progn
-                     (goto-char pt)
-                     (back-to-indentation)
-                     (if (looking-at "\\<else\\>")
-                         (* rust-indent-offset (+ 1 level))
-                       (progn
-                         (goto-char pt)
-                         (beginning-of-line)
-                         (rust-rewind-irrelevant)
-                         (end-of-line)
-                         (if (looking-back "[[,;{}(][[:space:]]*\\(?://.*\\)?")
-                             (* rust-indent-offset level)
-                           (back-to-indentation)
-                           (if (looking-at "#")
+                 (or (and (looking-at "[[({]")
+                          (rust-align-to-expr-after-brace))
+                     (progn
+                       (goto-char pt)
+                       (back-to-indentation)
+                       (if (looking-at "\\<else\\>")
+                           (* rust-indent-offset (+ 1 level))
+                         (progn
+                           (goto-char pt)
+                           (beginning-of-line)
+                           (rust-rewind-irrelevant)
+                           (end-of-line)
+                           (if (looking-back
+                                "[[,;{}(][[:space:]]*\\(?://.*\\)?")
                                (* rust-indent-offset level)
-                             (* rust-indent-offset (+ 1 level))))))))))
+                             (back-to-indentation)
+                             (if (looking-at "#")
+                                 (* rust-indent-offset level)
+                               (* rust-indent-offset (+ 1 level))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))

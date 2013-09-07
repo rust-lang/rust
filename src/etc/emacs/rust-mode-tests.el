@@ -378,3 +378,15 @@ fn nexted_fns(a: fn(b:int,
 }
 "
 ))
+
+(ert-deftest indent-multi-line-expr ()
+  (test-indent
+   "
+fn foo()
+{
+    x();
+    let a =
+        b();
+}
+"
+))
