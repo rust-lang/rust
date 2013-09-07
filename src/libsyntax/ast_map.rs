@@ -72,6 +72,28 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     }
 }
 
+pub fn impl_pretty_name(trait_ref: &Option<trait_ref>,
+                        ty: &Ty, default: Ident) -> path_elt {
+    let itr = get_ident_interner();
+    let ty_ident = match ty.node {
+        ty_path(ref path, _, _) => path.segments.last().identifier,
+        _ => default
+    };
+    let hash = (trait_ref, ty).hash();
+    match *trait_ref {
+        None => path_pretty_name(ty_ident, hash),
+        Some(ref trait_ref) => {
+            // XXX: this dollar sign is actually a relic of being one of the
+            //      very few valid symbol names on unix. These kinds of
+            //      details shouldn't be exposed way up here in the ast.
+            let s = fmt!("%s$%s",
+                         itr.get(trait_ref.path.segments.last().identifier.name),
+                         itr.get(ty_ident.name));
+            path_pretty_name(Ident::new(itr.gensym(s)), hash)
+        }
+    }
+}
+
 #[deriving(Clone)]
 pub enum ast_node {
     node_item(@item, @path),
@@ -216,28 +238,6 @@ impl Ctx {
 
         visit::walk_pat(self, pat, ());
     }
-
-    fn impl_pretty_name(&self, trait_ref: &Option<trait_ref>,
-                        ty: &Ty, default: Ident) -> path_elt {
-        let itr = get_ident_interner();
-        let ty_ident = match ty.node {
-            ty_path(ref path, _, _) => path.segments.last().identifier,
-            _ => default
-        };
-        let hash = (trait_ref, ty).hash();
-        match *trait_ref {
-            None => path_pretty_name(ty_ident, hash),
-            Some(ref trait_ref) => {
-                // XXX: this dollar sign is actually a relic of being one of the
-                //      very few valid symbol names on unix. These kinds of
-                //      details shouldn't be exposed way up here in the ast.
-                let s = fmt!("%s$%s",
-                             itr.get(trait_ref.path.segments.last().identifier.name),
-                             itr.get(ty_ident.name));
-                path_pretty_name(Ident::new(itr.gensym(s)), hash)
-            }
-        }
-    }
 }
 
 impl Visitor<()> for Ctx {
@@ -250,7 +250,7 @@ impl Visitor<()> for Ctx {
                 // Right now the ident on impls is __extensions__ which isn't
                 // very pretty when debugging, so attempt to select a better
                 // name to use.
-                let elt = self.impl_pretty_name(maybe_trait, ty, i.ident);
+                let elt = impl_pretty_name(maybe_trait, ty, i.ident);
 
                 let impl_did = ast_util::local_def(i.id);
                 for m in ms.iter() {

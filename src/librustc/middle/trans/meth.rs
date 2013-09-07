@@ -37,6 +37,7 @@ use std::vec;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};
+use syntax::parse::token;
 use syntax::visit;
 
 /**
@@ -568,8 +569,8 @@ pub fn make_vtable(ccx: &mut CrateContext,
         }
 
         let tbl = C_struct(components);
-        let vtable = ccx.sess.str_of(gensym_name("vtable"));
-        let vt_gvar = do vtable.with_c_str |buf| {
+        let sym = token::gensym("vtable");
+        let vt_gvar = do fmt!("vtable%u", sym).with_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
