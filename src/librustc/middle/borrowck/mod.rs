@@ -788,7 +788,7 @@ impl BorrowckCtxt {
                 match fname {
                     mc::NamedField(ref fname) => {
                         out.push_char('.');
-                        out.push_str(token::ident_to_str(fname));
+                        out.push_str(token::interner_get(*fname));
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here

@@ -553,13 +553,13 @@ impl CoherenceChecker {
         let mut provided_names = HashSet::new();
         // Implemented methods
         for elt in all_methods.iter() {
-            provided_names.insert(elt.ident);
+            provided_names.insert(elt.ident.name);
         }
 
         let r = ty::trait_methods(tcx, trait_did);
         for method in r.iter() {
             debug!("checking for %s", method.ident.repr(tcx));
-            if provided_names.contains(&method.ident) { loop; }
+            if provided_names.contains(&method.ident.name) { loop; }
 
             tcx.sess.span_err(trait_ref_span,
                               fmt!("missing method `%s`",

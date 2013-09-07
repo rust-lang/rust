@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// this now fails (correctly, I claim) because hygiene prevents
-// the assembled identifier from being a reference to the binding.
-
-pub fn main() {
-    let asdf_fdsa = ~"<.<";
-    assert_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
-
-    assert!(stringify!(use_mention_distinction) ==
-                "use_mention_distinction");
+// shouldn't affect evaluation of $ex:
+macro_rules! bad_macro (($ex:expr) => ({let _x = 9; $ex}))
+fn main() {
+    let _x = 8;
+    assert_eq!(bad_macro!(_x),8)
 }
