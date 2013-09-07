@@ -31,7 +31,6 @@ use util::ppaux::{Repr,ty_to_str};
 
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 
 pub fn monomorphic_fn(ccx: @mut CrateContext,
@@ -194,7 +193,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     }
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
-    let elt = path_name(gensym_name(ccx.sess.str_of(name)));
+    let (_, elt) = gensym_name(ccx.sess.str_of(name));
     let mut pt = (*pt).clone();
     pt.push(elt);
     let s = mangle_exported_name(ccx, pt.clone(), mono_ty);

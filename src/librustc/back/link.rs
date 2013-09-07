@@ -39,7 +39,6 @@ use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::print::pprust;
-use syntax::parse::token;
 
 #[deriving(Clone, Eq)]
 pub enum output_type {
@@ -678,8 +677,8 @@ pub fn symbol_hash(tcx: ty::ctxt,
     write_string(symbol_hasher, "-");
     write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
-    // Prefix with _ so that it never blends into adjacent digits
-    hash.unshift_char('_');
+    // Prefix with 'h' so that it never blends into adjacent digits
+    hash.unshift_char('h');
     // tjc: allocation is unfortunate; need to change std::hash
     hash.to_managed()
 }
@@ -722,7 +721,7 @@ pub fn sanitize(s: &str) -> ~str {
             'a' .. 'z'
             | 'A' .. 'Z'
             | '0' .. '9'
-            | '_' | '.' => result.push_char(c),
+            | '_' | '.' | '$' => result.push_char(c),
 
             _ => {
                 let mut tstr = ~"";
@@ -847,9 +846,9 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
                                             name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
+    let (_, name) = gensym_name(name);
     return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(s)),
-                    path_name(gensym_name(name))],
+                  ~[path_name(ccx.sess.ident_of(s)), name],
                   Some(hash.as_slice()),
                   None);
 }
@@ -857,16 +856,13 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
 pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
                                             mut path: path,
                                             flav: &str) -> ~str {
-    path.push(path_name(gensym_name(flav)));
+    let (_, name) = gensym_name(flav);
+    path.push(name);
     mangle(ccx.sess, path, None, None)
 }
 
 pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
     mangle(ccx.sess, path, None, None)
-}
-
-pub fn mangle_internal_name_by_seq(_ccx: &mut CrateContext, flav: &str) -> ~str {
-    return fmt!("%s_%u", flav, token::gensym(flav));
 }
 
 

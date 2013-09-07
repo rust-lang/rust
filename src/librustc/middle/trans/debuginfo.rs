@@ -69,6 +69,7 @@ use std::ptr;
 use std::vec;
 use syntax::codemap::Span;
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 
 static DW_LANG_RUST: c_uint = 0x9000;
@@ -513,7 +514,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         ast_map::node_expr(ref expr) => {
             match expr.node {
                 ast::ExprFnBlock(ref fn_decl, ref top_level_block) => {
-                    let name = gensym_name("fn");
+                    let name = fmt!("fn%u", token::gensym("fn"));
+                    let name = token::str_to_ident(name);
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
