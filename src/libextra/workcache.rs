@@ -493,7 +493,7 @@ impl<'self, T:Send +
 #[test]
 fn test() {
     use std::io::WriterUtil;
-    use std::run;
+    use std::{os, run};
 
     let pth = Path("foo.c");
     {
@@ -501,7 +501,12 @@ fn test() {
         r.unwrap().write_str("int main() { return 0; }");
     }
 
-    let cx = Context::new(RWArc::new(Database::new(Path("db.json"))),
+    let db_path = os::self_exe_path().expect("workcache::test failed").pop().push("db.json");
+    if os::path_exists(&db_path) {
+        os::remove_file(&db_path);
+    }
+
+    let cx = Context::new(RWArc::new(Database::new(db_path)),
                           RWArc::new(Logger::new()),
                           Arc::new(TreeMap::new()));
 
