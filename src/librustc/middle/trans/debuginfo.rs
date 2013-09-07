@@ -1012,7 +1012,7 @@ fn struct_metadata(cx: &mut CrateContext,
 
     let field_llvm_types = do fields.map |field| { type_of::type_of(cx, field.mt.ty) };
     let field_names = do fields.map |field| {
-        if field.ident == special_idents::unnamed_field {
+        if field.ident.name == special_idents::unnamed_field.name {
             ~""
         } else {
             cx.sess.str_of(field.ident).to_owned()
@@ -1875,9 +1875,12 @@ fn populate_scope_map(cx: &mut CrateContext,
                     // }
 
                     // Is there already a binding with that name?
+                    // N.B.: this comparison must be UNhygienic... because
+                    // gdb knows nothing about the context, so any two
+                    // variables with the same name will cause the problem.
                     let need_new_scope = scope_stack
                         .iter()
-                        .any(|entry| entry.ident.iter().any(|i| *i == ident));
+                        .any(|entry| entry.ident.iter().any(|i| i.name == ident.name));
 
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
