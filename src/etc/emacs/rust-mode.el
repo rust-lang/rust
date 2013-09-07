@@ -30,8 +30,11 @@
 
     table))
 
+(defgroup rust-mode nil "Support for Rust code.")
+
 (defcustom rust-indent-offset 4
-  "*Indent Rust code by this number of spaces.")
+  "*Indent Rust code by this number of spaces."
+  :group 'rust-mode)
 
 (defun rust-paren-level () (nth 0 (syntax-ppss)))
 (defun rust-in-str-or-cmnt () (nth 8 (syntax-ppss)))
@@ -45,6 +48,15 @@
     (if (/= starting (point))
         (rust-rewind-irrelevant))))
 
+(defun rust-align-to-expr-after-brace ()
+  (save-excursion
+    (forward-char)
+    ;; We don't want to indent out to the open bracket if the
+    ;; open bracket ends the line
+    (when (not (looking-at "[[:blank:]]*\\(?://.*\\)?$"))
+      (when (looking-at "[[:space:]]") (forward-to-word 1))
+      (current-column))))
+
 (defun rust-mode-indent-line ()
   (interactive)
   (let ((indent
@@ -52,13 +64,17 @@
            (back-to-indentation)
            (let ((level (rust-paren-level)))
              (cond
-              ;; A function return type is 1 level indented
-              ((looking-at "->") (* rust-indent-offset (+ level 1)))
+              ;; A function return type is indented to the corresponding function arguments
+              ((looking-at "->")
+               (save-excursion
+                 (backward-list)
+                 (or (rust-align-to-expr-after-brace)
+                     (* rust-indent-offset (+ 1 level)))))
 
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (* rust-indent-offset (- level 1)))
 
-              ; Doc comments in /** style with leading * indent to line up the *s
+              ;; Doc comments in /** style with leading * indent to line up the *s
               ((and (nth 4 (syntax-ppss)) (looking-at "*"))
                (+ 1 (* rust-indent-offset level)))
 
@@ -75,37 +91,25 @@
                (let ((pt (point)))
                  (rust-rewind-irrelevant)
                  (backward-up-list)
-                 (cond 
-                  ((and
-                      (looking-at "[[(]")
-                      ; We don't want to indent out to the open bracket if the
-                      ; open bracket ends the line
-                      (save-excursion 
-                        (forward-char)
-                        (not (looking-at "[[:space:]]*\\(?://.*\\)?$"))))
-                   (+ 1 (current-column)))
-                  ;; Check for fields on the same line as the open curly brace:
-                  ((looking-at "{[[:blank:]]*[^}\n]*,[[:space:]]*$")
-                   (progn
-                    (forward-char)
-                    (forward-to-word 1)
-                    (current-column)))
-                  (t (progn
-                     (goto-char pt)
-                     (back-to-indentation)
-                     (if (looking-at "\\<else\\>")
-                         (* rust-indent-offset (+ 1 level))
-                       (progn
-                         (goto-char pt)
-                         (beginning-of-line)
-                         (rust-rewind-irrelevant)
-                         (end-of-line)
-                         (if (looking-back "[,;{}(][[:space:]]*\\(?://.*\\)?")
-                             (* rust-indent-offset level)
-                           (back-to-indentation)
-                           (if (looking-at "#")
+                 (or (and (looking-at "[[({]")
+                          (rust-align-to-expr-after-brace))
+                     (progn
+                       (goto-char pt)
+                       (back-to-indentation)
+                       (if (looking-at "\\<else\\>")
+                           (* rust-indent-offset (+ 1 level))
+                         (progn
+                           (goto-char pt)
+                           (beginning-of-line)
+                           (rust-rewind-irrelevant)
+                           (end-of-line)
+                           (if (looking-back
+                                "[[,;{}(][[:space:]]*\\(?://.*\\)?")
                                (* rust-indent-offset level)
-                             (* rust-indent-offset (+ 1 level)))))))))))
+                             (back-to-indentation)
+                             (if (looking-at "#")
+                                 (* rust-indent-offset level)
+                               (* rust-indent-offset (+ 1 level))))))))))
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
@@ -206,6 +210,114 @@
 
          collect `(,(rust-re-item-def item) 1 ,face))))
 
+(defun rust-fill-prefix-for-comment-start (line-start)
+  "Determine what to use for `fill-prefix' based on what is at the beginning of a line."
+  (let ((result 
+         ;; Replace /* with same number of spaces
+         (replace-regexp-in-string
+          "\\(?:/\\*+\\)[!*]" 
+          (lambda (s)
+            ;; We want the * to line up with the first * of the comment start
+            (concat (make-string (- (length s) 2) ?\x20) "*"))
+          line-start)))
+       ;; Make sure we've got at least one space at the end
+    (if (not (= (aref result (- (length result) 1)) ?\x20))
+        (setq result (concat result " ")))
+    result))
+
+(defun rust-in-comment-paragraph (body)
+  ;; We might move the point to fill the next comment, but we don't want it
+  ;; seeming to jump around on the user
+  (save-excursion
+    ;; If we're outside of a comment, with only whitespace and then a comment
+    ;; in front, jump to the comment and prepare to fill it.
+    (when (not (nth 4 (syntax-ppss)))
+      (beginning-of-line)
+      (when (looking-at (concat "[[:space:]\n]*" comment-start-skip))
+        (goto-char (match-end 0))))
+
+    ;; We need this when we're moving the point around and then checking syntax
+    ;; while doing paragraph fills, because the cache it uses isn't always
+    ;; invalidated during this.
+    (syntax-ppss-flush-cache 1)
+    ;; If we're at the beginning of a comment paragraph with nothing but
+    ;; whitespace til the next line, jump to the next line so that we use the
+    ;; existing prefix to figure out what the new prefix should be, rather than
+    ;; inferring it from the comment start.
+    (let ((next-bol (line-beginning-position 2)))
+      (while (save-excursion
+              (end-of-line)
+              (syntax-ppss-flush-cache 1)
+              (and (nth 4 (syntax-ppss))
+                   (save-excursion 
+                     (beginning-of-line)
+                     (looking-at paragraph-start))
+                   (looking-at "[[:space:]]*$")
+                   (nth 4 (syntax-ppss next-bol))))
+        (goto-char next-bol)))
+
+    (syntax-ppss-flush-cache 1)
+    ;; If we're on the last line of a multiline-style comment that started
+    ;; above, back up one line so we don't mistake the * of the */ that ends
+    ;; the comment for a prefix.
+    (when (save-excursion
+            (and (nth 4 (syntax-ppss (line-beginning-position 1)))
+                 (looking-at "[[:space:]]*\\*/")))
+      (goto-char (line-end-position 0)))
+    (funcall body)))
+
+(defun rust-with-comment-fill-prefix (body)
+  (let*
+      ((line-string (buffer-substring-no-properties 
+                     (line-beginning-position) (line-end-position)))
+       (line-comment-start
+        (when (nth 4 (syntax-ppss)) 
+          (cond
+           ;; If we're inside the comment and see a * prefix, use it
+           ((string-match "^\\([[:space:]]*\\*+[[:space:]]*\\)"
+                          line-string)
+            (match-string 1 line-string))
+           ;; If we're at the start of a comment, figure out what prefix
+           ;; to use for the subsequent lines after it
+           ((string-match (concat "[[:space:]]*" comment-start-skip) line-string)
+            (rust-fill-prefix-for-comment-start 
+             (match-string 0 line-string))))))
+       (fill-prefix 
+        (or line-comment-start
+            fill-prefix)))
+    (funcall body)))
+
+(defun rust-find-fill-prefix ()
+  (rust-with-comment-fill-prefix (lambda () fill-prefix)))
+
+(defun rust-fill-paragraph (&rest args)
+  "Special wrapping for `fill-paragraph' to handle multi-line comments with a * prefix on each line."
+  (rust-in-comment-paragraph
+   (lambda () 
+     (rust-with-comment-fill-prefix
+      (lambda ()
+        (let
+            ((fill-paragraph-function
+              (if (not (eq fill-paragraph-function 'rust-fill-paragraph))
+                  fill-paragraph-function)))
+          (apply 'fill-paragraph args)
+          t))))))
+
+(defun rust-do-auto-fill (&rest args)
+  "Special wrapping for `do-auto-fill' to handle multi-line comments with a * prefix on each line."
+  (rust-with-comment-fill-prefix
+   (lambda ()
+     (apply 'do-auto-fill args)
+     t)))
+
+(defun rust-fill-forward-paragraph (arg)
+  ;; This is to work around some funny behavior when a paragraph separator is
+  ;; at the very top of the file and there is a fill prefix.
+  (let ((fill-prefix nil)) (forward-paragraph arg)))
+
+(defun rust-comment-indent-new-line (&optional arg)
+  (rust-with-comment-fill-prefix
+   (lambda () (comment-indent-new-line arg))))
 
 ;; For compatibility with Emacs < 24, derive conditionally
 (defalias 'rust-parent-mode
@@ -215,6 +327,7 @@
 ;;;###autoload
 (define-derived-mode rust-mode rust-parent-mode "Rust"
   "Major mode for Rust code."
+  :group 'rust-mode
 
   ;; Basic syntax
   (set-syntax-table rust-mode-syntax-table)
@@ -230,7 +343,21 @@
   ;; Misc
   (set (make-local-variable 'comment-start) "// ")
   (set (make-local-variable 'comment-end)   "")
-  (set (make-local-variable 'indent-tabs-mode) nil))
+  (set (make-local-variable 'indent-tabs-mode) nil)
+
+  ;; Allow paragraph fills for comments
+  (set (make-local-variable 'comment-start-skip) 
+       "\\(?://[/!]*\\|/\\*[*!]?\\)[[:space:]]*")
+  (set (make-local-variable 'paragraph-start)
+       (concat "[[:space:]]*\\(?:" comment-start-skip "\\|\\*/?[[:space:]]*\\|\\)$"))
+  (set (make-local-variable 'paragraph-separate) paragraph-start)
+  (set (make-local-variable 'normal-auto-fill-function) 'rust-do-auto-fill)
+  (set (make-local-variable 'fill-paragraph-function) 'rust-fill-paragraph)
+  (set (make-local-variable 'fill-forward-paragraph-function) 'rust-fill-forward-paragraph)
+  (set (make-local-variable 'adaptive-fill-function) 'rust-find-fill-prefix)
+  (set (make-local-variable 'comment-multi-line) t)
+  (set (make-local-variable 'comment-line-break-function) 'rust-comment-indent-new-line)
+  )
 
 
 ;;;###autoload
