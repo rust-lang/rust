@@ -304,11 +304,11 @@ impl Pattern {
              && is_sep(prev_char.unwrap_or_default('/')))
         };
 
-        for ti in range(i, self.tokens.len()) {
-            match self.tokens[ti] {
+        for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
+            match *token {
                 AnySequence => {
                     loop {
-                        match self.matches_from(prev_char, file, ti + 1, options) {
+                        match self.matches_from(prev_char, file, i + ti + 1, options) {
                             SubPatternDoesntMatch => (), // keep trying
                             m => return m,
                         }
@@ -331,7 +331,7 @@ impl Pattern {
                     }
 
                     let (c, next) = file.slice_shift_char();
-                    let matches = match self.tokens[ti] {
+                    let matches = match *token {
                         AnyChar => {
                             !require_literal(c)
                         }
