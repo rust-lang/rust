@@ -21,7 +21,7 @@ use ast::{_mod, BiAdd, arg, Arm, Attribute, BindByRef, BindInfer};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
 use ast::{BlockCheckMode, UnBox};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
-use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, enum_def, explicit_self};
+use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, enum_def, explicit_self};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
@@ -1875,7 +1875,7 @@ impl Parser {
                                                 |p| p.parse_token_tree());
                 let hi = self.span.hi;
 
-                return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts));
+                return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts, EMPTY_CTXT));
             } else if *self.token == token::LBRACE {
                 // This might be a struct literal.
                 if self.looking_at_record_literal() {
@@ -3197,14 +3197,14 @@ impl Parser {
 
             if id == token::special_idents::invalid {
                 return @spanned(lo, hi, StmtMac(
-                    spanned(lo, hi, mac_invoc_tt(pth, tts)), false));
+                    spanned(lo, hi, mac_invoc_tt(pth, tts, EMPTY_CTXT)), false));
             } else {
                 // if it has a special ident, it's definitely an item
                 return @spanned(lo, hi, StmtDecl(
                     @spanned(lo, hi, DeclItem(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
-                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts))),
+                            item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts, EMPTY_CTXT))),
                             inherited, ~[/*no attrs*/]))),
                     self.get_id()));
             }
@@ -3518,7 +3518,10 @@ impl Parser {
     }
 
     fn is_self_ident(&self) -> bool {
-        *self.token == token::IDENT(special_idents::self_, false)
+        match *self.token {
+          token::IDENT(id, false) => id.name == special_idents::self_.name,
+          _ => false
+        }
     }
 
     fn expect_self_ident(&self) {
@@ -4806,7 +4809,7 @@ impl Parser {
                 _ => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
-            let m = ast::mac_invoc_tt(pth, tts);
+            let m = ast::mac_invoc_tt(pth, tts, EMPTY_CTXT);
             let m: ast::mac = codemap::Spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };

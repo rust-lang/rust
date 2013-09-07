@@ -619,7 +619,8 @@ pub fn print_item(s: @ps, item: &ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts),
+      // I think it's reasonable to hide the context here:
+      ast::item_mac(codemap::Spanned { node: ast::mac_invoc_tt(ref pth, ref tts, _),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -1021,7 +1022,8 @@ pub fn print_if(s: @ps, test: &ast::Expr, blk: &ast::Block,
 
 pub fn print_mac(s: @ps, m: &ast::mac) {
     match m.node {
-      ast::mac_invoc_tt(ref pth, ref tts) => {
+      // I think it's reasonable to hide the ctxt here:
+      ast::mac_invoc_tt(ref pth, ref tts, _) => {
         print_path(s, pth, false);
         word(s.s, "!");
         popen(s);
@@ -1924,8 +1926,8 @@ pub fn print_arg(s: @ps, input: &ast::arg) {
         match input.pat.node {
             ast::PatIdent(_, ref path, _) if
                 path.segments.len() == 1 &&
-                path.segments[0].identifier ==
-                    parse::token::special_idents::invalid => {
+                path.segments[0].identifier.name ==
+                    parse::token::special_idents::invalid.name => {
                 // Do nothing.
             }
             _ => {

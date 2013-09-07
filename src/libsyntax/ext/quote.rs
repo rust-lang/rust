@@ -293,45 +293,51 @@ pub fn expand_quote_tokens(cx: @ExtCtxt,
                            sp: Span,
                            tts: &[ast::token_tree]) -> base::MacResult {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
-    base::MRExpr(expand_wrapper(cx, sp, cx_expr, expr))
+    let expanded = expand_wrapper(cx, sp, cx_expr, expr);
+    base::MRExpr(expanded)
 }
 
 pub fn expand_quote_expr(cx: @ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
-    base::MRExpr(expand_parse_call(cx, sp, "parse_expr", ~[], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_expr", ~[], tts);
+    base::MRExpr(expanded)
 }
 
 pub fn expand_quote_item(cx: @ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);
-    base::MRExpr(expand_parse_call(cx, sp, "parse_item",
-                                    ~[e_attrs], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_item",
+                                    ~[e_attrs], tts);
+    base::MRExpr(expanded)
 }
 
 pub fn expand_quote_pat(cx: @ExtCtxt,
                         sp: Span,
                         tts: &[ast::token_tree]) -> base::MacResult {
     let e_refutable = cx.expr_lit(sp, ast::lit_bool(true));
-    base::MRExpr(expand_parse_call(cx, sp, "parse_pat",
-                                    ~[e_refutable], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_pat",
+                                    ~[e_refutable], tts);
+    base::MRExpr(expanded)
 }
 
 pub fn expand_quote_ty(cx: @ExtCtxt,
                        sp: Span,
                        tts: &[ast::token_tree]) -> base::MacResult {
     let e_param_colons = cx.expr_lit(sp, ast::lit_bool(false));
-    base::MRExpr(expand_parse_call(cx, sp, "parse_ty",
-                                    ~[e_param_colons], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_ty",
+                                     ~[e_param_colons], tts);
+    base::MRExpr(expanded)
 }
 
 pub fn expand_quote_stmt(cx: @ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);
-    base::MRExpr(expand_parse_call(cx, sp, "parse_stmt",
-                                    ~[e_attrs], tts))
+    let expanded = expand_parse_call(cx, sp, "parse_stmt",
+                                    ~[e_attrs], tts);
+    base::MRExpr(expanded)
 }
 
 fn ids_ext(strs: ~[~str]) -> ~[ast::Ident] {

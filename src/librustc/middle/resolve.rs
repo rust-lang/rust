@@ -23,13 +23,13 @@ use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def};
+use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::parse::token;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::{ident_interner, interner_get};
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{Span, dummy_sp, BytePos};
@@ -51,7 +51,7 @@ pub struct binding_info {
 }
 
 // Map from the name in a pattern to its binding mode.
-pub type BindingMap = HashMap<Ident,binding_info>;
+pub type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
 pub type TraitMap = HashMap<NodeId,@mut ~[DefId]>;
@@ -311,7 +311,7 @@ pub enum DuplicateCheckingMode {
 
 /// One local scope.
 pub struct Rib {
-    bindings: @mut HashMap<Ident, DefLike>,
+    bindings: @mut HashMap<Name, DefLike>,
     self_binding: @mut Option<DefLike>,
     kind: RibKind,
 }
@@ -445,12 +445,12 @@ pub struct Module {
     def_id: Option<DefId>,
     kind: ModuleKind,
 
-    children: @mut HashMap<Ident, @mut NameBindings>,
+    children: @mut HashMap<Name, @mut NameBindings>,
     imports: @mut ~[@ImportDirective],
 
     // The external module children of this node that were declared with
     // `extern mod`.
-    external_module_children: @mut HashMap<Ident, @mut Module>,
+    external_module_children: @mut HashMap<Name, @mut Module>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -469,7 +469,7 @@ pub struct Module {
     anonymous_children: @mut HashMap<NodeId,@mut Module>,
 
     // The status of resolving each import in this module.
-    import_resolutions: @mut HashMap<Ident, @mut ImportResolution>,
+    import_resolutions: @mut HashMap<Name, @mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     glob_count: uint,
@@ -759,15 +759,14 @@ pub fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 pub struct PrimitiveTypeTable {
-    primitive_types: HashMap<Ident,prim_ty>,
+    primitive_types: HashMap<Name,prim_ty>,
 }
 
 impl PrimitiveTypeTable {
     pub fn intern(&mut self,
                   string: &str,
                   primitive_type: prim_ty) {
-        let ident = token::str_to_ident(string);
-        self.primitive_types.insert(ident, primitive_type);
+        self.primitive_types.insert(token::intern(string), primitive_type);
     }
 }
 
@@ -873,7 +872,7 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    method_map: @mut HashMap<Ident, HashSet<DefId>>,
+    method_map: @mut HashMap<Name, HashSet<DefId>>,
     structs: HashSet<DefId>,
 
     // The number of imports that are currently unresolved.
@@ -1036,10 +1035,10 @@ impl Resolver {
 
         // Add or reuse the child.
         let new_parent = ModuleReducedGraphParent(module_);
-        match module_.children.find(&name) {
+        match module_.children.find(&name.name) {
             None => {
                 let child = @mut NameBindings();
-                module_.children.insert(name, child);
+                module_.children.insert(name.name, child);
                 return (child, new_parent);
             }
             Some(&child) => {
@@ -1307,7 +1306,7 @@ impl Resolver {
                     } if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
-                        let new_parent = match parent.children.find(&name) {
+                        let new_parent = match parent.children.find(&name.name) {
                             // It already exists
                             Some(&child) if child.get_module_if_available()
                                                  .is_some() &&
@@ -1426,7 +1425,7 @@ impl Resolver {
                     match ty_m.explicit_self.node {
                         sty_static => {}
                         _ => {
-                            method_names.insert(ident, ());
+                            method_names.insert(ident.name, ());
                         }
                     }
                 }
@@ -1582,7 +1581,7 @@ impl Resolver {
                                                           false);
 
                         parent.external_module_children.insert(
-                            name,
+                            name.name,
                             external_module);
 
                         self.build_reduced_graph_for_external_crate(
@@ -1727,7 +1726,7 @@ impl Resolver {
 
                   // Add it to the trait info if not static.
                   if explicit_self != sty_static {
-                      interned_method_names.insert(method_name);
+                      interned_method_names.insert(method_name.name);
                   }
               }
               for name in interned_method_names.iter() {
@@ -1981,7 +1980,7 @@ impl Resolver {
                        self.idents_to_str(directive.module_path),
                        self.session.str_of(target));
 
-                match module_.import_resolutions.find(&target) {
+                match module_.import_resolutions.find(&target.name) {
                     Some(&resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
@@ -1996,7 +1995,7 @@ impl Resolver {
                         debug!("(building import directive) creating new");
                         let resolution = @mut ImportResolution::new(privacy, id);
                         resolution.outstanding_references = 1;
-                        module_.import_resolutions.insert(target, resolution);
+                        module_.import_resolutions.insert(target.name, resolution);
                     }
                 }
             }
@@ -2281,7 +2280,7 @@ impl Resolver {
 
         // Search for direct children of the containing module.
         self.populate_module_if_necessary(containing_module);
-        match containing_module.children.find(&source) {
+        match containing_module.children.find(&source.name) {
             None => {
                 // Continue.
             }
@@ -2315,7 +2314,7 @@ impl Resolver {
                 // Now search the exported imports within the containing
                 // module.
 
-                match containing_module.import_resolutions.find(&source) {
+                match containing_module.import_resolutions.find(&source.name) {
                     None => {
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
@@ -2386,7 +2385,7 @@ impl Resolver {
             BoundResult(*) => {}
             _ => {
                 match containing_module.external_module_children
-                                       .find(&source) {
+                                       .find(&source.name) {
                     None => {} // Continue.
                     Some(module) => {
                         let name_bindings =
@@ -2400,8 +2399,8 @@ impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert!(module_.import_resolutions.contains_key(&target));
-        let import_resolution = module_.import_resolutions.get(&target);
+        assert!(module_.import_resolutions.contains_key(&target.name));
+        let import_resolution = module_.import_resolutions.get(&target.name);
 
         match value_result {
             BoundResult(target_module, name_bindings) => {
@@ -2563,15 +2562,15 @@ impl Resolver {
             }
         }
 
-        let merge_import_resolution = |ident,
+        let merge_import_resolution = |name,
                                        name_bindings: @mut NameBindings| {
             let dest_import_resolution;
-            match module_.import_resolutions.find(&ident) {
+            match module_.import_resolutions.find(&name) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @mut ImportResolution::new(privacy, id);
                     module_.import_resolutions.insert
-                        (ident, dest_import_resolution);
+                        (name, dest_import_resolution);
                 }
                 Some(&existing_import_resolution) => {
                     dest_import_resolution = existing_import_resolution;
@@ -2580,7 +2579,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
-                   self.session.str_of(ident),
+                   interner_get(name),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
                    dest_import_resolution.privacy);
@@ -2602,15 +2601,15 @@ impl Resolver {
 
         // Add all children from the containing module.
         self.populate_module_if_necessary(containing_module);
-        for (&ident, name_bindings) in containing_module.children.iter() {
-            merge_import_resolution(ident, *name_bindings);
+        for (&name, name_bindings) in containing_module.children.iter() {
+            merge_import_resolution(name, *name_bindings);
         }
 
         // Add external module children from the containing module.
-        for (&ident, module) in containing_module.external_module_children.iter() {
+        for (&name, module) in containing_module.external_module_children.iter() {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
-            merge_import_resolution(ident, name_bindings);
+            merge_import_resolution(name, name_bindings);
         }
 
         debug!("(resolving glob import) successfully resolved import");
@@ -2836,7 +2835,7 @@ impl Resolver {
         // The current module node is handled specially. First, check for
         // its immediate children.
         self.populate_module_if_necessary(module_);
-        match module_.children.find(&name) {
+        match module_.children.find(&name.name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 return Success(Target::new(module_, *name_bindings));
@@ -2848,7 +2847,7 @@ impl Resolver {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-        match module_.import_resolutions.find(&name) {
+        match module_.import_resolutions.find(&name.name) {
             None => {
                 // Not found; continue.
             }
@@ -2872,7 +2871,7 @@ impl Resolver {
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.find(&name) {
+            match module_.external_module_children.find(&name.name) {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -3034,8 +3033,9 @@ impl Resolver {
         }
     }
 
-    /// Resolves a "module prefix". A module prefix is one of (a) `self::`;
+    /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
+    /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     pub fn resolve_module_prefix(@mut self,
                                  module_: @mut Module,
                                  module_path: &[Ident])
@@ -3091,7 +3091,7 @@ impl Resolver {
 
         // First, check the direct children of the module.
         self.populate_module_if_necessary(module_);
-        match module_.children.find(&name) {
+        match module_.children.find(&name.name) {
             Some(name_bindings)
                     if name_bindings.defined_in_namespace(namespace) => {
                 debug!("(resolving name in module) found node as child");
@@ -3112,7 +3112,7 @@ impl Resolver {
         }
 
         // Check the list of resolved imports.
-        match module_.import_resolutions.find(&name) {
+        match module_.import_resolutions.find(&name.name) {
             Some(import_resolution) => {
                 if import_resolution.privacy == Public &&
                         import_resolution.outstanding_references != 0 {
@@ -3147,7 +3147,7 @@ impl Resolver {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.find(&name) {
+            match module_.external_module_children.find(&name.name) {
                 None => {}
                 Some(module) => {
                     let name_bindings =
@@ -3273,7 +3273,7 @@ impl Resolver {
 
     pub fn add_exports_of_namebindings(@mut self,
                                        exports2: &mut ~[Export2],
-                                       ident: Ident,
+                                       name: Name,
                                        namebindings: @mut NameBindings,
                                        ns: Namespace,
                                        reexport: bool) {
@@ -3282,11 +3282,11 @@ impl Resolver {
             (Some(d), Some(Public)) => {
                 debug!("(computing exports) YES: %s '%s' => %?",
                        if reexport { ~"reexport" } else { ~"export"},
-                       self.session.str_of(ident),
+                       interner_get(name),
                        def_id_of_def(d));
                 exports2.push(Export2 {
                     reexport: reexport,
-                    name: self.session.str_of(ident),
+                    name: interner_get(name),
                     def_id: def_id_of_def(d)
                 });
             }
@@ -3302,10 +3302,10 @@ impl Resolver {
     pub fn add_exports_for_module(@mut self,
                                   exports2: &mut ~[Export2],
                                   module_: @mut Module) {
-        for (ident, importresolution) in module_.import_resolutions.iter() {
+        for (name, importresolution) in module_.import_resolutions.iter() {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
-                       self.session.str_of(*ident));
+                       interner_get(*name));
                 loop;
             }
             let xs = [TypeNS, ValueNS];
@@ -3313,9 +3313,9 @@ impl Resolver {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
-                               self.session.str_of(*ident));
+                               interner_get(*name));
                         self.add_exports_of_namebindings(&mut *exports2,
-                                                         *ident,
+                                                         *name,
                                                          target.bindings,
                                                          *ns,
                                                          true)
@@ -3354,7 +3354,7 @@ impl Resolver {
             }
             Some(name) => {
                 self.populate_module_if_necessary(orig_module);
-                match orig_module.children.find(&name) {
+                match orig_module.children.find(&name.name) {
                     None => {
                         debug!("!!! (with scope) didn't find `%s` in `%s`",
                                self.session.str_of(name),
@@ -3498,7 +3498,7 @@ impl Resolver {
 
     pub fn search_ribs(@mut self,
                        ribs: &mut ~[@Rib],
-                       name: Ident,
+                       name: Name,
                        span: Span,
                        allow_capturing_self: AllowCapturingSelfFlag)
                        -> Option<DefLike> {
@@ -3591,7 +3591,9 @@ impl Resolver {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib::new(NormalRibKind);
                 self.type_ribs.push(self_type_rib);
-                self_type_rib.bindings.insert(self.type_self_ident,
+                // plain insert (no renaming)
+                let name = self.type_self_ident.name;
+                self_type_rib.bindings.insert(name,
                                               DlDef(DefSelfTy(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
@@ -3723,7 +3725,7 @@ impl Resolver {
                 self.type_ribs.push(function_type_rib);
 
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.ident;
+                    let ident = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
                     let def_like = DlDef(DefTyParam
@@ -3733,7 +3735,8 @@ impl Resolver {
                     // the item that bound it
                     self.record_def(type_parameter.id,
                                     DefTyParamBinder(node_id));
-                    function_type_rib.bindings.insert(name, def_like);
+                    // plain insert (no renaming)
+                    function_type_rib.bindings.insert(ident.name, def_like);
                 }
             }
 
@@ -4064,17 +4067,23 @@ impl Resolver {
                              None, visitor);
     }
 
+    // build a map from pattern identifiers to binding-info's.
+    // this is done hygienically. This could arise for a macro
+    // that expands into an or-pattern where one 'x' was from the
+    // user and one 'x' came from the macro.
     pub fn binding_mode_map(@mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
-            let ident = path_to_ident(path);
-            result.insert(ident,
+            let name = mtwt_resolve(path_to_ident(path));
+            result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
         }
         return result;
     }
 
+    // check that all of the arms in an or-pattern have exactly the
+    // same set of bindings, with the same binding modes for each.
     pub fn check_consistent_bindings(@mut self, arm: &Arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
@@ -4088,7 +4097,7 @@ impl Resolver {
                         p.span,
                         fmt!("variable `%s` from pattern #1 is \
                                   not bound in pattern #%u",
-                             self.session.str_of(key), i + 1));
+                             interner_get(key), i + 1));
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -4096,7 +4105,7 @@ impl Resolver {
                             binding_i.span,
                             fmt!("variable `%s` is bound with different \
                                       mode in pattern #%u than in pattern #1",
-                                 self.session.str_of(key), i + 1));
+                                 interner_get(key), i + 1));
                     }
                   }
                 }
@@ -4108,7 +4117,7 @@ impl Resolver {
                         binding.span,
                         fmt!("variable `%s` from pattern #%u is \
                                   not bound in pattern #1",
-                             self.session.str_of(key), i + 1));
+                             interner_get(key), i + 1));
                 }
             }
         }
@@ -4170,11 +4179,11 @@ impl Resolver {
 
                 // First, check to see whether the name is a primitive type.
                 if path.segments.len() == 1 {
-                    let name = path.segments.last().identifier;
+                    let id = path.segments.last().identifier;
 
                     match self.primitive_type_table
                             .primitive_types
-                            .find(&name) {
+                            .find(&id.name) {
 
                         Some(&primitive_type) => {
                             result_def =
@@ -4272,7 +4281,7 @@ impl Resolver {
                            mutability: Mutability,
                            // Maps idents to the node ID for the (outermost)
                            // pattern that binds them
-                           bindings_list: Option<@mut HashMap<Ident,NodeId>>,
+                           bindings_list: Option<@mut HashMap<Name,NodeId>>,
                            visitor: &mut ResolveVisitor) {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
@@ -4290,13 +4299,14 @@ impl Resolver {
                     // what you want).
 
                     let ident = path.segments[0].identifier;
+                    let renamed = mtwt_resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def)
                                 if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
                                     struct or enum variant",
-                                    self.session.str_of(ident));
+                                   interner_get(renamed));
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4310,13 +4320,12 @@ impl Resolver {
                                                         shadows an enum \
                                                         variant or unit-like \
                                                         struct in scope",
-                                                        self.session
-                                                            .str_of(ident)));
+                                                       interner_get(renamed)));
                         }
                         FoundConst(def) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
                                     constant",
-                                    self.session.str_of(ident));
+                                   interner_get(renamed));
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4331,7 +4340,7 @@ impl Resolver {
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
-                                   self.session.str_of(ident));
+                                   interner_get(renamed));
 
                             let is_mutable = mutability == Mutable;
 
@@ -4366,16 +4375,16 @@ impl Resolver {
 
                             match bindings_list {
                                 Some(bindings_list)
-                                if !bindings_list.contains_key(&ident) => {
+                                if !bindings_list.contains_key(&renamed) => {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(ident,
+                                    last_rib.bindings.insert(renamed,
                                                              DlDef(def));
-                                    bindings_list.insert(ident, pat_id);
+                                    bindings_list.insert(renamed, pat_id);
                                 }
                                 Some(b) => {
-                                  if b.find(&ident) == Some(&pat_id) {
+                                  if b.find(&renamed) == Some(&pat_id) {
                                       // Then this is a duplicate variable
                                       // in the same disjunct, which is an
                                       // error
@@ -4391,7 +4400,7 @@ impl Resolver {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(ident,
+                                    last_rib.bindings.insert(renamed,
                                                              DlDef(def));
                                 }
                             }
@@ -4607,6 +4616,7 @@ impl Resolver {
         return unqualified_def;
     }
 
+    // resolve a single identifier (used as a varref)
     pub fn resolve_identifier(@mut self,
                               identifier: Ident,
                               namespace: Namespace,
@@ -4639,7 +4649,7 @@ impl Resolver {
                                                 -> NameDefinition {
         // First, search children.
         self.populate_module_if_necessary(containing_module);
-        match containing_module.children.find(&name) {
+        match containing_module.children.find(&name.name) {
             Some(child_name_bindings) => {
                 match (child_name_bindings.def_for_namespace(namespace),
                        child_name_bindings.privacy_for_namespace(namespace)) {
@@ -4662,7 +4672,7 @@ impl Resolver {
         }
 
         // Next, search import resolutions.
-        match containing_module.import_resolutions.find(&name) {
+        match containing_module.import_resolutions.find(&name.name) {
             Some(import_resolution) if import_resolution.privacy == Public ||
                                        xray == Xray => {
                 match (*import_resolution).target_for_namespace(namespace) {
@@ -4690,7 +4700,7 @@ impl Resolver {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match containing_module.external_module_children.find(&name) {
+            match containing_module.external_module_children.find(&name.name) {
                 None => {}
                 Some(module) => {
                     match module.def_id {
@@ -4706,25 +4716,13 @@ impl Resolver {
         return NoNameDefinition;
     }
 
-    pub fn intern_module_part_of_path(@mut self, path: &Path) -> ~[Ident] {
-        let mut module_path_idents = ~[];
-        for (index, segment) in path.segments.iter().enumerate() {
-            if index == path.segments.len() - 1 {
-                break;
-            }
-
-            module_path_idents.push(segment.identifier);
-        }
-
-        return module_path_idents;
-    }
-
+    // resolve a "module-relative" path, e.g. a::b::c
     pub fn resolve_module_relative_path(@mut self,
                                         path: &Path,
                                         xray: XrayFlag,
                                         namespace: Namespace)
                                         -> Option<Def> {
-        let module_path_idents = self.intern_module_part_of_path(path);
+        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let containing_module;
         match self.resolve_module_path(self.current_module,
@@ -4749,9 +4747,9 @@ impl Resolver {
             }
         }
 
-        let name = path.segments.last().identifier;
+        let ident = path.segments.last().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module,
-                                                        name,
+                                                        ident,
                                                         namespace,
                                                         xray) {
             NoNameDefinition => {
@@ -4764,7 +4762,7 @@ impl Resolver {
         };
         match containing_module.kind {
             TraitModuleKind | ImplModuleKind => {
-                match self.method_map.find(&name) {
+                match self.method_map.find(&ident.name) {
                     Some(s) => {
                         match containing_module.def_id {
                             Some(def_id) if s.contains(&def_id) => {
@@ -4790,7 +4788,7 @@ impl Resolver {
                                        xray: XrayFlag,
                                        namespace: Namespace)
                                        -> Option<Def> {
-        let module_path_idents = self.intern_module_part_of_path(path);
+        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
 
         let root_module = self.graph_root.get_module();
 
@@ -4841,12 +4839,14 @@ impl Resolver {
         let search_result;
         match namespace {
             ValueNS => {
-                search_result = self.search_ribs(self.value_ribs, ident,
+                let renamed = mtwt_resolve(ident);
+                search_result = self.search_ribs(self.value_ribs, renamed,
                                                  span,
                                                  DontAllowCapturingSelf);
             }
             TypeNS => {
-                search_result = self.search_ribs(self.type_ribs, ident,
+                let name = ident.name;
+                search_result = self.search_ribs(self.type_ribs, name,
                                                  span, AllowCapturingSelf);
             }
         }
@@ -4957,7 +4957,7 @@ impl Resolver {
         while j != 0 {
             j -= 1;
             for (&k, _) in this.value_ribs[j].bindings.iter() {
-                maybes.push(this.session.str_of(k));
+                maybes.push(interner_get(k));
                 values.push(uint::max_value);
             }
         }
@@ -5146,7 +5146,8 @@ impl Resolver {
                         let this = &mut *self;
                         let def_like = DlDef(DefLabel(expr.id));
                         let rib = this.label_ribs[this.label_ribs.len() - 1];
-                        rib.bindings.insert(label, def_like);
+                        // plain insert (no renaming)
+                        rib.bindings.insert(label.name, def_like);
                     }
 
                     visit::walk_expr(visitor, expr, ());
@@ -5156,7 +5157,8 @@ impl Resolver {
             ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                match self.search_ribs(self.label_ribs, label, expr.span,
+                let name = label.name;
+                match self.search_ribs(self.label_ribs, name, expr.span,
                                        DontAllowCapturingSelf) {
                     None =>
                         self.resolve_error(expr.span,
@@ -5284,7 +5286,7 @@ impl Resolver {
 
         let mut found_traits = ~[];
         let mut search_module = self.current_module;
-        match self.method_map.find(&name) {
+        match self.method_map.find(&name.name) {
             Some(candidate_traits) => loop {
                 // Look for the current trait.
                 match self.current_trait_refs {
@@ -5506,7 +5508,7 @@ impl Resolver {
         debug!("Children:");
         self.populate_module_if_necessary(module_);
         for (&name, _) in module_.children.iter() {
-            debug!("* %s", self.session.str_of(name));
+            debug!("* %s", interner_get(name));
         }
 
         debug!("Import resolutions:");
@@ -5529,7 +5531,7 @@ impl Resolver {
                 }
             }
 
-            debug!("* %s:%s%s", self.session.str_of(*name),
+            debug!("* %s:%s%s", interner_get(*name),
                    value_repr, type_repr);
         }
     }
@@ -5554,3 +5556,4 @@ pub fn resolve_crate(session: Session,
         trait_map: resolver.trait_map.clone(),
     }
 }
+

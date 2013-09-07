@@ -1482,7 +1482,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
                 let rec_vals = rec_fields.map(|field_name| {
-                        let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
+                        let ix = ty::field_idx_strict(tcx, field_name.name, field_tys);
                         adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
                         });
                 compile_submatch(
@@ -2159,7 +2159,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
                 for f in fields.iter() {
-                    let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
+                    let ix = ty::field_idx_strict(tcx, f.ident.name, field_tys);
                     let fldptr = adt::trans_field_ptr(bcx, pat_repr, val,
                                                       discr, ix);
                     bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, binding_mode);

@@ -375,3 +375,13 @@ impl<A:IterBytes> ToBytes for A {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    // just test to see if it compiles:
+    #[test] fn iterbytes_compiles () {
+        takes_iterbytes((3,4,5,false));
+    }
+    fn takes_iterbytes<T : IterBytes>(x : T) {}
+}

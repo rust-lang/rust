@@ -3360,19 +3360,19 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
     }
 }
 
-pub fn field_idx(id: ast::Ident, fields: &[field]) -> Option<uint> {
+pub fn field_idx(name: ast::Name, fields: &[field]) -> Option<uint> {
     let mut i = 0u;
-    for f in fields.iter() { if f.ident == id { return Some(i); } i += 1u; }
+    for f in fields.iter() { if f.ident.name == name { return Some(i); } i += 1u; }
     return None;
 }
 
-pub fn field_idx_strict(tcx: ty::ctxt, id: ast::Ident, fields: &[field])
+pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
-    for f in fields.iter() { if f.ident == id { return i; } i += 1u; }
+    for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
-        tcx.sess.str_of(id),
+        token::interner_get(name),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
