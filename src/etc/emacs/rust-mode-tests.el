@@ -51,20 +51,25 @@ Also, the result should be the same regardless of whether the code is at the beg
          (padding-len (length padding)))
     (loop
      for pad-at-beginning from 0 to 1
-     for pad-at-end from 0 to 1
-     with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
-     with padding-end = (if (= 0 pad-at-end) "" padding)
-     with padding-adjust = (* padding-len pad-at-beginning)
-     with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
-     with padding-end = (if (= 0 pad-at-end) "" padding)
-     for pos from (if (= 1 start-pos) 1 (+ padding-adjust start-pos)) to (+ end-pos padding-adjust)
-     do (rust-test-manip-code
-           (concat padding-beginning unfilled padding-end)
-           pos
-           (lambda () 
-             (let ((fill-column rust-test-fill-column))
-               (fill-paragraph)))
-           (concat padding-beginning expected padding-end)))))
+     do (loop for pad-at-end from 0 to 1
+           with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
+           with padding-end = (if (= 0 pad-at-end) "" padding)
+           with padding-adjust = (* padding-len pad-at-beginning)
+           with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
+           with padding-end = (if (= 0 pad-at-end) "" padding)
+           ;; If we're adding space to the beginning, and our start position
+           ;; is at the very beginning, we want to test within the added space.
+           ;; Otherwise adjust the start and end for the beginning padding.
+           with start-pos = (if (= 1 start-pos) 1 (+ padding-adjust start-pos))
+           with end-pos = (+ end-pos padding-adjust)
+           do (loop for pos from start-pos to end-pos
+                 do (rust-test-manip-code
+                     (concat padding-beginning unfilled padding-end)
+                     pos
+                     (lambda () 
+                       (let ((fill-column rust-test-fill-column))
+                         (fill-paragraph)))
+                     (concat padding-beginning expected padding-end)))))))
 
 (ert-deftest fill-paragraph-top-level-multi-line-style-doc-comment-second-line ()
   (test-fill-paragraph 
