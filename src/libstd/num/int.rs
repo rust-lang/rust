@@ -12,7 +12,9 @@
 
 #[allow(non_uppercase_statics)];
 
-use num::BitCount;
+use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use option::{Option, Some, None};
+use unstable::intrinsics;
 
 pub use self::generated::*;
 
@@ -49,6 +51,72 @@ impl BitCount for int {
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
     #[inline]
     fn trailing_zeros(&self) -> int { (*self as i64).trailing_zeros() as int }
+}
+
+#[cfg(target_word_size = "32")]
+impl CheckedAdd for int {
+    #[inline]
+    fn checked_add(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_add_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(target_word_size = "64")]
+impl CheckedAdd for int {
+    #[inline]
+    fn checked_add(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_add_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(target_word_size = "32")]
+impl CheckedSub for int {
+    #[inline]
+    fn checked_sub(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_sub_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(target_word_size = "64")]
+impl CheckedSub for int {
+    #[inline]
+    fn checked_sub(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_sub_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(target_word_size = "32")]
+impl CheckedMul for int {
+    #[inline]
+    fn checked_mul(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i32_mul_with_overflow(*self as i32, *v as i32);
+            if y { None } else { Some(x as int) }
+        }
+    }
+}
+
+#[cfg(target_word_size = "64")]
+impl CheckedMul for int {
+    #[inline]
+    fn checked_mul(&self, v: &int) -> Option<int> {
+        unsafe {
+            let (x, y) = intrinsics::i64_mul_with_overflow(*self as i64, *v as i64);
+            if y { None } else { Some(x as int) }
+        }
+    }
 }
 
 /// Returns `base` raised to the power of `exponent`
