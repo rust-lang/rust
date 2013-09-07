@@ -56,6 +56,7 @@ use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust;
+use syntax::parse::token;
 
 #[deriving(Eq)]
 pub enum categorization {
@@ -99,7 +100,7 @@ pub enum InteriorKind {
 
 #[deriving(Eq, IterBytes)]
 pub enum FieldName {
-    NamedField(ast::Ident),
+    NamedField(ast::Name),
     PositionalField(uint)
 }
 
@@ -619,7 +620,7 @@ impl mem_categorization_ctxt {
         @cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat_interior(base_cmt, InteriorField(NamedField(f_name))),
+            cat: cat_interior(base_cmt, InteriorField(NamedField(f_name.name))),
             mutbl: base_cmt.mutbl.inherit(),
             ty: f_ty
         }
@@ -1224,9 +1225,9 @@ pub fn ptr_sigil(ptr: PointerKind) -> ~str {
 }
 
 impl Repr for InteriorKind {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, _tcx: ty::ctxt) -> ~str {
         match *self {
-            InteriorField(NamedField(fld)) => tcx.sess.str_of(fld).to_owned(),
+            InteriorField(NamedField(fld)) => token::interner_get(fld).to_owned(),
             InteriorField(PositionalField(i)) => fmt!("#%?", i),
             InteriorElement(_) => ~"[]",
         }

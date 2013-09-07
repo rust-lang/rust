@@ -268,7 +268,7 @@ pub fn trans_static_method_callee(bcx: @mut Block,
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
-            let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+            let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
                     bcx, mth_id, callee_id,
@@ -294,7 +294,7 @@ pub fn trans_static_method_callee(bcx: @mut Block,
 
 pub fn method_with_name(ccx: &mut CrateContext,
                         impl_id: ast::DefId,
-                        name: ast::Ident) -> ast::DefId {
+                        name: ast::Name) -> ast::DefId {
     let meth_id_opt = ccx.impl_method_cache.find_copy(&(impl_id, name));
     match meth_id_opt {
         Some(m) => return m,
@@ -303,7 +303,7 @@ pub fn method_with_name(ccx: &mut CrateContext,
 
     let imp = ccx.tcx.impls.find(&impl_id)
         .expect("could not find impl while translating");
-    let meth = imp.methods.iter().find(|m| m.ident == name)
+    let meth = imp.methods.iter().find(|m| m.ident.name == name)
         .expect("could not find method while translating");
 
     ccx.impl_method_cache.insert((impl_id, name), meth.def_id);
@@ -323,7 +323,7 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_method(ccx.tcx, trait_id, n_method).ident;
-          let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+          let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
 
           // obtain the `self` value:
           let mut temp_cleanups = ~[];
@@ -600,7 +600,7 @@ fn emit_vtable_methods(bcx: @mut Block,
         let ident = ty::method(tcx, *method_def_id).ident;
         // The substitutions we have are on the impl, so we grab
         // the method type from the impl to substitute into.
-        let m_id = method_with_name(ccx, impl_id, ident);
+        let m_id = method_with_name(ccx, impl_id, ident.name);
         let m = ty::method(tcx, m_id);
         debug!("(making impl vtable) emitting method %s at subst %s",
                m.repr(tcx),

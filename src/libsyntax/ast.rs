@@ -20,6 +20,10 @@ use std::option::Option;
 use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+
+// FIXME #6993: in librustc, uses of "ident" should be replaced
+// by just "Name".
+
 // an identifier contains a Name (index into the interner
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
@@ -31,6 +35,36 @@ impl Ident {
     /// Construct an identifier with the given name and an empty context:
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
 }
+
+// defining eq in this way is a way of guaranteeing that later stages of the
+// compiler don't compare identifiers unhygienically. Unfortunately, some tests
+// (specifically debuginfo in no-opt) want to do these comparisons, and that
+// seems fine.  If only I could find a nice way to statically ensure that
+// the compiler "proper" never compares identifiers.... I'm leaving this
+// code here (commented out) for potential use in debugging. Specifically, if
+// there's a bug where "identifiers aren't matching", it may be because
+// they should be compared using mtwt_resolve. In such a case, re-enabling this
+// code (and disabling deriving(Eq) for Idents) could help to isolate the
+// problem
+/* impl Eq for Ident {
+    fn eq(&self, other: &Ident) -> bool {
+        if (self.ctxt == other.ctxt) {
+            self.name == other.name
+        } else {
+            // IF YOU SEE ONE OF THESE FAILS: it means that you're comparing
+            // idents that have different contexts. You can't fix this without
+            // knowing whether the comparison should be hygienic or non-hygienic.
+            // if it should be non-hygienic (most things are), just compare the
+            // 'name' fields of the idents. Or, even better, replace the idents
+            // with Name's.
+            fail!(fmt!("not allowed to compare these idents: %?, %?", self, other));
+        }
+    }
+    fn ne(&self, other: &Ident) -> bool {
+        ! self.eq(other)
+    }
+}
+*/
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
@@ -47,6 +81,15 @@ impl Ident {
 // storage.
 pub type SyntaxContext = uint;
 
+// the SCTable contains a table of SyntaxContext_'s. It
+// represents a flattened tree structure, to avoid having
+// managed pointers everywhere (that caused an ICE).
+// the mark_memo and rename_memo fields are side-tables
+// that ensure that adding the same mark to the same context
+// gives you back the same context as before. This shouldn't
+// change the semantics--everything here is immutable--but
+// it should cut down on memory use *a lot*; applying a mark
+// to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
     table : ~[SyntaxContext_],
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
@@ -70,6 +113,7 @@ pub enum SyntaxContext_ {
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
     Rename (Ident,Name,SyntaxContext),
+    // actually, IllegalCtxt may not be necessary.
     IllegalCtxt
 }
 
@@ -99,6 +143,7 @@ pub type FnIdent = Option<Ident>;
 pub struct Lifetime {
     id: NodeId,
     span: Span,
+    // FIXME #7743 : change this to Name!
     ident: Ident
 }
 
@@ -443,7 +488,7 @@ pub enum BlockCheckMode {
     UnsafeBlock,
 }
 
-#[deriving(Eq, Encodable, Decodable,IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct Expr {
     id: NodeId,
     node: Expr_,
@@ -544,10 +589,11 @@ pub enum token_tree {
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
     tt_delim(@mut ~[token_tree]),
+
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a tt_forest,
-    // an optional separator (?), and a boolean where true indicates
+    // an optional separator, and a boolean where true indicates
     // zero or more (*), and false indicates one or more (+).
     tt_seq(Span, @mut ~[token_tree], Option<::parse::token::Token>, bool),
 
@@ -622,9 +668,13 @@ pub enum matcher_ {
 
 pub type mac = Spanned<mac_>;
 
+// represents a macro invocation. The Path indicates which macro
+// is being invoked, and the vector of token-trees contains the source
+// of the macro invocation.
+// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum mac_ {
-    mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
+    mac_invoc_tt(Path,~[token_tree],SyntaxContext),   // new macro-invocation
 }
 
 pub type lit = Spanned<lit_>;

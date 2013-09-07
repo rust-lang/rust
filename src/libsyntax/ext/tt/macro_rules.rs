@@ -14,6 +14,7 @@ use ast;
 use codemap::{Span, Spanned, dummy_sp};
 use ext::base::{ExtCtxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
+use ext::expand;
 use ext::tt::macro_parser::{error};
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
@@ -23,11 +24,17 @@ use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_st
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
+// this procedure performs the expansion of the
+// macro_rules! macro. It parses the RHS and adds
+// an extension to the current context.
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: Span,
                          name: Ident,
-                         arg: ~[ast::token_tree])
+                         arg: ~[ast::token_tree],
+                         stx_ctxt: ast::SyntaxContext)
                       -> base::MacResult {
+    let arg = expand::mtwt_cancel_outer_mark(arg,stx_ctxt);
+    // Wrap a matcher_ in a spanned to produce a matcher.
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         Spanned {
@@ -39,6 +46,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
 
+    // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
     // $( $lhs:mtcs => $rhs:tt );+
     // ...quasiquoting this would be nice.
@@ -144,11 +152,11 @@ pub fn add_new_extension(cx: @ExtCtxt,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(@ExtCtxt, Span, &[ast::token_tree]) -> MacResult =
-        |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
+    let exp: @fn(@ExtCtxt, Span, &[ast::token_tree], ctxt: ast::SyntaxContext) -> MacResult =
+        |cx, sp, arg, _ctxt| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{
         name: ident_to_str(&name),
-        ext: NormalTT(base::SyntaxExpanderTT{expander: exp, span: Some(sp)})
+        ext: NormalTT(exp, Some(sp))
     });
 }

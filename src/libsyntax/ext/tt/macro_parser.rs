@@ -234,6 +234,15 @@ pub fn parse_or_else(
     }
 }
 
+// perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
+pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
+    match (t1,t2) {
+        (&token::IDENT(id1,_),&token::IDENT(id2,_)) =>
+        id1.name == id2.name,
+        _ => *t1 == *t2
+    }
+}
+
 pub fn parse(
     sess: @mut ParseSess,
     cfg: ast::CrateConfig,
@@ -297,7 +306,10 @@ pub fn parse(
                     // the *_t vars are workarounds for the lack of unary move
                     match ei.sep {
                       Some(ref t) if idx == len => { // we need a separator
-                        if tok == (*t) { //pass the separator
+                        // i'm conflicted about whether this should be hygienic....
+                        // though in this case, if the separators are never legal
+                        // idents, it shouldn't matter.
+                        if token_name_eq(&tok, t) { //pass the separator
                             let mut ei_t = ei.clone();
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
@@ -343,7 +355,8 @@ pub fn parse(
                   match_nonterminal(_,_,_) => { bb_eis.push(ei) }
                   match_tok(ref t) => {
                     let mut ei_t = ei.clone();
-                    if (*t) == tok {
+                    //if (token_name_eq(t,&tok)) {
+                    if (token::mtwt_token_eq(t,&tok)) {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
                     }
@@ -353,7 +366,7 @@ pub fn parse(
         }
 
         /* error messages here could be improved with links to orig. rules */
-        if tok == EOF {
+        if token_name_eq(&tok, &EOF) {
             if eof_eis.len() == 1u {
                 let mut v = ~[];
                 for dv in eof_eis[0u].matches.mut_iter() {

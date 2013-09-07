@@ -28,6 +28,8 @@ pub fn path_name_i(idents: &[Ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
+// totally scary function: ignores all but the last element, should have
+// a different name
 pub fn path_to_ident(path: &Path) -> Ident {
     path.segments.last().identifier
 }
@@ -825,9 +827,6 @@ pub fn pat_is_ident(pat: @ast::Pat) -> bool {
 
 // HYGIENE FUNCTIONS
 
-/// Construct an identifier with the given name and an empty context:
-pub fn new_ident(name: Name) -> Ident { Ident {name: name, ctxt: 0}}
-
 /// Extend a syntax context with a given mark
 pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
     new_mark_internal(m,tail,get_sctable())
@@ -908,6 +907,15 @@ pub fn get_sctable() -> @mut SCTable {
     }
 }
 
+/// print out an SCTable for debugging
+pub fn display_sctable(table : &SCTable) {
+    error!("SC table:");
+    for (idx,val) in table.table.iter().enumerate() {
+        error!("%4u : %?",idx,val);
+    }
+}
+
+
 /// Add a value to the end of a vec, return its index
 fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
     vec.push(val);
@@ -915,35 +923,76 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
 }
 
 /// Resolve a syntax object to a name, per MTWT.
-pub fn resolve(id : Ident) -> Name {
-    resolve_internal(id, get_sctable())
+pub fn mtwt_resolve(id : Ident) -> Name {
+    resolve_internal(id, get_sctable(), get_resolve_table())
+}
+
+// FIXME #4536: must be pub for testing
+pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
+
+// okay, I admit, putting this in TLS is not so nice:
+// fetch the SCTable from TLS, create one if it doesn't yet exist.
+pub fn get_resolve_table() -> @mut ResolveTable {
+    static resolve_table_key: local_data::Key<@@mut ResolveTable> = &local_data::Key;
+    match local_data::get(resolve_table_key, |k| k.map(|&k| *k)) {
+        None => {
+            let new_table = @@mut HashMap::new();
+            local_data::set(resolve_table_key,new_table);
+            *new_table
+        },
+        Some(intr) => *intr
+    }
 }
 
 // Resolve a syntax object to a name, per MTWT.
+// adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
 // FIXME #4536 : currently pub to allow testing
-pub fn resolve_internal(id : Ident, table : &mut SCTable) -> Name {
-    match table.table[id.ctxt] {
-        EmptyCtxt => id.name,
-        // ignore marks here:
-        Mark(_,subctxt) => resolve_internal(Ident{name:id.name, ctxt: subctxt},table),
-        // do the rename if necessary:
-        Rename(Ident{name,ctxt},toname,subctxt) => {
-            // this could be cached or computed eagerly:
-            let resolvedfrom = resolve_internal(Ident{name:name,ctxt:ctxt},table);
-            let resolvedthis = resolve_internal(Ident{name:id.name,ctxt:subctxt},table);
-            if ((resolvedthis == resolvedfrom)
-                && (marksof(ctxt,resolvedthis,table)
-                    == marksof(subctxt,resolvedthis,table))) {
-                toname
-            } else {
-                resolvedthis
-            }
+pub fn resolve_internal(id : Ident,
+                        table : &mut SCTable,
+                        resolve_table : &mut ResolveTable) -> Name {
+    let key = (id.name,id.ctxt);
+    match resolve_table.contains_key(&key) {
+        false => {
+            let resolved = {
+                match table.table[id.ctxt] {
+                    EmptyCtxt => id.name,
+                    // ignore marks here:
+                    Mark(_,subctxt) =>
+                        resolve_internal(Ident{name:id.name, ctxt: subctxt},table,resolve_table),
+                    // do the rename if necessary:
+                    Rename(Ident{name,ctxt},toname,subctxt) => {
+                        let resolvedfrom =
+                            resolve_internal(Ident{name:name,ctxt:ctxt},table,resolve_table);
+                        let resolvedthis =
+                            resolve_internal(Ident{name:id.name,ctxt:subctxt},table,resolve_table);
+                        if ((resolvedthis == resolvedfrom)
+                            && (marksof(ctxt,resolvedthis,table)
+                                == marksof(subctxt,resolvedthis,table))) {
+                            toname
+                        } else {
+                            resolvedthis
+                        }
+                    }
+                    IllegalCtxt() => fail!(~"expected resolvable context, got IllegalCtxt")
+                }
+            };
+            resolve_table.insert(key,resolved);
+            resolved
         }
-        IllegalCtxt() => fail!(~"expected resolvable context, got IllegalCtxt")
+        true => {
+            // it's guaranteed to be there, because we just checked that it was
+            // there and we never remove anything from the table:
+            *(resolve_table.find(&key).unwrap())
+        }
     }
 }
 
 /// Compute the marks associated with a syntax context.
+pub fn mtwt_marksof(ctxt: SyntaxContext, stopname: Name) -> ~[Mrk] {
+    marksof(ctxt, stopname, get_sctable())
+}
+
+// the internal function for computing marks
 // it's not clear to me whether it's better to use a [] mutable
 // vector or a cons-list for this.
 pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
@@ -970,6 +1019,16 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
     }
 }
 
+/// Return the outer mark for a context with a mark at the outside.
+/// FAILS when outside is not a mark.
+pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
+    let sctable = get_sctable();
+    match sctable.table[ctxt] {
+        ast::Mark(mrk,_) => mrk,
+        _ => fail!("can't retrieve outer mark when outside is not a mark")
+    }
+}
+
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
 pub fn xorPush(marks: &mut ~[uint], mark: uint) {
@@ -986,12 +1045,55 @@ pub fn getLast(arr: &~[Mrk]) -> uint {
     *arr.last()
 }
 
+// are two paths equal when compared unhygienically?
+// since I'm using this to replace ==, it seems appropriate
+// to compare the span, global, etc. fields as well.
+pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
+    (a.span == b.span)
+    && (a.global == b.global)
+    && (segments_name_eq(a.segments, b.segments))
+}
+
+// are two arrays of segments equal when compared unhygienically?
+pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> bool {
+    if (a.len() != b.len()) {
+        false
+    } else {
+        for (idx,seg) in a.iter().enumerate() {
+            if (seg.identifier.name != b[idx].identifier.name)
+                // FIXME #7743: ident -> name problems in lifetime comparison?
+                || (seg.lifetime != b[idx].lifetime)
+                // can types contain idents?
+                || (seg.types != b[idx].types) {
+                return false;
+            }
+        }
+        true
+    }
+}
 
 #[cfg(test)]
 mod test {
     use ast::*;
     use super::*;
     use std::io;
+    use opt_vec;
+    use std::hash::HashMap;
+
+    fn ident_to_segment(id : &Ident) -> PathSegment {
+        PathSegment{identifier:id.clone(), lifetime: None, types: opt_vec::Empty}
+    }
+
+    #[test] fn idents_name_eq_test() {
+        assert!(segments_name_eq([Ident{name:3,ctxt:4},
+                                   Ident{name:78,ctxt:82}].map(ident_to_segment),
+                                 [Ident{name:3,ctxt:104},
+                                   Ident{name:78,ctxt:182}].map(ident_to_segment)));
+        assert!(!segments_name_eq([Ident{name:3,ctxt:4},
+                                    Ident{name:78,ctxt:82}].map(ident_to_segment),
+                                  [Ident{name:3,ctxt:104},
+                                    Ident{name:77,ctxt:182}].map(ident_to_segment)));
+    }
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
@@ -1122,29 +1224,30 @@ mod test {
     #[test] fn resolve_tests () {
         let a = 40;
         let mut t = new_sctable_internal();
+        let mut rt = HashMap::new();
         // - ctxt is MT
-        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t),a);
+        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
         // - simple ignored marks
         { let sc = unfold_marks(~[1,2,3],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - orthogonal rename where names don't match
         { let sc = unfold_test_sc(~[R(id(50,EMPTY_CTXT),51),M(12)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - rename where names do match, but marks don't
         { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),
                                    M(1),
                                    M(2)],
                                  EMPTY_CTXT,&mut t);
-        assert_eq!(resolve_internal(id(a,sc),&mut t), a);}
+        assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
         // - rename where names and marks match
         { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - rename where names and marks match by literal sharing
         { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
@@ -1152,21 +1255,27 @@ mod test {
         { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
                                     R(id(a,EMPTY_CTXT),51)],
                                   EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t), 51); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
         // the simplest double-rename:
         { let a_to_a50 = new_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
          let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t),51);
+         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
          // mark on the outside doesn't stop rename:
          let sc = new_mark_internal(9,a50_to_a51,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t),51);
+         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
          // but mark on the inside does:
          let a50_to_a51_b = unfold_test_sc(~[R(id(a,a_to_a50),51),
                                               M(9)],
                                            a_to_a50,
                                            &mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t),50);}
+         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}
     }
+
+    #[test] fn mtwt_resolve_test(){
+        let a = 40;
+        assert_eq!(mtwt_resolve(id(a,EMPTY_CTXT)),a);
+    }
+
 
     #[test] fn hashing_tests () {
         let mut t = new_sctable_internal();
@@ -1175,6 +1284,18 @@ mod test {
         // using the same one again should result in the same index:
         assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
         // I'm assuming that the rename table will behave the same....
+    }
+
+    #[test] fn resolve_table_hashing_tests() {
+        let mut t = new_sctable_internal();
+        let mut rt = HashMap::new();
+        assert_eq!(rt.len(),0);
+        resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
+        assert_eq!(rt.len(),1);
+        resolve_internal(id(39,EMPTY_CTXT),&mut t, &mut rt);
+        assert_eq!(rt.len(),2);
+        resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
+        assert_eq!(rt.len(),2);
     }
 
 }

@@ -105,6 +105,7 @@ use syntax::ast::{sty_uniq, sty_static, NodeId};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::ast_map;
+use syntax::parse::token;
 
 #[deriving(Eq)]
 pub enum CheckTraitsFlag {
@@ -126,7 +127,7 @@ pub fn lookup(
         self_expr: @ast::Expr,              // The expression `a`.
         callee_id: NodeId,                  /* Where to store `a.b`'s type,
                                              * also the scope of the call */
-        m_name: ast::Ident,                 // The ident `b`.
+        m_name: ast::Name,                  // The name `b`.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
         deref_args: check::DerefArgs,       // Whether we autopointer first.
@@ -173,7 +174,7 @@ pub struct LookupContext<'self> {
     expr: @ast::Expr,
     self_expr: @ast::Expr,
     callee_id: NodeId,
-    m_name: ast::Ident,
+    m_name: ast::Name,
     supplied_tps: &'self [ty::t],
     impl_dups: @mut HashSet<DefId>,
     inherent_candidates: @mut ~[Candidate],
@@ -515,7 +516,7 @@ impl<'self> LookupContext<'self> {
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             match trait_methods.iter().position(|m| {
                 m.explicit_self != ast::sty_static &&
-                m.ident == self.m_name })
+                m.ident.name == self.m_name })
             {
                 Some(pos) => {
                     let method = trait_methods[pos];
@@ -558,12 +559,12 @@ impl<'self> LookupContext<'self> {
             return; // already visited
         }
         debug!("push_candidates_from_impl: %s %s %s",
-               self.m_name.repr(self.tcx()),
+               token::interner_get(self.m_name),
                impl_info.ident.repr(self.tcx()),
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
         let idx = {
-            match impl_info.methods.iter().position(|m| m.ident == self.m_name) {
+            match impl_info.methods.iter().position(|m| m.ident.name == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }

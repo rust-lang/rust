@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// this now fails (correctly, I claim) because hygiene prevents
-// the assembled identifier from being a reference to the binding.
+mod x {
+    pub fn g() -> uint {14}
+}
 
-pub fn main() {
-    let asdf_fdsa = ~"<.<";
-    assert_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
-
-    assert!(stringify!(use_mention_distinction) ==
-                "use_mention_distinction");
+fn main(){
+    // should *not* shadow the module x:
+    let x = 9;
+    // use it to avoid warnings:
+    x+3;
+    assert_eq!(x::g(),14);
 }
