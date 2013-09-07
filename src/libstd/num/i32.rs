@@ -10,7 +10,8 @@
 
 //! Operations and constants for `i32`
 
-use num::BitCount;
+use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use option::{Option, Some, None};
 use unstable::intrinsics;
 
 pub use self::generated::*;
@@ -29,4 +30,34 @@ impl BitCount for i32 {
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
     #[inline]
     fn trailing_zeros(&self) -> i32 { unsafe { intrinsics::cttz32(*self) } }
+}
+
+impl CheckedAdd for i32 {
+    #[inline]
+    fn checked_add(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedSub for i32 {
+    #[inline]
+    fn checked_sub(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedMul for i32 {
+    #[inline]
+    fn checked_mul(&self, v: &i32) -> Option<i32> {
+        unsafe {
+            let (x, y) = intrinsics::i32_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
 }
