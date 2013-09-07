@@ -43,7 +43,7 @@ pub fn pkg_parent_workspaces(cx: &Ctx, pkgid: &PkgId) -> ~[Path] {
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
         .collect();
     if cx.use_rust_path_hack {
-        rs + option_to_vec(find_dir_using_rust_path_hack(cx, pkgid))
+        rs + option_to_vec(find_dir_using_rust_path_hack(pkgid))
     }
     else {
         rs

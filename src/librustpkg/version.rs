@@ -99,12 +99,14 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
     let rustpath = rust_path();
     for rp in rustpath.iter() {
         let local_path = rp.push_rel(local_path);
-        debug!("in try_getting_local_version");
+        let git_dir = local_path.push(".git");
+        if !os::path_is_dir(&git_dir) {
+            loop;
+        }
         let outp = run::process_output("git",
-                                   [fmt!("--git-dir=%s", local_path.push(".git").to_str()),
-                                    ~"tag", ~"-l"]);
+                                   [fmt!("--git-dir=%s", git_dir.to_str()), ~"tag", ~"-l"]);
 
-        debug!("git --git-dir=%s tag -l ~~~> %?", local_path.push(".git").to_str(), outp.status);
+        debug!("git --git-dir=%s tag -l ~~~> %?", git_dir.to_str(), outp.status);
 
         if outp.status != 0 {
             loop;
@@ -129,9 +131,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
 /// and the most recent tag in that repo denotes a version, return it;
 /// otherwise, `None`
 pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
-    debug!("try_getting_version: %s", remote_path.to_str());
     if is_url_like(remote_path) {
-        debug!("Trying to fetch its sources..");
         let tmp_dir = mkdtemp(&os::tmpdir(),
                               "test").expect("try_getting_version: couldn't create temp dir");
         debug!("(to get version) executing {git clone https://%s %s}",
@@ -218,14 +218,11 @@ pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
 pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Version)> {
     match s.rfind(sep) {
         Some(i) => {
-            debug!("in %s, i = %?", s, i);
             let path = s.slice(0, i);
-            debug!("path = %s", path);
             // n.b. for now, assuming an exact revision is intended, not a SemVer
             Some((path, ExactRevision(s.slice(i + 1, s.len()).to_owned())))
         }
         None => {
-            debug!("%s doesn't look like an explicit-version thing", s);
             None
         }
     }

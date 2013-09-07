@@ -51,12 +51,10 @@ impl PkgId {
         // Did the user request a specific version?
         let s = match split_version(s) {
             Some((path, v)) => {
-                debug!("s = %s, path = %s, v = %s", s, path, v.to_str());
                 given_version = Some(v);
                 path
             }
             None => {
-                debug!("%s has no explicit version", s);
                 s
             }
         };
@@ -81,7 +79,6 @@ impl PkgId {
             }
         };
 
-        debug!("path = %s", path.to_str());
         PkgId {
             path: path.clone(),
             short_name: short_name.to_owned(),
