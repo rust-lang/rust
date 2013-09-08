@@ -113,7 +113,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
         // Desugar expr_for_loop
         // From: `for <src_pat> in <src_expr> <src_loop_block>`
-        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block) => {
+        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block, opt_ident) => {
             let src_pat = src_pat.clone();
             let src_expr = src_expr.clone();
 
@@ -257,7 +257,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             // `loop { ... }`
             let loop_block = {
                 let loop_body_block = mk_block(cx, [match_stmt], None, span);
-                let loop_body_expr = mk_expr(cx, span, ast::ExprLoop(loop_body_block, None));
+                let loop_body_expr = mk_expr(cx, span, ast::ExprLoop(loop_body_block, opt_ident));
                 let loop_body_stmt = @spanned(lo, hi, ast::StmtExpr(loop_body_expr, cx.next_id()));
                 mk_block(cx, [iter_decl_stmt,
                               loop_body_stmt],

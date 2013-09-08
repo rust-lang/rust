@@ -523,7 +523,7 @@ pub fn visit_expr<E:Clone>(ex: @Expr, (e, v): (E, vt<E>)) {
             (v.visit_expr)(x, (e.clone(), v));
             (v.visit_block)(b, (e.clone(), v));
         }
-        ExprForLoop(pattern, subexpression, ref block) => {
+        ExprForLoop(pattern, subexpression, ref block, _) => {
             (v.visit_pat)(pattern, (e.clone(), v));
             (v.visit_expr)(subexpression, (e.clone(), v));
             (v.visit_block)(block, (e.clone(), v))
