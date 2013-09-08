@@ -1771,7 +1771,7 @@ impl Parser {
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else if self.eat_keyword(keywords::For) {
-            return self.parse_for_expr();
+            return self.parse_for_expr(None);
         } else if self.eat_keyword(keywords::Do) {
             return self.parse_sugary_call_expr(lo, ~"do", DoSugar,
                                                ExprDoBody);
@@ -1781,8 +1781,13 @@ impl Parser {
             let lifetime = self.get_lifetime(&*self.token);
             self.bump();
             self.expect(&token::COLON);
-            self.expect_keyword(keywords::Loop);
-            return self.parse_loop_expr(Some(lifetime));
+            if self.eat_keyword(keywords::For) {
+                return self.parse_for_expr(Some(lifetime))
+            } else if self.eat_keyword(keywords::Loop) {
+                return self.parse_loop_expr(Some(lifetime))
+            } else {
+                self.fatal("expected `for` or `loop` after a label")
+            }
         } else if self.eat_keyword(keywords::Loop) {
             return self.parse_loop_expr(None);
         } else if self.eat_keyword(keywords::Match) {
@@ -2467,7 +2472,7 @@ impl Parser {
     }
 
     // parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&self) -> @Expr {
+    pub fn parse_for_expr(&self, opt_ident: Option<ast::Ident>) -> @Expr {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
         let lo = self.last_span.lo;
@@ -2477,7 +2482,7 @@ impl Parser {
         let loop_block = self.parse_block();
         let hi = self.span.hi;
 
-        self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block))
+        self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident))
     }
 
 

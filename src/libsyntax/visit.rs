@@ -599,7 +599,7 @@ pub fn walk_expr<E:Clone, V:Visitor<E>>(visitor: &mut V, expression: @Expr, env:
             visitor.visit_expr(subexpression, env.clone());
             visitor.visit_block(block, env.clone())
         }
-        ExprForLoop(pattern, subexpression, ref block) => {
+        ExprForLoop(pattern, subexpression, ref block, _) => {
             visitor.visit_pat(pattern, env.clone());
             visitor.visit_expr(subexpression, env.clone());
             visitor.visit_block(block, env.clone())
@@ -812,4 +812,3 @@ impl Visitor<()> for SimpleVisitorVisitor {
         walk_struct_field(self, struct_field, env)
     }
 }
-

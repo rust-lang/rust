@@ -14,4 +14,10 @@ pub fn main() {
             break 'foo;
         }
     }
+
+    'bar: for _ in range(0, 100) {
+        loop {
+            break 'bar;
+        }
+    }
 }
