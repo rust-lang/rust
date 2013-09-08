@@ -557,10 +557,11 @@ pub fn noop_fold_expr(e: &Expr_, fld: @ast_fold) -> Expr_ {
         ExprWhile(cond, ref body) => {
             ExprWhile(fld.fold_expr(cond), fld.fold_block(body))
         }
-        ExprForLoop(pat, iter, ref body) => {
+        ExprForLoop(pat, iter, ref body, opt_ident) => {
             ExprForLoop(fld.fold_pat(pat),
-                          fld.fold_expr(iter),
-                          fld.fold_block(body))
+                        fld.fold_expr(iter),
+                        fld.fold_block(body),
+                        opt_ident.map_move(|x| fld.fold_ident(x)))
         }
         ExprLoop(ref body, opt_ident) => {
             ExprLoop(

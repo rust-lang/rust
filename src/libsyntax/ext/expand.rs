@@ -14,13 +14,13 @@ use ast::{item_mac, Mrk, Stmt_, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{token_tree};
 use ast;
 use ast_util::{mtwt_outer_mark, new_rename, new_mark};
+use ext::build::AstBuilder;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
-use codemap::{Span, Spanned, spanned, ExpnInfo, NameAndSpan};
+use codemap::{Span, Spanned, ExpnInfo, NameAndSpan};
 use ext::base::*;
 use fold::*;
-use opt_vec;
 use parse;
 use parse::{parse_item_from_source_str};
 use parse::token;
@@ -33,7 +33,7 @@ use std::vec;
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    e: &Expr_,
-                   s: Span,
+                   span: Span,
                    fld: @ast_fold,
                    orig: @fn(&Expr_, Span, @ast_fold) -> (Expr_, Span))
                 -> (Expr_, Span) {
@@ -66,7 +66,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         }
                         Some(@SE(NormalTT(expandfun, exp_span))) => {
                             cx.bt_push(ExpnInfo {
-                                call_site: s,
+                                call_site: span,
                                 callee: NameAndSpan {
                                     name: extnamestr,
                                     span: exp_span,
@@ -98,7 +98,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                 fld.fold_expr(marked_after).node.clone();
                             cx.bt_pop();
 
-                            (fully_expanded, s)
+                            (fully_expanded, span)
                         }
                         _ => {
                             cx.span_fatal(
@@ -112,62 +112,18 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         }
 
         // Desugar expr_for_loop
-        // From: `for <src_pat> in <src_expr> <src_loop_block>`
-        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block) => {
-            let src_pat = src_pat.clone();
-            let src_expr = src_expr.clone();
-
+        // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
+        ast::ExprForLoop(src_pat, src_expr, ref src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
-            let src_expr = fld.fold_expr(src_expr).clone();
-            let src_loop_block = fld.fold_block(src_loop_block).clone();
-
-            let span = s;
-            let lo = s.lo;
-            let hi = s.hi;
-
-            pub fn mk_expr(cx: @ExtCtxt, span: Span,
-                           node: Expr_) -> @ast::Expr {
-                @ast::Expr {
-                    id: cx.next_id(),
-                    node: node,
-                    span: span,
-                }
-            }
-
-            fn mk_block(cx: @ExtCtxt,
-                        stmts: &[@ast::Stmt],
-                        expr: Option<@ast::Expr>,
-                        span: Span) -> ast::Block {
-                ast::Block {
-                    view_items: ~[],
-                    stmts: stmts.to_owned(),
-                    expr: expr,
-                    id: cx.next_id(),
-                    rules: ast::DefaultBlock,
-                    span: span,
-                }
-            }
-
-            fn mk_simple_path(ident: ast::Ident, span: Span) -> ast::Path {
-                ast::Path {
-                    span: span,
-                    global: false,
-                    segments: ~[
-                        ast::PathSegment {
-                            identifier: ident,
-                            lifetime: None,
-                            types: opt_vec::Empty,
-                        }
-                    ],
-                }
-            }
+            let src_expr = fld.fold_expr(src_expr);
+            let src_loop_block = fld.fold_block(src_loop_block);
 
             // to:
             //
             // {
             //   let _i = &mut <src_expr>;
-            //   loop {
+            //   ['<ident>:] loop {
             //       match i.next() {
             //           None => break,
             //           Some(<src_pat>) => <src_loop_block>
@@ -176,98 +132,50 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             // }
 
             let local_ident = token::gensym_ident("i");
-            let some_ident = token::str_to_ident("Some");
-            let none_ident = token::str_to_ident("None");
-            let next_ident = token::str_to_ident("next");
+            let next_ident = cx.ident_of("next");
+            let none_ident = cx.ident_of("None");
 
-            let local_path_1 = mk_simple_path(local_ident, span);
-            let local_path_2 = mk_simple_path(local_ident, span);
-            let some_path = mk_simple_path(some_ident, span);
-            let none_path = mk_simple_path(none_ident, span);
+            let local_path = cx.path_ident(span, local_ident);
+            let some_path = cx.path_ident(span, cx.ident_of("Some"));
 
             // `let i = &mut <src_expr>`
-            let iter_decl_stmt = {
-                let ty = ast::Ty {
-                    id: cx.next_id(),
-                    node: ast::ty_infer,
-                    span: span
-                };
-                let local = @ast::Local {
-                    is_mutbl: false,
-                    ty: ty,
-                    pat: @ast::Pat {
-                        id: cx.next_id(),
-                        node: ast::PatIdent(ast::BindInfer, local_path_1, None),
-                        span: src_expr.span
-                    },
-                    init: Some(mk_expr(cx, src_expr.span,
-                                       ast::ExprAddrOf(ast::MutMutable, src_expr))),
-                    id: cx.next_id(),
-                    span: src_expr.span,
-                };
-                let e = @spanned(src_expr.span.lo,
-                                 src_expr.span.hi,
-                                 ast::DeclLocal(local));
-                @spanned(lo, hi, ast::StmtDecl(e, cx.next_id()))
-            };
+            let iter_decl_stmt = cx.stmt_let(span, false, local_ident,
+                                             cx.expr_mut_addr_of(span, src_expr));
 
-            // `None => break;`
+            // `None => break ['<ident>];`
             let none_arm = {
-                let break_expr = mk_expr(cx, span, ast::ExprBreak(None));
-                let break_stmt = @spanned(lo, hi, ast::StmtExpr(break_expr, cx.next_id()));
-                let none_block = mk_block(cx, [break_stmt], None, span);
-                let none_pat = @ast::Pat {
-                    id: cx.next_id(),
-                    node: ast::PatIdent(ast::BindInfer, none_path, None),
-                    span: span
-                };
-                ast::Arm {
-                    pats: ~[none_pat],
-                    guard: None,
-                    body: none_block
-                }
+                let break_expr = cx.expr(span, ast::ExprBreak(opt_ident));
+                let none_pat = cx.pat_ident(span, none_ident);
+                cx.arm(span, ~[none_pat], break_expr)
             };
 
             // `Some(<src_pat>) => <src_loop_block>`
-            let some_arm = {
-                let pat = @ast::Pat {
-                    id: cx.next_id(),
-                    node: ast::PatEnum(some_path, Some(~[src_pat])),
-                    span: src_pat.span
-                };
-                ast::Arm {
-                    pats: ~[pat],
-                    guard: None,
-                    body: src_loop_block
-                }
-            };
+            let some_arm =
+                cx.arm(span,
+                       ~[cx.pat_enum(span, some_path, ~[src_pat])],
+                       cx.expr_block(src_loop_block));
 
             // `match i.next() { ... }`
-            let match_stmt = {
-                let local_expr = mk_expr(cx, span, ast::ExprPath(local_path_2));
-                let next_call_expr = mk_expr(cx, span,
-                                             ast::ExprMethodCall(cx.next_id(),
-                                                                   local_expr, next_ident,
-                                                                   ~[], ~[], ast::NoSugar));
-                let match_expr = mk_expr(cx, span, ast::ExprMatch(next_call_expr,
-                                                                   ~[none_arm, some_arm]));
-                @spanned(lo, hi, ast::StmtExpr(match_expr, cx.next_id()))
+            let match_expr = {
+                let next_call_expr =
+                    cx.expr_method_call(span, cx.expr_path(local_path), next_ident, ~[]);
+
+                cx.expr_match(span, next_call_expr, ~[none_arm, some_arm])
             };
 
-            // `loop { ... }`
-            let loop_block = {
-                let loop_body_block = mk_block(cx, [match_stmt], None, span);
-                let loop_body_expr = mk_expr(cx, span, ast::ExprLoop(loop_body_block, None));
-                let loop_body_stmt = @spanned(lo, hi, ast::StmtExpr(loop_body_expr, cx.next_id()));
-                mk_block(cx, [iter_decl_stmt,
-                              loop_body_stmt],
-                         None, span)
-            };
+            // ['ident:] loop { ... }
+            let loop_expr = cx.expr(span,
+                                    ast::ExprLoop(cx.block_expr(match_expr), opt_ident));
 
-            (ast::ExprBlock(loop_block), span)
+            // `{ let ... ;  loop { ... } }`
+            let block = cx.block(span,
+                                 ~[iter_decl_stmt],
+                                 Some(loop_expr));
+
+            (ast::ExprBlock(block), span)
         }
 
-        _ => orig(e, s, fld)
+        _ => orig(e, span, fld)
     }
 }
 
