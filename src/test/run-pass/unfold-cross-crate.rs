@@ -10,7 +10,7 @@
 
 use std::iterator::*;
 
-// Unfoldr had a bug with 'self that mean it didn't work
+// Unfold had a bug with 'self that mean it didn't work
 // cross-crate
 
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
         }
     }
 
-    let mut it = Unfoldr::new(0, count);
+    let mut it = Unfold::new(0, count);
     let mut i = 0;
     for counted in it {
         assert_eq!(counted, i);
