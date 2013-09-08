@@ -43,6 +43,8 @@ pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// succeeded.
 pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 
+pub fn make_dir_rwx_recursive(p: &Path) -> bool { os::mkdir_recursive(p, U_RWX) }
+
 // n.b. The next three functions ignore the package version right
 // now. Should fix that.
 
