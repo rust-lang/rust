@@ -586,11 +586,13 @@ pub fn print_item(s: @ps, item: &ast::item) {
         };
 
         print_type(s, ty);
-        space(s.s);
 
         if methods.len() == 0 {
             word(s.s, ";");
+            end(s); // end the head-ibox
+            end(s); // end the outer cbox
         } else {
+            space(s.s);
             bopen(s);
             for meth in methods.iter() {
                print_method(s, *meth);
