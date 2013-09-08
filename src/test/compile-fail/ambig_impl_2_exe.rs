@@ -17,4 +17,4 @@ trait me {
 }
 impl me for uint { fn me(&self) -> uint { *self } } //~ NOTE is `me$uint::me`
 fn main() { 1u.me(); } //~ ERROR multiple applicable methods in scope
-//~^ NOTE is `ambig_impl_2_lib::__extensions__::me`
+//~^ NOTE is `ambig_impl_2_lib::me$uint::me`
