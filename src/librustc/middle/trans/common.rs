@@ -39,15 +39,17 @@ use std::hashmap::{HashMap};
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
 use syntax::ast::Ident;
-use syntax::ast_map::{path, path_elt};
+use syntax::ast_map::{path, path_elt, path_pretty_name};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
-pub fn gensym_name(name: &str) -> Ident {
-    token::str_to_ident(fmt!("%s_%u", name, token::gensym(name)))
+pub fn gensym_name(name: &str) -> (Ident, path_elt) {
+    let name = token::gensym(name);
+    let ident = Ident::new(name);
+    (ident, path_pretty_name(ident, name as u64))
 }
 
 pub struct tydesc_info {

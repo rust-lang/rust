@@ -1063,12 +1063,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let impl_vtables = ty::lookup_impl_vtables(tcx, def_id);
             encode_impl_vtables(ebml_w, ecx, &impl_vtables);
         }
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        let elt = ast_map::impl_pretty_name(opt_trait, ty, item.ident);
+        encode_path(ecx, ebml_w, path, elt);
         ebml_w.end_tag();
 
         // >:-<
         let mut impl_path = vec::append(~[], path);
-        impl_path.push(ast_map::path_name(item.ident));
+        impl_path.push(elt);
 
         // Iterate down the methods, emitting them. We rely on the
         // assumption that all of the actually implemented methods
