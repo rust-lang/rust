@@ -528,7 +528,7 @@ pub enum Expr_ {
     ExprCast(@Expr, Ty),
     ExprIf(@Expr, Block, Option<@Expr>),
     ExprWhile(@Expr, Block),
-    ExprForLoop(@Pat, @Expr, Block),
+    ExprForLoop(@Pat, @Expr, Block, Option<Ident>),
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
