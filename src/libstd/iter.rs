@@ -363,7 +363,7 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::Counter;
+    /// use std::iter::count;
     ///
     /// for i in count(0, 10) {
     ///     printfln!("%d", i);
@@ -754,7 +754,7 @@ pub trait MultiplicativeIterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::Counter;
+    /// use std::iter::count;
     ///
     /// fn factorial(n: uint) -> uint {
     ///     count(1u, 1).take_while(|&i| i <= n).product()

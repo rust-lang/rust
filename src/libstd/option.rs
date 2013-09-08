@@ -45,8 +45,8 @@ use clone::Clone;
 use cmp::{Eq,Ord};
 use util;
 use num::Zero;
-use iterator;
-use iterator::{Iterator, DoubleEndedIterator, ExactSize};
+use iter;
+use iter::{Iterator, DoubleEndedIterator, ExactSize};
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -60,19 +60,19 @@ pub enum Option<T> {
 
 impl<T: Eq + Ord> Ord for Option<T> {
     fn lt(&self, other: &Option<T>) -> bool {
-        iterator::order::lt(self.iter(), other.iter())
+        iter::order::lt(self.iter(), other.iter())
     }
 
     fn le(&self, other: &Option<T>) -> bool {
-        iterator::order::le(self.iter(), other.iter())
+        iter::order::le(self.iter(), other.iter())
     }
 
     fn ge(&self, other: &Option<T>) -> bool {
-        iterator::order::ge(self.iter(), other.iter())
+        iter::order::ge(self.iter(), other.iter())
     }
 
     fn gt(&self, other: &Option<T>) -> bool {
-        iterator::order::gt(self.iter(), other.iter())
+        iter::order::gt(self.iter(), other.iter())
     }
 }
 

@@ -32,7 +32,7 @@ use c_str::ToCStr;
 use clone::Clone;
 use container::Container;
 use io;
-use iterator::range;
+use iter::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::FILE;

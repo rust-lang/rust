@@ -18,7 +18,7 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use std::iterator;
+use std::iter;
 use std::num;
 use std::vec;
 use extra::sort;
@@ -282,7 +282,7 @@ pub fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                     _ => max_len
                   }
                 };
-                for n in iterator::range(0u, max_len + 1) {
+                for n in iter::range(0u, max_len + 1) {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
                     ref u => return *u,

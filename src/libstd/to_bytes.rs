@@ -18,7 +18,7 @@ use cast;
 use container::Container;
 use io;
 use io::Writer;
-use iterator::Iterator;
+use iter::Iterator;
 use option::{None, Option, Some};
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};

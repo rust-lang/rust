@@ -812,7 +812,7 @@ macro_rules! upper_hex(($ty:ident, $into:ident) => {
 #[doc(hidden)]
 pub fn upperhex(buf: &[u8], f: &mut Formatter) {
     let mut local = [0u8, ..16];
-    for i in ::iterator::range(0, buf.len()) {
+    for i in ::iter::range(0, buf.len()) {
         local[i] = match buf[i] as char {
             'a' .. 'f' => (buf[i] - 'a' as u8) + 'A' as u8,
             c => c as u8,

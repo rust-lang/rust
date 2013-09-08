@@ -12,7 +12,6 @@ use prelude::*;
 
 use char;
 use str;
-use iterator;
 
 condition! { pub parse_error: ~str -> (); }
 
@@ -152,7 +151,7 @@ pub struct Parser<'self> {
     priv depth: uint,
 }
 
-impl<'self> iterator::Iterator<Piece<'self>> for Parser<'self> {
+impl<'self> Iterator<Piece<'self>> for Parser<'self> {
     fn next(&mut self) -> Option<Piece<'self>> {
         match self.cur.clone().next() {
             Some((_, '#')) => { self.cur.next(); Some(CurrentArgument) }

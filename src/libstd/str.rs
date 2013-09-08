@@ -23,9 +23,9 @@ use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use num::Times;
-use iterator::{Iterator, FromIterator, Extendable};
-use iterator::{Filter, AdditiveIterator, Map};
-use iterator::{Invert, DoubleEndedIterator, ExactSize};
+use iter::{Iterator, FromIterator, Extendable};
+use iter::{Filter, AdditiveIterator, Map};
+use iter::{Invert, DoubleEndedIterator, ExactSize};
 use libc;
 use num::{Saturating};
 use option::{None, Option, Some};
@@ -592,7 +592,7 @@ impl<'self> Iterator<&'self str> for StrSplitIterator<'self> {
 
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
-    use iterator::range;
+    use iter::range;
     use tuple::CopyableTuple;
 
     let len = comb.len();
@@ -3325,7 +3325,7 @@ mod tests {
 
     #[test]
     fn test_iterator() {
-        use iterator::*;
+        use iter::*;
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
@@ -3341,7 +3341,7 @@ mod tests {
 
     #[test]
     fn test_rev_iterator() {
-        use iterator::*;
+        use iter::*;
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
@@ -3397,7 +3397,7 @@ mod tests {
 
     #[test]
     fn test_char_offset_iterator() {
-        use iterator::*;
+        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [0, 3, 6, 9, 12, 15, 18, 19, 20, 23, 24, 25, 26, 27];
         let v = ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -3415,7 +3415,7 @@ mod tests {
 
     #[test]
     fn test_char_offset_rev_iterator() {
-        use iterator::*;
+        use iter::*;
         let s = "ศไทย中华Việt Nam";
         let p = [27, 26, 25, 24, 23, 20, 19, 18, 15, 12, 9, 6, 3, 0];
         let v = ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];

@@ -10,7 +10,7 @@
 
 use lib::llvm::{llvm, BasicBlockRef};
 use middle::trans::value::{UserIterator, Value};
-use std::iterator::{Filter, Map};
+use std::iter::{Filter, Map};
 
 pub struct BasicBlock(BasicBlockRef);
 
