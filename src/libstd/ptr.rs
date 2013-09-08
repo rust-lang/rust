@@ -14,7 +14,7 @@ use cast;
 use clone::Clone;
 #[cfg(not(test))]
 use cmp::Equiv;
-use iterator::{range, Iterator};
+use iter::{range, Iterator};
 use option::{Option, Some, None};
 #[cfg(stage0)]
 use sys;

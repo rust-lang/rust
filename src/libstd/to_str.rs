@@ -19,7 +19,7 @@ use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
 use hash::Hash;
-use iterator::Iterator;
+use iter::Iterator;
 use cmp::Eq;
 use vec::ImmutableVector;
 

@@ -16,7 +16,6 @@ use std::clone::Clone;
 use std::unstable::intrinsics::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
-use std::iterator::{FromIterator, Extendable};
 
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]

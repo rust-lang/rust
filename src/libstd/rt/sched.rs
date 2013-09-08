@@ -27,7 +27,7 @@ use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use borrow::{to_uint};
 use cell::Cell;
 use rand::{XorShiftRng, RngUtil};
-use iterator::{range};
+use iter::range;
 use vec::{OwnedVector};
 
 /// A scheduler is responsible for coordinating the execution of Tasks

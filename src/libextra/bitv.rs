@@ -12,8 +12,8 @@
 
 
 use std::cmp;
-use std::iterator::RandomAccessIterator;
-use std::iterator::{Invert, Enumerate, Repeat, Map, Zip};
+use std::iter::RandomAccessIterator;
+use std::iter::{Invert, Enumerate, Repeat, Map, Zip};
 use std::num;
 use std::ops;
 use std::uint;

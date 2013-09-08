@@ -18,7 +18,6 @@
 
 use std::char;
 use std::cast::transmute;
-use std::iterator;
 use std::float;
 use std::hashmap::HashMap;
 use std::io::WriterUtil;
@@ -489,7 +488,7 @@ pub struct Parser<T> {
 }
 
 /// Decode a json value from an Iterator<char>
-pub fn Parser<T : iterator::Iterator<char>>(rdr: ~T) -> Parser<T> {
+pub fn Parser<T : Iterator<char>>(rdr: ~T) -> Parser<T> {
     let mut p = Parser {
         rdr: rdr,
         ch: '\x00',
@@ -500,7 +499,7 @@ pub fn Parser<T : iterator::Iterator<char>>(rdr: ~T) -> Parser<T> {
     p
 }
 
-impl<T: iterator::Iterator<char>> Parser<T> {
+impl<T: Iterator<char>> Parser<T> {
     pub fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
@@ -518,7 +517,7 @@ impl<T: iterator::Iterator<char>> Parser<T> {
     }
 }
 
-impl<T : iterator::Iterator<char>> Parser<T> {
+impl<T : Iterator<char>> Parser<T> {
     // FIXME: #8971: unsound
     fn eof(&self) -> bool { self.ch == unsafe { transmute(-1u32) } }
 

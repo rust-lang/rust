@@ -3628,7 +3628,7 @@ pub mod decompose {
     }
 
     fn d(c: char, i: &fn(char), k: bool) {
-        use iterator::Iterator;
+        use iter::Iterator;
         if c <= '\x7f' { i(c); return; }
 
         match bsearch_table(c, canonical_table) {

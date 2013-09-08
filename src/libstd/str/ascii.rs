@@ -17,7 +17,7 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use ptr;
-use iterator::Iterator;
+use iter::Iterator;
 use vec::{CopyableVector, ImmutableVector};
 use to_bytes::IterBytes;
 use option::{Some, None};

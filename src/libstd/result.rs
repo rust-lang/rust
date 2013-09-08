@@ -15,7 +15,7 @@
 use clone::Clone;
 use cmp::Eq;
 use either;
-use iterator::Iterator;
+use iter::Iterator;
 use option::{None, Option, Some, OptionIterator};
 use vec;
 use vec::OwnedVector;
@@ -335,7 +335,7 @@ mod tests {
     use super::*;
 
     use either;
-    use iterator::range;
+    use iter::range;
     use str::OwnedStr;
     use vec::ImmutableVector;
 

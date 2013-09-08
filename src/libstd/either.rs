@@ -16,7 +16,7 @@ use option::{Some, None};
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
-use iterator::{Iterator, FilterMap};
+use iter::{Iterator, FilterMap};
 use result::Result;
 use result;
 use str::StrSlice;

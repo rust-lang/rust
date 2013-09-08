@@ -11,7 +11,7 @@
 use cell::Cell;
 use comm;
 use container::Container;
-use iterator::{Iterator, DoubleEndedIterator};
+use iter::{Iterator, DoubleEndedIterator};
 use option::*;
 // use either::{Either, Left, Right};
 // use rt::kill::BlockedTask;
@@ -134,7 +134,7 @@ mod test {
     use comm::GenericChan;
     use task;
     use cell::Cell;
-    use iterator::{Iterator, range};
+    use iter::{Iterator, range};
 
     #[test] #[should_fail]
     fn select_doesnt_get_trolled() {

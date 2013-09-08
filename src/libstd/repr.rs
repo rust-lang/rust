@@ -20,7 +20,7 @@ use cast::transmute;
 use char;
 use container::Container;
 use rt::io;
-use iterator::Iterator;
+use iter::Iterator;
 use libc::c_void;
 use option::{Some, None};
 use ptr;
