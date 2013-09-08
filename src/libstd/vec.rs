@@ -408,56 +408,106 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
     (ts, us)
 }
 
-/**
- * Iterate over all permutations of vector `v`.
- *
- * Permutations are produced in lexicographic order with respect to the order
- * of elements in `v` (so if `v` is sorted then the permutations are
- * lexicographically sorted).
- *
- * The total number of permutations produced is `v.len()!`.  If `v` contains
- * repeated elements, then some permutations are repeated.
- *
- * See [Algorithms to generate
- * permutations](http://en.wikipedia.org/wiki/Permutation).
- *
- *  # Arguments
- *
- *  * `values` - A vector of values from which the permutations are
- *  chosen
- *
- *  * `fun` - The function to iterate over the combinations
- */
-pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
-    let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| values[i].clone());
-    if length <= 1 {
-        fun(permutation);
-        return true;
+/// An Iterator that yields the element swaps needed to produce
+/// a sequence of all possible permutations for an indexed sequence of
+/// elements. Each permutation is only a single swap apart.
+///
+/// The Steinhaus–Johnson–Trotter algorithm is used.
+///
+/// Generates even and odd permutations alternatingly.
+///
+/// The last generated swap is always (0, 1), and it returns the
+/// sequence to its initial order.
+pub struct ElementSwaps {
+    priv sdir: ~[SizeDirection],
+    /// If true, emit the last swap that returns the sequence to initial state
+    priv emit_reset: bool,
+}
+
+impl ElementSwaps {
+    /// Create an `ElementSwaps` iterator for a sequence of `length` elements
+    pub fn new(length: uint) -> ElementSwaps {
+        // Initialize `sdir` with a direction that position should move in
+        // (all negative at the beginning) and the `size` of the
+        // element (equal to the original index).
+        ElementSwaps{
+            emit_reset: true,
+            sdir: range(0, length)
+                    .map(|i| SizeDirection{ size: i, dir: Neg })
+                    .to_owned_vec()
+        }
     }
-    let mut indices = vec::from_fn(length, |i| i);
-    loop {
-        if !fun(permutation) { return true; }
-        // find largest k such that indices[k] < indices[k+1]
-        // if no such k exists, all permutations have been generated
-        let mut k = length - 2;
-        while k > 0 && indices[k] >= indices[k+1] {
-            k -= 1;
+}
+
+enum Direction { Pos, Neg }
+
+/// An Index and Direction together
+struct SizeDirection {
+    size: uint,
+    dir: Direction,
+}
+
+impl Iterator<(uint, uint)> for ElementSwaps {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, uint)> {
+        fn new_pos(i: uint, s: Direction) -> uint {
+            i + match s { Pos => 1, Neg => -1 }
         }
-        if k == 0 && indices[0] > indices[1] { return true; }
-        // find largest l such that indices[k] < indices[l]
-        // k+1 is guaranteed to be such
-        let mut l = length - 1;
-        while indices[k] >= indices[l] {
-            l -= 1;
+
+        // Find the index of the largest mobile element:
+        // The direction should point into the vector, and the
+        // swap should be with a smaller `size` element.
+        let max = self.sdir.iter().map(|&x| x).enumerate()
+                           .filter(|&(i, sd)|
+                                new_pos(i, sd.dir) < self.sdir.len() &&
+                                self.sdir[new_pos(i, sd.dir)].size < sd.size)
+                           .max_by(|&(_, sd)| sd.size);
+        match max {
+            Some((i, sd)) => {
+                let j = new_pos(i, sd.dir);
+                self.sdir.swap(i, j);
+
+                // Swap the direction of each larger SizeDirection
+                for x in self.sdir.mut_iter() {
+                    if x.size > sd.size {
+                        x.dir = match x.dir { Pos => Neg, Neg => Pos };
+                    }
+                }
+                Some((i, j))
+            },
+            None => if self.emit_reset && self.sdir.len() > 1 {
+                self.emit_reset = false;
+                Some((0, 1))
+            } else {
+                None
+            }
         }
-        // swap indices[k] and indices[l]; sort indices[k+1..]
-        // (they're just reversed)
-        indices.swap(k, l);
-        indices.mut_slice(k+1, length).reverse();
-        // fixup permutation based on indices
-        for i in range(k, length) {
-            permutation[i] = values[indices[i]].clone();
+    }
+}
+
+/// An Iterator that uses `ElementSwaps` to iterate through
+/// all possible permutations of a vector.
+///
+/// The first iteration yields a clone of the vector as it is,
+/// then each successive element is the vector with one
+/// swap applied.
+///
+/// Generates even and odd permutations alternatingly.
+pub struct Permutations<T> {
+    priv swaps: ElementSwaps,
+    priv v: ~[T],
+}
+
+impl<T: Clone> Iterator<~[T]> for Permutations<T> {
+    #[inline]
+    fn next(&mut self) -> Option<~[T]> {
+        match self.swaps.next() {
+            None => None,
+            Some((a, b)) => {
+                let elt = self.v.clone();
+                self.v.swap(a, b);
+                Some(elt)
+            }
         }
     }
 }
@@ -1141,6 +1191,7 @@ impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
 pub trait ImmutableCopyableVector<T> {
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     unsafe fn unsafe_get(&self, elem: uint) -> T;
+    fn permutations_iter(self) -> Permutations<T>;
 }
 
 /// Extension methods for vectors
@@ -1170,6 +1221,16 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     unsafe fn unsafe_get(&self, index: uint) -> T {
         (*self.unsafe_ref(index)).clone()
     }
+
+    /// Create an iterator that yields every possible permutation of the
+    /// vector in succession.
+    fn permutations_iter(self) -> Permutations<T> {
+        Permutations{
+            swaps: ElementSwaps::new(self.len()),
+            v: self.to_owned(),
+        }
+    }
+
 }
 
 #[allow(missing_doc)]
@@ -2848,28 +2909,6 @@ mod tests {
     }
 
     #[test]
-    fn test_each_permutation() {
-        let mut results: ~[~[int]];
-
-        results = ~[];
-        do each_permutation([]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[]]);
-
-        results = ~[];
-        do each_permutation([7]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[7]]);
-
-        results = ~[];
-        do each_permutation([1,1]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[1,1],~[1,1]]);
-
-        results = ~[];
-        do each_permutation([5,2,0]) |v| { results.push(v.to_owned()); true };
-        assert!(results ==
-            ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
-    }
-
-    #[test]
     fn test_zip_unzip() {
         let z1 = ~[(1, 4), (2, 5), (3, 6)];
 
@@ -2878,6 +2917,58 @@ mod tests {
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
         assert_eq!((3, 6), (left[2], right[2]));
+    }
+
+    #[test]
+    fn test_element_swaps() {
+        let mut v = [1, 2, 3];
+        for (i, (a, b)) in ElementSwaps::new(v.len()).enumerate() {
+            v.swap(a, b);
+            match i {
+                0 => assert_eq!(v, [1, 3, 2]),
+                1 => assert_eq!(v, [3, 1, 2]),
+                2 => assert_eq!(v, [3, 2, 1]),
+                3 => assert_eq!(v, [2, 3, 1]),
+                4 => assert_eq!(v, [2, 1, 3]),
+                5 => assert_eq!(v, [1, 2, 3]),
+                _ => fail!(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_permutations() {
+        use hashmap;
+        {
+            let v: [int, ..0] = [];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [~"Hello"];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [1, 2, 3];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), Some(~[1,2,3]));
+            assert_eq!(it.next(), Some(~[1,3,2]));
+            assert_eq!(it.next(), Some(~[3,1,2]));
+            assert_eq!(it.next(), Some(~[3,2,1]));
+            assert_eq!(it.next(), Some(~[2,3,1]));
+            assert_eq!(it.next(), Some(~[2,1,3]));
+            assert_eq!(it.next(), None);
+        }
+        {
+            // check that we have N! unique permutations
+            let mut set = hashmap::HashSet::new();
+            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
+            for perm in v.permutations_iter() {
+                set.insert(perm);
+            }
+            assert_eq!(set.len(), 2 * 3 * 4 * 5 * 6);
+        }
     }
 
     #[test]
@@ -3175,13 +3266,12 @@ mod tests {
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do each_permutation(v) |_elt| {
+        for _ in v.permutations_iter() {
             if i == 2 {
                 fail!()
             }
             i += 1;
-            true
-        };
+        }
     }
 
     #[test]
@@ -3491,50 +3581,6 @@ mod tests {
         let mut values = [1,2,3,4,5];
         values.mut_slice(1, 4).reverse();
         assert_eq!(values, [1,4,3,2,5]);
-    }
-
-    #[test]
-    fn test_permutations0() {
-        let values = [];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[]]);
-    }
-
-    #[test]
-    fn test_permutations1() {
-        let values = [1];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1]]);
-    }
-
-    #[test]
-    fn test_permutations2() {
-        let values = [1,2];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1,2],~[2,1]]);
-    }
-
-    #[test]
-    fn test_permutations3() {
-        let values = [1,2,3];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
     }
 
     #[test]
