@@ -10,7 +10,9 @@
 
 //! Operations and constants for `i64`
 
-use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use num::{BitCount, CheckedAdd, CheckedSub};
+#[cfg(target_word_size = "64")]
+use num::CheckedMul;
 use option::{Option, Some, None};
 use unstable::intrinsics;
 

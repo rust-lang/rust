@@ -10,7 +10,9 @@
 
 //! Operations and constants for `u64`
 
-use num::{CheckedAdd, CheckedSub, CheckedMul};
+use num::{CheckedAdd, CheckedSub};
+#[cfg(target_word_size = "64")]
+use num::CheckedMul;
 use option::{Option, Some, None};
 use unstable::intrinsics;
 
