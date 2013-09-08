@@ -1672,26 +1672,26 @@ for Inspect<'self, A, T> {
 }
 
 /// An iterator which just modifies the contained state throughout iteration.
-pub struct Unfoldr<'self, A, St> {
+pub struct Unfold<'self, A, St> {
     priv f: &'self fn(&mut St) -> Option<A>,
     /// Internal state that will be yielded on the next iteration
     state: St
 }
 
-impl<'self, A, St> Unfoldr<'self, A, St> {
+impl<'self, A, St> Unfold<'self, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
     pub fn new<'a>(initial_state: St, f: &'a fn(&mut St) -> Option<A>)
-        -> Unfoldr<'a, A, St> {
-        Unfoldr {
+        -> Unfold<'a, A, St> {
+        Unfold {
             f: f,
             state: initial_state
         }
     }
 }
 
-impl<'self, A, St> Iterator<A> for Unfoldr<'self, A, St> {
+impl<'self, A, St> Iterator<A> for Unfold<'self, A, St> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         (self.f)(&mut self.state)
@@ -2213,7 +2213,7 @@ mod tests {
             }
         }
 
-        let mut it = Unfoldr::new(0, count);
+        let mut it = Unfold::new(0, count);
         let mut i = 0;
         for counted in it {
             assert_eq!(counted, i);
