@@ -547,8 +547,8 @@ impl ToStrRadix for $T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use prelude::*;
+    use super::*;
 
     use int;
     use i16;
