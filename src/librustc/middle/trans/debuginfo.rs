@@ -2064,7 +2064,7 @@ fn populate_scope_map(cx: &mut CrateContext,
                 }
             }
 
-            ast::ExprForLoop(_, _, _) => {
+            ast::ExprForLoop(_, _, _, _) => {
                 cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
                                             Found unexpanded for-loop.");
             }

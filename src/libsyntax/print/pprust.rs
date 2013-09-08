@@ -1232,7 +1232,12 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         space(s.s);
         print_block(s, blk);
       }
-      ast::ExprForLoop(pat, iter, ref blk) => {
+      ast::ExprForLoop(pat, iter, ref blk, opt_ident) => {
+        for ident in opt_ident.iter() {
+            word(s.s, "'");
+            print_ident(s, *ident);
+            word_space(s, ":");
+        }
         head(s, "for");
         print_pat(s, pat);
         space(s.s);
