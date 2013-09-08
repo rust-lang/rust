@@ -946,8 +946,8 @@ impl Float for float {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use prelude::*;
+    use super::*;
 
     use num::*;
     use num;
