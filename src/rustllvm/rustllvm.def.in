@@ -624,3 +624,5 @@ LLVMRustSetLLVMOptions
 LLVMRustPrintPasses
 LLVMRustSetNormalizedTarget
 LLVMRustAddAlwaysInlinePass
+LLVMAddReturnAttribute
+LLVMRemoveReturnAttribute

@@ -1716,21 +1716,15 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
         let llarg = unsafe {llvm::LLVMGetParam(cx.llfn, arg_n as c_uint) };
 
         match ty::get(arg_ty).sty {
-            // `~` pointers never alias other parameters, because
-            // ownership was transferred
+            // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(*) |
             ty::ty_evec(_, ty::vstore_uniq) |
             ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
                 unsafe {
-                    llvm::LLVMAddAttribute(
-                        llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
             }
-            // FIXME: #6785: `&mut` can only alias `&const` and
-            // `@mut`, we should check for those in the other
-            // parameters and then mark it as `noalias` if there
-            // aren't any
-            _ => {}
+            _ => ()
         }
 
         llarg
@@ -1952,6 +1946,18 @@ pub fn trans_fn(ccx: @mut CrateContext,
            param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
+
+    match ty::get(output_type).sty {
+        // `~` pointer return values never alias because ownership is transferred
+        ty::ty_uniq(*) |
+        ty::ty_evec(_, ty::vstore_uniq) => {
+            unsafe {
+                llvm::LLVMAddReturnAttribute(llfndecl, lib::llvm::NoAliasAttribute as c_uint);
+            }
+        }
+        _ => ()
+    }
+
     trans_closure(ccx,
                   path.clone(),
                   decl,
