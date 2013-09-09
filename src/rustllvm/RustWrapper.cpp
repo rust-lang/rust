@@ -350,6 +350,21 @@ extern "C" void LLVMAddFunctionAttrString(LLVMValueRef fn, const char *Name) {
   unwrap<Function>(fn)->addFnAttr(Name);
 }
 
+
+extern "C" void LLVMAddReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B(PA);
+  A->addAttributes(AttributeSet::ReturnIndex,
+                   AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
+}
+
+extern "C" void LLVMRemoveReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
+  Function *A = unwrap<Function>(Fn);
+  AttrBuilder B(PA);
+  A->removeAttributes(AttributeSet::ReturnIndex,
+                      AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
+}
+
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             LLVMValueRef source,
                                             const char* Name,
