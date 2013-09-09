@@ -2526,18 +2526,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
         fcx.write_bot(id);
       }
-      ast::ExprLog(lv, e) => {
-        check_expr_has_type(fcx, lv,
-                                  ty::mk_mach_uint(ast::ty_u32));
-
-        // Note: this does not always execute, so do not propagate bot:
-        check_expr(fcx, e);
-        if ty::type_is_error(fcx.expr_ty(e)) {
-            fcx.write_error(id);
-        }
-        else {
-            fcx.write_nil(id);
-        }
+      ast::ExprLogLevel => {
+        fcx.write_ty(id, ty::mk_u32())
       }
       ast::ExprParen(a) => {
         check_expr_with_opt_hint(fcx, a, expected);

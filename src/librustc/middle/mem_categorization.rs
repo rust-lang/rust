@@ -429,7 +429,7 @@ impl mem_categorization_ctxt {
           ast::ExprDoBody(*) | ast::ExprUnary(*) |
           ast::ExprMethodCall(*) | ast::ExprCast(*) | ast::ExprVstore(*) |
           ast::ExprVec(*) | ast::ExprTup(*) | ast::ExprIf(*) |
-          ast::ExprLog(*) | ast::ExprBinary(*) | ast::ExprWhile(*) |
+          ast::ExprLogLevel | ast::ExprBinary(*) | ast::ExprWhile(*) |
           ast::ExprBlock(*) | ast::ExprLoop(*) | ast::ExprMatch(*) |
           ast::ExprLit(*) | ast::ExprBreak(*) | ast::ExprMac(*) |
           ast::ExprAgain(*) | ast::ExprStruct(*) | ast::ExprRepeat(*) |

@@ -1414,13 +1414,9 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
           _ => ()
         }
       }
-      ast::ExprLog(lexp, expr) => {
-        word(s.s, "__log");
+      ast::ExprLogLevel => {
+        word(s.s, "__log_level");
         popen(s);
-        print_expr(s, lexp);
-        word(s.s, ",");
-        space_if_not_bol(s);
-        print_expr(s, expr);
         pclose(s);
       }
       ast::ExprInlineAsm(ref a) => {

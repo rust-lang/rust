@@ -643,10 +643,7 @@ pub fn walk_expr<E:Clone, V:Visitor<E>>(visitor: &mut V, expression: @Expr, env:
         ExprRet(optional_expression) => {
             walk_expr_opt(visitor, optional_expression, env.clone())
         }
-        ExprLog(level, subexpression) => {
-            visitor.visit_expr(level, env.clone());
-            visitor.visit_expr(subexpression, env.clone());
-        }
+        ExprLogLevel => {}
         ExprMac(ref macro) => walk_mac(visitor, macro, env.clone()),
         ExprParen(subexpression) => {
             visitor.visit_expr(subexpression, env.clone())

@@ -456,7 +456,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "if",                 // 42
         "impl",               // 43
         "let",                // 44
-        "__log",              // 45
+        "__log_level",        // 45
         "loop",               // 46
         "match",              // 47
         "mod",                // 48
@@ -606,7 +606,7 @@ pub mod keywords {
         Impl,
         In,
         Let,
-        __Log,
+        __LogLevel,
         Loop,
         Match,
         Mod,
@@ -651,7 +651,7 @@ pub mod keywords {
                 Impl => Ident { name: 43, ctxt: 0 },
                 In => Ident { name: 63, ctxt: 0 },
                 Let => Ident { name: 44, ctxt: 0 },
-                __Log => Ident { name: 45, ctxt: 0 },
+                __LogLevel => Ident { name: 45, ctxt: 0 },
                 Loop => Ident { name: 46, ctxt: 0 },
                 Match => Ident { name: 47, ctxt: 0 },
                 Mod => Ident { name: 48, ctxt: 0 },
