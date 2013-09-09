@@ -873,6 +873,12 @@ pub mod llvm {
         pub fn LLVMAddFunctionAttrString(Fn: ValueRef, Name: *c_char);
         #[fast_ffi]
         pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
+
+        #[fast_ffi]
+        pub fn LLVMAddReturnAttribute(Fn: ValueRef, PA: c_uint);
+        #[fast_ffi]
+        pub fn LLVMRemoveReturnAttribute(Fn: ValueRef, PA: c_uint);
+
         #[fast_ffi]
         pub fn LLVMRemoveFunctionAttr(Fn: ValueRef,
                                       PA: c_ulonglong,
