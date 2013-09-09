@@ -10,7 +10,8 @@
 
 //! Operations and constants for `i8`
 
-use num::BitCount;
+use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use option::{Option, Some, None};
 use unstable::intrinsics;
 
 pub use self::generated::*;
@@ -29,4 +30,34 @@ impl BitCount for i8 {
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
     #[inline]
     fn trailing_zeros(&self) -> i8 { unsafe { intrinsics::cttz8(*self) } }
+}
+
+impl CheckedAdd for i8 {
+    #[inline]
+    fn checked_add(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedSub for i8 {
+    #[inline]
+    fn checked_sub(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedMul for i8 {
+    #[inline]
+    fn checked_mul(&self, v: &i8) -> Option<i8> {
+        unsafe {
+            let (x, y) = intrinsics::i8_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
 }

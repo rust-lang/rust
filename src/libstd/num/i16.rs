@@ -10,7 +10,8 @@
 
 //! Operations and constants for `i16`
 
-use num::BitCount;
+use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use option::{Option, Some, None};
 use unstable::intrinsics;
 
 pub use self::generated::*;
@@ -29,4 +30,34 @@ impl BitCount for i16 {
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
     #[inline]
     fn trailing_zeros(&self) -> i16 { unsafe { intrinsics::cttz16(*self) } }
+}
+
+impl CheckedAdd for i16 {
+    #[inline]
+    fn checked_add(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedSub for i16 {
+    #[inline]
+    fn checked_sub(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedMul for i16 {
+    #[inline]
+    fn checked_mul(&self, v: &i16) -> Option<i16> {
+        unsafe {
+            let (x, y) = intrinsics::i16_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
 }
