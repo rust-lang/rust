@@ -307,7 +307,7 @@ fn encode_parent_item(ebml_w: &mut writer::Encoder, id: DefId) {
     ebml_w.end_tag();
 }
 
-fn encode_struct_field_names(ecx: &EncodeContext,
+fn encode_struct_fields(ecx: &EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              def: @struct_def) {
     for f in def.fields.iter() {
@@ -364,7 +364,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             ast::struct_variant_kind(def) => {
                 let idx = encode_info_for_struct(ecx, ebml_w, path,
                                          def.fields, index);
-                encode_struct_field_names(ecx, ebml_w, def);
+                encode_struct_fields(ecx, ebml_w, def);
                 let bkts = create_index(idx);
                 encode_index(ebml_w, bkts, write_i64);
             }
@@ -1017,7 +1017,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_field_names(ecx, ebml_w, struct_def);
+        encode_struct_fields(ecx, ebml_w, struct_def);
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
