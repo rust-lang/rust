@@ -521,27 +521,6 @@ impl FromStrRadix for BigUint {
     }
 }
 
-trait RandBigUInt {
-    /// Generate a random BigUint of the given bit size.
-    fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
-}
-
-impl<R: Rng> RandBigUInt for R {
-    /// Generate a random BigUint of the given bit size.
-    fn gen_biguint(&mut self, bit_size: uint) -> BigUint {
-        let (digits, rem) = bit_size.div_rem(&BigDigit::bits);
-        let mut data = vec::with_capacity(digits+1);
-        for _ in range(0, digits) {
-            data.push(self.gen());
-        }
-        if rem > 0 {
-            let final_digit: BigDigit = self.gen();
-            data.push(final_digit >> (BigDigit::bits - rem));
-        }
-        return BigUint::new(data);
-    }
-}
-
 impl BigUint {
     /// Creates and initializes an BigUint.
     #[inline]
@@ -1074,12 +1053,29 @@ impl FromStrRadix for BigInt {
 }
 
 trait RandBigInt {
+    /// Generate a random BigUint of the given bit size.
+    fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
+
     /// Generate a random BigInt of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt;
 }
 
 impl<R: Rng> RandBigInt for R {
     /// Generate a random BigUint of the given bit size.
+    fn gen_biguint(&mut self, bit_size: uint) -> BigUint {
+        let (digits, rem) = bit_size.div_rem(&BigDigit::bits);
+        let mut data = vec::with_capacity(digits+1);
+        for _ in range(0, digits) {
+            data.push(self.gen());
+        }
+        if rem > 0 {
+            let final_digit: BigDigit = self.gen();
+            data.push(final_digit >> (BigDigit::bits - rem));
+        }
+        return BigUint::new(data);
+    }
+
+    /// Generate a random BigInt of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt {
         // Generate a random BigUint...
         let biguint = self.gen_biguint(bit_size);
