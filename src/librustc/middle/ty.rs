@@ -3630,7 +3630,7 @@ pub fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
 
 pub fn def_has_ty_params(def: ast::Def) -> bool {
     match def {
-      ast::DefFn(_, _) | ast::DefVariant(_, _) | ast::DefStruct(_)
+      ast::DefFn(_, _) | ast::DefVariant(_, _, _) | ast::DefStruct(_)
         => true,
       _ => false
     }
@@ -3840,7 +3840,6 @@ impl VariantInfo {
     pub fn from_ast_variant(cx: ctxt,
                             ast_variant: &ast::variant,
                             discriminant: Disr) -> VariantInfo {
-
         let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
 
         match ast_variant.node.kind {

@@ -455,7 +455,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                             if id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &(id.node)) {
                                 match self.tcx.def_map.get_copy(&expr.id) {
-                                    DefVariant(_, variant_id) => {
+                                    DefVariant(_, variant_id, _) => {
                                         for field in (*fields).iter() {
                                                 debug!("(privacy checking) \
                                                         checking field in \
@@ -522,7 +522,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                             if enum_id.crate != LOCAL_CRATE ||
                                     !self.privileged_items.iter().any(|x| x == &enum_id.node) {
                                 match self.tcx.def_map.find(&pattern.id) {
-                                    Some(&DefVariant(_, variant_id)) => {
+                                    Some(&DefVariant(_, variant_id, _)) => {
                                         for field in fields.iter() {
                                             debug!("(privacy checking) \
                                                     checking field in \

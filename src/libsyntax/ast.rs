@@ -233,7 +233,7 @@ pub enum Def {
     DefStatic(DefId, bool /* is_mutbl */),
     DefArg(NodeId, bool /* is_mutbl */),
     DefLocal(NodeId, bool /* is_mutbl */),
-    DefVariant(DefId /* enum */, DefId /* variant */),
+    DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
     DefTy(DefId),
     DefTrait(DefId),
     DefPrimTy(prim_ty),

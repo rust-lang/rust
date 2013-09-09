@@ -149,7 +149,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             match def_map.find(&e.id) {
               Some(&DefStatic(*)) |
               Some(&DefFn(_, _)) |
-              Some(&DefVariant(_, _)) |
+              Some(&DefVariant(_, _, _)) |
               Some(&DefStruct(_)) => { }
 
               Some(&def) => {

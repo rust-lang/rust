@@ -1474,7 +1474,7 @@ impl Resolver {
                                                 variant.span);
                 child.define_value(privacy,
                                    DefVariant(item_id,
-                                               local_def(variant.node.id)),
+                                               local_def(variant.node.id), false),
                                    variant.span);
             }
             struct_variant_kind(_) => {
@@ -1482,7 +1482,7 @@ impl Resolver {
                                                 variant.span);
                 child.define_type(privacy,
                                   DefVariant(item_id,
-                                              local_def(variant.node.id)),
+                                              local_def(variant.node.id), true),
                                   variant.span);
                 self.structs.insert(local_def(variant.node.id));
             }
@@ -1690,14 +1690,20 @@ impl Resolver {
 
         match def {
           DefMod(_) | DefForeignMod(_) => {}
-          DefVariant(*) => {
+          DefVariant(_, variant_id, is_struct) => {
             debug!("(building reduced graph for external crate) building \
                     variant %s",
                    final_ident);
             // We assume the parent is visible, or else we wouldn't have seen
             // it.
             let privacy = variant_visibility_to_privacy(visibility, true);
-            child_name_bindings.define_value(privacy, def, dummy_sp());
+            if is_struct {
+                child_name_bindings.define_type(privacy, def, dummy_sp());
+                self.structs.insert(variant_id);
+            }
+            else {
+                child_name_bindings.define_value(privacy, def, dummy_sp());
+            }
           }
           DefFn(*) | DefStaticMethod(*) | DefStatic(*) => {
             debug!("(building reduced graph for external \
@@ -4507,7 +4513,7 @@ impl Resolver {
                             assert!(self.structs.contains(&class_id));
                             self.record_def(pattern.id, definition);
                         }
-                        Some(definition @ DefVariant(_, variant_id))
+                        Some(definition @ DefVariant(_, variant_id, _))
                                 if self.structs.contains(&variant_id) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -5123,7 +5129,7 @@ impl Resolver {
                         let class_def = DefStruct(class_id);
                         self.record_def(expr.id, class_def);
                     }
-                    Some(definition @ DefVariant(_, class_id))
+                    Some(definition @ DefVariant(_, class_id, _))
                             if self.structs.contains(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
