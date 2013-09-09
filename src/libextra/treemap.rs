@@ -14,7 +14,7 @@
 
 
 use std::util::{swap, replace};
-use std::iterator::{FromIterator, Extendable, Peekable};
+use std::iter::{Peekable};
 use std::cmp::Ordering;
 
 // This is implemented as an AA tree, which is a simplified variation of

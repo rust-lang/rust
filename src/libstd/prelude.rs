@@ -40,7 +40,7 @@ pub use result::{Result, Ok, Err};
 
 // Reexported functions
 pub use io::{print, println};
-pub use iterator::range;
+pub use iter::range;
 pub use from_str::from_str;
 
 // Reexported types and traits
@@ -51,9 +51,9 @@ pub use char::Char;
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use hash::Hash;
 pub use num::Times;
-pub use iterator::{FromIterator, Extendable};
-pub use iterator::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
-pub use iterator::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
+pub use iter::{FromIterator, Extendable};
+pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
+pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};

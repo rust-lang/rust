@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iterator::*;
+use std::iter::*;
 
 // Unfold had a bug with 'self that mean it didn't work
 // cross-crate

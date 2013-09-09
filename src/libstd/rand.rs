@@ -48,7 +48,7 @@ use clone::Clone;
 use cmp;
 use container::Container;
 use int;
-use iterator::{Iterator, range};
+use iter::{Iterator, range};
 use local_data;
 use num;
 use prelude::*;
@@ -957,7 +957,7 @@ pub fn random<T: Rand>() -> T {
 
 #[cfg(test)]
 mod test {
-    use iterator::{Iterator, range};
+    use iter::{Iterator, range};
     use option::{Option, Some};
     use super::*;
 

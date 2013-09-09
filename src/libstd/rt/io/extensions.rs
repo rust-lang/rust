@@ -15,7 +15,7 @@
 
 use uint;
 use int;
-use iterator::Iterator;
+use iter::Iterator;
 use vec;
 use rt::io::{Reader, Writer, Decorator};
 use rt::io::{read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};

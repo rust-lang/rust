@@ -55,7 +55,7 @@ pub fn clone() -> Option<~[~str]> {
 mod imp {
     use libc;
     use option::{Option, Some, None};
-    use iterator::Iterator;
+    use iter::Iterator;
     use str;
     use unstable::finally::Finally;
     use util;
