@@ -153,6 +153,43 @@ impl Orderable for BigUint {
     }
 }
 
+impl BitAnd<BigUint, BigUint> for BigUint {
+    fn bitand(&self, other: &BigUint) -> BigUint {
+        let new_len = num::min(self.data.len(), other.data.len());
+        let anded = do vec::from_fn(new_len) |i| {
+            // i will never be less than the size of either data vector
+            let ai = self.data[i];
+            let bi = other.data[i];
+            ai & bi
+        };
+        return BigUint::new(anded);
+    }
+}
+
+impl BitOr<BigUint, BigUint> for BigUint {
+    fn bitor(&self, other: &BigUint) -> BigUint {
+        let new_len = num::max(self.data.len(), other.data.len());
+        let ored = do vec::from_fn(new_len) |i| {
+            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
+            let bi = if i < other.data.len() { other.data[i] } else { 0 };
+            ai | bi
+        };
+        return BigUint::new(ored);
+    }
+}
+
+impl BitXor<BigUint, BigUint> for BigUint {
+    fn bitxor(&self, other: &BigUint) -> BigUint {
+        let new_len = num::max(self.data.len(), other.data.len());
+        let xored = do vec::from_fn(new_len) |i| {
+            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
+            let bi = if i < other.data.len() { other.data[i] } else { 0 };
+            ai ^ bi
+        };
+        return BigUint::new(xored);
+    }
+}
+
 impl Shl<uint, BigUint> for BigUint {
     #[inline]
     fn shl(&self, rhs: &uint) -> BigUint {
@@ -1164,6 +1201,48 @@ mod biguint_tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_bitand() {
+        fn check(left: ~[BigDigit],
+                 right: ~[BigDigit],
+                 expected: ~[BigDigit]) {
+            assert_eq!(BigUint::new(left) & BigUint::new(right),
+                       BigUint::new(expected));
+        }
+        check(~[], ~[], ~[]);
+        check(~[268, 482, 17],
+              ~[964, 54],
+              ~[260, 34]);
+    }
+
+    #[test]
+    fn test_bitor() {
+        fn check(left: ~[BigDigit],
+                 right: ~[BigDigit],
+                 expected: ~[BigDigit]) {
+            assert_eq!(BigUint::new(left) | BigUint::new(right),
+                       BigUint::new(expected));
+        }
+        check(~[], ~[], ~[]);
+        check(~[268, 482, 17],
+              ~[964, 54],
+              ~[972, 502, 17]);
+    }
+
+    #[test]
+    fn test_bitxor() {
+        fn check(left: ~[BigDigit],
+                 right: ~[BigDigit],
+                 expected: ~[BigDigit]) {
+            assert_eq!(BigUint::new(left) ^ BigUint::new(right),
+                       BigUint::new(expected));
+        }
+        check(~[], ~[], ~[]);
+        check(~[268, 482, 17],
+              ~[964, 54],
+              ~[712, 468, 17]);
     }
 
     #[test]
