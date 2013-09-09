@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use cast;
-use iterator::{Iterator,range};
+use iter::{Iterator, range};
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
-use vec::{ImmutableVector,CopyableVector};
+use vec::{ImmutableVector, CopyableVector};
 use container::Container;
 
 /// Resolution options for the `null_byte` condition

@@ -52,7 +52,7 @@ use clone::Clone;
 use c_str::ToCStr;
 use container::Container;
 use int;
-use iterator::Iterator;
+use iter::Iterator;
 use libc::consts::os::posix88::*;
 use libc::{c_int, c_void, size_t};
 use libc;

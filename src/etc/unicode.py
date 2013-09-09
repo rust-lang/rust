@@ -310,7 +310,7 @@ def emit_decomp_module(f, canon, compat, combine):
         + "        bsearch_range_value_table(c, combining_class_table)\n"
         + "    }\n\n")
     f.write("    fn d(c: char, i: &fn(char), k: bool) {\n")
-    f.write("        use iterator::Iterator;\n");
+    f.write("        use iter::Iterator;\n");
 
     f.write("        if c <= '\\x7f' { i(c); return; }\n")
 

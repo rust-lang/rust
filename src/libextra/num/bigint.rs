@@ -2011,13 +2011,13 @@ mod bigint_tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use std::{iterator, util};
+    use std::{iter, util};
     use std::num::{Zero, One};
     use extra::test::BenchHarness;
 
     fn factorial(n: uint) -> BigUint {
         let mut f: BigUint = One::one();
-        for i in iterator::range_inclusive(1, n) {
+        for i in iter::range_inclusive(1, n) {
             f = f * BigUint::from_uint(i);
         }
         f

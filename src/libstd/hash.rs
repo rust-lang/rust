@@ -22,7 +22,7 @@
 #[allow(missing_doc)];
 
 use container::Container;
-use iterator::Iterator;
+use iter::Iterator;
 use option::{Some, None};
 use rt::io::Writer;
 use str::OwnedStr;
