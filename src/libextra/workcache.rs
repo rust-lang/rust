@@ -296,9 +296,9 @@ impl Context {
     }
 
     pub fn new_with_freshness(db: RWArc<Database>,
-               lg: RWArc<Logger>,
-               cfg: Arc<json::Object>,
-               freshness: Arc<FreshnessMap>) -> Context {
+                              lg: RWArc<Logger>,
+                              cfg: Arc<json::Object>,
+                              freshness: Arc<FreshnessMap>) -> Context {
         Context {
             db: db,
             logger: lg,
@@ -319,16 +319,18 @@ impl Context {
 }
 
 impl Exec {
-    pub fn discover_input(&mut self, dependency_kind:&str,
-       // Discovered input
-       dependency_name: &str, dependency_val: &str) {
+    pub fn discover_input(&mut self,
+                          dependency_kind: &str,
+                          dependency_name: &str,
+                          dependency_val: &str) {
         debug!("Discovering input %s %s %s", dependency_kind, dependency_name, dependency_val);
         self.discovered_inputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
                                  dependency_val.to_owned());
     }
-    pub fn discover_output(&mut self, dependency_kind:&str,
-       // Discovered output
-       dependency_name: &str, dependency_val: &str) {
+    pub fn discover_output(&mut self,
+                           dependency_kind: &str,
+                           dependency_name: &str,
+                           dependency_val: &str) {
         debug!("Discovering output %s %s %s", dependency_kind, dependency_name, dependency_val);
         self.discovered_outputs.insert_work_key(WorkKey::new(dependency_kind, dependency_name),
                                  dependency_val.to_owned());
@@ -340,11 +342,10 @@ impl Exec {
         for (k, v) in self.discovered_inputs.iter() {
             for (k1, _) in v.iter() {
                 rs.push((k1.clone(), k.clone()));
-                }
+            }
         }
         rs
     }
-
 }
 
 impl<'self> Prep<'self> {
@@ -368,7 +369,7 @@ impl<'self> Prep<'self> {
 }
 
 impl<'self> Prep<'self> {
-    pub fn declare_input(&mut self, kind:&str, name:&str, val:&str) {
+    pub fn declare_input(&mut self, kind: &str, name: &str, val: &str) {
         debug!("Declaring input %s %s %s", kind, name, val);
         self.declared_inputs.insert_work_key(WorkKey::new(kind, name),
                                  val.to_owned());
