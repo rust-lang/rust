@@ -396,8 +396,8 @@ impl tr for ast::Def {
           ast::DefStatic(did, m) => { ast::DefStatic(did.tr(xcx), m) }
           ast::DefArg(nid, b) => { ast::DefArg(xcx.tr_id(nid), b) }
           ast::DefLocal(nid, b) => { ast::DefLocal(xcx.tr_id(nid), b) }
-          ast::DefVariant(e_did, v_did) => {
-            ast::DefVariant(e_did.tr(xcx), v_did.tr(xcx))
+          ast::DefVariant(e_did, v_did, is_s) => {
+            ast::DefVariant(e_did.tr(xcx), v_did.tr(xcx), is_s)
           },
           ast::DefTrait(did) => ast::DefTrait(did.tr(xcx)),
           ast::DefTy(did) => ast::DefTy(did.tr(xcx)),

@@ -128,7 +128,7 @@ pub fn trans(bcx: @mut Block, expr: @ast::Expr) -> Callee {
                                                                 trait_did,
                                                                 ref_expr.id))
             }
-            ast::DefVariant(tid, vid) => {
+            ast::DefVariant(tid, vid, _) => {
                 // nullary variants are not callable
                 assert!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,

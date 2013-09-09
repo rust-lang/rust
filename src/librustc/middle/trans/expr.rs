@@ -782,7 +782,7 @@ fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::Expr,
     };
 
     match def {
-        ast::DefVariant(tid, vid) => {
+        ast::DefVariant(tid, vid, _) => {
             let variant_info = ty::enum_variant_with_id(ccx.tcx, tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
@@ -1140,7 +1140,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                 }
                 Some(node_id) => {
                     match tcx.def_map.get_copy(&node_id) {
-                        ast::DefVariant(enum_id, variant_id) => {
+                        ast::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
                             op(variant_info.disr_val,

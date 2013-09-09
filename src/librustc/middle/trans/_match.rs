@@ -347,7 +347,7 @@ fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
     -> Opt {
     let ccx = bcx.ccx();
     match ccx.tcx.def_map.get_copy(&pat_id) {
-        ast::DefVariant(enum_id, var_id) => {
+        ast::DefVariant(enum_id, var_id, _) => {
             let variants = ty::enum_variants(ccx.tcx, enum_id);
             for v in (*variants).iter() {
                 if var_id == v.id {
@@ -657,7 +657,7 @@ fn enter_opt<'r>(bcx: @mut Block,
                     // Look up the struct variant ID.
                     let struct_id;
                     match tcx.def_map.get_copy(&p.id) {
-                        ast::DefVariant(_, found_struct_id) => {
+                        ast::DefVariant(_, found_struct_id, _) => {
                             struct_id = found_struct_id;
                         }
                         _ => {
@@ -2113,7 +2113,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
         }
         ast::PatEnum(_, ref sub_pats) => {
             match bcx.tcx().def_map.find(&pat.id) {
-                Some(&ast::DefVariant(enum_id, var_id)) => {
+                Some(&ast::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
                     let vinfo = ty::enum_variant_with_id(ccx.tcx,
                                                          enum_id,

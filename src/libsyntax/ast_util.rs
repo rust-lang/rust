@@ -52,7 +52,7 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
 
 pub fn variant_def_ids(d: Def) -> Option<(DefId, DefId)> {
     match d {
-      DefVariant(enum_id, var_id) => {
+      DefVariant(enum_id, var_id, _) => {
           Some((enum_id, var_id))
       }
       _ => None
@@ -63,7 +63,7 @@ pub fn def_id_of_def(d: Def) -> DefId {
     match d {
       DefFn(id, _) | DefStaticMethod(id, _, _) | DefMod(id) |
       DefForeignMod(id) | DefStatic(id, _) |
-      DefVariant(_, id) | DefTy(id) | DefTyParam(id, _) |
+      DefVariant(_, id, _) | DefTy(id) | DefTyParam(id, _) |
       DefUse(id) | DefStruct(id) | DefTrait(id) | DefMethod(id, _) => {
         id
       }
