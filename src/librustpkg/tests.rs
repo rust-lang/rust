@@ -10,12 +10,13 @@
 
 // rustpkg unit tests
 
-use context::{BuildCtx, Ctx};
+use context::{BuildContext, Context};
 use std::{io, libc, os, run, str, task};
 use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::mkdtemp;
-use extra::workcache::{Context, Database, Logger};
+use extra::workcache;
+use extra::workcache::{Database, Logger};
 use extra::treemap::TreeMap;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
@@ -36,15 +37,16 @@ fn datestamp(p: &Path) -> Option<libc::time_t> {
     p.stat().map(|stat| stat.st_mtime)
 }
 
-fn fake_ctxt(sysroot_opt: Path, workspace: &Path) -> BuildCtx {
-    let bcx = Context::new(RWArc::new(Database::new(workspace.push("rustpkg_db.json"))),
-                           RWArc::new(Logger::new()),
-                           Arc::new(TreeMap::new()));
-    BuildCtx {
-        workcache_cx: bcx,
-        cx: Ctx {
+fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
+    let context = workcache::Context::new(
+        RWArc::new(Database::new(workspace.push("rustpkg_db.json"))),
+        RWArc::new(Logger::new()),
+        Arc::new(TreeMap::new()));
+    BuildContext {
+        workcache_context: context,
+        context: Context {
             use_rust_path_hack: false,
-            sysroot_opt: sysroot_opt
+            sysroot: sysroot
         }
     }
 }
