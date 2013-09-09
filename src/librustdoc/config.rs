@@ -112,7 +112,7 @@ pub fn parse_config_(
     process_output: Process
 ) -> Result<Config, ~str> {
     let args = args.tail();
-    let opts = vec::unzip(opts()).first();
+    let opts = vec::unzip(opts().move_iter()).first();
     match getopts::getopts(args, opts) {
         Ok(matches) => {
             if matches.free.len() == 1 {
