@@ -155,13 +155,13 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
 
                 // Move `data` into transmute to get out the memory that it
                 // owns, we must free it manually later.
-                let (_vtable, box): (uint, ~~T) = unsafe {
+                let (_vtable, box): (uint, ~T) = unsafe {
                     cast::transmute(data)
                 };
 
                 // Now that we own `box`, we can just move out of it as we would
                 // with any other data.
-                return Some(**box);
+                return Some(*box);
             }
             _ => {}
         }
@@ -244,13 +244,13 @@ fn get_with<T: 'static, U>(key: Key<T>,
                                   want.describe(), cur.describe());
                         }
                     }
-                    // data was created with `~~T as ~LocalData`, so we extract
-                    // pointer part of the trait, (as ~~T), and then use
+                    // data was created with `~T as ~LocalData`, so we extract
+                    // pointer part of the trait, (as ~T), and then use
                     // compiler coercions to achieve a '&' pointer.
                     unsafe {
-                        match *cast::transmute::<&TLSValue, &(uint, ~~T)>(data){
+                        match *cast::transmute::<&TLSValue, &(uint, ~T)>(data){
                             (_vtable, ref box) => {
-                                let value: &T = **box;
+                                let value: &T = *box;
                                 ret = f(Some(value));
                             }
                         }
@@ -294,9 +294,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     // everything to a trait (LocalData) which is then stored inside the map.
     // Upon destruction of the map, all the objects will be destroyed and the
     // traits have enough information about them to destroy themselves.
-    //
-    // FIXME(#7673): This should be "~data as ~LocalData" (only one sigil)
-    let data = ~~data as ~LocalData:;
+    let data = ~data as ~LocalData:;
 
     fn insertion_position(map: &mut Map,
                           key: *libc::c_void) -> Option<uint> {
