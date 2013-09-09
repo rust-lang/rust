@@ -189,8 +189,7 @@ impl<'self> ReprVisitor<'self> {
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
-            assert_eq!(mtbl, 2);
-            self.writer.write("const ".as_bytes());
+            fail!("invalid mutability value");
         }
     }
 
@@ -389,6 +388,7 @@ impl<'self> TyVisitor for ReprVisitor<'self> {
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         do self.get::<raw::Slice<()>> |this, s| {
             this.writer.write(['&' as u8]);
+            this.write_mut_qualifier(mtbl);
             this.write_vec_range(mtbl, s.data, s.len, inner);
         }
     }
@@ -695,6 +695,9 @@ fn test_repr() {
                "(10u32, ~\"hello\")");
     exact_test(&(10u64, ~"hello"),
                "(10u64, ~\"hello\")");
+
+    exact_test(&(&[1, 2]), "&[1, 2]");
+    exact_test(&(&mut [1, 2]), "&mut [1, 2]");
 
     exact_test(&'\'', "'\\''");
     exact_test(&'"', "'\"'");
