@@ -465,7 +465,7 @@ impl Integer for BigUint {
 impl IntConvertible for BigUint {
     #[inline]
     fn to_int(&self) -> int {
-        num::min(self.to_uint(), int::max_value as uint) as int
+        self.to_int_opt().expect("BigUint conversion would overflow int")
     }
 
     #[inline]
@@ -577,19 +577,38 @@ impl BigUint {
     }
 
 
-    /// Converts this big integer into a uint, returning the uint::max_value if
-    /// it's too large to fit in a uint.
+    /// Converts this BigUint into a uint, failing if the conversion
+    /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
+        self.to_uint_opt().expect("BigUint conversion would overflow uint")
+    }
+
+    /// Converts this BigUint into a uint, unless it would overflow.
+    #[inline]
+    pub fn to_uint_opt(&self) -> Option<uint> {
         match self.data.len() {
-            0 => 0,
-            1 => self.data[0] as uint,
-            2 => BigDigit::to_uint(self.data[1], self.data[0]),
-            _ => uint::max_value
+            0 => Some(0),
+            1 => Some(self.data[0] as uint),
+            2 => Some(BigDigit::to_uint(self.data[1], self.data[0])),
+            _ => None
         }
     }
 
-    /// Converts this BigUint into a positively-signed BigInt.
+    // Converts this BigUint into an int, unless it would overflow.
+    pub fn to_int_opt(&self) -> Option<int> {
+        self.to_uint_opt().chain(|n| {
+            // If top bit of uint is set, it's too large to convert to
+            // int.
+            if (n >> (2*BigDigit::bits - 1) != 0) {
+                None
+            } else {
+                Some(n as int)
+            }
+        })
+    }
+
+    /// Converts this BigUint into a BigInt.
     #[inline]
     pub fn to_bigint(&self) -> BigInt {
         BigInt::from_biguint(Plus, self.clone())
@@ -1016,12 +1035,7 @@ impl Integer for BigInt {
 impl IntConvertible for BigInt {
     #[inline]
     fn to_int(&self) -> int {
-        match self.sign {
-            Plus  => num::min(self.to_uint(), int::max_value as uint) as int,
-            Zero  => 0,
-            Minus => num::min((-self).to_uint(),
-                               (int::max_value as uint) + 1) as int
-        }
+        self.to_int_opt().expect("BigInt conversion would overflow int")
     }
 
     #[inline]
@@ -1100,22 +1114,55 @@ impl BigInt {
             .map_move(|bu| BigInt::from_biguint(sign, bu));
     }
 
+    /// Converts this BigInt into a uint, failing if the conversion
+    /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
+        self.to_uint_opt().expect("BigInt conversion would overflow uint")
+    }
+
+    /// Converts this BigInt into a uint, unless it would overflow.
+    #[inline]
+    pub fn to_uint_opt(&self) -> Option<uint> {
         match self.sign {
-            Plus  => self.data.to_uint(),
-            Zero  => 0,
-            Minus => 0
+            Plus => self.data.to_uint_opt(),
+            Zero => Some(0),
+            Minus => None
         }
     }
 
-    /// Converts this BigInt into a BigUint. Negative BigInts are
-    /// converted to zero-valued BigUints.
+    /// Converts this BigInt into an int, unless it would overflow.
+    pub fn to_int_opt(&self) -> Option<int> {
+        match self.sign {
+            Plus  => self.data.to_int_opt(),
+            Zero  => Some(0),
+            Minus => self.data.to_uint_opt().chain(|n| {
+                let m: uint = 1 << (2*BigDigit::bits-1);
+                if (n > m) {
+                    None
+                } else if (n == m) {
+                    Some(int::min_value)
+                } else {
+                    Some(-(n as int))
+                }
+            })
+        }
+    }
+
+    /// Converts this BigInt into a BigUint, failing if BigInt is
+    /// negative.
     #[inline]
     pub fn to_biguint(&self) -> BigUint {
+        self.to_biguint_opt().expect("negative BigInt cannot convert to BigUint")
+    }
+
+    /// Converts this BigInt into a BigUint, if it's not negative.
+    #[inline]
+    pub fn to_biguint_opt(&self) -> Option<BigUint> {
         match self.sign {
-            Plus => self.data.clone(),
-            _ => Zero::zero()
+            Plus => Some(self.data.clone()),
+            Zero => Some(Zero::zero()),
+            Minus => None
         }
     }
 }
@@ -1273,9 +1320,9 @@ mod biguint_tests {
         check(~[ 0,  1], ((uint::max_value >> BigDigit::bits) + 1) as int);
         check(~[-1, -1 >> 1], int::max_value);
 
-        assert_eq!(BigUint::new(~[0, -1]).to_int(), int::max_value);
-        assert_eq!(BigUint::new(~[0, 0, 1]).to_int(), int::max_value);
-        assert_eq!(BigUint::new(~[0, 0, -1]).to_int(), int::max_value);
+        assert_eq!(BigUint::new(~[0, -1]).to_int_opt(), None);
+        assert_eq!(BigUint::new(~[0, 0, 1]).to_int_opt(), None);
+        assert_eq!(BigUint::new(~[0, 0, -1]).to_int_opt(), None);
     }
 
     #[test]
@@ -1293,8 +1340,8 @@ mod biguint_tests {
         check(~[ 0, -1], uint::max_value << BigDigit::bits);
         check(~[-1, -1], uint::max_value);
 
-        assert_eq!(BigUint::new(~[0, 0, 1]).to_uint(), uint::max_value);
-        assert_eq!(BigUint::new(~[0, 0, -1]).to_uint(), uint::max_value);
+        assert_eq!(BigUint::new(~[0, 0, 1]).to_uint_opt(), None);
+        assert_eq!(BigUint::new(~[0, 0, -1]).to_uint_opt(), None);
     }
 
     #[test]
@@ -1304,7 +1351,8 @@ mod biguint_tests {
             assert_eq!(n.to_bigint().to_biguint(), n);
         }
         check(Zero::zero(), Zero::zero());
-        check(BigUint::from_uint(637), BigInt::from_uint(637));
+        check(BigUint::new(~[1,2,3]),
+              BigInt::from_biguint(Plus, BigUint::new(~[1,2,3])));
     }
 
     static sum_triples: &'static [(&'static [BigDigit],
@@ -1683,22 +1731,21 @@ mod bigint_tests {
             Plus, BigUint::from_uint(int::max_value as uint)
         ), int::max_value);
 
-        assert!(BigInt::from_biguint(
+        assert_eq!(BigInt::from_biguint(
             Plus, BigUint::from_uint(int::max_value as uint + 1)
-        ).to_int() == int::max_value);
-        assert!(BigInt::from_biguint(
+        ).to_int_opt(), None);
+        assert_eq!(BigInt::from_biguint(
             Plus, BigUint::new(~[1, 2, 3])
-        ).to_int() == int::max_value);
+        ).to_int_opt(), None);
 
         check(BigInt::from_biguint(
-            Minus, BigUint::from_uint(-int::min_value as uint)
+            Minus, BigUint::new(~[0, 1<<(BigDigit::bits-1)])
         ), int::min_value);
-        assert!(BigInt::from_biguint(
-            Minus, BigUint::from_uint(-int::min_value as uint + 1)
-        ).to_int() == int::min_value);
-        assert!(BigInt::from_biguint(
-            Minus, BigUint::new(~[1, 2, 3])
-        ).to_int() == int::min_value);
+        assert_eq!(BigInt::from_biguint(
+            Minus, BigUint::new(~[1, 1<<(BigDigit::bits-1)])
+        ).to_int_opt(), None);
+        assert_eq!(BigInt::from_biguint(
+            Minus, BigUint::new(~[1, 2, 3])).to_int_opt(), None);
     }
 
     #[test]
@@ -1714,31 +1761,31 @@ mod bigint_tests {
         check(
             BigInt::from_biguint(Plus, BigUint::from_uint(uint::max_value)),
             uint::max_value);
-        assert!(BigInt::from_biguint(
-            Plus, BigUint::new(~[1, 2, 3])
-        ).to_uint() == uint::max_value);
+        assert_eq!(BigInt::from_biguint(
+            Plus, BigUint::new(~[1, 2, 3])).to_uint_opt(), None);
 
-        assert!(BigInt::from_biguint(
-            Minus, BigUint::from_uint(uint::max_value)
-        ).to_uint() == 0);
-        assert!(BigInt::from_biguint(
-            Minus, BigUint::new(~[1, 2, 3])
-        ).to_uint() == 0);
+        assert_eq!(BigInt::from_biguint(
+            Minus, BigUint::from_uint(uint::max_value)).to_uint_opt(), None);
+        assert_eq!(BigInt::from_biguint(
+            Minus, BigUint::new(~[1, 2, 3])).to_uint_opt(), None);
     }
 
     #[test]
     fn test_convert_to_biguint() {
-        fn check(n: BigInt, ans_1: BigUint, ans_2: BigInt) {
+        fn check(n: BigInt, ans_1: BigUint) {
             assert_eq!(n.to_biguint(), ans_1);
-            assert_eq!(n.to_biguint().to_bigint(), ans_2);
+            assert_eq!(n.to_biguint().to_bigint(), n);
         }
         let zero: BigInt = Zero::zero();
         let unsigned_zero: BigUint = Zero::zero();
-        let positive: BigInt = BigInt::from_uint(637);
+        let positive = BigInt::from_biguint(
+            Plus, BigUint::new(~[1,2,3]));
         let negative = -positive;
-        check(zero.clone(), unsigned_zero.clone(), zero.clone());
-        check(positive.clone(), BigUint::from_uint(637), positive);
-        check(negative, unsigned_zero, zero);
+
+        check(zero, unsigned_zero);
+        check(positive, BigUint::new(~[1,2,3]));
+
+        assert_eq!(negative.to_biguint_opt(), None);
     }
 
     static sum_triples: &'static [(&'static [BigDigit],
