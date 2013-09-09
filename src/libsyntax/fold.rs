@@ -617,12 +617,7 @@ pub fn noop_fold_expr(e: &Expr_, fld: @ast_fold) -> Expr_ {
         ExprRet(ref e) => {
             ExprRet(e.map_move(|x| fld.fold_expr(x)))
         }
-        ExprLog(lv, e) => {
-            ExprLog(
-                fld.fold_expr(lv),
-                fld.fold_expr(e)
-            )
-        }
+        ExprLogLevel => ExprLogLevel,
         ExprInlineAsm(ref a) => {
             ExprInlineAsm(inline_asm {
                 inputs: a.inputs.map(|&(c, input)| (c, fld.fold_expr(input))),

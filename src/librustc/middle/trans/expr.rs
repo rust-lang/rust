@@ -115,7 +115,8 @@ return type, such as `while` loops or assignments (`a = b`).
 
 
 use back::abi;
-use lib::llvm::{ValueRef, llvm, SetLinkage, ExternalLinkage};
+use back::link;
+use lib::llvm::{ValueRef, llvm, SetLinkage, ExternalLinkage, False};
 use lib;
 use metadata::csearch;
 use middle::trans::_match;
@@ -150,6 +151,7 @@ use std::hashmap::HashMap;
 use std::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
+use syntax::ast_map::path_mod;
 use syntax::codemap;
 
 // Destinations
@@ -578,6 +580,9 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBloc
         ast::ExprParen(e) => {
             return trans_rvalue_datum_unadjusted(bcx, e);
         }
+        ast::ExprLogLevel => {
+            return trans_log_level(bcx);
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -607,9 +612,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> @mut Block
         }
         ast::ExprRet(ex) => {
             return controlflow::trans_ret(bcx, ex);
-        }
-        ast::ExprLog(lvl, a) => {
-            return controlflow::trans_log(expr, lvl, bcx, a);
         }
         ast::ExprWhile(cond, ref body) => {
             return controlflow::trans_while(bcx, cond, body);
@@ -1756,4 +1758,42 @@ fn trans_assign_op(bcx: @mut Block,
 
 fn shorten(x: &str) -> @str {
     (if x.char_len() > 60 {x.slice_chars(0, 60)} else {x}).to_managed()
+}
+
+pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
+    let _icx = push_ctxt("trans_log_level");
+    let ccx = bcx.ccx();
+
+    let (modpath, modname) = {
+        let path = &mut bcx.fcx.path;
+        let mut modpath = ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))];
+        for e in path.iter() {
+            match *e {
+                path_mod(_) => { modpath.push(*e) }
+                _ => {}
+            }
+        }
+        let modname = path_str(ccx.sess, modpath);
+        (modpath, modname)
+    };
+
+    let global = if ccx.module_data.contains_key(&modname) {
+        ccx.module_data.get_copy(&modname)
+    } else {
+        let s = link::mangle_internal_name_by_path_and_seq(
+            ccx, modpath, "loglevel");
+        let global;
+        unsafe {
+            global = do s.with_c_str |buf| {
+                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
+            };
+            llvm::LLVMSetGlobalConstant(global, False);
+            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
+            lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
+        }
+        ccx.module_data.insert(modname, global);
+        global
+    };
+
+    return immediate_rvalue_bcx(bcx, Load(bcx, global), ty::mk_u32());
 }

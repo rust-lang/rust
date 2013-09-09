@@ -1995,6 +1995,7 @@ fn populate_scope_map(cx: &mut CrateContext,
         scope_map.insert(exp.id, scope_stack.last().scope_metadata);
 
         match exp.node {
+            ast::ExprLogLevel |
             ast::ExprSelf     |
             ast::ExprLit(_)   |
             ast::ExprBreak(_) |
@@ -2033,7 +2034,6 @@ fn populate_scope_map(cx: &mut CrateContext,
             }
 
             ast::ExprAssign(@ref sub_exp1, @ref sub_exp2)    |
-            ast::ExprLog(@ref sub_exp1, @ref sub_exp2)       |
             ast::ExprRepeat(@ref sub_exp1, @ref sub_exp2, _) => {
                 walk_expr(cx, sub_exp1, scope_stack, scope_map);
                 walk_expr(cx, sub_exp2, scope_stack, scope_map);

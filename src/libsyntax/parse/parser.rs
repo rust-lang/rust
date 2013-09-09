@@ -26,7 +26,7 @@ use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
-use ast::{ExprLit, ExprLog, ExprLoop, ExprMac};
+use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprRepeat};
 use ast::{ExprRet, ExprSelf, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreMutBox};
@@ -1832,13 +1832,10 @@ impl Parser {
                 }
             }
             hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::__Log) {
-            // LOG expression
+        } else if self.eat_keyword(keywords::__LogLevel) {
+            // LOG LEVEL expression
             self.expect(&token::LPAREN);
-            let lvl = self.parse_expr();
-            self.expect(&token::COMMA);
-            let e = self.parse_expr();
-            ex = ExprLog(lvl, e);
+            ex = ExprLogLevel;
             hi = self.span.hi;
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(keywords::Return) {

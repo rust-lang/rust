@@ -870,59 +870,41 @@ pub fn std_macros() -> @str {
 
     macro_rules! ignore (($($x:tt)*) => (()))
 
-    macro_rules! error (
-        ($arg:expr) => (
-            __log(1u32, fmt!( \"%?\", $arg ))
-        );
-        ($( $arg:expr ),+) => (
-            __log(1u32, fmt!( $($arg),+ ))
-        )
+    macro_rules! log(
+        ($lvl:expr, $arg:expr) => ({
+            let lvl = $lvl;
+            if lvl <= __log_level() {
+                ::std::logging::log(lvl, fmt!(\"%?\", $arg))
+            }
+        });
+        ($lvl:expr, $($arg:expr),+) => ({
+            let lvl = $lvl;
+            if lvl <= __log_level() {
+                ::std::logging::log(lvl, fmt!($($arg),+))
+            }
+        })
     )
+    macro_rules! error( ($($arg:tt)+) => (log!(1u32, $($arg)+)) )
+    macro_rules! warn ( ($($arg:tt)+) => (log!(2u32, $($arg)+)) )
+    macro_rules! info ( ($($arg:tt)+) => (log!(3u32, $($arg)+)) )
+    macro_rules! debug( ($($arg:tt)+) => (
+        if cfg!(debug) { log!(4u32, $($arg)+) }
+    ))
 
-    macro_rules! warn (
-        ($arg:expr) => (
-            __log(2u32, fmt!( \"%?\", $arg ))
-        );
-        ($( $arg:expr ),+) => (
-            __log(2u32, fmt!( $($arg),+ ))
-        )
+    macro_rules! log2(
+        ($lvl:expr, $($arg:tt)+) => ({
+            let lvl = $lvl;
+            if lvl <= __log_level() {
+                ::std::logging::log(lvl, format!($($arg)+))
+            }
+        })
     )
-
-    macro_rules! info (
-        ($arg:expr) => (
-            __log(3u32, fmt!( \"%?\", $arg ))
-        );
-        ($( $arg:expr ),+) => (
-            __log(3u32, fmt!( $($arg),+ ))
-        )
-    )
-
-    macro_rules! debug (
-        ($arg:expr) => (
-            if cfg!(debug) { __log(4u32, fmt!( \"%?\", $arg )) }
-        );
-        ($( $arg:expr ),+) => (
-            if cfg!(debug) { __log(4u32, fmt!( $($arg),+ )) }
-        )
-    )
-
-    macro_rules! error2 (
-        ($($arg:tt)*) => ( __log(1u32, format!($($arg)*)))
-    )
-
-    macro_rules! warn2 (
-        ($($arg:tt)*) => ( __log(2u32, format!($($arg)*)))
-    )
-
-    macro_rules! info2 (
-        ($($arg:tt)*) => ( __log(3u32, format!($($arg)*)))
-    )
-
-    macro_rules! debug2 (
-        ($($arg:tt)*) => (
-            if cfg!(debug) { __log(4u32, format!($($arg)*)) }
-        )
-    )
+    macro_rules! error2( ($($arg:tt)+) => (log2!(1u32, $($arg)+)) )
+    macro_rules! warn2 ( ($($arg:tt)+) => (log2!(2u32, $($arg)+)) )
+    macro_rules! info2 ( ($($arg:tt)+) => (log2!(3u32, $($arg)+)) )
+    macro_rules! debug2( ($($arg:tt)+) => (
+        if cfg!(debug) { log2!(4u32, $($arg)+) }
+    ))
 
     macro_rules! fail(
         () => (
@@ -1149,13 +1131,13 @@ pub fn std_macros() -> @str {
     //              allocation but should rather delegate to an invocation of
     //              write! instead of format!
     macro_rules! print (
-        ($($arg:tt)+) => ( ::std::io::print(format!($($arg)+)))
+        ($($arg:tt)+) => (::std::io::print(format!($($arg)+)))
     )
 
     // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
     //              allocation but should rather delegate to an io::Writer
     macro_rules! println (
-        ($($arg:tt)+) => ({ print!($($arg)+); ::std::io::println(\"\"); })
+        ($($arg:tt)+) => (::std::io::println(format!($($arg)+)))
     )
 
     // NOTE: use this after a snapshot lands to abstract the details
