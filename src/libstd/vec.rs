@@ -63,7 +63,7 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
-use iterator::*;
+use iter::*;
 use libc::c_void;
 use num::{Integer, Zero, CheckedAdd, Saturating};
 use option::{None, Option, Some};
@@ -592,7 +592,7 @@ pub mod traits {
 
     use clone::Clone;
     use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equiv};
-    use iterator::order;
+    use iter::order;
     use ops::Add;
 
     impl<'self,T:Eq> Eq for &'self [T] {
@@ -3241,7 +3241,7 @@ mod tests {
 
     #[test]
     fn test_iterator() {
-        use iterator::*;
+        use iter::*;
         let xs = [1, 2, 5, 10, 11];
         let mut it = xs.iter();
         assert_eq!(it.size_hint(), (5, Some(5)));
@@ -3260,7 +3260,7 @@ mod tests {
 
     #[test]
     fn test_random_access_iterator() {
-        use iterator::*;
+        use iter::*;
         let xs = [1, 2, 5, 10, 11];
         let mut it = xs.iter();
 
@@ -3299,7 +3299,7 @@ mod tests {
 
     #[test]
     fn test_iter_size_hints() {
-        use iterator::*;
+        use iter::*;
         let mut xs = [1, 2, 5, 10, 11];
         assert_eq!(xs.iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
@@ -3320,7 +3320,7 @@ mod tests {
 
     #[test]
     fn test_mut_iterator() {
-        use iterator::*;
+        use iter::*;
         let mut xs = [1, 2, 3, 4, 5];
         for x in xs.mut_iter() {
             *x += 1;
@@ -3330,7 +3330,7 @@ mod tests {
 
     #[test]
     fn test_rev_iterator() {
-        use iterator::*;
+        use iter::*;
 
         let xs = [1, 2, 5, 10, 11];
         let ys = [11, 10, 5, 2, 1];
@@ -3344,7 +3344,7 @@ mod tests {
 
     #[test]
     fn test_mut_rev_iterator() {
-        use iterator::*;
+        use iter::*;
         let mut xs = [1u, 2, 3, 4, 5];
         for (i,x) in xs.mut_rev_iter().enumerate() {
             *x += i;
@@ -3354,14 +3354,14 @@ mod tests {
 
     #[test]
     fn test_move_iterator() {
-        use iterator::*;
+        use iter::*;
         let xs = ~[1u,2,3,4,5];
         assert_eq!(xs.move_iter().fold(0, |a: uint, b: uint| 10*a + b), 12345);
     }
 
     #[test]
     fn test_move_rev_iterator() {
-        use iterator::*;
+        use iter::*;
         let xs = ~[1u,2,3,4,5];
         assert_eq!(xs.move_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }

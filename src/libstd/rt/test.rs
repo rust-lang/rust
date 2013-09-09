@@ -14,7 +14,7 @@ use option::{Some, None};
 use cell::Cell;
 use clone::Clone;
 use container::Container;
-use iterator::{Iterator, range};
+use iter::{Iterator, range};
 use super::io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use vec::{OwnedVector, MutableVector, ImmutableVector};
 use rt::sched::Scheduler;

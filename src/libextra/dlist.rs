@@ -25,8 +25,8 @@
 use std::cast;
 use std::ptr;
 use std::util;
-use std::iterator::{FromIterator, Extendable, Invert};
-use std::iterator;
+use std::iter::Invert;
+use std::iter;
 
 use container::Deque;
 
@@ -593,27 +593,27 @@ impl<A> Extendable<A> for DList<A> {
 impl<A: Eq> Eq for DList<A> {
     fn eq(&self, other: &DList<A>) -> bool {
         self.len() == other.len() &&
-            iterator::order::eq(self.iter(), other.iter())
+            iter::order::eq(self.iter(), other.iter())
     }
 
     fn ne(&self, other: &DList<A>) -> bool {
         self.len() != other.len() ||
-            iterator::order::ne(self.iter(), other.iter())
+            iter::order::ne(self.iter(), other.iter())
     }
 }
 
 impl<A: Eq + Ord> Ord for DList<A> {
     fn lt(&self, other: &DList<A>) -> bool {
-        iterator::order::lt(self.iter(), other.iter())
+        iter::order::lt(self.iter(), other.iter())
     }
     fn le(&self, other: &DList<A>) -> bool {
-        iterator::order::le(self.iter(), other.iter())
+        iter::order::le(self.iter(), other.iter())
     }
     fn gt(&self, other: &DList<A>) -> bool {
-        iterator::order::gt(self.iter(), other.iter())
+        iter::order::gt(self.iter(), other.iter())
     }
     fn ge(&self, other: &DList<A>) -> bool {
-        iterator::order::ge(self.iter(), other.iter())
+        iter::order::ge(self.iter(), other.iter())
     }
 }
 

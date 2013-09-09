@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iterator::Iterator;
-
 #[deriving(Clone, Eq, IterBytes, ToStr)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {

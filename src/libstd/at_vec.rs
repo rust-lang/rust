@@ -12,7 +12,7 @@
 
 use clone::Clone;
 use container::Container;
-use iterator::Iterator;
+use iter::Iterator;
 use option::{Option, Some, None};
 use sys;
 use unstable::raw::Repr;

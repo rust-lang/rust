@@ -44,7 +44,7 @@ use task;
 #[cfg(test)] use rt::test::{spawntask,
                             next_test_ip4,
                             run_in_newsched_task};
-#[cfg(test)] use iterator::{Iterator, range};
+#[cfg(test)] use iter::{Iterator, range};
 
 // XXX we should not be calling uvll functions in here.
 
