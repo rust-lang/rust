@@ -10,5 +10,44 @@
 
 //! Operations and constants for `u64`
 
+use num::{CheckedAdd, CheckedSub};
+#[cfg(target_word_size = "64")]
+use num::CheckedMul;
+use option::{Option, Some, None};
+use unstable::intrinsics;
+
 pub use self::generated::*;
+
 uint_module!(u64, i64, 64)
+
+impl CheckedAdd for u64 {
+    #[inline]
+    fn checked_add(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_add_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+impl CheckedSub for u64 {
+    #[inline]
+    fn checked_sub(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_sub_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
+
+// FIXME: #8449: should not be disabled on 32-bit
+#[cfg(target_word_size = "64")]
+impl CheckedMul for u64 {
+    #[inline]
+    fn checked_mul(&self, v: &u64) -> Option<u64> {
+        unsafe {
+            let (x, y) = intrinsics::u64_mul_with_overflow(*self, *v);
+            if y { None } else { Some(x) }
+        }
+    }
+}
