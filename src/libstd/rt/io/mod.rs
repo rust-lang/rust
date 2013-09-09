@@ -493,7 +493,7 @@ pub trait Acceptor<T> {
     /// then `accept` returns `None`.
     fn accept(&mut self) -> Option<T>;
 
-    /// Create an iterator over incoming connections
+    /// Create an iterator over incoming connection attempts
     fn incoming<'r>(&'r mut self) -> IncomingIterator<'r, Self> {
         IncomingIterator { inc: self }
     }
@@ -501,13 +501,18 @@ pub trait Acceptor<T> {
 
 /// An infinite iterator over incoming connection attempts.
 /// Calling `next` will block the task until a connection is attempted.
+///
+/// Since connection attempts can continue forever, this iterator always returns Some.
+/// The Some contains another Option representing whether the connection attempt was succesful.
+/// A successful connection will be wrapped in Some.
+/// A failed connection is represented as a None and raises a condition.
 struct IncomingIterator<'self, A> {
     priv inc: &'self mut A,
 }
 
-impl<'self, T, A: Acceptor<T>> Iterator<T> for IncomingIterator<'self, A> {
-    fn next(&mut self) -> Option<T> {
-        self.inc.accept()
+impl<'self, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'self, A> {
+    fn next(&mut self) -> Option<Option<T>> {
+        Some(self.inc.accept())
     }
 }
 
