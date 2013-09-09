@@ -84,8 +84,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 
     if found.is_some() {
         debug!("Found %s in %s", pkgid.to_str(), workspace.to_str());
-    }
-    else {
+    } else {
         debug!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str());
     }
     found

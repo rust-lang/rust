@@ -28,9 +28,11 @@ use extra::workcache;
 // This contains a list of files found in the source workspace.
 #[deriving(Clone)]
 pub struct PkgSrc {
-    workspace: Path, // root of where the package source code lives
-    start_dir: Path, // dir to start looking in for packages -- normally
-                     // this is workspace/src/id but it may be just workspace
+    /// Root of where the package source code lives
+    workspace: Path,
+    // Directory to start looking in for packages -- normally
+    // this is workspace/src/id but it may be just workspace
+    start_dir: Path,
     id: PkgId,
     libs: ~[Crate],
     mains: ~[Crate],
@@ -61,8 +63,7 @@ impl PkgSrc {
         let mut to_try = ~[];
         if use_rust_path_hack {
             to_try.push(workspace.clone());
-        }
-        else {
+        } else {
             let result = workspace.push("src").push_rel(&id.path.pop()).push(fmt!("%s-%s",
                                                          id.short_name, id.version.to_str()));
             to_try.push(result);
@@ -251,7 +252,7 @@ impl PkgSrc {
     }
 
     fn build_crates(&self,
-                    ctx: &BuildCtx,
+                    ctx: &BuildContext,
                     exec: &mut workcache::Exec,
                     destination_dir: &Path,
                     crates: &[Crate],
@@ -263,23 +264,17 @@ impl PkgSrc {
             let path_str = path.to_str();
             let cfgs = crate.cfgs + cfgs;
 
-            let result = {
+            let result =
                 // compile_crate should return the path of the output artifact
-                match compile_crate(ctx,
-                                  exec,
-                                  &self.id,
-                                  &path,
-                                  destination_dir,
-                                  crate.flags,
-                                  cfgs,
-                                  false,
-                                  what).map(|p| p.to_str()) {
-                    Some(p) => p,
-                    None   => build_err::cond.raise(fmt!("build failure on %s",
-                                                         path_str))
-
-                }
-            };
+                compile_crate(ctx,
+                              exec,
+                              &self.id,
+                              &path,
+                              destination_dir,
+                              crate.flags,
+                              cfgs,
+                              false,
+                              what).to_str();
             debug!("Result of compiling %s was %s", path_str, result);
         }
     }
@@ -301,7 +296,10 @@ impl PkgSrc {
 
     // It would be better if build returned a Path, but then Path would have to derive
     // Encodable.
-    pub fn build(&self, exec: &mut workcache::Exec, ctx: &BuildCtx, cfgs: ~[~str]) -> ~str {
+    pub fn build(&self,
+                 exec: &mut workcache::Exec,
+                 build_context: &BuildContext,
+                 cfgs: ~[~str]) -> ~str {
         use conditions::not_a_workspace::cond;
 
         // Determine the destination workspace (which depends on whether
@@ -309,16 +307,14 @@ impl PkgSrc {
         let destination_workspace = if is_workspace(&self.workspace) {
             debug!("%s is indeed a workspace", self.workspace.to_str());
             self.workspace.clone()
-        }
-            else {
+        } else {
             // It would be nice to have only one place in the code that checks
             // for the use_rust_path_hack flag...
-            if ctx.cx.use_rust_path_hack {
+            if build_context.context.use_rust_path_hack {
                 let rs = default_workspace();
                 debug!("Using hack: %s", rs.to_str());
                 rs
-            }
-            else {
+            } else {
                 cond.raise(fmt!("Package root %s is not a workspace; pass in --rust_path_hack \
                                         if you want to treat it as a package source",
                                 self.workspace.to_str()))
@@ -331,13 +327,13 @@ impl PkgSrc {
         let benchs = self.benchs.clone();
         debug!("Building libs in %s, destination = %s",
                destination_workspace.to_str(), destination_workspace.to_str());
-        self.build_crates(ctx, exec, &destination_workspace, libs, cfgs, Lib);
+        self.build_crates(build_context, exec, &destination_workspace, libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(ctx, exec, &destination_workspace, mains, cfgs, Main);
+        self.build_crates(build_context, exec, &destination_workspace, mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(ctx, exec, &destination_workspace, tests, cfgs, Test);
+        self.build_crates(build_context, exec, &destination_workspace, tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(ctx, exec, &destination_workspace, benchs, cfgs, Bench);
+        self.build_crates(build_context, exec, &destination_workspace, benchs, cfgs, Bench);
         destination_workspace.to_str()
     }
 }

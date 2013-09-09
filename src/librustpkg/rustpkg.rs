@@ -40,7 +40,7 @@ use path_util::{built_executable_in_workspace, built_library_in_workspace, defau
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use source_control::is_git_dir;
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
-use context::{BuildCtx, Ctx};
+use context::{BuildContext, Context};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use workcache_support::{discover_outputs, digest_only_date};
@@ -174,6 +174,8 @@ pub trait CtxMethods {
     fn build(&self, exec: &mut workcache::Exec, pkg_src: PkgSrc) -> Path;
     fn clean(&self, workspace: &Path, id: &PkgId);
     fn info(&self);
+    /// Returns a pair. First component is a list of installed paths,
+    /// second is a list of declared and discovered inputs
     fn install(&self, src: PkgSrc) -> (~[Path], ~[(~str, ~str)]);
     /// Returns a list of installed files
     fn install_no_build(&self, workspace: &Path, id: &PkgId) -> ~[Path];
@@ -183,11 +185,11 @@ pub trait CtxMethods {
     fn unprefer(&self, _id: &str, _vers: Option<~str>);
 }
 
-impl CtxMethods for BuildCtx {
+impl CtxMethods for BuildContext {
     fn build_from_src(&self, pkg_src: PkgSrc) {
         let tag = pkg_src.id.to_str();
         debug!("package source = %s", pkg_src.to_str());
-        do self.workcache_cx.with_prep(tag) |prep| {
+        do self.workcache_context.with_prep(tag) |prep| {
             let subsrc = pkg_src.clone();
             let subself = self.clone();
             declare_package_script_dependency(prep, &subsrc);
@@ -203,7 +205,7 @@ impl CtxMethods for BuildCtx {
             "build" => {
                 if args.len() < 1 {
                     match cwd_to_workspace() {
-                        None if self.cx.use_rust_path_hack => {
+                        None if self.context.use_rust_path_hack => {
                             let cwd = os::getcwd();
                             let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
                             self.build_from_src(PkgSrc::new(cwd, true, pkgid));
@@ -218,7 +220,7 @@ impl CtxMethods for BuildCtx {
                     // The package id is presumed to be the first command-line
                     // argument
                     let pkgid = PkgId::new(args[0].clone());
-                    do each_pkg_parent_workspace(&self.cx, &pkgid) |workspace| {
+                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
                         debug!("found pkg %s in workspace %s, trying to build",
                                pkgid.to_str(), workspace.to_str());
                         let pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
@@ -258,7 +260,7 @@ impl CtxMethods for BuildCtx {
             "install" => {
                if args.len() < 1 {
                     match cwd_to_workspace() {
-                        None if self.cx.use_rust_path_hack => {
+                        None if self.context.use_rust_path_hack => {
                             let cwd = os::getcwd();
                             let inferred_pkgid =
                                 PkgId::new(cwd.components[cwd.components.len() - 1]);
@@ -275,7 +277,7 @@ impl CtxMethods for BuildCtx {
                     // The package id is presumed to be the first command-line
                     // argument
                     let pkgid = PkgId::new(args[0]);
-                    let workspaces = pkg_parent_workspaces(&self.cx, &pkgid);
+                    let workspaces = pkg_parent_workspaces(&self.context, &pkgid);
                     debug!("package ID = %s, found it in %? workspaces",
                            pkgid.to_str(), workspaces.len());
                     if workspaces.is_empty() {
@@ -287,7 +289,7 @@ impl CtxMethods for BuildCtx {
                     else {
                         for workspace in workspaces.iter() {
                             let src = PkgSrc::new(workspace.clone(),
-                                                  self.cx.use_rust_path_hack,
+                                                  self.context.use_rust_path_hack,
                                                   pkgid.clone());
                             self.install(src);
                         };
@@ -324,7 +326,7 @@ impl CtxMethods for BuildCtx {
                 else {
                     let rp = rust_path();
                     assert!(!rp.is_empty());
-                    do each_pkg_parent_workspace(&self.cx, &pkgid) |workspace| {
+                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
                         path_util::uninstall_package_from(workspace, &pkgid);
                         note(fmt!("Uninstalled package %s (was installed in %s)",
                                   pkgid.to_str(), workspace.to_str()));
@@ -350,9 +352,7 @@ impl CtxMethods for BuildCtx {
 
     /// Returns the destination workspace
     /// In the case of a custom build, we don't know, so we just return the source workspace
-    fn build(&self, exec: &mut workcache::Exec, pkg_src: PkgSrc) -> Path {
-
-        let pkg_src = &mut pkg_src.clone(); // :-o
+    fn build(&self, exec: &mut workcache::Exec, mut pkg_src: PkgSrc) -> Path {
         let workspace = pkg_src.workspace.clone();
         let pkgid = pkg_src.id.clone();
 
@@ -438,8 +438,6 @@ impl CtxMethods for BuildCtx {
         fail!("info not yet implemented");
     }
 
-    /// Returns a pair. First component is a list of installed paths,
-    /// second is a list of declared and discovered inputs
     fn install(&self, pkg_src: PkgSrc) -> (~[Path], ~[(~str, ~str)]) {
 
         let id = &pkg_src.id;
@@ -447,7 +445,8 @@ impl CtxMethods for BuildCtx {
         let installed_files = RWArc::new(~[]);
         let inputs = RWArc::new(~[]);
         // FIXME #7402: Use RUST_PATH to determine target dir
-        let f: &fn(&mut workcache::Prep) = |prep| {
+        self.workcache_context.with_prep(id.to_str(), |p| pkg_src.declare_inputs(p));
+        do self.workcache_context.with_prep(id.to_str()) |prep| {
             let sub_inputs = inputs.clone();
             let sub_files  = installed_files.clone();
             let subsrc = pkg_src.clone();
@@ -473,8 +472,6 @@ impl CtxMethods for BuildCtx {
                 sub_inputs.write(|r| { *r = *r + exec.lookup_discovered_inputs() });
             }
         };
-        self.workcache_cx.with_prep(id.to_str(), |p| pkg_src.declare_inputs(p));
-        self.workcache_cx.with_prep(id.to_str(), f);
         (installed_files.unwrap(), inputs.unwrap())
     }
 
@@ -609,12 +606,12 @@ pub fn main_args(args: &[~str]) {
     let sroot = filesearch::get_or_default_sysroot();
     debug!("Using sysroot: %s", sroot.to_str());
     debug!("Will store workcache in %s", default_workspace().to_str());
-    BuildCtx {
-        cx: Ctx {
-           use_rust_path_hack: use_rust_path_hack,
-            sysroot_opt: sroot, // Currently, only tests override this
+    BuildContext {
+        context: Context {
+            use_rust_path_hack: use_rust_path_hack,
+            sysroot: sroot, // Currently, only tests override this
          },
-        workcache_cx: api::default_ctxt(default_workspace()).workcache_cx // ???
+        workcache_context: api::default_context(default_workspace()).workcache_context
     }.run(*cmd, remaining_args)
 }
 

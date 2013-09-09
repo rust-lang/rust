@@ -19,7 +19,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, bin_crate};
-use context::{in_target, BuildCtx};
+use context::{in_target, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use path_util::{installed_library_in_workspace, U_RWX};
@@ -153,7 +153,7 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(crate)
 }
 
-pub fn compile_input(ctxt: &BuildCtx,
+pub fn compile_input(ctxt: &BuildContext,
                      exec: &mut workcache::Exec,
                      pkg_id: &PkgId,
                      in_file: &Path,
@@ -161,8 +161,7 @@ pub fn compile_input(ctxt: &BuildCtx,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
-                     what: OutputType) -> Option<Path> {
-
+                     what: OutputType) -> Path {
     assert!(in_file.components.len() > 1);
     let input = driver::file_input((*in_file).clone());
     debug!("compile_input: %s / %?", in_file.to_str(), what);
@@ -175,7 +174,7 @@ pub fn compile_input(ctxt: &BuildCtx,
 
     debug!("flags: %s", flags.connect(" "));
     debug!("cfgs: %s", cfgs.connect(" "));
-    debug!("compile_input's sysroot = %s", ctxt.sysroot_opt().to_str());
+    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -193,13 +192,13 @@ pub fn compile_input(ctxt: &BuildCtx,
                           driver::optgroups()).unwrap();
     // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
-    let sysroot_to_use = @if !in_target(&ctxt.sysroot_opt()) {
-        ctxt.sysroot_opt()
+    let sysroot_to_use = @if !in_target(&ctxt.sysroot()) {
+        ctxt.sysroot()
     }
     else {
-        ctxt.sysroot_opt().pop().pop().pop()
+        ctxt.sysroot().pop().pop().pop()
     };
-    debug!("compile_input's sysroot = %s", ctxt.sysroot_opt().to_str());
+    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
     debug!("sysroot_to_use = %s", sysroot_to_use.to_str());
     let options = @session::options {
         crate_type: crate_type,
@@ -284,7 +283,7 @@ pub fn compile_crate_from_input(input: &Path,
  // should be of the form <workspace>/build/<pkg id's path>
                                 out_dir: &Path,
                                 sess: session::Session,
-                                crate: @ast::Crate) -> Option<Path> {
+                                crate: @ast::Crate) -> Path {
     debug!("Calling build_output_filenames with %s, building library? %?",
            out_dir.to_str(), sess.building_library);
 
@@ -307,13 +306,13 @@ pub fn compile_crate_from_input(input: &Path,
                                                         &analysis,
                                                         outputs);
     driver::phase_5_run_llvm_passes(sess, &translation, outputs);
-    if driver::stop_after_phase_5(sess) { return Some(outputs.out_filename); }
+    if driver::stop_after_phase_5(sess) { return outputs.out_filename; }
     driver::phase_6_link_output(sess, &translation, outputs);
 
     // Register dependency on the source file
     exec.discover_input("file", input.to_str(), digest_file_with_date(input));
 
-    Some(outputs.out_filename)
+    outputs.out_filename
 }
 
 #[cfg(windows)]
@@ -326,12 +325,12 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 pub fn exe_suffix() -> ~str { ~"" }
 
 // Called by build_crates
-pub fn compile_crate(ctxt: &BuildCtx,
+pub fn compile_crate(ctxt: &BuildContext,
                      exec: &mut workcache::Exec,
                      pkg_id: &PkgId,
                      crate: &Path, workspace: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
-                     what: OutputType) -> Option<Path> {
+                     what: OutputType) -> Path {
     debug!("compile_crate: crate=%s, workspace=%s", crate.to_str(), workspace.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
@@ -344,7 +343,7 @@ pub fn compile_crate(ctxt: &BuildCtx,
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-pub fn find_and_install_dependencies(ctxt: &BuildCtx,
+pub fn find_and_install_dependencies(ctxt: &BuildContext,
                                  sess: session::Session,
                                  exec: &mut workcache::Exec,
                                  workspace: &Path,
@@ -358,8 +357,10 @@ pub fn find_and_install_dependencies(ctxt: &BuildCtx,
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
                 let lib_name = match path_opt {
-                    Some(p) => p, None => sess.str_of(lib_ident) };
-                match installed_library_in_workspace(lib_name, &ctxt.sysroot_opt()) {
+                    Some(p) => p,
+                    None => sess.str_of(lib_ident)
+                };
+                match installed_library_in_workspace(lib_name, &ctxt.sysroot()) {
                     Some(ref installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                         // Say that [path for c] has a discovered dependency on
