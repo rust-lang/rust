@@ -256,7 +256,8 @@ impl Reflector {
               let fields = ty::struct_fields(tcx, did, substs);
               let mut named_fields = false;
               if !fields.is_empty() {
-                  named_fields = fields[0].ident != special_idents::unnamed_field;
+                  named_fields =
+                        fields[0].ident.name != special_idents::unnamed_field.name;
               }
 
               let extra = ~[self.c_slice(ty_to_str(tcx, t).to_managed()),
