@@ -480,6 +480,7 @@ impl VisitContext {
                 self.use_expr(base, Read, visitor);
             }
 
+            ExprLogLevel |
             ExprInlineAsm(*) |
             ExprBreak(*) |
             ExprAgain(*) |
@@ -487,11 +488,6 @@ impl VisitContext {
 
             ExprLoop(ref blk, _) => {
                 self.consume_block(blk, visitor);
-            }
-
-            ExprLog(a_expr, b_expr) => {
-                self.consume_expr(a_expr, visitor);
-                self.use_expr(b_expr, Read, visitor);
             }
 
             ExprWhile(cond_expr, ref blk) => {

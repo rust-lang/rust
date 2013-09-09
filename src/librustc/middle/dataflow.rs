@@ -702,12 +702,12 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 join_bits(&self.dfcx.oper, temp, in_out);
             }
 
-            ast::ExprLog(l, r) |
             ast::ExprIndex(_, l, r) |
             ast::ExprBinary(_, _, l, r) => {
                 self.walk_exprs([l, r], in_out, loop_scopes);
             }
 
+            ast::ExprLogLevel |
             ast::ExprLit(*) |
             ast::ExprPath(*) |
             ast::ExprSelf => {

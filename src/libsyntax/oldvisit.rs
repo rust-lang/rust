@@ -567,10 +567,7 @@ pub fn visit_expr<E:Clone>(ex: @Expr, (e, v): (E, vt<E>)) {
         ExprBreak(_) => (),
         ExprAgain(_) => (),
         ExprRet(eo) => visit_expr_opt(eo, (e.clone(), v)),
-        ExprLog(lv, x) => {
-            (v.visit_expr)(lv, (e.clone(), v));
-            (v.visit_expr)(x, (e.clone(), v));
-        }
+        ExprLogLevel => (),
         ExprMac(ref mac) => visit_mac(mac, (e.clone(), v)),
         ExprParen(x) => (v.visit_expr)(x, (e.clone(), v)),
         ExprInlineAsm(ref a) => {

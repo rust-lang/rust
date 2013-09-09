@@ -377,9 +377,6 @@ pub fn mark_for_expr(cx: &Context, e: &Expr) {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
       }
-      ExprLog(_, val) => {
-        node_type_needs(cx, use_tydesc, val.id);
-      }
       ExprCall(f, _, _) => {
           let r = ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id));
           for a in r.iter() {
@@ -411,7 +408,7 @@ pub fn mark_for_expr(cx: &Context, e: &Expr) {
       ExprMatch(*) | ExprBlock(_) | ExprIf(*) | ExprWhile(*) |
       ExprBreak(_) | ExprAgain(_) | ExprUnary(*) | ExprLit(_) |
       ExprMac(_) | ExprAddrOf(*) | ExprRet(_) | ExprLoop(*) |
-      ExprDoBody(_) => (),
+      ExprDoBody(_) | ExprLogLevel => (),
 
       ExprForLoop(*) => fail!("non-desugared expr_for_loop")
     }
