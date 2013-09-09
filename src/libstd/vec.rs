@@ -389,37 +389,19 @@ impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
     }
 }
 
-// FIXME: if issue #586 gets implemented, could have a postcondition
-// saying the two result lists have the same length -- or, could
-// return a nominal record with a constraint saying that, instead of
-// returning a tuple (contingent on issue #869)
 /**
- * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
- */
-pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
-    let mut ts = ~[];
-    let mut us = ~[];
-    for p in v.iter() {
-        let (t, u) = (*p).clone();
-        ts.push(t);
-        us.push(u);
-    }
-    (ts, us)
-}
-
-/**
- * Convert a vector of pairs into a pair of vectors.
+ * Convert an iterator of pairs into a pair of vectors.
  *
  * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input vector,
+ * vector contains the first element of the i-th tuple of the input iterator,
  * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input vector.
+ * of the i-th tuple of the input iterator.
  */
-pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
-    let mut ts = ~[];
-    let mut us = ~[];
-    for p in v.move_iter() {
-        let (t, u) = p;
+pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
+    let (lo, _) = iter.size_hint();
+    let mut ts = with_capacity(lo);
+    let mut us = with_capacity(lo);
+    for (t, u) in iter {
         ts.push(t);
         us.push(u);
     }
@@ -2891,7 +2873,7 @@ mod tests {
     fn test_zip_unzip() {
         let z1 = ~[(1, 4), (2, 5), (3, 6)];
 
-        let (left, right) = unzip(z1);
+        let (left, right) = unzip(z1.iter().map(|&x| x));
 
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));

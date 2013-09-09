@@ -148,7 +148,7 @@ mod test {
         // Unfortunately this does not actually test the block_on early-break
         // codepath in select -- racing between the sender and the receiver in
         // separate tasks is necessary to get around the optimistic check.
-        let (ports, chans) = unzip(from_fn(num_ports, |_| oneshot::<()>()));
+        let (ports, chans) = unzip(range(0, num_ports).map(|_| oneshot::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
         for (i, chan) in chans.move_iter().enumerate() {
@@ -165,7 +165,7 @@ mod test {
 
         // Same thing with streams instead.
         // FIXME(#7971): This should be in a macro but borrowck isn't smart enough.
-        let (ports, chans) = unzip(from_fn(num_ports, |_| stream::<()>()));
+        let (ports, chans) = unzip(range(0, num_ports).map(|_| stream::<()>()));
         let mut dead_chans = ~[];
         let mut ports = ports;
         for (i, chan) in chans.move_iter().enumerate() {
@@ -209,7 +209,7 @@ mod test {
         // Sends 10 buffered packets, and uses select to retrieve them all.
         // Puts the port in a different spot in the vector each time.
         do run_in_newsched_task {
-            let (ports, _) = unzip(from_fn(10, |_| stream()));
+            let (ports, _) = unzip(range(0u, 10).map(|_| stream::<int>()));
             let (port, chan) = stream();
             do 10.times { chan.send(31337); }
             let mut ports = ports;
@@ -327,7 +327,7 @@ mod test {
                     let (p,c) = oneshot();
                     let c = Cell::new(c);
                     do task::spawn {
-                        let (dead_ps, dead_cs) = unzip(from_fn(5, |_| oneshot::<()>()));
+                        let (dead_ps, dead_cs) = unzip(range(0u, 5).map(|_| oneshot::<()>()));
                         let mut ports = dead_ps;
                         select(ports); // should get killed; nothing should leak
                         c.take().send(()); // must not happen
