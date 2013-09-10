@@ -43,6 +43,7 @@ let unwrapped_msg = match msg {
 
 use clone::Clone;
 use cmp::{Eq,Ord};
+use default::Default;
 use util;
 use num::Zero;
 use iter;
@@ -347,6 +348,10 @@ impl<T> Option<T> {
             opt = blk(opt.unwrap());
         }
     }
+}
+
+impl<T> Default for Option<T> {
+    fn default() -> Option<T> { None }
 }
 
 impl<T:Zero> Option<T> {
