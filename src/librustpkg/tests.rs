@@ -10,10 +10,14 @@
 
 // rustpkg unit tests
 
-use context::Ctx;
-use std::hashmap::HashMap;
-use std::{io, libc, os, run, str};
+use context::{BuildContext, Context};
+use std::{io, libc, os, run, str, task};
+use extra::arc::Arc;
+use extra::arc::RWArc;
 use extra::tempfile::mkdtemp;
+use extra::workcache;
+use extra::workcache::{Database, Logger};
+use extra::treemap::TreeMap;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use package_id::{PkgId};
@@ -26,18 +30,24 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
 use rustc::metadata::filesearch::rust_path;
 use rustc::driver::driver::host_triple;
 use target::*;
+use package_source::PkgSrc;
 
 /// Returns the last-modified date as an Option
 fn datestamp(p: &Path) -> Option<libc::time_t> {
     p.stat().map(|stat| stat.st_mtime)
 }
 
-fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
-    Ctx {
-        use_rust_path_hack: false,
-        sysroot_opt: sysroot_opt,
-        json: false,
-        dep_cache: @mut HashMap::new()
+fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
+    let context = workcache::Context::new(
+        RWArc::new(Database::new(workspace.push("rustpkg_db.json"))),
+        RWArc::new(Logger::new()),
+        Arc::new(TreeMap::new()));
+    BuildContext {
+        workcache_context: context,
+        context: Context {
+            use_rust_path_hack: false,
+            sysroot: sysroot
+        }
     }
 }
 
@@ -388,7 +398,7 @@ fn lib_output_file_name(workspace: &Path, parent: &str, short_name: &str) -> Pat
 }
 
 fn output_file_name(workspace: &Path, short_name: &str) -> Path {
-    workspace.push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
+    workspace.push("build").push(short_name).push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
 }
 
 fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
@@ -401,12 +411,11 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             if run::process_output("touch", [p.to_str()]).status != 0 {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
-            break;
         }
     }
 }
 
-/// Add a blank line at the end
+/// Add a comment at the end
 fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push("src").push(pkgid.to_str());
@@ -423,7 +432,7 @@ fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
             let w = io::file_writer(p, &[io::Append]);
             match w {
                 Err(s) => { let _ = cond.raise((p.clone(), fmt!("Bad path: %s", s))); }
-                Ok(w)  => w.write_line("")
+                Ok(w)  => w.write_line("/* hi */")
             }
         }
         None => fail!(fmt!("frob_source_file failed to find a source file in %s",
@@ -450,12 +459,13 @@ fn test_install_valid() {
 
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
-    let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = fake_pkg();
     let temp_workspace = mk_temp_workspace(&temp_pkg_id.path, &NoVersion).pop().pop();
+    let ctxt = fake_ctxt(sysroot, &temp_workspace);
     debug!("temp_workspace = %s", temp_workspace.to_str());
     // should have test, bench, lib, and main
-    ctxt.install(&temp_workspace, &temp_pkg_id);
+    let src = PkgSrc::new(temp_workspace.clone(), false, temp_pkg_id.clone());
+    ctxt.install(src);
     // Check that all files exist
     let exec = target_executable_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("exec = %s", exec.to_str());
@@ -476,32 +486,19 @@ fn test_install_valid() {
 
 #[test]
 fn test_install_invalid() {
-    use conditions::nonexistent_package::cond;
-    use cond1 = conditions::missing_pkg_files::cond;
-    use cond2 = conditions::not_a_workspace::cond;
-
-    let ctxt = fake_ctxt(None);
+    let sysroot = test_sysroot();
     let pkgid = fake_pkg();
     let temp_workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
-    let mut error_occurred = false;
-    let mut error1_occurred = false;
-    let mut error2_occurred = false;
-    do cond1.trap(|_| {
-        error1_occurred = true;
-    }).inside {
-        do cond.trap(|_| {
-            error_occurred = true;
-            temp_workspace.clone()
-        }).inside {
-            do cond2.trap(|_| {
-               error2_occurred = true;
-               temp_workspace.clone()
-            }).inside {
-                 ctxt.install(&temp_workspace, &pkgid);
-            }
-        }
-    }
-    assert!(error_occurred && error1_occurred && error2_occurred);
+    let ctxt = fake_ctxt(sysroot, &temp_workspace);
+
+    // Uses task::try because of #9001
+    let result = do task::try {
+        let pkg_src = PkgSrc::new(temp_workspace.clone(), false, pkgid.clone());
+        ctxt.install(pkg_src);
+    };
+    // Not the best test -- doesn't test that we failed in the right way.
+    // Best we can do for now.
+    assert!(result == Err(()));
 }
 
 // Tests above should (maybe) be converted to shell out to rustpkg, too
@@ -898,7 +895,6 @@ fn install_check_duplicates() {
 }
 
 #[test]
-#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn no_rebuilding() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
@@ -912,24 +908,28 @@ fn no_rebuilding() {
 }
 
 #[test]
-#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn no_rebuilding_dep() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let bar_date = datestamp(&lib_output_file_name(&workspace,
+    let bar_date_1 = datestamp(&lib_output_file_name(&workspace,
                                                   ".rust",
                                                   "bar"));
-    let foo_date = datestamp(&output_file_name(&workspace, "foo"));
-    assert!(bar_date < foo_date);
+    let foo_date_1 = datestamp(&output_file_name(&workspace, "foo"));
+
+    frob_source_file(&workspace, &p_id);
+    command_line_test([~"build", ~"foo"], &workspace);
+    let bar_date_2 = datestamp(&lib_output_file_name(&workspace,
+                                                  ".rust",
+                                                  "bar"));
+    let foo_date_2 = datestamp(&output_file_name(&workspace, "foo"));
+    assert_eq!(bar_date_1, bar_date_2);
+    assert!(foo_date_1 < foo_date_2);
+    assert!(foo_date_1 > bar_date_1);
 }
 
-// n.b. The following two tests are ignored; they worked "accidentally" before,
-// when the behavior was "always rebuild libraries" (now it's "never rebuild
-// libraries if they already exist"). They can be un-ignored once #7075 is done.
 #[test]
-#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn do_rebuild_dep_dates_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
@@ -946,7 +946,6 @@ fn do_rebuild_dep_dates_change() {
 }
 
 #[test]
-#[ignore(reason = "Workcache not yet implemented -- see #7075")]
 fn do_rebuild_dep_only_contents_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");

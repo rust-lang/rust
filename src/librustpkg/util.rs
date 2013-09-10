@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax::ast_util::*;
@@ -18,12 +19,13 @@ use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, bin_crate};
-use context::{Ctx, in_target};
+use context::{in_target, BuildContext};
 use package_id::PkgId;
-use search::{find_library_in_search_path, find_installed_library_in_rust_path};
-use path_util::{target_library_in_workspace, U_RWX};
+use package_source::PkgSrc;
+use path_util::{installed_library_in_workspace, U_RWX};
+
 pub use target::{OutputType, Main, Lib, Bench, Test};
-use version::NoVersion;
+use workcache_support::{digest_file_with_date, digest_only_date};
 
 // It would be nice to have the list of commands in just one place -- for example,
 // you could update the match in rustpkg.rc but forget to update this list. I think
@@ -151,16 +153,15 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(crate)
 }
 
-// FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_input(ctxt: &Ctx,
+pub fn compile_input(ctxt: &BuildContext,
+                     exec: &mut workcache::Exec,
                      pkg_id: &PkgId,
                      in_file: &Path,
                      workspace: &Path,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
-                     what: OutputType) -> bool {
-
+                     what: OutputType) -> Path {
     assert!(in_file.components.len() > 1);
     let input = driver::file_input((*in_file).clone());
     debug!("compile_input: %s / %?", in_file.to_str(), what);
@@ -173,7 +174,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     debug!("flags: %s", flags.connect(" "));
     debug!("cfgs: %s", cfgs.connect(" "));
-    debug!("out_dir = %s", out_dir.to_str());
+    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -191,19 +192,19 @@ pub fn compile_input(ctxt: &Ctx,
                           driver::optgroups()).unwrap();
     // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
-    let sysroot_to_use = if !in_target(ctxt.sysroot_opt) {
-        ctxt.sysroot_opt
+    let sysroot_to_use = @if !in_target(&ctxt.sysroot()) {
+        ctxt.sysroot()
     }
     else {
-        ctxt.sysroot_opt.map(|p| { @p.pop().pop().pop() })
+        ctxt.sysroot().pop().pop().pop()
     };
-    debug!("compile_input's sysroot = %?", ctxt.sysroot_opt_str());
-    debug!("sysroot_to_use = %?", sysroot_to_use);
+    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
+    debug!("sysroot_to_use = %s", sysroot_to_use.to_str());
     let options = @session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
-        maybe_sysroot: sysroot_to_use,
+        maybe_sysroot: Some(sysroot_to_use),
         addl_lib_search_paths: @mut (~[out_dir.clone()]),
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
@@ -228,11 +229,11 @@ pub fn compile_input(ctxt: &Ctx,
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess);
     let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
+    crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
     // Not really right. Should search other workspaces too, and the installed
     // database (which doesn't exist yet)
-    find_and_install_dependencies(ctxt, sess, workspace, crate,
+    find_and_install_dependencies(ctxt, sess, exec, workspace, crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
@@ -269,8 +270,7 @@ pub fn compile_input(ctxt: &Ctx,
 
     debug!("calling compile_crate_from_input, workspace = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(&input, &out_dir, sess, crate);
-    true
+    compile_crate_from_input(in_file, exec, &out_dir, sess, crate)
 }
 
 // Should use workcache to avoid recompiling when not necessary
@@ -278,17 +278,19 @@ pub fn compile_input(ctxt: &Ctx,
 // If crate_opt is present, then finish compilation. If it's None, then
 // call compile_upto and return the crate
 // also, too many arguments
-pub fn compile_crate_from_input(input: &driver::input,
+pub fn compile_crate_from_input(input: &Path,
+                                exec: &mut workcache::Exec,
  // should be of the form <workspace>/build/<pkg id's path>
                                 out_dir: &Path,
                                 sess: session::Session,
-                                crate: @ast::Crate) {
+                                crate: @ast::Crate) -> Path {
     debug!("Calling build_output_filenames with %s, building library? %?",
            out_dir.to_str(), sess.building_library);
 
     // bad copy
     debug!("out_dir = %s", out_dir.to_str());
-    let outputs = driver::build_output_filenames(input, &Some(out_dir.clone()), &None,
+    let outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
+                                                 &Some(out_dir.clone()), &None,
                                                  crate.attrs, sess);
 
     debug!("Outputs are out_filename: %s and obj_filename: %s and output type = %?",
@@ -304,8 +306,13 @@ pub fn compile_crate_from_input(input: &driver::input,
                                                         &analysis,
                                                         outputs);
     driver::phase_5_run_llvm_passes(sess, &translation, outputs);
-    if driver::stop_after_phase_5(sess) { return; }
+    if driver::stop_after_phase_5(sess) { return outputs.out_filename; }
     driver::phase_6_link_output(sess, &translation, outputs);
+
+    // Register dependency on the source file
+    exec.discover_input("file", input.to_str(), digest_file_with_date(input));
+
+    outputs.out_filename
 }
 
 #[cfg(windows)]
@@ -318,76 +325,92 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 pub fn exe_suffix() -> ~str { ~"" }
 
 // Called by build_crates
-// FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
+pub fn compile_crate(ctxt: &BuildContext,
+                     exec: &mut workcache::Exec,
+                     pkg_id: &PkgId,
                      crate: &Path, workspace: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
-                     what: OutputType) -> bool {
+                     what: OutputType) -> Path {
     debug!("compile_crate: crate=%s, workspace=%s", crate.to_str(), workspace.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
         debug!("+++ %s", *fl);
     }
-    compile_input(ctxt, pkg_id, crate, workspace, flags, cfgs, opt, what)
+    compile_input(ctxt, exec, pkg_id, crate, workspace, flags, cfgs, opt, what)
 }
 
 
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-pub fn find_and_install_dependencies(ctxt: &Ctx,
+pub fn find_and_install_dependencies(ctxt: &BuildContext,
                                  sess: session::Session,
+                                 exec: &mut workcache::Exec,
                                  workspace: &Path,
                                  c: &ast::Crate,
                                  save: @fn(Path)
                                 ) {
-    // :-(
-    debug!("In find_and_install_dependencies...");
-    let my_workspace = (*workspace).clone();
-    let my_ctxt      = *ctxt;
-    do c.each_view_item() |vi: &ast::view_item| {
+    debug!("Finding and installing dependencies...");
+    do c.each_view_item |vi| {
         debug!("A view item!");
         match vi.node {
             // ignore metadata, I guess
             ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
-                match my_ctxt.sysroot_opt {
-                    Some(ref x) => debug!("*** sysroot: %s", x.to_str()),
-                    None => debug!("No sysroot given")
+                let lib_name = match path_opt {
+                    Some(p) => p,
+                    None => sess.str_of(lib_ident)
                 };
-                let lib_name = match path_opt { // ???
-                    Some(p) => p, None => sess.str_of(lib_ident) };
-                match find_library_in_search_path(my_ctxt.sysroot_opt, lib_name) {
-                    Some(installed_path) => {
+                match installed_library_in_workspace(lib_name, &ctxt.sysroot()) {
+                    Some(ref installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
+                        // Say that [path for c] has a discovered dependency on
+                        // installed_path
+                        // For binary files, we only hash the datestamp, not the contents.
+                        // I'm not sure what the right thing is.
+                        // Now we know that this crate has a discovered dependency on
+                        // installed_path
+                        exec.discover_input("binary", installed_path.to_str(),
+                                                      digest_only_date(installed_path));
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        match find_installed_library_in_rust_path(lib_name, &NoVersion) {
-                            Some(installed_path) => {
-                               debug!("Found library %s, not rebuilding it",
-                                      installed_path.to_str());
-                               // Once workcache is implemented, we'll actually check
-                               // whether or not the library at installed_path is fresh
-                               save(installed_path.pop());
+                        debug!("Trying to install library %s, rebuilding it",
+                               lib_name.to_str());
+                        // Try to install it
+                        let pkg_id = PkgId::new(lib_name);
+                        let (outputs_disc, inputs_disc) =
+                            ctxt.install(PkgSrc::new(workspace.clone(), false, pkg_id));
+                        debug!("Installed %s, returned %? dependencies and \
+                               %? transitive dependencies",
+                               lib_name, outputs_disc.len(), inputs_disc.len());
+                        for dep in outputs_disc.iter() {
+                            debug!("Discovering a binary input: %s", dep.to_str());
+                            exec.discover_input("binary", dep.to_str(),
+                                                digest_only_date(dep));
+                        }
+                        for &(ref what, ref dep) in inputs_disc.iter() {
+                            if *what == ~"file" {
+                                exec.discover_input(*what, *dep,
+                                                    digest_file_with_date(&Path(*dep)));
                             }
-                            None => {
-                               debug!("Trying to install library %s, rebuilding it",
-                                      lib_name.to_str());
-                               // Try to install it
-                               let pkg_id = PkgId::new(lib_name);
-                               my_ctxt.install(&my_workspace, &pkg_id);
-                               // Also, add an additional search path
-                               debug!("let installed_path...")
-                               let installed_path = target_library_in_workspace(&pkg_id,
-                                                                         &my_workspace).pop();
-                               debug!("Great, I installed %s, and it's in %s",
-                                   lib_name, installed_path.to_str());
-                               save(installed_path);
-                           }
+                            else if *what == ~"binary" {
+                                exec.discover_input(*what, *dep,
+                                                    digest_only_date(&Path(*dep)));
+                            }
+                            else {
+                                fail!("Bad kind: %s", *what);
+                            }
+                        }
+                        // Also, add an additional search path
+                        let installed_library =
+                            installed_library_in_workspace(lib_name, workspace)
+                                .expect( fmt!("rustpkg failed to install dependency %s",
+                                              lib_name));
+                        let install_dir = installed_library.pop();
+                        debug!("Installed %s into %s", lib_name, install_dir.to_str());
+                        save(install_dir);
                     }
-                }
-              }
-            }
+                }}
             // Ignore `use`s
             _ => ()
         }

@@ -12,14 +12,14 @@
 
 use std::{os,util};
 use std::path::Path;
-use context::Ctx;
+use context::Context;
 use path_util::{workspace_contains_package_id, find_dir_using_rust_path_hack};
 use util::option_to_vec;
 use package_id::PkgId;
 
 use path_util::rust_path;
 
-pub fn each_pkg_parent_workspace(cx: &Ctx, pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
+pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {
     // Using the RUST_PATH, find workspaces that contain
     // this package ID
     let workspaces = pkg_parent_workspaces(cx, pkgid);
@@ -38,12 +38,12 @@ pub fn each_pkg_parent_workspace(cx: &Ctx, pkgid: &PkgId, action: &fn(&Path) -> 
     return true;
 }
 
-pub fn pkg_parent_workspaces(cx: &Ctx, pkgid: &PkgId) -> ~[Path] {
+pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
     let rs: ~[Path] = rust_path().move_iter()
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
         .collect();
     if cx.use_rust_path_hack {
-        rs + option_to_vec(find_dir_using_rust_path_hack(cx, pkgid))
+        rs + option_to_vec(find_dir_using_rust_path_hack(pkgid))
     }
     else {
         rs
