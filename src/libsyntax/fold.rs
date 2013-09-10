@@ -688,10 +688,13 @@ pub fn noop_fold_expr(e: &Expr_, fld: @ast_fold) -> Expr_ {
         ExprPath(ref pth) => ExprPath(fld.fold_path(pth)),
         ExprSelf => ExprSelf,
         ExprBreak(ref opt_ident) => {
-            ExprBreak(opt_ident.map_move(|x| fld.fold_ident(x)))
+            // FIXME #6993: add fold_name to fold.... then cut out the
+            // bogus Name->Ident->Name conversion.
+            ExprBreak(opt_ident.map_move(|x| fld.fold_ident(Ident::new(x)).name))
         }
         ExprAgain(ref opt_ident) => {
-            ExprAgain(opt_ident.map_move(|x| fld.fold_ident(x)))
+            // FIXME #6993: add fold_name to fold....
+            ExprAgain(opt_ident.map_move(|x| fld.fold_ident(Ident::new(x)).name))
         }
         ExprRet(ref e) => {
             ExprRet(e.map_move(|x| fld.fold_expr(x)))

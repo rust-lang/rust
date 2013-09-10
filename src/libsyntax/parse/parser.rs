@@ -1849,7 +1849,7 @@ impl Parser {
             if self.token_is_lifetime(&*self.token) {
                 let lifetime = self.get_lifetime(&*self.token);
                 self.bump();
-                ex = ExprBreak(Some(lifetime));
+                ex = ExprBreak(Some(lifetime.name));
             } else {
                 ex = ExprBreak(None);
             }
@@ -2585,7 +2585,7 @@ impl Parser {
             let ex = if self.token_is_lifetime(&*self.token) {
                 let lifetime = self.get_lifetime(&*self.token);
                 self.bump();
-                ExprAgain(Some(lifetime))
+                ExprAgain(Some(lifetime.name))
             } else {
                 ExprAgain(None)
             };

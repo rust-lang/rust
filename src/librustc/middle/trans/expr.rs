@@ -617,7 +617,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> @mut Block
             return controlflow::trans_while(bcx, cond, body);
         }
         ast::ExprLoop(ref body, opt_label) => {
-            return controlflow::trans_loop(bcx, body, opt_label);
+            // FIXME #6993: map can go away when ast.rs is changed
+            return controlflow::trans_loop(bcx, body, opt_label.map(|x| x.name));
         }
         ast::ExprAssign(dst, src) => {
             let src_datum = unpack_datum!(
