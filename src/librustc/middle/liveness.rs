@@ -756,7 +756,7 @@ impl Liveness {
     }
 
     pub fn find_loop_scope(&self,
-                           opt_label: Option<Ident>,
+                           opt_label: Option<Name>,
                            id: NodeId,
                            sp: Span)
                            -> NodeId {

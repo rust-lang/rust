@@ -5157,15 +5157,13 @@ impl Resolver {
             ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                let name = label.name;
-                match self.search_ribs(self.label_ribs, name, expr.span,
+                match self.search_ribs(self.label_ribs, label, expr.span,
                                        DontAllowCapturingSelf) {
                     None =>
                         self.resolve_error(expr.span,
                                               fmt!("use of undeclared label \
                                                    `%s`",
-                                                   self.session.str_of(
-                                                       label))),
+                                                   interner_get(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
                         self.record_def(expr.id, def)
                     }
