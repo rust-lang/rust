@@ -18,7 +18,8 @@ use context::*;
 use crate::Crate;
 use messages::*;
 use source_control::{git_clone, git_clone_general};
-use path_util::{pkgid_src_in_workspace, find_dir_using_rust_path_hack, default_workspace, make_dir_rwx_recursive};
+use path_util::{pkgid_src_in_workspace, find_dir_using_rust_path_hack, default_workspace};
+use path_util::make_dir_rwx_recursive;
 use util::compile_crate;
 use workspace::is_workspace;
 
