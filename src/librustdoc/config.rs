@@ -142,7 +142,7 @@ fn config_from_opts(
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = output_dir.map_move(|s| Path(s));
         result::Ok(Config {
-            output_dir: output_dir.unwrap_or_default(config.output_dir.clone()),
+            output_dir: output_dir.unwrap_or(config.output_dir.clone()),
             .. config
         })
     };

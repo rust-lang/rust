@@ -68,7 +68,7 @@ fn fold_crate(
     doc::CrateDoc {
         topmod: doc::ModDoc {
             item: doc::ItemDoc {
-                name: attrs.name.clone().unwrap_or_default(doc.topmod.name_()),
+                name: attrs.name.clone().unwrap_or(doc.topmod.name_()),
                 .. doc.topmod.item.clone()
             },
             .. doc.topmod.clone()

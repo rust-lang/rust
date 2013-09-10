@@ -205,7 +205,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
  */
 #[inline]
 pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    let mut vec = with_capacity(size.unwrap_or_default(4));
+    let mut vec = with_capacity(size.unwrap_or(4));
     builder(|x| vec.push(x));
     vec
 }

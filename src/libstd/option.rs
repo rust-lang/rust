@@ -332,7 +332,7 @@ impl<T> Option<T> {
 
     /// Returns the contained value or a default
     #[inline]
-    pub fn unwrap_or_default(self, def: T) -> T {
+    pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
             None => def
