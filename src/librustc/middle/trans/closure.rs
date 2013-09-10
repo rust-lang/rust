@@ -381,8 +381,10 @@ pub fn trans_expr_fn(bcx: @mut Block,
 
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, outer_id);
-
-    let llfnty = type_of_fn_from_ty(ccx, fty);
+    let f = match ty::get(fty).sty {
+        ty::ty_closure(ref f) => f,
+        _ => fail!("expected closure")
+    };
 
     let sub_path = vec::append_one(bcx.fcx.path.clone(),
                                    path_name(special_idents::anon));
@@ -390,7 +392,7 @@ pub fn trans_expr_fn(bcx: @mut Block,
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  sub_path.clone(),
                                                  "expr_fn");
-    let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
+    let llfn = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
