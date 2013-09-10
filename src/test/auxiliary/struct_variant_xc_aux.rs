@@ -14,4 +14,4 @@
 
 pub enum Enum {
     Variant { arg: u8 }
-} 
+}
