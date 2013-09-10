@@ -104,6 +104,7 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
+use default::Default;
 use iter::*;
 use libc::c_void;
 use num::{Integer, Zero, CheckedAdd, Saturating};
@@ -2234,6 +2235,19 @@ impl<A: DeepClone> DeepClone for ~[A] {
     fn deep_clone(&self) -> ~[A] {
         self.iter().map(|item| item.deep_clone()).collect()
     }
+}
+
+// This works because every lifetime is a sub-lifetime of 'static
+impl<'self, A> Default for &'self [A] {
+    fn default() -> &'self [A] { &'self [] }
+}
+
+impl<A> Default for ~[A] {
+    fn default() -> ~[A] { ~[] }
+}
+
+impl<A> Default for @[A] {
+    fn default() -> @[A] { @[] }
 }
 
 // This works because every lifetime is a sub-lifetime of 'static
