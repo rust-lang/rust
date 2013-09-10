@@ -45,7 +45,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
 #[inline]
 pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> @[A] {
     let mut vec = @[];
-    unsafe { raw::reserve(&mut vec, size.unwrap_or_default(4)); }
+    unsafe { raw::reserve(&mut vec, size.unwrap_or(4)); }
     builder(|x| unsafe { raw::push(&mut vec, x) });
     vec
 }

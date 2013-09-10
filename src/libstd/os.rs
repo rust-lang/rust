@@ -611,7 +611,7 @@ pub fn tmpdir() -> Path {
         if cfg!(target_os = "android") {
             Path("/data/tmp")
         } else {
-            getenv_nonempty("TMPDIR").unwrap_or_default(Path("/tmp"))
+            getenv_nonempty("TMPDIR").unwrap_or(Path("/tmp"))
         }
     }
 

@@ -312,7 +312,7 @@ impl Pattern {
         let require_literal = |c| {
             (options.require_literal_separator && is_sep(c)) ||
             (options.require_literal_leading_dot && c == '.'
-             && is_sep(prev_char.unwrap_or_default('/')))
+             && is_sep(prev_char.unwrap_or('/')))
         };
 
         for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
