@@ -497,7 +497,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
             // Rust expects to use an outpointer. If the foreign fn
             // also uses an outpointer, we can reuse it, but the types
             // may vary, so cast first to the Rust type. If the
-            // foriegn fn does NOT use an outpointer, we will have to
+            // foreign fn does NOT use an outpointer, we will have to
             // alloca some scratch space on the stack.
             match foreign_outptr {
                 Some(llforeign_outptr) => {
