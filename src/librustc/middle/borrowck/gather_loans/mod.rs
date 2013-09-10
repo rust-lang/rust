@@ -73,40 +73,38 @@ struct GatherLoanCtxt {
     repeating_ids: ~[ast::NodeId]
 }
 
-struct GatherLoanVisitor;
-
-impl visit::Visitor<@mut GatherLoanCtxt> for GatherLoanVisitor {
-    fn visit_expr(&mut self, ex:@Expr, e:@mut GatherLoanCtxt) {
-        gather_loans_in_expr(self, ex, e);
+impl visit::Visitor<()> for GatherLoanCtxt {
+    fn visit_expr(&mut self, ex:@Expr, _:()) {
+        gather_loans_in_expr(self, ex);
     }
-    fn visit_block(&mut self, b:&Block, e:@mut GatherLoanCtxt) {
-        gather_loans_in_block(self, b, e);
+    fn visit_block(&mut self, b:&Block, _:()) {
+        gather_loans_in_block(self, b);
     }
     fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block,
-                s:Span, n:NodeId, e:@mut GatherLoanCtxt) {
-        gather_loans_in_fn(self, fk, fd, b, s, n, e);
+                s:Span, n:NodeId, _:()) {
+        gather_loans_in_fn(self, fk, fd, b, s, n);
     }
-    fn visit_stmt(&mut self, s:@Stmt, e:@mut GatherLoanCtxt) {
-        add_stmt_to_map(self, s, e);
+    fn visit_stmt(&mut self, s:@Stmt, _:()) {
+        add_stmt_to_map(self, s);
     }
-    fn visit_pat(&mut self, p:@Pat, e:@mut GatherLoanCtxt) {
-        add_pat_to_id_range(self, p, e);
+    fn visit_pat(&mut self, p:@Pat, _:()) {
+        add_pat_to_id_range(self, p);
     }
-    fn visit_local(&mut self, l:@Local, e:@mut GatherLoanCtxt) {
-        gather_loans_in_local(self, l, e);
+    fn visit_local(&mut self, l:@Local, _:()) {
+        gather_loans_in_local(self, l);
     }
 
     // #7740: Do not visit items here, not even fn items nor methods
     // of impl items; the outer loop in borrowck/mod will visit them
     // for us in turn.  Thus override visit_item's walk with a no-op.
-    fn visit_item(&mut self, _:@ast::item, _:@mut GatherLoanCtxt) { }
+    fn visit_item(&mut self, _:@ast::item, _:()) { }
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
                     decl: &ast::fn_decl,
                     body: &ast::Block)
                     -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
-    let glcx = @mut GatherLoanCtxt {
+    let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: id_range::max(),
         all_loans: @mut ~[],
@@ -116,29 +114,26 @@ pub fn gather_loans(bccx: @BorrowckCtxt,
     };
     glcx.gather_fn_arg_patterns(decl, body);
 
-    let mut v = GatherLoanVisitor;
-    v.visit_block(body, glcx);
+    glcx.visit_block(body, ());
     return (glcx.id_range, glcx.all_loans, glcx.move_data);
 }
 
-fn add_pat_to_id_range(v: &mut GatherLoanVisitor,
-                       p: @ast::Pat,
-                       this: @mut GatherLoanCtxt) {
+fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
+                       p: @ast::Pat) {
     // NB: This visitor function just adds the pat ids into the id
     // range. We gather loans that occur in patterns using the
     // `gather_pat()` method below. Eventually these two should be
     // brought together.
     this.id_range.add(p.id);
-    visit::walk_pat(v, p, this);
+    visit::walk_pat(this, p, ());
 }
 
-fn gather_loans_in_fn(v: &mut GatherLoanVisitor,
+fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
                       fk: &fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
                       sp: Span,
-                      id: ast::NodeId,
-                      this: @mut GatherLoanCtxt) {
+                      id: ast::NodeId) {
     match fk {
         &visit::fk_item_fn(*) | &visit::fk_method(*) => {
             fail!("cannot occur, due to visit_item override");
@@ -147,23 +142,21 @@ fn gather_loans_in_fn(v: &mut GatherLoanVisitor,
         // Visit closures as part of the containing item.
         &visit::fk_anon(*) | &visit::fk_fn_block(*) => {
             this.push_repeating_id(body.id);
-            visit::walk_fn(v, fk, decl, body, sp, id, this);
+            visit::walk_fn(this, fk, decl, body, sp, id, ());
             this.pop_repeating_id(body.id);
             this.gather_fn_arg_patterns(decl, body);
         }
     }
 }
 
-fn gather_loans_in_block(v: &mut GatherLoanVisitor,
-                         blk: &ast::Block,
-                         this: @mut GatherLoanCtxt) {
+fn gather_loans_in_block(this: &mut GatherLoanCtxt,
+                         blk: &ast::Block) {
     this.id_range.add(blk.id);
-    visit::walk_block(v, blk, this);
+    visit::walk_block(this, blk, ());
 }
 
-fn gather_loans_in_local(v: &mut GatherLoanVisitor,
-                         local: @ast::Local,
-                         this: @mut GatherLoanCtxt) {
+fn gather_loans_in_local(this: &mut GatherLoanCtxt,
+                         local: @ast::Local) {
     match local.init {
         None => {
             // Variable declarations without initializers are considered "moves":
@@ -194,13 +187,12 @@ fn gather_loans_in_local(v: &mut GatherLoanVisitor,
         }
     }
 
-    visit::walk_local(v, local, this);
+    visit::walk_local(this, local, ());
 }
 
 
-fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
-                        ex: @ast::Expr,
-                        this: @mut GatherLoanCtxt) {
+fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
+                        ex: @ast::Expr) {
     let bccx = this.bccx;
     let tcx = bccx.tcx;
 
@@ -244,7 +236,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
                              base_cmt,
                              LoanMutability::from_ast_mutability(mutbl),
                              scope_r);
-        visit::walk_expr(v, ex, this);
+        visit::walk_expr(this, ex, ());
       }
 
       ast::ExprAssign(l, _) | ast::ExprAssignOp(_, _, l, _) => {
@@ -261,7 +253,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
                   // with moves etc, just ignore.
               }
           }
-          visit::walk_expr(v, ex, this);
+          visit::walk_expr(this, ex, ());
       }
 
       ast::ExprMatch(ex_v, ref arms) => {
@@ -271,7 +263,7 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
                 this.gather_pat(cmt, *pat, Some((arm.body.id, ex.id)));
             }
         }
-        visit::walk_expr(v, ex, this);
+        visit::walk_expr(this, ex, ());
       }
 
       ast::ExprIndex(_, _, arg) |
@@ -289,36 +281,36 @@ fn gather_loans_in_expr(v: &mut GatherLoanVisitor,
                                arg_cmt,
                                ImmutableMutability,
                                scope_r);
-          visit::walk_expr(v, ex, this);
+          visit::walk_expr(this, ex, ());
       }
 
       // see explanation attached to the `root_ub` field:
       ast::ExprWhile(cond, ref body) => {
           // during the condition, can only root for the condition
           this.push_repeating_id(cond.id);
-          v.visit_expr(cond, this);
+          this.visit_expr(cond, ());
           this.pop_repeating_id(cond.id);
 
           // during body, can only root for the body
           this.push_repeating_id(body.id);
-          v.visit_block(body, this);
+          this.visit_block(body, ());
           this.pop_repeating_id(body.id);
       }
 
       // see explanation attached to the `root_ub` field:
       ast::ExprLoop(ref body, _) => {
           this.push_repeating_id(body.id);
-          visit::walk_expr(v, ex, this);
+          visit::walk_expr(this, ex, ());
           this.pop_repeating_id(body.id);
       }
 
       ast::ExprFnBlock(*) => {
           gather_moves::gather_captures(this.bccx, this.move_data, ex);
-          visit::walk_expr(v, ex, this);
+          visit::walk_expr(this, ex, ());
       }
 
       _ => {
-          visit::walk_expr(v, ex, this);
+          visit::walk_expr(this, ex, ());
       }
     }
 }
@@ -809,14 +801,13 @@ impl GatherLoanCtxt {
 
 // Setting up info that preserve needs.
 // This is just the most convenient place to do it.
-fn add_stmt_to_map(v: &mut GatherLoanVisitor,
-                   stmt: @ast::Stmt,
-                   this: @mut GatherLoanCtxt) {
+fn add_stmt_to_map(this: &mut GatherLoanCtxt,
+                   stmt: @ast::Stmt) {
     match stmt.node {
         ast::StmtExpr(_, id) | ast::StmtSemi(_, id) => {
             this.bccx.stmt_map.insert(id);
         }
         _ => ()
     }
-    visit::walk_stmt(v, stmt, this);
+    visit::walk_stmt(this, stmt, ());
 }
