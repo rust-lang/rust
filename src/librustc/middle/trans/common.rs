@@ -38,7 +38,7 @@ use std::cast;
 use std::hashmap::{HashMap};
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
-use syntax::ast::Ident;
+use syntax::ast::{Name,Ident};
 use syntax::ast_map::{path, path_elt, path_pretty_name};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -463,7 +463,7 @@ pub fn block_cleanups(bcx: @mut Block) -> ~[cleanup] {
 pub struct ScopeInfo {
     parent: Option<@mut ScopeInfo>,
     loop_break: Option<@mut Block>,
-    loop_label: Option<Ident>,
+    loop_label: Option<Name>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.

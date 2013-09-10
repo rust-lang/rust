@@ -522,10 +522,12 @@ pub enum Expr_ {
     ExprCast(@Expr, Ty),
     ExprIf(@Expr, Block, Option<@Expr>),
     ExprWhile(@Expr, Block),
+    // FIXME #6993: change to Option<Name>
     ExprForLoop(@Pat, @Expr, Block, Option<Ident>),
     /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
+    // FIXME #6993: change to Option<Name>
     ExprLoop(Block, Option<Ident>),
     ExprMatch(@Expr, ~[Arm]),
     ExprFnBlock(fn_decl, Block),
@@ -541,8 +543,8 @@ pub enum Expr_ {
     /// The special identifier `self`.
     ExprSelf,
     ExprAddrOf(Mutability, @Expr),
-    ExprBreak(Option<Ident>),
-    ExprAgain(Option<Ident>),
+    ExprBreak(Option<Name>),
+    ExprAgain(Option<Name>),
     ExprRet(Option<@Expr>),
 
     /// Gets the log level for the enclosing module
