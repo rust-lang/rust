@@ -248,6 +248,17 @@ pub fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
         }
     }
 
+    // The out pointer will never alias with any other pointers, as the object only exists at a
+    // language level after the call. It can also be tagged with SRet to indicate that it is
+    // guaranteed to point to a usable block of memory for the type.
+    if uses_outptr {
+        unsafe {
+            let outptr = llvm::LLVMGetParam(llfn, 0);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::StructRetAttribute as c_uint);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::NoAliasAttribute as c_uint);
+        }
+    }
+
     llfn
 }
 

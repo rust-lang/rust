@@ -20,7 +20,7 @@ use std::vec;
 
 use back::abi;
 use driver::session;
-use lib::llvm::ValueRef;
+use lib::llvm::{ValueRef, NoAliasAttribute, StructRetAttribute};
 use lib::llvm::llvm;
 use metadata::csearch;
 use middle::trans::base;
@@ -707,7 +707,21 @@ pub fn trans_call_inner(in_cx: @mut Block,
             }
 
             // Invoke the actual rust fn and update bcx/llresult.
-            let (llret, b) = base::invoke(bcx, llfn, llargs, []);
+            let mut attrs = ~[];
+            if type_of::return_uses_outptr(in_cx.tcx(), ret_ty) {
+                attrs.push((1, StructRetAttribute));
+            }
+
+            match ty::get(ret_ty).sty {
+                // `~` pointer return values never alias because ownership is transferred
+                ty::ty_uniq(*) |
+                ty::ty_evec(_, ty::vstore_uniq) => {
+                    attrs.push((0, NoAliasAttribute));
+                }
+                _ => ()
+            }
+
+            let (llret, b) = base::invoke(bcx, llfn, llargs, attrs);
             bcx = b;
             llresult = llret;
 
