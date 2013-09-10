@@ -47,7 +47,8 @@ impl Eq for Ident {
             // if it should be non-hygienic (most things are), just compare the
             // 'name' fields of the idents. Or, even better, replace the idents
             // with Name's.
-            fail!(fmt!("not allowed to compare these idents: %?, %?", self, other));
+            fail!(fmt!("not allowed to compare these idents: %?, %?. Probably \
+                       related to issue #6993", self, other));
         }
     }
     fn ne(&self, other: &Ident) -> bool {
