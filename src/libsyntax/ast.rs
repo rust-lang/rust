@@ -28,7 +28,7 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Eq, IterBytes, ToStr)]
+#[deriving(Clone, IterBytes, ToStr)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
@@ -36,17 +36,7 @@ impl Ident {
     pub fn new(name: Name) -> Ident { Ident {name: name, ctxt: EMPTY_CTXT}}
 }
 
-// defining eq in this way is a way of guaranteeing that later stages of the
-// compiler don't compare identifiers unhygienically. Unfortunately, some tests
-// (specifically debuginfo in no-opt) want to do these comparisons, and that
-// seems fine.  If only I could find a nice way to statically ensure that
-// the compiler "proper" never compares identifiers.... I'm leaving this
-// code here (commented out) for potential use in debugging. Specifically, if
-// there's a bug where "identifiers aren't matching", it may be because
-// they should be compared using mtwt_resolve. In such a case, re-enabling this
-// code (and disabling deriving(Eq) for Idents) could help to isolate the
-// problem
-/* impl Eq for Ident {
+impl Eq for Ident {
     fn eq(&self, other: &Ident) -> bool {
         if (self.ctxt == other.ctxt) {
             self.name == other.name
@@ -64,7 +54,6 @@ impl Ident {
         ! self.eq(other)
     }
 }
-*/
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
