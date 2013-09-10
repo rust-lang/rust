@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:struct-variant-xc-aux.rs
+// aux-build:struct_variant_xc_aux.rs
 extern mod struct_variant_xc_aux;
 
 use struct_variant_xc_aux::Variant;
