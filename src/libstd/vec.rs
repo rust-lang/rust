@@ -2244,6 +2244,23 @@ pub mod bytes {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }
+
+    /**
+     * Allocate space in `dst` and append the data in `src`.
+     */
+    #[inline]
+    pub fn push_bytes(dst: &mut ~[u8], src: &[u8]) {
+        let old_len = dst.len();
+        dst.reserve_additional(src.len());
+        unsafe {
+            do dst.as_mut_buf |p_dst, len_dst| {
+                do src.as_imm_buf |p_src, len_src| {
+                    ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
+                }
+            }
+            vec::raw::set_len(dst, old_len + src.len());
+        }
+    }
 }
 
 impl<A: Clone> Clone for ~[A] {
