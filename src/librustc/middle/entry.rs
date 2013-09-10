@@ -39,11 +39,9 @@ struct EntryContext {
     non_main_fns: ~[(NodeId, Span)],
 }
 
-struct EntryVisitor;
-
-impl Visitor<@mut EntryContext> for EntryVisitor {
-    fn visit_item(&mut self, item:@item, ctxt:@mut EntryContext) {
-        find_item(item, ctxt, self);
+impl Visitor<()> for EntryContext {
+    fn visit_item(&mut self, item:@item, _:()) {
+        find_item(item, self);
     }
 }
 
@@ -62,7 +60,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         return
     }
 
-    let ctxt = @mut EntryContext {
+    let mut ctxt = EntryContext {
         session: session,
         ast_map: ast_map,
         main_fn: None,
@@ -71,14 +69,12 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
         non_main_fns: ~[],
     };
 
-    let mut v = EntryVisitor;
+    visit::walk_crate(&mut ctxt, crate, ());
 
-    visit::walk_crate(&mut v, crate, ctxt);
-
-    configure_main(ctxt);
+    configure_main(&mut ctxt);
 }
 
-fn find_item(item: @item, ctxt: @mut EntryContext, visitor: &mut EntryVisitor) {
+fn find_item(item: @item, ctxt: &mut EntryContext) {
     match item.node {
         item_fn(*) => {
             if item.ident.name == special_idents::main.name {
@@ -125,11 +121,10 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: &mut EntryVisitor) {
         _ => ()
     }
 
-    visit::walk_item(visitor, item, ctxt);
+    visit::walk_item(ctxt, item, ());
 }
 
-fn configure_main(ctxt: @mut EntryContext) {
-    let this = &mut *ctxt;
+fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
         *this.session.entry_fn = this.start_fn;
         *this.session.entry_type = Some(session::EntryStart);
