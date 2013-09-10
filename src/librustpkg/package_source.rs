@@ -18,14 +18,21 @@ use context::*;
 use crate::Crate;
 use messages::*;
 use source_control::{git_clone, git_clone_general};
-use path_util::{pkgid_src_in_workspace, find_dir_using_rust_path_hack, default_workspace};
+use path_util::{find_dir_using_rust_path_hack, default_workspace};
 use util::compile_crate;
 use workspace::is_workspace;
+use workcache_support;
+use extra::workcache;
 
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
+#[deriving(Clone)]
 pub struct PkgSrc {
-    root: Path, // root of where the package source code lives
+    /// Root of where the package source code lives
+    workspace: Path,
+    // Directory to start looking in for packages -- normally
+    // this is workspace/src/id but it may be just workspace
+    start_dir: Path,
     id: PkgId,
     libs: ~[Crate],
     mains: ~[Crate],
@@ -33,17 +40,85 @@ pub struct PkgSrc {
     benchs: ~[Crate],
 }
 
+impl ToStr for PkgSrc {
+    fn to_str(&self) -> ~str {
+        fmt!("Package ID %s in start dir %s [workspace = %s]",
+             self.id.to_str(),
+             self.start_dir.to_str(), self.workspace.to_str())
+    }
+}
 condition! {
     // #6009: should this be pub or not, when #8215 is fixed?
-    build_err: (~str) -> ();
+    build_err: (~str) -> ~str;
 }
 
 impl PkgSrc {
 
-    pub fn new(src_dir: &Path, id: &PkgId) -> PkgSrc {
+    pub fn new(workspace: Path, use_rust_path_hack: bool, id: PkgId) -> PkgSrc {
+        use conditions::nonexistent_package::cond;
+
+        debug!("Checking package source for package ID %s, \
+               workspace = %s", id.to_str(), workspace.to_str());
+
+        let mut to_try = ~[];
+        if use_rust_path_hack {
+            to_try.push(workspace.clone());
+        } else {
+            let result = workspace.push("src").push_rel(&id.path.pop()).push(fmt!("%s-%s",
+                                                         id.short_name, id.version.to_str()));
+            to_try.push(result);
+            to_try.push(workspace.push("src").push_rel(&id.path));
+        }
+
+        debug!("Checking dirs: %?", to_try.map(|s| s.to_str()).connect(":"));
+
+        let path = to_try.iter().find(|&d| os::path_exists(d));
+
+        let dir: Path = match path {
+            Some(d) => (*d).clone(),
+            None => {
+                let mut ok_d = None;
+                for w in to_try.iter() {
+                    debug!("Calling fetch_git on %s", w.to_str());
+                    let gf = PkgSrc::fetch_git(w, &id);
+                    for p in gf.iter() {
+                        ok_d = Some(p.clone());
+                        break;
+                    }
+                    if ok_d.is_some() { break; }
+                }
+                match ok_d {
+                    Some(d) => d,
+                    None => {
+                        if use_rust_path_hack {
+                            match find_dir_using_rust_path_hack(&id) {
+                                Some(d) => d,
+                                None => cond.raise((id.clone(),
+                                    ~"supplied path for package dir does not \
+                                     exist, and couldn't interpret it as a URL fragment"))
+                            }
+                        }
+                        else {
+                            cond.raise((id.clone(),
+                                        ~"supplied path for package dir does not \
+                                        exist, and couldn't interpret it as a URL fragment"))
+
+                        }
+                    }
+                }
+            }
+        };
+        debug!("For package id %s, returning %s", id.to_str(), dir.to_str());
+
+        if !os::path_is_dir(&dir) {
+            cond.raise((id.clone(), ~"supplied path for package dir is a \
+                                        non-directory"));
+        }
+
         PkgSrc {
-            root: (*src_dir).clone(),
-            id: (*id).clone(),
+            workspace: workspace,
+            start_dir: dir,
+            id: id,
             libs: ~[],
             mains: ~[],
             tests: ~[],
@@ -51,47 +126,12 @@ impl PkgSrc {
         }
     }
 
-
-    fn check_dir(&self, cx: &Ctx) -> Path {
-        use conditions::nonexistent_package::cond;
-
-        debug!("Pushing onto root: %s | %s", self.id.path.to_str(), self.root.to_str());
-
-        let dirs = pkgid_src_in_workspace(&self.id, &self.root);
-        debug!("Checking dirs: %?", dirs.map(|s| s.to_str()).connect(":"));
-        let path = dirs.iter().find(|&d| os::path_exists(d));
-
-        let dir = match path {
-            Some(d) => (*d).clone(),
-            None => {
-                match self.fetch_git() {
-                    Some(d) => d,
-                    None => {
-                        match find_dir_using_rust_path_hack(cx, &self.id) {
-                            Some(d) => d,
-                            None => cond.raise((self.id.clone(),
-                               ~"supplied path for package dir does not \
-                                 exist, and couldn't interpret it as a URL fragment"))
-                        }
-                    }
-                }
-            }
-        };
-        debug!("For package id %s, returning %s", self.id.to_str(), dir.to_str());
-        if !os::path_is_dir(&dir) {
-            cond.raise((self.id.clone(), ~"supplied path for package dir is a \
-                                        non-directory"));
-        }
-
-        dir
-    }
-
     /// Try interpreting self's package id as a git repository, and try
     /// fetching it and caching it in a local directory. Return the cached directory
     /// if this was successful, None otherwise. Similarly, if the package id
     /// refers to a git repo on the local version, also check it out.
     /// (right now we only support git)
-    pub fn fetch_git(&self) -> Option<Path> {
+    pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
         use conditions::failed_to_create_temp_dir::cond;
 
         // We use a temporary directory because if the git clone fails,
@@ -103,38 +143,35 @@ impl PkgSrc {
             None    => cond.raise(~"Failed to create temporary directory for fetching git sources")
         };
 
-        let mut local = self.root.push("src");
-        local = local.push(self.id.to_str());
-
-        debug!("Checking whether %s exists locally. Cwd = %s, does it? %?",
-               self.id.path.to_str(),
+        debug!("Checking whether %s (path = %s) exists locally. Cwd = %s, does it? %?",
+               pkgid.to_str(), pkgid.path.to_str(),
                os::getcwd().to_str(),
-               os::path_exists(&self.id.path));
+               os::path_exists(&pkgid.path));
 
-        if os::path_exists(&self.id.path) {
+        if os::path_exists(&pkgid.path) {
             debug!("%s exists locally! Cloning it into %s",
-                   self.id.path.to_str(), local.to_str());
+                   pkgid.path.to_str(), local.to_str());
             // Ok to use local here; we know it will succeed
-            git_clone(&self.id.path, &local, &self.id.version);
-            return Some(local);
+            git_clone(&pkgid.path, local, &pkgid.version);
+            return Some(local.clone());
         }
 
-        if self.id.path.components().len() < 2 {
+        if pkgid.path.components().len() < 2 {
             // If a non-URL, don't bother trying to fetch
             return None;
         }
 
-        let url = fmt!("https://%s", self.id.path.to_str());
-        note(fmt!("Fetching package: git clone %s %s [version=%s]",
-                  url, clone_target.to_str(), self.id.version.to_str()));
+        let url = fmt!("https://%s", pkgid.path.to_str());
+        debug!("Fetching package: git clone %s %s [version=%s]",
+                  url, clone_target.to_str(), pkgid.version.to_str());
 
-        if git_clone_general(url, &clone_target, &self.id.version) {
+        if git_clone_general(url, &clone_target, &pkgid.version) {
             // since the operation succeeded, move clone_target to local
-            if !os::rename_file(&clone_target, &local) {
+            if !os::rename_file(&clone_target, local) {
                  None
             }
             else {
-                 Some(local)
+                 Some(local.clone())
             }
         }
         else {
@@ -143,10 +180,11 @@ impl PkgSrc {
     }
 
 
-    // If a file named "pkg.rs" in the current directory exists,
+    // If a file named "pkg.rs" in the start directory exists,
     // return the path for it. Otherwise, None
-    pub fn package_script_option(&self, cwd: &Path) -> Option<Path> {
-        let maybe_path = cwd.push("pkg.rs");
+    pub fn package_script_option(&self) -> Option<Path> {
+        let maybe_path = self.start_dir.push("pkg.rs");
+        debug!("package_script_option: checking whether %s exists", maybe_path.to_str());
         if os::path_exists(&maybe_path) {
             Some(maybe_path)
         }
@@ -166,20 +204,18 @@ impl PkgSrc {
         for c in p.components.slice(prefix, p.components.len()).iter() {
             sub = sub.push(*c);
         }
-        debug!("found crate %s", sub.to_str());
+        debug!("Will compile crate %s", sub.to_str());
         cs.push(Crate::new(&sub));
     }
 
     /// Infers crates to build. Called only in the case where there
     /// is no custom build logic
-    pub fn find_crates(&mut self, cx: &Ctx) {
+    pub fn find_crates(&mut self) {
         use conditions::missing_pkg_files::cond;
 
-        let dir = self.check_dir(cx);
-        debug!("Called check_dir, I'm in %s", dir.to_str());
-        let prefix = dir.components.len();
-        debug!("Matching against %?", self.id.short_name);
-        do os::walk_dir(&dir) |pth| {
+        let prefix = self.start_dir.components.len();
+        debug!("Matching against %s", self.id.short_name);
+        do os::walk_dir(&self.start_dir) |pth| {
             let maybe_known_crate_set = match pth.filename() {
                 Some(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
@@ -207,7 +243,8 @@ impl PkgSrc {
             cond.raise(self.id.clone());
         }
 
-        debug!("found %u libs, %u mains, %u tests, %u benchs",
+        debug!("In %s, found %u libs, %u mains, %u tests, %u benchs",
+               self.start_dir.to_str(),
                self.libs.len(),
                self.mains.len(),
                self.tests.len(),
@@ -215,68 +252,88 @@ impl PkgSrc {
     }
 
     fn build_crates(&self,
-                    ctx: &Ctx,
-                    src_dir: &Path,
+                    ctx: &BuildContext,
+                    exec: &mut workcache::Exec,
                     destination_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
                     what: OutputType) {
         for crate in crates.iter() {
-            let path = &src_dir.push_rel(&crate.file).normalize();
-            note(fmt!("build_crates: compiling %s", path.to_str()));
-            note(fmt!("build_crates: using as workspace %s", self.root.to_str()));
+            let path = self.start_dir.push_rel(&crate.file).normalize();
+            debug!("build_crates: compiling %s", path.to_str());
+            let path_str = path.to_str();
+            let cfgs = crate.cfgs + cfgs;
 
-            let result = compile_crate(ctx,
-                                       &self.id,
-                                       path,
-                                       // compile_crate wants the destination workspace
-                                       destination_dir,
-                                       crate.flags,
-                                       crate.cfgs + cfgs,
-                                       false,
-                                       what);
-            if !result {
-                build_err::cond.raise(fmt!("build failure on %s",
-                                           path.to_str()));
-            }
-            debug!("Result of compiling %s was %?",
-                   path.to_str(), result);
+            let result =
+                // compile_crate should return the path of the output artifact
+                compile_crate(ctx,
+                              exec,
+                              &self.id,
+                              &path,
+                              destination_dir,
+                              crate.flags,
+                              cfgs,
+                              false,
+                              what).to_str();
+            debug!("Result of compiling %s was %s", path_str, result);
         }
     }
 
-    pub fn build(&self, ctx: &Ctx, cfgs: ~[~str]) -> Path {
+    /// Declare all the crate files in the package source as inputs
+    pub fn declare_inputs(&self, prep: &mut workcache::Prep) {
+        let to_do = ~[self.libs.clone(), self.mains.clone(),
+                      self.tests.clone(), self.benchs.clone()];
+        for cs in to_do.iter() {
+            for c in cs.iter() {
+                let path = self.start_dir.push_rel(&c.file).normalize();
+                debug!("Declaring input: %s", path.to_str());
+                prep.declare_input("file",
+                                   path.to_str(),
+                                   workcache_support::digest_file_with_date(&path.clone()));
+            }
+        }
+    }
+
+    // It would be better if build returned a Path, but then Path would have to derive
+    // Encodable.
+    pub fn build(&self,
+                 exec: &mut workcache::Exec,
+                 build_context: &BuildContext,
+                 cfgs: ~[~str]) -> ~str {
         use conditions::not_a_workspace::cond;
 
         // Determine the destination workspace (which depends on whether
         // we're using the rust_path_hack)
-        let destination_workspace = if is_workspace(&self.root) {
-            debug!("%s is indeed a workspace", self.root.to_str());
-            self.root.clone()
-        }
-        else {
+        let destination_workspace = if is_workspace(&self.workspace) {
+            debug!("%s is indeed a workspace", self.workspace.to_str());
+            self.workspace.clone()
+        } else {
             // It would be nice to have only one place in the code that checks
             // for the use_rust_path_hack flag...
-            if ctx.use_rust_path_hack {
+            if build_context.context.use_rust_path_hack {
                 let rs = default_workspace();
                 debug!("Using hack: %s", rs.to_str());
                 rs
-            }
-            else {
+            } else {
                 cond.raise(fmt!("Package root %s is not a workspace; pass in --rust_path_hack \
-                                if you want to treat it as a package source", self.root.to_str()))
+                                        if you want to treat it as a package source",
+                                self.workspace.to_str()))
             }
         };
 
-        let dir = self.check_dir(ctx);
-        debug!("Building libs in %s, destination = %s", dir.to_str(),
-            destination_workspace.to_str());
-        self.build_crates(ctx, &dir, &destination_workspace, self.libs, cfgs, Lib);
+        let libs = self.libs.clone();
+        let mains = self.mains.clone();
+        let tests = self.tests.clone();
+        let benchs = self.benchs.clone();
+        debug!("Building libs in %s, destination = %s",
+               destination_workspace.to_str(), destination_workspace.to_str());
+        self.build_crates(build_context, exec, &destination_workspace, libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(ctx, &dir, &destination_workspace, self.mains, cfgs, Main);
+        self.build_crates(build_context, exec, &destination_workspace, mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(ctx, &dir, &destination_workspace, self.tests, cfgs, Test);
+        self.build_crates(build_context, exec, &destination_workspace, tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(ctx, &dir, &destination_workspace, self.benchs, cfgs, Bench);
-        destination_workspace
+        self.build_crates(build_context, exec, &destination_workspace, benchs, cfgs, Bench);
+        destination_workspace.to_str()
     }
 }
