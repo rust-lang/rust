@@ -91,7 +91,17 @@ pub fn read(prompt: &str) -> Option<~str> {
         let line = locked!(rustrt::linenoise(buf));
 
         if line.is_null() { None }
-        else { Some(str::raw::from_c_str(line)) }
+        else {
+            unsafe {
+                do (|| {
+                    Some(str::raw::from_c_str(line))
+                }).finally {
+                    // linenoise's return value is from strdup, so we
+                    // better not leak it.
+                    rt::global_heap::exchange_free(line);
+                }
+            }
+        }
     }
 }
 
