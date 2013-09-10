@@ -40,7 +40,9 @@ use path_util::{built_executable_in_workspace, built_library_in_workspace, defau
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use source_control::is_git_dir;
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
-use context::{BuildContext, Context};
+use context::{Context, BuildContext,
+                       RustcFlags, Trans, Link, Nothing, Pretty, Analysis, Assemble,
+                       LLVMAssemble, LLVMCompileBitcode};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use workcache_support::{discover_outputs, digest_only_date};
@@ -138,6 +140,7 @@ impl<'self> PkgScript<'self> {
         let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
                                        exec,
+                                       Nothing,
                                        &self.build_dir,
                                        sess,
                                        crate);
@@ -400,7 +403,7 @@ impl CtxMethods for BuildContext {
                 debug!("No package script, continuing");
                 ~[]
             }
-        };
+        } + self.context.cfgs;
 
         // If there was a package script, it should have finished
         // the build already. Otherwise...
@@ -539,9 +542,25 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) {
     let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
+                                        getopts::optflag("no-link"),
+                                        getopts::optflag("no-trans"),
+                 // n.b. Ignores different --pretty options for now
+                                        getopts::optflag("pretty"),
+                                        getopts::optflag("parse-only"),
+                 getopts::optflag("S"), getopts::optflag("assembly"),
                  getopts::optmulti("c"), getopts::optmulti("cfg"),
                  getopts::optflag("v"), getopts::optflag("version"),
-                 getopts::optflag("r"), getopts::optflag("rust-path-hack")];
+                 getopts::optflag("r"), getopts::optflag("rust-path-hack"),
+                                        getopts::optopt("sysroot"),
+                                        getopts::optflag("emit-llvm"),
+                                        getopts::optopt("linker"),
+                                        getopts::optopt("link-args"),
+                                        getopts::optopt("opt-level"),
+                 getopts::optflag("O"),
+                                        getopts::optflag("save-temps"),
+                                        getopts::optopt("target"),
+                                        getopts::optopt("target-cpu"),
+                 getopts::optmulti("Z")                                   ];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
@@ -550,8 +569,16 @@ pub fn main_args(args: &[~str]) {
             return;
         }
     };
-    let help = getopts::opt_present(matches, "h") ||
-               getopts::opt_present(matches, "help");
+    let mut help = getopts::opt_present(matches, "h") ||
+                   getopts::opt_present(matches, "help");
+    let no_link = getopts::opt_present(matches, "no-link");
+    let no_trans = getopts::opt_present(matches, "no-trans");
+    let supplied_sysroot = getopts::opt_val(matches, "sysroot");
+    let generate_asm = getopts::opt_present(matches, "S") ||
+        getopts::opt_present(matches, "assembly");
+    let parse_only = getopts::opt_present(matches, "parse-only");
+    let pretty = getopts::opt_present(matches, "pretty");
+    let emit_llvm = getopts::opt_present(matches, "emit-llvm");
 
     if getopts::opt_present(matches, "v") ||
        getopts::opt_present(matches, "version") {
@@ -562,12 +589,68 @@ pub fn main_args(args: &[~str]) {
     let use_rust_path_hack = getopts::opt_present(matches, "r") ||
                              getopts::opt_present(matches, "rust-path-hack");
 
+    let linker = getopts::opt_maybe_str(matches, "linker");
+    let link_args = getopts::opt_maybe_str(matches, "link-args");
+    let cfgs = getopts::opt_strs(matches, "cfg") + getopts::opt_strs(matches, "c");
+    let mut user_supplied_opt_level = true;
+    let opt_level = match getopts::opt_maybe_str(matches, "opt-level") {
+        Some(~"0") => session::No,
+        Some(~"1") => session::Less,
+        Some(~"2") => session::Default,
+        Some(~"3") => session::Aggressive,
+        _ if getopts::opt_present(matches, "O") => session::Default,
+        _ => {
+            user_supplied_opt_level = false;
+            session::No
+        }
+    };
+
+    let save_temps = getopts::opt_present(matches, "save-temps");
+    let target     = getopts::opt_maybe_str(matches, "target");
+    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu");
+    let experimental_features = {
+        let strs = getopts::opt_strs(matches, "Z");
+        if getopts::opt_present(matches, "Z") {
+            Some(strs)
+        }
+        else {
+            None
+        }
+    };
+
     let mut args = matches.free.clone();
     args.shift();
 
     if (args.len() < 1) {
         return usage::general();
     }
+
+    let rustc_flags = RustcFlags {
+        linker: linker,
+        link_args: link_args,
+        optimization_level: opt_level,
+        compile_upto: if no_trans {
+            Trans
+        } else if no_link {
+            Link
+        } else if pretty {
+            Pretty
+        } else if parse_only {
+            Analysis
+        } else if emit_llvm && generate_asm {
+            LLVMAssemble
+        } else if generate_asm {
+            Assemble
+        } else if emit_llvm {
+            LLVMCompileBitcode
+        } else {
+            Nothing
+        },
+        save_temps: save_temps,
+        target: target,
+        target_cpu: target_cpu,
+        experimental_features: experimental_features
+    };
 
     let mut cmd_opt = None;
     for a in args.iter() {
@@ -578,23 +661,25 @@ pub fn main_args(args: &[~str]) {
     }
     let cmd = match cmd_opt {
         None => return usage::general(),
-        Some(cmd) => if help {
-            return match *cmd {
-                ~"build" => usage::build(),
-                ~"clean" => usage::clean(),
-                ~"do" => usage::do_cmd(),
-                ~"info" => usage::info(),
-                ~"install" => usage::install(),
-                ~"list"    => usage::list(),
-                ~"prefer" => usage::prefer(),
-                ~"test" => usage::test(),
-                ~"uninstall" => usage::uninstall(),
-                ~"unprefer" => usage::unprefer(),
-                _ => usage::general()
-            };
-        }
-        else {
-            cmd
+        Some(cmd) => {
+            help |= context::flags_ok_for_cmd(&rustc_flags, cfgs, *cmd, user_supplied_opt_level);
+            if help {
+                return match *cmd {
+                    ~"build" => usage::build(),
+                    ~"clean" => usage::clean(),
+                    ~"do" => usage::do_cmd(),
+                    ~"info" => usage::info(),
+                    ~"install" => usage::install(),
+                    ~"list"    => usage::list(),
+                    ~"prefer" => usage::prefer(),
+                    ~"test" => usage::test(),
+                    ~"uninstall" => usage::uninstall(),
+                    ~"unprefer" => usage::unprefer(),
+                    _ => usage::general()
+                };
+            } else {
+                cmd
+            }
         }
     };
 
@@ -603,14 +688,20 @@ pub fn main_args(args: &[~str]) {
     // I had to add this type annotation to get the code to typecheck
     let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
     remaining_args.shift();
-    let sroot = filesearch::get_or_default_sysroot();
+    let sroot = match supplied_sysroot {
+        Some(getopts::Val(s)) => Path(s),
+        _ => filesearch::get_or_default_sysroot()
+    };
+
     debug!("Using sysroot: %s", sroot.to_str());
     debug!("Will store workcache in %s", default_workspace().to_str());
     BuildContext {
         context: Context {
-            use_rust_path_hack: use_rust_path_hack,
-            sysroot: sroot, // Currently, only tests override this
-         },
+        cfgs: cfgs,
+        rustc_flags: rustc_flags,
+        use_rust_path_hack: use_rust_path_hack,
+        sysroot: sroot, // Currently, only tests override this
+    },
         workcache_context: api::default_context(default_workspace()).workcache_context
     }.run(*cmd, remaining_args)
 }
