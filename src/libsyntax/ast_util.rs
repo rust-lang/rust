@@ -12,6 +12,7 @@ use ast::*;
 use ast;
 use ast_util;
 use codemap::{Span, dummy_sp};
+use fold;
 use opt_vec;
 use parse::token;
 use visit::{SimpleVisitor, Visitor};
@@ -368,6 +369,21 @@ pub static as_prec: uint = 12u;
 pub fn empty_generics() -> Generics {
     Generics {lifetimes: opt_vec::Empty,
               ty_params: opt_vec::Empty}
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Assigning node ids
+
+fn node_id_assigner(next_id: @fn() -> ast::NodeId) -> @fold::ast_fold {
+    let precursor = @fold::AstFoldFns {
+        new_id: |old_id| {
+            assert_eq!(old_id, ast::DUMMY_NODE_ID);
+            next_id()
+        },
+        ..*fold::default_ast_fold()
+    };
+
+    fold::make_fold(precursor)
 }
 
 // ______________________________________________________________________

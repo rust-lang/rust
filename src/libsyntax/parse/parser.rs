@@ -41,7 +41,7 @@ use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int, lit_char};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, Local};
 use ast::{MutImmutable, MutMutable, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mt, BiMul, Mutability};
-use ast::{named_field, UnNeg, NodeId, noreturn, UnNot, Pat, PatBox, PatEnum};
+use ast::{named_field, UnNeg, noreturn, UnNot, Pat, PatBox, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatUniq, PatWild, private};
 use ast::{BiRem, required};
@@ -76,7 +76,7 @@ use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
 use parse::token::{token_to_binop};
 use parse::token;
-use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
+use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
@@ -507,7 +507,7 @@ impl Parser {
         let ident = self.parse_ident();
         let hi = self.last_span.hi;
         spanned(lo, hi, ast::path_list_ident_ { name: ident,
-                                                id: self.get_id() })
+                                                id: ast::DUMMY_NODE_ID })
     }
 
     // consume token 'tok' if it exists. Returns true if the given
@@ -758,7 +758,6 @@ impl Parser {
     pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
-    pub fn get_id(&self) -> NodeId { next_node_id(self.sess) }
 
     pub fn id_to_str(&self, id: Ident) -> @str {
         get_ident_interner().get(id.name)
@@ -961,7 +960,7 @@ impl Parser {
                     decl: d,
                     generics: generics,
                     explicit_self: explicit_self,
-                    id: p.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi)
                 })
               }
@@ -978,9 +977,9 @@ impl Parser {
                     purity: pur,
                     decl: d,
                     body: body,
-                    id: p.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi),
-                    self_id: p.get_id(),
+                    self_id: ast::DUMMY_NODE_ID,
                     vis: vis,
                 })
               }
@@ -1028,7 +1027,7 @@ impl Parser {
                 (
                     noreturn,
                     Ty {
-                        id: self.get_id(),
+                        id: ast::DUMMY_NODE_ID,
                         node: ty_bot,
                         span: mk_sp(lo, self.last_span.hi)
                     }
@@ -1041,7 +1040,7 @@ impl Parser {
             (
                 return_val,
                 Ty {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     node: ty_nil,
                     span: mk_sp(pos, pos),
                 }
@@ -1154,14 +1153,14 @@ impl Parser {
                 path,
                 bounds
             } = self.parse_path(LifetimeAndTypesAndBounds);
-            ty_path(path, bounds, self.get_id())
+            ty_path(path, bounds, ast::DUMMY_NODE_ID)
         } else {
             self.fatal(fmt!("expected type, found token %?",
                             *self.token));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        Ty {id: self.get_id(), node: t, span: sp}
+        Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp}
     }
 
     // parse the type following a @ or a ~
@@ -1275,7 +1274,7 @@ impl Parser {
             pat
         } else {
             debug!("parse_arg_general ident_to_pat");
-            ast_util::ident_to_pat(self.get_id(),
+            ast_util::ident_to_pat(ast::DUMMY_NODE_ID,
                                    *self.last_span,
                                    special_idents::invalid)
         };
@@ -1286,7 +1285,7 @@ impl Parser {
             is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
         }
     }
 
@@ -1304,7 +1303,7 @@ impl Parser {
             self.parse_ty(false)
         } else {
             Ty {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: ty_infer,
                 span: mk_sp(self.span.lo, self.span.hi),
             }
@@ -1313,7 +1312,7 @@ impl Parser {
             is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
-            id: self.get_id()
+            id: ast::DUMMY_NODE_ID
         })
     }
 
@@ -1562,7 +1561,7 @@ impl Parser {
                 let span = self.span;
                 self.bump();
                 return ast::Lifetime {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     span: *span,
                     ident: i
                 };
@@ -1575,7 +1574,7 @@ impl Parser {
                 self.expect(&token::BINOP(token::SLASH));
                 self.obsolete(*self.last_span, ObsoleteLifetimeNotation);
                 return ast::Lifetime {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     span: *span,
                     ident: i
                 };
@@ -1654,18 +1653,18 @@ impl Parser {
 
     pub fn mk_expr(&self, lo: BytePos, hi: BytePos, node: Expr_) -> @Expr {
         @Expr {
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             node: node,
             span: mk_sp(lo, hi),
         }
     }
 
     pub fn mk_unary(&self, unop: ast::UnOp, expr: @Expr) -> ast::Expr_ {
-        ExprUnary(self.get_id(), unop, expr)
+        ExprUnary(ast::DUMMY_NODE_ID, unop, expr)
     }
 
     pub fn mk_binary(&self, binop: ast::BinOp, lhs: @Expr, rhs: @Expr) -> ast::Expr_ {
-        ExprBinary(self.get_id(), binop, lhs, rhs)
+        ExprBinary(ast::DUMMY_NODE_ID, binop, lhs, rhs)
     }
 
     pub fn mk_call(&self, f: @Expr, args: ~[@Expr], sugar: CallSugar) -> ast::Expr_ {
@@ -1678,11 +1677,11 @@ impl Parser {
                       tps: ~[Ty],
                       args: ~[@Expr],
                       sugar: CallSugar) -> ast::Expr_ {
-        ExprMethodCall(self.get_id(), rcvr, ident, tps, args, sugar)
+        ExprMethodCall(ast::DUMMY_NODE_ID, rcvr, ident, tps, args, sugar)
     }
 
     pub fn mk_index(&self, expr: @Expr, idx: @Expr) -> ast::Expr_ {
-        ExprIndex(self.get_id(), expr, idx)
+        ExprIndex(ast::DUMMY_NODE_ID, expr, idx)
     }
 
     pub fn mk_field(&self, expr: @Expr, ident: Ident, tys: ~[Ty]) -> ast::Expr_ {
@@ -1690,12 +1689,12 @@ impl Parser {
     }
 
     pub fn mk_assign_op(&self, binop: ast::BinOp, lhs: @Expr, rhs: @Expr) -> ast::Expr_ {
-        ExprAssignOp(self.get_id(), binop, lhs, rhs)
+        ExprAssignOp(ast::DUMMY_NODE_ID, binop, lhs, rhs)
     }
 
     pub fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @Expr {
         @Expr {
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             node: ExprMac(codemap::Spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
         }
@@ -1709,7 +1708,7 @@ impl Parser {
         };
 
         @Expr {
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             node: ExprLit(lv_lit),
             span: *span,
         }
@@ -2415,7 +2414,7 @@ impl Parser {
                       ast::fn_decl {
                           inputs: ~[],
                           output: Ty {
-                              id: self.get_id(),
+                              id: ast::DUMMY_NODE_ID,
                               node: ty_infer,
                               span: *self.span
                           },
@@ -2450,7 +2449,7 @@ impl Parser {
             view_items: ~[],
             stmts: ~[],
             expr: Some(body),
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             rules: DefaultBlock,
             span: body.span,
         };
@@ -2631,7 +2630,7 @@ impl Parser {
                 view_items: ~[],
                 stmts: ~[],
                 expr: Some(expr),
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 rules: DefaultBlock,
                 span: expr.span,
             };
@@ -2764,7 +2763,7 @@ impl Parser {
                 subpat = self.parse_pat();
             } else {
                 subpat = @ast::Pat {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     node: PatIdent(BindInfer, fieldpath, None),
                     span: *self.last_span
                 };
@@ -2788,7 +2787,7 @@ impl Parser {
             pat = PatWild;
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2806,7 +2805,7 @@ impl Parser {
                     span: _}), _
               }) => {
                 let vst = @Expr {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     node: ExprVstore(e, ExprVstoreBox),
                     span: mk_sp(lo, hi),
                 };
@@ -2816,7 +2815,7 @@ impl Parser {
             };
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2834,7 +2833,7 @@ impl Parser {
                     span: _}), _
               }) => {
                 let vst = @Expr {
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     node: ExprVstore(e, ExprVstoreUniq),
                     span: mk_sp(lo, hi),
                 };
@@ -2844,7 +2843,7 @@ impl Parser {
             };
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2862,7 +2861,7 @@ impl Parser {
                             node: lit_str(_), span: _}), _
                   }) => {
                       let vst = @Expr {
-                          id: self.get_id(),
+                          id: ast::DUMMY_NODE_ID,
                           node: ExprVstore(e, ExprVstoreSlice),
                           span: mk_sp(lo, hi)
                       };
@@ -2872,7 +2871,7 @@ impl Parser {
             };
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2885,7 +2884,7 @@ impl Parser {
             pat = PatWild;
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2915,7 +2914,7 @@ impl Parser {
             }
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -2930,7 +2929,7 @@ impl Parser {
             pat = ast::PatVec(before, slice, after);
             hi = self.last_span.hi;
             return @ast::Pat {
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 node: pat,
                 span: mk_sp(lo, hi)
             }
@@ -3046,7 +3045,7 @@ impl Parser {
         }
         hi = self.last_span.hi;
         @ast::Pat {
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             node: pat,
             span: mk_sp(lo, hi),
         }
@@ -3095,7 +3094,7 @@ impl Parser {
         }
 
         let mut ty = Ty {
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             node: ty_infer,
             span: mk_sp(lo, lo),
         };
@@ -3106,7 +3105,7 @@ impl Parser {
             ty: ty,
             pat: pat,
             init: init,
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, self.last_span.hi),
         }
     }
@@ -3136,7 +3135,7 @@ impl Parser {
         let ty = self.parse_ty(false);
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, pr),
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             ty: ty,
             attrs: attrs,
         })
@@ -3159,7 +3158,7 @@ impl Parser {
             check_expected_item(self, !item_attrs.is_empty());
             self.expect_keyword(keywords::Let);
             let decl = self.parse_let();
-            return @spanned(lo, decl.span.hi, StmtDecl(decl, self.get_id()));
+            return @spanned(lo, decl.span.hi, StmtDecl(decl, ast::DUMMY_NODE_ID));
         } else if is_ident(&*self.token)
             && !token::is_any_keyword(self.token)
             && self.look_ahead(1, |t| *t == token::NOT) {
@@ -3208,7 +3207,7 @@ impl Parser {
                             lo, hi, id /*id is good here*/,
                             item_mac(spanned(lo, hi, mac_invoc_tt(pth, tts, EMPTY_CTXT))),
                             inherited, ~[/*no attrs*/]))),
-                    self.get_id()));
+                    ast::DUMMY_NODE_ID));
             }
 
         } else {
@@ -3217,7 +3216,7 @@ impl Parser {
                 iovi_item(i) => {
                     let hi = i.span.hi;
                     let decl = @spanned(lo, hi, DeclItem(i));
-                    return @spanned(lo, hi, StmtDecl(decl, self.get_id()));
+                    return @spanned(lo, hi, StmtDecl(decl, ast::DUMMY_NODE_ID));
                 }
                 iovi_view_item(vi) => {
                     self.span_fatal(vi.span,
@@ -3233,7 +3232,7 @@ impl Parser {
 
             // Remainder are line-expr stmts.
             let e = self.parse_expr_res(RESTRICT_STMT_EXPR);
-            return @spanned(lo, e.span.hi, StmtExpr(e, self.get_id()));
+            return @spanned(lo, e.span.hi, StmtExpr(e, ast::DUMMY_NODE_ID));
         }
     }
 
@@ -3298,7 +3297,7 @@ impl Parser {
         for item in items.iter() {
             let decl = @spanned(item.span.lo, item.span.hi, DeclItem(*item));
             stmts.push(@spanned(item.span.lo, item.span.hi,
-                                StmtDecl(decl, self.get_id())));
+                                StmtDecl(decl, ast::DUMMY_NODE_ID)));
         }
 
         let mut attributes_box = attrs_remaining;
@@ -3397,7 +3396,7 @@ impl Parser {
             view_items: view_items,
             stmts: stmts,
             expr: expr,
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             rules: s,
             span: mk_sp(lo, hi),
         }
@@ -3463,7 +3462,7 @@ impl Parser {
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default(opt_vec::Empty);
-        ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
+        ast::TyParam { ident: ident, id: ast::DUMMY_NODE_ID, bounds: bounds }
     }
 
     // parse a set of optional generic type parameter declarations
@@ -3717,7 +3716,7 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            Ty { id: self.get_id(), node: ty_infer, span: *self.span }
+            Ty { id: ast::DUMMY_NODE_ID, node: ty_infer, span: *self.span }
         };
 
         ast::fn_decl {
@@ -3739,7 +3738,7 @@ impl Parser {
                attrs: ~[Attribute]) -> @item {
         @ast::item { ident: ident,
                      attrs: attrs,
-                     id: self.get_id(),
+                     id: ast::DUMMY_NODE_ID,
                      node: node,
                      vis: vis,
                      span: mk_sp(lo, hi) }
@@ -3779,9 +3778,9 @@ impl Parser {
             purity: pur,
             decl: decl,
             body: body,
-            id: self.get_id(),
+            id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
-            self_id: self.get_id(),
+            self_id: ast::DUMMY_NODE_ID,
             vis: visa,
         }
     }
@@ -3873,7 +3872,7 @@ impl Parser {
     fn parse_trait_ref(&self) -> trait_ref {
         ast::trait_ref {
             path: self.parse_path(LifetimeAndTypesWithoutColons).path,
-            ref_id: self.get_id(),
+            ref_id: ast::DUMMY_NODE_ID,
         }
     }
 
@@ -3926,7 +3925,7 @@ impl Parser {
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
-                    id: self.get_id(),
+                    id: ast::DUMMY_NODE_ID,
                     ty: p.parse_ty(false),
                     attrs: attrs,
                 };
@@ -3947,8 +3946,8 @@ impl Parser {
             );
         }
 
-        let _ = self.get_id();  // XXX: Workaround for crazy bug.
-        let new_id = self.get_id();
+        let _ = ast::DUMMY_NODE_ID;  // XXX: Workaround for crazy bug.
+        let new_id = ast::DUMMY_NODE_ID;
         (class_name,
          item_struct(@ast::struct_def {
              fields: fields,
@@ -4238,7 +4237,7 @@ impl Parser {
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
                              node: foreign_item_fn(decl, generics),
-                             id: self.get_id(),
+                             id: ast::DUMMY_NODE_ID,
                              span: mk_sp(lo, hi),
                              vis: vis }
     }
@@ -4264,7 +4263,7 @@ impl Parser {
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
                              node: foreign_item_static(ty, mutbl),
-                             id: self.get_id(),
+                             id: ast::DUMMY_NODE_ID,
                              span: mk_sp(lo, hi),
                              vis: vis }
     }
@@ -4386,7 +4385,7 @@ impl Parser {
         let metadata = self.parse_optional_meta();
         self.expect(&token::SEMI);
         iovi_view_item(ast::view_item {
-            node: view_item_extern_mod(ident, maybe_path, metadata, self.get_id()),
+            node: view_item_extern_mod(ident, maybe_path, metadata, ast::DUMMY_NODE_ID),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)
@@ -4461,7 +4460,7 @@ impl Parser {
                 for ty in arg_tys.move_iter() {
                     args.push(ast::variant_arg {
                         ty: ty,
-                        id: self.get_id(),
+                        id: ast::DUMMY_NODE_ID,
                     });
                 }
                 kind = tuple_variant_kind(args);
@@ -4477,7 +4476,7 @@ impl Parser {
                 name: ident,
                 attrs: variant_attrs,
                 kind: kind,
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 disr_expr: disr_expr,
                 vis: vis,
             };
@@ -4509,9 +4508,9 @@ impl Parser {
                 name: id,
                 attrs: ~[],
                 kind: tuple_variant_kind(
-                    ~[ast::variant_arg {ty: ty, id: self.get_id()}]
+                    ~[ast::variant_arg {ty: ty, id: ast::DUMMY_NODE_ID}]
                 ),
-                id: self.get_id(),
+                id: ast::DUMMY_NODE_ID,
                 disr_expr: None,
                 vis: public,
             });
@@ -4886,7 +4885,7 @@ impl Parser {
             return @spanned(lo, self.span.hi,
                             view_path_simple(first_ident,
                                              path,
-                                             self.get_id()));
+                                             ast::DUMMY_NODE_ID));
           }
 
           token::MOD_SEP => {
@@ -4920,7 +4919,7 @@ impl Parser {
                         }).collect()
                     };
                     return @spanned(lo, self.span.hi,
-                                 view_path_list(path, idents, self.get_id()));
+                                 view_path_list(path, idents, ast::DUMMY_NODE_ID));
                   }
 
                   // foo::bar::*
@@ -4938,7 +4937,7 @@ impl Parser {
                         }).collect()
                     };
                     return @spanned(lo, self.span.hi,
-                                    view_path_glob(path, self.get_id()));
+                                    view_path_glob(path, ast::DUMMY_NODE_ID));
                   }
 
                   _ => break
@@ -4961,7 +4960,7 @@ impl Parser {
         };
         return @spanned(lo,
                         self.last_span.hi,
-                        view_path_simple(last, path, self.get_id()));
+                        view_path_simple(last, path, ast::DUMMY_NODE_ID));
     }
 
     // matches view_paths = view_path | view_path , view_paths
@@ -5008,7 +5007,7 @@ impl Parser {
             }
             else { None };
             let metadata = self.parse_optional_meta();
-            view_item_extern_mod(ident, path, metadata, self.get_id())
+            view_item_extern_mod(ident, path, metadata, ast::DUMMY_NODE_ID)
         } else {
             self.bug("expected view item");
         };

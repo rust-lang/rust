@@ -80,6 +80,7 @@ pub mod front {
     pub mod config;
     pub mod test;
     pub mod std_inject;
+    pub mod assign_node_ids;
 }
 
 pub mod back {
