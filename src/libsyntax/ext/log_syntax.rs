@@ -30,7 +30,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
 
     //trivial expression
     MRExpr(@ast::Expr {
-        id: cx.next_id(),
+        id: ast::DUMMY_NODE_ID,
         node: ast::ExprLit(@codemap::Spanned {
             node: ast::lit_nil,
             span: sp

@@ -550,7 +550,7 @@ impl Context {
         for &method in self.method_statics.iter() {
             let decl = respan(self.fmtsp, ast::DeclItem(method));
             lets.push(@respan(self.fmtsp,
-                              ast::StmtDecl(@decl, self.ecx.next_id())));
+                              ast::StmtDecl(@decl, ast::DUMMY_NODE_ID)));
         }
 
         // Next, build up the static array which will become our precompiled
@@ -581,7 +581,7 @@ impl Context {
         let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
         let item = self.ecx.item(self.fmtsp, static_name, ~[unnamed], st);
         let decl = respan(self.fmtsp, ast::DeclItem(item));
-        lets.push(@respan(self.fmtsp, ast::StmtDecl(@decl, self.ecx.next_id())));
+        lets.push(@respan(self.fmtsp, ast::StmtDecl(@decl, ast::DUMMY_NODE_ID)));
 
         // Right now there is a bug such that for the expression:
         //      foo(bar(&1))
@@ -631,7 +631,7 @@ impl Context {
            view_items: ~[],
            stmts: ~[],
            expr: Some(result),
-           id: self.ecx.next_id(),
+           id: ast::DUMMY_NODE_ID,
            rules: ast::UnsafeBlock,
            span: self.fmtsp,
         });

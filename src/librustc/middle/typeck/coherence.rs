@@ -45,7 +45,6 @@ use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::Span;
 use syntax::opt_vec;
 use syntax::visit;
-use syntax::parse;
 
 use std::hashmap::HashSet;
 use std::result::Ok;
@@ -334,7 +333,7 @@ impl CoherenceChecker {
         let provided = ty::provided_trait_methods(tcx, trait_ref.def_id);
         for trait_method in provided.iter() {
             // Synthesize an ID.
-            let new_id = parse::next_node_id(tcx.sess.parse_sess);
+            let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
             debug!("new_did=%? trait_method=%s", new_did, trait_method.repr(tcx));
