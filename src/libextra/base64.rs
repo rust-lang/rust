@@ -315,11 +315,8 @@ mod test {
         use std::vec;
 
         do 1000.times {
-            let v: ~[u8] = do vec::build |push| {
-                do task_rng().gen_uint_range(1, 100).times {
-                    push(random());
-                }
-            };
+            let times = task_rng().gen_uint_range(1, 100);
+            let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }
     }

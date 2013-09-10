@@ -33,42 +33,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
 /**
  * Builds a vector by calling a provided function with an argument
  * function that pushes an element to the back of a vector.
- * This version takes an initial size for the vector.
- *
- * # Arguments
- *
- * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
-    let mut vec = @[];
-    unsafe { raw::reserve(&mut vec, size); }
-    builder(|x| unsafe { raw::push(&mut vec, x) });
-    vec
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- *
- * # Arguments
- *
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
-    build_sized(4, builder)
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- * This version takes an initial size for the vector.
+ * The initial size for the vector may optionally be specified
  *
  * # Arguments
  *
@@ -78,8 +43,11 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build_sized_opt<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> @[A] {
-    build_sized(size.unwrap_or_default(4), builder)
+pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> @[A] {
+    let mut vec = @[];
+    unsafe { raw::reserve(&mut vec, size.unwrap_or_default(4)); }
+    builder(|x| unsafe { raw::push(&mut vec, x) });
+    vec
 }
 
 // Appending
@@ -88,7 +56,7 @@ pub fn build_sized_opt<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> 
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
 pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
-    do build_sized(lhs.len() + rhs.len()) |push| {
+    do build(Some(lhs.len() + rhs.len())) |push| {
         for x in lhs.iter() {
             push((*x).clone());
         }
@@ -101,7 +69,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
 
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
-    do build_sized(v.len()) |push| {
+    do build(Some(v.len())) |push| {
         for elem in v.iter() {
             push(f(elem));
         }
@@ -115,7 +83,7 @@ pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
  * to the value returned by the function `op`.
  */
 pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
-    do build_sized(n_elts) |push| {
+    do build(Some(n_elts)) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
     }
@@ -128,7 +96,7 @@ pub fn from_fn<T>(n_elts: uint, op: &fn(uint) -> T) -> @[T] {
  * to the value `t`.
  */
 pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
-    do build_sized(n_elts) |push| {
+    do build(Some(n_elts)) |push| {
         let mut i: uint = 0u;
         while i < n_elts {
             push(t.clone());
@@ -312,7 +280,7 @@ mod test {
     fn test() {
         // Some code that could use that, then:
         fn seq_range(lo: uint, hi: uint) -> @[uint] {
-            do build |push| {
+            do build(None) |push| {
                 for i in range(lo, hi) {
                     push(i);
                 }
@@ -359,7 +327,7 @@ mod test {
     fn bench_build_sized(b: &mut bh) {
         let len = 64;
         do b.iter {
-            build_sized(len, |push| for i in range(0, 1024) { push(i) });
+            build(Some(len), |push| for i in range(0, 1024) { push(i) });
         }
     }
 
@@ -367,7 +335,7 @@ mod test {
     fn bench_build(b: &mut bh) {
         do b.iter {
             for i in range(0, 95) {
-                build(|push| push(i));
+                build(None, |push| push(i));
             }
         }
     }

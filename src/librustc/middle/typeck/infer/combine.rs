@@ -61,7 +61,6 @@ use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
 
 use std::result;
-use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;
@@ -88,7 +87,7 @@ pub trait Combine {
         // future we could allow type parameters to declare a
         // variance.
 
-        if vec::same_length(as_, bs) {
+        if as_.len() == bs.len() {
             result::fold_(as_.iter().zip(bs.iter())
                           .map(|(a, b)| eq_tys(self, *a, *b)))
                 .then(|| Ok(as_.to_owned()))
@@ -419,7 +418,7 @@ pub fn super_fn_sigs<C:Combine>(
     this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
 
     fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<~[ty::t]> {
-        if vec::same_length(a_args, b_args) {
+        if a_args.len() == b_args.len() {
             result::collect(a_args.iter().zip(b_args.iter())
                             .map(|(a, b)| this.args(*a, *b)))
         } else {
