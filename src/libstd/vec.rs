@@ -10,8 +10,9 @@
 
 /*!
 
-The `vec` module contains useful code to help work with vector values. Vectors are Rust's list
-type. Vectors contain zero or more values of homogeneous types:
+The `vec` module contains useful code to help work with vector values.
+Vectors are Rust's list type. Vectors contain zero or more values of
+homogeneous types:
 
 ~~~ {.rust}
 let int_vector = [1,2,3];
@@ -27,32 +28,72 @@ represents iteration over a vector.
 
 ## Traits
 
-A number of traits that allow you to accomplish tasks with vectors, like the
-`MutableVector` and `ImmutableVector` traits.
+A number of traits add methods that allow you to accomplish tasks with vectors.
+
+Traits defined for the `&[T]` type (a vector slice), have methods that can be
+called on either owned vectors, denoted `~[T]`, or on vector slices themselves.
+These traits include `ImmutableVector`, and `MutableVector` for the `&mut [T]`
+case.
+
+An example is the method `.slice(a, b)` that returns an immutable "view" into
+a vector or a vector slice from the index interval `[a, b)`:
+
+~~~ {.rust}
+let numbers = [0, 1, 2];
+let last_numbers = numbers.slice(1, 3);
+// last_numbers is now &[1, 2]
+~~~
+
+Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
+on such vectors. These methods deal with adding elements or otherwise changing
+the allocation of the vector.
+
+An example is the method `.push(element)` that will add an element at the end
+of the vector:
+
+~~~ {.rust}
+let mut numbers = ~[0, 1, 2];
+numbers.push(7);
+// numbers is now ~[0, 1, 2, 7];
+~~~
 
 ## Implementations of other traits
 
-Vectors are a very useful type, and so there's tons of implementations of
-traits found elsewhere. Some notable examples:
+Vectors are a very useful type, and so there's several implementations of
+traits from other modules. Some notable examples:
 
 * `Clone`
-* `Iterator`
-* `Zero`
+* `Eq`, `Ord`, `TotalEq`, `TotalOrd` -- vectors can be compared,
+  if the element type defines the corresponding trait.
+
+## Iteration
+
+The method `iter()` returns an iteration value for a vector or a vector slice.
+The iterator yields borrowed pointers to the vector's elements, so if the element
+type of the vector is `int`, the element type of the iterator is `&int`.
+
+~~~ {.rust}
+let numbers = [0, 1, 2];
+for &x in numbers.iter() {
+    println!("{} is a number!", x);
+}
+~~~
+
+* `.rev_iter()` returns an iterator with the same values as `.iter()`,
+  but going in the reverse order, starting with the back element.
+* `.mut_iter()` returns an iterator that allows modifying each value.
+* `.move_iter()` converts an owned vector into an iterator that
+  moves out a value from the vector each iteration.
+* Further iterators exist that split, chunk or permute the vector.
 
 ## Function definitions
 
-There are a number of different functions that take vectors, here are some
-broad categories:
+There are a number of free functions that create or take vectors, for example:
 
-* Modifying a vector, like `append` and `grow`.
-* Searching in a vector, like `bsearch`.
-* Iterating over vectors, like `each_permutation`.
-* Functional transformations on vectors, like `map` and `partition`.
-* Stack/queue operations, like `push`/`pop` and `shift`/`unshift`.
-* Cons-y operations, like `head` and `tail`.
-* Zipper operations, like `zip` and `unzip`.
-
-And much, much more.
+* Creating a vector, like `from_elem` and `from_fn`
+* Creating a vector with a given size: `with_capacity`
+* Modifying a vector and returning it, like `append`
+* Operations on paired elements, like `unzip`.
 
 */
 
@@ -81,11 +122,6 @@ use unstable::intrinsics::{get_tydesc, contains_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
 use util;
-
-/// Returns true if two vectors have the same length
-pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
-    xs.len() == ys.len()
-}
 
 /**
  * Creates and initializes an owned vector.
@@ -158,41 +194,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
 /**
  * Builds a vector by calling a provided function with an argument
  * function that pushes an element to the back of a vector.
- * This version takes an initial capacity for the vector.
- *
- * # Arguments
- *
- * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    let mut vec = with_capacity(size);
-    builder(|x| vec.push(x));
-    vec
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- *
- * # Arguments
- *
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build<A>(builder: &fn(push: &fn(v: A))) -> ~[A] {
-    build_sized(4, builder)
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- * This version takes an initial size for the vector.
+ * The initial capacity for the vector may optionally be specified.
  *
  * # Arguments
  *
@@ -202,8 +204,10 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> ~[A] {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build_sized_opt<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    build_sized(size.unwrap_or_default(4), builder)
+pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
+    let mut vec = with_capacity(size.unwrap_or_default(4));
+    builder(|x| vec.push(x));
+    vec
 }
 
 /// An iterator over the slices of a vector separated by elements that
@@ -389,93 +393,125 @@ impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
     }
 }
 
-// FIXME: if issue #586 gets implemented, could have a postcondition
-// saying the two result lists have the same length -- or, could
-// return a nominal record with a constraint saying that, instead of
-// returning a tuple (contingent on issue #869)
 /**
- * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
- */
-pub fn unzip_slice<T:Clone,U:Clone>(v: &[(T, U)]) -> (~[T], ~[U]) {
-    let mut ts = ~[];
-    let mut us = ~[];
-    for p in v.iter() {
-        let (t, u) = (*p).clone();
-        ts.push(t);
-        us.push(u);
-    }
-    (ts, us)
-}
-
-/**
- * Convert a vector of pairs into a pair of vectors.
+ * Convert an iterator of pairs into a pair of vectors.
  *
  * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input vector,
+ * vector contains the first element of the i-th tuple of the input iterator,
  * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input vector.
+ * of the i-th tuple of the input iterator.
  */
-pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
-    let mut ts = ~[];
-    let mut us = ~[];
-    for p in v.move_iter() {
-        let (t, u) = p;
+pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
+    let (lo, _) = iter.size_hint();
+    let mut ts = with_capacity(lo);
+    let mut us = with_capacity(lo);
+    for (t, u) in iter {
         ts.push(t);
         us.push(u);
     }
     (ts, us)
 }
 
-/**
- * Iterate over all permutations of vector `v`.
- *
- * Permutations are produced in lexicographic order with respect to the order
- * of elements in `v` (so if `v` is sorted then the permutations are
- * lexicographically sorted).
- *
- * The total number of permutations produced is `v.len()!`.  If `v` contains
- * repeated elements, then some permutations are repeated.
- *
- * See [Algorithms to generate
- * permutations](http://en.wikipedia.org/wiki/Permutation).
- *
- *  # Arguments
- *
- *  * `values` - A vector of values from which the permutations are
- *  chosen
- *
- *  * `fun` - The function to iterate over the combinations
- */
-pub fn each_permutation<T:Clone>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
-    let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| values[i].clone());
-    if length <= 1 {
-        fun(permutation);
-        return true;
+/// An Iterator that yields the element swaps needed to produce
+/// a sequence of all possible permutations for an indexed sequence of
+/// elements. Each permutation is only a single swap apart.
+///
+/// The Steinhaus–Johnson–Trotter algorithm is used.
+///
+/// Generates even and odd permutations alternatingly.
+///
+/// The last generated swap is always (0, 1), and it returns the
+/// sequence to its initial order.
+pub struct ElementSwaps {
+    priv sdir: ~[SizeDirection],
+    /// If true, emit the last swap that returns the sequence to initial state
+    priv emit_reset: bool,
+}
+
+impl ElementSwaps {
+    /// Create an `ElementSwaps` iterator for a sequence of `length` elements
+    pub fn new(length: uint) -> ElementSwaps {
+        // Initialize `sdir` with a direction that position should move in
+        // (all negative at the beginning) and the `size` of the
+        // element (equal to the original index).
+        ElementSwaps{
+            emit_reset: true,
+            sdir: range(0, length)
+                    .map(|i| SizeDirection{ size: i, dir: Neg })
+                    .to_owned_vec()
+        }
     }
-    let mut indices = vec::from_fn(length, |i| i);
-    loop {
-        if !fun(permutation) { return true; }
-        // find largest k such that indices[k] < indices[k+1]
-        // if no such k exists, all permutations have been generated
-        let mut k = length - 2;
-        while k > 0 && indices[k] >= indices[k+1] {
-            k -= 1;
+}
+
+enum Direction { Pos, Neg }
+
+/// An Index and Direction together
+struct SizeDirection {
+    size: uint,
+    dir: Direction,
+}
+
+impl Iterator<(uint, uint)> for ElementSwaps {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, uint)> {
+        fn new_pos(i: uint, s: Direction) -> uint {
+            i + match s { Pos => 1, Neg => -1 }
         }
-        if k == 0 && indices[0] > indices[1] { return true; }
-        // find largest l such that indices[k] < indices[l]
-        // k+1 is guaranteed to be such
-        let mut l = length - 1;
-        while indices[k] >= indices[l] {
-            l -= 1;
+
+        // Find the index of the largest mobile element:
+        // The direction should point into the vector, and the
+        // swap should be with a smaller `size` element.
+        let max = self.sdir.iter().map(|&x| x).enumerate()
+                           .filter(|&(i, sd)|
+                                new_pos(i, sd.dir) < self.sdir.len() &&
+                                self.sdir[new_pos(i, sd.dir)].size < sd.size)
+                           .max_by(|&(_, sd)| sd.size);
+        match max {
+            Some((i, sd)) => {
+                let j = new_pos(i, sd.dir);
+                self.sdir.swap(i, j);
+
+                // Swap the direction of each larger SizeDirection
+                for x in self.sdir.mut_iter() {
+                    if x.size > sd.size {
+                        x.dir = match x.dir { Pos => Neg, Neg => Pos };
+                    }
+                }
+                Some((i, j))
+            },
+            None => if self.emit_reset && self.sdir.len() > 1 {
+                self.emit_reset = false;
+                Some((0, 1))
+            } else {
+                None
+            }
         }
-        // swap indices[k] and indices[l]; sort indices[k+1..]
-        // (they're just reversed)
-        indices.swap(k, l);
-        indices.mut_slice(k+1, length).reverse();
-        // fixup permutation based on indices
-        for i in range(k, length) {
-            permutation[i] = values[indices[i]].clone();
+    }
+}
+
+/// An Iterator that uses `ElementSwaps` to iterate through
+/// all possible permutations of a vector.
+///
+/// The first iteration yields a clone of the vector as it is,
+/// then each successive element is the vector with one
+/// swap applied.
+///
+/// Generates even and odd permutations alternatingly.
+pub struct Permutations<T> {
+    priv swaps: ElementSwaps,
+    priv v: ~[T],
+}
+
+impl<T: Clone> Iterator<~[T]> for Permutations<T> {
+    #[inline]
+    fn next(&mut self) -> Option<~[T]> {
+        match self.swaps.next() {
+            None => None,
+            Some((a, b)) => {
+                let elt = self.v.clone();
+                self.v.swap(a, b);
+                Some(elt)
+            }
         }
     }
 }
@@ -1159,6 +1195,7 @@ impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
 pub trait ImmutableCopyableVector<T> {
     fn partitioned(&self, f: &fn(&T) -> bool) -> (~[T], ~[T]);
     unsafe fn unsafe_get(&self, elem: uint) -> T;
+    fn permutations_iter(self) -> Permutations<T>;
 }
 
 /// Extension methods for vectors
@@ -1188,6 +1225,16 @@ impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
     unsafe fn unsafe_get(&self, index: uint) -> T {
         (*self.unsafe_ref(index)).clone()
     }
+
+    /// Create an iterator that yields every possible permutation of the
+    /// vector in succession.
+    fn permutations_iter(self) -> Permutations<T> {
+        Permutations{
+            swaps: ElementSwaps::new(self.len()),
+            v: self.to_owned(),
+        }
+    }
+
 }
 
 #[allow(missing_doc)]
@@ -2866,36 +2913,66 @@ mod tests {
     }
 
     #[test]
-    fn test_each_permutation() {
-        let mut results: ~[~[int]];
-
-        results = ~[];
-        do each_permutation([]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[]]);
-
-        results = ~[];
-        do each_permutation([7]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[7]]);
-
-        results = ~[];
-        do each_permutation([1,1]) |v| { results.push(v.to_owned()); true };
-        assert_eq!(results, ~[~[1,1],~[1,1]]);
-
-        results = ~[];
-        do each_permutation([5,2,0]) |v| { results.push(v.to_owned()); true };
-        assert!(results ==
-            ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
-    }
-
-    #[test]
     fn test_zip_unzip() {
         let z1 = ~[(1, 4), (2, 5), (3, 6)];
 
-        let (left, right) = unzip(z1);
+        let (left, right) = unzip(z1.iter().map(|&x| x));
 
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
         assert_eq!((3, 6), (left[2], right[2]));
+    }
+
+    #[test]
+    fn test_element_swaps() {
+        let mut v = [1, 2, 3];
+        for (i, (a, b)) in ElementSwaps::new(v.len()).enumerate() {
+            v.swap(a, b);
+            match i {
+                0 => assert_eq!(v, [1, 3, 2]),
+                1 => assert_eq!(v, [3, 1, 2]),
+                2 => assert_eq!(v, [3, 2, 1]),
+                3 => assert_eq!(v, [2, 3, 1]),
+                4 => assert_eq!(v, [2, 1, 3]),
+                5 => assert_eq!(v, [1, 2, 3]),
+                _ => fail!(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_permutations() {
+        use hashmap;
+        {
+            let v: [int, ..0] = [];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [~"Hello"];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [1, 2, 3];
+            let mut it = v.permutations_iter();
+            assert_eq!(it.next(), Some(~[1,2,3]));
+            assert_eq!(it.next(), Some(~[1,3,2]));
+            assert_eq!(it.next(), Some(~[3,1,2]));
+            assert_eq!(it.next(), Some(~[3,2,1]));
+            assert_eq!(it.next(), Some(~[2,3,1]));
+            assert_eq!(it.next(), Some(~[2,1,3]));
+            assert_eq!(it.next(), None);
+        }
+        {
+            // check that we have N! unique permutations
+            let mut set = hashmap::HashSet::new();
+            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
+            for perm in v.permutations_iter() {
+                set.insert(perm);
+            }
+            assert_eq!(set.len(), 2 * 3 * 4 * 5 * 6);
+        }
     }
 
     #[test]
@@ -3139,7 +3216,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_build_fail() {
-        do build |push| {
+        do build(None) |push| {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
@@ -3193,13 +3270,12 @@ mod tests {
     fn test_permute_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do each_permutation(v) |_elt| {
+        for _ in v.permutations_iter() {
             if i == 2 {
                 fail!()
             }
             i += 1;
-            true
-        };
+        }
     }
 
     #[test]
@@ -3509,50 +3585,6 @@ mod tests {
         let mut values = [1,2,3,4,5];
         values.mut_slice(1, 4).reverse();
         assert_eq!(values, [1,4,3,2,5]);
-    }
-
-    #[test]
-    fn test_permutations0() {
-        let values = [];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[]]);
-    }
-
-    #[test]
-    fn test_permutations1() {
-        let values = [1];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1]]);
-    }
-
-    #[test]
-    fn test_permutations2() {
-        let values = [1,2];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1,2],~[2,1]]);
-    }
-
-    #[test]
-    fn test_permutations3() {
-        let values = [1,2,3];
-        let mut v : ~[~[int]] = ~[];
-        do each_permutation(values) |p| {
-            v.push(p.to_owned());
-            true
-        };
-        assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
     }
 
     #[test]
