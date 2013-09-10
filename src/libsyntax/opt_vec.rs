@@ -140,6 +140,10 @@ impl<A:Eq> Eq for OptVec<A> {
     }
 }
 
+impl<T> Default for OptVec<T> {
+    fn default() -> OptVec<T> { Empty }
+}
+
 pub struct OptVecIterator<'self, T> {
     priv iter: Option<VecIterator<'self, T>>
 }
