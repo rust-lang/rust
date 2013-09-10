@@ -3461,7 +3461,7 @@ impl Parser {
         let ident = self.parse_ident();
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
-        let bounds = opt_bounds.unwrap_or(opt_vec::Empty);
+        let bounds = opt_bounds.unwrap_or_default();
         ast::TyParam { ident: ident, id: ast::DUMMY_NODE_ID, bounds: bounds }
     }
 
