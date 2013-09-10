@@ -14,7 +14,6 @@ pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
-use context::Ctx;
 
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
@@ -62,12 +61,7 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 
     let mut found = None;
     do os::walk_dir(&src_dir) |p| {
-        debug!("=> p = %s", p.to_str());
-
         if os::path_is_dir(p) {
-            debug!("p = %s, path = %s [%s]", p.to_str(), pkgid.path.to_str(),
-                   src_dir.push_rel(&pkgid.path).to_str());
-
             if *p == src_dir.push_rel(&pkgid.path) || {
                 let pf = p.filename();
                 do pf.iter().any |pf| {
@@ -75,8 +69,6 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
                     match split_version_general(g, '-') {
                         None => false,
                         Some((ref might_match, ref vers)) => {
-                            debug!("might_match = %s, vers = %s", *might_match,
-                                   vers.to_str());
                             *might_match == pkgid.short_name
                                 && (pkgid.version == *vers || pkgid.version == NoVersion)
                         }
@@ -90,30 +82,12 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
         true
     };
 
-    debug!(if found.is_some() { fmt!("Found %s in %s", pkgid.to_str(), workspace.to_str()) }
-           else     { fmt!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str()) });
+    if found.is_some() {
+        debug!("Found %s in %s", pkgid.to_str(), workspace.to_str());
+    } else {
+        debug!("Didn't find %s in %s", pkgid.to_str(), workspace.to_str());
+    }
     found
-}
-
-/// Returns a list of possible directories
-/// for <pkgid>'s source files in <workspace>.
-/// Doesn't check that any of them exist.
-/// (for example, try both with and without the version)
-pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> ~[Path] {
-    let mut results = ~[];
-    let result = workspace.push("src").push(fmt!("%s-%s",
-                     pkgid.path.to_str(), pkgid.version.to_str()));
-    results.push(result);
-    results.push(workspace.push("src").push_rel(&pkgid.path));
-    results
-}
-
-/// Returns a src for pkgid that does exist -- None if none of them do
-pub fn first_pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    let rs = pkgid_src_in_workspace(pkgid, workspace);
-    do rs.iter().find |&p| {
-        os::path_exists(p)
-    }.map(|p| (**p).clone())
 }
 
 /// Figure out what the executable name for <pkgid> in <workspace>'s build
@@ -402,10 +376,7 @@ fn dir_has_file(dir: &Path, file: &str) -> bool {
     os::path_exists(&dir.push(file))
 }
 
-pub fn find_dir_using_rust_path_hack(cx: &Ctx, p: &PkgId) -> Option<Path> {
-    if !cx.use_rust_path_hack {
-        return None;
-    }
+pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {
     let rp = rust_path();
     for dir in rp.iter() {
         debug!("In find_dir_using_rust_path_hack: checking dir %s", dir.to_str());
