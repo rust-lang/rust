@@ -123,11 +123,6 @@ use unstable::raw::{Box, Repr, Slice, Vec};
 use vec;
 use util;
 
-/// Returns true if two vectors have the same length
-pub fn same_length<T, U>(xs: &[T], ys: &[U]) -> bool {
-    xs.len() == ys.len()
-}
-
 /**
  * Creates and initializes an owned vector.
  *
