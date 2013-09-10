@@ -113,6 +113,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
         // Desugar expr_for_loop
         // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
+        // FIXME #6993 : change type of opt_ident to Option<Name>
         ast::ExprForLoop(src_pat, src_expr, ref src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
@@ -144,7 +145,8 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 
             // `None => break ['<ident>];`
             let none_arm = {
-                let break_expr = cx.expr(span, ast::ExprBreak(opt_ident));
+                // FIXME #6993: this map goes away:
+                let break_expr = cx.expr(span, ast::ExprBreak(opt_ident.map(|x| x.name)));
                 let none_pat = cx.pat_ident(span, none_ident);
                 cx.arm(span, ~[none_pat], break_expr)
             };

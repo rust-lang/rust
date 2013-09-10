@@ -19,7 +19,7 @@ use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
 use parse::classify::expr_is_simple_block;
-use parse::token::{ident_interner, ident_to_str};
+use parse::token::{ident_interner, ident_to_str, interner_get};
 use parse::{comments, token};
 use parse;
 use print::pp::{break_offset, word, space, zerobreak, hardbreak};
@@ -1394,7 +1394,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         space(s.s);
         for ident in opt_ident.iter() {
             word(s.s, "'");
-            print_ident(s, *ident);
+            print_name(s, *ident);
             space(s.s);
         }
       }
@@ -1403,7 +1403,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
         space(s.s);
         for ident in opt_ident.iter() {
             word(s.s, "'");
-            print_ident(s, *ident);
+            print_name(s, *ident);
             space(s.s)
         }
       }
@@ -1501,6 +1501,10 @@ pub fn print_decl(s: @ps, decl: &ast::Decl) {
 
 pub fn print_ident(s: @ps, ident: ast::Ident) {
     word(s.s, ident_to_str(&ident));
+}
+
+pub fn print_name(s: @ps, name: ast::Name) {
+    word(s.s, interner_get(name));
 }
 
 pub fn print_for_decl(s: @ps, loc: &ast::Local, coll: &ast::Expr) {
