@@ -958,7 +958,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
     // struct_type is definitely not Unknown, since struct_def.fields
     // must be nonempty to reach here
     let pattern = if struct_type == Record {
-        let field_pats = do vec::build |push| {
+        let field_pats = do vec::build(None) |push| {
             for (&pat, &(id, _)) in subpats.iter().zip(ident_expr.iter()) {
                 // id is guaranteed to be Some
                 push(ast::FieldPat { ident: id.unwrap(), pat: pat })

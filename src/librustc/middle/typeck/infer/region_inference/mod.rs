@@ -373,14 +373,12 @@ impl RegionVarBindings {
 
     pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
                                        -> ~[RegionVid] {
-        do vec::build |push| {
-            for &elt in self.undo_log.slice_from(snapshot).iter() {
-                match elt {
-                    AddVar(vid) => push(vid),
-                    _ => ()
-                }
-            }
-        }
+        self.undo_log.slice_from(snapshot).iter()
+            .filter_map(|&elt| match elt {
+                AddVar(vid) => Some(vid),
+                _ => None
+            })
+            .collect()
     }
 
     pub fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {

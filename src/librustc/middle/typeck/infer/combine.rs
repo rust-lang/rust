@@ -61,7 +61,6 @@ use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
 
 use std::result;
-use std::vec;
 use syntax::ast::{Onceness, purity};
 use syntax::ast;
 use syntax::opt_vec;

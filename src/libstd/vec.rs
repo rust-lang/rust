@@ -194,41 +194,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
 /**
  * Builds a vector by calling a provided function with an argument
  * function that pushes an element to the back of a vector.
- * This version takes an initial capacity for the vector.
- *
- * # Arguments
- *
- * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    let mut vec = with_capacity(size);
-    builder(|x| vec.push(x));
-    vec
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- *
- * # Arguments
- *
- * * builder - A function that will construct the vector. It receives
- *             as an argument a function that will push an element
- *             onto the vector being constructed.
- */
-#[inline]
-pub fn build<A>(builder: &fn(push: &fn(v: A))) -> ~[A] {
-    build_sized(4, builder)
-}
-
-/**
- * Builds a vector by calling a provided function with an argument
- * function that pushes an element to the back of a vector.
- * This version takes an initial size for the vector.
+ * The initial capacity for the vector may optionally be specified.
  *
  * # Arguments
  *
@@ -238,8 +204,10 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> ~[A] {
  *             onto the vector being constructed.
  */
 #[inline]
-pub fn build_sized_opt<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    build_sized(size.unwrap_or_default(4), builder)
+pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
+    let mut vec = with_capacity(size.unwrap_or_default(4));
+    builder(|x| vec.push(x));
+    vec
 }
 
 /// An iterator over the slices of a vector separated by elements that
@@ -3248,7 +3216,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_build_fail() {
-        do build |push| {
+        do build(None) |push| {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
