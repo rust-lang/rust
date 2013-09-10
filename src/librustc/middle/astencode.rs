@@ -157,10 +157,10 @@ fn reserve_id_range(sess: Session,
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
-    let to_id_min = sess.parse_sess.next_id;
-    let to_id_max = sess.parse_sess.next_id + cnt;
-    sess.parse_sess.next_id = to_id_max;
-    ast_util::id_range { min: to_id_min, max: to_id_min }
+    assert!(cnt >= 0);
+    let to_id_min = sess.reserve_node_ids(cnt as uint);
+    let to_id_max = to_id_min + cnt;
+    ast_util::id_range { min: to_id_min, max: to_id_max }
 }
 
 impl ExtendedDecodeContext {

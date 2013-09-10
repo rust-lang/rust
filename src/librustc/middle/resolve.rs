@@ -5403,7 +5403,15 @@ impl Resolver {
 
     pub fn record_def(@mut self, node_id: NodeId, def: Def) {
         debug!("(recording def) recording %? for %?", def, node_id);
-        self.def_map.insert(node_id, def);
+        do self.def_map.insert_or_update_with(node_id, def) |_, old_value| {
+            // Resolve appears to "resolve" the same ID multiple
+            // times, so here is a sanity check it at least comes to
+            // the same conclusion! - nmatsakis
+            if def != *old_value {
+                self.session.bug(fmt!("node_id %? resolved first to %? \
+                                      and then %?", node_id, *old_value, def));
+            }
+        };
     }
 
     pub fn enforce_default_binding_mode(@mut self,

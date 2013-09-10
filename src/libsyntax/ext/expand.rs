@@ -406,8 +406,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             let marked_ctxt = new_mark(fm,ctxt);
             let expanded = match expandfun(cx, mac.span, marked_tts, marked_ctxt) {
                 MRExpr(e) =>
-                    @codemap::Spanned { node: StmtExpr(e, cx.next_id()),
-                                    span: e.span},
+                    @codemap::Spanned { node: StmtExpr(e, ast::DUMMY_NODE_ID),
+                                        span: e.span},
                 MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
@@ -1365,8 +1365,8 @@ pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> @AstFoldFns {
         match *m {
             mac_invoc_tt(ref path, ref tts, ctxt) =>
             (mac_invoc_tt(fld.fold_path(path),
-                         fold_tts(*tts,fld),
-                         cf.f(ctxt)),
+                          fold_tts(*tts,fld),
+                          cf.f(ctxt)),
             sp)
         }
 

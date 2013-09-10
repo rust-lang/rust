@@ -285,6 +285,7 @@ mod test {
 
     fn mk_doc(source: @str) -> doc::Doc {
         let ast = parse::from_str(source);
+        debug!("ast=%?", ast);
         extract(ast, ~"")
     }
 

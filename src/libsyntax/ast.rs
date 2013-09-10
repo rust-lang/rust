@@ -176,6 +176,11 @@ pub struct DefId {
 pub static LOCAL_CRATE: CrateNum = 0;
 pub static CRATE_NODE_ID: NodeId = 0;
 
+// When parsing and doing expansions, we initially give all AST nodes this AST
+// node value. Then later, in the renumber pass, we renumber them to have
+// small, positive ids.
+pub static DUMMY_NODE_ID: NodeId = -1;
+
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
