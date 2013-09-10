@@ -10,7 +10,7 @@
 
 // rustpkg unit tests
 
-use context::{BuildContext, Context};
+use context::{BuildContext, Context, RustcFlags};
 use std::{io, libc, os, run, str, task};
 use extra::arc::Arc;
 use extra::arc::RWArc;
@@ -18,6 +18,7 @@ use extra::tempfile::mkdtemp;
 use extra::workcache;
 use extra::workcache::{Database, Logger};
 use extra::treemap::TreeMap;
+use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use package_id::{PkgId};
@@ -27,8 +28,10 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                library_in_workspace, installed_library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
                built_library_in_workspace, built_executable_in_workspace};
+use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::rust_path;
-use rustc::driver::driver::host_triple;
+use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
+use syntax::diagnostic;
 use target::*;
 use package_source::PkgSrc;
 
@@ -45,6 +48,9 @@ fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
     BuildContext {
         workcache_context: context,
         context: Context {
+            cfgs: ~[],
+            rustc_flags: RustcFlags::default(),
+
             use_rust_path_hack: false,
             sysroot: sysroot
         }
@@ -218,6 +224,10 @@ fn rustpkg_exec() -> Path {
 }
 
 fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
+    command_line_test_with_env(args, cwd, None).expect("Command line test failed")
+}
+
+fn command_line_test_partial(args: &[~str], cwd: &Path) -> Option<ProcessOutput> {
     command_line_test_with_env(args, cwd, None)
 }
 
@@ -225,7 +235,7 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
 /// invoked from) with the given arguments, in the given working directory.
 /// Returns the process's output.
 fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~str)]>)
-    -> ProcessOutput {
+    -> Option<ProcessOutput> {
     let cmd = rustpkg_exec().to_str();
     debug!("cd %s; %s %s",
            cwd.to_str(), cmd, args.connect(" "));
@@ -250,11 +260,14 @@ So tests that use this need to check the existence of a file
 to make sure the command succeeded
 */
     if output.status != 0 {
-        fail!("Command %s %? failed with exit code %?; its output was {{{ %s }}}",
+        debug!("Command %s %? failed with exit code %?; its output was {{{ %s }}}",
               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
+        None
     }
-    output
+    else {
+        Some(output)
+    }
 }
 
 fn create_local_package(pkgid: &PkgId) -> Path {
@@ -352,6 +365,27 @@ fn built_executable_exists(repo: &Path, short_name: &str) -> bool {
     }
 }
 
+fn object_file_exists(repo: &Path, short_name: &str) -> bool {
+    file_exists(repo, short_name, "o")
+}
+
+fn assembly_file_exists(repo: &Path, short_name: &str) -> bool {
+    file_exists(repo, short_name, "s")
+}
+
+fn llvm_assembly_file_exists(repo: &Path, short_name: &str) -> bool {
+    file_exists(repo, short_name, "ll")
+}
+
+fn llvm_bitcode_file_exists(repo: &Path, short_name: &str) -> bool {
+    file_exists(repo, short_name, "bc")
+}
+
+fn file_exists(repo: &Path, short_name: &str, extension: &str) -> bool {
+    os::path_exists(&repo.push_many([~"build", short_name.to_owned(),
+                                     fmt!("%s.%s", short_name, extension)]))
+}
+
 fn assert_built_library_exists(repo: &Path, short_name: &str) {
     assert!(built_library_exists(repo, short_name));
 }
@@ -377,7 +411,8 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
 
 fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~str] {
     let mut result = ~[];
-    let p_output = command_line_test_with_env(args, &os::getcwd(), Some(env));
+    let p_output = command_line_test_with_env(args,
+        &os::getcwd(), Some(env)).expect("Command-line test failed");
     let test_output = str::from_utf8(p_output.output);
     for s in test_output.split_iter('\n') {
         result.push(s.to_owned());
@@ -1264,6 +1299,256 @@ fn rust_path_install_target() {
 
 }
 
+#[test]
+fn sysroot_flag() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    // no-op sysroot setting; I'm not sure how else to test this
+    command_line_test([~"--sysroot",
+                       test_sysroot().to_str(),
+                       ~"build",
+                       ~"foo"],
+                      &workspace);
+    assert_built_executable_exists(&workspace, "foo");
+}
+
+#[test]
+fn compile_flag_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"--no-link",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(object_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn compile_flag_fail() {
+    // --no-link shouldn't be accepted for install
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"--no-link",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn notrans_flag_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    let flags_to_test = [~"--no-trans", ~"--parse-only",
+                         ~"--pretty", ~"-S"];
+
+    for flag in flags_to_test.iter() {
+        command_line_test([test_sysroot().to_str(),
+                           ~"build",
+                           flag.clone(),
+                           ~"foo"],
+                          &workspace);
+        // Ideally we'd test that rustpkg actually succeeds, but
+        // since task failure doesn't set the exit code properly,
+        // we can't tell
+        assert!(!built_executable_exists(&workspace, "foo"));
+        assert!(!object_file_exists(&workspace, "foo"));
+    }
+}
+
+#[test]
+fn notrans_flag_fail() {
+    // --no-trans shouldn't be accepted for install
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    let flags_to_test = [~"--no-trans", ~"--parse-only",
+                         ~"--pretty", ~"-S"];
+    for flag in flags_to_test.iter() {
+        command_line_test([test_sysroot().to_str(),
+                           ~"install",
+                           flag.clone(),
+                           ~"foo"],
+                          &workspace);
+        // Ideally we'd test that rustpkg actually fails, but
+        // since task failure doesn't set the exit code properly,
+        // we can't tell
+        assert!(!built_executable_exists(&workspace, "foo"));
+        assert!(!object_file_exists(&workspace, "foo"));
+        assert!(!lib_exists(&workspace, "foo", NoVersion));
+    }
+}
+
+#[test]
+fn dash_S() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"-S",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn dash_S_fail() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"-S",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(!assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_cfg_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    // If the cfg flag gets messed up, this won't compile
+    writeFile(&workspace.push_many(["src", "foo-0.1", "main.rs"]),
+               "#[cfg(quux)] fn main() {}");
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"--cfg",
+                       ~"quux",
+                       ~"foo"],
+                      &workspace);
+    assert_built_executable_exists(&workspace, "foo");
+}
+
+#[test]
+fn test_cfg_fail() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    writeFile(&workspace.push_many(["src", "foo-0.1", "main.rs"]),
+               "#[cfg(quux)] fn main() {}");
+    assert!(command_line_test_partial([test_sysroot().to_str(),
+                       ~"build",
+                       ~"foo"],
+                      &workspace).is_none());
+}
+
+
+#[test]
+fn test_emit_llvm_S_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"-S", ~"--emit-llvm",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(llvm_assembly_file_exists(&workspace, "foo"));
+    assert!(!assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_emit_llvm_S_fail() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"-S", ~"--emit-llvm",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(!llvm_assembly_file_exists(&workspace, "foo"));
+    assert!(!assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_emit_llvm_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"--emit-llvm",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(llvm_bitcode_file_exists(&workspace, "foo"));
+    assert!(!assembly_file_exists(&workspace, "foo"));
+    assert!(!llvm_assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_emit_llvm_fail() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"--emit-llvm",
+                       ~"foo"],
+                      &workspace);
+    assert!(!built_executable_exists(&workspace, "foo"));
+    assert!(!object_file_exists(&workspace, "foo"));
+    assert!(!llvm_bitcode_file_exists(&workspace, "foo"));
+    assert!(!llvm_assembly_file_exists(&workspace, "foo"));
+    assert!(!assembly_file_exists(&workspace, "foo"));
+}
+
+#[test]
+fn test_linker_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    let matches = getopts([], optgroups());
+    let options = build_session_options(@"rustpkg",
+                                        matches.get_ref(),
+                                        diagnostic::emit);
+    let sess = build_session(options, diagnostic::emit);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"--linker",
+                       get_cc_prog(sess),
+                       ~"foo"],
+                      &workspace);
+    assert_executable_exists(&workspace, "foo");
+}
+
+#[test]
+fn test_build_install_flags_fail() {
+    // The following flags can only be used with build or install:
+    let forbidden = [~[~"--linker", ~"ld"],
+                     ~[~"--link-args", ~"quux"],
+                     ~[~"-O"],
+                     ~[~"--opt-level", ~"2"],
+                     ~[~"--save-temps"],
+                     ~[~"--target", host_triple()],
+                     ~[~"--target-cpu", ~"generic"],
+                     ~[~"-Z", ~"--time-passes"]];
+    for flag in forbidden.iter() {
+        let output = command_line_test_output([test_sysroot().to_str(),
+                           ~"list"] + *flag);
+        assert!(output.len() > 1);
+        assert!(output[1].find_str("can only be used with").is_some());
+    }
+}
+
+#[test]
+fn test_optimized_build() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"-O",
+                       ~"foo"],
+                      &workspace);
+    assert!(built_executable_exists(&workspace, "foo"));
+}
 
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {

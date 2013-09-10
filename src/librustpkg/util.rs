@@ -17,9 +17,9 @@ use syntax::codemap::{dummy_sp, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::attr::AttrMetaMethods;
-use rustc::back::link::output_type_exe;
+use rustc::back::link;
 use rustc::driver::session::{lib_crate, bin_crate};
-use context::{in_target, BuildContext};
+use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use path_util::{installed_library_in_workspace, U_RWX};
@@ -153,7 +153,7 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(crate)
 }
 
-pub fn compile_input(ctxt: &BuildContext,
+pub fn compile_input(context: &BuildContext,
                      exec: &mut workcache::Exec,
                      pkg_id: &PkgId,
                      in_file: &Path,
@@ -161,7 +161,7 @@ pub fn compile_input(ctxt: &BuildContext,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
-                     what: OutputType) -> Path {
+                     what: OutputType) -> Option<Path> {
     assert!(in_file.components.len() > 1);
     let input = driver::file_input((*in_file).clone());
     debug!("compile_input: %s / %?", in_file.to_str(), what);
@@ -174,7 +174,7 @@ pub fn compile_input(ctxt: &BuildContext,
 
     debug!("flags: %s", flags.connect(" "));
     debug!("cfgs: %s", cfgs.connect(" "));
-    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
+    debug!("compile_input's sysroot = %s", context.sysroot().to_str());
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -188,26 +188,38 @@ pub fn compile_input(ctxt: &BuildContext,
                               Main => ~[]
                           }
                           + flags
+                          + context.flag_strs()
                           + cfgs.flat_map(|c| { ~[~"--cfg", (*c).clone()] }),
                           driver::optgroups()).unwrap();
+    debug!("rustc flags: %?", matches);
+
     // Hack so that rustpkg can run either out of a rustc target dir,
     // or the host dir
-    let sysroot_to_use = @if !in_target(&ctxt.sysroot()) {
-        ctxt.sysroot()
+    let sysroot_to_use = @if !in_target(&context.sysroot()) {
+        context.sysroot()
     }
     else {
-        ctxt.sysroot().pop().pop().pop()
+        context.sysroot().pop().pop().pop()
     };
-    debug!("compile_input's sysroot = %s", ctxt.sysroot().to_str());
+    debug!("compile_input's sysroot = %s", context.sysroot().to_str());
     debug!("sysroot_to_use = %s", sysroot_to_use.to_str());
+
+    let output_type = match context.compile_upto() {
+        Assemble => link::output_type_assembly,
+        Link     => link::output_type_object,
+        Pretty | Trans | Analysis => link::output_type_none,
+        LLVMAssemble => link::output_type_llvm_assembly,
+        LLVMCompileBitcode => link::output_type_bitcode,
+        Nothing => link::output_type_exe
+    };
+
     let options = @session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
         addl_lib_search_paths: @mut (~[out_dir.clone()]),
-        // output_type should be conditional
-        output_type: output_type_exe, // Use this to get a library? That's weird
+        output_type: output_type,
         .. (*driver::build_session_options(binary, &matches, diagnostic::emit)).clone()
     };
 
@@ -233,7 +245,7 @@ pub fn compile_input(ctxt: &BuildContext,
 
     // Not really right. Should search other workspaces too, and the installed
     // database (which doesn't exist yet)
-    find_and_install_dependencies(ctxt, sess, exec, workspace, crate,
+    find_and_install_dependencies(context, sess, exec, workspace, crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
@@ -270,7 +282,7 @@ pub fn compile_input(ctxt: &BuildContext,
 
     debug!("calling compile_crate_from_input, workspace = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(in_file, exec, &out_dir, sess, crate)
+    compile_crate_from_input(in_file, exec, context.compile_upto(), &out_dir, sess, crate)
 }
 
 // Should use workcache to avoid recompiling when not necessary
@@ -280,10 +292,13 @@ pub fn compile_input(ctxt: &BuildContext,
 // also, too many arguments
 pub fn compile_crate_from_input(input: &Path,
                                 exec: &mut workcache::Exec,
+                                stop_before: StopBefore,
  // should be of the form <workspace>/build/<pkg id's path>
                                 out_dir: &Path,
                                 sess: session::Session,
-                                crate: @ast::Crate) -> Path {
+// Returns None if one of the flags that suppresses compilation output was
+// given
+                                crate: @ast::Crate) -> Option<Path> {
     debug!("Calling build_output_filenames with %s, building library? %?",
            out_dir.to_str(), sess.building_library);
 
@@ -302,17 +317,21 @@ pub fn compile_crate_from_input(input: &Path,
         debug!("an additional library: %s", lib.to_str());
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, crate);
+    if driver::stop_after_phase_3(sess) { return None; }
     let translation = driver::phase_4_translate_to_llvm(sess, crate,
                                                         &analysis,
                                                         outputs);
     driver::phase_5_run_llvm_passes(sess, &translation, outputs);
-    if driver::stop_after_phase_5(sess) { return outputs.out_filename; }
+    // The second check shouldn't be necessary, but rustc seems to ignore
+    // -c
+    if driver::stop_after_phase_5(sess)
+        || stop_before == Link || stop_before == Assemble { return Some(outputs.out_filename); }
     driver::phase_6_link_output(sess, &translation, outputs);
 
     // Register dependency on the source file
     exec.discover_input("file", input.to_str(), digest_file_with_date(input));
 
-    outputs.out_filename
+    Some(outputs.out_filename)
 }
 
 #[cfg(windows)]
@@ -330,7 +349,7 @@ pub fn compile_crate(ctxt: &BuildContext,
                      pkg_id: &PkgId,
                      crate: &Path, workspace: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
-                     what: OutputType) -> Path {
+                     what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate=%s, workspace=%s", crate.to_str(), workspace.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for fl in flags.iter() {
@@ -344,14 +363,13 @@ pub fn compile_crate(ctxt: &BuildContext,
 /// try to install their targets, failing if any target
 /// can't be found.
 pub fn find_and_install_dependencies(ctxt: &BuildContext,
-                                 sess: session::Session,
-                                 exec: &mut workcache::Exec,
-                                 workspace: &Path,
-                                 c: &ast::Crate,
-                                 save: @fn(Path)
-                                ) {
-    debug!("Finding and installing dependencies...");
-    do c.each_view_item |vi| {
+                                     sess: session::Session,
+                                     exec: &mut workcache::Exec,
+                                     workspace: &Path,
+                                     c: &ast::Crate,
+                                     save: @fn(Path)
+                                     ) {
+    do c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
             // ignore metadata, I guess
