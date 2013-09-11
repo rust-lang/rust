@@ -13,6 +13,7 @@
 #[allow(missing_doc)];
 
 use option::{Some, None};
+use option;
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
@@ -116,6 +117,36 @@ impl<L, R> Either<L, R> {
     }
 }
 
+impl<L, R: Clone> option::ToOption<R> for Either<L, R> {
+    #[inline]
+    fn to_option(&self)-> option::Option<R> {
+        match *self {
+            Left(_) => None,
+            Right(ref r) => Some(r.clone()),
+        }
+    }
+}
+
+impl<L, R> option::IntoOption<R> for Either<L, R> {
+    #[inline]
+    fn into_option(self)-> option::Option<R> {
+        match self {
+            Left(_) => None,
+            Right(r) => Some(r),
+        }
+    }
+}
+
+impl<L, R> option::AsOption<R> for Either<L, R> {
+    #[inline]
+    fn as_option<'a>(&'a self) -> option::Option<&'a R> {
+        match *self {
+            Left(_) => None,
+            Right(ref r) => Some(r),
+        }
+    }
+}
+
 /// An iterator yielding the `Left` values of its source
 pub type Lefts<L, R, Iter> = FilterMap<'static, Either<L, R>, L, Iter>;
 
@@ -166,6 +197,9 @@ pub fn partition<L, R>(eithers: ~[Either<L, R>]) -> (~[L], ~[R]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use option::{IntoOption, ToOption, AsOption};
+    use option;
 
     #[test]
     fn test_either_left() {
@@ -260,4 +294,30 @@ mod tests {
         assert_eq!(rights.len(), 0u);
     }
 
+    #[test]
+    pub fn test_to_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_option(), option::Some(100));
+        assert_eq!(left.to_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_into_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_option(), option::Some(100));
+        assert_eq!(left.into_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_as_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.as_option().unwrap(), &100);
+        assert_eq!(left.as_option(), option::None);
+    }
 }
