@@ -2459,25 +2459,12 @@ do k(3) |j| {
 ### For expressions
 
 ~~~~~~~~{.ebnf .gram}
-for_expr : "for" expr [ '|' ident_list '|' ] ? '{' block '}' ;
+for_expr : "for" pat "in" expr '{' block '}' ;
 ~~~~~~~~
 
-A _for expression_ is similar to a [`do` expression](#do-expressions),
-in that it provides a special block-form of lambda expression,
-suited to passing the `block` function to a higher-order function implementing a loop.
-
-In contrast to a `do` expression, a `for` expression is designed to work
-with methods such as `each` and `times`, that require the body block to
-return a boolean. The `for` expression accommodates this by implicitly
-returning `true` at the end of each block, unless a `break` expression
-is evaluated.
-
-In addition, [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
-are rewritten inside `for` expressions in the same way that `return` expressions are,
-with a combination of local flag variables,
-and early boolean-valued returns from the `block` function,
-such that the meaning of `break` and `loop` is preserved in a primitive loop
-when rewritten as a `for` loop controlled by a higher order function.
+A `for` expression is a syntactic construct for looping
+over elements provided by an implementation of
+`std::iterator::Iterator`.
 
 An example of a for loop over the contents of a vector:
 
