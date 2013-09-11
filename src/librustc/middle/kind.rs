@@ -416,7 +416,7 @@ fn is_nullary_variant(cx: Context, ex: @Expr) -> bool {
     match ex.node {
       ExprPath(_) => {
         match cx.tcx.def_map.get_copy(&ex.id) {
-          DefVariant(edid, vdid) => {
+          DefVariant(edid, vdid, _) => {
               ty::enum_variant_with_id(cx.tcx, edid, vdid).args.is_empty()
           }
           _ => false
