@@ -1757,7 +1757,7 @@ fn type_is_newtype_immediate(cx: ctxt, ty: t) -> bool {
         ty_struct(def_id, ref substs) => {
             let fields = struct_fields(cx, def_id, substs);
             fields.len() == 1 &&
-                fields[0].ident == token::special_idents::unnamed_field &&
+                fields[0].ident.name == token::special_idents::unnamed_field.name &&
                 type_is_immediate(cx, fields[0].mt.ty)
         }
         _ => false
