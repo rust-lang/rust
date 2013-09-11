@@ -72,6 +72,7 @@ extern mod syntax;
 
 use std::{libc, io, os, task};
 use std::cell::Cell;
+use extra::rl::CompletionCb;
 use extra::rl;
 
 use rustc::driver::{driver, session};
@@ -520,6 +521,19 @@ pub fn main() {
     main_args(args);
 }
 
+struct Completer;
+
+impl CompletionCb for Completer {
+    fn complete(&self, line: ~str, suggest: &fn(~str)) {
+        if line.starts_with(":") {
+            suggest(~":clear");
+            suggest(~":exit");
+            suggest(~":help");
+            suggest(~":load");
+        }
+    }
+}
+
 pub fn main_args(args: &[~str]) {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -543,13 +557,8 @@ pub fn main_args(args: &[~str]) {
         println("unstable. If you encounter problems, please use the");
         println("compiler instead. Type :help for help.");
 
-        do rl::complete |line, suggest| {
-            if line.starts_with(":") {
-                suggest(~":clear");
-                suggest(~":exit");
-                suggest(~":help");
-                suggest(~":load");
-            }
+        unsafe {
+            rl::complete(@Completer as @CompletionCb)
         }
     }
 
