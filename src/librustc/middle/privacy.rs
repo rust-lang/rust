@@ -203,10 +203,11 @@ impl PrivacyVisitor {
     }
 
     // Checks that a private field is in scope.
+    // FIXME #6993: change type (and name) from Ident to Name
     fn check_field(&mut self, span: Span, id: ast::DefId, ident: ast::Ident) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         for field in fields.iter() {
-            if field.ident.name != ident.name { loop; }
+            if field.name != ident.name { loop; }
             if field.vis == private {
                 self.tcx.sess.span_err(span, fmt!("field `%s` is private",
                                              token::ident_to_str(&ident)));
