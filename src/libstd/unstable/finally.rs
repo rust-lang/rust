@@ -55,7 +55,6 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
 }
 
 finally_fn!(~fn() -> T)
-finally_fn!(@fn() -> T)
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {

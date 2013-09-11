@@ -403,7 +403,7 @@ struct ViewItemVisitor<'self> {
     sess: session::Session,
     exec: &'self mut workcache::Exec,
     c: &'self ast::Crate,
-    save: @fn(Path),
+    save: &'self fn(Path),
 }
 
 impl<'self> Visitor<()> for ViewItemVisitor<'self> {
@@ -508,7 +508,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                                      sess: session::Session,
                                      exec: &mut workcache::Exec,
                                      c: &ast::Crate,
-                                     save: @fn(Path)) {
+                                     save: &fn(Path)) {
     debug!("In find_and_install_dependencies...");
     let mut visitor = ViewItemVisitor {
         context: context,

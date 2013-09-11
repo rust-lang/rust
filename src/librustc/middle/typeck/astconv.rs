@@ -400,6 +400,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
+        if f.sigil == ast::ManagedSigil {
+            tcx.sess.span_err(ast_ty.span,
+                              "managed closures are not supported");
+        }
+
           let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, match f.sigil {
               // Use corresponding trait store to figure out default bounds
               // if none were specified.

@@ -36,7 +36,6 @@
  * still held if needed.
  */
 
-use std::cast;
 use std::ptr;
 use std::routine::Runnable;
 use std::util;
@@ -57,9 +56,10 @@ struct DtorRes {
 #[unsafe_destructor]
 impl Drop for DtorRes {
     fn drop(&mut self) {
-        match self.dtor {
-            option::None => (),
-            option::Some(f) => f()
+        let dtor = util::replace(&mut self.dtor, None);
+        match dtor {
+            None => (),
+            Some(f) => f.run()
         }
     }
 }

@@ -807,11 +807,6 @@ pub fn filter_tests(
     }
 }
 
-struct TestFuture {
-    test: TestDesc,
-    wait: @fn() -> TestResult,
-}
-
 pub fn run_test(force_ignore: bool,
                 test: TestDescAndFn,
                 monitor_ch: SharedChan<MonitorMsg>) {
