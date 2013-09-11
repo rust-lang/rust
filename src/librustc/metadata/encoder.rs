@@ -60,6 +60,7 @@ pub struct EncodeParams<'self> {
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
+    non_inlineable_statics: &'self HashSet<ast::NodeId>,
     link_meta: &'self LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
@@ -89,6 +90,7 @@ pub struct EncodeContext<'self> {
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
+    non_inlineable_statics: &'self HashSet<ast::NodeId>,
     link_meta: &'self LinkMeta,
     cstore: &'self cstore::CStore,
     encode_inlined_item: encode_inlined_item<'self>,
@@ -907,7 +909,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         let elt = ast_map::path_pretty_name(item.ident, item.id as u64);
         encode_path(ecx, ebml_w, path, elt);
-        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+        if !ecx.non_inlineable_statics.contains(&item.id) {
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+        }
         ebml_w.end_tag();
       }
       item_fn(_, purity, _, ref generics, _) => {
@@ -1728,6 +1732,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         encode_inlined_item,
         link_meta,
         reachable,
+        non_inlineable_statics,
         _
     } = parms;
     let type_abbrevs = @mut HashMap::new();
@@ -1739,6 +1744,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         reexports2: reexports2,
         item_symbols: item_symbols,
         discrim_symbols: discrim_symbols,
+        non_inlineable_statics: non_inlineable_statics,
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: encode_inlined_item,

@@ -61,6 +61,13 @@ pub struct CrateContext {
      finished_tydescs: bool,
      // Track mapping of external ids to local items imported for inlining
      external: HashMap<ast::DefId, Option<ast::NodeId>>,
+     // Backwards version of the `external` map (inlined items to where they
+     // came from)
+     external_srcs: HashMap<ast::NodeId, ast::DefId>,
+     // A set of static items which cannot be inlined into other crates. This
+     // will pevent in ii_item() structures from being encoded into the metadata
+     // that is generated
+     non_inlineable_statics: HashSet<ast::NodeId>,
      // Cache instances of monomorphized functions
      monomorphized: HashMap<mono_id, ValueRef>,
      monomorphizing: HashMap<ast::DefId, uint>,
@@ -189,6 +196,8 @@ impl CrateContext {
                   tydescs: HashMap::new(),
                   finished_tydescs: false,
                   external: HashMap::new(),
+                  external_srcs: HashMap::new(),
+                  non_inlineable_statics: HashSet::new(),
                   monomorphized: HashMap::new(),
                   monomorphizing: HashMap::new(),
                   type_use_cache: HashMap::new(),
