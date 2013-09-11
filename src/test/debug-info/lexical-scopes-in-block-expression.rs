@@ -11,7 +11,7 @@
 // xfail-win32
 
 // compile-flags:-Z extra-debug-info
-// debugger:break zzz
+// debugger:rbreak zzz
 // debugger:run
 
 // STRUCT EXPRESSION

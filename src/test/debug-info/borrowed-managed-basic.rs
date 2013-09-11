@@ -12,7 +12,7 @@
 // its numerical value.
 
 // compile-flags:-Z extra-debug-info
-// debugger:break zzz
+// debugger:rbreak zzz
 // debugger:run
 // debugger:finish
 // debugger:print *bool_ref
