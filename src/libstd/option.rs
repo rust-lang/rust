@@ -340,6 +340,15 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns the contained value or computes it from a closure
+    #[inline]
+    pub fn unwrap_or_else(self, f: &fn() -> T) -> T {
+        match self {
+            Some(x) => x,
+            None => f()
+        }
+    }
+
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
     pub fn while_some(self, blk: &fn(v: T) -> Option<T>) {
@@ -512,6 +521,44 @@ mod tests {
             }
         }
         assert_eq!(i, 11);
+    }
+
+    #[test]
+    fn test_unwrap() {
+        assert_eq!(Some(1).unwrap(), 1);
+        assert_eq!(Some(~"hello").unwrap(), ~"hello");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_unwrap_fail1() {
+        let x: Option<int> = None;
+        x.unwrap();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_unwrap_fail2() {
+        let x: Option<~str> = None;
+        x.unwrap();
+    }
+
+    #[test]
+    fn test_unwrap_or() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.unwrap_or(2), 1);
+
+        let x: Option<int> = None;
+        assert_eq!(x.unwrap_or(2), 2);
+    }
+
+    #[test]
+    fn test_unwrap_or_else() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.unwrap_or_else(|| 2), 1);
+
+        let x: Option<int> = None;
+        assert_eq!(x.unwrap_or_else(|| 2), 2);
     }
 
     #[test]
