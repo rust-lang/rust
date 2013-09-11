@@ -2825,7 +2825,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          *fields, base_expr);
             }
-            Some(&ast::DefVariant(enum_id, variant_id)) => {
+            Some(&ast::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, *fields);
             }
@@ -3256,7 +3256,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
           return no_params(typ);
       }
       ast::DefFn(id, _) | ast::DefStaticMethod(id, _, _) |
-      ast::DefStatic(id, _) | ast::DefVariant(_, id) |
+      ast::DefStatic(id, _) | ast::DefVariant(_, id, _) |
       ast::DefStruct(id) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }

@@ -115,7 +115,8 @@ enum Family {
     Mod,                   // m
     ForeignMod,            // n
     Enum,                  // t
-    Variant,               // v
+    TupleVariant,          // v
+    StructVariant,         // V
     Impl,                  // i
     Trait,                 // I
     Struct,                // S
@@ -139,7 +140,8 @@ fn item_family(item: ebml::Doc) -> Family {
       'm' => Mod,
       'n' => ForeignMod,
       't' => Enum,
-      'v' => Variant,
+      'v' => TupleVariant,
+      'V' => StructVariant,
       'i' => Impl,
       'I' => Trait,
       'S' => Struct,
@@ -361,9 +363,13 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         Type | ForeignType => DlDef(ast::DefTy(did)),
         Mod => DlDef(ast::DefMod(did)),
         ForeignMod => DlDef(ast::DefForeignMod(did)),
-        Variant => {
+        StructVariant => {
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
-            DlDef(ast::DefVariant(enum_did, did))
+            DlDef(ast::DefVariant(enum_did, did, true))
+        }
+        TupleVariant => {
+            let enum_did = item_reqd_and_translated_parent_item(cnum, item);
+            DlDef(ast::DefVariant(enum_did, did, false))
         }
         Trait => DlDef(ast::DefTrait(did)),
         Enum => DlDef(ast::DefTy(did)),
@@ -575,8 +581,8 @@ impl<'self> EachItemContext<'self> {
                 }
                 ImmStatic | MutStatic | Struct | UnsafeFn | Fn | ForeignFn |
                 UnsafeStaticMethod | StaticMethod | Type | ForeignType |
-                Variant | Enum | PublicField | PrivateField |
-                InheritedField => {}
+                TupleVariant | StructVariant | Enum | PublicField |
+                PrivateField | InheritedField => {}
             }
         }
 
@@ -1268,7 +1274,8 @@ fn item_family_to_str(fam: Family) -> ~str {
       Mod => ~"mod",
       ForeignMod => ~"foreign mod",
       Enum => ~"enum",
-      Variant => ~"variant",
+      StructVariant => ~"struct variant",
+      TupleVariant => ~"tuple variant",
       Impl => ~"impl",
       Trait => ~"trait",
       Struct => ~"struct",

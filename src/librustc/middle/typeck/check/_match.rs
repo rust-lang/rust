@@ -384,7 +384,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
 
     // Find the variant that was specified.
     match tcx.def_map.find(&pat_id) {
-        Some(&ast::DefVariant(found_enum_id, variant_id))
+        Some(&ast::DefVariant(found_enum_id, variant_id, _))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
             let class_fields = ty::lookup_struct_fields(tcx, variant_id);

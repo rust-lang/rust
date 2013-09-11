@@ -577,7 +577,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::Expr) -> ValueRef {
                 Some(&ast::DefStatic(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(&ast::DefVariant(enum_did, variant_did)) => {
+                Some(&ast::DefVariant(enum_did, variant_did, _)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -604,7 +604,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: &ast::Expr) -> ValueRef {
                       let arg_vals = args.map(|a| const_expr(cx, *a));
                       adt::trans_const(cx, repr, 0, arg_vals)
                   }
-                  Some(&ast::DefVariant(enum_did, variant_did)) => {
+                  Some(&ast::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx,

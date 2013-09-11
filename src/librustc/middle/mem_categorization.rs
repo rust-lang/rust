@@ -889,7 +889,7 @@ impl mem_categorization_ctxt {
           }
           ast::PatEnum(_, Some(ref subpats)) => {
             match self.tcx.def_map.find(&pat.id) {
-                Some(&ast::DefVariant(enum_did, _)) => {
+                Some(&ast::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 
                     let downcast_cmt = {
@@ -1074,7 +1074,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
       }
       ty::ty_enum(*) => {
         match tcx.def_map.get_copy(&node_id) {
-          ast::DefVariant(_, variant_id) => {
+          ast::DefVariant(_, variant_id, _) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {
                 if fld.ident == f_name {
