@@ -573,7 +573,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             _,
             _,
             _) => {
-            (ident, fn_decl, generics, None, span)
+            //(ident, fn_decl, generics, None, span)
+            return FunctionWithoutDebugInfo;
         }
         ast_map::node_variant(*)     |
         ast_map::node_struct_ctor(*) => {
@@ -591,7 +592,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     let file_metadata = file_metadata(cx, loc.file.name);
 
     let function_type_metadata = unsafe {
-        let fn_signature = get_function_signature(cx, fn_ast_id, fn_decl, param_substs);
+        let fn_signature = get_function_signature(cx, fn_ast_id, fn_decl, param_substs, span);
         llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
@@ -670,7 +671,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     fn get_function_signature(cx: &mut CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::fn_decl,
-                              param_substs: Option<@param_substs>) -> DIArray {
+                              param_substs: Option<@param_substs>,
+                              error_span: Span) -> DIArray {
         if !cx.sess.opts.extra_debuginfo {
             return create_DIArray(DIB(cx), []);
         }
@@ -683,6 +685,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                 signature.push(ptr::null());
             }
             _ => {
+                assert_type_for_node_id(cx, fn_ast_id, error_span);
+
                 let return_type = ty::node_id_to_type(cx.tcx, fn_ast_id);
                 let return_type = match param_substs {
                     None => return_type,
@@ -697,6 +701,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
         // Arguments types
         for arg in fn_decl.inputs.iter() {
+            assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx, arg.pat.id);
             let arg_type = match param_substs {
                 None => arg_type,
@@ -1820,8 +1825,7 @@ fn type_metadata(cx: &mut CrateContext,
             tuple_metadata(cx, t, *elements, usage_site_span)
         },
         ty::ty_opaque_box => {
-            cx.sess.span_note(usage_site_span, "debuginfo for ty_opaque_box NYI");
-            unimplemented_type_metadata(cx, t)
+            create_pointer_to_box_metadata(cx, t, ty::mk_nil())
         }
         _ => cx.sess.bug(fmt!("debuginfo: unexpected type in type_metadata: %?", sty))
     };
@@ -1920,6 +1924,12 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
     match fcx.debug_context {
         FunctionDebugContext(_) => false,
         _ => true
+    }
+}
+
+fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
+    if !cx.tcx.node_types.contains_key(&(node_id as uint)) {
+        cx.sess.span_bug(error_span, "debuginfo: Could not find type for node id!");
     }
 }
 
@@ -2616,6 +2626,12 @@ impl<'self> visit::Visitor<()> for NamespaceVisitor<'self> {
         }
 
         visit::walk_item(self, item, ());
+    }
+
+    fn visit_foreign_item(&mut self, item: @ast::foreign_item, _: ()) {
+        debug_context(self.crate_context)
+            .local_namespace_map
+            .insert(item.id, *self.scope_stack.last());
     }
 
     fn visit_fn(&mut self,
