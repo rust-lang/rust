@@ -789,3 +789,33 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateNameSpace(
         unwrapDI<DIFile>(File),
         LineNo));
 }
+
+// extern "C" LLVMValueRef LLVMDIBuilderCreateForwardDecl(
+//     DIBuilderRef Builder,
+//     unsigned Tag,
+//     const char* Name,
+//     LLVMValueRef Scope,
+//     LLVMValueRef File,
+//     unsigned Line,
+//     unsigned RuntimeLang,
+//     uint64_t SizeInBits,
+//     uint64_t AlignInBits)
+// {
+//     return wrap(Builder->createForwardDecl(
+//         Tag,
+//         Name,
+//         unwrapDI<DIDescriptor>(Scope),
+//         unwrapDI<DIFile>(File),
+//         Line,
+//         RuntimeLang,
+//         SizeInBits,
+//         AlignInBits
+//     ));
+// }
+
+extern "C" void LLVMDICompositeTypeSetTypeArray(
+    LLVMValueRef CompositeType,
+    LLVMValueRef TypeArray)
+{
+    unwrapDI<DICompositeType>(CompositeType).setTypeArray(unwrapDI<DIArray>(TypeArray));
+}
