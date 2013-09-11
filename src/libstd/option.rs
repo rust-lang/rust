@@ -48,6 +48,7 @@ use util;
 use num::Zero;
 use iter;
 use iter::{Iterator, DoubleEndedIterator, ExactSize};
+use result;
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -426,6 +427,26 @@ impl<T> AsOption<T> for Option<T> {
     }
 }
 
+impl<T: Clone> result::ToResult<T, ()> for Option<T> {
+    #[inline]
+    fn to_result(&self) -> result::Result<T, ()> {
+        match *self {
+            Some(ref x) => result::Ok(x.clone()),
+            None => result::Err(()),
+        }
+    }
+}
+
+impl<T> result::IntoResult<T, ()> for Option<T> {
+    #[inline]
+    fn into_result(self) -> result::Result<T, ()> {
+        match self {
+            Some(x) => result::Ok(x),
+            None => result::Err(()),
+        }
+    }
+}
+
 impl<T: Default> Option<T> {
     /// Returns the contained value or default (for this type)
     #[inline]
@@ -508,6 +529,8 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use result::{IntoResult, ToResult};
+    use result;
     use util;
 
     #[test]
@@ -775,5 +798,23 @@ mod tests {
 
         assert_eq!(some.as_option().unwrap(), &100);
         assert_eq!(none.as_option(), None);
+    }
+
+    #[test]
+    pub fn test_to_result() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.to_result(), result::Ok(100));
+        assert_eq!(none.to_result(), result::Err(()));
+    }
+
+    #[test]
+    pub fn test_into_result() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.into_result(), result::Ok(100));
+        assert_eq!(none.into_result(), result::Err(()));
     }
 }
