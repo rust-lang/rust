@@ -29,6 +29,8 @@ pub fn default_context(p: Path) -> BuildContext {
 pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
     BuildContext {
         context: Context {
+            cfgs: ~[],
+            rustc_flags: RustcFlags::default(),
             use_rust_path_hack: false,
             sysroot: p
         },
@@ -43,7 +45,6 @@ fn file_is_fresh(path: &str, in_hash: &str) -> bool {
 fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
     in_hash == digest_only_date(&Path(path))
 }
-
 
 pub fn new_workcache_context(p: &Path) -> workcache::Context {
     let db_file = p.push("rustpkg_db.json"); // ??? probably wrong
