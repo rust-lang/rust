@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags:-Z extra-debug-info
-// debugger:break zzz
+// debugger:rbreak zzz
 // debugger:run
 
 // debugger:finish

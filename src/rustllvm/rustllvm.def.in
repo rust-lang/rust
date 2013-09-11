@@ -611,6 +611,7 @@ LLVMDIBuilderCreateTemplateTypeParameter
 LLVMDIBuilderCreateOpDeref
 LLVMDIBuilderCreateOpPlus
 LLVMDIBuilderCreateComplexVariable
+LLVMDIBuilderCreateNameSpace
 LLVMSetUnnamedAddr
 LLVMRustAddPass
 LLVMRustAddAnalysisPasses

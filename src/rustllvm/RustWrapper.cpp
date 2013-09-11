@@ -727,9 +727,9 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateTemplateTypeParameter(
     LLVMValueRef Scope,
     const char* Name,
     LLVMValueRef Ty,
-    LLVMValueRef File = 0,
-    unsigned LineNo = 0,
-    unsigned ColumnNo = 0)
+    LLVMValueRef File,
+    unsigned LineNo,
+    unsigned ColumnNo)
 {
     return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope),
@@ -774,4 +774,18 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateComplexVariable(
         addr_ops,
         ArgNo
     ));
+}
+
+extern "C" LLVMValueRef LLVMDIBuilderCreateNameSpace(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef File,
+    unsigned LineNo)
+{
+    return wrap(Builder->createNameSpace(
+        unwrapDI<DIDescriptor>(Scope),
+        Name,
+        unwrapDI<DIFile>(File),
+        LineNo));
 }
