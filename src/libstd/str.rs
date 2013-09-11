@@ -3897,4 +3897,23 @@ mod bench {
             with_capacity(100);
         }
     }
+
+    #[bench]
+    fn bench_push_str(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        do bh.iter {
+            let mut r = ~"";
+            r.push_str(s);
+        }
+    }
+
+    #[bench]
+    fn bench_connect(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let sep = "→";
+        let v = [s, s, s, s, s, s, s, s, s, s];
+        do bh.iter {
+            assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
+        }
+    }
 }
