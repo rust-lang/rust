@@ -951,7 +951,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) {
     match blk.rules {
-      ast::UnsafeBlock => word_space(s, "unsafe"),
+      ast::UnsafeBlock(*) => word_space(s, "unsafe"),
       ast::DefaultBlock => ()
     }
     maybe_print_comment(s, blk.span.lo);

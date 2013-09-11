@@ -102,8 +102,10 @@ impl Visitor<()> for EffectCheckVisitor {
     fn visit_block(&mut self, block:&Block, _:()) {
 
             let old_unsafe_context = self.context.unsafe_context;
-            if block.rules == ast::UnsafeBlock &&
-                    self.context.unsafe_context == SafeContext {
+            let is_unsafe = match block.rules {
+                ast::UnsafeBlock(*) => true, ast::DefaultBlock => false
+            };
+            if is_unsafe && self.context.unsafe_context == SafeContext {
                 self.context.unsafe_context = UnsafeBlock(block.id)
             }
 
