@@ -187,12 +187,12 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
                                  -> Option<@str> {
     attrs.iter()
         .find(|at| name == at.name())
-        .chain(|at| at.value_str())
+        .and_then(|at| at.value_str())
 }
 
 pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
                                      -> Option<@str> {
-    items.rev_iter().find(|mi| name == mi.name()).chain(|i| i.value_str())
+    items.rev_iter().find(|mi| name == mi.name()).and_then(|i| i.value_str())
 }
 
 /* Higher-level applications */

@@ -745,10 +745,17 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
                           RegionParamNames(bound_lifetime_names.clone()));
 
     let input_tys = do decl.inputs.iter().enumerate().map |(i, a)| {
-        let expected_arg_ty = do expected_sig.chain_ref |e| {
-            // no guarantee that the correct number of expected args
-            // were supplied
-            if i < e.inputs.len() {Some(e.inputs[i])} else {None}
+        let expected_arg_ty = match expected_sig {
+            Some(ref e) => {
+                // no guarantee that the correct number of expected args
+                // were supplied
+                if i < e.inputs.len() {
+                    Some(e.inputs[i])
+                } else {
+                    None
+                }
+            }
+            None => None,
         };
         ty_of_arg(this, &rb, a, expected_arg_ty)
     }.collect();

@@ -232,7 +232,7 @@ impl CombineFieldsLatticeMethods for CombineFields {
             (&Some(_),       &None) => Ok((*a).clone()),
             (&None,          &Some(_)) => Ok((*b).clone()),
             (&Some(ref v_a), &Some(ref v_b)) => {
-                do lattice_op(self, v_a, v_b).chain |v| {
+                do lattice_op(self, v_a, v_b).and_then |v| {
                     Ok(Some(v))
                 }
             }

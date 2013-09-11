@@ -210,7 +210,7 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<ty::Disr> {
-    do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
+    do reader::maybe_get_doc(d, tag_disr_val).and_then |val_doc| {
         do reader::with_doc_data(val_doc) |data| { u64::parse_bytes(data, 10u) }
     }
 }
