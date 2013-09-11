@@ -17,6 +17,7 @@ use cmp::Eq;
 use either;
 use iter::Iterator;
 use option::{None, Option, Some, OptionIterator};
+use option;
 use vec;
 use vec::OwnedVector;
 use to_str::ToStr;
@@ -255,6 +256,36 @@ impl<T, E: Clone + ToStr> Result<T, E> {
     }
 }
 
+impl<T: Clone, E> option::ToOption<T> for Result<T, E> {
+    #[inline]
+    fn to_option(&self)-> Option<T> {
+        match *self {
+            Ok(ref t) => Some(t.clone()),
+            Err(_) => None,
+        }
+    }
+}
+
+impl<T, E> option::IntoOption<T> for Result<T, E> {
+    #[inline]
+    fn into_option(self)-> Option<T> {
+        match self {
+            Ok(t) => Some(t),
+            Err(_) => None,
+        }
+    }
+}
+
+impl<T, E> option::AsOption<T> for Result<T, E> {
+    #[inline]
+    fn as_option<'a>(&'a self)-> Option<&'a T> {
+        match *self {
+            Ok(ref t) => Some(t),
+            Err(_) => None,
+        }
+    }
+}
+
 #[inline]
 #[allow(missing_doc)]
 pub fn map_opt<T, U: ToStr, V>(o_t: &Option<T>,
@@ -336,6 +367,8 @@ mod tests {
 
     use either;
     use iter::range;
+    use option::{IntoOption, ToOption, AsOption};
+    use option;
     use str::OwnedStr;
     use vec::ImmutableVector;
 
@@ -459,5 +492,32 @@ mod tests {
         assert_eq!(fold_(functions.iter()
                         .map(|f| (*f)())),
                    Err(1));
+    }
+
+    #[test]
+    pub fn test_to_option() {
+        let ok: Result<int, int> = Ok(100);
+        let err: Result<int, int> = Err(404);
+
+        assert_eq!(ok.to_option(), option::Some(100));
+        assert_eq!(err.to_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_into_option() {
+        let ok: Result<int, int> = Ok(100);
+        let err: Result<int, int> = Err(404);
+
+        assert_eq!(ok.into_option(), option::Some(100));
+        assert_eq!(err.into_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_as_option() {
+        let ok: Result<int, int> = Ok(100);
+        let err: Result<int, int> = Err(404);
+
+        assert_eq!(ok.as_option().unwrap(), &100);
+        assert_eq!(err.as_option(), option::None);
     }
 }
