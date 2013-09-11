@@ -54,18 +54,6 @@ impl<L, R> Either<L, R> {
         }
     }
 
-    /// Converts a `Either` to a `Result`
-    ///
-    /// Converts an `Either` type to a `Result` type, making the "right" choice
-    /// an `Ok` result, and the "left" choice a `Err`
-    #[inline]
-    pub fn to_result(self) -> Result<R, L> {
-        match self {
-            Right(r) => result::Ok(r),
-            Left(l) => result::Err(l)
-        }
-    }
-
     /// Checks whether the given value is a `Left`
     #[inline]
     pub fn is_left(&self) -> bool {
@@ -147,6 +135,36 @@ impl<L, R> option::AsOption<R> for Either<L, R> {
     }
 }
 
+impl<L: Clone, R: Clone> result::ToResult<R, L> for Either<L, R> {
+    #[inline]
+    fn to_result(&self)-> result::Result<R, L> {
+        match *self {
+            Left(ref l) => result::Err(l.clone()),
+            Right(ref r) => result::Ok(r.clone()),
+        }
+    }
+}
+
+impl<L, R> result::IntoResult<R, L> for Either<L, R> {
+    #[inline]
+    fn into_result(self)-> result::Result<R, L> {
+        match self {
+            Left(l) => result::Err(l),
+            Right(r) => result::Ok(r),
+        }
+    }
+}
+
+impl<L, R> result::AsResult<R, L> for Either<L, R> {
+    #[inline]
+    fn as_result<'a>(&'a self) -> result::Result<&'a R, &'a L> {
+        match *self {
+            Left(ref l) => result::Err(l),
+            Right(ref r) => result::Ok(r),
+        }
+    }
+}
+
 /// An iterator yielding the `Left` values of its source
 pub type Lefts<L, R, Iter> = FilterMap<'static, Either<L, R>, L, Iter>;
 
@@ -200,6 +218,8 @@ mod tests {
 
     use option::{IntoOption, ToOption, AsOption};
     use option;
+    use result::{IntoResult, ToResult, AsResult};
+    use result;
 
     #[test]
     fn test_either_left() {
@@ -319,5 +339,35 @@ mod tests {
 
         assert_eq!(right.as_option().unwrap(), &100);
         assert_eq!(left.as_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_to_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_result(), result::Ok(100));
+        assert_eq!(left.to_result(), result::Err(404));
+    }
+
+    #[test]
+    pub fn test_into_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_result(), result::Ok(100));
+        assert_eq!(left.into_result(), result::Err(404));
+    }
+
+    #[test]
+    pub fn test_as_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        let x = 100;
+        assert_eq!(right.as_result(), result::Ok(&x));
+
+        let x = 404;
+        assert_eq!(left.as_result(), result::Err(&x));
     }
 }
