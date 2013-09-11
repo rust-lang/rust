@@ -43,8 +43,9 @@ use task;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use rt::test::{spawntask,
                             next_test_ip4,
-                            run_in_newsched_task};
+                            run_in_mt_newsched_task};
 #[cfg(test)] use iter::{Iterator, range};
+#[cfg(test)] use rt::comm::oneshot;
 
 // XXX we should not be calling uvll functions in here.
 
@@ -377,7 +378,7 @@ mod test_remote {
 
     #[test]
     fn test_uv_remote() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut tube = Tube::new();
             let tube_clone = tube.clone();
             let remote_cell = Cell::new_empty();
@@ -719,7 +720,9 @@ impl RtioSocket for UvTcpAcceptor {
 
 impl RtioTcpAcceptor for UvTcpAcceptor {
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
-        self.incoming.recv()
+        do self.home_for_io |self_| {
+            self_.incoming.recv()
+        }
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
@@ -1301,7 +1304,7 @@ impl RtioFileStream for UvFileStream {
 
 #[test]
 fn test_simple_io_no_connect() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         unsafe {
             let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let addr = next_test_ip4();
@@ -1313,7 +1316,7 @@ fn test_simple_io_no_connect() {
 
 #[test]
 fn test_simple_udp_io_bind_only() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         unsafe {
             let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let addr = next_test_ip4();
@@ -1477,8 +1480,11 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
 
 #[test]
 fn test_simple_tcp_server_and_client() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let addr = next_test_ip4();
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
 
         // Start the server first so it's listening when we connect
         do spawntask {
@@ -1486,6 +1492,7 @@ fn test_simple_tcp_server_and_client() {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let listener = (*io).tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
+                chan.take().send(());
                 let mut stream = acceptor.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
@@ -1499,6 +1506,7 @@ fn test_simple_tcp_server_and_client() {
 
         do spawntask {
             unsafe {
+                port.take().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1591,14 +1599,18 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
 
 #[test]
 fn test_simple_udp_server_and_client() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_socket = (*io).udp_bind(server_addr).unwrap();
+                chan.take().send(());
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
@@ -1614,6 +1626,7 @@ fn test_simple_udp_server_and_client() {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_socket = (*io).udp_bind(client_addr).unwrap();
+                port.take().recv();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
         }
@@ -1622,13 +1635,17 @@ fn test_simple_udp_server_and_client() {
 
 #[test] #[ignore(reason = "busted")]
 fn test_read_and_block() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let addr = next_test_ip4();
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
 
         do spawntask {
             let io: *mut IoFactoryObject = unsafe { Local::unsafe_borrow() };
             let listener = unsafe { (*io).tcp_bind(addr).unwrap() };
             let mut acceptor = listener.listen().unwrap();
+            chan.take().send(());
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
 
@@ -1663,6 +1680,7 @@ fn test_read_and_block() {
 
         do spawntask {
             unsafe {
+                port.take().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1677,15 +1695,19 @@ fn test_read_and_block() {
 
 #[test]
 fn test_read_read_read() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let addr = next_test_ip4();
         static MAX: uint = 500000;
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let listener = (*io).tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
+                chan.take().send(());
                 let mut stream = acceptor.accept().unwrap();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
@@ -1698,6 +1720,7 @@ fn test_read_read_read() {
 
         do spawntask {
             unsafe {
+                port.take().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
@@ -1719,14 +1742,18 @@ fn test_read_read_read() {
 #[test]
 #[ignore(cfg(windows))] // FIXME #8816
 fn test_udp_twice() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
+        let (port, chan) = oneshot();
+        let port = Cell::new(port);
+        let chan = Cell::new(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client = (*io).udp_bind(client_addr).unwrap();
+                port.take().recv();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
             }
@@ -1736,6 +1763,7 @@ fn test_udp_twice() {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server = (*io).udp_bind(server_addr).unwrap();
+                chan.take().send(());
                 let mut buf1 = [0];
                 let mut buf2 = [0];
                 let (nread1, src1) = server.recvfrom(buf1).unwrap();
@@ -1753,18 +1781,27 @@ fn test_udp_twice() {
 
 #[test]
 fn test_udp_many_read() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let server_out_addr = next_test_ip4();
         let server_in_addr = next_test_ip4();
         let client_out_addr = next_test_ip4();
         let client_in_addr = next_test_ip4();
         static MAX: uint = 500_000;
 
+        let (p1, c1) = oneshot();
+        let (p2, c2) = oneshot();
+
+        let first = Cell::new((p1, c2));
+        let second = Cell::new((p2, c1));
+
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
                 let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
+                let (port, chan) = first.take();
+                chan.send(());
+                port.recv();
                 let msg = [1, .. 2048];
                 let mut total_bytes_sent = 0;
                 let mut buf = [1];
@@ -1788,6 +1825,9 @@ fn test_udp_many_read() {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
                 let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
+                let (port, chan) = second.take();
+                port.recv();
+                chan.send(());
                 let mut total_bytes_recv = 0;
                 let mut buf = [0, .. 2048];
                 while total_bytes_recv < MAX {
@@ -1812,7 +1852,7 @@ fn test_udp_many_read() {
 
 #[test]
 fn test_timer_sleep_simple() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         unsafe {
             let io: *mut IoFactoryObject = Local::unsafe_borrow();
             let timer = (*io).timer_init();
@@ -1854,7 +1894,7 @@ fn file_test_uvio_full_simple_impl() {
 #[test]
 #[ignore(cfg(windows))] // FIXME #8816
 fn file_test_uvio_full_simple() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         file_test_uvio_full_simple_impl();
     }
 }
@@ -1874,7 +1914,7 @@ fn uvio_naive_print(input: &str) {
 
 #[test]
 fn file_test_uvio_write_to_stdout() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         uvio_naive_print("jubilation\n");
     }
 }
