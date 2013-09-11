@@ -451,7 +451,7 @@ trait then {
 impl then for ures {
     fn then<T:Clone>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
-        self.chain(|_i| f())
+        self.and_then(|_i| f())
     }
 }
 
@@ -474,7 +474,7 @@ trait CresCompare<T> {
 
 impl<T:Clone + Eq> CresCompare<T> for cres<T> {
     fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T> {
-        do (*self).clone().chain |s| {
+        do (*self).clone().and_then |s| {
             if s == t {
                 (*self).clone()
             } else {

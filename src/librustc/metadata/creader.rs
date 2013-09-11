@@ -184,7 +184,7 @@ fn visit_item(e: &Env, i: @ast::item) {
             ast::named => {
                 let link_name = i.attrs.iter()
                     .find(|at| "link_name" == at.name())
-                    .chain(|at| at.value_str());
+                    .and_then(|at| at.value_str());
 
                 let foreign_name = match link_name {
                         Some(nn) => {

@@ -173,8 +173,20 @@ impl<T, E: ToStr> Result<T, E> {
 
     /// Call a method based on a previous result
     ///
+    /// If `self` is `Ok`, then `res` it is returned. If `self` is `Err`,
+    /// then `self` is returned.
+    #[inline]
+    pub fn and(self, res: Result<T, E>) -> Result<T, E> {
+        match self {
+            Ok(_) => res,
+            Err(_) => self,
+        }
+    }
+
+    /// Call a method based on a previous result
+    ///
     /// If `self` is `Ok` then the value is extracted and passed to `op`
-    /// whereupon `op`s result is returned. if `self` is `Err` then it is
+    /// whereupon `op`s result is returned. If `self` is `Err` then it is
     /// immediately returned. This function can be used to compose the results
     /// of two functions.
     ///
@@ -184,10 +196,22 @@ impl<T, E: ToStr> Result<T, E> {
     ///         Ok(parse_bytes(buf))
     ///     };
     #[inline]
-    pub fn chain<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
+    pub fn and_then<U>(self, op: &fn(T) -> Result<U, E>) -> Result<U, E> {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
+        }
+    }
+
+    /// Call a method based on a previous result
+    ///
+    /// If `self` is `Ok`, then `self` is returned. If `self` is `Err`
+    /// then `res` is returned.
+    #[inline]
+    pub fn or(self, res: Result<T, E>) -> Result<T, E> {
+        match self {
+            Ok(_) => self,
+            Err(_) => res,
         }
     }
 
@@ -198,7 +222,7 @@ impl<T, E: ToStr> Result<T, E> {
     /// immediately returned.  This function can be used to pass through a
     /// successful result while handling an error.
     #[inline]
-    pub fn chain_err<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
+    pub fn or_else<F>(self, op: &fn(E) -> Result<T, F>) -> Result<T, F> {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -430,21 +454,42 @@ mod tests {
     use vec::ImmutableVector;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
-
-    pub fn op2(i: int) -> Result<uint, ~str> {
-        Ok(i as uint + 1u)
-    }
-
-    pub fn op3() -> Result<int, ~str> { Err(~"sadface") }
+    pub fn op2() -> Result<int, ~str> { Err(~"sadface") }
 
     #[test]
-    pub fn chain_success() {
-        assert_eq!(op1().chain(op2).unwrap(), 667u);
+    pub fn test_and() {
+        assert_eq!(op1().and(Ok(667)).unwrap(), 667);
+        assert_eq!(op1().and(Err(~"bad")).unwrap_err(), ~"bad");
+
+        assert_eq!(op2().and(Ok(667)).unwrap_err(), ~"sadface");
+        assert_eq!(op2().and(Err(~"bad")).unwrap_err(), ~"sadface");
     }
 
     #[test]
-    pub fn chain_failure() {
-        assert_eq!(op3().chain( op2).unwrap_err(), ~"sadface");
+    pub fn test_and_then() {
+        assert_eq!(op1().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap(), 667);
+        assert_eq!(op1().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"bad");
+
+        assert_eq!(op2().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap_err(), ~"sadface");
+        assert_eq!(op2().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"sadface");
+    }
+
+    #[test]
+    pub fn test_or() {
+        assert_eq!(op1().or(Ok(667)).unwrap(), 666);
+        assert_eq!(op1().or(Err(~"bad")).unwrap(), 666);
+
+        assert_eq!(op2().or(Ok(667)).unwrap(), 667);
+        assert_eq!(op2().or(Err(~"bad")).unwrap_err(), ~"bad");
+    }
+
+    #[test]
+    pub fn test_or_else() {
+        assert_eq!(op1().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 666);
+        assert_eq!(op1().or_else(|e| Err::<int, ~str>(e + "!")).unwrap(), 666);
+
+        assert_eq!(op2().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 667);
+        assert_eq!(op2().or_else(|e| Err::<int, ~str>(e + "!")).unwrap_err(), ~"sadface!");
     }
 
     #[test]

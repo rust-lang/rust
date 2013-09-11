@@ -141,9 +141,9 @@ impl<T> Option<T> {
     /// Returns `None` if the option is `None`, otherwise calls and returns the
     /// value of `f`.
     #[inline]
-    pub fn and_then(self, f: &fn() -> Option<T>) -> Option<T> {
+    pub fn and_then<U>(self, f: &fn(T) -> Option<U>) -> Option<U> {
         match self {
-            Some(_) => f(),
+            Some(x) => f(x),
             None => None,
         }
     }
@@ -164,36 +164,6 @@ impl<T> Option<T> {
         match self {
             Some(_) => self,
             None => f(),
-        }
-    }
-
-    /// Update an optional value by optionally running its content through a
-    /// function that returns an option.
-    #[inline]
-    pub fn chain<U>(self, f: &fn(T) -> Option<U>) -> Option<U> {
-        match self {
-            Some(t) => f(t),
-            None => None
-        }
-    }
-
-    /// Update an optional value by optionally running its content by reference
-    /// through a function that returns an option.
-    #[inline]
-    pub fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
-        match *self {
-            Some(ref x) => f(x),
-            None => None
-        }
-    }
-
-    /// Update an optional value by optionally running its content by mut reference
-    /// through a function that returns an option.
-    #[inline]
-    pub fn chain_mut_ref<'a, U>(&'a mut self, f: &fn(x: &'a mut T) -> Option<U>) -> Option<U> {
-        match *self {
-            Some(ref mut x) => f(x),
-            None => None
         }
     }
 
@@ -637,12 +607,12 @@ mod tests {
     #[test]
     fn test_and_then() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.and_then(|| Some(2)), Some(2));
-        assert_eq!(x.and_then(|| None), None);
+        assert_eq!(x.and_then(|x| Some(x + 1)), Some(2));
+        assert_eq!(x.and_then(|_| None::<int>), None);
 
         let x: Option<int> = None;
-        assert_eq!(x.and_then(|| Some(2)), None);
-        assert_eq!(x.and_then(|| None), None);
+        assert_eq!(x.and_then(|x| Some(x + 1)), None);
+        assert_eq!(x.and_then(|_| None::<int>), None);
     }
 
     #[test]
