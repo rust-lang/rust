@@ -44,6 +44,7 @@ let unwrapped_msg = match msg {
 use clone::Clone;
 use cmp::{Eq,Ord};
 use default::Default;
+use either;
 use util;
 use num::Zero;
 use iter;
@@ -447,6 +448,26 @@ impl<T> result::IntoResult<T, ()> for Option<T> {
     }
 }
 
+impl<T: Clone> either::ToEither<(), T> for Option<T> {
+    #[inline]
+    fn to_either(&self) -> either::Either<(), T> {
+        match *self {
+            Some(ref x) => either::Right(x.clone()),
+            None => either::Left(()),
+        }
+    }
+}
+
+impl<T> either::IntoEither<(), T> for Option<T> {
+    #[inline]
+    fn into_either(self) -> either::Either<(), T> {
+        match self {
+            Some(x) => either::Right(x),
+            None => either::Left(()),
+        }
+    }
+}
+
 impl<T: Default> Option<T> {
     /// Returns the contained value or default (for this type)
     #[inline]
@@ -529,6 +550,9 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use either::{IntoEither, ToEither};
+    use either;
     use result::{IntoResult, ToResult};
     use result;
     use util;
@@ -816,5 +840,23 @@ mod tests {
 
         assert_eq!(some.into_result(), result::Ok(100));
         assert_eq!(none.into_result(), result::Err(()));
+    }
+
+    #[test]
+    pub fn test_to_either() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.to_either(), either::Right(100));
+        assert_eq!(none.to_either(), either::Left(()));
+    }
+
+    #[test]
+    pub fn test_into_either() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.into_either(), either::Right(100));
+        assert_eq!(none.into_either(), either::Left(()));
     }
 }
