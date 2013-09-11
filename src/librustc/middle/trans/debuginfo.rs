@@ -99,8 +99,8 @@ pub struct CrateDebugContext {
     priv current_debug_location: DebugLocation,
     priv created_files: HashMap<~str, DIFile>,
     priv created_types: HashMap<uint, DIType>,
-    priv local_namespace_map: HashMap<ast::NodeId, @NamespaceTree>,
-    priv extern_namespaces: HashMap<~[ast::Ident], @NamespaceTree>,
+    priv local_namespace_map: HashMap<ast::NodeId, @NamespaceTreeNode>,
+    priv extern_namespaces: HashMap<~[ast::Ident], @NamespaceTreeNode>,
 }
 
 impl CrateDebugContext {
@@ -2369,13 +2369,13 @@ fn populate_scope_map(cx: &mut CrateContext,
 // Namespace Handling
 //=-------------------------------------------------------------------------------------------------
 
-struct NamespaceTree {
+struct NamespaceTreeNode {
     ident: ast::Ident,
     scope: DIScope,
-    parent: Option<@NamespaceTree>,
+    parent: Option<@NamespaceTreeNode>,
 }
 
-impl NamespaceTree {
+impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
         let mut name = ~"_ZN";
         fill_nested(self, &mut name);
@@ -2385,7 +2385,7 @@ impl NamespaceTree {
 
         return name;
 
-        fn fill_nested(node: &NamespaceTree, output: &mut ~str) {
+        fn fill_nested(node: &NamespaceTreeNode, output: &mut ~str) {
             match node.parent {
                 Some(parent) => {
                     fill_nested(parent, output);
@@ -2400,7 +2400,7 @@ impl NamespaceTree {
 
 fn namespace_for_external_item(cx: &mut CrateContext,
                                item_path: &ast_map::path)
-                            -> @NamespaceTree {
+                            -> @NamespaceTreeNode {
     if item_path.len() < 2 {
         cx.sess.bug(fmt!("debuginfo::namespace_for_external_item() - Invalid item_path: %s",
             ast_map::path_to_str(*item_path, token::get_ident_interner())));
@@ -2408,7 +2408,7 @@ fn namespace_for_external_item(cx: &mut CrateContext,
 
     let path_excluding_item = item_path.slice_to(item_path.len() - 1);
     let mut current_key = vec::with_capacity(path_excluding_item.len());
-    let mut parent_node: Option<@NamespaceTree> = None;
+    let mut parent_node: Option<@NamespaceTreeNode> = None;
     let last_index = path_excluding_item.len() - 1;
 
     for (i, &path_element) in path_excluding_item.iter().enumerate() {
@@ -2442,7 +2442,7 @@ fn namespace_for_external_item(cx: &mut CrateContext,
                     }
                 };
 
-                let node = @NamespaceTree {
+                let node = @NamespaceTreeNode {
                     ident: ident,
                     scope: namespace_metadata,
                     parent: parent_node,
@@ -2466,7 +2466,7 @@ fn namespace_for_external_item(cx: &mut CrateContext,
 
 struct NamespaceVisitor<'self> {
     module_ident: ast::Ident,
-    scope_stack: ~[@NamespaceTree],
+    scope_stack: ~[@NamespaceTreeNode],
     crate_context: &'self mut CrateContext,
 }
 
@@ -2484,7 +2484,7 @@ impl<'self> NamespaceVisitor<'self> {
 
     fn new_function_visitor<'a>(cx: &'a mut CrateContext,
                                 function_name: &str,
-                                parent_node: Option<@NamespaceTree>,
+                                parent_node: Option<@NamespaceTreeNode>,
                                 file_metadata: DIFile,
                                 span: Span)
                              -> NamespaceVisitor<'a> {
@@ -2507,7 +2507,7 @@ impl<'self> NamespaceVisitor<'self> {
             }
         };
 
-        let function_node = @NamespaceTree {
+        let function_node = @NamespaceTreeNode {
             scope: namespace_metadata,
             ident: companion_ident,
             parent: parent_node,
@@ -2552,7 +2552,7 @@ impl<'self> visit::Visitor<()> for NamespaceVisitor<'self> {
             }
         };
 
-        let this_node = @NamespaceTree {
+        let this_node = @NamespaceTreeNode {
             scope: namespace_metadata,
             ident: self.module_ident,
             parent: parent_node,
