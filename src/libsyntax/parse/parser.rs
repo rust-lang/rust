@@ -1792,7 +1792,7 @@ impl Parser {
         } else if self.eat_keyword(keywords::Match) {
             return self.parse_match_expr();
         } else if self.eat_keyword(keywords::Unsafe) {
-            return self.parse_block_expr(lo, UnsafeBlock);
+            return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();

@@ -1131,8 +1131,11 @@ impl Visitor<@mut Context> for UnusedUnsafeLintVisitor {
     fn visit_expr(&mut self, e:@ast::Expr, cx:@mut Context) {
 
             match e.node {
-                ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock => {
-                    if !cx.tcx.used_unsafe.contains(&blk.id) {
+                // Don't warn about generated blocks, that'll just pollute the
+                // output.
+                ast::ExprBlock(ref blk) => {
+                    if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
+                       !cx.tcx.used_unsafe.contains(&blk.id) {
                         cx.span_lint(unused_unsafe, blk.span,
                                      "unnecessary `unsafe` block");
                     }

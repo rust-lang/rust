@@ -479,7 +479,13 @@ pub struct Field {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum BlockCheckMode {
     DefaultBlock,
-    UnsafeBlock,
+    UnsafeBlock(UnsafeSource),
+}
+
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+pub enum UnsafeSource {
+    CompilerGenerated,
+    UserProvided,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]

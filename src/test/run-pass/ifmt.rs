@@ -10,6 +10,8 @@
 
 // xfail-fast: check-fast screws up repr paths
 
+#[deny(warnings)];
+
 use std::fmt;
 
 struct A;
@@ -226,6 +228,13 @@ pub fn main() {
     let a = ~3;
     format!("{:?}", a);
     format!("{:?}", a);
+
+    // make sure that format! doesn't cause spurious unused-unsafe warnings when
+    // it's inside of an outer unsafe block
+    unsafe {
+        let a: int = ::std::cast::transmute(3u);
+        format!("{}", a);
+    }
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
