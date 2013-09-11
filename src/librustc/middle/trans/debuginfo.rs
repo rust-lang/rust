@@ -60,7 +60,7 @@ use middle::trans::adt;
 use middle::trans;
 use middle::ty;
 use middle::pat_util;
-use util::ppaux::ty_to_str;
+use util::ppaux;
 
 use std::c_str::ToCStr;
 use std::hashmap::HashMap;
@@ -742,7 +742,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                                                           codemap::dummy_sp());
 
             // Add self type name to <...> clause of function name
-            let actual_self_type_name = ty_to_str(cx.tcx, actual_self_type);
+            let actual_self_type_name = ppaux::ty_to_str(cx.tcx, actual_self_type);
             name_to_append_suffix_to.push_str(actual_self_type_name);
             if generics.is_type_parameterized() {
                 name_to_append_suffix_to.push_str(",");
@@ -779,7 +779,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
 
             // Add actual type name to <...> clause of function name
-            let actual_type_name = ty_to_str(cx.tcx, actual_type);
+            let actual_type_name = ppaux::ty_to_str(cx.tcx, actual_type);
             name_to_append_suffix_to.push_str(actual_type_name);
 
             if index != generics.ty_params.len() - 1 {
@@ -1039,7 +1039,7 @@ fn pointer_type_metadata(cx: &mut CrateContext,
                       -> DIType {
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
-    let name = ty_to_str(cx.tcx, pointer_type);
+    let name = ppaux::ty_to_str(cx.tcx, pointer_type);
     let ptr_metadata = do name.with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
@@ -1059,7 +1059,7 @@ fn struct_metadata(cx: &mut CrateContext,
                    substs: &ty::substs,
                    span: Span)
                 -> DICompositeType {
-    let struct_name = ty_to_str(cx.tcx, struct_type);
+    let struct_name = ppaux::ty_to_str(cx.tcx, struct_type);
     debug!("struct_metadata: %s", struct_name);
 
     let struct_llvm_type = type_of::type_of(cx, struct_type);
@@ -1098,7 +1098,7 @@ fn tuple_metadata(cx: &mut CrateContext,
                   component_types: &[ty::t],
                   span: Span)
                -> DICompositeType {
-    let tuple_name = ty_to_str(cx.tcx, tuple_type);
+    let tuple_name = ppaux::ty_to_str(cx.tcx, tuple_type);
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
     let component_descriptions = do component_types.map |&component_type| {
@@ -1127,7 +1127,7 @@ fn enum_metadata(cx: &mut CrateContext,
                  enum_def_id: ast::DefId,
                  span: Span)
               -> DIType {
-    let enum_name = ty_to_str(cx.tcx, enum_type);
+    let enum_name = ppaux::ty_to_str(cx.tcx, enum_type);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx,
                                                                               enum_def_id,
@@ -1502,7 +1502,7 @@ fn vec_metadata(cx: &mut CrateContext,
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
     let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
-    let vec_type_name: &str = fmt!("[%s]", ty_to_str(cx.tcx, element_type));
+    let vec_type_name: &str = fmt!("[%s]", ppaux::ty_to_str(cx.tcx, element_type));
 
     let member_llvm_types = vec_llvm_type.field_types();
 
@@ -1556,7 +1556,7 @@ fn boxed_vec_metadata(cx: &mut CrateContext,
 
     let element_llvm_type = type_of::type_of(cx, element_type);
     let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
-    let vec_type_name: &str = fmt!("[%s]", ty_to_str(cx.tcx, element_type));
+    let vec_type_name: &str = fmt!("[%s]", ppaux::ty_to_str(cx.tcx, element_type));
     let vec_metadata = vec_metadata(cx, element_type, span);
 
     return boxed_type_metadata(
@@ -1576,7 +1576,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
     debug!("vec_slice_metadata: %?", ty::get(vec_type));
 
     let slice_llvm_type = type_of::type_of(cx, vec_type);
-    let slice_type_name = ty_to_str(cx.tcx, vec_type);
+    let slice_type_name = ppaux::ty_to_str(cx.tcx, vec_type);
 
     let member_llvm_types = slice_llvm_type.field_types();
     assert!(slice_layout_is_correct(cx, member_llvm_types, element_type));
@@ -1648,10 +1648,47 @@ fn subroutine_type_metadata(cx: &mut CrateContext,
     };
 }
 
+fn trait_metadata(cx: &mut CrateContext,
+                  def_id: ast::DefId,
+                  trait_type: ty::t,
+                  substs: &ty::substs,
+                  trait_store: ty::TraitStore,
+                  mutability: ast::Mutability,
+                  builtinBounds: &ty::BuiltinBounds,
+                  usage_site_span: Span)
+               -> DIType {
+    // The implementation provided here is a stub. It makes sure that the trait type is
+    // assigned the correct name, size, namespace, and source location. But it does not describe
+    // the trait's methods.
+    let path = ty::item_path(cx.tcx, def_id);
+    let ident = path.last().ident();
+    let name = ppaux::trait_store_to_str(cx.tcx, trait_store)
+             + ppaux::mutability_to_str(mutability)
+             + token::ident_to_str(&ident);
+    // Add type and region parameters
+    let name = ppaux::parameterized(cx.tcx, name, &substs.regions, substs.tps);
+
+    let (containing_scope,
+         definition_span) = get_namespace_and_span_for_item(cx, def_id, usage_site_span);
+
+    let file_name = span_start(cx, definition_span).file.name;
+    let file_metadata = file_metadata(cx, file_name);
+
+    let trait_llvm_type = type_of::type_of(cx, trait_type);
+
+    return composite_type_metadata(cx,
+                                   trait_llvm_type,
+                                   name,
+                                   [],
+                                   containing_scope,
+                                   file_metadata,
+                                   definition_span);
+}
+
 fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
     debug!("unimplemented_type_metadata: %?", ty::get(t));
 
-    let name = ty_to_str(cx.tcx, t);
+    let name = ppaux::ty_to_str(cx.tcx, t);
     let metadata = do fmt!("NYI<%s>", name).with_c_str |name| {
         unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
@@ -1681,7 +1718,7 @@ fn type_metadata(cx: &mut CrateContext,
                                       type_in_box: ty::t)
                                    -> DIType {
 
-        let content_type_name: &str = ty_to_str(cx.tcx, type_in_box);
+        let content_type_name: &str = ppaux::ty_to_str(cx.tcx, type_in_box);
         let content_llvm_type = type_of::type_of(cx, type_in_box);
         let content_type_metadata = type_metadata(
             cx,
@@ -1773,9 +1810,8 @@ fn type_metadata(cx: &mut CrateContext,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
         },
-        ty::ty_trait(_did, ref _substs, ref _vstore, _, _bounds) => {
-            cx.sess.span_note(usage_site_span, "debuginfo for trait NYI");
-            unimplemented_type_metadata(cx, t)
+        ty::ty_trait(def_id, ref substs, trait_store, mutability, ref bounds) => {
+            trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds, usage_site_span)
         },
         ty::ty_struct(def_id, ref substs) => {
             struct_metadata(cx, t, def_id, substs, usage_site_span)
