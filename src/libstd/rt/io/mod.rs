@@ -295,6 +295,9 @@ mod support;
 /// Basic Timer
 pub mod timer;
 
+/// Buffered I/O wrappers
+pub mod buffered;
+
 /// Thread-blocking implementations
 pub mod native {
     /// Posix file I/O
