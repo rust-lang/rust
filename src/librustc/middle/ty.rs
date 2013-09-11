@@ -156,7 +156,7 @@ pub enum SelfMode {
 }
 
 pub struct field_ty {
-    ident: Ident,
+    name: Name,
     id: DefId,
     vis: ast::visibility,
 }
@@ -4227,15 +4227,15 @@ fn struct_field_tys(fields: &[@struct_field]) -> ~[field_ty] {
         match field.node.kind {
             named_field(ident, visibility) => {
                 field_ty {
-                    ident: ident,
+                    name: ident.name,
                     id: ast_util::local_def(field.node.id),
                     vis: visibility,
                 }
             }
             unnamed_field => {
                 field_ty {
-                    ident:
-                        syntax::parse::token::special_idents::unnamed_field,
+                    name:
+                        syntax::parse::token::special_idents::unnamed_field.name,
                     id: ast_util::local_def(field.node.id),
                     vis: ast::public,
                 }
@@ -4250,7 +4250,8 @@ pub fn struct_fields(cx: ctxt, did: ast::DefId, substs: &substs)
                      -> ~[field] {
     do lookup_struct_fields(cx, did).map |f| {
        field {
-            ident: f.ident,
+            // FIXME #6993: change type of field to Name and get rid of new()
+            ident: ast::Ident::new(f.name),
             mt: mt {
                 ty: lookup_field_type(cx, did, f.id, substs),
                 mutbl: MutImmutable
