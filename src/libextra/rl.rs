@@ -74,14 +74,16 @@ pub fn set_history_max_len(len: int) -> bool {
 /// Save line history to a file
 pub fn save_history(file: &str) -> bool {
     do file.with_c_str |buf| {
-        (locked!(rustrt::linenoiseHistorySave(buf))) == 1 as c_int
+        // 0 on success, -1 on failure
+        (locked!(rustrt::linenoiseHistorySave(buf))) == 0 as c_int
     }
 }
 
 /// Load line history from a file
 pub fn load_history(file: &str) -> bool {
     do file.with_c_str |buf| {
-        (locked!(rustrt::linenoiseHistoryLoad(buf))) == 1 as c_int
+        // 0 on success, -1 on failure
+        (locked!(rustrt::linenoiseHistoryLoad(buf))) == 0 as c_int
     }
 }
 
@@ -107,29 +109,35 @@ pub fn read(prompt: &str) -> Option<~str> {
 
 pub type CompletionCb = @fn(~str, @fn(~str));
 
-static complete_key: local_data::Key<@CompletionCb> = &local_data::Key;
+static complete_key: local_data::Key<CompletionCb> = &local_data::Key;
 
-/// Bind to the main completion callback.
+/// Bind to the main completion callback in the current task.
 ///
 /// The completion callback should not call any `extra::rl` functions
 /// other than the closure that it receives as its second
 /// argument. Calling such a function will deadlock on the mutex used
 /// to ensure that the calls are thread-safe.
 pub fn complete(cb: CompletionCb) {
-    local_data::set(complete_key, @cb);
+    local_data::set(complete_key, cb);
 
-    extern fn callback(line: *c_char, completions: *()) {
-        do local_data::get(complete_key) |cb| {
-            let cb = **cb.unwrap();
-
-            unsafe {
-                do cb(str::raw::from_c_str(line)) |suggestion| {
-                    do suggestion.with_c_str |buf| {
-                        // This isn't locked, because `callback` gets
-                        // called inside `rustrt::linenoise`, which
-                        // *is* already inside the mutex, so
-                        // re-locking would be a deadlock.
-                        rustrt::linenoiseAddCompletion(completions, buf);
+    extern fn callback(c_line: *c_char, completions: *()) {
+        do local_data::get(complete_key) |opt_cb| {
+            // only fetch completions if a completion handler has been
+            // registered in the current task.
+            match opt_cb {
+                None => {},
+                Some(cb) => {
+                    let line = unsafe { str::raw::from_c_str(c_line) };
+                    do (*cb)(line) |suggestion| {
+                        do suggestion.with_c_str |buf| {
+                            // This isn't locked, because `callback` gets
+                            // called inside `rustrt::linenoise`, which
+                            // *is* already inside the mutex, so
+                            // re-locking would be a deadlock.
+                            unsafe {
+                                rustrt::linenoiseAddCompletion(completions, buf);
+                            }
+                        }
                     }
                 }
             }
