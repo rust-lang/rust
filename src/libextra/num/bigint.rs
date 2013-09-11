@@ -23,6 +23,7 @@ use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;
 use std::num;
 use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::rand::{Rng, RngUtil};
 use std::str;
 use std::uint;
 use std::vec;
@@ -1088,6 +1089,53 @@ impl FromStrRadix for BigInt {
     }
 }
 
+trait RandBigInt {
+    /// Generate a random BigUint of the given bit size.
+    fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
+
+    /// Generate a random BigInt of the given bit size.
+    fn gen_bigint(&mut self, bit_size: uint) -> BigInt;
+}
+
+impl<R: Rng> RandBigInt for R {
+    /// Generate a random BigUint of the given bit size.
+    fn gen_biguint(&mut self, bit_size: uint) -> BigUint {
+        let (digits, rem) = bit_size.div_rem(&BigDigit::bits);
+        let mut data = vec::with_capacity(digits+1);
+        for _ in range(0, digits) {
+            data.push(self.gen());
+        }
+        if rem > 0 {
+            let final_digit: BigDigit = self.gen();
+            data.push(final_digit >> (BigDigit::bits - rem));
+        }
+        return BigUint::new(data);
+    }
+
+    /// Generate a random BigInt of the given bit size.
+    fn gen_bigint(&mut self, bit_size: uint) -> BigInt {
+        // Generate a random BigUint...
+        let biguint = self.gen_biguint(bit_size);
+        // ...and then randomly assign it a Sign...
+        let sign = if biguint.is_zero() {
+            // ...except that if the BigUint is zero, we need to try
+            // again with probability 0.5. This is because otherwise,
+            // the probability of generating a zero BigInt would be
+            // double that of any other number.
+            if self.gen() {
+                return self.gen_bigint(bit_size);
+            } else {
+                Zero
+            }
+        } else if self.gen() {
+            Plus
+        } else {
+            Minus
+        };
+        return BigInt::from_biguint(sign, biguint);
+    }
+}
+
 impl BigInt {
     /// Creates and initializes an BigInt.
     #[inline]
@@ -1149,6 +1197,7 @@ mod biguint_tests {
     use std::cmp::{Less, Equal, Greater};
     use std::int;
     use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::rand::{task_rng};
     use std::str;
     use std::uint;
     use std::vec;
@@ -1656,6 +1705,13 @@ mod biguint_tests {
         check(20, "2432902008176640000");
         check(30, "265252859812191058636308480000000");
     }
+
+    #[test]
+    fn test_rand() {
+        let mut rng = task_rng();
+        let _n: BigUint = rng.gen_biguint(137);
+        assert!(rng.gen_biguint(0).is_zero());
+    }
 }
 
 #[cfg(test)]
@@ -1665,6 +1721,7 @@ mod bigint_tests {
     use std::cmp::{Less, Equal, Greater};
     use std::int;
     use std::num::{IntConvertible, Zero, One, FromStrRadix};
+    use std::rand::{task_rng};
     use std::uint;
 
     #[test]
@@ -2084,6 +2141,13 @@ mod bigint_tests {
             BigInt::new(Plus,  ~[1, 1, 1]));
         let zero: BigInt = Zero::zero();
         assert_eq!(-zero, zero);
+    }
+
+    #[test]
+    fn test_rand() {
+        let mut rng = task_rng();
+        let _n: BigInt = rng.gen_bigint(137);
+        assert!(rng.gen_bigint(0).is_zero());
     }
 }
 
