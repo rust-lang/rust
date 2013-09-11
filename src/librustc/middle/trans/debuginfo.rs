@@ -67,6 +67,7 @@ use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::vec;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token;
@@ -1073,13 +1074,7 @@ fn enum_metadata(cx: &mut CrateContext,
         return composite_type_metadata(cx, Type::nil(), enum_name, [], [], [], span);
     }
 
-    // Prepare some data (llvm type, size, align, ...) about the discriminant. This data will be
-    // needed in all of the following cases.
-    let discriminant_llvm_type = Type::enum_discrim(cx);
-    let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
-
-    assert!(Type::enum_discrim(cx) == cx.int_type);
-    let discriminant_type_metadata = type_metadata(cx, ty::mk_int(), span);
+    let type_rep = adt::represent_type(cx, enum_type);
 
     let variants: &[@ty::VariantInfo] = *ty::enum_variants(cx.tcx, enum_def_id);
 
@@ -1103,32 +1098,39 @@ fn enum_metadata(cx: &mut CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let discriminant_type_metadata = do enum_name.with_c_str |enum_name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateEnumerationType(
-                DIB(cx),
-                file_metadata,
-                enum_name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(discriminant_size),
-                bytes_to_bits(discriminant_align),
-                create_DIArray(DIB(cx), enumerators_metadata),
-                discriminant_type_metadata)
+    let discriminant_type_metadata = |inttype| {
+        let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
+        let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
+        let discriminant_type_metadata = type_metadata(cx, match inttype {
+            attr::SignedInt(t) => ty::mk_mach_int(t),
+            attr::UnsignedInt(t) => ty::mk_mach_uint(t)
+        }, span);
+        do enum_name.with_c_str |enum_name| {
+            unsafe {
+                llvm::LLVMDIBuilderCreateEnumerationType(
+                    DIB(cx),
+                    file_metadata,
+                    enum_name,
+                    file_metadata,
+                    loc.line as c_uint,
+                    bytes_to_bits(discriminant_size),
+                    bytes_to_bits(discriminant_align),
+                    create_DIArray(DIB(cx), enumerators_metadata),
+                    discriminant_type_metadata)
+            }
         }
     };
 
-    let type_rep = adt::represent_type(cx, enum_type);
-
     match *type_rep {
-        adt::CEnum(*) => {
-            return discriminant_type_metadata;
+        adt::CEnum(inttype, _min, _max) => {
+            return discriminant_type_metadata(inttype);
         }
         adt::Univariant(ref struct_def, _) => {
             assert!(variants.len() == 1);
             return adt_struct_metadata(cx, struct_def, variants[0], None, span);
         }
-        adt::General(ref struct_defs) => {
+        adt::General(inttype, ref struct_defs) => {
+            let discriminant_type_metadata = discriminant_type_metadata(inttype);
             let variants_member_metadata: ~[DIDescriptor] = do struct_defs
                 .iter()
                 .enumerate()
