@@ -1,5 +1,5 @@
 trait X { }
-impl X for T;
+impl X for uint;
 
 trait Y { }
-impl Y for T;
+impl Y for uint;
