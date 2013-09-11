@@ -105,6 +105,24 @@ impl<L, R> Either<L, R> {
     }
 }
 
+/// A generic trait for converting a value to a `Either`
+pub trait ToEither<L, R> {
+    /// Convert to the `either` type
+    fn to_either(&self) -> Either<L, R>;
+}
+
+/// A generic trait for converting a value to a `Either`
+pub trait IntoEither<L, R> {
+    /// Convert to the `either` type
+    fn into_either(self) -> Either<L, R>;
+}
+
+/// A generic trait for converting a value to a `Either`
+pub trait AsEither<L, R> {
+    /// Convert to the `either` type
+    fn as_either<'a>(&'a self) -> Either<&'a L, &'a R>;
+}
+
 impl<L, R: Clone> option::ToOption<R> for Either<L, R> {
     #[inline]
     fn to_option(&self)-> option::Option<R> {
@@ -161,6 +179,23 @@ impl<L, R> result::AsResult<R, L> for Either<L, R> {
         match *self {
             Left(ref l) => result::Err(l),
             Right(ref r) => result::Ok(r),
+        }
+    }
+}
+
+impl<L: Clone, R: Clone> ToEither<L, R> for Either<L, R> {
+    fn to_either(&self) -> Either<L, R> { self.clone() }
+}
+
+impl<L, R> IntoEither<L, R> for Either<L, R> {
+    fn into_either(self) -> Either<L, R> { self }
+}
+
+impl<L, R> AsEither<L, R> for Either<L, R> {
+    fn as_either<'a>(&'a self) -> Either<&'a L, &'a R> {
+        match *self {
+            Left(ref l) => Left(l),
+            Right(ref r) => Right(r),
         }
     }
 }
@@ -369,5 +404,32 @@ mod tests {
 
         let x = 404;
         assert_eq!(left.as_result(), result::Err(&x));
+    }
+
+    #[test]
+    pub fn test_to_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_either(), Right(100));
+        assert_eq!(left.to_either(), Left(404));
+    }
+
+    #[test]
+    pub fn test_into_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_either(), Right(100));
+        assert_eq!(left.into_either(), Left(404));
+    }
+
+    #[test]
+    pub fn test_as_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.as_either().unwrap_right(), &100);
+        assert_eq!(left.as_either().unwrap_left(), &404);
     }
 }
