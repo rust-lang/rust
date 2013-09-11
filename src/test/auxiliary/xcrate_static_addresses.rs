@@ -10,9 +10,18 @@
 
 pub static global: int = 3;
 
+static global0: int = 4;
+pub static global2: &'static int = &global0;
+
 pub fn verify_same(a: &'static int) {
     let a = a as *int as uint;
     let b = &global as *int as uint;
+    assert_eq!(a, b);
+}
+
+pub fn verify_same2(a: &'static int) {
+    let a = a as *int as uint;
+    let b = global2 as *int as uint;
     assert_eq!(a, b);
 }
 
