@@ -2265,17 +2265,6 @@ pub fn print_fn_header_info(s: @ps,
     print_opt_sigil(s, opt_sigil);
 }
 
-pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> &'static str {
-    match opt_p {
-      None => "fn",
-      Some(p) => match p {
-          ast::BorrowedSigil => "fn&",
-          ast::OwnedSigil => "fn~",
-          ast::ManagedSigil => "fn@"
-      }
-    }
-}
-
 pub fn purity_to_str(p: ast::purity) -> &'static str {
     match p {
       ast::impure_fn => "impure",

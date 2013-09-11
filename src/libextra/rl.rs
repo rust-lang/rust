@@ -30,13 +30,11 @@ pub mod rustrt {
 
 macro_rules! locked {
     ($expr:expr) => {
-        unsafe {
-            // FIXME #9105: can't use a static mutex in pure Rust yet.
-            rustrt::rust_take_linenoise_lock();
-            let x = $expr;
-            rustrt::rust_drop_linenoise_lock();
-            x
-        }
+        // FIXME #9105: can't use a static mutex in pure Rust yet.
+        rustrt::rust_take_linenoise_lock();
+        let x = $expr;
+        rustrt::rust_drop_linenoise_lock();
+        x
     }
 }
 
@@ -88,9 +86,13 @@ pub fn read(prompt: &str) -> Option<~str> {
     }
 }
 
-pub type CompletionCb = @fn(~str, @fn(~str));
+/// The callback used to perform completions.
+pub trait CompletionCb {
+    /// Performs a completion.
+    fn complete(&self, line: ~str, suggestion: &fn(~str));
+}
 
-local_data_key!(complete_key: CompletionCb)
+local_data_key!(complete_key: @CompletionCb)
 
 /// Bind to the main completion callback in the current task.
 ///
@@ -98,25 +100,22 @@ local_data_key!(complete_key: CompletionCb)
 /// other than the closure that it receives as its second
 /// argument. Calling such a function will deadlock on the mutex used
 /// to ensure that the calls are thread-safe.
-pub fn complete(cb: CompletionCb) {
+pub unsafe fn complete(cb: @CompletionCb) {
     local_data::set(complete_key, cb);
 
-    extern fn callback(c_line: *c_char, completions: *()) {
+    extern fn callback(line: *c_char, completions: *()) {
         do local_data::get(complete_key) |opt_cb| {
             // only fetch completions if a completion handler has been
             // registered in the current task.
             match opt_cb {
-                None => {},
+                None => {}
                 Some(cb) => {
-                    let line = unsafe { str::raw::from_c_str(c_line) };
-                    do (*cb)(line) |suggestion| {
-                        do suggestion.with_c_str |buf| {
-                            // This isn't locked, because `callback` gets
-                            // called inside `rustrt::linenoise`, which
-                            // *is* already inside the mutex, so
-                            // re-locking would be a deadlock.
-                            unsafe {
-                                rustrt::linenoiseAddCompletion(completions, buf);
+                    unsafe {
+                        do cb.complete(str::raw::from_c_str(line))
+                                |suggestion| {
+                            do suggestion.with_c_str |buf| {
+                                rustrt::linenoiseAddCompletion(completions,
+                                                               buf);
                             }
                         }
                     }

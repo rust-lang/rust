@@ -1846,22 +1846,28 @@ pub mod fsync {
     pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: @fn(f: &t, Level) -> int,
+        fsync_fn: extern "Rust" fn(f: &t, Level) -> int,
     }
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
-    pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
+    pub fn FILE_res_sync(file: &FILERes,
+                         opt_level: Option<Level>,
                          blk: &fn(v: Res<*libc::FILE>)) {
         blk(Res::new(Arg {
-            val: file.f, opt_level: opt_level,
-            fsync_fn: |file, l| fsync_fd(fileno(*file), l)
+            val: file.f,
+            opt_level: opt_level,
+            fsync_fn: fsync_FILE,
         }));
 
         fn fileno(stream: *libc::FILE) -> libc::c_int {
             #[fixed_stack_segment]; #[inline(never)];
             unsafe { libc::fileno(stream) }
+        }
+
+        fn fsync_FILE(stream: &*libc::FILE, level: Level) -> int {
+            fsync_fd(fileno(*stream), level)
         }
     }
 
@@ -1869,8 +1875,9 @@ pub mod fsync {
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
                        blk: &fn(v: Res<fd_t>)) {
         blk(Res::new(Arg {
-            val: fd.fd, opt_level: opt_level,
-            fsync_fn: |fd, l| fsync_fd(*fd, l)
+            val: fd.fd,
+            opt_level: opt_level,
+            fsync_fn: fsync_fd_helper,
         }));
     }
 
@@ -1880,6 +1887,10 @@ pub mod fsync {
         os::fsync_fd(fd, level) as int
     }
 
+    fn fsync_fd_helper(fd_ptr: &libc::c_int, level: Level) -> int {
+        fsync_fd(*fd_ptr, level)
+    }
+
     // Type of objects that may want to fsync
     pub trait FSyncable { fn fsync(&self, l: Level) -> int; }
 
@@ -1887,9 +1898,14 @@ pub mod fsync {
     pub fn obj_sync(o: @FSyncable, opt_level: Option<Level>,
                     blk: &fn(v: Res<@FSyncable>)) {
         blk(Res::new(Arg {
-            val: o, opt_level: opt_level,
-            fsync_fn: |o, l| (*o).fsync(l)
+            val: o,
+            opt_level: opt_level,
+            fsync_fn: obj_fsync_fn,
         }));
+    }
+
+    fn obj_fsync_fn(o: &@FSyncable, level: Level) -> int {
+        (*o).fsync(level)
     }
 }
 
