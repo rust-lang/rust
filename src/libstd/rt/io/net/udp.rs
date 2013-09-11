@@ -112,10 +112,12 @@ mod test {
     use rt::io::net::ip::{Ipv4Addr, SocketAddr};
     use rt::io::*;
     use option::{Some, None};
+    use rt::comm::oneshot;
+    use cell::Cell;
 
     #[test]  #[ignore]
     fn bind_error() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let mut called = false;
             do io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
@@ -131,13 +133,17 @@ mod test {
 
     #[test]
     fn socket_smoke_test_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
+                        chan.take().send(());
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -154,7 +160,10 @@ mod test {
 
             do spawntask {
                 match UdpSocket::bind(client_ip) {
-                    Some(ref mut client) => client.sendto([99], server_ip),
+                    Some(ref mut client) => {
+                        port.take().recv();
+                        client.sendto([99], server_ip)
+                    }
                     None => fail!()
                 }
             }
@@ -163,13 +172,17 @@ mod test {
 
     #[test]
     fn socket_smoke_test_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
+                        chan.take().send(());
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -186,7 +199,10 @@ mod test {
 
             do spawntask {
                 match UdpSocket::bind(client_ip) {
-                    Some(ref mut client) => client.sendto([99], server_ip),
+                    Some(ref mut client) => {
+                        port.take().recv();
+                        client.sendto([99], server_ip)
+                    }
                     None => fail!()
                 }
             }
@@ -195,15 +211,19 @@ mod test {
 
     #[test]
     fn stream_smoke_test_ip4() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
                         let mut stream = server.connect(client_ip);
+                        chan.take().send(());
                         let mut buf = [0];
                         match stream.read(buf) {
                             Some(nread) => {
@@ -222,6 +242,7 @@ mod test {
                     Some(client) => {
                         let client = ~client;
                         let mut stream = client.connect(server_ip);
+                        port.take().recv();
                         stream.write([99]);
                     }
                     None => fail!()
@@ -232,15 +253,19 @@ mod test {
 
     #[test]
     fn stream_smoke_test_ip6() {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
+            let (port, chan) = oneshot();
+            let port = Cell::new(port);
+            let chan = Cell::new(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
                         let mut stream = server.connect(client_ip);
+                        chan.take().send(());
                         let mut buf = [0];
                         match stream.read(buf) {
                             Some(nread) => {
@@ -259,6 +284,7 @@ mod test {
                     Some(client) => {
                         let client = ~client;
                         let mut stream = client.connect(server_ip);
+                        port.take().recv();
                         stream.write([99]);
                     }
                     None => fail!()
@@ -269,7 +295,7 @@ mod test {
 
     #[cfg(test)]
     fn socket_name(addr: SocketAddr) {
-        do run_in_newsched_task {
+        do run_in_mt_newsched_task {
             do spawntask {
                 let server = UdpSocket::bind(addr);
 
