@@ -33,7 +33,7 @@ use rustc::metadata::filesearch::rust_path;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
-use messages::*;
+use messages::{error, warn, note};
 use path_util::build_pkg_id_in_workspace;
 use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
