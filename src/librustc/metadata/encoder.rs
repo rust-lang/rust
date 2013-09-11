@@ -307,6 +307,27 @@ fn encode_parent_item(ebml_w: &mut writer::Encoder, id: DefId) {
     ebml_w.end_tag();
 }
 
+fn encode_struct_fields(ecx: &EncodeContext,
+                             ebml_w: &mut writer::Encoder,
+                             def: @struct_def) {
+    for f in def.fields.iter() {
+        match f.node.kind {
+            named_field(ident, vis) => {
+               ebml_w.start_tag(tag_item_field);
+               encode_struct_field_family(ebml_w, vis);
+               encode_name(ecx, ebml_w, ident);
+               encode_def_id(ebml_w, local_def(f.node.id));
+               ebml_w.end_tag();
+            }
+            unnamed_field => {
+                ebml_w.start_tag(tag_item_unnamed_field);
+                encode_def_id(ebml_w, local_def(f.node.id));
+                ebml_w.end_tag();
+            }
+        }
+    }
+}
+
 fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
                             id: NodeId,
@@ -326,7 +347,10 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                           pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
-        encode_family(ebml_w, 'v');
+        match variant.node.kind {
+            ast::tuple_variant_kind(_) => encode_family(ebml_w, 'v'),
+            ast::struct_variant_kind(_) => encode_family(ebml_w, 'V')
+        }
         encode_name(ecx, ebml_w, variant.node.name);
         encode_parent_item(ebml_w, local_def(id));
         encode_visibility(ebml_w, variant.node.vis);
@@ -336,7 +360,14 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                     if args.len() > 0 && generics.ty_params.len() == 0 => {
                 encode_symbol(ecx, ebml_w, variant.node.id);
             }
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {}
+            ast::tuple_variant_kind(_) => {},
+            ast::struct_variant_kind(def) => {
+                let idx = encode_info_for_struct(ecx, ebml_w, path,
+                                         def.fields, index);
+                encode_struct_fields(ecx, ebml_w, def);
+                let bkts = create_index(idx);
+                encode_index(ebml_w, bkts, write_i64);
+            }
         }
         if vi[i].disr_val != disr_val {
             encode_disr_val(ecx, ebml_w, vi[i].disr_val);
@@ -986,22 +1017,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        for f in struct_def.fields.iter() {
-            match f.node.kind {
-                named_field(ident, vis) => {
-                   ebml_w.start_tag(tag_item_field);
-                   encode_struct_field_family(ebml_w, vis);
-                   encode_name(ecx, ebml_w, ident);
-                   encode_def_id(ebml_w, local_def(f.node.id));
-                   ebml_w.end_tag();
-                }
-                unnamed_field => {
-                    ebml_w.start_tag(tag_item_unnamed_field);
-                    encode_def_id(ebml_w, local_def(f.node.id));
-                    ebml_w.end_tag();
-                }
-            }
-        }
+        encode_struct_fields(ecx, ebml_w, struct_def);
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
