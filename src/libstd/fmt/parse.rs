@@ -554,7 +554,7 @@ impl<'self> Parser<'self> {
     /// characters.
     fn word(&mut self) -> &'self str {
         let start = match self.cur.clone().next() {
-            Some((pos, c)) if char::is_alphabetic(c) => {
+            Some((pos, c)) if char::is_XID_start(c) => {
                 self.cur.next();
                 pos
             }
@@ -563,7 +563,7 @@ impl<'self> Parser<'self> {
         let mut end;
         loop {
             match self.cur.clone().next() {
-                Some((_, c)) if char::is_alphanumeric(c) => {
+                Some((_, c)) if char::is_XID_continue(c) => {
                     self.cur.next();
                 }
                 Some((pos, _)) => { end = pos; break }
