@@ -77,6 +77,33 @@ impl PkgSrc {
         let dir: Path = match path {
             Some(d) => (*d).clone(),
             None => {
+                // See if any of the prefixes of this package ID form a valid package ID
+                // That is, is this a package ID that points into the middle of a workspace?
+                for (prefix, suffix) in id.prefixes_iter() {
+                    let package_id = PkgId::new(prefix.to_str());
+                    let path = workspace.push("src").push_rel(&package_id.path);
+                    debug!("in loop: checking if %s is a directory", path.to_str());
+                    if os::path_is_dir(&path) {
+                        let ps = PkgSrc::new(workspace.clone(),
+                                             use_rust_path_hack,
+                                             PkgId::new(prefix.to_str()));
+                        debug!("pkgsrc: Returning [%s|%s|%s]", workspace.to_str(),
+                               ps.start_dir.push_rel(&suffix).to_str(), ps.id.to_str());
+
+                        return PkgSrc {
+                            workspace: workspace,
+                            start_dir: ps.start_dir.push_rel(&suffix),
+                            id: ps.id,
+                            libs: ~[],
+                            mains: ~[],
+                            tests: ~[],
+                            benchs: ~[]
+                        }
+
+                    };
+                }
+
+                // Ok, no prefixes work, so try fetching from git
                 let mut ok_d = None;
                 for w in to_try.iter() {
                     debug!("Calling fetch_git on %s", w.to_str());
@@ -93,16 +120,17 @@ impl PkgSrc {
                         if use_rust_path_hack {
                             match find_dir_using_rust_path_hack(&id) {
                                 Some(d) => d,
-                                None => cond.raise((id.clone(),
-                                    ~"supplied path for package dir does not \
-                                     exist, and couldn't interpret it as a URL fragment"))
+                                None => {
+                                    cond.raise((id.clone(),
+                                        ~"supplied path for package dir does not \
+                                        exist, and couldn't interpret it as a URL fragment"))
+                                }
                             }
                         }
                         else {
                             cond.raise((id.clone(),
-                                        ~"supplied path for package dir does not \
-                                        exist, and couldn't interpret it as a URL fragment"))
-
+                                ~"supplied path for package dir does not \
+                                exist, and couldn't interpret it as a URL fragment"))
                         }
                     }
                 }
@@ -114,6 +142,9 @@ impl PkgSrc {
             cond.raise((id.clone(), ~"supplied path for package dir is a \
                                         non-directory"));
         }
+
+        debug!("pkgsrc: Returning {%s|%s|%s}", workspace.to_str(),
+               dir.to_str(), id.to_str());
 
         PkgSrc {
             workspace: workspace,

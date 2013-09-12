@@ -99,7 +99,35 @@ impl PkgId {
     /// True if the ID has multiple components
     pub fn is_complex(&self) -> bool {
         self.short_name != self.path.to_str()
-     }
+    }
+
+    pub fn prefixes_iter(&self) -> Prefixes {
+        Prefixes {
+            components: self.path.components().to_owned(),
+            remaining: ~[]
+        }
+    }
+
+}
+
+struct Prefixes {
+    priv components: ~[~str],
+    priv remaining: ~[~str]
+}
+
+impl Iterator<(Path, Path)> for Prefixes {
+    #[inline]
+    fn next(&mut self) -> Option<(Path, Path)> {
+        if self.components.len() <= 1 {
+            None
+        }
+        else {
+            let last = self.components.pop();
+            self.remaining.push(last);
+            // converting to str and then back is a little unfortunate
+            Some((Path(self.components.to_str()), Path(self.remaining.to_str())))
+        }
+    }
 }
 
 impl ToStr for PkgId {
@@ -119,3 +147,4 @@ pub fn hash(data: ~str) -> ~str {
     write(hasher, data);
     hasher.result_str()
 }
+
