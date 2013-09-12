@@ -3660,6 +3660,14 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn test_overflow_does_not_cause_segfault_managed() {
+        let mut v = ~[@1];
+        v.reserve(-1);
+        v.push(@2);
+    }
+
+    #[test]
     fn test_mut_split() {
         let mut values = [1u8,2,3,4,5];
         {
