@@ -16,6 +16,7 @@ macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
 
 #[allow(non_uppercase_statics)];
 
+use default::Default;
 use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
 use num::{CheckedDiv, Zero, One, strconv};
@@ -170,6 +171,11 @@ impl Orderable for $T {
             _             { *self }
         )
     }
+}
+
+impl Default for $T {
+    #[inline]
+    fn default() -> $T { 0 }
 }
 
 impl Zero for $T {
