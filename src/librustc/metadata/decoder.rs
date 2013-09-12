@@ -1202,10 +1202,11 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: Cmd, id: ast::NodeId)
     do reader::tagged_docs(item, tag_item_field) |an_item| {
         let f = item_family(an_item);
         if f == PublicField || f == PrivateField || f == InheritedField {
+            // FIXME #6993: name should be of type Name, not Ident
             let name = item_name(intr, an_item);
             let did = item_def_id(an_item, cdata);
             result.push(ty::field_ty {
-                ident: name,
+                name: name.name,
                 id: did, vis:
                 struct_field_family_to_visibility(f),
             });
@@ -1215,7 +1216,7 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: Cmd, id: ast::NodeId)
     do reader::tagged_docs(item, tag_item_unnamed_field) |an_item| {
         let did = item_def_id(an_item, cdata);
         result.push(ty::field_ty {
-            ident: special_idents::unnamed_field,
+            name: special_idents::unnamed_field.name,
             id: did,
             vis: ast::inherited,
         });

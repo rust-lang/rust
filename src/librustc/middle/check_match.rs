@@ -700,7 +700,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                         }
                         let args = class_fields.iter().map(|class_field| {
                             match flds.iter().find(|f|
-                                            f.ident == class_field.ident) {
+                                            f.ident.name == class_field.name) {
                                 Some(f) => f.pat,
                                 _ => wild()
                             }
