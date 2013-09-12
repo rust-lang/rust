@@ -42,7 +42,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
                                                   syntax::diagnostic::emit,
                                                   span_diagnostic_handler);
 
-    let mut cfg = build_configuration(sess, @"rustdoc_ng", &input);
+    let mut cfg = build_configuration(sess);
     cfg.push(@dummy_spanned(ast::MetaWord(@"stage2")));
 
     let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
