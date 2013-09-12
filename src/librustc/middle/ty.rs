@@ -4267,6 +4267,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     static tycat_int: int = 3;
     static tycat_float: int = 4;
     static tycat_bot: int = 5;
+    static tycat_raw_ptr: int = 6;
 
     static opcat_add: int = 0;
     static opcat_sub: int = 1;
@@ -4310,6 +4311,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
           ty_bot => tycat_bot,
+          ty_ptr(_) => tycat_raw_ptr,
           _ => tycat_other
         }
     }
@@ -4324,7 +4326,8 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     /*char*/    [f, f, f, f,     t,   t,  f,   f],
     /*int*/     [t, t, t, t,     t,   t,  t,   f],
     /*float*/   [t, t, t, f,     t,   t,  f,   f],
-    /*bot*/     [t, t, t, t,     f,   f,  t,   t]];
+    /*bot*/     [t, t, t, t,     f,   f,  t,   t],
+    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
 
     return tbl[tycat(cx, ty)][opcat(op)];
 }
