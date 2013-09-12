@@ -399,3 +399,12 @@ pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {
     }
     None
 }
+
+/// True if the user set RUST_PATH to something non-empty --
+/// as opposed to the default paths that rustpkg adds automatically
+pub fn user_set_rust_path() -> bool {
+    match os::getenv("RUST_PATH") {
+        None | Some(~"") => false,
+        Some(_)         => true
+    }
+}
