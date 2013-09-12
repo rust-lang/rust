@@ -633,6 +633,18 @@ rust_drop_env_lock() {
     env_lock.unlock();
 }
 
+static lock_and_signal linenoise_lock;
+
+extern "C" CDECL void
+rust_take_linenoise_lock() {
+    linenoise_lock.lock();
+}
+
+extern "C" CDECL void
+rust_drop_linenoise_lock() {
+    linenoise_lock.unlock();
+}
+
 extern "C" CDECL unsigned int
 rust_valgrind_stack_register(void *start, void *end) {
   return VALGRIND_STACK_REGISTER(start, end);

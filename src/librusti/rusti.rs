@@ -355,12 +355,12 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
 /// None if no input was read (e.g. EOF was reached).
 fn get_line(use_rl: bool, prompt: &str) -> Option<~str> {
     if use_rl {
-        let result = unsafe { rl::read(prompt) };
+        let result = rl::read(prompt);
 
         match result {
             None => None,
             Some(line) => {
-                unsafe { rl::add_history(line) };
+                rl::add_history(line);
                 Some(line)
             }
         }
@@ -525,14 +525,12 @@ pub fn main_args(args: &[~str]) {
         println("unstable. If you encounter problems, please use the");
         println("compiler instead. Type :help for help.");
 
-        unsafe {
-            do rl::complete |line, suggest| {
-                if line.starts_with(":") {
-                    suggest(~":clear");
-                    suggest(~":exit");
-                    suggest(~":help");
-                    suggest(~":load");
-                }
+        do rl::complete |line, suggest| {
+            if line.starts_with(":") {
+                suggest(~":clear");
+                suggest(~":exit");
+                suggest(~":help");
+                suggest(~":load");
             }
         }
     }
