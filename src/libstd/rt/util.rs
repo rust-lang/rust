@@ -56,7 +56,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 /// Get's the number of scheduler threads requested by the environment
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
-    match os::getenv("RUST_THREADS") {
+    match os::getenv("RUST_THREADS").filtered(|s| !s.is_empty()) {
         Some(nstr) => {
             let opt_n: Option<uint> = FromStr::from_str(nstr);
             match opt_n {
