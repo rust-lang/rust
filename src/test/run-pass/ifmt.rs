@@ -87,6 +87,7 @@ pub fn main() {
     t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
     t!(format!("{} {0:s}", "a"), "a a");
     t!(format!("{} {0}", "a"), "a a");
+    t!(format!("{foo_bar}", foo_bar=1), "1");
 
     // Methods should probably work
     t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");
