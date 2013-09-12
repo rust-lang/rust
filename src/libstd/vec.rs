@@ -107,7 +107,7 @@ use cmp;
 use default::Default;
 use iter::*;
 use libc::c_void;
-use num::{Integer, Zero, CheckedAdd, Saturating};
+use num::{Integer, CheckedAdd, Saturating};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -2250,22 +2250,6 @@ impl<A> Default for @[A] {
     fn default() -> @[A] { @[] }
 }
 
-// This works because every lifetime is a sub-lifetime of 'static
-impl<'self, A> Zero for &'self [A] {
-    fn zero() -> &'self [A] { &'self [] }
-    fn is_zero(&self) -> bool { self.is_empty() }
-}
-
-impl<A> Zero for ~[A] {
-    fn zero() -> ~[A] { ~[] }
-    fn is_zero(&self) -> bool { self.len() == 0 }
-}
-
-impl<A> Zero for @[A] {
-    fn zero() -> @[A] { @[] }
-    fn is_zero(&self) -> bool { self.len() == 0 }
-}
-
 macro_rules! iterator {
     /* FIXME: #4375 Cannot attach documentation/attributes to a macro generated struct.
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
@@ -3602,13 +3586,12 @@ mod tests {
     }
 
     #[test]
-    fn test_vec_zero() {
-        use num::Zero;
+    fn test_vec_default() {
+        use default::Default;
         macro_rules! t (
             ($ty:ty) => {{
-                let v: $ty = Zero::zero();
+                let v: $ty = Default::default();
                 assert!(v.is_empty());
-                assert!(v.is_zero());
             }}
         );
 
