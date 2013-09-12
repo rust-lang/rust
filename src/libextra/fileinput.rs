@@ -417,20 +417,23 @@ mod test {
 
     use super::{FileInput, make_path_option_vec, input_vec, input_vec_state};
 
-    use std::io;
+    use std::rt::io;
+    use std::rt::io::Writer;
+    use std::rt::io::file;
     use std::uint;
     use std::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {
-        let file = io::file_writer(path, [io::Create, io::Truncate]).unwrap();
+        let mut file = file::open(path, io::CreateOrTruncate, io::Write).unwrap();
 
         for str in contents.iter() {
-            file.write_str(*str);
-            file.write_char('\n');
+            file.write(str.as_bytes());
+            file.write(['\n' as u8]);
         }
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_make_path_option_vec() {
         let strs = [~"some/path",
                     ~"some/other/path"];
@@ -445,6 +448,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_fileinput_read_byte() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -475,6 +479,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_fileinput_read() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -495,6 +500,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec() {
         let mut all_lines = ~[];
         let filenames = make_path_option_vec(vec::from_fn(
@@ -518,6 +524,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec_state() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -540,6 +547,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_empty_files() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -564,18 +572,21 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_no_trailing_newline() {
         let f1 =
             Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
         let f2 =
             Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
-        let wr = io::file_writer(f1.get_ref(),
-                                 [io::Create, io::Truncate]).unwrap();
-        wr.write_str("1\n2");
-        let wr = io::file_writer(f2.get_ref(),
-                                 [io::Create, io::Truncate]).unwrap();
-        wr.write_str("3\n4");
+        {
+            let mut wr = file::open(f1.get_ref(), io::CreateOrTruncate,
+                                    io::Write).unwrap();
+            wr.write("1\n2".as_bytes());
+            let mut wr = file::open(f2.get_ref(), io::CreateOrTruncate,
+                                    io::Write).unwrap();
+            wr.write("3\n4".as_bytes());
+        }
 
         let mut lines = ~[];
         do input_vec(~[f1, f2]) |line| {
@@ -587,6 +598,7 @@ mod test {
 
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_next_file() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -618,6 +630,7 @@ mod test {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec_missing_file() {
         do input_vec(make_path_option_vec([~"this/file/doesnt/exist"], true)) |line| {
             println(line);
