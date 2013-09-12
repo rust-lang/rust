@@ -38,6 +38,8 @@ pub fn each_pkg_parent_workspace(cx: &Context, pkgid: &PkgId, action: &fn(&Path)
     return true;
 }
 
+/// Given a package ID, return a vector of all of the workspaces in
+/// the RUST_PATH that contain it
 pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
     let rs: ~[Path] = rust_path().move_iter()
         .filter(|ws| workspace_contains_package_id(pkgid, ws))
