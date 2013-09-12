@@ -29,10 +29,9 @@ struct Lots {
     e: char,
     f: float,
     g: (f32, char),
-    h: ~[util::NonCopyable],
-    i: @mut (int, int),
-    j: bool,
-    k: (),
+    h: @mut (int, int),
+    i: bool,
+    j: (),
 }
 
 fn main() {
