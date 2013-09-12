@@ -483,11 +483,6 @@ impl<T:Zero> Option<T> {
     }
 }
 
-impl<T> Zero for Option<T> {
-    fn zero() -> Option<T> { None }
-    fn is_zero(&self) -> bool { self.is_none() }
-}
-
 /// An iterator that yields either one or zero elements
 #[deriving(Clone, DeepClone)]
 pub struct OptionIterator<A> {
