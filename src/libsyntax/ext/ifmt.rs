@@ -60,7 +60,7 @@ impl Context {
         let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
                                              self.ecx.cfg(),
                                              tts.to_owned());
-        // If we want a leading expression (for ifmtf), parse it here
+        // If we want a leading expression, parse it here
         let extra = if leading_expr {
             let e = Some(p.parse_expr());
             if !p.eat(&token::COMMA) {
@@ -341,12 +341,18 @@ impl Context {
             ~[self.ecx.ident_of("std"), self.ecx.ident_of("fmt"),
               self.ecx.ident_of("parse"), self.ecx.ident_of(s)]
         };
-        let none = || {
-            let p = self.ecx.path(sp, ~[self.ecx.ident_of("None")]);
-            self.ecx.expr_path(p)
-        };
+        let none = self.ecx.path_global(sp, ~[
+                self.ecx.ident_of("std"),
+                self.ecx.ident_of("option"),
+                self.ecx.ident_of("None")]);
+        let none = self.ecx.expr_path(none);
         let some = |e: @ast::Expr| {
-            self.ecx.expr_call_ident(sp, self.ecx.ident_of("Some"), ~[e])
+            let p = self.ecx.path_global(sp, ~[
+                self.ecx.ident_of("std"),
+                self.ecx.ident_of("option"),
+                self.ecx.ident_of("Some")]);
+            let p = self.ecx.expr_path(p);
+            self.ecx.expr_call(sp, p, ~[e])
         };
         let trans_count = |c: parse::Count| {
             match c {
@@ -397,7 +403,7 @@ impl Context {
                 parse::Plural(offset, ref arms, ref default) => {
                     let offset = match offset {
                         Some(i) => { some(self.ecx.expr_uint(sp, i)) }
-                        None => { none() }
+                        None => { none.clone() }
                     };
                     let arms = arms.iter().map(|arm| {
                         let p = self.ecx.path_global(sp, rtpath("PluralArm"));
@@ -522,7 +528,7 @@ impl Context {
 
                 // Translate the method (if any)
                 let method = match arg.method {
-                    None => { none() }
+                    None => { none.clone() }
                     Some(ref m) => {
                         let m = trans_method(*m);
                         some(self.ecx.expr_addr_of(sp, m))
@@ -541,7 +547,7 @@ impl Context {
 
     /// Actually builds the expression which the ifmt! block will be expanded
     /// to
-    fn to_expr(&self, extra: Option<@ast::Expr>, f: &str) -> @ast::Expr {
+    fn to_expr(&self, extra: Option<@ast::Expr>, f: Option<&str>) -> @ast::Expr {
         let mut lets = ~[];
         let mut locals = ~[];
         let mut names = vec::from_fn(self.name_positions.len(), |_| None);
@@ -556,21 +562,19 @@ impl Context {
         // Next, build up the static array which will become our precompiled
         // format "string"
         let fmt = self.ecx.expr_vec(self.fmtsp, self.pieces.clone());
+        let piece_ty = self.ecx.ty_path(self.ecx.path_all(
+                self.fmtsp,
+                true, ~[
+                    self.ecx.ident_of("std"),
+                    self.ecx.ident_of("fmt"),
+                    self.ecx.ident_of("rt"),
+                    self.ecx.ident_of("Piece"),
+                ],
+                Some(self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
+                ~[]
+            ), None);
         let ty = ast::ty_fixed_length_vec(
-            self.ecx.ty_mt(
-                self.ecx.ty_path(self.ecx.path_all(
-                    self.fmtsp,
-                    true, ~[
-                        self.ecx.ident_of("std"),
-                        self.ecx.ident_of("fmt"),
-                        self.ecx.ident_of("rt"),
-                        self.ecx.ident_of("Piece"),
-                    ],
-                    Some(self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
-                    ~[]
-                ), None),
-                ast::MutImmutable
-            ),
+            self.ecx.ty_mt(piece_ty.clone(), ast::MutImmutable),
             self.ecx.expr_uint(self.fmtsp, self.pieces.len())
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
@@ -596,7 +600,8 @@ impl Context {
             let name = self.ecx.ident_of(fmt!("__arg%u", i));
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, name, e));
-            locals.push(self.format_arg(e.span, Left(i), name));
+            locals.push(self.format_arg(e.span, Left(i),
+                                        self.ecx.expr_ident(e.span, name)));
         }
         for (&name, &e) in self.names.iter() {
             if !self.name_types.contains_key(&name) { loop }
@@ -605,48 +610,83 @@ impl Context {
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, lname, e));
             names[*self.name_positions.get(&name)] =
-                Some(self.format_arg(e.span, Right(name), lname));
+                Some(self.format_arg(e.span, Right(name),
+                                     self.ecx.expr_ident(e.span, lname)));
         }
 
         let args = names.move_iter().map(|a| a.unwrap());
         let mut args = locals.move_iter().chain(args);
 
-        let mut fmt_args = match extra {
-            Some(e) => ~[e], None => ~[]
+        let result = match f {
+            // Invocation of write!()/format!(), call the function and we're
+            // done.
+            Some(f) => {
+                let mut fmt_args = match extra {
+                    Some(e) => ~[e], None => ~[]
+                };
+                fmt_args.push(self.ecx.expr_ident(self.fmtsp, static_name));
+                fmt_args.push(self.ecx.expr_vec_slice(self.fmtsp,
+                                                      args.collect()));
+
+                let result = self.ecx.expr_call_global(self.fmtsp, ~[
+                        self.ecx.ident_of("std"),
+                        self.ecx.ident_of("fmt"),
+                        self.ecx.ident_of(f),
+                    ], fmt_args);
+
+                // sprintf is unsafe, but we just went through a lot of work to
+                // validate that our call is save, so inject the unsafe block
+                // for the user.
+                self.ecx.expr_block(ast::Block {
+                   view_items: ~[],
+                   stmts: ~[],
+                   expr: Some(result),
+                   id: ast::DUMMY_NODE_ID,
+                   rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                   span: self.fmtsp,
+                })
+            }
+
+            // Invocation of format_args!()
+            None => {
+                let fmt = self.ecx.expr_ident(self.fmtsp, static_name);
+                let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
+                let result = self.ecx.expr_call_global(self.fmtsp, ~[
+                        self.ecx.ident_of("std"),
+                        self.ecx.ident_of("fmt"),
+                        self.ecx.ident_of("Arguments"),
+                        self.ecx.ident_of("new"),
+                    ], ~[fmt, args]);
+
+                // We did all the work of making sure that the arguments
+                // structure is safe, so we can safely have an unsafe block.
+                let result = self.ecx.expr_block(ast::Block {
+                   view_items: ~[],
+                   stmts: ~[],
+                   expr: Some(result),
+                   id: ast::DUMMY_NODE_ID,
+                   rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                   span: self.fmtsp,
+                });
+                let extra = extra.unwrap();
+                let resname = self.ecx.ident_of("__args");
+                lets.push(self.ecx.stmt_let(self.fmtsp, false, resname, result));
+                let res = self.ecx.expr_ident(self.fmtsp, resname);
+                self.ecx.expr_call(extra.span, extra, ~[
+                        self.ecx.expr_addr_of(extra.span, res)])
+            }
         };
-        fmt_args.push(self.ecx.expr_ident(self.fmtsp, static_name));
-        fmt_args.push(self.ecx.expr_vec(self.fmtsp, args.collect()));
-
-        // Next, build up the actual call to the {s,f}printf function.
-        let result = self.ecx.expr_call_global(self.fmtsp, ~[
-                self.ecx.ident_of("std"),
-                self.ecx.ident_of("fmt"),
-                self.ecx.ident_of(f),
-            ], fmt_args);
-
-        // sprintf is unsafe, but we just went through a lot of work to
-        // validate that our call is save, so inject the unsafe block for the
-        // user.
-        let result = self.ecx.expr_block(ast::Block {
-           view_items: ~[],
-           stmts: ~[],
-           expr: Some(result),
-           id: ast::DUMMY_NODE_ID,
-           rules: ast::UnsafeBlock(ast::CompilerGenerated),
-           span: self.fmtsp,
-        });
-
-        self.ecx.expr_block(self.ecx.block(self.fmtsp, lets, Some(result)))
+        self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,
+                                           Some(result)))
     }
 
-    fn format_arg(&self, sp: Span, arg: Either<uint, @str>,
-                  ident: ast::Ident) -> @ast::Expr {
-        let ty = match arg {
+    fn format_arg(&self, sp: Span, argno: Either<uint, @str>,
+                  arg: @ast::Expr) -> @ast::Expr {
+        let ty = match argno {
             Left(i) => self.arg_types[i].unwrap(),
             Right(s) => *self.name_types.get(&s)
         };
 
-        let argptr = self.ecx.expr_ident(sp, ident);
         let fmt_trait = match ty {
             Unknown => "Default",
             Known(tyname) => {
@@ -675,14 +715,14 @@ impl Context {
                         self.ecx.ident_of("std"),
                         self.ecx.ident_of("fmt"),
                         self.ecx.ident_of("argumentstr"),
-                    ], ~[argptr])
+                    ], ~[arg])
             }
             Unsigned => {
                 return self.ecx.expr_call_global(sp, ~[
                         self.ecx.ident_of("std"),
                         self.ecx.ident_of("fmt"),
                         self.ecx.ident_of("argumentuint"),
-                    ], ~[argptr])
+                    ], ~[arg])
             }
         };
 
@@ -696,28 +736,33 @@ impl Context {
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("argument"),
-            ], ~[self.ecx.expr_path(format_fn), argptr])
+            ], ~[self.ecx.expr_path(format_fn), arg])
     }
 }
 
 pub fn expand_format(ecx: @ExtCtxt, sp: Span,
                      tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, false, false, "format")
+    expand_ifmt(ecx, sp, tts, false, false, Some("format_unsafe"))
 }
 
 pub fn expand_write(ecx: @ExtCtxt, sp: Span,
                     tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, false, "write")
+    expand_ifmt(ecx, sp, tts, true, false, Some("write_unsafe"))
 }
 
 pub fn expand_writeln(ecx: @ExtCtxt, sp: Span,
                       tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, true, "write")
+    expand_ifmt(ecx, sp, tts, true, true, Some("write_unsafe"))
+}
+
+pub fn expand_format_args(ecx: @ExtCtxt, sp: Span,
+                          tts: &[ast::token_tree]) -> base::MacResult {
+    expand_ifmt(ecx, sp, tts, true, false, None)
 }
 
 fn expand_ifmt(ecx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
                leading_arg: bool, append_newline: bool,
-               function: &str) -> base::MacResult {
+               function: Option<&str>) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
         args: ~[],
