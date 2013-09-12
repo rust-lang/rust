@@ -378,7 +378,8 @@ pub fn find_and_install_dependencies(ctxt: &BuildContext,
                     Some(p) => p,
                     None => sess.str_of(lib_ident)
                 };
-                match installed_library_in_workspace(lib_name, &ctxt.sysroot()) {
+                debug!("Finding and installing... %s", lib_name);
+                match installed_library_in_workspace(&Path(lib_name), &ctxt.sysroot()) {
                     Some(ref installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                         // Say that [path for c] has a discovered dependency on
@@ -420,8 +421,9 @@ pub fn find_and_install_dependencies(ctxt: &BuildContext,
                             }
                         }
                         // Also, add an additional search path
+                        debug!("Adding additional search path: %s", lib_name);
                         let installed_library =
-                            installed_library_in_workspace(lib_name, workspace)
+                            installed_library_in_workspace(&Path(lib_name), workspace)
                                 .expect( fmt!("rustpkg failed to install dependency %s",
                                               lib_name));
                         let install_dir = installed_library.pop();

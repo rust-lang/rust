@@ -15,10 +15,11 @@ use version::Version;
 /// return Some(p) (returns the first one of there are multiple matches.) Return
 /// None if there's no such path.
 /// FIXME #8711: This ignores the desired version.
-pub fn find_installed_library_in_rust_path(short_name: &str, _version: &Version) -> Option<Path> {
+pub fn find_installed_library_in_rust_path(pkg_path: &Path, _version: &Version) -> Option<Path> {
     let rp = rust_path();
+    debug!("find_installed_library_in_rust_path: looking for path %s", pkg_path.to_str());
     for p in rp.iter() {
-        match installed_library_in_workspace(short_name, p) {
+        match installed_library_in_workspace(pkg_path, p) {
             Some(path) => return Some(path),
             None => ()
         }
