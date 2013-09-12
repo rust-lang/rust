@@ -49,8 +49,6 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, U_RWX) }
 /// True if there's a directory in <workspace> with
 /// pkgid's short name
 pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
-    debug!("Checking in src dir of %s for %s",
-           workspace.to_str(), pkgid.to_str());
     workspace_contains_package_id_(pkgid, workspace, |p| { p.push("src") }).is_some()
 }
 
@@ -141,9 +139,17 @@ pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Pat
 }
 
 /// Does the actual searching stuff
-pub fn installed_library_in_workspace(short_name: &str, workspace: &Path) -> Option<Path> {
+pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Option<Path> {
     // This could break once we're handling multiple versions better -- I should add a test for it
-    library_in_workspace(&Path(short_name), short_name, Install, workspace, "lib", &NoVersion)
+    match pkg_path.filename() {
+        None => None,
+        Some(short_name) => library_in_workspace(pkg_path,
+                                                 short_name,
+                                                 Install,
+                                                 workspace,
+                                                 "lib",
+                                                 &NoVersion)
+    }
 }
 
 /// `workspace` is used to figure out the directory to search.
