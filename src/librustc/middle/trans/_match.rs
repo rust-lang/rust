@@ -672,7 +672,7 @@ fn enter_opt<'r>(bcx: @mut Block,
                     let r = ty::lookup_struct_fields(tcx, struct_id);
                     for field in r.iter() {
                             match field_pats.iter().find(|p| p.ident.name
-                                                         == field.ident.name) {
+                                                         == field.name) {
                                 None => reordered_patterns.push(dummy),
                                 Some(fp) => reordered_patterns.push(fp.pat)
                             }
