@@ -93,7 +93,7 @@ impl Writer for TcpStream {
         }
     }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { /* no-op */ }
 }
 
 pub struct TcpListener(~RtioTcpListenerObject);
