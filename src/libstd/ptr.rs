@@ -383,7 +383,7 @@ impl<T> RawPtr<T> for *mut T {
 }
 
 // Equality for pointers
-#[cfg(not(test))]
+#[cfg(stage0, not(test))]
 impl<T> Eq for *T {
     #[inline]
     fn eq(&self, other: &*T) -> bool {
@@ -393,11 +393,31 @@ impl<T> Eq for *T {
     fn ne(&self, other: &*T) -> bool { !self.eq(other) }
 }
 
-#[cfg(not(test))]
+#[cfg(not(stage0), not(test))]
+impl<T> Eq for *T {
+    #[inline]
+    fn eq(&self, other: &*T) -> bool {
+        *self == *other
+    }
+    #[inline]
+    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
+}
+
+#[cfg(stage0, not(test))]
 impl<T> Eq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
         (*self as uint) == (*other as uint)
+    }
+    #[inline]
+    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
+}
+
+#[cfg(not(stage0), not(test))]
+impl<T> Eq for *mut T {
+    #[inline]
+    fn eq(&self, other: &*mut T) -> bool {
+        *self == *other
     }
     #[inline]
     fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
@@ -460,7 +480,7 @@ mod externfnpointers {
 }
 
 // Comparison for pointers
-#[cfg(not(test))]
+#[cfg(stage0, not(test))]
 impl<T> Ord for *T {
     #[inline]
     fn lt(&self, other: &*T) -> bool {
@@ -480,7 +500,27 @@ impl<T> Ord for *T {
     }
 }
 
-#[cfg(not(test))]
+#[cfg(not(stage0), not(test))]
+impl<T> Ord for *T {
+    #[inline]
+    fn lt(&self, other: &*T) -> bool {
+        *self < *other
+    }
+    #[inline]
+    fn le(&self, other: &*T) -> bool {
+        *self <= *other
+    }
+    #[inline]
+    fn ge(&self, other: &*T) -> bool {
+        *self >= *other
+    }
+    #[inline]
+    fn gt(&self, other: &*T) -> bool {
+        *self > *other
+    }
+}
+
+#[cfg(stage0, not(test))]
 impl<T> Ord for *mut T {
     #[inline]
     fn lt(&self, other: &*mut T) -> bool {
@@ -497,6 +537,26 @@ impl<T> Ord for *mut T {
     #[inline]
     fn gt(&self, other: &*mut T) -> bool {
         (*self as uint) > (*other as uint)
+    }
+}
+
+#[cfg(not(stage0), not(test))]
+impl<T> Ord for *mut T {
+    #[inline]
+    fn lt(&self, other: &*mut T) -> bool {
+        *self < *other
+    }
+    #[inline]
+    fn le(&self, other: &*mut T) -> bool {
+        *self <= *other
+    }
+    #[inline]
+    fn ge(&self, other: &*mut T) -> bool {
+        *self >= *other
+    }
+    #[inline]
+    fn gt(&self, other: &*mut T) -> bool {
+        *self > *other
     }
 }
 
