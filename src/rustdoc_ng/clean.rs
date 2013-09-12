@@ -3,7 +3,6 @@
 
 use its = syntax::parse::token::ident_to_str;
 
-use rustc::metadata::{csearch,decoder,cstore};
 use syntax;
 use syntax::ast;
 
@@ -500,7 +499,7 @@ impl Clean<Type> for ast::Ty {
         let t = match self.node {
             ty_nil => Unit,
             ty_ptr(ref m) =>  RawPointer(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
-            ty_rptr(ref l, ref m) => 
+            ty_rptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
                              type_: ~resolve_type(&m.ty.clean())},
             ty_box(ref m) => Managed(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
@@ -666,17 +665,32 @@ impl Clean<~str> for syntax::codemap::Span {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Path {
-    name: ~str,
-    lifetime: Option<Lifetime>,
-    typarams: ~[Type]
+    global: bool,
+    segments: ~[PathSegment],
 }
 
 impl Clean<Path> for ast::Path {
     fn clean(&self) -> Path {
         Path {
-            name: path_to_str(self),
-            lifetime: self.rp.clean(),
-            typarams: self.types.clean(),
+            global: self.global,
+            segments: self.segments.clean()
+        }
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct PathSegment {
+    name: ~str,
+    lifetime: Option<Lifetime>,
+    types: ~[Type],
+}
+
+impl Clean<PathSegment> for ast::PathSegment {
+    fn clean(&self) -> PathSegment {
+        PathSegment {
+            name: self.identifier.clean(),
+            lifetime: self.lifetime.clean(),
+            types: self.types.clean()
         }
     }
 }
@@ -686,7 +700,7 @@ fn path_to_str(p: &ast::Path) -> ~str {
 
     let mut s = ~"";
     let mut first = true;
-    for i in p.idents.iter().map(|x| interner_get(x.name)) {
+    for i in p.segments.iter().map(|x| interner_get(x.identifier.name)) {
         if !first || p.global {
             s.push_str("::");
         } else {
@@ -899,7 +913,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::lit) -> ~str {
     match lit.node {
         ast::lit_str(st) => st.to_owned(),
-        ast::lit_int(ch, ast::ty_char) => ~"'" + ch.to_str() + "'",
+        ast::lit_char(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::lit_int(i, _t) => i.to_str(),
         ast::lit_uint(u, _t) => u.to_str(),
         ast::lit_int_unsuffixed(i) => i.to_str(),
@@ -966,7 +980,7 @@ fn resolve_type(t: &Type) -> Type {
 
     let def_id = match *d {
         DefFn(i, _) => i,
-        DefSelf(i, _) | DefSelfTy(i) => return Self(i),
+        DefSelf(i) | DefSelfTy(i) => return Self(i),
         DefTy(i) => i,
         DefTrait(i) => {
             debug!("saw DefTrait in def_to_id");
@@ -979,7 +993,7 @@ fn resolve_type(t: &Type) -> Type {
         },
         DefTyParam(i, _) => return Generic(i.node),
         DefStruct(i) => i,
-        DefTyParamBinder(i) => { 
+        DefTyParamBinder(i) => {
             debug!("found a typaram_binder, what is it? %d", i);
             return TyParamBinder(i);
         },
@@ -987,50 +1001,33 @@ fn resolve_type(t: &Type) -> Type {
     };
 
     if def_id.crate != ast::CRATE_NODE_ID {
-        let sess = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess;
-        let mut path = ~"";
-        let mut ty = ~"";
-        do csearch::each_path(sess.cstore, def_id.crate) |pathstr, deflike, _vis| {
-            match deflike {
-                decoder::DlDef(di) => {
-                    let d2 = match di {
-                        DefFn(i, _) | DefTy(i) | DefTrait(i) |
-                            DefStruct(i) | DefMod(i) => Some(i),
-                        _ => None,
-                    };
-                    if d2.is_some() {
-                        let d2 = d2.unwrap();
-                        if def_id.node == d2.node {
-                            debug!("found external def: %?", di);
-                            path = pathstr.to_owned();
-                            ty = match di {
-                                DefFn(*) => ~"fn",
-                                DefTy(*) => ~"enum",
-                                DefTrait(*) => ~"trait",
-                                DefPrimTy(p) => match p {
-                                    ty_str => ~"str",
-                                    ty_bool => ~"bool",
-                                    ty_int(t) => match t.to_str() {
-                                        ~"" => ~"i",
-                                        s => s
-                                    },
-                                    ty_uint(t) => t.to_str(),
-                                    ty_float(t) => t.to_str()
-                                },
-                                DefTyParam(*) => ~"generic",
-                                DefStruct(*) => ~"struct",
-                                DefTyParamBinder(*) => ~"typaram_binder",
-                                x => fail!("resolved external maps to a weird def %?", x),
-                            };
+        use rustc::metadata::decoder::*;
 
-                        }
-                    }
+        let sess = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess;
+        let cratedata = ::rustc::metadata::cstore::get_crate_data(sess.cstore, def_id.crate);
+        let doc = lookup_item(def_id.node, cratedata.data);
+        let path = syntax::ast_map::path_to_str_with_sep(item_path(doc), "::", sess.intr());
+        let ty = match def_like_to_def(item_to_def_like(doc, def_id, def_id.crate)) {
+            DefFn(*) => ~"fn",
+            DefTy(*) => ~"enum",
+            DefTrait(*) => ~"trait",
+            DefPrimTy(p) => match p {
+                ty_str => ~"str",
+                ty_bool => ~"bool",
+                ty_int(t) => match t.to_str() {
+                    ~"" => ~"i",
+                    s => s
                 },
-                _ => (),
-            };
-            true
+                ty_uint(t) => t.to_str(),
+                ty_float(t) => t.to_str(),
+                ty_char => ~"char",
+            },
+            DefTyParam(*) => ~"generic",
+            DefStruct(*) => ~"struct",
+            DefTyParamBinder(*) => ~"typaram_binder",
+            x => fail!("resolved external maps to a weird def %?", x),
         };
-        let cname = cstore::get_crate_data(sess.cstore, def_id.crate).name.to_owned();
+        let cname = cratedata.name.to_owned();
         External(cname + "::" + path, ty)
     } else {
         ResolvedPath {path: path.clone(), typarams: tpbs.clone(), id: def_id.node}

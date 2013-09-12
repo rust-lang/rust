@@ -1,6 +1,6 @@
 use std;
 use clean::*;
-use std::iterator::Extendable;
+use std::iter::Extendable;
 
 pub trait DocFolder {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
