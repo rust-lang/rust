@@ -21,6 +21,7 @@ use middle::typeck::require_same_types;
 use std::hashmap::{HashMap, HashSet};
 use syntax::ast;
 use syntax::ast_util;
+use syntax::parse::token;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 
@@ -296,7 +297,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
     // Index the class fields.
     let mut field_map = HashMap::new();
     for (i, class_field) in class_fields.iter().enumerate() {
-        field_map.insert(class_field.ident.name, i);
+        field_map.insert(class_field.name, i);
     }
 
     // Typecheck each field.
@@ -333,7 +334,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             tcx.sess.span_err(span,
                               fmt!("pattern does not mention field `%s`",
-                                   tcx.sess.str_of(field.ident)));
+                                   token::interner_get(field.name)));
         }
     }
 }

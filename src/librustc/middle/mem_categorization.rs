@@ -1059,6 +1059,7 @@ impl mem_categorization_ctxt {
 /// an enum to determine which variant is in use.
 pub fn field_mutbl(tcx: ty::ctxt,
                    base_ty: ty::t,
+                   // FIXME #6993: change type to Name
                    f_name: ast::Ident,
                    node_id: ast::NodeId)
                 -> Option<ast::Mutability> {
@@ -1067,7 +1068,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
       ty::ty_struct(did, _) => {
         let r = ty::lookup_struct_fields(tcx, did);
         for fld in r.iter() {
-            if fld.ident == f_name {
+            if fld.name == f_name.name {
                 return Some(ast::MutImmutable);
             }
         }
@@ -1077,7 +1078,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
           ast::DefVariant(_, variant_id, _) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {
-                if fld.ident == f_name {
+                if fld.name == f_name.name {
                     return Some(ast::MutImmutable);
                 }
             }
