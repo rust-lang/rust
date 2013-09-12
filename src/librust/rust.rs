@@ -60,20 +60,14 @@ struct Command<'self> {
     usage_full: UsageSource<'self>,
 }
 
-static NUM_OF_COMMANDS: uint = 7;
-
-// FIXME(#7617): should just be &'static [Command<'static>]
-// but mac os doesn't seem to like that and tries to loop
-// past the end of COMMANDS in usage thus passing garbage
-// to str::repeat and eventually malloc and crashing.
-static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
-    Command{
+static COMMANDS: &'static [Command<'static>] = &'static [
+    Command {
         cmd: "build",
         action: CallMain("rustc", rustc::main_args),
         usage_line: "compile rust source files",
         usage_full: UsgCall(rustc_help),
     },
-    Command{
+    Command {
         cmd: "run",
         action: Call(cmd_run),
         usage_line: "build an executable, and run it",
@@ -83,7 +77,7 @@ static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
             \n\nUsage:\trust run <filename> [<arguments>...]"
         )
     },
-    Command{
+    Command {
         cmd: "test",
         action: Call(cmd_test),
         usage_line: "build a test executable, and run it",
@@ -93,25 +87,25 @@ static COMMANDS: [Command<'static>, .. NUM_OF_COMMANDS] = [
             ./<filestem>test~\"\n\nUsage:\trust test <filename>"
         )
     },
-    Command{
+    Command {
         cmd: "doc",
         action: CallMain("rustdoc", rustdoc::main_args),
         usage_line: "generate documentation from doc comments",
         usage_full: UsgCall(rustdoc::config::usage),
     },
-    Command{
+    Command {
         cmd: "pkg",
         action: CallMain("rustpkg", rustpkg::main_args),
         usage_line: "download, build, install rust packages",
         usage_full: UsgCall(rustpkg::usage::general),
     },
-    Command{
+    Command {
         cmd: "sketch",
         action: CallMain("rusti", rusti::main_args),
         usage_line: "run a rust interpreter",
         usage_full: UsgStr("\nUsage:\trusti"),
     },
-    Command{
+    Command {
         cmd: "help",
         action: Call(cmd_help),
         usage_line: "show detailed usage of a command",
