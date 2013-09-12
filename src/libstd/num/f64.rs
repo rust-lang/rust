@@ -13,6 +13,7 @@
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
 
+use default::Default;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
@@ -258,6 +259,11 @@ impl Orderable for f64 {
             _                 { *self }
         )
     }
+}
+
+impl Default for f64 {
+    #[inline]
+    fn default() -> f64 { 0.0 }
 }
 
 impl Zero for f64 {
