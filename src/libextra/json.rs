@@ -228,14 +228,25 @@ impl serialize::Encoder for Encoder {
         self.wr.write_char('}');
     }
 
+    /*
+     * Map encoding does some funky things to account for the possibility
+     * of keys not being strings.  Each key/value is stored as two json
+     * key/value pairs: "key<index>":<key-json>, and "val<index>":<value-json>
+     *
+     * This is pretty much like expanding the map to a struct, so
+     * we use emit_struct_field with the appropriate name and index
+     * as if the first key is at 0, first value at 1, second key at 2,
+     * and so on.
+     */
+
     fn emit_map_elt_key(&mut self, idx: uint, f: &fn(&mut Encoder)) {
-        if idx != 0 { self.wr.write_char(','); }
-        f(self)
+        let keyName = ~"key" + idx.to_str();
+        self.emit_struct_field(keyName, idx*2, f);
     }
 
-    fn emit_map_elt_val(&mut self, _idx: uint, f: &fn(&mut Encoder)) {
-        self.wr.write_char(':');
-        f(self)
+    fn emit_map_elt_val(&mut self, idx: uint, f: &fn(&mut Encoder)) {
+        let valName = ~"val" + idx.to_str();
+        self.emit_struct_field(valName, idx*2 + 1, f);
     }
 }
 
@@ -431,19 +442,17 @@ impl serialize::Encoder for PrettyEncoder {
         }
     }
 
+    //For reasoning behind the usage of emit_struct_field,
+    //see the comment in the impl of serialize::Encoder for Encoder
+
     fn emit_map_elt_key(&mut self, idx: uint, f: &fn(&mut PrettyEncoder)) {
-        if idx == 0 {
-            self.wr.write_char('\n');
-        } else {
-            self.wr.write_str(",\n");
-        }
-        self.wr.write_str(spaces(self.indent));
-        f(self);
+        let keyName = ~"key" + idx.to_str();
+        self.emit_struct_field(keyName, idx, f);
     }
 
-    fn emit_map_elt_val(&mut self, _idx: uint, f: &fn(&mut PrettyEncoder)) {
-        self.wr.write_str(": ");
-        f(self);
+    fn emit_map_elt_val(&mut self, idx: uint, f: &fn(&mut PrettyEncoder)) {
+        let valName = ~"val" + idx.to_str();
+        self.emit_struct_field(valName, idx, f);
     }
 }
 
@@ -454,8 +463,28 @@ impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
             String(ref v) => v.encode(e),
             Boolean(v) => v.encode(e),
             List(ref v) => v.encode(e),
-            Object(ref v) => v.encode(e),
+            Object(ref v) => emit_object(v, e),
             Null => e.emit_nil(),
+        }
+    }
+}
+
+fn emit_object<E: serialize::Encoder>(obj:&~Object, encoder:&mut E){
+    //!Encodes a json Object properly, rather than treating it
+    //!as a map.
+
+    //We can't just use encoder.emit_map or obj.encode,
+    //as that would end up with "key0":<encoded-key>,
+    //"val0":<encoded-value> which is needed to allow
+    //non-string keys in maps.
+
+    //Instead, encode using emit_struct_field which emits
+    //<key>:<encoded-value>
+    do encoder.emit_struct("json::Object", obj.len()) |e| {
+        let mut index:uint = 0;
+        for (key, value) in obj.iter() {
+            e.emit_struct_field(key.as_slice(), index, |e| value.encode(e));
+            index += 1;
         }
     }
 }
@@ -1085,16 +1114,15 @@ impl serialize::Decoder for Decoder {
         debug!("read_map()");
         let len = match self.stack.pop() {
             Object(obj) => {
-                let len = obj.len();
-                for (key, value) in obj.move_iter() {
-                    self.stack.push(value);
-                    self.stack.push(String(key));
-                }
+                let len = obj.len()/2;
+                self.stack.push(Object(obj));
                 len
             }
             json => fail!("not an object: %?", json),
         };
-        f(self, len)
+        let result = f(self, len);
+        self.stack.pop();
+        result
     }
 
     fn read_map_elt_key<T>(&mut self,
@@ -1102,13 +1130,15 @@ impl serialize::Decoder for Decoder {
                            f: &fn(&mut Decoder) -> T)
                            -> T {
         debug!("read_map_elt_key(idx=%u)", idx);
-        f(self)
+        let keyName = ~"key" + idx.to_str();
+        self.read_struct_field(keyName, idx, f)
     }
 
     fn read_map_elt_val<T>(&mut self, idx: uint, f: &fn(&mut Decoder) -> T)
                            -> T {
         debug!("read_map_elt_val(idx=%u)", idx);
-        f(self)
+        let valName = ~"val" + idx.to_str();
+        self.read_struct_field(valName, idx, f)
     }
 }
 
@@ -1326,7 +1356,7 @@ mod tests {
     use serialize::Decodable;
     use treemap::TreeMap;
 
-    #[deriving(Eq, Encodable, Decodable)]
+    #[deriving(Eq, Encodable, Decodable, Ord, TotalEq, TotalOrd)]
     enum Animal {
         Dog,
         Frog(~str, int)
@@ -1927,21 +1957,28 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_map() {
-        let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
-        let mut decoder = Decoder(from_str(s).unwrap());
-        let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
-
-        assert_eq!(map.pop(&~"a"), Some(Dog));
-        assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));
-    }
-
-    #[test]
     fn test_multiline_errors() {
         assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
             Err(Error {
                 line: 3u,
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
+    }
+
+    #[test]
+    fn test_nonstring_mapkeys() {
+        let mut map:TreeMap<Animal, ~str> = TreeMap::new();
+        map.insert(Dog, ~"foo");
+        map.insert(Frog(~"Henry", 349), ~"bar");
+        let encoded = do io::with_str_writer |wr| {
+            let mut encoder = Encoder(wr);
+            map.encode(&mut encoder);
+        };
+        let decoded:TreeMap<Animal, ~str> = do io::with_str_reader(encoded) |rdr| {
+            let j = from_reader(rdr).unwrap();
+            let mut decoder = Decoder(j);
+            Decodable::decode(&mut decoder)
+        };
+        assert_eq!(map, decoded);
     }
 }
