@@ -147,8 +147,14 @@ enum PatternToken {
     Char(char),
     AnyChar,
     AnySequence,
-    AnyWithin(~[char]),
-    AnyExcept(~[char])
+    AnyWithin(~[CharSpecifier]),
+    AnyExcept(~[CharSpecifier])
+}
+
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
+enum CharSpecifier {
+    SingleChar(char),
+    CharRange(char, char)
 }
 
 #[deriving(Eq)]
@@ -164,12 +170,15 @@ impl Pattern {
      * This function compiles Unix shell style patterns: `?` matches any single character,
      * `*` matches any (possibly empty) sequence of characters and `[...]` matches any character
      * inside the brackets, unless the first character is `!` in which case it matches any
-     * character except those between the `!` and the `]`.
+     * character except those between the `!` and the `]`. Character sequences can also specify
+     * ranges of characters, as ordered by Unicode, so e.g. `[0-9]` specifies any character
+     * between 0 and 9 inclusive.
      *
      * The metacharacters `?`, `*`, `[`, `]` can be matched by using brackets (e.g. `[?]`).
      * When a `]` occurs immediately following `[` or `[!` then it is interpreted as
      * being part of, rather then ending, the character set, so `]` and NOT `]` can be
-     * matched by `[]]` and `[!]]` respectively.
+     * matched by `[]]` and `[!]]` respectively. The `-` character can be specified inside a
+     * character sequence pattern by placing it at the start or the end, e.g. `[abc-]`.
      *
      * When a `[` does not have a closing `]` before the end of the string then the `[` will
      * be treated literally.
@@ -199,7 +208,8 @@ impl Pattern {
                         match chars.slice_from(i + 3).position_elem(&']') {
                             None => (),
                             Some(j) => {
-                                tokens.push(AnyExcept(chars.slice(i + 2, i + 3 + j).to_owned()));
+                                let cs = parse_char_specifiers(chars.slice(i + 2, i + 3 + j));
+                                tokens.push(AnyExcept(cs));
                                 i += j + 4;
                                 loop;
                             }
@@ -209,7 +219,8 @@ impl Pattern {
                         match chars.slice_from(i + 2).position_elem(&']') {
                             None => (),
                             Some(j) => {
-                                tokens.push(AnyWithin(chars.slice(i + 1, i + 2 + j).to_owned()));
+                                let cs = parse_char_specifiers(chars.slice(i + 1, i + 2 + j));
+                                tokens.push(AnyWithin(cs));
                                 i += j + 3;
                                 loop;
                             }
@@ -335,15 +346,11 @@ impl Pattern {
                         AnyChar => {
                             !require_literal(c)
                         }
-                        AnyWithin(ref chars) => {
-                            !require_literal(c) &&
-                            chars.iter()
-                                .rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_some()
+                        AnyWithin(ref specifiers) => {
+                            !require_literal(c) && in_char_specifiers(*specifiers, c, options)
                         }
-                        AnyExcept(ref chars) => {
-                            !require_literal(c) &&
-                            chars.iter()
-                                .rposition(|&e| chars_eq(e, c, options.case_sensitive)).is_none()
+                        AnyExcept(ref specifiers) => {
+                            !require_literal(c) && !in_char_specifiers(*specifiers, c, options)
                         }
                         Char(c2) => {
                             chars_eq(c, c2, options.case_sensitive)
@@ -368,6 +375,63 @@ impl Pattern {
         }
     }
 
+}
+
+fn parse_char_specifiers(s: &[char]) -> ~[CharSpecifier] {
+    let mut cs = ~[];
+    let mut i = 0;
+    while i < s.len() {
+        if i + 3 <= s.len() && s[i + 1] == '-' {
+            cs.push(CharRange(s[i], s[i + 2]));
+            i += 3;
+        } else {
+            cs.push(SingleChar(s[i]));
+            i += 1;
+        }
+    }
+    cs
+}
+
+fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptions) -> bool {
+
+    for &specifier in specifiers.iter() {
+        match specifier {
+            SingleChar(sc) => {
+                if chars_eq(c, sc, options.case_sensitive) {
+                    return true;
+                }
+            }
+            CharRange(start, end) => {
+
+                // FIXME: work with non-ascii chars properly (issue #1347)
+                if !options.case_sensitive && c.is_ascii() && start.is_ascii() && end.is_ascii() {
+
+                    let start = start.to_ascii().to_lower();
+                    let end = end.to_ascii().to_lower();
+
+                    let start_up = start.to_upper();
+                    let end_up = end.to_upper();
+
+                    // only allow case insensitive matching when
+                    // both start and end are within a-z or A-Z
+                    if start != start_up && end != end_up {
+                        let start = start.to_char();
+                        let end = end.to_char();
+                        let c = c.to_ascii().to_lower().to_char();
+                        if c >= start && c <= end {
+                            return true;
+                        }
+                    }
+                }
+
+                if c >= start && c <= end {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
 }
 
 /// A helper function to determine if two chars are (possibly case-insensitively) equal.
@@ -670,6 +734,54 @@ mod test {
     fn test_lots_of_files() {
         // this is a good test because it touches lots of differently named files
         glob("/*/*/*/*").skip(10000).next();
+    }
+
+    #[test]
+    fn test_range_pattern() {
+
+        let pat = Pattern::new("a[0-9]b");
+        for i in range(0, 10) {
+            assert!(pat.matches(fmt!("a%db", i)));
+        }
+        assert!(!pat.matches("a_b"));
+
+        let pat = Pattern::new("a[!0-9]b");
+        for i in range(0, 10) {
+            assert!(!pat.matches(fmt!("a%db", i)));
+        }
+        assert!(pat.matches("a_b"));
+
+        let pats = ["[a-z123]", "[1a-z23]", "[123a-z]"];
+        for &p in pats.iter() {
+            let pat = Pattern::new(p);
+            for c in "abcdefghijklmnopqrstuvwxyz".iter() {
+                assert!(pat.matches(c.to_str()));
+            }
+            for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".iter() {
+                let options = MatchOptions {case_sensitive: false, .. MatchOptions::new()};
+                assert!(pat.matches_with(c.to_str(), options));
+            }
+            assert!(pat.matches("1"));
+            assert!(pat.matches("2"));
+            assert!(pat.matches("3"));
+        }
+
+        let pats = ["[abc-]", "[-abc]", "[a-c-]"];
+        for &p in pats.iter() {
+            let pat = Pattern::new(p);
+            assert!(pat.matches("a"));
+            assert!(pat.matches("b"));
+            assert!(pat.matches("c"));
+            assert!(pat.matches("-"));
+            assert!(!pat.matches("d"));
+        }
+
+        let pat = Pattern::new("[2-1]");
+        assert!(!pat.matches("1"));
+        assert!(!pat.matches("2"));
+
+        assert!(Pattern::new("[-]").matches("-"));
+        assert!(!Pattern::new("[!-]").matches("-"));
     }
 
     #[test]
