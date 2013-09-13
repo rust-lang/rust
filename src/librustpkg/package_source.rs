@@ -18,7 +18,7 @@ use context::*;
 use crate::Crate;
 use messages::*;
 use source_control::{git_clone, git_clone_general};
-use path_util::{find_dir_using_rust_path_hack, default_workspace};
+use path_util::{find_dir_using_rust_path_hack, default_workspace, make_dir_rwx_recursive};
 use util::compile_crate;
 use workspace::is_workspace;
 use workcache_support;
@@ -197,12 +197,14 @@ impl PkgSrc {
                   url, clone_target.to_str(), pkgid.version.to_str());
 
         if git_clone_general(url, &clone_target, &pkgid.version) {
-            // since the operation succeeded, move clone_target to local
-            if !os::rename_file(&clone_target, local) {
-                 None
+            // Since the operation succeeded, move clone_target to local.
+            // First, create all ancestor directories.
+            if make_dir_rwx_recursive(&local.pop())
+                && os::rename_file(&clone_target, local) {
+                 Some(local.clone())
             }
             else {
-                 Some(local.clone())
+                 None
             }
         }
         else {
