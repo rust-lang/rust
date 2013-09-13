@@ -24,6 +24,7 @@ struct Struct {
 
 impl Trait for Struct {}
 
+// There is no real test here yet. Just make that it compiles without crashing.
 fn main() {
     let stack_struct = Struct { a:0, b: 1.0 };
     let reference: &Trait = &stack_struct as &Trait;
