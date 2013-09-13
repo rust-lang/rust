@@ -181,7 +181,10 @@ pub trait CtxMethods {
     /// second is a list of declared and discovered inputs
     fn install(&self, src: PkgSrc) -> (~[Path], ~[(~str, ~str)]);
     /// Returns a list of installed files
-    fn install_no_build(&self, workspace: &Path, id: &PkgId) -> ~[Path];
+    fn install_no_build(&self,
+                        source_workspace: &Path,
+                        target_workspace: &Path,
+                        id: &PkgId) -> ~[Path];
     fn prefer(&self, _id: &str, _vers: Option<~str>);
     fn test(&self);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
@@ -464,28 +467,40 @@ impl CtxMethods for BuildContext {
                 // install to the first workspace in the RUST_PATH if there's
                 // a non-default RUST_PATH. This code installs to the same
                 // workspace the package was built in.
-                debug!("install: destination workspace = %s, id = %s",
-                       destination_workspace, id_str);
-                let result = subself.install_no_build(&Path(destination_workspace), &sub_id);
+                let actual_workspace = if path_util::user_set_rust_path() {
+                    default_workspace()
+                }
+                else {
+                    Path(destination_workspace)
+                };
+                debug!("install: destination workspace = %s, id = %s, installing to %s",
+                       destination_workspace, id_str, actual_workspace.to_str());
+                let result = subself.install_no_build(&Path(destination_workspace),
+                                                      &actual_workspace,
+                                                      &sub_id);
                 debug!("install: id = %s, about to call discover_outputs, %?",
                        id_str, result.to_str());
 
                 discover_outputs(exec, result.clone());
                 sub_files.write(|r| { *r = result.clone(); });
                 sub_inputs.write(|r| { *r = *r + exec.lookup_discovered_inputs() });
+                note(fmt!("Installed package %s to %s", id_str, actual_workspace.to_str()));
             }
         };
         (installed_files.unwrap(), inputs.unwrap())
     }
 
-    fn install_no_build(&self, workspace: &Path, id: &PkgId) -> ~[Path] {
+    fn install_no_build(&self,
+                        source_workspace: &Path,
+                        target_workspace: &Path,
+                        id: &PkgId) -> ~[Path] {
         use conditions::copy_failed::cond;
 
         // Now copy stuff into the install dirs
-        let maybe_executable = built_executable_in_workspace(id, workspace);
-        let maybe_library = built_library_in_workspace(id, workspace);
-        let target_exec = target_executable_in_workspace(id, workspace);
-        let target_lib = maybe_library.map(|_p| target_library_in_workspace(id, workspace));
+        let maybe_executable = built_executable_in_workspace(id, source_workspace);
+        let maybe_library = built_library_in_workspace(id, source_workspace);
+        let target_exec = target_executable_in_workspace(id, target_workspace);
+        let target_lib = maybe_library.map(|_p| target_library_in_workspace(id, target_workspace));
 
         debug!("target_exec = %s target_lib = %? \
                 maybe_executable = %? maybe_library = %?",

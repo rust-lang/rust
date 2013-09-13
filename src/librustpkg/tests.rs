@@ -1603,6 +1603,25 @@ fn test_recursive_deps() {
     assert_lib_exists(&b_workspace, &Path("c"), NoVersion);
 }
 
+#[test]
+fn test_install_to_rust_path() {
+    let p_id = PkgId::new("foo");
+    let second_workspace = create_local_package(&p_id);
+    let first_workspace = mk_empty_workspace(&Path("p"), &NoVersion, "dest");
+    let rust_path = Some(~[(~"RUST_PATH",
+                            fmt!("%s:%s", first_workspace.to_str(),
+                                 second_workspace.to_str()))]);
+    debug!("RUST_PATH=%s:%s", first_workspace.to_str(), second_workspace.to_str());
+    command_line_test_with_env([test_sysroot().to_str(),
+                       ~"install",
+                       ~"foo"],
+                      &os::getcwd(), rust_path);
+    assert!(!built_executable_exists(&first_workspace, "foo"));
+    assert!(built_executable_exists(&second_workspace, "foo"));
+    assert_executable_exists(&first_workspace, "foo");
+    assert!(!executable_exists(&second_workspace, "foo"));
+}
+
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
     use std::libc::consts::os::posix88::{S_IXUSR};
