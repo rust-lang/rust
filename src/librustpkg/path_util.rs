@@ -55,6 +55,10 @@ pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
 pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
 // Returns the directory it was actually found in
              workspace_to_src_dir: &fn(&Path) -> Path) -> Option<Path> {
+    if !os::path_is_dir(workspace) {
+        return None;
+    }
+
     let src_dir = workspace_to_src_dir(workspace);
 
     let mut found = None;
