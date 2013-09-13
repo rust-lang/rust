@@ -80,6 +80,18 @@ fn stack_check_item(v: StackCheckVisitor,
                 visit::walk_method_helper(&mut v, method, new_cx);
             }
         }
+        ast::item_trait(_, _, ref methods) => {
+            for method in methods.iter() {
+                match *method {
+                    ast::provided(@ref method) => {
+                        let safe_stack = fixed_stack_segment(method.attrs);
+                        let new_cx = Context {safe_stack: safe_stack, ..in_cx};
+                        visit::walk_method_helper(&mut v, method, new_cx);
+                    }
+                    ast::required(*) => ()
+                }
+            }
+        }
         _ => {
             visit::walk_item(&mut v, item, in_cx);
         }
