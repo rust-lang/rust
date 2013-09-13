@@ -620,7 +620,7 @@ pub fn tmpdir() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
                 getenv_nonempty("USERPROFILE").or(
-                   getenv_nonempty("WINDIR")))).unwrap_or_default(Path("C:\\Windows"))
+                   getenv_nonempty("WINDIR")))).unwrap_or(Path("C:\\Windows"))
     }
 }
 
