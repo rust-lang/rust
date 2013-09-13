@@ -87,6 +87,7 @@ use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::visit;
 use syntax::visit::Visitor;
 
 pub use middle::trans::context::task_llcx;
@@ -2238,6 +2239,14 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         if !generics.is_type_parameterized() {
             trans_struct_def(ccx, struct_def);
         }
+      }
+      ast::item_trait(*) => {
+        // Inside of this trait definition, we won't be actually translating any
+        // functions, but the trait still needs to be walked. Otherwise default
+        // methods with items will not get translated and will cause ICE's when
+        // metadata time comes around.
+        let mut v = TransItemVisitor;
+        visit::walk_item(&mut v, item, ccx);
       }
       _ => {/* fall through */ }
     }
