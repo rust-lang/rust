@@ -54,21 +54,16 @@ impl Context {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other fmt! expressions.
     fn parse_args(&mut self, sp: Span,
-                  leading_expr: bool,
-                  tts: &[ast::token_tree]) -> (Option<@ast::Expr>,
-                                               Option<@ast::Expr>) {
+                  tts: &[ast::token_tree]) -> (@ast::Expr, Option<@ast::Expr>) {
         let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
                                              self.ecx.cfg(),
                                              tts.to_owned());
-        // If we want a leading expression, parse it here
-        let extra = if leading_expr {
-            let e = Some(p.parse_expr());
-            if !p.eat(&token::COMMA) {
-                self.ecx.span_err(sp, "expected token: `,`");
-                return (e, None);
-            }
-            e
-        } else { None };
+        // Parse the leading function expression (maybe a block, maybe a path)
+        let extra = p.parse_expr();
+        if !p.eat(&token::COMMA) {
+            self.ecx.span_err(sp, "expected token: `,`");
+            return (extra, None);
+        }
 
         if *p.token == token::EOF {
             self.ecx.span_err(sp, "requires at least a format string argument");
@@ -547,7 +542,7 @@ impl Context {
 
     /// Actually builds the expression which the ifmt! block will be expanded
     /// to
-    fn to_expr(&self, extra: Option<@ast::Expr>, f: Option<&str>) -> @ast::Expr {
+    fn to_expr(&self, extra: @ast::Expr) -> @ast::Expr {
         let mut lets = ~[];
         let mut locals = ~[];
         let mut names = vec::from_fn(self.name_positions.len(), |_| None);
@@ -614,68 +609,33 @@ impl Context {
                                      self.ecx.expr_ident(e.span, lname)));
         }
 
+        // Now create the fmt::Arguments struct with all our locals we created.
         let args = names.move_iter().map(|a| a.unwrap());
         let mut args = locals.move_iter().chain(args);
+        let fmt = self.ecx.expr_ident(self.fmtsp, static_name);
+        let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
+        let result = self.ecx.expr_call_global(self.fmtsp, ~[
+                self.ecx.ident_of("std"),
+                self.ecx.ident_of("fmt"),
+                self.ecx.ident_of("Arguments"),
+                self.ecx.ident_of("new"),
+            ], ~[fmt, args]);
 
-        let result = match f {
-            // Invocation of write!()/format!(), call the function and we're
-            // done.
-            Some(f) => {
-                let mut fmt_args = match extra {
-                    Some(e) => ~[e], None => ~[]
-                };
-                fmt_args.push(self.ecx.expr_ident(self.fmtsp, static_name));
-                fmt_args.push(self.ecx.expr_vec_slice(self.fmtsp,
-                                                      args.collect()));
-
-                let result = self.ecx.expr_call_global(self.fmtsp, ~[
-                        self.ecx.ident_of("std"),
-                        self.ecx.ident_of("fmt"),
-                        self.ecx.ident_of(f),
-                    ], fmt_args);
-
-                // sprintf is unsafe, but we just went through a lot of work to
-                // validate that our call is save, so inject the unsafe block
-                // for the user.
-                self.ecx.expr_block(ast::Block {
-                   view_items: ~[],
-                   stmts: ~[],
-                   expr: Some(result),
-                   id: ast::DUMMY_NODE_ID,
-                   rules: ast::UnsafeBlock(ast::CompilerGenerated),
-                   span: self.fmtsp,
-                })
-            }
-
-            // Invocation of format_args!()
-            None => {
-                let fmt = self.ecx.expr_ident(self.fmtsp, static_name);
-                let args = self.ecx.expr_vec_slice(self.fmtsp, args.collect());
-                let result = self.ecx.expr_call_global(self.fmtsp, ~[
-                        self.ecx.ident_of("std"),
-                        self.ecx.ident_of("fmt"),
-                        self.ecx.ident_of("Arguments"),
-                        self.ecx.ident_of("new"),
-                    ], ~[fmt, args]);
-
-                // We did all the work of making sure that the arguments
-                // structure is safe, so we can safely have an unsafe block.
-                let result = self.ecx.expr_block(ast::Block {
-                   view_items: ~[],
-                   stmts: ~[],
-                   expr: Some(result),
-                   id: ast::DUMMY_NODE_ID,
-                   rules: ast::UnsafeBlock(ast::CompilerGenerated),
-                   span: self.fmtsp,
-                });
-                let extra = extra.unwrap();
-                let resname = self.ecx.ident_of("__args");
-                lets.push(self.ecx.stmt_let(self.fmtsp, false, resname, result));
-                let res = self.ecx.expr_ident(self.fmtsp, resname);
-                self.ecx.expr_call(extra.span, extra, ~[
-                        self.ecx.expr_addr_of(extra.span, res)])
-            }
-        };
+        // We did all the work of making sure that the arguments
+        // structure is safe, so we can safely have an unsafe block.
+        let result = self.ecx.expr_block(ast::Block {
+           view_items: ~[],
+           stmts: ~[],
+           expr: Some(result),
+           id: ast::DUMMY_NODE_ID,
+           rules: ast::UnsafeBlock(ast::CompilerGenerated),
+           span: self.fmtsp,
+        });
+        let resname = self.ecx.ident_of("__args");
+        lets.push(self.ecx.stmt_let(self.fmtsp, false, resname, result));
+        let res = self.ecx.expr_ident(self.fmtsp, resname);
+        let result = self.ecx.expr_call(extra.span, extra, ~[
+                            self.ecx.expr_addr_of(extra.span, res)]);
         self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,
                                            Some(result)))
     }
@@ -740,29 +700,8 @@ impl Context {
     }
 }
 
-pub fn expand_format(ecx: @ExtCtxt, sp: Span,
-                     tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, false, false, Some("format_unsafe"))
-}
-
-pub fn expand_write(ecx: @ExtCtxt, sp: Span,
-                    tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, false, Some("write_unsafe"))
-}
-
-pub fn expand_writeln(ecx: @ExtCtxt, sp: Span,
-                      tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, true, Some("write_unsafe"))
-}
-
-pub fn expand_format_args(ecx: @ExtCtxt, sp: Span,
-                          tts: &[ast::token_tree]) -> base::MacResult {
-    expand_ifmt(ecx, sp, tts, true, false, None)
-}
-
-fn expand_ifmt(ecx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
-               leading_arg: bool, append_newline: bool,
-               function: Option<&str>) -> base::MacResult {
+pub fn expand_args(ecx: @ExtCtxt, sp: Span,
+                   tts: &[ast::token_tree]) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
         args: ~[],
@@ -776,14 +715,13 @@ fn expand_ifmt(ecx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
         method_statics: ~[],
         fmtsp: sp,
     };
-    let (extra, efmt) = match cx.parse_args(sp, leading_arg, tts) {
+    let (extra, efmt) = match cx.parse_args(sp, tts) {
         (extra, Some(e)) => (extra, e),
         (_, None) => { return MRExpr(ecx.expr_uint(sp, 2)); }
     };
     cx.fmtsp = efmt.span;
     let fmt = expr_to_str(ecx, efmt,
                           "format argument must be a string literal.");
-    let fmt = if append_newline { fmt + "\n" } else { fmt.to_owned() };
 
     let mut err = false;
     do parse::parse_error::cond.trap(|m| {
@@ -814,5 +752,5 @@ fn expand_ifmt(ecx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
         }
     }
 
-    MRExpr(cx.to_expr(extra, function))
+    MRExpr(cx.to_expr(extra))
 }
