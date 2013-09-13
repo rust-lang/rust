@@ -649,11 +649,6 @@ pub fn Call(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
     B(cx).call(Fn, Args)
 }
 
-pub fn FastCall(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
-    if cx.unreachable { return _UndefReturn(cx, Fn); }
-    B(cx).call(Fn, Args)
-}
-
 pub fn CallWithConv(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
                     Conv: CallConv, sret: bool) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }

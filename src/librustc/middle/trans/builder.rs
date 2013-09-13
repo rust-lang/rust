@@ -786,16 +786,6 @@ impl Builder {
         }
     }
 
-    pub fn fastcall(&self, llfn: ValueRef, args: &[ValueRef]) -> ValueRef {
-        self.count_insn("fastcall");
-        unsafe {
-            let v = llvm::LLVMBuildCall(self.llbuilder, llfn, vec::raw::to_ptr(args),
-                                        args.len() as c_uint, noname());
-            lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
-            v
-        }
-    }
-
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
                          conv: CallConv, sret: bool) -> ValueRef {
         self.count_insn("callwithconv");
