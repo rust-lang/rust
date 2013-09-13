@@ -1504,12 +1504,7 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'self,
                 }
             }
             match self.iter.next().map_move(|x| (self.f)(x)) {
-                None => {
-                    return match self.backiter {
-                        Some(ref mut it) => it.next(),
-                        None => None,
-                    };
-                }
+                None => return self.backiter.and_then_mut_ref(|it| it.next()),
                 next => self.frontiter = next,
             }
         }
@@ -1541,12 +1536,7 @@ impl<'self,
                 }
             }
             match self.iter.next_back().map_move(|x| (self.f)(x)) {
-                None => {
-                    return match self.frontiter {
-                        Some(ref mut it) => it.next_back(),
-                        None => None,
-                    };
-                }
+                None => return self.frontiter.and_then_mut_ref(|it| it.next_back()),
                 next => self.backiter = next,
             }
         }

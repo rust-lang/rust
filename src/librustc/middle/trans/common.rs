@@ -505,10 +505,7 @@ impl get_node_info for ast::Block {
 
 impl get_node_info for Option<@ast::Expr> {
     fn info(&self) -> Option<NodeInfo> {
-        match *self {
-            Some(ref s) => s.info(),
-            None => None,
-        }
+        self.and_then_ref(|s| s.info())
     }
 }
 
