@@ -569,7 +569,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do getenv("USERPROFILE").chain |p| {
+        do getenv("USERPROFILE").and_then |p| {
             if !p.is_empty() {
                 Some(Path(p))
             } else {
