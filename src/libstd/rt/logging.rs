@@ -7,66 +7,24 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use cast::transmute;
 use either::*;
-use libc::{c_void, uintptr_t, c_char, exit, STDERR_FILENO};
+use libc::{uintptr_t, exit, STDERR_FILENO};
 use option::{Some, None, Option};
 use rt::util::dumb_println;
+use rt::crate_map::{ModEntry, iter_crate_map};
 use str::StrSlice;
 use str::raw::from_c_str;
 use u32;
-use unstable::raw::Closure;
 use vec::ImmutableVector;
-
+use cast::transmute;
 
 struct LogDirective {
     name: Option<~str>,
     level: u32
 }
 
-// This is the Rust representation of the mod_entry struct in src/rt/rust_crate_map.h
-struct ModEntry{
-    name: *c_char,
-    log_level: *mut u32
-}
-
 static MAX_LOG_LEVEL: u32 = 255;
 static DEFAULT_LOG_LEVEL: u32 = 1;
-
-fn iter_crate_map(map: *u8, f: &fn(*mut ModEntry)) {
-    unsafe {
-        let closure : Closure = transmute(f);
-        let code = transmute(closure.code);
-        let env = transmute(closure.env);
-        rust_iter_crate_map(transmute(map), iter_cb, code, env);
-    }
-
-    extern fn iter_cb(code: *c_void, env: *c_void, entry: *ModEntry){
-         unsafe {
-            let closure: Closure = Closure {
-                code: transmute(code),
-                env: transmute(env),
-            };
-            let closure: &fn(*ModEntry) = transmute(closure);
-            return closure(entry);
-        }
-    }
-    extern {
-        #[cfg(not(stage0))]
-        #[rust_stack]
-        fn rust_iter_crate_map(map: *c_void,
-                    f: extern "C" fn(*c_void, *c_void, entry: *ModEntry),
-                    code: *c_void,
-                    data: *c_void);
-
-        #[cfg(stage0)]
-        #[rust_stack]
-        fn rust_iter_crate_map(map: *c_void,
-                    f: *u8,
-                    code: *c_void,
-                    data: *c_void);
-    }
-}
 static log_level_names : &'static[&'static str] = &'static["error", "warn", "info", "debug"];
 
 /// Parse an individual log level that is either a number or a symbolic log level
@@ -96,12 +54,10 @@ fn parse_log_level(level: &str) -> Option<u32> {
     log_level
 }
 
-
 /// Parse a logging specification string (e.g: "crate1,crate2::mod3,crate3::x=1")
 /// and return a vector with log directives.
 /// Valid log levels are 0-255, with the most likely ones being 1-4 (defined in std::).
 /// Also supports string log levels of error, warn, info, and debug
-
 fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
     let mut dirs = ~[];
     for s in spec.split_iter(',') {
@@ -186,12 +142,10 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
             dumb_println("\nCrate log map:\n");
-            do iter_crate_map(crate_map) |entry: *mut ModEntry| {
-                unsafe {
+            unsafe {
+                do iter_crate_map(transmute(crate_map)) |entry: *mut ModEntry| {
                     dumb_println(" "+from_c_str((*entry).name));
                 }
-            }
-            unsafe {
                 exit(1);
             }
         }
@@ -199,9 +153,11 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     }
 
     let mut n_matches: u32 = 0;
-    do iter_crate_map(crate_map) |entry: *mut ModEntry| {
-        let m = update_entry(dirs, entry);
-        n_matches += m;
+    unsafe {
+        do iter_crate_map(transmute(crate_map)) |entry: *mut ModEntry| {
+            let m = update_entry(dirs, entry);
+            n_matches += m;
+        }
     }
 
     if n_matches < (dirs.len() as u32) {
