@@ -23,7 +23,7 @@ use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
-use path_util::{installed_library_in_workspace, U_RWX, rust_path};
+use path_util::{installed_library_in_workspace, U_RWX, rust_path, system_library, target_build_dir};
 use messages::error;
 
 pub use target::{OutputType, Main, Lib, Bench, Test};
@@ -170,7 +170,7 @@ pub fn compile_input(context: &BuildContext,
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let out_dir = workspace.push("build").push_rel(&pkg_id.path);
+    let out_dir = target_build_dir(workspace).push_rel(&pkg_id.path);
 
     let binary = os::args()[0].to_managed();
 
@@ -381,7 +381,8 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                     None => sess.str_of(lib_ident)
                 };
                 debug!("Finding and installing... %s", lib_name);
-                match installed_library_in_workspace(&Path(lib_name), &context.sysroot()) {
+                // Check standard Rust library path first
+                match system_library(&context.sysroot(), lib_name) {
                     Some(ref installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                         // Say that [path for c] has a discovered dependency on
