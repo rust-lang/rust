@@ -655,9 +655,9 @@ pub fn FastCall(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
 }
 
 pub fn CallWithConv(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
-                    Conv: CallConv) -> ValueRef {
+                    Conv: CallConv, sret: bool) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
-    B(cx).call_with_conv(Fn, Args, Conv)
+    B(cx).call_with_conv(Fn, Args, Conv, sret)
 }
 
 pub fn AtomicFence(cx: @mut Block, order: AtomicOrdering) {

@@ -13,6 +13,7 @@ use lib::llvm::llvm;
 use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
 use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
+use lib::llvm::{StructRetAttribute};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_min;
@@ -778,14 +779,9 @@ impl Builder {
 
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef]) -> ValueRef {
         self.count_insn("call");
-
-        debug!("Call(llfn=%s, args=%?)",
-               self.ccx.tn.val_to_str(llfn),
-               args.map(|arg| self.ccx.tn.val_to_str(*arg)));
-
         do args.as_imm_buf |ptr, len| {
             unsafe {
-            llvm::LLVMBuildCall(self.llbuilder, llfn, ptr, len as c_uint, noname())
+                llvm::LLVMBuildCall(self.llbuilder, llfn, ptr, len as c_uint, noname())
             }
         }
     }
@@ -801,12 +797,16 @@ impl Builder {
     }
 
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
-                        conv: CallConv) -> ValueRef {
+                         conv: CallConv, sret: bool) -> ValueRef {
         self.count_insn("callwithconv");
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, vec::raw::to_ptr(args),
                                         args.len() as c_uint, noname());
             lib::llvm::SetInstructionCallConv(v, conv);
+            if sret {
+                let return_slot = 1;
+                llvm::LLVMAddInstrAttribute(v, return_slot, StructRetAttribute as c_uint);
+            }
             v
         }
     }

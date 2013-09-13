@@ -266,7 +266,7 @@ pub fn trans_native_call(bcx: @mut Block,
         }
     };
 
-    let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc);
+    let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, fn_type.sret);
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
