@@ -45,6 +45,46 @@ This file consists of three conceptual sections:
 2. Module-internal metadata creation functions
 3. Minor utility functions
 
+
+## Recursive Types
+Some kinds of types, such as structs and enums can be recursive. That means that the type definition
+of some type X refers to some other type which in turn (transitively) refers to X. This introduces
+cycles into the type referral graph. A naive algorithm doing an on-demand, depth-first traversal of
+this graph when describing types, can get trapped in an endless loop when it reaches such a cycle.
+
+For example, the following simple type for a singly-linked list...
+
+```
+struct List {
+    value: int,
+    tail: Option<@List>,
+}
+```
+
+will generate the following callstack with a naive DFS algorithm:
+
+```
+describe(t = List)
+  describe(t = int)
+  describe(t = Option<@List>)
+    describe(t = @List)
+      describe(t = List) // at the beginning again...
+      ...
+```
+
+To break cycles like these, we use "forward declarations". That is, when the algorithm encounters a
+possibly recursive type (any struct or enum), it immediately creates a type description node and
+inserts it into the cache *before* describing the members of the type. This type description is just
+a stub (as type members are not described and added to it yet) but it allows the algorithm to
+already refer to the type. After the stub is inserted into the cache, the algorithm continues as
+before. If it now encounters a recursive reference, it will hit the cache and does not try to
+describe the type anew.
+
+This behaviour is encapsulated in the 'RecursiveTypeDescription' enum, which represents a kind of
+continuation, storing all state needed to continue traversal at the type members after the type has
+been registered with the cache. (This implementation approach might be a tad over-engineered and
+may change in the future)
+
 */
 
 
@@ -561,16 +601,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             _) => {
             (ident, fn_decl, generics, Some(top_level_block), span)
         }
-        ast_map::node_foreign_item(@ast::foreign_item {
-                ident: ident,
-                node: ast::foreign_item_fn(ref fn_decl, ref generics),
-                span: span,
-                _
-            },
-            _,
-            _,
-            _) => {
-            //(ident, fn_decl, generics, None, span)
+        ast_map::node_foreign_item(@ast::foreign_item { _ }, _, _, _) => {
             return FunctionWithoutDebugInfo;
         }
         ast_map::node_variant(*)     |
@@ -1062,17 +1093,12 @@ fn prepare_struct_metadata(cx: &mut CrateContext,
                            span: Span)
                         -> RecursiveTypeDescription {
     let struct_name = ppaux::ty_to_str(cx.tcx, struct_type);
-    println(fmt!("struct_metadata: %s", struct_name));
-
     let struct_llvm_type = type_of::type_of(cx, struct_type);
+
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id, span);
 
     let file_name = span_start(cx, definition_span).file.name;
     let file_metadata = file_metadata(cx, file_name);
-
-    let loc = span_start(cx, definition_span);
-
-    let (composite_size, composite_align) = size_and_align_of(cx, struct_llvm_type);
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
@@ -1142,43 +1168,14 @@ impl RecursiveTypeDescription {
 
                 // ... then create the member descriptions
                 let member_descriptions = member_description_factory(cx);
-                let member_metadata: ~[DIDescriptor] = member_descriptions
-                    .iter()
-                    .enumerate()
-                    .map(|(i, member_description)| {
-                        let (member_size,
-                             member_align) = size_and_align_of(cx, member_description.llvm_type);
-                        let member_offset = match member_description.offset {
-                            FixedMemberOffset { bytes } => bytes,
-                            ComputedMemberOffset => {
-                                machine::llelement_offset(cx, llvm_type, i)
-                            }
-                        };
 
-                        do member_description.name.with_c_str |member_name| {
-                            unsafe {
-                                llvm::LLVMDIBuilderCreateMemberType(
-                                    DIB(cx),
-                                    metadata_stub,
-                                    member_name,
-                                    file_metadata,
-                                    0 as c_uint,
-                                    bytes_to_bits(member_size),
-                                    bytes_to_bits(member_align),
-                                    bytes_to_bits(member_offset),
-                                    0,
-                                    member_description.type_metadata)
-                            }
-                        }
-                    })
-                    .collect();
-
-                unsafe {
-                    let type_array = create_DIArray(DIB(cx), member_metadata);
-                    llvm::LLVMDICompositeTypeSetTypeArray(metadata_stub, type_array);
-                }
-
-                metadata_stub
+                set_members_of_composite_type(cx,
+                                              metadata_stub,
+                                              llvm_type,
+                                              member_descriptions,
+                                              file_metadata,
+                                              codemap::dummy_sp());
+                return metadata_stub;
             }
         }
     }
@@ -1469,6 +1466,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
 
 enum MemberOffset {
     FixedMemberOffset{ bytes: uint },
+    // For ComputedMemberOffset, the offset is read from the llvm type definition
     ComputedMemberOffset
 }
 
@@ -1490,26 +1488,15 @@ fn composite_type_metadata(cx: &mut CrateContext,
                            file_metadata: DIFile,
                            definition_span: Span)
                         -> DICompositeType {
-    let loc = span_start(cx, definition_span);
-    let (composite_size, composite_align) = size_and_align_of(cx, composite_llvm_type);
+    // Create the (empty) struct metadata node ...
+    let composite_type_metadata = create_struct_stub(cx,
+                                                     composite_llvm_type,
+                                                     composite_type_name,
+                                                     containing_scope,
+                                                     file_metadata,
+                                                     definition_span);
 
-    let composite_type_metadata = do composite_type_name.with_c_str |name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateStructType(
-                DIB(cx),
-                containing_scope,
-                name,
-                file_metadata,
-                loc.line as c_uint,
-                bytes_to_bits(composite_size),
-                bytes_to_bits(composite_align),
-                0,
-                ptr::null(),
-                ptr::null(),
-                0,
-                ptr::null())
-    }};
-
+    // ... and immediately create and add the member descriptions.
     set_members_of_composite_type(cx,
                                   composite_type_metadata,
                                   composite_llvm_type,
@@ -1563,7 +1550,7 @@ fn set_members_of_composite_type(cx: &mut CrateContext,
 }
 
 // A convenience wrapper around LLVMDIBuilderCreateStructType(). Does not do any caching, does not
-// add any fields to the struct. This can be done later with LLVMDICompositeTypeSetTypeArray().
+// add any fields to the struct. This can be done later with set_members_of_composite_type().
 fn create_struct_stub(cx: &mut CrateContext,
                       struct_llvm_type: Type,
                       struct_type_name: &str,
@@ -1576,6 +1563,10 @@ fn create_struct_stub(cx: &mut CrateContext,
 
     return do struct_type_name.with_c_str |name| {
         unsafe {
+            // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
+            // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
+            let empty_array = create_DIArray(DIB(cx), []);
+
             llvm::LLVMDIBuilderCreateStructType(
                 DIB(cx),
                 containing_scope,
@@ -1586,7 +1577,7 @@ fn create_struct_stub(cx: &mut CrateContext,
                 bytes_to_bits(struct_align),
                 0,
                 ptr::null(),
-                ptr::null(),
+                empty_array,
                 0,
                 ptr::null())
     }};
@@ -1864,7 +1855,7 @@ fn trait_metadata(cx: &mut CrateContext,
                   substs: &ty::substs,
                   trait_store: ty::TraitStore,
                   mutability: ast::Mutability,
-                  builtinBounds: &ty::BuiltinBounds,
+                  _: &ty::BuiltinBounds,
                   usage_site_span: Span)
                -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait type is
@@ -2118,14 +2109,6 @@ fn debug_context<'a>(cx: &'a mut CrateContext) -> &'a mut CrateDebugContext {
 #[inline]
 fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx.get_ref().builder
-}
-
-fn assert_fcx_has_span(fcx: &FunctionContext) {
-    if fcx.span.is_none() {
-        fcx.ccx.sess.bug(fmt!("debuginfo: Encountered function %s with invalid source span. \
-            This function should have been ignored by debuginfo generation.",
-            ast_map::path_to_str(fcx.path, fcx.ccx.sess.intr())));
-    }
 }
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {

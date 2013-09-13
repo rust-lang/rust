@@ -142,14 +142,14 @@ struct LongCycleWithAnonymousTypes {
 
 // This test case makes sure that recursive structs are properly described. The Node structs are
 // generic so that we can have a new type (that newly needs to be described) for the different
-// cases. The potential problem with recursive types is that the DI generation algorithm get trapped
-// in an endless loop. To make sure, we actually test this in the different cases, we have to
-// operate on a new type each time, otherwise we would just hit the DI cache for all but the first
-// case.
+// cases. The potential problem with recursive types is that the DI generation algorithm gets
+// trapped in an endless loop. To make sure, we actually test this in the different cases, we have
+// to operate on a new type each time, otherwise we would just hit the DI cache for all but the
+// first case.
 
 // The different cases below (stack_*, unique_*, box_*, etc) are set up so that the type description
 // algorithm will enter the type reference cycle that is created by a recursive definition from a
-// different context.
+// different context each time.
 
 // The "long cycle" cases are constructed to span a longer, indirect recursion cycle between types.
 // The different locals will cause the DI algorithm to enter the type reference cycle at different
