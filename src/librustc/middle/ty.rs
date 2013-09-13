@@ -4326,7 +4326,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     /*char*/    [f, f, f, f,     t,   t,  f,   f],
     /*int*/     [t, t, t, t,     t,   t,  t,   f],
     /*float*/   [t, t, t, f,     t,   t,  f,   f],
-    /*bot*/     [t, t, t, t,     f,   f,  t,   t],
+    /*bot*/     [t, t, t, t,     t,   t,  t,   t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
 
     return tbl[tycat(cx, ty)][opcat(op)];
