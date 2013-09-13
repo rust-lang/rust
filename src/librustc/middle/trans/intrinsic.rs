@@ -404,11 +404,6 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "offset" => {
             let ptr = get_param(decl, first_real_arg);
             let offset = get_param(decl, first_real_arg + 1);
-            Ret(bcx, GEP(bcx, ptr, [offset]));
-        }
-        "offset_inbounds" => {
-            let ptr = get_param(decl, first_real_arg);
-            let offset = get_param(decl, first_real_arg + 1);
             Ret(bcx, InBoundsGEP(bcx, ptr, [offset]));
         }
         "memcpy32" => memcpy_intrinsic(bcx, "llvm.memcpy.p0i8.p0i8.i32", substs.tys[0], 32),
