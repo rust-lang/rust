@@ -49,7 +49,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             args[i] = get_param(bcx.fcx.llfn, first_real_arg + i);
         }
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, args.slice(0, num_args)));
+        Ret(bcx, Call(bcx, llfn, args.slice(0, num_args), []));
     }
 
     fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str) {
@@ -59,7 +59,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
 
         // convert `i1` to a `bool`, and write to the out parameter
-        let val = Call(bcx, llfn, [a, b]);
+        let val = Call(bcx, llfn, [a, b], []);
         let result = ExtractValue(bcx, val, 0);
         let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
         let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
@@ -87,7 +87,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let count = get_param(decl, first_real_arg + 2);
         let volatile = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
+        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
 
@@ -108,7 +108,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let count = get_param(decl, first_real_arg + 2);
         let volatile = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile]);
+        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
 
@@ -116,7 +116,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
-        Ret(bcx, Call(bcx, llfn, [x, y]));
+        Ret(bcx, Call(bcx, llfn, [x, y], []));
     }
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
@@ -366,7 +366,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         }
         "frame_address" => {
             let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
+            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)], []);
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
                 ty::mk_mach_uint(ast::ty_u8));
