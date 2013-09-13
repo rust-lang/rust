@@ -264,6 +264,9 @@ pub fn trans_native_call(bcx: @mut Block,
         }
     };
 
+    // A function pointer is called without the declaration available, so we have to apply
+    // any attributes with ABI implications directly to the call instruction. Right now, the
+    // only attribute we need to worry about is `sret`.
     let attrs;
     if fn_type.sret {
         attrs = &[(1, StructRetAttribute)];
