@@ -1,3 +1,13 @@
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 #[link(name = "rustdoc_ng",
        vers = "0.1.0",
        uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6")];
@@ -77,7 +87,7 @@ fn main() {
     let (crate, res) = pm.run_plugins(crate);
     let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
 
-    // FIXME: yuck, Rust -> str -> JSON round trip! No way to .encode
+    // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = do std::io::with_str_writer |w| {
         crate.encode(&mut extra::json::Encoder(w));
