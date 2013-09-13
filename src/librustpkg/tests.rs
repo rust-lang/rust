@@ -1581,6 +1581,28 @@ fn pkgid_pointing_to_subdir() {
     assert_executable_exists(&workspace, "testpkg");
 }
 
+fn test_recursive_deps() {
+    let a_id = PkgId::new("a");
+    let b_id = PkgId::new("b");
+    let c_id = PkgId::new("c");
+    let b_workspace = create_local_package_with_dep(&b_id, &c_id);
+    writeFile(&b_workspace.push("src").push("c-0.1").push("lib.rs"),
+               "pub fn g() {}");
+    let a_workspace = create_local_package(&a_id);
+    writeFile(&a_workspace.push("src").push("a-0.1").push("main.rs"),
+               "extern mod b; use b::f; fn main() { f(); }");
+    writeFile(&b_workspace.push("src").push("b-0.1").push("lib.rs"),
+               "extern mod c; use c::g; pub fn f() { g(); }");
+    let environment = Some(~[(~"RUST_PATH", b_workspace.to_str())]);
+    debug!("RUST_PATH=%s", b_workspace.to_str());
+    command_line_test_with_env([~"install", ~"a"],
+                               &a_workspace,
+                               environment);
+    assert_lib_exists(&a_workspace, &Path("a"), NoVersion);
+    assert_lib_exists(&b_workspace, &Path("b"), NoVersion);
+    assert_lib_exists(&b_workspace, &Path("c"), NoVersion);
+}
+
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
     use std::libc::consts::os::posix88::{S_IXUSR};

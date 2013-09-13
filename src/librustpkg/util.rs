@@ -22,7 +22,9 @@ use rustc::driver::session::{lib_crate, bin_crate};
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use package_id::PkgId;
 use package_source::PkgSrc;
-use path_util::{installed_library_in_workspace, U_RWX};
+use workspace::pkg_parent_workspaces;
+use path_util::{installed_library_in_workspace, U_RWX, rust_path};
+use messages::error;
 
 pub use target::{OutputType, Main, Lib, Bench, Test};
 use workcache_support::{digest_file_with_date, digest_only_date};
@@ -243,9 +245,7 @@ pub fn compile_input(context: &BuildContext,
     let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
     crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
-    // Not really right. Should search other workspaces too, and the installed
-    // database (which doesn't exist yet)
-    find_and_install_dependencies(context, sess, exec, workspace, crate,
+    find_and_install_dependencies(context, pkg_id, sess, exec, crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
@@ -362,13 +362,15 @@ pub fn compile_crate(ctxt: &BuildContext,
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-pub fn find_and_install_dependencies(ctxt: &BuildContext,
+pub fn find_and_install_dependencies(context: &BuildContext,
+                                     parent: &PkgId,
                                      sess: session::Session,
                                      exec: &mut workcache::Exec,
-                                     workspace: &Path,
                                      c: &ast::Crate,
                                      save: @fn(Path)
                                      ) {
+    use conditions::nonexistent_package::cond;
+
     do c.each_view_item() |vi: &ast::view_item| {
         debug!("A view item!");
         match vi.node {
@@ -379,7 +381,7 @@ pub fn find_and_install_dependencies(ctxt: &BuildContext,
                     None => sess.str_of(lib_ident)
                 };
                 debug!("Finding and installing... %s", lib_name);
-                match installed_library_in_workspace(&Path(lib_name), &ctxt.sysroot()) {
+                match installed_library_in_workspace(&Path(lib_name), &context.sysroot()) {
                     Some(ref installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                         // Say that [path for c] has a discovered dependency on
@@ -397,8 +399,18 @@ pub fn find_and_install_dependencies(ctxt: &BuildContext,
                                lib_name.to_str());
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
+                        let workspaces = pkg_parent_workspaces(&context.context, &pkg_id);
+                        let dep_workspace = if workspaces.is_empty() {
+                            error(fmt!("Couldn't find package %s, which is needed by %s, \
+                                            in any of the workspaces in the RUST_PATH (%?)",
+                                            lib_name, parent.to_str(), rust_path()));
+                            cond.raise((pkg_id.clone(), ~"Dependency not found"))
+                        }
+                        else {
+                            workspaces[0]
+                        };
                         let (outputs_disc, inputs_disc) =
-                            ctxt.install(PkgSrc::new(workspace.clone(), false, pkg_id));
+                            context.install(PkgSrc::new(dep_workspace.clone(), false, pkg_id));
                         debug!("Installed %s, returned %? dependencies and \
                                %? transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
@@ -423,7 +435,7 @@ pub fn find_and_install_dependencies(ctxt: &BuildContext,
                         // Also, add an additional search path
                         debug!("Adding additional search path: %s", lib_name);
                         let installed_library =
-                            installed_library_in_workspace(&Path(lib_name), workspace)
+                            installed_library_in_workspace(&Path(lib_name), &dep_workspace)
                                 .expect( fmt!("rustpkg failed to install dependency %s",
                                               lib_name));
                         let install_dir = installed_library.pop();
