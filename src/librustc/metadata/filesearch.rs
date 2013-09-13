@@ -77,15 +77,15 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             if !found {
                 let rustpath = rust_path();
                 for path in rustpath.iter() {
-                    debug!("is %s in visited_dirs? %?",
-                            path.push("lib").to_str(),
-                            visited_dirs.contains(&path.push("lib").to_str()));
+                    let tlib_path = make_rustpkg_target_lib_path(path, self.target_triple);
+                    debug!("is %s in visited_dirs? %?", tlib_path.to_str(),
+                            visited_dirs.contains(&tlib_path.to_str()));
 
-                    if !visited_dirs.contains(&path.push("lib").to_str()) {
-                        visited_dirs.insert(path.push("lib").to_str());
+                    if !visited_dirs.contains(&tlib_path.to_str()) {
+                        visited_dirs.insert(tlib_path.to_str());
                         // Don't keep searching the RUST_PATH if one match turns up --
                         // if we did, we'd get a "multiple matching crates" error
-                        match f(&path.push("lib")) {
+                        match f(&tlib_path) {
                            FileMatches => {
                                break;
                            }
@@ -143,6 +143,11 @@ pub fn relative_target_lib_path(target_triple: &str) -> Path {
 fn make_target_lib_path(sysroot: &Path,
                         target_triple: &str) -> Path {
     sysroot.push_rel(&relative_target_lib_path(target_triple))
+}
+
+fn make_rustpkg_target_lib_path(dir: &Path,
+                        target_triple: &str) -> Path {
+    dir.push_rel(&Path(libdir()).push(target_triple.to_owned()))
 }
 
 fn get_or_default_sysroot() -> Path {
