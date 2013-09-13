@@ -52,13 +52,11 @@ A valid workspace must contain each of the following subdirectories:
      rustpkg will install libraries for bar to `foo/lib/x86_64-apple-darwin/`.
      The libraries will have names of the form `foo/lib/x86_64-apple-darwin/libbar-[hash].dylib`,
      where [hash] is a hash of the package ID.
-* 'bin/': `rustpkg install` installs executable binaries into a target-specific subdirectory of this directory.
+* 'bin/': `rustpkg install` installs executable binaries into this directory.
 
-     For example, on a 64-bit machine running Mac OS X,
-     if `foo` is a workspace, containing the package `bar`,
-     rustpkg will install executables for `bar` to
-     `foo/bin/x86_64-apple-darwin/`.
-     The executables will have names of the form `foo/bin/x86_64-apple-darwin/bar`.
+     For example, rustpkg will install executables for `bar` to
+     `foo/bin`.
+     The executables will have names of the form `foo/bin/bar`.
 * 'build/': `rustpkg build` stores temporary build artifacts in a target-specific subdirectory of this directory.
 
      For example, on a 64-bit machine running Mac OS X,
@@ -84,6 +82,12 @@ rustpkg also interprets any dependencies on such a package ID literally
 (as opposed to versions, where a newer version satisfies a dependency on an older version).
 Thus, `github.com/mozilla/rust#5c4cd30f80` is also a valid package ID,
 since git can deduce that 5c4cd30f80 refers to a revision of the desired repository.
+
+A package identifier can name a subdirectory of another package.
+For example, if `foo` is a workspace, and `foo/src/bar/lib.rs` exists,
+as well as `foo/src/bar/extras/baz/lib.rs`,
+then both `bar` and `bar/extras/baz` are valid package identifiers
+in the workspace `foo`.
 
 ## Source files
 
@@ -140,9 +144,11 @@ but not in their `lib` or `bin` directories.
 
 ## install
 
-`rustpkg install foo` builds the libraries and/or executables that are targets for `foo`,
-and then installs them either into `foo`'s `lib` and `bin` directories,
-or into the `lib` and `bin` subdirectories of the first entry in `RUST_PATH`.
+`rustpkg install foo` builds the libraries and/or executables that are targets for `foo`.
+If `RUST_PATH` is declared as an environment variable, then rustpkg installs the
+libraries and executables into the `lib` and `bin` subdirectories
+of the first entry in `RUST_PATH`.
+Otherwise, it installs them into `foo`'s `lib` and `bin` directories.
 
 ## test
 
