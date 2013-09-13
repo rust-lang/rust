@@ -72,8 +72,7 @@ fn main() {
     format!("foo } bar"); //~ ERROR: unmatched `}` found
     format!("foo }"); //~ ERROR: unmatched `}` found
 
-    // FIXME(#5794) the spans on these errors are pretty terrible
-    //format!();
-    //format!("" 1);
-    //format!("", 1 1);
+    format!();          //~ ERROR: requires at least a format string argument
+    format!("" 1);      //~ ERROR: expected token: `,`
+    format!("", 1 1);   //~ ERROR: expected token: `,`
 }
