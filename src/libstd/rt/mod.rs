@@ -126,6 +126,9 @@ pub mod local_heap;
 /// The Logger trait and implementations
 pub mod logging;
 
+/// Crate map
+pub mod crate_map;
+
 /// Tools for testing the runtime
 pub mod test;
 

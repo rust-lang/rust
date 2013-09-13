@@ -687,6 +687,17 @@ impl<T:Hash + Eq> HashSet<T> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
 
+    /// Create an empty HashSet with space for at least `capacity`
+    /// elements in the hash table, using `k0` and `k1` as the keys.
+    ///
+    /// Warning: `k0` and `k1` are normally randomly generated, and
+    /// are designed to allow HashSets to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting them
+    /// manually using this function can expose a DoS attack vector.
+    pub fn with_capacity_and_keys(k0: u64, k1: u64, capacity: uint) -> HashSet<T> {
+        HashSet { map: HashMap::with_capacity_and_keys(k0, k1, capacity) }
+    }
+
     /// Reserve space for at least `n` elements in the hash table.
     pub fn reserve_at_least(&mut self, n: uint) {
         self.map.reserve_at_least(n)

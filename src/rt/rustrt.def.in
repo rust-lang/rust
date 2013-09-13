@@ -181,7 +181,6 @@ rust_valgrind_stack_register
 rust_valgrind_stack_deregister
 rust_take_env_lock
 rust_drop_env_lock
-rust_iter_crate_map
 rust_running_on_valgrind
 rust_get_num_cpus
 rust_get_global_args_ptr
