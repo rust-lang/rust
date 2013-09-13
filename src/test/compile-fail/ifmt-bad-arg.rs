@@ -11,7 +11,6 @@
 fn main() {
     // bad arguments to the format! call
 
-    format!();                //~ ERROR: requires at least a format string
     format!("{}");            //~ ERROR: invalid reference to argument
 
     format!("{1}", 1);        //~ ERROR: invalid reference to argument `1`
@@ -30,8 +29,6 @@ fn main() {
     format!("{foo}", foo=1, foo=2);    //~ ERROR: duplicate argument
     format!("#");                      //~ ERROR: `#` reference used
     format!("", foo=1, 2);             //~ ERROR: positional arguments cannot follow
-    format!("" 1);                     //~ ERROR: expected token: `,`
-    format!("", 1 1);                  //~ ERROR: expected token: `,`
 
     format!("{0, select, a{} a{} other{}}", "a");    //~ ERROR: duplicate selector
     format!("{0, plural, =1{} =1{} other{}}", 1u);   //~ ERROR: duplicate selector
@@ -74,4 +71,9 @@ fn main() {
 
     format!("foo } bar"); //~ ERROR: unmatched `}` found
     format!("foo }"); //~ ERROR: unmatched `}` found
+
+    // FIXME(#5794) the spans on these errors are pretty terrible
+    //format!();
+    //format!("" 1);
+    //format!("", 1 1);
 }

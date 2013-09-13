@@ -452,6 +452,13 @@ pub fn write(output: &mut io::Writer, args: &Arguments) {
     unsafe { write_unsafe(output, args.fmt, args.args) }
 }
 
+/// The `writeln` function takes the same arguments as `write`, except that it
+/// will also write a newline (`\n`) character at the end of the format string.
+pub fn writeln(output: &mut io::Writer, args: &Arguments) {
+    unsafe { write_unsafe(output, args.fmt, args.args) }
+    output.write(['\n' as u8]);
+}
+
 /// The `write_unsafe` function takes an output stream, a precompiled format
 /// string, and a list of arguments. The arguments will be formatted according
 /// to the specified format string into the output stream provided.

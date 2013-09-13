@@ -715,11 +715,11 @@ pub fn std_macros() -> @str {
             }
         })
     )
-    macro_rules! error( ($($arg:tt)+) => (log!(1u32, $($arg)+)) )
-    macro_rules! warn ( ($($arg:tt)+) => (log!(2u32, $($arg)+)) )
-    macro_rules! info ( ($($arg:tt)+) => (log!(3u32, $($arg)+)) )
-    macro_rules! debug( ($($arg:tt)+) => (
-        if cfg!(debug) { log!(4u32, $($arg)+) }
+    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
+    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
+    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
+    macro_rules! debug( ($($arg:tt)*) => (
+        if cfg!(debug) { log!(4u32, $($arg)*) }
     ))
 
     macro_rules! log2(
@@ -730,11 +730,11 @@ pub fn std_macros() -> @str {
             }
         })
     )
-    macro_rules! error2( ($($arg:tt)+) => (log2!(1u32, $($arg)+)) )
-    macro_rules! warn2 ( ($($arg:tt)+) => (log2!(2u32, $($arg)+)) )
-    macro_rules! info2 ( ($($arg:tt)+) => (log2!(3u32, $($arg)+)) )
-    macro_rules! debug2( ($($arg:tt)+) => (
-        if cfg!(debug) { log2!(4u32, $($arg)+) }
+    macro_rules! error2( ($($arg:tt)*) => (log2!(1u32, $($arg)*)) )
+    macro_rules! warn2 ( ($($arg:tt)*) => (log2!(2u32, $($arg)*)) )
+    macro_rules! info2 ( ($($arg:tt)*) => (log2!(3u32, $($arg)*)) )
+    macro_rules! debug2( ($($arg:tt)*) => (
+        if cfg!(debug) { log2!(4u32, $($arg)*) }
     ))
 
     macro_rules! fail(
@@ -753,8 +753,8 @@ pub fn std_macros() -> @str {
         () => (
             fail!(\"explicit failure\")
         );
-        ($($arg:tt)+) => (
-            ::std::sys::FailWithCause::fail_with(format!($($arg)+), file!(), line!())
+        ($($arg:tt)*) => (
+            ::std::sys::FailWithCause::fail_with(format!($($arg)*), file!(), line!())
         )
     )
 
@@ -958,17 +958,25 @@ pub fn std_macros() -> @str {
         )
     )
 
+    macro_rules! format(($($arg:tt)*) => (
+        format_args!(::std::fmt::format, $($arg)*)
+    ))
+    macro_rules! write(($dst:expr, $($arg:tt)*) => (
+        format_args!(|args| { ::std::fmt::write($dst, args) }, $($arg)*)
+    ))
+    macro_rules! writeln(($dst:expr, $($arg:tt)*) => (
+        format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
+    ))
     // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
     //              allocation but should rather delegate to an invocation of
     //              write! instead of format!
     macro_rules! print (
-        ($($arg:tt)+) => (::std::io::print(format!($($arg)+)))
+        ($($arg:tt)*) => (::std::io::print(format!($($arg)*)))
     )
-
     // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
     //              allocation but should rather delegate to an io::Writer
     macro_rules! println (
-        ($($arg:tt)+) => (::std::io::println(format!($($arg)+)))
+        ($($arg:tt)*) => (::std::io::println(format!($($arg)*)))
     )
 
     // NOTE: use this after a snapshot lands to abstract the details
