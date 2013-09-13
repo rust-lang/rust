@@ -14,6 +14,7 @@ pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
+use rustc::driver::driver::host_triple;
 
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os::mkdir_recursive;
@@ -94,10 +95,29 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     found
 }
 
+/// Return the target-specific build subdirectory, pushed onto `base`;
+/// doesn't check that it exists or create it
+pub fn target_build_dir(workspace: &Path) -> Path {
+    workspace.push("build").push(host_triple())
+}
+
+/// Return the target-specific lib subdirectory, pushed onto `base`;
+/// doesn't check that it exists or create it
+fn target_lib_dir(workspace: &Path) -> Path {
+    workspace.push("lib").push(host_triple())
+}
+
+/// Return the bin subdirectory, pushed onto `base`;
+/// doesn't check that it exists or create it
+/// note: this isn't target-specific
+fn target_bin_dir(workspace: &Path) -> Path {
+    workspace.push("bin")
+}
+
 /// Figure out what the executable name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    let mut result = workspace.push("build");
+    let mut result = target_build_dir(workspace);
     // should use a target-specific subdirectory
     result = mk_output_path(Main, Build, pkgid, result);
     debug!("built_executable_in_workspace: checking whether %s exists",
@@ -124,7 +144,7 @@ pub fn built_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path>
 }
 
 fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
-    let mut result = workspace.push("build");
+    let mut result = target_build_dir(workspace);
     // should use a target-specific subdirectory
     result = mk_output_path(what, Build, pkgid, result);
     debug!("output_in_workspace: checking whether %s exists",
@@ -172,11 +192,21 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
             prefix = %s", short_name, where, workspace.to_str(), prefix);
 
     let dir_to_search = match where {
-        Build => workspace.push(prefix).push_rel(path),
-        Install => workspace.push(prefix)
+        Build => target_build_dir(workspace).push_rel(path),
+        Install => target_lib_dir(workspace)
     };
+
+    library_in(short_name, version, &dir_to_search)
+}
+
+// rustc doesn't use target-specific subdirectories
+pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
+    library_in(lib_name, &NoVersion, &sysroot.push("lib"))
+}
+
+fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory %s", dir_to_search.to_str());
-    let dir_contents = os::list_dir(&dir_to_search);
+    let dir_contents = os::list_dir(dir_to_search);
     debug!("dir has %? entries", dir_contents.len());
 
     let lib_prefix = fmt!("%s%s", os::consts::DLL_PREFIX, short_name);
@@ -298,9 +328,10 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     };
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
-    let result = match where {
-                Build => workspace.push(subdir).push_rel(&pkgid.path),
-                _     => workspace.push(subdir)
+    let result = match (where, what) {
+                (Build, _)         => target_build_dir(workspace).push_rel(&pkgid.path),
+                (Install, Lib)     => target_lib_dir(workspace),
+                (Install, _)    => target_bin_dir(workspace)
     };
     if !os::path_exists(&result) && !mkdir_recursive(&result, U_RWX) {
         cond.raise((result.clone(), fmt!("target_file_in_workspace couldn't \
@@ -315,10 +346,10 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
 pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
 
-    let mut result = workspace.push("build");
-    // n.b. Should actually use a target-specific
-    // subdirectory of build/
+    let mut result = target_build_dir(workspace);
     result = result.push_rel(&pkgid.path);
+    debug!("Creating build dir %s for package id %s", result.to_str(),
+           pkgid.to_str());
     if os::path_exists(&result) || os::mkdir_recursive(&result, U_RWX) {
         result
     }

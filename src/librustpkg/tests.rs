@@ -27,7 +27,7 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                target_bench_in_workspace, make_dir_rwx, U_RWX,
                library_in_workspace, installed_library_in_workspace,
                built_bench_in_workspace, built_test_in_workspace,
-               built_library_in_workspace, built_executable_in_workspace};
+               built_library_in_workspace, built_executable_in_workspace, target_build_dir};
 use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::rust_path;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
@@ -382,7 +382,7 @@ fn llvm_bitcode_file_exists(repo: &Path, short_name: &str) -> bool {
 }
 
 fn file_exists(repo: &Path, short_name: &str, extension: &str) -> bool {
-    os::path_exists(&repo.push_many([~"build", short_name.to_owned(),
+    os::path_exists(&target_build_dir(repo).push_many([short_name.to_owned(),
                                      fmt!("%s.%s", short_name, extension)]))
 }
 
@@ -433,7 +433,7 @@ fn lib_output_file_name(workspace: &Path, parent: &str, short_name: &str) -> Pat
 }
 
 fn output_file_name(workspace: &Path, short_name: &str) -> Path {
-    workspace.push("build").push(short_name).push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
+    target_build_dir(workspace).push(short_name).push(fmt!("%s%s", short_name, os::EXE_SUFFIX))
 }
 
 fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
@@ -657,11 +657,10 @@ fn test_package_version() {
         None    => false
     });
     assert!(built_executable_in_workspace(&temp_pkg_id, &ws)
-            == Some(ws.push("build").
-                    push("mockgithub.com").
-                    push("catamorphism").
-                    push("test_pkg_version").
-                    push("test_pkg_version")));
+            == Some(target_build_dir(&ws).push_many([~"mockgithub.com",
+                                                    ~"catamorphism",
+                                                    ~"test_pkg_version",
+                                                    ~"test_pkg_version"])));
 }
 
 #[test]
@@ -755,7 +754,7 @@ fn package_script_with_default_build() {
     }
     command_line_test([~"install", ~"fancy-lib"], &dir);
     assert_lib_exists(&dir, &Path("fancy-lib"), NoVersion);
-    assert!(os::path_exists(&dir.push("build").push("fancy-lib").push("generated.rs")));
+    assert!(os::path_exists(&target_build_dir(&dir).push_many([~"fancy-lib", ~"generated.rs"])));
 }
 
 #[test]
@@ -1121,7 +1120,7 @@ fn test_import_rustpkg() {
               "extern mod rustpkg; fn main() {}");
     command_line_test([~"build", ~"foo"], &workspace);
     debug!("workspace = %s", workspace.to_str());
-    assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
+    assert!(os::path_exists(&target_build_dir(&workspace).push("foo").push(fmt!("pkg%s",
         os::EXE_SUFFIX))));
 }
 
@@ -1133,7 +1132,7 @@ fn test_macro_pkg_script() {
               "extern mod rustpkg; fn main() { debug!(\"Hi\"); }");
     command_line_test([~"build", ~"foo"], &workspace);
     debug!("workspace = %s", workspace.to_str());
-    assert!(os::path_exists(&workspace.push("build").push("foo").push(fmt!("pkg%s",
+    assert!(os::path_exists(&target_build_dir(&workspace).push("foo").push(fmt!("pkg%s",
         os::EXE_SUFFIX))));
 }
 
@@ -1620,6 +1619,33 @@ fn test_install_to_rust_path() {
     assert!(built_executable_exists(&second_workspace, "foo"));
     assert_executable_exists(&first_workspace, "foo");
     assert!(!executable_exists(&second_workspace, "foo"));
+}
+
+fn test_target_specific_build_dir() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"build",
+                       ~"foo"],
+                      &workspace);
+    assert!(os::path_is_dir(&target_build_dir(&workspace)));
+    assert!(built_executable_exists(&workspace, "foo"));
+    assert!(os::list_dir(&workspace.push("build")).len() == 1);
+}
+
+#[test]
+fn test_target_specific_install_dir() {
+    let p_id = PkgId::new("foo");
+    let workspace = create_local_package(&p_id);
+    command_line_test([test_sysroot().to_str(),
+                       ~"install",
+                       ~"foo"],
+                      &workspace);
+    assert!(os::path_is_dir(&workspace.push("lib").push(host_triple())));
+    assert_lib_exists(&workspace, &Path("foo"), NoVersion);
+    assert!(os::list_dir(&workspace.push("lib")).len() == 1);
+    assert!(os::path_is_dir(&workspace.push("bin")));
+    assert_executable_exists(&workspace, "foo");
 }
 
 /// Returns true if p exists and is executable
