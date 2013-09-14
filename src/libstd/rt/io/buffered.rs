@@ -187,31 +187,37 @@ impl<W: Writer> Decorator<W> for BufferedWriter<W> {
     }
 }
 
-struct InternalBufferedWriter<W>(BufferedWriter<W>);
+// FIXME #9155 this should be a newtype struct
+struct InternalBufferedWriter<W> {
+    inner: BufferedWriter<W>
+}
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        self.inner.read(buf)
+        self.inner.inner.read(buf)
     }
 
     fn eof(&mut self) -> bool {
-        self.inner.eof()
+        self.inner.inner.eof()
     }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
 ///
 /// NOTE: `BufferedStream` will NOT flush its output buffer when dropped.
-pub struct BufferedStream<S>(BufferedReader<InternalBufferedWriter<S>>);
+// FIXME #9155 this should be a newtype struct
+pub struct BufferedStream<S> {
+    priv inner: BufferedReader<InternalBufferedWriter<S>>
+}
 
 impl<S: Stream> BufferedStream<S> {
     pub fn with_capacities(reader_cap: uint, writer_cap: uint, inner: S)
                            -> BufferedStream<S> {
         let writer = BufferedWriter::with_capacity(writer_cap, inner);
-        let internal_writer = InternalBufferedWriter(writer);
+        let internal_writer = InternalBufferedWriter { inner: writer };
         let reader = BufferedReader::with_capacity(reader_cap,
                                                    internal_writer);
-        BufferedStream(reader)
+        BufferedStream { inner: reader }
     }
 
     pub fn new(inner: S) -> BufferedStream<S> {
@@ -222,35 +228,35 @@ impl<S: Stream> BufferedStream<S> {
 
 impl<S: Stream> Reader for BufferedStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        (**self).read(buf)
+        self.inner.read(buf)
     }
 
     fn eof(&mut self) -> bool {
-        (**self).eof()
+        self.inner.eof()
     }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
     fn write(&mut self, buf: &[u8]) {
-        self.inner.write(buf)
+        self.inner.inner.inner.write(buf)
     }
 
     fn flush(&mut self) {
-        self.inner.flush()
+        self.inner.inner.inner.flush()
     }
 }
 
 impl<S: Stream> Decorator<S> for BufferedStream<S> {
     fn inner(self) -> S {
-        self.inner.inner()
+        self.inner.inner.inner.inner()
     }
 
     fn inner_ref<'a>(&'a self) -> &'a S {
-        self.inner.inner_ref()
+        self.inner.inner.inner.inner_ref()
     }
 
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut S {
-        self.inner.inner_mut_ref()
+        self.inner.inner.inner.inner_mut_ref()
     }
 }
 
