@@ -66,15 +66,6 @@ pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     (Port { x: p }, Chan { x: c })
 }
 
-pub struct SharedChan<T> { x: rtcomm::SharedChan<T> }
-
-impl<T: Send> SharedChan<T> {
-    pub fn new(c: Chan<T>) -> SharedChan<T> {
-        let Chan { x: c } = c;
-        SharedChan { x: rtcomm::SharedChan::new(c) }
-    }
-}
-
 impl<T: Send> ChanOne<T> {
     pub fn send(self, val: T) {
         let ChanOne { x: c } = self;
@@ -161,6 +152,16 @@ impl<T: Send> Peekable<T> for Port<T> {
     }
 }
 
+
+pub struct SharedChan<T> { x: rtcomm::SharedChan<T> }
+
+impl<T: Send> SharedChan<T> {
+    pub fn new(c: Chan<T>) -> SharedChan<T> {
+        let Chan { x: c } = c;
+        SharedChan { x: rtcomm::SharedChan::new(c) }
+    }
+}
+
 impl<T: Send> GenericChan<T> for SharedChan<T> {
     fn send(&self, val: T) {
         let &SharedChan { x: ref c } = self;
@@ -191,5 +192,33 @@ impl<T> Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
         let &SharedChan { x: ref c } = self;
         SharedChan { x: c.clone() }
+    }
+}
+
+pub struct SharedPort<T> { x: rtcomm::SharedPort<T> }
+
+impl<T: Send> SharedPort<T> {
+    pub fn new(p: Port<T>) -> SharedPort<T> {
+        let Port { x: p } = p;
+        SharedPort { x: rtcomm::SharedPort::new(p) }
+    }
+}
+
+impl<T: Send> GenericPort<T> for SharedPort<T> {
+    fn recv(&self) -> T {
+        let &SharedPort { x: ref p } = self;
+        p.recv()
+    }
+
+    fn try_recv(&self) -> Option<T> {
+        let &SharedPort { x: ref p } = self;
+        p.try_recv()
+    }
+}
+
+impl<T> Clone for SharedPort<T> {
+    fn clone(&self) -> SharedPort<T> {
+        let &SharedPort { x: ref p } = self;
+        SharedPort { x: p.clone() }
     }
 }
