@@ -1719,6 +1719,20 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
     Counter{state: start, step: step}
 }
 
+impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let result = self.state.clone();
+        self.state = self.state + self.step;
+        Some(result)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (uint::max_value, None) // Too bad we can't specify an infinite lower bound
+    }
+}
+
 /// An iterator over the range [start, stop)
 #[deriving(Clone, DeepClone)]
 pub struct Range<A> {
@@ -1821,20 +1835,6 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclu
             self.done = true;
             Some(self.range.stop.clone())
         }
-    }
-}
-
-impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        let result = self.state.clone();
-        self.state = self.state + self.step;
-        Some(result)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (uint::max_value, None) // Too bad we can't specify an infinite lower bound
     }
 }
 
