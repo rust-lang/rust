@@ -1719,7 +1719,7 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
     Counter{state: start, step: step}
 }
 
-/// A range of numbers from [0, N)
+/// An iterator over the range [start, stop)
 #[deriving(Clone, DeepClone)]
 pub struct Range<A> {
     priv state: A,
@@ -1765,7 +1765,7 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
     }
 }
 
-/// A range of numbers from [0, N]
+/// An iterator over the range [start, stop]
 #[deriving(Clone, DeepClone)]
 pub struct RangeInclusive<A> {
     priv range: Range<A>,
