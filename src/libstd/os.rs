@@ -569,7 +569,7 @@ pub fn homedir() -> Option<Path> {
 
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
-        do getenv("USERPROFILE").chain |p| {
+        do getenv("USERPROFILE").and_then |p| {
             if !p.is_empty() {
                 Some(Path(p))
             } else {
@@ -611,7 +611,7 @@ pub fn tmpdir() -> Path {
         if cfg!(target_os = "android") {
             Path("/data/tmp")
         } else {
-            getenv_nonempty("TMPDIR").unwrap_or_default(Path("/tmp"))
+            getenv_nonempty("TMPDIR").unwrap_or(Path("/tmp"))
         }
     }
 
@@ -620,7 +620,7 @@ pub fn tmpdir() -> Path {
         getenv_nonempty("TMP").or(
             getenv_nonempty("TEMP").or(
                 getenv_nonempty("USERPROFILE").or(
-                   getenv_nonempty("WINDIR")))).unwrap_or_default(Path("C:\\Windows"))
+                   getenv_nonempty("WINDIR")))).unwrap_or(Path("C:\\Windows"))
     }
 }
 

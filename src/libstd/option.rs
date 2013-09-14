@@ -43,10 +43,13 @@ let unwrapped_msg = match msg {
 
 use clone::Clone;
 use cmp::{Eq,Ord};
+use default::Default;
+use either;
 use util;
 use num::Zero;
 use iter;
 use iter::{Iterator, DoubleEndedIterator, ExactSize};
+use result;
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use clone::DeepClone;
@@ -126,42 +129,61 @@ impl<T> Option<T> {
     #[inline]
     pub fn is_some(&self) -> bool { !self.is_none() }
 
-    /// Update an optional value by optionally running its content through a
-    /// function that returns an option.
+    /// Returns `None` if the option is `None`, otherwise returns `optb`.
     #[inline]
-    pub fn chain<U>(self, f: &fn(t: T) -> Option<U>) -> Option<U> {
+    pub fn and(self, optb: Option<T>) -> Option<T> {
         match self {
-            Some(t) => f(t),
-            None => None
+            Some(_) => optb,
+            None => None,
         }
     }
 
-    /// Returns the leftmost Some() value, or None if both are None.
+    /// Returns `None` if the option is `None`, otherwise calls `f` with the
+    /// wrapped value and returns the result.
     #[inline]
-    pub fn or(self, optb: Option<T>) -> Option<T> {
+    pub fn and_then<U>(self, f: &fn(T) -> Option<U>) -> Option<U> {
         match self {
-            Some(opta) => Some(opta),
-            _ => optb
+            Some(x) => f(x),
+            None => None,
         }
     }
 
-    /// Update an optional value by optionally running its content by reference
-    /// through a function that returns an option.
+    /// Returns `None` if the option is `None`, otherwise calls `f` with a
+    /// reference to the wrapped value and returns the result.
     #[inline]
-    pub fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
+    pub fn and_then_ref<'a, U>(&'a self, f: &fn(&'a T) -> Option<U>) -> Option<U> {
         match *self {
             Some(ref x) => f(x),
             None => None
         }
     }
 
-    /// Update an optional value by optionally running its content by mut reference
-    /// through a function that returns an option.
+    /// Returns `None` if the option is `None`, otherwise calls `f` with a
+    /// mutable reference to the wrapped value and returns the result.
     #[inline]
-    pub fn chain_mut_ref<'a, U>(&'a mut self, f: &fn(x: &'a mut T) -> Option<U>) -> Option<U> {
+    pub fn and_then_mut_ref<'a, U>(&'a mut self, f: &fn(&'a mut T) -> Option<U>) -> Option<U> {
         match *self {
             Some(ref mut x) => f(x),
             None => None
+        }
+    }
+
+    /// Returns the option if it contains a value, otherwise returns `optb`.
+    #[inline]
+    pub fn or(self, optb: Option<T>) -> Option<T> {
+        match self {
+            Some(_) => self,
+            None => optb
+        }
+    }
+
+    /// Returns the option if it contains a value, otherwise calls `f` and
+    /// returns the result.
+    #[inline]
+    pub fn or_else(self, f: &fn() -> Option<T>) -> Option<T> {
+        match self {
+            Some(_) => self,
+            None => f(),
         }
     }
 
@@ -332,10 +354,19 @@ impl<T> Option<T> {
 
     /// Returns the contained value or a default
     #[inline]
-    pub fn unwrap_or_default(self, def: T) -> T {
+    pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
             None => def
+        }
+    }
+
+    /// Returns the contained value or computes it from a closure
+    #[inline]
+    pub fn unwrap_or_else(self, f: &fn() -> T) -> T {
+        match self {
+            Some(x) => x,
+            None => f()
         }
     }
 
@@ -347,6 +378,109 @@ impl<T> Option<T> {
             opt = blk(opt.unwrap());
         }
     }
+}
+
+/// A generic trait for converting a value to a `Option`
+pub trait ToOption<T> {
+    /// Convert to the `option` type
+    fn to_option(&self) -> Option<T>;
+}
+
+/// A generic trait for converting a value to a `Option`
+pub trait IntoOption<T> {
+    /// Convert to the `option` type
+    fn into_option(self) -> Option<T>;
+}
+
+/// A generic trait for converting a value to a `Option`
+pub trait AsOption<T> {
+    /// Convert to the `option` type
+    fn as_option<'a>(&'a self) -> Option<&'a T>;
+}
+
+impl<T: Clone> ToOption<T> for Option<T> {
+    #[inline]
+    fn to_option(&self) -> Option<T> { self.clone() }
+}
+
+impl<T> IntoOption<T> for Option<T> {
+    #[inline]
+    fn into_option(self) -> Option<T> { self }
+}
+
+impl<T> AsOption<T> for Option<T> {
+    #[inline]
+    fn as_option<'a>(&'a self) -> Option<&'a T> {
+        match *self {
+            Some(ref x) => Some(x),
+            None => None,
+        }
+    }
+}
+
+impl<T: Clone> result::ToResult<T, ()> for Option<T> {
+    #[inline]
+    fn to_result(&self) -> result::Result<T, ()> {
+        match *self {
+            Some(ref x) => result::Ok(x.clone()),
+            None => result::Err(()),
+        }
+    }
+}
+
+impl<T> result::IntoResult<T, ()> for Option<T> {
+    #[inline]
+    fn into_result(self) -> result::Result<T, ()> {
+        match self {
+            Some(x) => result::Ok(x),
+            None => result::Err(()),
+        }
+    }
+}
+
+impl<T: Clone> either::ToEither<(), T> for Option<T> {
+    #[inline]
+    fn to_either(&self) -> either::Either<(), T> {
+        match *self {
+            Some(ref x) => either::Right(x.clone()),
+            None => either::Left(()),
+        }
+    }
+}
+
+impl<T> either::IntoEither<(), T> for Option<T> {
+    #[inline]
+    fn into_either(self) -> either::Either<(), T> {
+        match self {
+            Some(x) => either::Right(x),
+            None => either::Left(()),
+        }
+    }
+}
+
+impl<T: Default> Option<T> {
+    /// Returns the contained value or default (for this type)
+    #[inline]
+    pub fn unwrap_or_default(self) -> T {
+        match self {
+            Some(x) => x,
+            None => Default::default()
+        }
+    }
+
+    /// Returns self or `Some`-wrapped default value
+    #[inline]
+    pub fn or_default(self) -> Option<T> {
+        match self {
+            None => Some(Default::default()),
+            x => x,
+        }
+    }
+}
+
+impl<T> Default for Option<T> {
+    #[inline]
+    fn default() -> Option<T> { None }
 }
 
 impl<T:Zero> Option<T> {
@@ -367,11 +501,6 @@ impl<T:Zero> Option<T> {
             x => x
         }
     }
-}
-
-impl<T> Zero for Option<T> {
-    fn zero() -> Option<T> { None }
-    fn is_zero(&self) -> bool { self.is_none() }
 }
 
 /// An iterator that yields either one or zero elements
@@ -407,6 +536,11 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use either::{IntoEither, ToEither};
+    use either;
+    use result::{IntoResult, ToResult};
+    use result;
     use util;
 
     #[test]
@@ -476,6 +610,50 @@ mod tests {
     }
 
     #[test]
+    fn test_and() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.and(Some(2)), Some(2));
+        assert_eq!(x.and(None), None);
+
+        let x: Option<int> = None;
+        assert_eq!(x.and(Some(2)), None);
+        assert_eq!(x.and(None), None);
+    }
+
+    #[test]
+    fn test_and_then() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.and_then(|x| Some(x + 1)), Some(2));
+        assert_eq!(x.and_then(|_| None::<int>), None);
+
+        let x: Option<int> = None;
+        assert_eq!(x.and_then(|x| Some(x + 1)), None);
+        assert_eq!(x.and_then(|_| None::<int>), None);
+    }
+
+    #[test]
+    fn test_or() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.or(Some(2)), Some(1));
+        assert_eq!(x.or(None), Some(1));
+
+        let x: Option<int> = None;
+        assert_eq!(x.or(Some(2)), Some(2));
+        assert_eq!(x.or(None), None);
+    }
+
+    #[test]
+    fn test_or_else() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.or_else(|| Some(2)), Some(1));
+        assert_eq!(x.or_else(|| None), Some(1));
+
+        let x: Option<int> = None;
+        assert_eq!(x.or_else(|| Some(2)), Some(2));
+        assert_eq!(x.or_else(|| None), None);
+    }
+
+    #[test]
     fn test_option_while_some() {
         let mut i = 0;
         do Some(10).while_some |j| {
@@ -487,6 +665,44 @@ mod tests {
             }
         }
         assert_eq!(i, 11);
+    }
+
+    #[test]
+    fn test_unwrap() {
+        assert_eq!(Some(1).unwrap(), 1);
+        assert_eq!(Some(~"hello").unwrap(), ~"hello");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_unwrap_fail1() {
+        let x: Option<int> = None;
+        x.unwrap();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_unwrap_fail2() {
+        let x: Option<~str> = None;
+        x.unwrap();
+    }
+
+    #[test]
+    fn test_unwrap_or() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.unwrap_or(2), 1);
+
+        let x: Option<int> = None;
+        assert_eq!(x.unwrap_or(2), 2);
+    }
+
+    #[test]
+    fn test_unwrap_or_else() {
+        let x: Option<int> = Some(1);
+        assert_eq!(x.unwrap_or_else(|| 2), 1);
+
+        let x: Option<int> = None;
+        assert_eq!(x.unwrap_or_else(|| 2), 2);
     }
 
     #[test]
@@ -565,5 +781,68 @@ mod tests {
         assert_eq!(x, None);
         assert!(!x.mutate_default(0i, |i| i+1));
         assert_eq!(x, Some(0i));
+    }
+
+    #[test]
+    pub fn test_to_option() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.to_option(), Some(100));
+        assert_eq!(none.to_option(), None);
+    }
+
+    #[test]
+    pub fn test_into_option() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.into_option(), Some(100));
+        assert_eq!(none.into_option(), None);
+    }
+
+    #[test]
+    pub fn test_as_option() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.as_option().unwrap(), &100);
+        assert_eq!(none.as_option(), None);
+    }
+
+    #[test]
+    pub fn test_to_result() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.to_result(), result::Ok(100));
+        assert_eq!(none.to_result(), result::Err(()));
+    }
+
+    #[test]
+    pub fn test_into_result() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.into_result(), result::Ok(100));
+        assert_eq!(none.into_result(), result::Err(()));
+    }
+
+    #[test]
+    pub fn test_to_either() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.to_either(), either::Right(100));
+        assert_eq!(none.to_either(), either::Left(()));
+    }
+
+    #[test]
+    pub fn test_into_either() {
+        let some: Option<int> = Some(100);
+        let none: Option<int> = None;
+
+        assert_eq!(some.into_either(), either::Right(100));
+        assert_eq!(none.into_either(), either::Left(()));
     }
 }

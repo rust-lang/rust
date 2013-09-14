@@ -104,9 +104,10 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
+use default::Default;
 use iter::*;
 use libc::c_void;
-use num::{Integer, Zero, CheckedAdd, Saturating};
+use num::{Integer, CheckedAdd, Saturating};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -205,7 +206,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
  */
 #[inline]
 pub fn build<A>(size: Option<uint>, builder: &fn(push: &fn(v: A))) -> ~[A] {
-    let mut vec = with_capacity(size.unwrap_or_default(4));
+    let mut vec = with_capacity(size.unwrap_or(4));
     builder(|x| vec.push(x));
     vec
 }
@@ -2237,19 +2238,16 @@ impl<A: DeepClone> DeepClone for ~[A] {
 }
 
 // This works because every lifetime is a sub-lifetime of 'static
-impl<'self, A> Zero for &'self [A] {
-    fn zero() -> &'self [A] { &'self [] }
-    fn is_zero(&self) -> bool { self.is_empty() }
+impl<'self, A> Default for &'self [A] {
+    fn default() -> &'self [A] { &'self [] }
 }
 
-impl<A> Zero for ~[A] {
-    fn zero() -> ~[A] { ~[] }
-    fn is_zero(&self) -> bool { self.len() == 0 }
+impl<A> Default for ~[A] {
+    fn default() -> ~[A] { ~[] }
 }
 
-impl<A> Zero for @[A] {
-    fn zero() -> @[A] { @[] }
-    fn is_zero(&self) -> bool { self.len() == 0 }
+impl<A> Default for @[A] {
+    fn default() -> @[A] { @[] }
 }
 
 macro_rules! iterator {
@@ -3588,13 +3586,12 @@ mod tests {
     }
 
     #[test]
-    fn test_vec_zero() {
-        use num::Zero;
+    fn test_vec_default() {
+        use default::Default;
         macro_rules! t (
             ($ty:ty) => {{
-                let v: $ty = Zero::zero();
+                let v: $ty = Default::default();
                 assert!(v.is_empty());
-                assert!(v.is_zero());
             }}
         );
 

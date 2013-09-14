@@ -89,6 +89,7 @@ macro_rules! tuple_impls {
         pub mod inner {
             use clone::Clone;
             #[cfg(not(test))] use cmp::*;
+            #[cfg(not(test))] use default::Default;
             #[cfg(not(test))] use num::Zero;
 
             $(
@@ -169,6 +170,14 @@ macro_rules! tuple_impls {
                     #[inline]
                     fn cmp(&self, other: &($($T,)+)) -> Ordering {
                         lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
+                }
+
+                #[cfg(not(test))]
+                impl<$($T:Default),+> Default for ($($T,)+) {
+                    #[inline]
+                    fn default() -> ($($T,)+) {
+                        ($({ let x: $T = Default::default(); x},)+)
                     }
                 }
 

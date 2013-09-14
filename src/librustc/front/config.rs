@@ -58,7 +58,7 @@ fn filter_view_item<'r>(cx: @Context, view_item: &'r ast::view_item)-> Option<&'
 
 fn fold_mod(cx: @Context, m: &ast::_mod, fld: @fold::ast_fold) -> ast::_mod {
     let filtered_items = do  m.items.iter().filter_map |a| {
-        filter_item(cx, *a).chain(|x| fld.fold_item(x))
+        filter_item(cx, *a).and_then(|x| fld.fold_item(x))
     }.collect();
     let filtered_view_items = do m.view_items.iter().filter_map |a| {
         do filter_view_item(cx, a).map_move |x| {
@@ -139,7 +139,7 @@ fn fold_block(
     fld: @fold::ast_fold
 ) -> ast::Block {
     let resulting_stmts = do b.stmts.iter().filter_map |a| {
-        filter_stmt(cx, *a).chain(|stmt| fld.fold_stmt(stmt))
+        filter_stmt(cx, *a).and_then(|stmt| fld.fold_stmt(stmt))
     }.collect();
     let filtered_view_items = do b.view_items.iter().filter_map |a| {
         filter_view_item(cx, a).map(|x| fld.fold_view_item(*x))

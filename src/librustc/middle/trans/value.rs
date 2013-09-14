@@ -50,9 +50,9 @@ impl Value {
     /// must be the only user of this value, and there must not be any conditional
     /// branches between the store and the given block.
     pub fn get_dominating_store(self, bcx: @mut Block) -> Option<Value> {
-        match self.get_single_user().chain(|user| user.as_store_inst()) {
+        match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
-                do store.get_parent().chain |store_bb| {
+                do store.get_parent().and_then |store_bb| {
                     let mut bb = BasicBlock(bcx.llbb);
                     let mut ret = Some(store);
                     while *bb != *store_bb {
@@ -150,7 +150,7 @@ impl Iterator<Value> for UserIterator {
     fn next(&mut self) -> Option<Value> {
         let current = self.next;
 
-        self.next = do current.chain |u| { u.get_next_use() };
+        self.next = do current.and_then |u| { u.get_next_use() };
 
         do current.map |u| { u.get_user() }
     }

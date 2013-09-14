@@ -681,9 +681,9 @@ pub fn build_session_options(binary: @str,
             link::output_type_bitcode
         } else { link::output_type_exe };
     let sysroot_opt = getopts::opt_maybe_str(matches, "sysroot").map_move(|m| @Path(m));
-    let target = getopts::opt_maybe_str(matches, "target").unwrap_or_default(host_triple());
-    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu").unwrap_or_default(~"generic");
-    let target_feature = getopts::opt_maybe_str(matches, "target-feature").unwrap_or_default(~"");
+    let target = getopts::opt_maybe_str(matches, "target").unwrap_or(host_triple());
+    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu").unwrap_or(~"generic");
+    let target_feature = getopts::opt_maybe_str(matches, "target-feature").unwrap_or(~"");
     let save_temps = getopts::opt_present(matches, "save-temps");
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
@@ -961,7 +961,7 @@ pub fn build_output_filenames(input: &input,
           if !linkage_metas.is_empty() {
               // But if a linkage meta is present, that overrides
               let maybe_name = linkage_metas.iter().find(|m| "name" == m.name());
-              match maybe_name.chain(|m| m.value_str()) {
+              match maybe_name.and_then(|m| m.value_str()) {
                   Some(s) => stem = s,
                   _ => ()
               }

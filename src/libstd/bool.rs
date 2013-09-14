@@ -24,6 +24,7 @@ Implementations of the following traits:
 * `Ord`
 * `TotalOrd`
 * `Eq`
+* `Default`
 * `Zero`
 
 ## Various functions to compare `bool`s
@@ -43,6 +44,7 @@ use to_str::ToStr;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
 #[cfg(not(test))] use ops::Not;
+#[cfg(not(test))] use default::Default;
 #[cfg(not(test))] use num::Zero;
 
 /**
@@ -321,6 +323,11 @@ impl TotalOrd for bool {
 impl Eq for bool {
     #[inline]
     fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
+}
+
+#[cfg(not(test))]
+impl Default for bool {
+    fn default() -> bool { false }
 }
 
 #[cfg(not(test))]

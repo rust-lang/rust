@@ -202,7 +202,7 @@ impl RegionScope for MethodRscope {
         if !self.region_param_names.has_ident(id) {
             return RegionParamNames::undeclared_name(None);
         }
-        do EmptyRscope.named_region(span, id).chain_err |_e| {
+        do EmptyRscope.named_region(span, id).or_else |_e| {
             result::Err(RegionError {
                 msg: ~"lifetime is not in scope",
                 replacement: ty::re_bound(ty::br_self)
@@ -251,7 +251,7 @@ impl RegionScope for TypeRscope {
     }
     fn named_region(&self, span: Span, id: ast::Ident)
                       -> Result<ty::Region, RegionError> {
-        do EmptyRscope.named_region(span, id).chain_err |_e| {
+        do EmptyRscope.named_region(span, id).or_else |_e| {
             result::Err(RegionError {
                 msg: ~"only 'self is allowed as part of a type declaration",
                 replacement: self.replacement()
@@ -310,7 +310,7 @@ impl RegionScope for BindingRscope {
                     span: Span,
                     id: ast::Ident) -> Result<ty::Region, RegionError>
     {
-        do self.base.named_region(span, id).chain_err |_e| {
+        do self.base.named_region(span, id).or_else |_e| {
             let result = ty::re_bound(ty::br_named(id));
             if self.region_param_names.has_ident(id) {
                 result::Ok(result)
