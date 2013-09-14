@@ -80,8 +80,6 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
-use std::either::Either;
-use std::either;
 use std::hashmap::HashSet;
 use std::util;
 use std::vec;
@@ -94,7 +92,6 @@ enum restriction {
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
-type arg_or_capture_item = Either<arg, ()>;
 type item_info = (Ident, item_, Option<~[Attribute]>);
 
 /// How to parse a path. There are four different kinds of paths, all of which
@@ -936,7 +933,7 @@ impl Parser {
             let (explicit_self, d) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
-                either::Left(p.parse_arg_general(false))
+                p.parse_arg_general(false)
             };
 
             let hi = p.last_span.hi;
@@ -1290,12 +1287,12 @@ impl Parser {
     }
 
     // parse a single function argument
-    pub fn parse_arg(&self) -> arg_or_capture_item {
-        either::Left(self.parse_arg_general(true))
+    pub fn parse_arg(&self) -> arg {
+        self.parse_arg_general(true)
     }
 
     // parse an argument in a lambda header e.g. |arg, arg|
-    pub fn parse_fn_block_arg(&self) -> arg_or_capture_item {
+    pub fn parse_fn_block_arg(&self) -> arg {
         self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = self.parse_pat();
@@ -1308,12 +1305,12 @@ impl Parser {
                 span: mk_sp(self.span.lo, self.span.hi),
             }
         };
-        either::Left(ast::arg {
+        ast::arg {
             is_mutbl: is_mutbl,
             ty: t,
             pat: pat,
             id: ast::DUMMY_NODE_ID
-        })
+        }
     }
 
     pub fn maybe_parse_fixed_vstore(&self) -> Option<@ast::Expr> {
@@ -3500,7 +3497,7 @@ impl Parser {
 
     // parse the argument list and result type of a function declaration
     pub fn parse_fn_decl(&self) -> fn_decl {
-        let args_or_capture_items: ~[arg_or_capture_item] =
+        let args: ~[arg] =
             self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
@@ -3508,11 +3505,9 @@ impl Parser {
                 |p| p.parse_arg()
             );
 
-        let inputs = either::lefts(args_or_capture_items.move_iter()).collect();
-
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ast::fn_decl {
-            inputs: inputs,
+            inputs: args,
             output: ret_ty,
             cf: ret_style,
         }
@@ -3542,7 +3537,7 @@ impl Parser {
     fn parse_fn_decl_with_self(
         &self,
         parse_arg_fn:
-        &fn(&Parser) -> arg_or_capture_item
+        &fn(&Parser) -> arg
     ) -> (explicit_self, fn_decl) {
         fn maybe_parse_explicit_self(
             cnstr: &fn(v: Mutability) -> ast::explicit_self_,
@@ -3650,20 +3645,20 @@ impl Parser {
         };
 
         // If we parsed a self type, expect a comma before the argument list.
-        let args_or_capture_items;
+        let fn_inputs;
         if explicit_self != sty_static {
             match *self.token {
                 token::COMMA => {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
-                    args_or_capture_items = self.parse_seq_to_before_end(
+                    fn_inputs = self.parse_seq_to_before_end(
                         &token::RPAREN,
                         sep,
                         parse_arg_fn
                     );
                 }
                 token::RPAREN => {
-                    args_or_capture_items = ~[];
+                    fn_inputs = ~[];
                 }
                 _ => {
                     self.fatal(
@@ -3676,7 +3671,7 @@ impl Parser {
             }
         } else {
             let sep = seq_sep_trailing_disallowed(token::COMMA);
-            args_or_capture_items = self.parse_seq_to_before_end(
+            fn_inputs = self.parse_seq_to_before_end(
                 &token::RPAREN,
                 sep,
                 parse_arg_fn
@@ -3687,11 +3682,10 @@ impl Parser {
 
         let hi = self.span.hi;
 
-        let inputs = either::lefts(args_or_capture_items.move_iter()).collect();
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
         let fn_decl = ast::fn_decl {
-            inputs: inputs,
+            inputs: fn_inputs,
             output: ret_ty,
             cf: ret_style
         };
@@ -3720,7 +3714,7 @@ impl Parser {
         };
 
         ast::fn_decl {
-            inputs: either::lefts(inputs_captures.move_iter()).collect(),
+            inputs: inputs_captures,
             output: output,
             cf: return_val,
         }
