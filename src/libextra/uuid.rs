@@ -417,6 +417,13 @@ impl Uuid {
     }
 }
 
+impl Default for Uuid {
+    /// Returns the nil UUID, which is all zeroes
+    fn default() -> Uuid {
+        Uuid::new_nil()
+    }
+}
+
 impl Zero for Uuid {
     /// Returns the nil UUID, which is all zeroes
     fn zero() -> Uuid {

@@ -18,6 +18,7 @@
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
+use default::Default;
 use hash::Hash;
 use iter::{Iterator, FromIterator, Extendable};
 use iter::{FilterMap, Chain, Repeat, Zip};
@@ -622,6 +623,10 @@ impl<K: Eq + Hash, V> Extendable<(K, V)> for HashMap<K, V> {
     }
 }
 
+impl<K: Eq + Hash, V> Default for HashMap<K, V> {
+    fn default() -> HashMap<K, V> { HashMap::new() }
+}
+
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
@@ -779,6 +784,10 @@ impl<K: Eq + Hash> Extendable<K> for HashSet<K> {
             self.insert(k);
         }
     }
+}
+
+impl<K: Eq + Hash> Default for HashSet<K> {
+    fn default() -> HashSet<K> { HashSet::new() }
 }
 
 // `Repeat` is used to feed the filter closure an explicit capture

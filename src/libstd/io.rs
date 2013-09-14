@@ -1618,7 +1618,7 @@ impl<T:Writer> WriterUtil for T {
 }
 
 pub fn file_writer(path: &Path, flags: &[FileFlag]) -> Result<@Writer, ~str> {
-    mk_file_writer(path, flags).chain(|w| Ok(w))
+    mk_file_writer(path, flags).and_then(|w| Ok(w))
 }
 
 
@@ -1779,7 +1779,7 @@ pub fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
 }
 
 pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
-    do read_whole_file(file).chain |bytes| {
+    do read_whole_file(file).and_then |bytes| {
         if str::is_utf8(bytes) {
             Ok(str::from_utf8(bytes))
         } else {
@@ -1791,7 +1791,7 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
 pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
-    do file_reader(file).chain |rdr| {
+    do file_reader(file).and_then |rdr| {
         Ok(rdr.read_whole_stream())
     }
 }

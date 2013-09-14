@@ -61,7 +61,7 @@ impl Combine for Glb {
           // If one side or both is immutable, we can use the GLB of
           // both sides but mutbl must be `MutImmutable`.
           (MutImmutable, MutImmutable) => {
-            self.tys(a.ty, b.ty).chain(|t| {
+            self.tys(a.ty, b.ty).and_then(|t| {
                 Ok(ty::mt {ty: t, mutbl: MutImmutable})
             })
           }

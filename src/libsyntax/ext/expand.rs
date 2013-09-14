@@ -331,11 +331,18 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
     };
 
     let maybe_it = match expanded {
-        MRItem(it) => mark_item(it,fm).chain(|i| {fld.fold_item(i)}),
-        MRExpr(_) => cx.span_fatal(pth.span,
-                                   fmt!("expr macro in item position: %s", extnamestr)),
-        MRAny(_, item_maker, _) => item_maker().chain(|i| {mark_item(i,fm)})
-                                      .chain(|i| {fld.fold_item(i)}),
+        MRItem(it) => {
+            mark_item(it,fm)
+                .and_then(|i| fld.fold_item(i))
+        }
+        MRExpr(_) => {
+            cx.span_fatal(pth.span, fmt!("expr macro in item position: %s", extnamestr))
+        }
+        MRAny(_, item_maker, _) => {
+            item_maker()
+                .and_then(|i| mark_item(i,fm))
+                .and_then(|i| fld.fold_item(i))
+        }
         MRDef(ref mdef) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.

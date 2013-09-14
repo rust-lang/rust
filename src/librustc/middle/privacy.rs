@@ -221,8 +221,7 @@ impl PrivacyVisitor {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         // Having to do this this is really unfortunate.
-        let method_id = ty::method(self.tcx, method_id).provided_source
-            .unwrap_or_default(method_id);
+        let method_id = ty::method(self.tcx, method_id).provided_source.unwrap_or(method_id);
 
         if method_id.crate == LOCAL_CRATE {
             let is_private = self.method_is_private(span, method_id.node);

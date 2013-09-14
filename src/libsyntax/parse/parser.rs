@@ -802,7 +802,7 @@ impl Parser {
         */
 
         let opt_abis = self.parse_opt_abis();
-        let abis = opt_abis.unwrap_or_default(AbiSet::Rust());
+        let abis = opt_abis.unwrap_or(AbiSet::Rust());
         let purity = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl();
@@ -3461,7 +3461,7 @@ impl Parser {
         let ident = self.parse_ident();
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
-        let bounds = opt_bounds.unwrap_or_default(opt_vec::Empty);
+        let bounds = opt_bounds.unwrap_or_default();
         ast::TyParam { ident: ident, id: ast::DUMMY_NODE_ID, bounds: bounds }
     }
 
@@ -4363,7 +4363,7 @@ impl Parser {
                 self.obsolete(*self.last_span, ObsoleteExternVisibility);
             }
 
-            let abis = opt_abis.unwrap_or_default(AbiSet::C());
+            let abis = opt_abis.unwrap_or(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_foreign_mod_items(sort, abis, next);
@@ -4640,7 +4640,7 @@ impl Parser {
 
             if self.eat_keyword(keywords::Fn) {
                 // EXTERN FUNCTION ITEM
-                let abis = opt_abis.unwrap_or_default(AbiSet::C());
+                let abis = opt_abis.unwrap_or(AbiSet::C());
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(extern_fn, abis);
                 return iovi_item(self.mk_item(lo, self.last_span.hi, ident,

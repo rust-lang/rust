@@ -13,6 +13,7 @@
 #[allow(missing_doc)];
 
 use option::{Some, None};
+use option;
 use clone::Clone;
 use container::Container;
 use cmp::Eq;
@@ -50,18 +51,6 @@ impl<L, R> Either<L, R> {
         match self {
             Right(r) => Left(r),
             Left(l) => Right(l)
-        }
-    }
-
-    /// Converts a `Either` to a `Result`
-    ///
-    /// Converts an `Either` type to a `Result` type, making the "right" choice
-    /// an `Ok` result, and the "left" choice a `Err`
-    #[inline]
-    pub fn to_result(self) -> Result<R, L> {
-        match self {
-            Right(r) => result::Ok(r),
-            Left(l) => result::Err(l)
         }
     }
 
@@ -116,6 +105,101 @@ impl<L, R> Either<L, R> {
     }
 }
 
+/// A generic trait for converting a value to a `Either`
+pub trait ToEither<L, R> {
+    /// Convert to the `either` type
+    fn to_either(&self) -> Either<L, R>;
+}
+
+/// A generic trait for converting a value to a `Either`
+pub trait IntoEither<L, R> {
+    /// Convert to the `either` type
+    fn into_either(self) -> Either<L, R>;
+}
+
+/// A generic trait for converting a value to a `Either`
+pub trait AsEither<L, R> {
+    /// Convert to the `either` type
+    fn as_either<'a>(&'a self) -> Either<&'a L, &'a R>;
+}
+
+impl<L, R: Clone> option::ToOption<R> for Either<L, R> {
+    #[inline]
+    fn to_option(&self)-> option::Option<R> {
+        match *self {
+            Left(_) => None,
+            Right(ref r) => Some(r.clone()),
+        }
+    }
+}
+
+impl<L, R> option::IntoOption<R> for Either<L, R> {
+    #[inline]
+    fn into_option(self)-> option::Option<R> {
+        match self {
+            Left(_) => None,
+            Right(r) => Some(r),
+        }
+    }
+}
+
+impl<L, R> option::AsOption<R> for Either<L, R> {
+    #[inline]
+    fn as_option<'a>(&'a self) -> option::Option<&'a R> {
+        match *self {
+            Left(_) => None,
+            Right(ref r) => Some(r),
+        }
+    }
+}
+
+impl<L: Clone, R: Clone> result::ToResult<R, L> for Either<L, R> {
+    #[inline]
+    fn to_result(&self)-> result::Result<R, L> {
+        match *self {
+            Left(ref l) => result::Err(l.clone()),
+            Right(ref r) => result::Ok(r.clone()),
+        }
+    }
+}
+
+impl<L, R> result::IntoResult<R, L> for Either<L, R> {
+    #[inline]
+    fn into_result(self)-> result::Result<R, L> {
+        match self {
+            Left(l) => result::Err(l),
+            Right(r) => result::Ok(r),
+        }
+    }
+}
+
+impl<L, R> result::AsResult<R, L> for Either<L, R> {
+    #[inline]
+    fn as_result<'a>(&'a self) -> result::Result<&'a R, &'a L> {
+        match *self {
+            Left(ref l) => result::Err(l),
+            Right(ref r) => result::Ok(r),
+        }
+    }
+}
+
+impl<L: Clone, R: Clone> ToEither<L, R> for Either<L, R> {
+    fn to_either(&self) -> Either<L, R> { self.clone() }
+}
+
+impl<L, R> IntoEither<L, R> for Either<L, R> {
+    fn into_either(self) -> Either<L, R> { self }
+}
+
+impl<L, R> AsEither<L, R> for Either<L, R> {
+    fn as_either<'a>(&'a self) -> Either<&'a L, &'a R> {
+        match *self {
+            Left(ref l) => Left(l),
+            Right(ref r) => Right(r),
+        }
+    }
+}
+
 /// An iterator yielding the `Left` values of its source
 pub type Lefts<L, R, Iter> = FilterMap<'static, Either<L, R>, L, Iter>;
 
@@ -166,6 +250,11 @@ pub fn partition<L, R>(eithers: ~[Either<L, R>]) -> (~[L], ~[R]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use option::{IntoOption, ToOption, AsOption};
+    use option;
+    use result::{IntoResult, ToResult, AsResult};
+    use result;
 
     #[test]
     fn test_either_left() {
@@ -260,4 +349,87 @@ mod tests {
         assert_eq!(rights.len(), 0u);
     }
 
+    #[test]
+    pub fn test_to_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_option(), option::Some(100));
+        assert_eq!(left.to_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_into_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_option(), option::Some(100));
+        assert_eq!(left.into_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_as_option() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.as_option().unwrap(), &100);
+        assert_eq!(left.as_option(), option::None);
+    }
+
+    #[test]
+    pub fn test_to_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_result(), result::Ok(100));
+        assert_eq!(left.to_result(), result::Err(404));
+    }
+
+    #[test]
+    pub fn test_into_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_result(), result::Ok(100));
+        assert_eq!(left.into_result(), result::Err(404));
+    }
+
+    #[test]
+    pub fn test_as_result() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        let x = 100;
+        assert_eq!(right.as_result(), result::Ok(&x));
+
+        let x = 404;
+        assert_eq!(left.as_result(), result::Err(&x));
+    }
+
+    #[test]
+    pub fn test_to_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.to_either(), Right(100));
+        assert_eq!(left.to_either(), Left(404));
+    }
+
+    #[test]
+    pub fn test_into_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.into_either(), Right(100));
+        assert_eq!(left.into_either(), Left(404));
+    }
+
+    #[test]
+    pub fn test_as_either() {
+        let right: Either<int, int> = Right(100);
+        let left: Either<int, int> = Left(404);
+
+        assert_eq!(right.as_either().unwrap_right(), &100);
+        assert_eq!(left.as_either().unwrap_left(), &404);
+    }
 }

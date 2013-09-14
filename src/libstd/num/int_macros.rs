@@ -16,6 +16,7 @@ macro_rules! int_module (($T:ty, $bits:expr) => (mod generated {
 
 #[allow(non_uppercase_statics)];
 
+use default::Default;
 use num::{ToStrRadix, FromStrRadix};
 use num::{CheckedDiv, Zero, One, strconv};
 use prelude::*;
@@ -165,6 +166,11 @@ impl Orderable for $T {
         if *self > *mx { *mx } else
         if *self < *mn { *mn } else { *self }
     }
+}
+
+impl Default for $T {
+    #[inline]
+    fn default() -> $T { 0 }
 }
 
 impl Zero for $T {

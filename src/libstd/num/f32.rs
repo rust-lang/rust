@@ -12,6 +12,7 @@
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
 
+use default::Default;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
@@ -235,6 +236,11 @@ impl Orderable for f32 {
             _                 { *self }
         )
     }
+}
+
+impl Default for f32 {
+    #[inline]
+    fn default() -> f32 { 0.0 }
 }
 
 impl Zero for f32 {

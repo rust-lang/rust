@@ -383,5 +383,5 @@ mod test {
     #[test] fn iterbytes_compiles () {
         takes_iterbytes((3,4,5,false));
     }
-    fn takes_iterbytes<T : IterBytes>(x : T) {}
+    fn takes_iterbytes<T : IterBytes>(_x : T) {}
 }

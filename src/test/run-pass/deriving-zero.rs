@@ -24,15 +24,13 @@ struct E { a: int, b: int }
 
 #[deriving(Zero)]
 struct Lots {
-    c: Option<util::NonCopyable>,
     d: u8,
     e: char,
     f: float,
     g: (f32, char),
-    h: ~[util::NonCopyable],
-    i: @mut (int, int),
-    j: bool,
-    k: (),
+    h: @mut (int, int),
+    i: bool,
+    j: (),
 }
 
 fn main() {
