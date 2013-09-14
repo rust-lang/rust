@@ -442,21 +442,21 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           },
           'c' => {
             parse_type(s, pos, 'a', &mut *tm)
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'b', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'e', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'T', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ' '))
+                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ' '))
+                .and_then(|pos| parse_type(s, pos, 'e', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ' '))
+                .and_then(|pos| parse_type(s, pos, 'T', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ' '))
+                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           'D' | 'x' => {
             parse_type(s, pos, 'm', &mut *tm)
-                .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'd', &mut *tm))
-                .chain(|pos| parse_char(s, pos, '/'))
-                .chain(|pos| parse_type(s, pos, 'y', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, '/'))
+                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, '/'))
+                .and_then(|pos| parse_type(s, pos, 'y', &mut *tm))
           }
           'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32,
                                              31_i32) {
@@ -475,10 +475,10 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           'F' => {
             parse_type(s, pos, 'Y', &mut *tm)
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'm', &mut *tm))
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'd', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, '-'))
+                .and_then(|pos| parse_type(s, pos, 'm', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, '-'))
+                .and_then(|pos| parse_type(s, pos, 'd', &mut *tm))
           }
           'H' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 23_i32) {
@@ -553,17 +553,17 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           },
           'R' => {
             parse_type(s, pos, 'H', &mut *tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ':'))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
           }
           'r' => {
             parse_type(s, pos, 'I', &mut *tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ' '))
-                .chain(|pos| parse_type(s, pos, 'p', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ':'))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ':'))
+                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ' '))
+                .and_then(|pos| parse_type(s, pos, 'p', &mut *tm))
           }
           'S' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 60_i32) {
@@ -578,10 +578,10 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           //'s' {}
           'T' | 'X' => {
             parse_type(s, pos, 'H', &mut *tm)
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'M', &mut *tm))
-                .chain(|pos| parse_char(s, pos, ':'))
-                .chain(|pos| parse_type(s, pos, 'S', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ':'))
+                .and_then(|pos| parse_type(s, pos, 'M', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, ':'))
+                .and_then(|pos| parse_type(s, pos, 'S', &mut *tm))
           }
           't' => parse_char(s, pos, '\t'),
           'u' => {
@@ -596,10 +596,10 @@ fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           'v' => {
             parse_type(s, pos, 'e', &mut *tm)
-                .chain(|pos|  parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'b', &mut *tm))
-                .chain(|pos| parse_char(s, pos, '-'))
-                .chain(|pos| parse_type(s, pos, 'Y', &mut *tm))
+                .and_then(|pos|  parse_char(s, pos, '-'))
+                .and_then(|pos| parse_type(s, pos, 'b', &mut *tm))
+                .and_then(|pos| parse_char(s, pos, '-'))
+                .and_then(|pos| parse_type(s, pos, 'Y', &mut *tm))
           }
           //'W' {}
           'w' => {

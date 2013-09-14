@@ -79,7 +79,7 @@ impl Combine for Sub {
           }
           MutImmutable => {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain(|_t| Ok(*a) )
+            self.tys(a.ty, b.ty).and_then(|_t| Ok(*a) )
           }
         }
     }

@@ -173,7 +173,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
                     arg_types = (*subpats).clone()
-                                          .unwrap_or_default(~[])
+                                          .unwrap_or_default()
                                           .map(|_| ty::mk_err());
                 }
             }
@@ -222,7 +222,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
             fcx.write_error(pat.id);
             kind_name = "[error]";
             arg_types = (*subpats).clone()
-                                  .unwrap_or_default(~[])
+                                  .unwrap_or_default()
                                   .map(|_| ty::mk_err());
         }
     }

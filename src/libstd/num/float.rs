@@ -23,6 +23,7 @@
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
 
+use default::Default;
 use num::{Zero, One, strconv};
 use num::FPCategory;
 use num;
@@ -380,6 +381,11 @@ impl Orderable for float {
     fn clamp(&self, mn: &float, mx: &float) -> float {
         (*self as f64).clamp(&(*mn as f64), &(*mx as f64)) as float
     }
+}
+
+impl Default for float {
+    #[inline]
+    fn default() -> float { 0.0 }
 }
 
 impl Zero for float {

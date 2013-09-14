@@ -635,7 +635,7 @@ impl BigUint {
 
     // Converts this BigUint into an int, unless it would overflow.
     pub fn to_int_opt(&self) -> Option<int> {
-        self.to_uint_opt().chain(|n| {
+        self.to_uint_opt().and_then(|n| {
             // If top bit of uint is set, it's too large to convert to
             // int.
             if (n >> (2*BigDigit::bits - 1) != 0) {
@@ -1221,7 +1221,7 @@ impl BigInt {
         match self.sign {
             Plus  => self.data.to_int_opt(),
             Zero  => Some(0),
-            Minus => self.data.to_uint_opt().chain(|n| {
+            Minus => self.data.to_uint_opt().and_then(|n| {
                 let m: uint = 1 << (2*BigDigit::bits-1);
                 if (n > m) {
                     None

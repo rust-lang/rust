@@ -46,14 +46,15 @@ impl TotalEq for () {
 }
 
 #[cfg(not(test))]
+impl Default for () {
+    #[inline]
+    fn default() -> () { () }
+}
+
+#[cfg(not(test))]
 impl Zero for () {
     #[inline]
     fn zero() -> () { () }
     #[inline]
     fn is_zero(&self) -> bool { true }
-}
-
-#[cfg(not(test))]
-impl Default for () {
-    fn default() -> () { () }
 }
