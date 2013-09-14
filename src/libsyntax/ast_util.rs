@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@ use codemap::{Span, dummy_sp};
 use fold;
 use opt_vec;
 use parse::token;
-use visit::{SimpleVisitor, Visitor};
+use visit::Visitor;
 use visit;
 
 use std::hashmap::HashMap;
