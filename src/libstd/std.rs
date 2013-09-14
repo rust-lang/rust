@@ -121,6 +121,7 @@ pub mod str;
 
 #[path = "str/ascii.rs"]
 pub mod ascii;
+pub mod send_str;
 
 pub mod ptr;
 pub mod owned;
