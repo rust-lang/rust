@@ -142,10 +142,10 @@ impl uv_stat_t {
         }
     }
     pub fn is_file(&self) -> bool {
-        ((self.st_mode as c_int) & libc::S_IFMT) == libc::S_IFREG
+        ((self.st_mode) & libc::S_IFMT as libc::uint64_t) == libc::S_IFREG as libc::uint64_t
     }
     pub fn is_dir(&self) -> bool {
-        ((self.st_mode as c_int) & libc::S_IFMT) == libc::S_IFDIR
+        ((self.st_mode) & libc::S_IFMT as libc::uint64_t) == libc::S_IFDIR as libc::uint64_t
     }
 }
 

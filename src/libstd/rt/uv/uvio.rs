@@ -35,7 +35,7 @@ use unstable::sync::Exclusive;
 use path::Path;
 use super::super::io::support::PathLike;
 use libc::{lseek, off_t, O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
-          S_IRUSR, S_IWUSR};
+          S_IRUSR, S_IWUSR, S_IRWXU};
 use rt::io::{FileMode, FileAccess, OpenOrCreate, Open, Create,
              CreateOrTruncate, Append, Truncate, Read, Write, ReadWrite,
              FileStat};
@@ -413,6 +413,36 @@ impl UvIoFactory {
     }
 }
 
+/// Helper for a variety of simple uv_fs_* functions that
+/// have no ret val
+fn uv_fs_helper<P: PathLike>(loop_: &mut Loop, path: &P,
+                             cb: ~fn(&mut FsRequest, &mut Loop, &P,
+                                     ~fn(&FsRequest, Option<UvError>)))
+        -> Result<(), IoError> {
+    let result_cell = Cell::new_empty();
+    let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+    let path_cell = Cell::new(path);
+    do task::unkillable { // FIXME(#8674)
+        let scheduler: ~Scheduler = Local::take();
+        let mut new_req = FsRequest::new();
+        do scheduler.deschedule_running_task_and_then |_, task| {
+            let task_cell = Cell::new(task);
+            let path = path_cell.take();
+            do cb(&mut new_req, loop_, path) |_, err| {
+                let res = match err {
+                    None => Ok(()),
+                    Some(err) => Err(uv_error_to_io_error(err))
+                };
+                unsafe { (*result_cell_ptr).put_back(res); }
+                let scheduler: ~Scheduler = Local::take();
+                scheduler.resume_blocked_task_immediately(task_cell.take());
+            };
+        }
+    }
+    assert!(!result_cell.is_empty());
+    return result_cell.take();
+}
+
 impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
@@ -578,28 +608,11 @@ impl IoFactory for UvIoFactory {
     }
 
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-        let path_cell = Cell::new(path);
-        do task::unkillable { // FIXME(#8674)
-            let scheduler: ~Scheduler = Local::take();
-            let unlink_req = FsRequest::new();
-            do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let path = path_cell.take();
-                do unlink_req.unlink(self.uv_loop(), path) |_, err| {
-                    let res = match err {
-                        None => Ok(()),
-                        Some(err) => Err(uv_error_to_io_error(err))
-                    };
-                    unsafe { (*result_cell_ptr).put_back(res); }
-                    let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
-                };
-            }
+        do uv_fs_helper(self.uv_loop(), path) |unlink_req, l, p, cb| {
+            do unlink_req.unlink(l, p) |req, err| {
+                cb(req, err)
+            };
         }
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
     }
     fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError> {
         use str::StrSlice;
@@ -616,22 +629,22 @@ impl IoFactory for UvIoFactory {
                 let path_str = path.path_as_str(|p| p.to_owned());
                 do stat_req.stat(self.uv_loop(), path)
                       |req,err| {
-                    if err.is_none() {
-                        let stat = req.get_stat();
-                        let res = Ok(FileStat {
-                            path: Path(path_str),
-                            is_file: stat.is_file(),
-                            is_dir: stat.is_dir()
-                        });
-                        unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    } else {
-                        let res = Err(uv_error_to_io_error(err.unwrap()));
-                        unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
-                    }
+                    let res = match err {
+                        None => {
+                            let stat = req.get_stat();
+                            Ok(FileStat {
+                                path: Path(path_str),
+                                is_file: stat.is_file(),
+                                is_dir: stat.is_dir()
+                            })
+                        },
+                        Some(e) => {
+                            Err(uv_error_to_io_error(e))
+                        }
+                    };
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
                 };
             };
         };
@@ -672,6 +685,21 @@ impl IoFactory for UvIoFactory {
     //fn fs_fstat(&mut self, _fd: c_int) -> Result<FileStat, IoError> {
     //    Ok(FileStat)
     //}
+    fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        let mode = S_IRWXU as int;
+        do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
+            do mkdir_req.mkdir(l, p, mode as int) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
+    fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
+        do uv_fs_helper(self.uv_loop(), path) |rmdir_req, l, p, cb| {
+            do rmdir_req.rmdir(l, p) |req, err| {
+                cb(req, err)
+            };
+        }
+    }
 }
 
 pub struct UvTcpListener {

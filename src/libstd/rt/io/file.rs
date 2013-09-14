@@ -12,7 +12,7 @@ use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle,SeekSet, SeekCur, SeekEnd,
-            Open, Read, Create, ReadWrite};
+            Open, Read, Write, Create, ReadWrite};
 use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile,
             FileMode, FileAccess, FileStat};
@@ -57,24 +57,106 @@ pub fn unlink<P: PathLike>(path: &P) {
     }
 }
 
-/// Abstraction representing *positional* access to a file. In this case,
-/// *positional* refers to it keeping an encounter *cursor* of where in the
-/// file a subsequent `read` or `write` will begin from. Users of a `FileStream`
-/// can `seek` to move the cursor to a given location *within the bounds of the
-/// file* and can ask to have the `FileStream` `tell` them the location, in
-/// bytes, of the cursor.
+/// Create a new directory with default permissions (process user
+/// has read/write privs)
+pub fn mkdir<P: PathLike>(path: &P) {
+    let mkdir_result = unsafe {
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        (*io).fs_mkdir(path)
+    };
+    match mkdir_result {
+        Ok(_) => (),
+        Err(ioerr) => {
+            io_error::cond.raise(ioerr);
+        }
+    }
+}
+/// Removes a directory
+pub fn rmdir<P: PathLike>(path: &P) {
+    let rmdir_result = unsafe {
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        (*io).fs_rmdir(path)
+    };
+    match rmdir_result {
+        Ok(_) => (),
+        Err(ioerr) => {
+            io_error::cond.raise(ioerr);
+        }
+    }
+}
+
+/// Given a `rt::io::support::PathLike`, query the file system to get
+/// information about a file, directory, etc.
 ///
-/// This abstraction is roughly modeled on the access workflow as represented
-/// by `open(2)`, `read(2)`, `write(2)` and friends.
-///
-/// The `open` and `unlink` static methods are provided to manage creation/removal
-/// of files. All other methods operatin on an instance of `FileStream`.
+/// Returns a `Some(PathInfo)` on success, and raises a `rt::io::IoError` condition
+/// on failure and returns `None`.
+pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
+    let open_result = unsafe {
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        (*io).fs_stat(path)
+    };
+    match open_result {
+        Ok(p) => {
+            Some(p)
+        },
+        Err(ioerr) => {
+            read_error::cond.raise(ioerr);
+            None
+        }
+    }
+}
+
+/// Read-only view of file
+pub struct FileReader { priv stream: FileStream }
+
+impl Reader for FileReader {
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        self.stream.read(buf)
+    }
+
+    fn eof(&mut self) -> bool {
+        self.stream.eof()
+    }
+}
+
+impl Seek for FileReader {
+    fn tell(&self) -> u64 {
+        self.stream.tell()
+    }
+
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        self.stream.seek(pos, style);
+    }
+}
+
+/// Write-only view of a file
+pub struct FileWriter { priv stream: FileStream }
+
+impl Writer for FileWriter {
+    fn write(&mut self, buf: &[u8]) {
+        self.stream.write(buf);
+    }
+
+    fn flush(&mut self) {
+        self.stream.flush();
+    }
+}
+
+impl Seek for FileWriter {
+    fn tell(&self) -> u64 {
+        self.stream.tell()
+    }
+
+    fn seek(&mut self, pos: i64, style: SeekStyle) {
+        self.stream.seek(pos, style);
+    }
+}
+
+/// Internal representation of a FileStream, used to consolidate functionality
+/// exposed in the public API
 pub struct FileStream {
     fd: ~RtioFileStream,
     last_nread: int,
-}
-
-impl FileStream {
 }
 
 impl Reader for FileStream {
@@ -148,69 +230,85 @@ impl Seek for FileStream {
     }
 }
 
-pub struct FileInfo(Path);
+/// Represents passive information about a file (primarily exposed
+/// via the `stat()` method. Also provides methods for opening
+/// a file in various modes/permissions.
+pub trait FileInfo<'self> {
+    /// Get the filesystem path that this `FileInfo` points at,
+    /// whether it is valid or not. This way, it can be used to
+    /// to specify a file path of a non-existent file which it
+    /// later create
+    fn get_file_path(&'self self) -> &'self Path;
 
-/// FIXME: DOCS
-impl<'self> FileInfo {
-    pub fn new<P: PathLike>(path: &P) -> FileInfo {
-        do path.path_as_str |p| {
-            FileInfo(Path(p))
-        }
-    }
-    // FIXME #8873 can't put this in FileSystemInfo
-    pub fn get_path(&'self self) -> &'self Path {
-        &(**self)
-    }
-    pub fn stat(&self) -> Option<FileStat> {
-        do io_error::cond.trap(|_| {
+    /// Ask the operating system for information about the file
+    fn stat(&self) -> Option<FileStat> {
+        use mod_stat = super::file::stat;
+        do read_error::cond.trap(|_| {
             // FIXME: can we do something more useful here?
         }).inside {
-            stat(self.get_path())
+            mod_stat(self.get_file_path())
         }
     }
-    pub fn exists(&self) -> bool {
+
+    /// returns `true` if the location pointed at by the enclosing
+    /// exists on the filesystem
+    fn file_exists(&self) -> bool {
         match self.stat() {
-            Some(s) => {
-                match s.is_file {
-                    true => {
-                        true
-                    },
-                    false => {
-                        // FIXME: raise condition?
-                        false
-                    }
-                }
-            },
+            Some(_) => true,
             None => false
         }
     }
-    pub fn is_file(&self) -> bool {
+
+    /// Whether the underlying implemention (be it a file path
+    /// or active file descriptor) is a "regular file". Will return
+    /// false for paths to non-existent locations or directories or
+    /// other non-regular files (named pipes, etc).
+    fn is_file(&self) -> bool {
         match self.stat() {
             Some(s) => s.is_file,
-            None => {
-                // FIXME: raise condition
-                false
-            }
+            None => false
         }
     }
-    pub fn open(&self, mode: FileMode, access: FileAccess) -> Option<FileStream> {
-        match self.is_file() {
-            true => {
-                open(self.get_path(), mode, access)
+
+    /// Attempts to open a regular file for reading/writing based
+    /// on provided inputs
+    fn open_stream(&self, mode: FileMode, access: FileAccess) -> Option<FileStream> {
+        match self.stat() {
+            Some(s) => match s.is_file {
+                true => open(self.get_file_path(), mode, access),
+                false => None // FIXME: raise condition, not a regular file..
             },
-            false => {
-                // FIXME: raise condition
-                None
-            }
+            None => open(self.get_file_path(), mode, access)
         }
     }
-    //fn open_read(&self) -> FileStream;
-    //fn open_write(&self) -> FileStream;
-    //fn create(&self) -> FileStream;
-    //fn truncate(&self) -> FileStream;
-    //fn open_or_create(&self) -> FileStream;
-    //fn create_or_truncate(&self) -> FileStream;
-    //fn unlink(&self);
+    /// Attempts to open a regular file for reading-only based
+    /// on provided inputs
+    fn open_reader(&self, mode: FileMode) -> Option<FileReader> {
+        match self.open_stream(mode, Read) {
+            Some(s) => Some(FileReader { stream: s}),
+            None => None
+        }
+    }
+
+    /// Attempts to open a regular file for writing-only based
+    /// on provided inputs
+    fn open_writer(&self, mode: FileMode) -> Option<FileWriter> {
+        match self.open_stream(mode, Write) {
+            Some(s) => Some(FileWriter { stream: s}),
+            None => None
+        }
+    }
+
+    /// Attempt to remove a file from the filesystem, pending the closing
+    /// of any open file descriptors pointing to the file
+    fn unlink(&self) {
+        unlink(self.get_file_path());
+    }
+}
+
+/// `FileInfo` implementation for `Path`s 
+impl<'self> FileInfo<'self> for Path {
+    fn get_file_path(&'self self) -> &'self Path { self }
 }
 
 /*
@@ -243,27 +341,6 @@ impl DirectoryInfo<'self> {
     fn get_files(&self, filter: &str) -> ~[Path];
 }
 */
-
-/// Given a `rt::io::support::PathLike`, query the file system to get
-/// information about a file, directory, etc.
-///
-/// Returns a `Some(PathInfo)` on success, and raises a `rt::io::IoError` condition
-/// on failure and returns `None`.
-pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
-    let open_result = unsafe {
-        let io: *mut IoFactoryObject = Local::unsafe_borrow();
-        (*io).fs_stat(path)
-    };
-    match open_result {
-        Ok(p) => {
-            Some(p)
-        },
-        Err(ioerr) => {
-            read_error::cond.raise(ioerr);
-            None
-        }
-    }
-}
 
 fn file_test_smoke_test_impl() {
     do run_in_mt_newsched_task {
@@ -412,7 +489,7 @@ fn file_test_io_seek_and_write_impl() {
             read_stream.read(read_mem);
         }
         unlink(filename);
-        let read_str = str::from_bytes(read_mem);
+        let read_str = str::from_utf8(read_mem);
         assert!(read_str == final_msg.to_owned());
     }
 }
@@ -463,8 +540,9 @@ fn file_test_io_seek_shakedown() {
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_stat_is_correct_on_is_file() {
-    do run_in_newsched_task {
+    do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_stat_correct_on_is_file.txt");
         {
             let mut fs = open(filename, Create, ReadWrite).unwrap();
@@ -476,20 +554,48 @@ fn file_test_stat_is_correct_on_is_file() {
             None => fail!("shouldn't happen")
         };
         assert!(stat_res.is_file);
+        unlink(filename);
     }
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_stat_is_correct_on_is_dir() {
-    //assert!(false);
+    do run_in_mt_newsched_task {
+        let filename = &Path("./tmp/file_stat_correct_on_is_dir");
+        mkdir(filename);
+        let stat_res = match stat(filename) {
+            Some(s) => s,
+            None => fail!("shouldn't happen")
+        };
+        assert!(stat_res.is_dir);
+        rmdir(filename);
+    }
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
-    //assert!(false);
+    do run_in_mt_newsched_task {
+        let dir = &Path("./tmp/fileinfo_false_on_dir");
+        mkdir(dir);
+        assert!(dir.is_file() == false);
+        rmdir(dir);
+    }
 }
 
 #[test]
+#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
-    //assert!(false);
+    do run_in_mt_newsched_task {
+        let file = &Path("./tmp/fileinfo_check_exists_b_and_a.txt");
+        {
+            let msg = "foo".as_bytes();
+            let mut w = file.open_writer(Create);
+            w.write(msg);
+        }
+        assert!(file.file_exists());
+        file.unlink();
+        assert!(!file.file_exists());
+    }
 }

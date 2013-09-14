@@ -562,27 +562,27 @@ rust_uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 extern "C" void
-rust_uv_populate_uv_stat(uv_fs_t* req_in, uv_statbuf_t* stat_out) {
-  stat_out->st_dev = ((uv_statbuf_t*)req_in->ptr)->st_dev;
-  stat_out->st_mode = ((uv_statbuf_t*)req_in->ptr)->st_mode;
-  stat_out->st_nlink = ((uv_statbuf_t*)req_in->ptr)->st_nlink;
-  stat_out->st_uid = ((uv_statbuf_t*)req_in->ptr)->st_uid;
-  stat_out->st_gid = ((uv_statbuf_t*)req_in->ptr)->st_gid;
-  stat_out->st_rdev = ((uv_statbuf_t*)req_in->ptr)->st_rdev;
-  stat_out->st_ino = ((uv_statbuf_t*)req_in->ptr)->st_ino;
-  stat_out->st_size = ((uv_statbuf_t*)req_in->ptr)->st_size;
-  stat_out->st_blksize = ((uv_statbuf_t*)req_in->ptr)->st_blksize;
-  stat_out->st_blocks = ((uv_statbuf_t*)req_in->ptr)->st_blocks;
-  //stat_out->st_flags = ((uv_statbuf_t*)req_in->ptr)->st_flags;
-  //stat_out->st_gen = ((uv_statbuf_t*)req_in->ptr)->st_gen;
-  stat_out->st_atim.tv_sec = ((uv_statbuf_t*)req_in->ptr)->st_atim.tv_sec;
-  stat_out->st_atim.tv_nsec = ((uv_statbuf_t*)req_in->ptr)->st_atim.tv_nsec;
-  stat_out->st_mtim.tv_sec = ((uv_statbuf_t*)req_in->ptr)->st_mtim.tv_sec;
-  stat_out->st_mtim.tv_nsec = ((uv_statbuf_t*)req_in->ptr)->st_mtim.tv_nsec;
-  stat_out->st_ctim.tv_sec = ((uv_statbuf_t*)req_in->ptr)->st_ctim.tv_sec;
-  stat_out->st_ctim.tv_nsec = ((uv_statbuf_t*)req_in->ptr)->st_ctim.tv_nsec;
-  //stat_out->st_birthtim.tv_sec = ((uv_statbuf_t*)req_in->ptr)->st_birthtim.tv_sec;
-  //stat_out->st_birthtim.tv_nsec = ((uv_statbuf_t*)req_in->ptr)->st_birthtim.tv_nsec;
+rust_uv_populate_uv_stat(uv_fs_t* req_in, uv_stat_t* stat_out) {
+  stat_out->st_dev = req_in->statbuf.st_dev;
+  stat_out->st_mode = req_in->statbuf.st_mode;
+  stat_out->st_nlink = req_in->statbuf.st_nlink;
+  stat_out->st_uid = req_in->statbuf.st_uid;
+  stat_out->st_gid = req_in->statbuf.st_gid;
+  stat_out->st_rdev = req_in->statbuf.st_rdev;
+  stat_out->st_ino = req_in->statbuf.st_ino;
+  stat_out->st_size = req_in->statbuf.st_size;
+  stat_out->st_blksize = req_in->statbuf.st_blksize;
+  stat_out->st_blocks = req_in->statbuf.st_blocks;
+  stat_out->st_flags = req_in->statbuf.st_flags;
+  stat_out->st_gen = req_in->statbuf.st_gen;
+  stat_out->st_atim.tv_sec = req_in->statbuf.st_atim.tv_sec;
+  stat_out->st_atim.tv_nsec = req_in->statbuf.st_atim.tv_nsec;
+  stat_out->st_mtim.tv_sec = req_in->statbuf.st_mtim.tv_sec;
+  stat_out->st_mtim.tv_nsec = req_in->statbuf.st_mtim.tv_nsec;
+  stat_out->st_ctim.tv_sec = req_in->statbuf.st_ctim.tv_sec;
+  stat_out->st_ctim.tv_nsec = req_in->statbuf.st_ctim.tv_nsec;
+  stat_out->st_birthtim.tv_sec = req_in->statbuf.st_birthtim.tv_sec;
+  stat_out->st_birthtim.tv_nsec = req_in->statbuf.st_birthtim.tv_nsec;
 }
 
 extern "C" int
