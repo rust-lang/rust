@@ -76,8 +76,26 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             // mark before:
                             let marked_before = mark_tts(*tts,fm);
                             let marked_ctxt = new_mark(fm, ctxt);
+
+                            // The span that we pass to the expanders we want to
+                            // be the root of the call stack. That's the most
+                            // relevant span and it's the actual invocation of
+                            // the macro.
+                            let mut relevant_info = cx.backtrace();
+                            let mut einfo = relevant_info.unwrap();
+                            loop {
+                                match relevant_info {
+                                    None => { break }
+                                    Some(e) => {
+                                        einfo = e;
+                                        relevant_info = einfo.call_site.expn_info;
+                                    }
+                                }
+                            }
+
                             let expanded =
-                                match expandfun(cx, mac.span, marked_before, marked_ctxt) {
+                                match expandfun(cx, einfo.call_site,
+                                                marked_before, marked_ctxt) {
                                     MRExpr(e) => e,
                                     MRAny(expr_maker,_,_) => expr_maker(),
                                     _ => {
