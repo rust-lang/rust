@@ -31,7 +31,6 @@ use treemap::TreeMap;
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::libc;
-use std::either;
 use std::io;
 use std::result;
 use std::task;
@@ -127,8 +126,8 @@ pub type MetricDiff = TreeMap<~str,MetricChange>;
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
-          either::Left(o) => o,
-          either::Right(m) => fail!(m)
+            Ok(o) => o,
+            Err(msg) => fail!(msg)
         };
     if !run_tests_console(&opts, tests) { fail!("Some tests failed"); }
 }
@@ -169,7 +168,7 @@ pub struct TestOpts {
     logfile: Option<Path>
 }
 
-type OptRes = Either<TestOpts, ~str>;
+type OptRes = Result<TestOpts, ~str>;
 
 fn optgroups() -> ~[getopts::groups::OptGroup] {
     ~[groups::optflag("", "ignored", "Run ignored tests"),
@@ -228,7 +227,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let matches =
         match groups::getopts(args_, optgroups()) {
           Ok(m) => m,
-          Err(f) => return either::Right(getopts::fail_str(f))
+          Err(f) => return Err(getopts::fail_str(f))
         };
 
     if getopts::opt_present(&matches, "h") { usage(args[0], "h"); }
@@ -274,7 +273,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         logfile: logfile
     };
 
-    either::Left(test_opts)
+    Ok(test_opts)
 }
 
 pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
@@ -1155,7 +1154,6 @@ mod tests {
                StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
-    use std::either;
     use std::comm::{stream, SharedChan};
     use tempfile;
     use std::os;
@@ -1236,8 +1234,8 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
-          _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
+            Ok(o) => o,
+            _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == opts.filter.clone().unwrap());
     }
@@ -1246,8 +1244,8 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::Left(o) => o,
-          _ => fail!("Malformed arg in parse_ignored_flag")
+            Ok(o) => o,
+            _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));
     }
