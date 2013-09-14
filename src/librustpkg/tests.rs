@@ -819,26 +819,25 @@ fn rust_path_test() {
 }
 
 #[test]
+#[ignore] // FIXME(#9184) tests can't change the cwd (other tests are sad then)
 fn rust_path_contents() {
-    use std::unstable::change_dir_locked;
-
     let dir = mkdtemp(&os::tmpdir(), "rust_path").expect("rust_path_contents failed");
     let abc = &dir.push("A").push("B").push("C");
     assert!(os::mkdir_recursive(&abc.push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().push(".rust"), U_RWX));
     assert!(os::mkdir_recursive(&abc.pop().pop().push(".rust"), U_RWX));
-    assert!(do change_dir_locked(&dir.push("A").push("B").push("C")) {
-        let p = rust_path();
-        let cwd = os::getcwd().push(".rust");
-        let parent = cwd.pop().pop().push(".rust");
-        let grandparent = cwd.pop().pop().pop().push(".rust");
-        assert!(p.contains(&cwd));
-        assert!(p.contains(&parent));
-        assert!(p.contains(&grandparent));
-        for a_path in p.iter() {
-            assert!(!a_path.components.is_empty());
-        }
-    });
+    assert!(os::change_dir(abc));
+
+    let p = rust_path();
+    let cwd = os::getcwd().push(".rust");
+    let parent = cwd.pop().pop().push(".rust");
+    let grandparent = cwd.pop().pop().pop().push(".rust");
+    assert!(p.contains(&cwd));
+    assert!(p.contains(&parent));
+    assert!(p.contains(&grandparent));
+    for a_path in p.iter() {
+        assert!(!a_path.components.is_empty());
+    }
 }
 
 #[test]
