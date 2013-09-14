@@ -21,7 +21,7 @@ use cmp;
 use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
-use cmp::Ord;
+use cmp::{Eq, Ord};
 use clone::Clone;
 use uint;
 use util;
@@ -1838,6 +1838,81 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclu
     }
 }
 
+/// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
+#[deriving(Clone, DeepClone)]
+pub struct RangeStep<A> {
+    priv state: A,
+    priv stop: A,
+    priv step: A,
+    priv rev: bool
+}
+
+/// Return an iterator over the range [start, stop) by `step`. It handles overflow by stopping.
+#[inline]
+pub fn range_step<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: A, step: A) -> RangeStep<A> {
+    let rev = step < Zero::zero();
+    RangeStep{state: start, stop: stop, step: step, rev: rev}
+}
+
+impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if (self.rev && self.state > self.stop) || self.state < self.stop {
+            let result = self.state.clone();
+            match self.state.checked_add(&self.step) {
+                Some(x) => self.state = x,
+                None => self.state = self.stop.clone()
+            }
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+/// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
+#[deriving(Clone, DeepClone)]
+pub struct RangeStepInclusive<A> {
+    priv state: A,
+    priv stop: A,
+    priv step: A,
+    priv rev: bool,
+    priv done: bool
+}
+
+/// Return an iterator over the range [start, stop] by `step`. It handles overflow by stopping.
+#[inline]
+pub fn range_step_inclusive<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: A,
+                                                                step: A) -> RangeStepInclusive<A> {
+    let rev = step < Zero::zero();
+    RangeStepInclusive{state: start, stop: stop, step: step, rev: rev, done: false}
+}
+
+impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if !self.done {
+            if (self.rev && self.state > self.stop) || self.state < self.stop {
+                let result = self.state.clone();
+                match self.state.checked_add(&self.step) {
+                    Some(x) => self.state = x,
+                    None => self.done = true
+                }
+                Some(result)
+            } else {
+                if self.state == self.stop {
+                    self.done = true;
+                    Some(self.state.clone())
+                } else {
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
+}
+
 /// An iterator that repeats an element endlessly
 #[deriving(Clone, DeepClone)]
 pub struct Repeat<A> {
@@ -2645,6 +2720,20 @@ mod tests {
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+    }
+
+    #[test]
+    fn test_range_step() {
+        assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
+        assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
+        assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+    }
+
+    #[test]
+    fn test_range_step_inclusive() {
+        assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
+        assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
+        assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
     }
 
     #[test]
