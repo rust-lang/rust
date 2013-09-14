@@ -67,9 +67,18 @@ pub mod errors {
     pub static EPIPE: c_int = -libc::EPIPE;
 }
 
+// see libuv/include/uv-unix.h
+#[cfg(unix)]
 pub struct uv_buf_t {
     base: *u8,
     len: libc::size_t,
+}
+
+// see libuv/include/uv-win.h
+#[cfg(windows)]
+pub struct uv_buf_t {
+    len: u32,
+    base: *u8,
 }
 
 pub type uv_handle_t = c_void;
