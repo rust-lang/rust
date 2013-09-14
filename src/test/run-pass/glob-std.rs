@@ -19,9 +19,9 @@ use std::{io, os, unstable};
 
 pub fn main() {
     fn change_then_remove(p: &Path, f: &fn()) {
-        do (|| {
-            unstable::change_dir_locked(p, || f());
-        }).finally {
+        assert!(os::change_dir(p));
+
+        do f.finally {
             os::remove_dir_recursive(p);
         }
     }
