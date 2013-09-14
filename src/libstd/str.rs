@@ -1091,6 +1091,25 @@ pub mod raw {
         vec::raw::set_len(as_owned_vec(s), new_len)
     }
 
+    /// Parses a C "multistring", eg windows env values or
+    /// the req->ptr result in a uv_fs_readdir() call
+    #[inline]
+    pub unsafe fn from_c_multistring(c: *libc::c_char) -> ~[~str] {
+        #[fixed_stack_segment]; #[inline(never)];
+
+        let mut curr_ptr: uint = c as uint;
+        let mut result = ~[];
+        while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
+            let env_pair = from_c_str(
+                curr_ptr as *libc::c_char);
+            result.push(env_pair);
+            curr_ptr +=
+                libc::strlen(curr_ptr as *libc::c_char) as uint
+                + 1;
+        }
+        result
+    }
+
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
@@ -1106,6 +1125,24 @@ pub mod raw {
         }
     }
 
+    #[test]
+    fn test_str_multistring_parsing() {
+        unsafe {
+            let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
+            let ptr = vec::raw::to_ptr(input);
+            let mut result = from_c_multistring(ptr as *libc::c_char);
+            assert!(result.len() == 2);
+            let mut ctr = 0;
+            for x in result.iter() {
+                match ctr {
+                    0 => assert_eq!(x, &~"zero"),
+                    1 => assert_eq!(x, &~"one"),
+                    _ => fail!("shouldn't happen!")
+                }
+                ctr += 1;
+            }
+        }
+    }
 }
 
 /*
