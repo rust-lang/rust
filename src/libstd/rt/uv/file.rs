@@ -183,9 +183,8 @@ impl FsRequest {
     // accessors/utility funcs
     fn sync_cleanup(self, result: c_int)
           -> Result<c_int, UvError> {
-        let loop_ = self.get_loop().native_handle();
         self.cleanup_and_delete();
-        match status_to_maybe_uv_error_with_loop(loop_,result as i32) {
+        match status_to_maybe_uv_error(result as i32) {
             Some(err) => Err(err),
             None => Ok(result)
         }
@@ -261,6 +260,8 @@ fn sync_cleanup(result: int)
     match status_to_maybe_uv_error(result as i32) {
         Some(err) => Err(err),
         None => Ok(result)
+    }
+}
 
 extern fn compl_cb(req: *uv_fs_t) {
     let mut req: FsRequest = NativeHandle::from_native_handle(req);
@@ -522,6 +523,7 @@ mod test {
                     assert!(uverr.is_none());
                     let loop_ = req.get_loop();
                     let stat = req.get_stat();
+                    naive_print(&loop_, fmt!("%?", stat));
                     assert!(stat.is_dir());
                     let rmdir_req = FsRequest::new();
                     do rmdir_req.rmdir(&loop_, &path) |req,uverr| {
