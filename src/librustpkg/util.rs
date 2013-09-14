@@ -268,10 +268,8 @@ pub fn compile_input(context: &BuildContext,
         let link_options =
             ~[attr::mk_name_value_item_str(@"name", name_to_use),
               attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())] +
-                        if pkg_id.is_complex() {
-                        ~[attr::mk_name_value_item_str(@"package_id",
-                                                       pkg_id.path.to_str().to_managed())]
-                } else { ~[] };
+            ~[attr::mk_name_value_item_str(@"package_id",
+                                           pkg_id.path.to_str().to_managed())];
 
         debug!("link options: %?", link_options);
         crate = @ast::Crate {
