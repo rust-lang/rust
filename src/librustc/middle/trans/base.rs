@@ -86,7 +86,7 @@ use syntax::parse::token;
 use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -813,15 +813,28 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t)
     -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
-      ty::ty_bare_fn(_) | ty::ty_closure(_) => {
-        let llty = type_of_fn_from_ty(ccx, t);
-        return get_extern_fn(&mut ccx.externs, ccx.llmod, name,
-                             lib::llvm::CCallConv, llty);
-      }
-      _ => {
-        let llty = type_of(ccx, t);
-        return get_extern_const(&mut ccx.externs, ccx.llmod, name, llty);
-      }
+        ty::ty_bare_fn(ref fn_ty) => {
+            // Currently llvm_calling_convention triggers unimpl/bug on
+            // Rust/RustIntrinsic, so those two are handled specially here.
+            let cconv = match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
+                Some(Rust) | Some(RustIntrinsic) => lib::llvm::CCallConv,
+                Some(*) | None => {
+                    let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
+                    c.unwrap_or(lib::llvm::CCallConv)
+                }
+            };
+            let llty = type_of_fn_from_ty(ccx, t);
+            return get_extern_fn(&mut ccx.externs, ccx.llmod, name, cconv, llty);
+        }
+        ty::ty_closure(_) => {
+            let llty = type_of_fn_from_ty(ccx, t);
+            return get_extern_fn(&mut ccx.externs, ccx.llmod, name,
+            lib::llvm::CCallConv, llty);
+        }
+        _ => {
+            let llty = type_of(ccx, t);
+            return get_extern_const(&mut ccx.externs, ccx.llmod, name, llty);
+        }
     };
 }
 

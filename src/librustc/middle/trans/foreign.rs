@@ -74,9 +74,8 @@ struct LlvmSignature {
 ///////////////////////////////////////////////////////////////////////////
 // Calls to external functions
 
-fn llvm_calling_convention(ccx: @mut CrateContext,
-                           abis: AbiSet)
-                           -> Option<CallConv> {
+pub fn llvm_calling_convention(ccx: &mut CrateContext,
+                               abis: AbiSet) -> Option<CallConv> {
     let arch = ccx.sess.targ_cfg.arch;
     abis.for_arch(arch).map(|abi| {
         match *abi {
