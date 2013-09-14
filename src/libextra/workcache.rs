@@ -19,7 +19,6 @@ use arc::{Arc,RWArc};
 use treemap::TreeMap;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
-use std::either::{Either, Left, Right};
 use std::{io, os, task};
 
 /**
@@ -252,9 +251,9 @@ struct Exec {
     discovered_outputs: WorkMap
 }
 
-struct Work<'self, T> {
-    prep: &'self Prep<'self>,
-    res: Option<Either<T,PortOne<(Exec,T)>>>
+enum Work<'self, T> {
+    WorkValue(T),
+    WorkFromTask(&'self Prep<'self>, PortOne<(Exec, T)>),
 }
 
 fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
@@ -426,7 +425,7 @@ impl<'self> Prep<'self> {
             db.prepare(self.fn_name, &self.declared_inputs)
         };
 
-        let res = match cached {
+        match cached {
             Some((ref disc_in, ref disc_out, ref res))
             if self.all_fresh("declared input",&self.declared_inputs) &&
                self.all_fresh("discovered input", disc_in) &&
@@ -434,7 +433,7 @@ impl<'self> Prep<'self> {
                 debug!("Cache hit!");
                 debug!("Trying to decode: %? / %? / %?",
                        disc_in, disc_out, *res);
-                Left(json_decode(*res))
+                Work::from_value(json_decode(*res))
             }
 
             _ => {
@@ -453,10 +452,9 @@ impl<'self> Prep<'self> {
                     let v = blk(&mut exe);
                     chan.send((exe, v));
                 }
-                Right(port)
+                Work::from_task(self, port)
             }
-        };
-        Work::new(self, res)
+        }
     }
 }
 
@@ -465,16 +463,18 @@ impl<'self, T:Send +
        Decodable<json::Decoder>>
     Work<'self, T> { // FIXME(#5121)
 
-    pub fn new(p: &'self Prep<'self>, e: Either<T,PortOne<(Exec,T)>>) -> Work<'self, T> {
-        Work { prep: p, res: Some(e) }
+    pub fn from_value(elt: T) -> Work<'self, T> {
+        WorkValue(elt)
+    }
+    pub fn from_task(prep: &'self Prep<'self>, port: PortOne<(Exec, T)>)
+        -> Work<'self, T> {
+        WorkFromTask(prep, port)
     }
 
     pub fn unwrap(self) -> T {
-        let Work { prep, res } = self;
-        match res {
-            None => fail!(),
-            Some(Left(v)) => v,
-            Some(Right(port)) => {
+        match self {
+            WorkValue(v) => v,
+            WorkFromTask(prep, port) => {
                 let (exe, v) = port.recv();
                 let s = json_encode(&v);
                 do prep.ctxt.db.write |db| {
