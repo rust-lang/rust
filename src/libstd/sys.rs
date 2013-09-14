@@ -136,12 +136,11 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use either::Left;
     use option::{Some, None};
     use rt::in_green_task_context;
     use rt::task::Task;
     use rt::local::Local;
-    use rt::logging::Logger;
+    use rt::logging::{Logger, OwnedString};
     use str::Str;
 
     unsafe {
@@ -164,7 +163,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                          msg, file, line as int)
                 };
 
-                task.logger.log(Left(msg));
+                task.logger.log(OwnedString(msg));
             }
         } else {
             rterrln!("failed in non-task context at '%s', %s:%i",
