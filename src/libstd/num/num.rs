@@ -279,6 +279,7 @@ pub trait Primitive: Clone
                    + DeepClone
                    + Num
                    + NumCast
+                   + Orderable
                    + Bounded
                    + Neg<Self>
                    + Add<Self,Self>
