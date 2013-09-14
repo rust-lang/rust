@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -362,84 +362,8 @@ impl Visitor<()> for Ctx {
         self.map_block(block)
     }
 
-    // XXX: Methods below can become default methods.
-
-    fn visit_mod(&mut self, module: &_mod, _: Span, _: NodeId, _: ()) {
-        visit::walk_mod(self, module, ())
-    }
-
-    fn visit_view_item(&mut self, view_item: &view_item, _: ()) {
-        visit::walk_view_item(self, view_item, ())
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: @foreign_item, _: ()) {
-        visit::walk_foreign_item(self, foreign_item, ())
-    }
-
-    fn visit_local(&mut self, local: @Local, _: ()) {
-        visit::walk_local(self, local, ())
-    }
-
-    fn visit_arm(&mut self, arm: &Arm, _: ()) {
-        visit::walk_arm(self, arm, ())
-    }
-
-    fn visit_decl(&mut self, decl: @Decl, _: ()) {
-        visit::walk_decl(self, decl, ())
-    }
-
-    fn visit_expr_post(&mut self, _: @Expr, _: ()) {
-        // Empty!
-    }
-
     fn visit_ty(&mut self, typ: &Ty, _: ()) {
         visit::walk_ty(self, typ, ())
-    }
-
-    fn visit_generics(&mut self, generics: &Generics, _: ()) {
-        visit::walk_generics(self, generics, ())
-    }
-
-    fn visit_fn(&mut self,
-                function_kind: &fn_kind,
-                function_declaration: &fn_decl,
-                block: &Block,
-                span: Span,
-                node_id: NodeId,
-                _: ()) {
-        visit::walk_fn(self,
-                        function_kind,
-                        function_declaration,
-                        block,
-                        span,
-                        node_id,
-                        ())
-    }
-
-    fn visit_ty_method(&mut self, ty_method: &TypeMethod, _: ()) {
-        visit::walk_ty_method(self, ty_method, ())
-    }
-
-    fn visit_trait_method(&mut self, trait_method: &trait_method, _: ()) {
-        visit::walk_trait_method(self, trait_method, ())
-    }
-
-    fn visit_struct_def(&mut self,
-                        struct_def: @struct_def,
-                        ident: Ident,
-                        generics: &Generics,
-                        node_id: NodeId,
-                        _: ()) {
-        visit::walk_struct_def(self,
-                                struct_def,
-                                ident,
-                                generics,
-                                node_id,
-                                ())
-    }
-
-    fn visit_struct_field(&mut self, struct_field: @struct_field, _: ()) {
-        visit::walk_struct_field(self, struct_field, ())
     }
 }
 

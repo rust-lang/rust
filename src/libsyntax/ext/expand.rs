@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, NodeId, DeclLocal, Expr_, ExprMac, SyntaxContext};
+use ast::{Block, Crate, DeclLocal, Expr_, ExprMac, SyntaxContext};
 use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt_, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{token_tree};
@@ -560,107 +560,10 @@ impl Visitor<()> for NewNameFinderContext {
         }
     }
 
-    // XXX: Methods below can become default methods.
-
-    fn visit_mod(&mut self, module: &ast::_mod, _: Span, _: NodeId, _: ()) {
-        visit::walk_mod(self, module, ())
-    }
-
-    fn visit_view_item(&mut self, view_item: &ast::view_item, _: ()) {
-        visit::walk_view_item(self, view_item, ())
-    }
-
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
-        visit::walk_item(self, item, ())
-    }
-
-    fn visit_foreign_item(&mut self,
-                          foreign_item: @ast::foreign_item,
-                          _: ()) {
-        visit::walk_foreign_item(self, foreign_item, ())
-    }
-
-    fn visit_local(&mut self, local: @ast::Local, _: ()) {
-        visit::walk_local(self, local, ())
-    }
-
-    fn visit_block(&mut self, block: &ast::Block, _: ()) {
-        visit::walk_block(self, block, ())
-    }
-
-    fn visit_stmt(&mut self, stmt: @ast::Stmt, _: ()) {
-        visit::walk_stmt(self, stmt, ())
-    }
-
-    fn visit_arm(&mut self, arm: &ast::Arm, _: ()) {
-        visit::walk_arm(self, arm, ())
-    }
-
-    fn visit_decl(&mut self, decl: @ast::Decl, _: ()) {
-        visit::walk_decl(self, decl, ())
-    }
-
-    fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
-        visit::walk_expr(self, expr, ())
-    }
-
-    fn visit_expr_post(&mut self, _: @ast::Expr, _: ()) {
-        // Empty!
-    }
-
     fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
         visit::walk_ty(self, typ, ())
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
-        visit::walk_generics(self, generics, ())
-    }
-
-    fn visit_fn(&mut self,
-                function_kind: &visit::fn_kind,
-                function_declaration: &ast::fn_decl,
-                block: &ast::Block,
-                span: Span,
-                node_id: NodeId,
-                _: ()) {
-        visit::walk_fn(self,
-                        function_kind,
-                        function_declaration,
-                        block,
-                        span,
-                        node_id,
-                        ())
-    }
-
-    fn visit_ty_method(&mut self, ty_method: &ast::TypeMethod, _: ()) {
-        visit::walk_ty_method(self, ty_method, ())
-    }
-
-    fn visit_trait_method(&mut self,
-                          trait_method: &ast::trait_method,
-                          _: ()) {
-        visit::walk_trait_method(self, trait_method, ())
-    }
-
-    fn visit_struct_def(&mut self,
-                        struct_def: @ast::struct_def,
-                        ident: Ident,
-                        generics: &ast::Generics,
-                        node_id: NodeId,
-                        _: ()) {
-        visit::walk_struct_def(self,
-                                struct_def,
-                                ident,
-                                generics,
-                                node_id,
-                                ())
-    }
-
-    fn visit_struct_field(&mut self,
-                          struct_field: @ast::struct_field,
-                          _: ()) {
-        visit::walk_struct_field(self, struct_field, ())
-    }
 }
 
 // a visitor that extracts the paths
@@ -671,7 +574,6 @@ struct NewPathExprFinderContext {
     path_accumulator: @mut ~[ast::Path],
 }
 
-// XXX : YIKES a lot of boilerplate again....
 impl Visitor<()> for NewPathExprFinderContext {
 
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
@@ -684,108 +586,10 @@ impl Visitor<()> for NewPathExprFinderContext {
         }
     }
 
-
-    // XXX: Methods below can become default methods.
-
-    fn visit_pat(&mut self, pattern: @ast::Pat, _: ()) {
-        visit::walk_pat(self,pattern,())
-    }
-
-    fn visit_mod(&mut self, module: &ast::_mod, _: Span, _: NodeId, _: ()) {
-        visit::walk_mod(self, module, ())
-    }
-
-    fn visit_view_item(&mut self, view_item: &ast::view_item, _: ()) {
-        visit::walk_view_item(self, view_item, ())
-    }
-
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
-        visit::walk_item(self, item, ())
-    }
-
-    fn visit_foreign_item(&mut self,
-                          foreign_item: @ast::foreign_item,
-                          _: ()) {
-        visit::walk_foreign_item(self, foreign_item, ())
-    }
-
-    fn visit_local(&mut self, local: @ast::Local, _: ()) {
-        visit::walk_local(self, local, ())
-    }
-
-    fn visit_block(&mut self, block: &ast::Block, _: ()) {
-        visit::walk_block(self, block, ())
-    }
-
-    fn visit_stmt(&mut self, stmt: @ast::Stmt, _: ()) {
-        visit::walk_stmt(self, stmt, ())
-    }
-
-    fn visit_arm(&mut self, arm: &ast::Arm, _: ()) {
-        visit::walk_arm(self, arm, ())
-    }
-
-    fn visit_decl(&mut self, decl: @ast::Decl, _: ()) {
-        visit::walk_decl(self, decl, ())
-    }
-
-    fn visit_expr_post(&mut self, _: @ast::Expr, _: ()) {
-        // Empty!
-    }
-
     fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
         visit::walk_ty(self, typ, ())
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
-        visit::walk_generics(self, generics, ())
-    }
-
-    fn visit_fn(&mut self,
-                function_kind: &visit::fn_kind,
-                function_declaration: &ast::fn_decl,
-                block: &ast::Block,
-                span: Span,
-                node_id: NodeId,
-                _: ()) {
-        visit::walk_fn(self,
-                        function_kind,
-                        function_declaration,
-                        block,
-                        span,
-                        node_id,
-                        ())
-    }
-
-    fn visit_ty_method(&mut self, ty_method: &ast::TypeMethod, _: ()) {
-        visit::walk_ty_method(self, ty_method, ())
-    }
-
-    fn visit_trait_method(&mut self,
-                          trait_method: &ast::trait_method,
-                          _: ()) {
-        visit::walk_trait_method(self, trait_method, ())
-    }
-
-    fn visit_struct_def(&mut self,
-                        struct_def: @ast::struct_def,
-                        ident: Ident,
-                        generics: &ast::Generics,
-                        node_id: NodeId,
-                        _: ()) {
-        visit::walk_struct_def(self,
-                                struct_def,
-                                ident,
-                                generics,
-                                node_id,
-                                ())
-    }
-
-    fn visit_struct_field(&mut self,
-                          struct_field: @ast::struct_field,
-                          _: ()) {
-        visit::walk_struct_field(self, struct_field, ())
-    }
 }
 
 // return a visitor that extracts the pat_ident paths
