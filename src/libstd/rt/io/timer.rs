@@ -17,6 +17,13 @@ use rt::local::Local;
 
 pub struct Timer(~RtioTimerObject);
 
+/// Sleep the current task for `msecs` milliseconds.
+pub fn sleep(msecs: u64) {
+    let mut timer = Timer::new().expect("timer::sleep: could not create a Timer");
+
+    timer.sleep(msecs)
+}
+
 impl Timer {
 
     pub fn new() -> Option<Timer> {
@@ -50,6 +57,13 @@ mod test {
         do run_in_mt_newsched_task {
             let timer = Timer::new();
             do timer.map_move |mut t| { t.sleep(1) };
+        }
+    }
+
+    #[test]
+    fn test_io_timer_sleep_standalone() {
+        do run_in_mt_newsched_task {
+            sleep(1)
         }
     }
 }
