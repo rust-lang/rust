@@ -1749,14 +1749,12 @@ impl<A: Add<A, A> + Ord + Clone> Iterator<A> for Range<A> {
     // Blocked on #8605 Need numeric trait for converting to `Option<uint>`
 }
 
-impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
+/// `Integer` is required to ensure the range will be the same regardless of
+/// the direction it is consumed.
+impl<A: Integer + Ord + Clone> DoubleEndedIterator<A> for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.stop > self.state {
-            // Integer doesn't technically define this rule, but we're going to assume that every
-            // Integer is reachable from every other one by adding or subtracting enough Ones. This
-            // seems like a reasonable-enough rule that every Integer should conform to, even if it
-            // can't be statically checked.
             self.stop = self.stop - self.one;
             Some(self.stop.clone())
         } else {
