@@ -690,11 +690,19 @@ pub fn noop_fold_expr(e: &Expr_, fld: @ast_fold) -> Expr_ {
         ExprBreak(ref opt_ident) => {
             // FIXME #6993: add fold_name to fold.... then cut out the
             // bogus Name->Ident->Name conversion.
-            ExprBreak(opt_ident.map_move(|x| fld.fold_ident(Ident::new(x)).name))
+            ExprBreak(opt_ident.map_move(|x| {
+                // FIXME #9129: Assigning the new ident to a temporary to work around codegen bug
+                let newx = Ident::new(x);
+                fld.fold_ident(newx).name
+            }))
         }
         ExprAgain(ref opt_ident) => {
             // FIXME #6993: add fold_name to fold....
-            ExprAgain(opt_ident.map_move(|x| fld.fold_ident(Ident::new(x)).name))
+            ExprAgain(opt_ident.map_move(|x| {
+                // FIXME #9129: Assigning the new ident to a temporary to work around codegen bug
+                let newx = Ident::new(x);
+                fld.fold_ident(newx).name
+            }))
         }
         ExprRet(ref e) => {
             ExprRet(e.map_move(|x| fld.fold_expr(x)))
