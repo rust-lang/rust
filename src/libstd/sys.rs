@@ -140,7 +140,8 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use rt::in_green_task_context;
     use rt::task::Task;
     use rt::local::Local;
-    use rt::logging::{Logger, OwnedString};
+    use rt::logging::Logger;
+    use send_str::SendStrOwned;
     use str::Str;
 
     unsafe {
@@ -163,7 +164,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                          msg, file, line as int)
                 };
 
-                task.logger.log(OwnedString(msg));
+                task.logger.log(SendStrOwned(msg));
             }
         } else {
             rterrln!("failed in non-task context at '%s', %s:%i",
