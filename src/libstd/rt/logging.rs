@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use either::*;
 use libc::{uintptr_t, exit, STDERR_FILENO};
 use option::{Some, None, Option};
 use rt::util::dumb_println;
@@ -168,14 +167,20 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     }
 }
 
+/// Represent a string with `Send` bound.
+pub enum SendableString {
+    OwnedString(~str),
+    StaticString(&'static str)
+}
+
 pub trait Logger {
-    fn log(&mut self, msg: Either<~str, &'static str>);
+    fn log(&mut self, msg: SendableString);
 }
 
 pub struct StdErrLogger;
 
 impl Logger for StdErrLogger {
-    fn log(&mut self, msg: Either<~str, &'static str>) {
+    fn log(&mut self, msg: SendableString) {
         use io::{Writer, WriterUtil};
 
         if !should_log_console() {
@@ -183,14 +188,11 @@ impl Logger for StdErrLogger {
         }
 
         let s: &str = match msg {
-            Left(ref s) => {
-                let s: &str = *s;
-                s
-            }
-            Right(ref s) => {
-                let s: &str = *s;
-                s
-            }
+            OwnedString(ref s) => {
+                let slc: &str = *s;
+                slc
+            },
+            StaticString(s) => s,
         };
 
         // Truncate the string

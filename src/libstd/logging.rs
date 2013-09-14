@@ -12,9 +12,8 @@
 
 use option::*;
 use os;
-use either::*;
 use rt;
-use rt::logging::{Logger, StdErrLogger};
+use rt::logging::{Logger, StdErrLogger, OwnedString};
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -57,12 +56,12 @@ fn newsched_log_str(msg: ~str) {
         match optional_task {
             Some(local) => {
                 // Use the available logger
-                (*local).logger.log(Left(msg));
+                (*local).logger.log(OwnedString(msg));
             }
             None => {
                 // There is no logger anywhere, just write to stderr
                 let mut logger = StdErrLogger;
-                logger.log(Left(msg));
+                logger.log(OwnedString(msg));
             }
         }
     }
