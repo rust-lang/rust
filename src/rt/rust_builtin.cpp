@@ -603,18 +603,6 @@ rust_get_global_args_ptr() {
     return &global_args_ptr;
 }
 
-static lock_and_signal change_dir_lock;
-
-extern "C" CDECL void
-rust_take_change_dir_lock() {
-    change_dir_lock.lock();
-}
-
-extern "C" CDECL void
-rust_drop_change_dir_lock() {
-    change_dir_lock.unlock();
-}
-
 // Used by i386 __morestack
 extern "C" CDECL uintptr_t
 rust_get_task() {
