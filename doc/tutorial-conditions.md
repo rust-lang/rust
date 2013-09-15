@@ -91,7 +91,7 @@ fn read_int_pairs() -> ~[(int,int)] {
             [a, b] => {
 
                 // 5. Try parsing both fields as ints.
-                match (int::from_str(a), int::from_str(b)) {
+                match (from_str::<int>(a), from_str::<int>(b)) {
 
                     // 6. If parsing succeeded for both, push both.
                     (Some(a), Some(b)) => pairs.push((a,b)),
@@ -124,7 +124,7 @@ for conveying a value of type `T`, represented as `Some(T)`
 _or_ the sentinel `None`, to indicate the absence of a `T` value.
 For simple APIs, it may be sufficient to encode errors as `Option<T>`,
 returning `Some(T)` on success and `None` on error.
-In the example program, the call to `int::from_str` returns `Option<int>`
+In the example program, the call to `from_str::<int>` returns `Option<int>`
 with the understanding that "all parse errors" result in `None`.
 The resulting `Option<int>` values are matched against the pattern `(Some(a), Some(b))`
 in steps 5 and 6 in the example program,
@@ -161,7 +161,7 @@ This second mechanism for indicating an error is called a `Result`.
 The type `std::result::Result<T,E>` is another simple `enum` type with two forms, `Ok(T)` and `Err(E)`.
 The `Result` type is not substantially different from the `Option` type in terms of its ergonomics.
 Its main advantage is that the error constructor `Err(E)` can convey _more detail_ about the error.
-For example, the `int::from_str` API could be reformed
+For example, the `from_str` API could be reformed
 to return a `Result` carrying an informative description of a parse error,
 like this:
 
@@ -172,7 +172,7 @@ enum IntParseErr {
      BadChar(char)
 }
 
-fn int::from_str(&str) -> Result<int,IntParseErr> {
+fn from_str(&str) -> Result<int,IntParseErr> {
   // ...
 }
 ~~~~
@@ -297,8 +297,8 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
         let fields = line.word_iter().to_owned_vec();
         match fields {
-            [a, b] => pairs.push((int::from_str(a).unwrap(),
-                                  int::from_str(b).unwrap())),
+            [a, b] => pairs.push((from_str::<int>(a).unwrap(),
+                                  from_str::<int>(b).unwrap())),
 
             // Explicitly fail on malformed lines.
             _ => fail!()
@@ -398,8 +398,8 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
         let fields = line.word_iter().to_owned_vec();
         match fields {
-            [a, b] => pairs.push((int::from_str(a).unwrap(),
-                                  int::from_str(b).unwrap())),
+            [a, b] => pairs.push((from_str::<int>(a).unwrap(),
+                                  from_str::<int>(b).unwrap())),
 
             // On malformed lines, call the condition handler and
             // push whatever the condition handler returns.
@@ -475,8 +475,8 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
         let fields = line.word_iter().to_owned_vec();
         match fields {
-            [a, b] => pairs.push((int::from_str(a).unwrap(),
-                                  int::from_str(b).unwrap())),
+            [a, b] => pairs.push((from_str::<int>(a).unwrap(),
+                                  from_str::<int>(b).unwrap())),
             _ => pairs.push(malformed_line::cond.raise(line.clone()))
         }
     }
@@ -553,8 +553,8 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
         let fields = line.word_iter().to_owned_vec();
         match fields {
-            [a, b] => pairs.push((int::from_str(a).unwrap(),
-                                  int::from_str(b).unwrap())),
+            [a, b] => pairs.push((from_str::<int>(a).unwrap(),
+                                  from_str::<int>(b).unwrap())),
 
             // On malformed lines, call the condition handler and
             // either ignore the line (if the handler returns `None`)
@@ -649,8 +649,8 @@ fn read_int_pairs() -> ~[(int,int)] {
         let line = fi.read_line();
         let fields = line.word_iter().to_owned_vec();
         match fields {
-            [a, b] => pairs.push((int::from_str(a).unwrap(),
-                                  int::from_str(b).unwrap())),
+            [a, b] => pairs.push((from_str::<int>(a).unwrap(),
+                                  from_str::<int>(b).unwrap())),
 
             // On malformed lines, call the condition handler and
             // take action appropriate to the enum value returned.
@@ -776,7 +776,7 @@ fn main() {
 // Parse an int; if parsing fails, call the condition handler and
 // return whatever it returns.
 fn parse_int(x: &str) -> int {
-    match int::from_str(x) {
+    match from_str::<int>(x) {
         Some(v) => v,
         None => malformed_int::cond.raise(x.to_owned())
     }
@@ -833,8 +833,8 @@ There are three other things to note in this variant of the example program:
     so long as the `raise` occurs within a callee (of any depth) of the logic protected by the `trap` call,
     it will invoke the handler.
 
-  - This variant insulates callers from a design choice in the `int` library:
-    the `int::from_str` function was designed to return an `Option<int>`,
+  - This variant insulates callers from a design choice in the library:
+    the `from_str` function was designed to return an `Option<int>`,
     but this program insulates callers from that choice,
     routing all `None` values that arise from parsing integers in this file into the condition.
 

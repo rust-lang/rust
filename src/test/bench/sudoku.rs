@@ -74,9 +74,9 @@ impl Sudoku {
             let comps: ~[&str] = line.trim().split_iter(',').collect();
 
             if comps.len() == 3u {
-                let row     = uint::from_str(comps[0]).unwrap() as u8;
-                let col     = uint::from_str(comps[1]).unwrap() as u8;
-                g[row][col] = uint::from_str(comps[2]).unwrap() as u8;
+                let row     = from_str::<uint>(comps[0]).unwrap() as u8;
+                let col     = from_str::<uint>(comps[1]).unwrap() as u8;
+                g[row][col] = from_str::<uint>(comps[2]).unwrap() as u8;
             }
             else {
                 fail!("Invalid sudoku file");

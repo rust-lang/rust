@@ -20,7 +20,7 @@ use parse::token::{str_to_ident};
 use std::cast::transmute;
 use std::char;
 use std::either;
-use std::u64;
+use std::num::from_str_radix;
 use std::util;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
@@ -444,7 +444,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         if num_str.len() == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = match u64::from_str_radix(num_str, base as uint) {
+        let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
             None => rdr.fatal(~"int literal is too large")
         };
@@ -509,7 +509,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         if num_str.len() == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = match u64::from_str_radix(num_str, base as uint) {
+        let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
             None => rdr.fatal(~"int literal is too large")
         };

@@ -65,13 +65,13 @@ fn main() {
 
     let args = os::args();
     let n = if args.len() == 3 {
-        uint::from_str(args[1]).unwrap()
+        from_str::<uint>(args[1]).unwrap()
     } else {
         10000
     };
 
     let m = if args.len() == 3 {
-        uint::from_str(args[2]).unwrap()
+        from_str::<uint>(args[2]).unwrap()
     } else {
         4
     };

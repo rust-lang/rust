@@ -39,8 +39,8 @@ fn main() {
     } else {
         args
     };
-    let max = uint::from_str(args[1]).unwrap();
-    let rep = uint::from_str(args[2]).unwrap();
+    let max = from_str::<uint>(args[1]).unwrap();
+    let rep = from_str::<uint>(args[2]).unwrap();
 
     let mut checkf = 0.0;
     let mut appendf = 0.0;

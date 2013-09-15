@@ -439,6 +439,11 @@ pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
+/// A utility function that just calls FromStrRadix::from_str_radix
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
+    FromStrRadix::from_str_radix(str, radix)
+}
+
 /// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
 ///
 /// Returns `radix^pow` as `T`.
