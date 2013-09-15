@@ -1135,18 +1135,19 @@ pub fn last_os_error() -> ~str {
         #[fixed_stack_segment]; #[inline(never)];
 
         use libc::types::os::arch::extra::DWORD;
-        use libc::types::os::arch::extra::LPSTR;
+        use libc::types::os::arch::extra::LPWSTR;
         use libc::types::os::arch::extra::LPVOID;
+        use libc::types::os::arch::extra::WCHAR;
 
         #[cfg(target_arch = "x86")]
         #[link_name = "kernel32"]
         #[abi = "stdcall"]
         extern "stdcall" {
-            fn FormatMessageA(flags: DWORD,
+            fn FormatMessageW(flags: DWORD,
                               lpSrc: LPVOID,
                               msgId: DWORD,
                               langId: DWORD,
-                              buf: LPSTR,
+                              buf: LPWSTR,
                               nsize: DWORD,
                               args: *c_void)
                               -> DWORD;
@@ -1155,11 +1156,11 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_arch = "x86_64")]
         #[link_name = "kernel32"]
         extern {
-            fn FormatMessageA(flags: DWORD,
+            fn FormatMessageW(flags: DWORD,
                               lpSrc: LPVOID,
                               msgId: DWORD,
                               langId: DWORD,
-                              buf: LPSTR,
+                              buf: LPWSTR,
                               nsize: DWORD,
                               args: *c_void)
                               -> DWORD;
@@ -1173,11 +1174,11 @@ pub fn last_os_error() -> ~str {
         let langId = 0x0800 as DWORD;
         let err = errno() as DWORD;
 
-        let mut buf = [0 as c_char, ..TMPBUF_SZ];
+        let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
 
         unsafe {
             do buf.as_mut_buf |buf, len| {
-                let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
+                let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
                                          FORMAT_MESSAGE_IGNORE_INSERTS,
                                          ptr::mut_null(),
                                          err,
@@ -1190,9 +1191,7 @@ pub fn last_os_error() -> ~str {
                 }
             }
 
-            do buf.as_imm_buf |buf, _len| {
-                str::raw::from_c_str(buf)
-            }
+            str::from_utf16(buf)
         }
     }
 
