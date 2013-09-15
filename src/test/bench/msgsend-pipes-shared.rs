@@ -59,8 +59,8 @@ fn run(args: &[~str]) {
 
     let to_child = SharedChan::new(to_child);
 
-    let size = uint::from_str(args[1]).unwrap();
-    let workers = uint::from_str(args[2]).unwrap();
+    let size = from_str::<uint>(args[1]).unwrap();
+    let workers = from_str::<uint>(args[2]).unwrap();
     let num_bytes = 100;
     let start = extra::time::precise_time_s();
     let mut worker_results = ~[];

@@ -34,6 +34,6 @@ fn main() {
     } else {
         args
     };
-    let n = int::from_str(args[1]).unwrap();
+    let n = from_str::<int>(args[1]).unwrap();
     printfln!("Ack(3,%d): %d\n", n, ack(3, n));
 }

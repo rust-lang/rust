@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use libc;
-use uint;
 use option::{Some, None};
 use cell::Cell;
 use clone::Clone;
@@ -382,9 +381,10 @@ fn base_port() -> uint {
 /// stress tests. Default 1.
 pub fn stress_factor() -> uint {
     use os::getenv;
+    use from_str::from_str;
 
     match getenv("RUST_RT_STRESS") {
-        Some(val) => uint::from_str(val).unwrap(),
+        Some(val) => from_str::<uint>(val).unwrap(),
         None => 1
     }
 }

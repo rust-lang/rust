@@ -31,7 +31,7 @@ fn main() {
     } else {
         args
     };
-    let n = uint::from_str(args[1]).unwrap();
+    let n = from_str::<uint>(args[1]).unwrap();
     let mut i = 0u;
     while i < n { task::spawn(|| f(n) ); i += 1u; }
 }
