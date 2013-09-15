@@ -1790,17 +1790,17 @@ pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> R
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Ord + Clone> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
             Some(x) => Some(x),
             None => {
-                if self.done {
-                    None
-                } else {
+                if !self.done && self.range.state == self.range.stop {
                     self.done = true;
                     Some(self.range.stop.clone())
+                } else {
+                    None
                 }
             }
         }
@@ -1829,11 +1829,11 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclu
             let result = self.range.stop.clone();
             self.range.stop = self.range.stop - self.range.one;
             Some(result)
-        } else if self.done {
-            None
-        } else {
+        } else if !self.done && self.range.state == self.range.stop {
             self.done = true;
             Some(self.range.stop.clone())
+        } else {
+            None
         }
     }
 }
@@ -1857,7 +1857,7 @@ pub fn range_step<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: A, step: A
 impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if (self.rev && self.state > self.stop) || self.state < self.stop {
+        if (self.rev && self.state > self.stop) || (!self.rev && self.state < self.stop) {
             let result = self.state.clone();
             match self.state.checked_add(&self.step) {
                 Some(x) => self.state = x,
@@ -1891,22 +1891,14 @@ pub fn range_step_inclusive<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: 
 impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if !self.done {
-            if (self.rev && self.state > self.stop) || self.state < self.stop {
-                let result = self.state.clone();
-                match self.state.checked_add(&self.step) {
-                    Some(x) => self.state = x,
-                    None => self.done = true
-                }
-                Some(result)
-            } else {
-                if self.state == self.stop {
-                    self.done = true;
-                    Some(self.state.clone())
-                } else {
-                    None
-                }
+        if !self.done && ((self.rev && self.state >= self.stop) ||
+                          (!self.rev && self.state <= self.stop)) {
+            let result = self.state.clone();
+            match self.state.checked_add(&self.step) {
+                Some(x) => self.state = x,
+                None => self.done = true
             }
+            Some(result)
         } else {
             None
         }
@@ -2717,23 +2709,43 @@ mod tests {
     }
 
     #[test]
+    fn test_range() {
+        assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
+        assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
+        assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+    }
+
+    #[test]
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
+        assert_eq!(range_inclusive(200, 200).invert().collect::<~[int]>(), ~[200]);
     }
 
     #[test]
     fn test_range_step() {
         assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
         assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
+        assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        assert_eq!(range_step(200, -5, 1).collect::<~[int]>(), ~[]);
+        assert_eq!(range_step(200, 200, 1).collect::<~[int]>(), ~[]);
     }
 
     #[test]
     fn test_range_step_inclusive() {
         assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
         assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
+        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        assert_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), ~[]);
+        assert_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), ~[200]);
     }
 
     #[test]
