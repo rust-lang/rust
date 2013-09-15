@@ -1829,11 +1829,11 @@ impl<A: Sub<A, A> + Integer + Ord + Clone> DoubleEndedIterator<A> for RangeInclu
             let result = self.range.stop.clone();
             self.range.stop = self.range.stop - self.range.one;
             Some(result)
-        } else if self.done {
-            None
-        } else {
+        } else if !self.done && self.range.state == self.range.stop {
             self.done = true;
             Some(self.range.stop.clone())
+        } else {
+            None
         }
     }
 }
@@ -2713,7 +2713,9 @@ mod tests {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
         assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, -5).invert().collect::<~[int]>(), ~[]);
         assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
+        assert_eq!(range_inclusive(200, 200).invert().collect::<~[int]>(), ~[200]);
     }
 
     #[test]
