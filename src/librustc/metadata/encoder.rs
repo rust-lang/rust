@@ -905,7 +905,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        let elt = ast_map::path_pretty_name(item.ident, item.id as u64);
+        encode_path(ecx, ebml_w, path, elt);
         (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         ebml_w.end_tag();
       }
