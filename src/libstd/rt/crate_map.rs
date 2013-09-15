@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use libc::c_char;
-use ptr;
-use ptr::RawPtr;
-use vec;
-use hashmap::HashSet;
+use cast::transmute;
 use container::MutableSet;
+use hashmap::HashSet;
+use libc::c_char;
 
 // Need to tell the linker on OS X to not barf on undefined symbols
 // and instead look them up at runtime, which we need to resolve
@@ -34,14 +31,15 @@ pub struct ModEntry {
     name: *c_char,
     log_level: *mut u32
 }
+
 struct CrateMapV0 {
-    entries: *ModEntry,
-    children: [*CrateMap, ..1]
+    entries: &static [ModEntry],
+    children: &'static [&'static CrateMap]
 }
 
 struct CrateMap {
     version: i32,
-    entries: *ModEntry,
+    entries: &static [ModEntry],
     /// a dynamically sized struct, where all pointers to children are listed adjacent
     /// to the struct, terminated with NULL
     children: [*CrateMap, ..1]
@@ -71,153 +69,175 @@ pub fn get_crate_map() -> *CrateMap {
     sym as *CrateMap
 }
 
-unsafe fn version(crate_map: *CrateMap) -> i32 {
-    match (*crate_map).version {
+fn version(crate_map: &'static CrateMap) -> i32 {
+    match crate_map.version {
         1 => return 1,
         _ => return 0
     }
 }
 
-unsafe fn entries(crate_map: *CrateMap) -> *ModEntry {
+#[cfg(not(stage0))]
+fn entries(crate_map: &'static CrateMap) -> *ModEntry {
     match version(crate_map) {
         0 => {
-            let v0 = crate_map as (*CrateMapV0);
-            return (*v0).entries;
+            unsafe {
+                let v0: &'static CrateMapV0 = transmute(crate_map);
+                return v0.entries;
+            }
         }
         1 => return (*crate_map).entries,
         _ => fail2!("Unknown crate map version!")
     }
 }
 
-unsafe fn iterator(crate_map: *CrateMap) -> **CrateMap {
+#[cfg(not(stage0))]
+fn iterator(crate_map: &'static CrateMap) -> &'static [&'static CrateMap] {
     match version(crate_map) {
         0 => {
-            let v0 = crate_map as (*CrateMapV0);
-            return vec::raw::to_ptr((*v0).children);
+            unsafe {
+                let v0: &'static CrateMapV0 = transmute(crate_map);
+                return v0.children;
+            }
         }
         1 => return vec::raw::to_ptr((*crate_map).children),
         _ => fail2!("Unknown crate map version!")
     }
 }
 
-unsafe fn iter_module_map(mod_entries: *ModEntry, f: &fn(*mut ModEntry)) {
+fn iter_module_map(mod_entries: *ModEntry, f: &fn(&mut ModEntry)) {
     let mut curr = mod_entries;
 
-    while !(*curr).name.is_null() {
-        f(curr as *mut ModEntry);
-        curr = curr.offset(1);
-    }
-}
-
-unsafe fn do_iter_crate_map(crate_map: *CrateMap, f: &fn(*mut ModEntry),
-                            visited: &mut HashSet<*CrateMap>) {
-    if visited.insert(crate_map) {
-        iter_module_map(entries(crate_map), |x| f(x));
-        let child_crates = iterator(crate_map);
-        do ptr::array_each(child_crates) |child| {
-            do_iter_crate_map(child, |x| f(x), visited);
+    unsafe {
+        while !(*curr).name.is_null() {
+            f(transmute(curr));
+            curr = curr.offset(1);
         }
     }
 }
 
+
+
+#[cfg(not(stage0))]
+fn do_iter_crate_map(crate_map: &'static CrateMap, f: &fn(&mut ModEntry),
+                            visited: &mut HashSet<*CrateMap>) {
+    if visited.insert(crate_map as *CrateMap) {
+        iter_module_map(crate_map.entries, |x| f(x));
+        let child_crates = iterator(crate_map);
+        
+        let mut i = 0;
+        while i < child_crates.len() {
+            do_iter_crate_map(child_crates[i], |x| f(x), visited);
+            i = i + 1;
+        }
+    }
+}
+
+#[cfg(stage0)]
 /// Iterates recursively over `crate_map` and all child crate maps
-pub unsafe fn iter_crate_map(crate_map: *CrateMap, f: &fn(*mut ModEntry)) {
+pub fn iter_crate_map(crate_map: *u8, f: &fn(&mut ModEntry)) {
+}
+
+#[cfg(not(stage0))]
+/// Iterates recursively over `crate_map` and all child crate maps
+pub fn iter_crate_map(crate_map: &'static CrateMap, f: &fn(&mut ModEntry)) {
     // XXX: use random numbers as keys from the OS-level RNG when there is a nice
     //        way to do this
     let mut v: HashSet<*CrateMap> = HashSet::with_capacity_and_keys(0, 0, 32);
-    do_iter_crate_map(crate_map, f, &mut v);
-}
-
-#[test]
-fn iter_crate_map_duplicates() {
-    use c_str::ToCStr;
-    use cast::transmute;
-
-    struct CrateMapT3 {
-        version: i32,
-        entries: *ModEntry,
-        children: [*CrateMap, ..3]
-    }
-
     unsafe {
-        let mod_name1 = "c::m1".to_c_str();
-        let mut level3: u32 = 3;
-
-        let entries: ~[ModEntry] = ~[
-            ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level3},
-            ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
-        ];
-        let child_crate = CrateMap {
-            version: 1,
-            entries: vec::raw::to_ptr(entries),
-            children: [ptr::null()]
-        };
-
-        let root_crate = CrateMapT3 {
-            version: 1,
-            entries: vec::raw::to_ptr([ModEntry { name: ptr::null(), log_level: ptr::mut_null()}]),
-            children: [&child_crate as *CrateMap, &child_crate as *CrateMap, ptr::null()]
-        };
-
-        let mut cnt = 0;
-        do iter_crate_map(transmute(&root_crate)) |entry| {
-            assert!(*(*entry).log_level == 3);
-            cnt += 1;
-        }
-        assert!(cnt == 1);
+        do_iter_crate_map(transmute(crate_map), f, &mut v);
     }
 }
 
-#[test]
-fn iter_crate_map_follow_children() {
+#[cfg(test)]
+mod tests {
     use c_str::ToCStr;
     use cast::transmute;
+    use ptr;
+    use vec;
 
-    struct CrateMapT2 {
+    use rt::crate_map::{ModEntry, iter_crate_map};
+
+    struct CrateMap<'self> { 
         version: i32,
         entries: *ModEntry,
-        children: [*CrateMap, ..2]
+        /// a dynamically sized struct, where all pointers to children are listed adjacent
+        /// to the struct, terminated with NULL
+        children: &'self [&'self CrateMap<'self>] 
     }
 
-    unsafe {
-        let mod_name1 = "c::m1".to_c_str();
-        let mod_name2 = "c::m2".to_c_str();
-        let mut level2: u32 = 2;
-        let mut level3: u32 = 3;
-        let child_crate2 = CrateMap {
-            version: 1,
-            entries: vec::raw::to_ptr([
-                ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level2},
-                ModEntry { name: mod_name2.with_ref(|buf| buf), log_level: &mut level3},
-                ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
-            ]),
-            children: [ptr::null()]
-        };
+    #[test]
+    fn iter_crate_map_duplicates() {
+        unsafe {
+            let mod_name1 = "c::m1".to_c_str();
+            let mut level3: u32 = 3;
 
-        let child_crate1 = CrateMapT2 {
-            version: 1,
-            entries: vec::raw::to_ptr([
-                ModEntry { name: "t::f1".with_c_str(|buf| buf), log_level: &mut 1},
+            let entries: ~[ModEntry] = ~[
+                ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level3},
                 ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
-            ]),
-            children: [&child_crate2 as *CrateMap, ptr::null()]
-        };
+            ];
 
-        let child_crate1_ptr: *CrateMap = transmute(&child_crate1);
-        let root_crate = CrateMapT2 {
-            version: 1,
-            entries: vec::raw::to_ptr([
-                ModEntry { name: "t::f1".with_c_str(|buf| buf), log_level: &mut 0},
-                ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
-            ]),
-            children: [child_crate1_ptr, ptr::null()]
-        };
+            let child_crate = CrateMap {
+                version: 1,
+                entries: vec::raw::to_ptr(entries),
+                children: []
+            };
 
-        let mut cnt = 0;
-        do iter_crate_map(transmute(&root_crate)) |entry| {
-            assert!(*(*entry).log_level == cnt);
-            cnt += 1;
+            let root_crate = CrateMap {
+                version: 1,
+                entries: vec::raw::to_ptr([ModEntry { name: ptr::null(), log_level: ptr::mut_null()}]),
+                children: [&child_crate, &child_crate]
+            };
+
+            let mut cnt = 0;
+            do iter_crate_map(transmute(&root_crate)) |entry| {
+                assert!(*entry.log_level == 3);
+                cnt += 1;
+            }
+            assert!(cnt == 1);
         }
-        assert!(cnt == 4);
+    }
+
+    #[test]
+    fn iter_crate_map_follow_children() {
+        unsafe {
+            let mod_name1 = "c::m1".to_c_str();
+            let mod_name2 = "c::m2".to_c_str();
+            let mut level2: u32 = 2;
+            let mut level3: u32 = 3;
+            let child_crate2 = CrateMap {
+                version: 1,
+                entries: vec::raw::to_ptr([
+                    ModEntry { name: mod_name1.with_ref(|buf| buf), log_level: &mut level2},
+                    ModEntry { name: mod_name2.with_ref(|buf| buf), log_level: &mut level3},
+                    ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
+                ]),
+                children: []
+            };
+
+            let child_crate1 = CrateMap {
+                version: 1,
+                entries: vec::raw::to_ptr([
+                    ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 1},
+                    ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
+                ]),
+                children: [&child_crate2]
+            };
+
+            let root_crate = CrateMap {
+                version: 1,
+                entries: vec::raw::to_ptr([
+                    ModEntry { name: "t::f1".to_c_str().with_ref(|buf| buf), log_level: &mut 0},
+                    ModEntry { name: ptr::null(), log_level: ptr::mut_null()}
+                ]),
+                children: [&child_crate1]
+            };
+
+            let mut cnt = 0;
+            do iter_crate_map(transmute(&root_crate)) |entry| {
+                assert!(*entry.log_level == cnt);
+                cnt += 1;
+            }
+            assert!(cnt == 4);
+        }
     }
 }
