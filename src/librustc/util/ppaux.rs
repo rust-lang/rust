@@ -235,7 +235,7 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     }
 }
 
-fn mutability_to_str(m: ast::Mutability) -> ~str {
+pub fn mutability_to_str(m: ast::Mutability) -> ~str {
     match m {
         ast::MutMutable => ~"mut ",
         ast::MutImmutable => ~"",

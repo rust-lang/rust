@@ -38,6 +38,16 @@ pub enum path_elt {
     path_pretty_name(Ident, u64),
 }
 
+impl path_elt {
+    pub fn ident(&self) -> Ident {
+        match *self {
+            path_mod(ident)            |
+            path_name(ident)           |
+            path_pretty_name(ident, _) => ident
+        }
+    }
+}
+
 pub type path = ~[path_elt];
 
 pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
