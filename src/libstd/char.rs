@@ -12,7 +12,7 @@
 
 use cast::transmute;
 use option::{None, Option, Some};
-use i32;
+use iter::{Iterator, range_step};
 use str::StrSlice;
 use unicode::{derived_property, general_category, decompose};
 use to_str::ToStr;
@@ -286,15 +286,14 @@ pub fn escape_unicode(c: char, f: &fn(char)) {
         (c <= '\uffff') { f('u'); 4 }
         _               { f('U'); 8 }
     );
-    do i32::range_step(4 * (pad - 1), -1, -4) |offset| {
+    for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
         unsafe {
             match ((c as i32) >> offset) & 0xf {
                 i @ 0 .. 9 => { f(transmute('0' as i32 + i)); }
                 i => { f(transmute('a' as i32 + (i - 10))); }
             }
         }
-        true
-    };
+    }
 }
 
 ///

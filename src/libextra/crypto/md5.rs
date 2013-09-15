@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint;
+use std::iter::range_step;
 
 use cryptoutil::{write_u32_le, read_u32v_le, FixedBuffer, FixedBuffer64, StandardPadding};
 use digest::Digest;
@@ -86,46 +86,42 @@ impl Md5State {
         read_u32v_le(data, input);
 
         // round 1
-        do uint::range_step(0, 16, 4) |i| {
+        for i in range_step(0u, 16, 4) {
             a = op_f(a, b, c, d, data[i] + C1[i], 7);
             d = op_f(d, a, b, c, data[i + 1] + C1[i + 1], 12);
             c = op_f(c, d, a, b, data[i + 2] + C1[i + 2], 17);
             b = op_f(b, c, d, a, data[i + 3] + C1[i + 3], 22);
-            true
-        };
+        }
 
         // round 2
         let mut t = 1;
-        do uint::range_step(0, 16, 4) |i| {
+        for i in range_step(0u, 16, 4) {
             a = op_g(a, b, c, d, data[t & 0x0f] + C2[i], 5);
             d = op_g(d, a, b, c, data[(t + 5) & 0x0f] + C2[i + 1], 9);
             c = op_g(c, d, a, b, data[(t + 10) & 0x0f] + C2[i + 2], 14);
             b = op_g(b, c, d, a, data[(t + 15) & 0x0f] + C2[i + 3], 20);
             t += 20;
-            true
-        };
+        }
 
         // round 3
         t = 5;
-        do uint::range_step(0, 16, 4) |i| {
+        for i in range_step(0u, 16, 4) {
             a = op_h(a, b, c, d, data[t & 0x0f] + C3[i], 4);
             d = op_h(d, a, b, c, data[(t + 3) & 0x0f] + C3[i + 1], 11);
             c = op_h(c, d, a, b, data[(t + 6) & 0x0f] + C3[i + 2], 16);
             b = op_h(b, c, d, a, data[(t + 9) & 0x0f] + C3[i + 3], 23);
             t += 12;
-            true
-        };
+        }
 
         // round 4
         t = 0;
-        do uint::range_step(0, 16, 4) |i| {
+        for i in range_step(0u, 16, 4) {
             a = op_i(a, b, c, d, data[t & 0x0f] + C4[i], 6);
             d = op_i(d, a, b, c, data[(t + 7) & 0x0f] + C4[i + 1], 10);
             c = op_i(c, d, a, b, data[(t + 14) & 0x0f] + C4[i + 2], 15);
             b = op_i(b, c, d, a, data[(t + 21) & 0x0f] + C4[i + 3], 21);
             t += 28;
-            true
-        };
+        }
 
         self.s0 += a;
         self.s1 += b;
