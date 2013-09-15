@@ -168,7 +168,6 @@ fn file_test_smoke_test_impl() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_io_smoke_test() {
     file_test_smoke_test_impl();
 }
@@ -236,7 +235,6 @@ fn file_test_io_non_positional_read_impl() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_io_non_positional_read() {
     file_test_io_non_positional_read_impl();
 }
@@ -268,8 +266,8 @@ fn file_test_io_seeking_impl() {
         assert!(tell_pos_post_read == message.len() as u64);
     }
 }
+
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_io_seek_and_tell_smoke_test() {
     file_test_io_seeking_impl();
 }
@@ -300,8 +298,8 @@ fn file_test_io_seek_and_write_impl() {
         assert!(read_str == final_msg.to_owned());
     }
 }
+
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_io_seek_and_write() {
     file_test_io_seek_and_write_impl();
 }
@@ -340,8 +338,8 @@ fn file_test_io_seek_shakedown_impl() {
         unlink(filename);
     }
 }
+
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_io_seek_shakedown() {
     file_test_io_seek_shakedown_impl();
 }
