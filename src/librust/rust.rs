@@ -84,7 +84,8 @@ static COMMANDS: &'static [Command<'static>] = &'static [
         usage_full: UsgStr(
             "The test command is an shortcut for the command line \n\
             \"rustc --test <filename> -o <filestem>test~ && \
-            ./<filestem>test~\"\n\nUsage:\trust test <filename>"
+            ./<filestem>test~ [<arguments>...]\"\
+            \n\nUsage:\trust test <filename> [<arguments>...]"
         )
     },
     Command {
@@ -155,12 +156,12 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
 
 fn cmd_test(args: &[~str]) -> ValidUsage {
     match args {
-        [ref filename] => {
+        [ref filename, ..prog_args] => {
             let p = Path(*filename);
             let test_exec = p.filestem().unwrap() + "test~";
             invoke("rustc", &[~"--test", filename.to_owned(),
                               ~"-o", test_exec.to_owned()], rustc::main_args);
-            let exit_code = run::process_status(~"./" + test_exec, []);
+            let exit_code = run::process_status(~"./" + test_exec, prog_args);
             Valid(exit_code)
         }
         _ => Invalid
