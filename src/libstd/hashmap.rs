@@ -33,10 +33,9 @@ use vec;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
-struct Bucket<K,V> {
-    hash: uint,
-    key: K,
-    value: V,
+enum Bucket<K, V> {
+    Unused,
+    Entry(uint, K, V)
 }
 
 /// A hash map implementation which uses linear probing along with the SipHash
@@ -52,7 +51,7 @@ pub struct HashMap<K,V> {
     priv k1: u64,
     priv resize_at: uint,
     priv size: uint,
-    priv buckets: ~[Option<Bucket<K, V>>],
+    priv buckets: ~[Bucket<K, V>],
 }
 
 // We could rewrite FoundEntry to have type Option<&Bucket<K, V>>
@@ -115,10 +114,10 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let mut ret = TableFull;
         do self.bucket_sequence(hash) |i| {
             match self.buckets[i] {
-                Some(ref bkt) if bkt.hash == hash && *k == bkt.key => {
+                Entry(ref bkthash, ref key, _) if *bkthash == hash && *k == *key => {
                     ret = FoundEntry(i); false
                 },
-                None => { ret = FoundHole(i); false }
+                Unused => { ret = FoundHole(i); false }
                 _ => true,
             }
         };
@@ -133,10 +132,10 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         let mut ret = TableFull;
         do self.bucket_sequence(hash) |i| {
             match self.buckets[i] {
-                Some(ref bkt) if bkt.hash == hash && k.equiv(&bkt.key) => {
+                Entry(ref bkthash, ref key, _) if *bkthash == hash && k.equiv(key) => {
                     ret = FoundEntry(i); false
                 },
-                None => { ret = FoundHole(i); false }
+                Unused => { ret = FoundHole(i); false }
                 _ => true,
             }
         };
@@ -157,7 +156,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         self.resize_at = resize_at(new_capacity);
 
         let old_buckets = replace(&mut self.buckets,
-                                  vec::from_fn(new_capacity, |_| None));
+                                  vec::from_fn(new_capacity, |_| Unused));
 
         self.size = 0;
         // move_rev_iter is more efficient
@@ -166,28 +165,28 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    fn insert_opt_bucket(&mut self, bucket: Option<Bucket<K, V>>) {
+    fn insert_opt_bucket(&mut self, bucket: Bucket<K, V>) {
         match bucket {
-            Some(Bucket{hash: hash, key: key, value: value}) => {
+            Entry(hash, key, value) => {
                 self.insert_internal(hash, key, value);
             }
-            None => {}
+            Unused => {}
         }
     }
 
     #[inline]
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
-            Some(ref bkt) => &bkt.value,
-            None => fail!("HashMap::find: internal logic error"),
+            Entry(_, _, ref value) => value,
+            Unused => fail!("HashMap::find: internal logic error"),
         }
     }
 
     #[inline]
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
         match self.buckets[idx] {
-            Some(ref mut bkt) => &mut bkt.value,
-            None => unreachable()
+            Entry(_, _, ref mut value) => value,
+            Unused => unreachable()
         }
     }
 
@@ -198,18 +197,17 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                                value: v});
+                self.buckets[idx] = Entry(hash, k, v);
                 self.size += 1;
                 None
             }
             FoundEntry(idx) => {
                 match self.buckets[idx] {
-                    None => { fail!("insert_internal: Internal logic error") }
-                    Some(ref mut b) => {
-                        b.hash = hash;
-                        b.key = k;
-                        Some(replace(&mut b.value, v))
+                    Unused => { fail!("insert_internal: Internal logic error") }
+                    Entry(ref mut bkt_h, ref mut bkt_k, ref mut bkt_v) => {
+                        *bkt_h = hash;
+                        *bkt_k = k;
+                        Some(replace(bkt_v, v))
                     }
                 }
             }
@@ -237,18 +235,21 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         };
 
         let len_buckets = self.buckets.len();
-        let bucket = self.buckets[idx].take();
-
-        let value = do bucket.map_move |bucket| {
-            bucket.value
+        let value = match replace(&mut self.buckets[idx], Unused) {
+            Entry(_, _, v) => Some(v),
+            _ => None,
         };
 
         /* re-inserting buckets may cause changes in size, so remember
         what our new size is ahead of time before we start insertions */
         let size = self.size - 1;
         idx = self.next_bucket(idx, len_buckets);
-        while self.buckets[idx].is_some() {
-            let bucket = self.buckets[idx].take();
+        loop {
+            match self.buckets[idx] {
+                Unused => break,
+                _ => ()
+            }
+            let bucket = replace(&mut self.buckets[idx], Unused);
             self.insert_opt_bucket(bucket);
             idx = self.next_bucket(idx, len_buckets);
         }
@@ -267,7 +268,7 @@ impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         for bkt in self.buckets.mut_iter() {
-            *bkt = None;
+            *bkt = Unused;
         }
         self.size = 0;
     }
@@ -346,7 +347,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             k0: k0, k1: k1,
             resize_at: resize_at(cap),
             size: 0,
-            buckets: vec::from_fn(cap, |_| None)
+            buckets: vec::from_fn(cap, |_| Unused)
         }
     }
 
@@ -378,7 +379,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
             FoundHole(idx) => {
                 let v = not_found(&k, a);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k, value: v});
+                self.buckets[idx] = Entry(hash, k, v);
                 self.size += 1;
                 idx
             }
@@ -517,37 +518,37 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 /// HashMap iterator
 #[deriving(Clone)]
 pub struct HashMapIterator<'self, K, V> {
-    priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
+    priv iter: vec::VecIterator<'self, Bucket<K, V>>,
 }
 
 /// HashMap mutable values iterator
 pub struct HashMapMutIterator<'self, K, V> {
-    priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
+    priv iter: vec::VecMutIterator<'self, Bucket<K, V>>,
 }
 
 /// HashMap move iterator
 pub struct HashMapMoveIterator<K, V> {
-    priv iter: vec::MoveRevIterator<Option<Bucket<K, V>>>,
+    priv iter: vec::MoveRevIterator<Bucket<K, V>>,
 }
 
 /// HashSet iterator
 #[deriving(Clone)]
 pub struct HashSetIterator<'self, K> {
-    priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
+    priv iter: vec::VecIterator<'self, Bucket<K, ()>>,
 }
 
 /// HashSet move iterator
 pub struct HashSetMoveIterator<K> {
-    priv iter: vec::MoveRevIterator<Option<Bucket<K, ()>>>,
+    priv iter: vec::MoveRevIterator<Bucket<K, ()>>,
 }
 
 impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
     #[inline]
     fn next(&mut self) -> Option<(&'self K, &'self V)> {
         for elt in self.iter {
-            match elt {
-                &Some(ref bucket) => return Some((&bucket.key, &bucket.value)),
-                &None => {},
+            match *elt {
+                Entry(_, ref key, ref value) => return Some((key, value)),
+                Unused => (),
             }
         }
         None
@@ -558,9 +559,9 @@ impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'sel
     #[inline]
     fn next(&mut self) -> Option<(&'self K, &'self mut V)> {
         for elt in self.iter {
-            match elt {
-                &Some(ref mut bucket) => return Some((&bucket.key, &mut bucket.value)),
-                &None => {},
+            match *elt {
+                Entry(_, ref key, ref mut value) => return Some((key, value)),
+                Unused => (),
             }
         }
         None
@@ -572,8 +573,8 @@ impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
     fn next(&mut self) -> Option<(K, V)> {
         for elt in self.iter {
             match elt {
-                Some(Bucket {key, value, _}) => return Some((key, value)),
-                None => {},
+                Entry(_, key, value) => return Some((key, value)),
+                Unused => (),
             }
         }
         None
@@ -584,9 +585,9 @@ impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
     #[inline]
     fn next(&mut self) -> Option<&'self K> {
         for elt in self.iter {
-            match elt {
-                &Some(ref bucket) => return Some(&bucket.key),
-                &None => {},
+            match *elt {
+                Entry(_, ref key, _) => return Some(key),
+                Unused => (),
             }
         }
         None
@@ -598,8 +599,8 @@ impl<K> Iterator<K> for HashSetMoveIterator<K> {
     fn next(&mut self) -> Option<K> {
         for elt in self.iter {
             match elt {
-                Some(bucket) => return Some(bucket.key),
-                None => {},
+                Entry(_, key, _) => return Some(key),
+                Unused => ()
             }
         }
         None
