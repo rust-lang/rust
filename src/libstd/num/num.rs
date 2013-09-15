@@ -32,11 +32,6 @@ pub trait Num: Eq + Zero + One
              + Div<Self,Self>
              + Rem<Self,Self> {}
 
-pub trait IntConvertible {
-    fn to_int(&self) -> int;
-    fn from_int(n: int) -> Self;
-}
-
 pub trait Orderable: Ord {
     // These should be methods on `Ord`, with overridable default implementations. We don't want
     // to encumber all implementors of Ord by requiring them to implement these functions, but at
@@ -353,6 +348,298 @@ pub trait Float: Real
 #[inline(always)] pub fn ln_1p<T: Float>(value: T) -> T { value.ln_1p() }
 #[inline(always)] pub fn mul_add<T: Float>(a: T, b: T, c: T) -> T { a.mul_add(b, c) }
 
+/// A generic trait for converting a value to a number.
+pub trait ToPrimitive {
+    /// Converts the value of `self` to an `int`.
+    fn to_int(&self) -> Option<int>;
+
+    /// Converts the value of `self` to an `i8`.
+    #[inline]
+    fn to_i8(&self) -> Option<i8> {
+        // XXX: Check for range.
+        self.to_int().and_then(|x| Some(x as i8))
+    }
+
+    /// Converts the value of `self` to an `i16`.
+    #[inline]
+    fn to_i16(&self) -> Option<i16> {
+        // XXX: Check for range.
+        self.to_int().and_then(|x| Some(x as i16))
+    }
+
+    /// Converts the value of `self` to an `i32`.
+    #[inline]
+    fn to_i32(&self) -> Option<i32> {
+        // XXX: Check for range.
+        self.to_int().and_then(|x| Some(x as i32))
+    }
+
+    /// Converts the value of `self` to an `i64`.
+    #[inline]
+    fn to_i64(&self) -> Option<i64> {
+        // XXX: Check for range.
+        self.to_int().and_then(|x| Some(x as i64))
+    }
+
+    /// Converts the value of `self` to an `uint`.
+    fn to_uint(&self) -> Option<uint>;
+
+    /// Converts the value of `self` to an `u8`.
+    #[inline]
+    fn to_u8(&self) -> Option<u8> {
+        // XXX: Check for range.
+        self.to_uint().and_then(|x| Some(x as u8))
+    }
+
+    /// Converts the value of `self` to an `u16`.
+    #[inline]
+    fn to_u16(&self) -> Option<u16> {
+        // XXX: Check for range.
+        self.to_uint().and_then(|x| Some(x as u16))
+    }
+
+    /// Converts the value of `self` to an `u32`.
+    #[inline]
+    fn to_u32(&self) -> Option<u32> {
+        // XXX: Check for range.
+        self.to_uint().and_then(|x| Some(x as u32))
+    }
+
+    /// Converts the value of `self` to an `u64`.
+    #[inline]
+    fn to_u64(&self) -> Option<u64> {
+        // XXX: Check for range.
+        self.to_uint().and_then(|x| Some(x as u64))
+    }
+
+    /// Converts the value of `self` to an `f32`.
+    #[inline]
+    fn to_f32(&self) -> Option<f32> {
+        // XXX: Check for range.
+        self.to_float().and_then(|x| Some(x as f32))
+    }
+
+    /// Converts the value of `self` to an `f64`.
+    #[inline]
+    fn to_f64(&self) -> Option<f64> {
+        // XXX: Check for range.
+        self.to_float().and_then(|x| Some(x as f64))
+    }
+}
+
+macro_rules! impl_to_primitive(
+    ($T:ty) => (
+        impl ToPrimitive for $T {
+            #[inline] fn to_int(&self)   -> Option<int>   { Some(*self as int)   }
+            #[inline] fn to_i8(&self)    -> Option<i8>    { Some(*self as i8)    }
+            #[inline] fn to_i16(&self)   -> Option<i16>   { Some(*self as i16)   }
+            #[inline] fn to_i32(&self)   -> Option<i32>   { Some(*self as i32)   }
+            #[inline] fn to_i64(&self)   -> Option<i64>   { Some(*self as i64)   }
+
+            #[inline] fn to_uint(&self)  -> Option<uint>  { Some(*self as uint)  }
+            #[inline] fn to_u8(&self)    -> Option<u8>    { Some(*self as u8)    }
+            #[inline] fn to_u16(&self)   -> Option<u16>   { Some(*self as u16)   }
+            #[inline] fn to_u32(&self)   -> Option<u32>   { Some(*self as u32)   }
+            #[inline] fn to_u64(&self)   -> Option<u64>   { Some(*self as u64)   }
+
+            #[inline] fn to_float(&self) -> Option<float> { Some(*self as float) }
+            #[inline] fn to_f32(&self)   -> Option<f32>   { Some(*self as f32)   }
+            #[inline] fn to_f64(&self)   -> Option<f64>   { Some(*self as f64)   }
+        }
+    )
+)
+
+impl_to_primitive!(u8)
+impl_to_primitive!(u16)
+impl_to_primitive!(u32)
+impl_to_primitive!(u64)
+impl_to_primitive!(uint)
+impl_to_primitive!(i8)
+impl_to_primitive!(i16)
+impl_to_primitive!(i32)
+impl_to_primitive!(i64)
+impl_to_primitive!(int)
+impl_to_primitive!(f32)
+impl_to_primitive!(f64)
+impl_to_primitive!(float)
+
+/// A generic trait for converting a number to a value.
+pub trait FromPrimitive {
+    /// Convert an `int` to return an optional value of this type. If the
+    /// value cannot be represented by this value, the `None` is returned.
+    fn from_int(n: int) -> Option<Self>;
+
+    /// Convert an `i8` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_i8(n: i8) -> Option<Self> {
+        FromPrimitive::from_int(n as int)
+    }
+
+    /// Convert an `i16` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_i16(n: i16) -> Option<Self> {
+        FromPrimitive::from_int(n as int)
+    }
+
+    /// Convert an `i32` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_i32(n: i32) -> Option<Self> {
+        FromPrimitive::from_int(n as int)
+    }
+
+    /// Convert an `i64` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_i64(n: i64) -> Option<Self> {
+        FromPrimitive::from_int(n as int)
+    }
+
+    /// Convert an `uint` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    fn from_uint(n: uint) -> Option<Self>;
+
+    /// Convert an `u8` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_u8(n: u8) -> Option<Self> {
+        FromPrimitive::from_uint(n as uint)
+    }
+
+    /// Convert an `u16` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_u16(n: u16) -> Option<Self> {
+        FromPrimitive::from_uint(n as uint)
+    }
+
+    /// Convert an `u32` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_u32(n: u32) -> Option<Self> {
+        FromPrimitive::from_uint(n as uint)
+    }
+
+    /// Convert an `u64` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_u64(n: u64) -> Option<Self> {
+        FromPrimitive::from_uint(n as uint)
+    }
+
+    /// Convert a `f32` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_f32(n: f32) -> Option<Self> {
+        FromPrimitive::from_float(n as float)
+    }
+
+    /// Convert a `f64` to return an optional value of this type. If the
+    /// type cannot be represented by this value, the `None` is returned.
+    #[inline]
+    fn from_f64(n: f64) -> Option<Self> {
+        FromPrimitive::from_float(n as float)
+    }
+}
+
+/// A utility function that just calls `FromPrimitive::from_int`.
+pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
+    FromPrimitive::from_int(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_i8`.
+pub fn from_i8<A: FromPrimitive>(n: i8) -> Option<A> {
+    FromPrimitive::from_i8(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_i16`.
+pub fn from_i16<A: FromPrimitive>(n: i16) -> Option<A> {
+    FromPrimitive::from_i16(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_i32`.
+pub fn from_i32<A: FromPrimitive>(n: i32) -> Option<A> {
+    FromPrimitive::from_i32(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_i64`.
+pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
+    FromPrimitive::from_i64(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_uint`.
+pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
+    FromPrimitive::from_uint(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_u8`.
+pub fn from_u8<A: FromPrimitive>(n: u8) -> Option<A> {
+    FromPrimitive::from_u8(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_u16`.
+pub fn from_u16<A: FromPrimitive>(n: u16) -> Option<A> {
+    FromPrimitive::from_u16(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_u32`.
+pub fn from_u32<A: FromPrimitive>(n: u32) -> Option<A> {
+    FromPrimitive::from_u32(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_u64`.
+pub fn from_u64<A: FromPrimitive>(n: u64) -> Option<A> {
+    FromPrimitive::from_u64(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_f32`.
+pub fn from_f32<A: FromPrimitive>(n: f32) -> Option<A> {
+    FromPrimitive::from_f32(n)
+}
+
+/// A utility function that just calls `FromPrimitive::from_f64`.
+pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
+    FromPrimitive::from_f64(n)
+}
+
+macro_rules! impl_from_primitive(
+    ($T:ty) => (
+        impl FromPrimitive for $T {
+            #[inline] fn from_int(n: int)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_i8(n: i8)       -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_i16(n: i16)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_i32(n: i32)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_i64(n: i64)     -> Option<$T> { Some(n as $T) }
+
+            #[inline] fn from_uint(n: uint)   -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_u8(n: u8)       -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_u16(n: u16)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_u32(n: u32)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_u64(n: u64)     -> Option<$T> { Some(n as $T) }
+
+            #[inline] fn from_float(n: float) -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_f32(n: f32)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_f64(n: f64)     -> Option<$T> { Some(n as $T) }
+        }
+    )
+)
+
+impl_from_primitive!(u8)
+impl_from_primitive!(u16)
+impl_from_primitive!(u32)
+impl_from_primitive!(u64)
+impl_from_primitive!(uint)
+impl_from_primitive!(i8)
+impl_from_primitive!(i16)
+impl_from_primitive!(i32)
+impl_from_primitive!(i64)
+impl_from_primitive!(int)
+impl_from_primitive!(f32)
+impl_from_primitive!(f64)
+impl_from_primitive!(float)
+
 /// Cast from one machine scalar to another
 ///
 /// # Example
@@ -363,54 +650,24 @@ pub trait Float: Real
 /// ```
 ///
 #[inline]
-pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
+pub fn cast<T: NumCast,U: NumCast>(n: T) -> Option<U> {
     NumCast::from(n)
 }
 
 /// An interface for casting between machine scalars
-pub trait NumCast {
-    fn from<T:NumCast>(n: T) -> Self;
-
-    fn to_u8(&self) -> u8;
-    fn to_u16(&self) -> u16;
-    fn to_u32(&self) -> u32;
-    fn to_u64(&self) -> u64;
-    fn to_uint(&self) -> uint;
-
-    fn to_i8(&self) -> i8;
-    fn to_i16(&self) -> i16;
-    fn to_i32(&self) -> i32;
-    fn to_i64(&self) -> i64;
-    fn to_int(&self) -> int;
-
-    fn to_f32(&self) -> f32;
-    fn to_f64(&self) -> f64;
+pub trait NumCast: ToPrimitive {
+    fn from<T: ToPrimitive>(n: T) -> Option<Self>;
 }
 
 macro_rules! impl_num_cast(
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
             #[inline]
-            fn from<N:NumCast>(n: N) -> $T {
+            fn from<N: ToPrimitive>(n: N) -> Option<$T> {
                 // `$conv` could be generated using `concat_idents!`, but that
                 // macro seems to be broken at the moment
                 n.$conv()
             }
-
-            #[inline] fn to_u8(&self)    -> u8    { *self as u8    }
-            #[inline] fn to_u16(&self)   -> u16   { *self as u16   }
-            #[inline] fn to_u32(&self)   -> u32   { *self as u32   }
-            #[inline] fn to_u64(&self)   -> u64   { *self as u64   }
-            #[inline] fn to_uint(&self)  -> uint  { *self as uint  }
-
-            #[inline] fn to_i8(&self)    -> i8    { *self as i8    }
-            #[inline] fn to_i16(&self)   -> i16   { *self as i16   }
-            #[inline] fn to_i32(&self)   -> i32   { *self as i32   }
-            #[inline] fn to_i64(&self)   -> i64   { *self as i64   }
-            #[inline] fn to_int(&self)   -> int   { *self as int   }
-
-            #[inline] fn to_f32(&self)   -> f32   { *self as f32   }
-            #[inline] fn to_f64(&self)   -> f64   { *self as f64   }
         }
     )
 )
@@ -461,7 +718,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Div<T,T>+Mul<T,T>>(radix: uint, pow: uin
     if radix == 0u { return _0; }
     let mut my_pow     = pow;
     let mut total      = _1;
-    let mut multiplier = cast(radix);
+    let mut multiplier = cast(radix).unwrap();
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
             total = total * multiplier;
@@ -543,11 +800,11 @@ pub trait CheckedDiv: Div<Self, Self> {
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12));
-    assert_eq!(ten.sub(&two),  cast(8));
-    assert_eq!(ten.mul(&two),  cast(20));
-    assert_eq!(ten.div(&two),  cast(5));
-    assert_eq!(ten.rem(&two),  cast(0));
+    assert_eq!(ten.add(&two),  cast(12).unwrap());
+    assert_eq!(ten.sub(&two),  cast(8).unwrap());
+    assert_eq!(ten.mul(&two),  cast(20).unwrap());
+    assert_eq!(ten.div(&two),  cast(5).unwrap());
+    assert_eq!(ten.rem(&two),  cast(0).unwrap());
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
@@ -566,44 +823,45 @@ mod tests {
         ($_20:expr) => ({
             let _20 = $_20;
 
-            assert_eq!(20u,   _20.to_uint());
-            assert_eq!(20u8,  _20.to_u8());
-            assert_eq!(20u16, _20.to_u16());
-            assert_eq!(20u32, _20.to_u32());
-            assert_eq!(20u64, _20.to_u64());
-            assert_eq!(20i,   _20.to_int());
-            assert_eq!(20i8,  _20.to_i8());
-            assert_eq!(20i16, _20.to_i16());
-            assert_eq!(20i32, _20.to_i32());
-            assert_eq!(20i64, _20.to_i64());
-            assert_eq!(20f32, _20.to_f32());
-            assert_eq!(20f64, _20.to_f64());
+            assert_eq!(20u,   _20.to_uint().unwrap());
+            assert_eq!(20u8,  _20.to_u8().unwrap());
+            assert_eq!(20u16, _20.to_u16().unwrap());
+            assert_eq!(20u32, _20.to_u32().unwrap());
+            assert_eq!(20u64, _20.to_u64().unwrap());
+            assert_eq!(20i,   _20.to_int().unwrap());
+            assert_eq!(20i8,  _20.to_i8().unwrap());
+            assert_eq!(20i16, _20.to_i16().unwrap());
+            assert_eq!(20i32, _20.to_i32().unwrap());
+            assert_eq!(20i64, _20.to_i64().unwrap());
+            assert_eq!(20f,   _20.to_float().unwrap());
+            assert_eq!(20f32, _20.to_f32().unwrap());
+            assert_eq!(20f64, _20.to_f64().unwrap());
 
-            assert_eq!(_20, NumCast::from(20u));
-            assert_eq!(_20, NumCast::from(20u8));
-            assert_eq!(_20, NumCast::from(20u16));
-            assert_eq!(_20, NumCast::from(20u32));
-            assert_eq!(_20, NumCast::from(20u64));
-            assert_eq!(_20, NumCast::from(20i));
-            assert_eq!(_20, NumCast::from(20i8));
-            assert_eq!(_20, NumCast::from(20i16));
-            assert_eq!(_20, NumCast::from(20i32));
-            assert_eq!(_20, NumCast::from(20i64));
-            assert_eq!(_20, NumCast::from(20f32));
-            assert_eq!(_20, NumCast::from(20f64));
+            assert_eq!(_20, NumCast::from(20u).unwrap());
+            assert_eq!(_20, NumCast::from(20u8).unwrap());
+            assert_eq!(_20, NumCast::from(20u16).unwrap());
+            assert_eq!(_20, NumCast::from(20u32).unwrap());
+            assert_eq!(_20, NumCast::from(20u64).unwrap());
+            assert_eq!(_20, NumCast::from(20i).unwrap());
+            assert_eq!(_20, NumCast::from(20i8).unwrap());
+            assert_eq!(_20, NumCast::from(20i16).unwrap());
+            assert_eq!(_20, NumCast::from(20i32).unwrap());
+            assert_eq!(_20, NumCast::from(20i64).unwrap());
+            assert_eq!(_20, NumCast::from(20f32).unwrap());
+            assert_eq!(_20, NumCast::from(20f64).unwrap());
 
-            assert_eq!(_20, cast(20u));
-            assert_eq!(_20, cast(20u8));
-            assert_eq!(_20, cast(20u16));
-            assert_eq!(_20, cast(20u32));
-            assert_eq!(_20, cast(20u64));
-            assert_eq!(_20, cast(20i));
-            assert_eq!(_20, cast(20i8));
-            assert_eq!(_20, cast(20i16));
-            assert_eq!(_20, cast(20i32));
-            assert_eq!(_20, cast(20i64));
-            assert_eq!(_20, cast(20f32));
-            assert_eq!(_20, cast(20f64));
+            assert_eq!(_20, cast(20u).unwrap());
+            assert_eq!(_20, cast(20u8).unwrap());
+            assert_eq!(_20, cast(20u16).unwrap());
+            assert_eq!(_20, cast(20u32).unwrap());
+            assert_eq!(_20, cast(20u64).unwrap());
+            assert_eq!(_20, cast(20i).unwrap());
+            assert_eq!(_20, cast(20i8).unwrap());
+            assert_eq!(_20, cast(20i16).unwrap());
+            assert_eq!(_20, cast(20i32).unwrap());
+            assert_eq!(_20, cast(20i64).unwrap());
+            assert_eq!(_20, cast(20f32).unwrap());
+            assert_eq!(_20, cast(20f64).unwrap());
         })
     )
 
