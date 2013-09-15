@@ -18,7 +18,7 @@ use std::default::Default;
 use std::send_str::{SendStr, SendStrOwned, SendStrStatic};
 use std::str::Str;
 use std::to_str::ToStr;
-use extra::treemap::TreeMap;
+use self::extra::treemap::TreeMap;
 use std::option::Some;
 
 fn main() {
