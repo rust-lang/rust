@@ -133,7 +133,7 @@ is `?` which is defined for all types by default.
 When implementing a format trait for your own time, you will have to implement a
 method of the signature:
 
-~~~
+~~~{.rust}
 fn fmt(value: &T, f: &mut std::fmt::Formatter);
 ~~~
 
@@ -143,6 +143,78 @@ implementation to correctly adhere to the requested formatting parameters. The
 values of these parameters will be listed in the fields of the `Formatter`
 struct. In order to help with this, the `Formatter` struct also provides some
 helper methods.
+
+### Related macros
+
+There are a number of related macros in the `format!` family. The ones that are
+currently implemented are:
+
+~~~{.rust}
+format!      // described above
+write!       // first argument is a &mut rt::io::Writer, the destination
+writeln!     // same as write but appends a newline
+print!       // the format string is printed to the standard output
+println!     // same as print but appends a newline
+format_args! // described below.
+~~~
+
+
+#### `write!`
+
+This and `writeln` are two macros which are used to emit the format string to a
+specified stream. This is used to prevent intermediate allocations of format
+strings and instead directly write the output. Under the hood, this function is
+actually invoking the `write` function defined in this module. Example usage is:
+
+~~~{.rust}
+use std::rt::io;
+
+let mut w = io::mem::MemWriter::new();
+write!(&mut w as &mut io::Writer, "Hello {}!", "world");
+~~~
+
+#### `print!`
+
+This and `println` emit their output to stdout. Similarly to the `write!` macro,
+the goal of these macros is to avoid intermediate allocations when printing
+output. Example usage is:
+
+~~~{.rust}
+print!("Hello {}!", "world");
+println!("I have a newline {}", "character at the end");
+~~~
+
+#### `format_args!`
+This is a curious macro which is used to safely pass around
+an opaque object describing the format string. This object
+does not require any heap allocations to create, and it only
+references information on the stack. Under the hood, all of
+the related macros are implemented in terms of this. First
+off, some example usage is:
+
+~~~{.rust}
+use std::fmt;
+
+format_args!(fmt::format, "this returns {}", "~str");
+format_args!(|args| { fmt::write(my_writer, args) }, "some {}", "args");
+format_args!(my_fn, "format {}", "string");
+~~~
+
+The first argument of the `format_args!` macro is a function (or closure) which
+takes one argument of type `&fmt::Arguments`. This structure can then be
+passed to the `write` and `format` functions inside this module in order to
+process the format string. The goal of this macro is to even further prevent
+intermediate allocations when dealing formatting strings.
+
+For example, a logging library could use the standard formatting syntax, but it
+would internally pass around this structure until it has been determined where
+output should go to.
+
+It is unsafe to programmatically create an instance of `fmt::Arguments` because
+the operations performed when executing a format string require the compile-time
+checks provided by the compiler. The `format_args!` macro is the only method of
+safely creating these structures, but they can be unsafely created with the
+constructor provided.
 
 ## Internationalization
 
@@ -163,7 +235,7 @@ Furthermore, whenever a case is running, the special character `#` can be used
 to reference the string value of the argument which was selected upon. As an
 example:
 
-~~~
+~~~{.rust}
 format!("{0, select, other{#}}", "hello") // => ~"hello"
 ~~~
 
@@ -450,6 +522,13 @@ pub trait Float { fn fmt(&Self, &mut Formatter); }
 /// ~~~
 pub fn write(output: &mut io::Writer, args: &Arguments) {
     unsafe { write_unsafe(output, args.fmt, args.args) }
+}
+
+/// The `writeln` function takes the same arguments as `write`, except that it
+/// will also write a newline (`\n`) character at the end of the format string.
+pub fn writeln(output: &mut io::Writer, args: &Arguments) {
+    unsafe { write_unsafe(output, args.fmt, args.args) }
+    output.write(['\n' as u8]);
 }
 
 /// The `write_unsafe` function takes an output stream, a precompiled format
