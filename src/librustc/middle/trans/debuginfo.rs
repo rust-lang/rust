@@ -550,7 +550,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         ast_map::node_item(ref item, _) => {
             match item.node {
                 ast::item_fn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
-                    (item.ident, fn_decl, generics, Some(top_level_block), item.span)
+                    (item.ident, fn_decl, generics, top_level_block, item.span)
                 }
                 _ => {
                     cx.sess.span_bug(item.span,
@@ -569,7 +569,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             },
             _,
             _) => {
-            (ident, fn_decl, generics, Some(top_level_block), span)
+            (ident, fn_decl, generics, top_level_block, span)
         }
         ast_map::node_expr(ref expr) => {
             match expr.node {
@@ -580,7 +580,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                         // This is not quite right. It should actually inherit the generics of the
                         // enclosing function.
                         &empty_generics,
-                        Some(top_level_block),
+                        top_level_block,
                         expr.span)
                 }
                 _ => cx.sess.span_bug(expr.span,
@@ -599,7 +599,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                 }),
             _,
             _) => {
-            (ident, fn_decl, generics, Some(top_level_block), span)
+            (ident, fn_decl, generics, top_level_block, span)
         }
         ast_map::node_foreign_item(@ast::foreign_item { _ }, _, _, _) |
         ast_map::node_variant(*) |
@@ -624,11 +624,11 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
     let mut function_name = token::ident_to_str(&ident).to_owned();
-    let template_parameters = if cx.sess.opts.extra_debuginfo {
-        get_template_parameters(cx, generics, param_substs, file_metadata, &mut function_name)
-    } else {
-        ptr::null()
-    };
+    let template_parameters = get_template_parameters(cx,
+                                                      generics,
+                                                      param_substs,
+                                                      file_metadata,
+                                                      &mut function_name);
 
     let namespace_node = debug_context(cx).local_namespace_map.find_copy(&fn_ast_id);
     let (linkage_name, containing_scope) = match namespace_node {
@@ -637,10 +637,9 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         }
         None => {
             // This branch is only hit when there is a bug in the NamespaceVisitor.
-            cx.sess.span_warn(span, "debuginfo: Could not find namespace node for function. \
-                                     This is a bug! Try running with RUST_LOG=rustc=1 \
-                                     to get further details and report the results \
-                                     to github.com/mozilla/rust/issues");
+            cx.sess.span_warn(span, fmt!("debuginfo: Could not find namespace node for function
+                                          with name %s. This is a bug! Please report this to
+                                          github.com/mozilla/rust/issues", function_name));
             (function_name.clone(), file_metadata)
         }
     };
@@ -680,16 +679,14 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     let arg_pats = do fn_decl.inputs.map |arg_ref| { arg_ref.pat };
     populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
 
-    match top_level_block {
-        Some(top_level_block) => {
-            let mut namespace_visitor = NamespaceVisitor::new_function_visitor(cx,
-                                                                               function_name,
-                                                                               namespace_node,
-                                                                               file_metadata,
-                                                                               span);
-            visit::walk_block(&mut namespace_visitor, top_level_block, ());
-        }
-        _ => { /*nothing to do*/ }
+    // Create namespaces for the interior of this function
+    {
+        let mut namespace_visitor = NamespaceVisitor::new_function_visitor(cx,
+                                                                           function_name,
+                                                                           namespace_node,
+                                                                           file_metadata,
+                                                                           span);
+        visit::walk_block(&mut namespace_visitor, top_level_block, ());
     }
 
     return FunctionDebugContext(fn_debug_context);
@@ -757,7 +754,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         let has_self_type = self_type.is_some();
 
         if !generics.is_type_parameterized() && !has_self_type {
-            return ptr::null();
+            return create_DIArray(DIB(cx), []);
         }
 
         name_to_append_suffix_to.push_char('<');
@@ -768,33 +765,37 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         // Handle self type
         if has_self_type {
             let actual_self_type = self_type.unwrap();
-            let actual_self_type_metadata = type_metadata(cx,
-                                                          actual_self_type,
-                                                          codemap::dummy_sp());
-
             // Add self type name to <...> clause of function name
             let actual_self_type_name = ppaux::ty_to_str(cx.tcx, actual_self_type);
             name_to_append_suffix_to.push_str(actual_self_type_name);
+
             if generics.is_type_parameterized() {
                 name_to_append_suffix_to.push_str(",");
             }
 
-            let ident = special_idents::type_self;
+            // Only create type information if extra_debuginfo is enabled
+            if cx.sess.opts.extra_debuginfo {
+                let actual_self_type_metadata = type_metadata(cx,
+                                                              actual_self_type,
+                                                              codemap::dummy_sp());
 
-            let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                        DIB(cx),
-                        file_metadata,
-                        name,
-                        actual_self_type_metadata,
-                        ptr::null(),
-                        0,
-                        0)
-                }
-            };
+                let ident = special_idents::type_self;
 
-            template_params.push(param_metadata);
+                let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
+                    unsafe {
+                        llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                            DIB(cx),
+                            file_metadata,
+                            name,
+                            actual_self_type_metadata,
+                            ptr::null(),
+                            0,
+                            0)
+                    }
+                };
+
+                template_params.push(param_metadata);
+            }
         }
 
         // Handle other generic parameters
@@ -807,8 +808,6 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
         for (index, &ast::TyParam{ ident: ident, _ }) in generics.ty_params.iter().enumerate() {
             let actual_type = actual_types[index];
-            let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
-
             // Add actual type name to <...> clause of function name
             let actual_type_name = ppaux::ty_to_str(cx.tcx, actual_type);
             name_to_append_suffix_to.push_str(actual_type_name);
@@ -817,20 +816,23 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                        DIB(cx),
-                        file_metadata,
-                        name,
-                        actual_type_metadata,
-                        ptr::null(),
-                        0,
-                        0)
-                }
-            };
-
-            template_params.push(param_metadata);
+            // Again, only create type information if extra_debuginfo is enabled
+            if cx.sess.opts.extra_debuginfo {
+                let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
+                let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
+                    unsafe {
+                        llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                            DIB(cx),
+                            file_metadata,
+                            name,
+                            actual_type_metadata,
+                            ptr::null(),
+                            0,
+                            0)
+                    }
+                };
+                template_params.push(param_metadata);
+            }
         }
 
         name_to_append_suffix_to.push_char('>');
@@ -839,14 +841,14 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     }
 
     fn get_scope_line(cx: &CrateContext,
-                      top_level_block: Option<&ast::Block>,
+                      top_level_block: &ast::Block,
                       default: uint)
                    -> uint {
-        match top_level_block {
-            Some(&ast::Block { stmts: ref statements, _ }) if statements.len() > 0 => {
+        match *top_level_block {
+            ast::Block { stmts: ref statements, _ } if statements.len() > 0 => {
                 span_start(cx, statements[0].span).line
             }
-            Some(&ast::Block { expr: Some(@ref expr), _ }) => {
+            ast::Block { expr: Some(@ref expr), _ } => {
                 span_start(cx, expr.span).line
             }
             _ => default
@@ -2154,7 +2156,7 @@ fn get_namespace_and_span_for_item(cx: &mut CrateContext,
 // shadowing.
 fn populate_scope_map(cx: &mut CrateContext,
                       arg_pats: &[@ast::Pat],
-                      fn_entry_block: Option<&ast::Block>,
+                      fn_entry_block: &ast::Block,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
     let def_map = cx.tcx.def_map;
@@ -2175,13 +2177,9 @@ fn populate_scope_map(cx: &mut CrateContext,
         }
     }
 
-    for &fn_entry_block in fn_entry_block.iter() {
-        walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
-    }
-
+    walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
 
     // local helper functions for walking the AST.
-
     fn with_new_scope(cx: &mut CrateContext,
                       scope_span: Span,
                       scope_stack: &mut ~[ScopeStackEntry],
