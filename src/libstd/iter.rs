@@ -2709,6 +2709,16 @@ mod tests {
     }
 
     #[test]
+    fn test_range() {
+        assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
+        assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
+        assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+    }
+
+    #[test]
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
