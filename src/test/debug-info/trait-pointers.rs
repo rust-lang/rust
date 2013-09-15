@@ -31,5 +31,3 @@ fn main() {
     let managed: @Trait = @Struct { a:2, b: 3.0 } as @Trait;
     let unique: ~Trait = ~Struct { a:2, b: 3.0 } as ~Trait;
 }
-
-fn zzz() {()}

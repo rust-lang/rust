@@ -601,10 +601,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             _) => {
             (ident, fn_decl, generics, Some(top_level_block), span)
         }
-        ast_map::node_foreign_item(@ast::foreign_item { _ }, _, _, _) => {
-            return FunctionWithoutDebugInfo;
-        }
-        ast_map::node_variant(*)     |
+        ast_map::node_foreign_item(@ast::foreign_item { _ }, _, _, _) |
+        ast_map::node_variant(*) |
         ast_map::node_struct_ctor(*) => {
             return FunctionWithoutDebugInfo;
         }
@@ -1166,9 +1164,10 @@ impl RecursiveTypeDescription {
                 // Insert the stub into the cache in order to allow recursive references ...
                 debug_context(cx).created_types.insert(cache_id, metadata_stub);
 
-                // ... then create the member descriptions
+                // ... then create the member descriptions ...
                 let member_descriptions = member_description_factory(cx);
 
+                // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
                                               metadata_stub,
                                               llvm_type,
@@ -1465,7 +1464,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
 }
 
 enum MemberOffset {
-    FixedMemberOffset{ bytes: uint },
+    FixedMemberOffset { bytes: uint },
     // For ComputedMemberOffset, the offset is read from the llvm type definition
     ComputedMemberOffset
 }
@@ -1863,14 +1862,14 @@ fn trait_metadata(cx: &mut CrateContext,
     // the trait's methods.
     let path = ty::item_path(cx.tcx, def_id);
     let ident = path.last().ident();
-    let name = ppaux::trait_store_to_str(cx.tcx, trait_store)
-             + ppaux::mutability_to_str(mutability)
-             + token::ident_to_str(&ident);
+    let name = ppaux::trait_store_to_str(cx.tcx, trait_store) +
+               ppaux::mutability_to_str(mutability) +
+               token::ident_to_str(&ident);
     // Add type and region parameters
     let name = ppaux::parameterized(cx.tcx, name, &substs.regions, substs.tps);
 
-    let (containing_scope,
-         definition_span) = get_namespace_and_span_for_item(cx, def_id, usage_site_span);
+    let (containing_scope, definition_span) =
+        get_namespace_and_span_for_item(cx, def_id, usage_site_span);
 
     let file_name = span_start(cx, definition_span).file.name;
     let file_metadata = file_metadata(cx, file_name);
