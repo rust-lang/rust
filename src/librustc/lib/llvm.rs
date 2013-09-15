@@ -2118,6 +2118,9 @@ pub mod llvm {
                                             -> ValueRef;
 
         #[fast_ffi]
+        pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
+
+        #[fast_ffi]
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
         #[fast_ffi]
