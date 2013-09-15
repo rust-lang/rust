@@ -78,8 +78,8 @@ fn main() {
         args.clone()
     };
 
-    let num_tasks = uint::from_str(args[1]).unwrap();
-    let msg_per_task = uint::from_str(args[2]).unwrap();
+    let num_tasks = from_str::<uint>(args[1]).unwrap();
+    let msg_per_task = from_str::<uint>(args[2]).unwrap();
 
     let (num_chan, num_port) = init();
     let num_chan = Cell::new(num_chan);

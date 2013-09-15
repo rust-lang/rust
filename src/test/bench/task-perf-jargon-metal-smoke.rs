@@ -52,7 +52,7 @@ fn main() {
     };
 
     let (p,c) = comm::stream();
-    child_generation(uint::from_str(args[1]).unwrap(), c);
+    child_generation(from_str::<uint>(args[1]).unwrap(), c);
     if p.try_recv().is_none() {
         fail!("it happened when we slumbered");
     }

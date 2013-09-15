@@ -383,20 +383,6 @@ impl Primitive for $T {
 
 // String conversion functions and impl str -> num
 
-/// Parse a string as a number in base 10.
-#[inline]
-pub fn from_str(s: &str) -> Option<$T> {
-    strconv::from_str_common(s, 10u, true, false, false,
-                         strconv::ExpNone, false, false)
-}
-
-/// Parse a string as a number in the given base.
-#[inline]
-pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
-    strconv::from_str_common(s, radix, true, false, false,
-                         strconv::ExpNone, false, false)
-}
-
 /// Parse a byte slice as a number in the given base.
 #[inline]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
@@ -407,14 +393,16 @@ pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
 impl FromStr for $T {
     #[inline]
     fn from_str(s: &str) -> Option<$T> {
-        from_str(s)
+        strconv::from_str_common(s, 10u, true, false, false,
+                             strconv::ExpNone, false, false)
     }
 }
 
 impl FromStrRadix for $T {
     #[inline]
     fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
-        from_str_radix(s, radix)
+        strconv::from_str_common(s, radix, true, false, false,
+                             strconv::ExpNone, false, false)
     }
 }
 
@@ -462,10 +450,7 @@ mod tests {
     use super::*;
 
     use int;
-    use i16;
     use i32;
-    use i64;
-    use i8;
     use num;
     use sys;
 
@@ -670,20 +655,20 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        assert_eq!(from_str("0"), Some(0 as $T));
-        assert_eq!(from_str("3"), Some(3 as $T));
-        assert_eq!(from_str("10"), Some(10 as $T));
-        assert_eq!(i32::from_str("123456789"), Some(123456789 as i32));
-        assert_eq!(from_str("00100"), Some(100 as $T));
+        assert_eq!(from_str::<$T>("0"), Some(0 as $T));
+        assert_eq!(from_str::<$T>("3"), Some(3 as $T));
+        assert_eq!(from_str::<$T>("10"), Some(10 as $T));
+        assert_eq!(from_str::<i32>("123456789"), Some(123456789 as i32));
+        assert_eq!(from_str::<$T>("00100"), Some(100 as $T));
 
-        assert_eq!(from_str("-1"), Some(-1 as $T));
-        assert_eq!(from_str("-3"), Some(-3 as $T));
-        assert_eq!(from_str("-10"), Some(-10 as $T));
-        assert_eq!(i32::from_str("-123456789"), Some(-123456789 as i32));
-        assert_eq!(from_str("-00100"), Some(-100 as $T));
+        assert_eq!(from_str::<$T>("-1"), Some(-1 as $T));
+        assert_eq!(from_str::<$T>("-3"), Some(-3 as $T));
+        assert_eq!(from_str::<$T>("-10"), Some(-10 as $T));
+        assert_eq!(from_str::<i32>("-123456789"), Some(-123456789 as i32));
+        assert_eq!(from_str::<$T>("-00100"), Some(-100 as $T));
 
-        assert!(from_str(" ").is_none());
-        assert!(from_str("x").is_none());
+        assert!(from_str::<$T>(" ").is_none());
+        assert!(from_str::<$T>("x").is_none());
     }
 
     #[test]
@@ -751,36 +736,36 @@ mod tests {
     #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8::from_str("127"), Some(i8_val));
-        assert!(i8::from_str("128").is_none());
+        assert_eq!(from_str::<i8>("127"), Some(i8_val));
+        assert!(from_str::<i8>("128").is_none());
 
         i8_val += 1 as i8;
-        assert_eq!(i8::from_str("-128"), Some(i8_val));
-        assert!(i8::from_str("-129").is_none());
+        assert_eq!(from_str::<i8>("-128"), Some(i8_val));
+        assert!(from_str::<i8>("-129").is_none());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16::from_str("32767"), Some(i16_val));
-        assert!(i16::from_str("32768").is_none());
+        assert_eq!(from_str::<i16>("32767"), Some(i16_val));
+        assert!(from_str::<i16>("32768").is_none());
 
         i16_val += 1 as i16;
-        assert_eq!(i16::from_str("-32768"), Some(i16_val));
-        assert!(i16::from_str("-32769").is_none());
+        assert_eq!(from_str::<i16>("-32768"), Some(i16_val));
+        assert!(from_str::<i16>("-32769").is_none());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32::from_str("2147483647"), Some(i32_val));
-        assert!(i32::from_str("2147483648").is_none());
+        assert_eq!(from_str::<i32>("2147483647"), Some(i32_val));
+        assert!(from_str::<i32>("2147483648").is_none());
 
         i32_val += 1 as i32;
-        assert_eq!(i32::from_str("-2147483648"), Some(i32_val));
-        assert!(i32::from_str("-2147483649").is_none());
+        assert_eq!(from_str::<i32>("-2147483648"), Some(i32_val));
+        assert!(from_str::<i32>("-2147483649").is_none());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64::from_str("9223372036854775807"), Some(i64_val));
-        assert!(i64::from_str("9223372036854775808").is_none());
+        assert_eq!(from_str::<i64>("9223372036854775807"), Some(i64_val));
+        assert!(from_str::<i64>("9223372036854775808").is_none());
 
         i64_val += 1 as i64;
-        assert_eq!(i64::from_str("-9223372036854775808"), Some(i64_val));
-        assert!(i64::from_str("-9223372036854775809").is_none());
+        assert_eq!(from_str::<i64>("-9223372036854775808"), Some(i64_val));
+        assert!(from_str::<i64>("-9223372036854775809").is_none());
     }
 
     #[test]

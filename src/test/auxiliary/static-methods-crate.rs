@@ -21,7 +21,7 @@ pub trait read {
 
 impl read for int {
     fn readMaybe(s: ~str) -> Option<int> {
-        int::from_str(s)
+        from_str::<int>(s)
     }
 }
 

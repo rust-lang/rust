@@ -62,7 +62,7 @@ priv fn chop(s: ~str) -> ~str {
 }
 
 priv fn parse_bulk(io: @io::Reader) -> Result {
-    match int::from_str(chop(io.read_line())) {
+    match from_str::<int>(chop(io.read_line())) {
     None => fail!(),
     Some(-1) => Nil,
     Some(len) if len >= 0 => parse_data(len as uint, io),
@@ -71,7 +71,7 @@ priv fn parse_bulk(io: @io::Reader) -> Result {
 }
 
 priv fn parse_multi(io: @io::Reader) -> Result {
-    match int::from_str(chop(io.read_line())) {
+    match from_str::<int>(chop(io.read_line())) {
     None => fail!(),
     Some(-1) => Nil,
     Some(0) => List(~[]),
@@ -81,7 +81,7 @@ priv fn parse_multi(io: @io::Reader) -> Result {
 }
 
 priv fn parse_int(io: @io::Reader) -> Result {
-    match int::from_str(chop(io.read_line())) {
+    match from_str::<int>(chop(io.read_line())) {
     None => fail!(),
     Some(i) => Int(i)
     }

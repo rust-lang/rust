@@ -538,8 +538,8 @@ mod test {
 
         do input_vec_state(filenames) |line, state| {
             let nums: ~[&str] = line.split_iter(' ').collect();
-            let file_num = uint::from_str(nums[0]).unwrap();
-            let line_num = uint::from_str(nums[1]).unwrap();
+            let file_num = from_str::<uint>(nums[0]).unwrap();
+            let line_num = from_str::<uint>(nums[1]).unwrap();
             assert_eq!(line_num, state.line_num_file);
             assert_eq!(file_num * 3 + line_num, state.line_num);
             true
