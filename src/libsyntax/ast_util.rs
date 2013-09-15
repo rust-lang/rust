@@ -519,20 +519,11 @@ impl Visitor<()> for IdVisitor {
         visit::walk_stmt(self, statement, env)
     }
 
-    // XXX: Default
-    fn visit_arm(&mut self, arm: &Arm, env: ()) {
-        visit::walk_arm(self, arm, env)
-    }
-
     fn visit_pat(&mut self, pattern: @Pat, env: ()) {
         (self.visit_callback)(pattern.id);
         visit::walk_pat(self, pattern, env)
     }
 
-    // XXX: Default
-    fn visit_decl(&mut self, declaration: @Decl, env: ()) {
-        visit::walk_decl(self, declaration, env)
-    }
 
     fn visit_expr(&mut self, expression: @Expr, env: ()) {
         {
@@ -543,11 +534,6 @@ impl Visitor<()> for IdVisitor {
         }
         (self.visit_callback)(expression.id);
         visit::walk_expr(self, expression, env)
-    }
-
-    // XXX: Default
-    fn visit_expr_post(&mut self, _: @Expr, _: ()) {
-        // Empty!
     }
 
     fn visit_ty(&mut self, typ: &Ty, env: ()) {
@@ -610,31 +596,6 @@ impl Visitor<()> for IdVisitor {
                 _ => {}
             }
         }
-    }
-
-    // XXX: Default
-    fn visit_ty_method(&mut self, type_method: &TypeMethod, env: ()) {
-        visit::walk_ty_method(self, type_method, env)
-    }
-
-    // XXX: Default
-    fn visit_trait_method(&mut self, trait_method: &trait_method, env: ()) {
-        visit::walk_trait_method(self, trait_method, env)
-    }
-
-    // XXX: Default
-    fn visit_struct_def(&mut self,
-                        struct_definition: @struct_def,
-                        identifier: Ident,
-                        generics: &Generics,
-                        node_id: NodeId,
-                        env: ()) {
-        visit::walk_struct_def(self,
-                                struct_definition,
-                                identifier,
-                                generics,
-                                node_id,
-                                env)
     }
 
     fn visit_struct_field(&mut self, struct_field: @struct_field, env: ()) {
