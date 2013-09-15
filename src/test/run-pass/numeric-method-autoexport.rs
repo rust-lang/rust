@@ -36,6 +36,6 @@ pub fn main() {
 
 // floats
     // num
-    assert_eq!(10f32.to_int(), 10);
-    assert_eq!(10f64.to_int(), 10);
+    assert_eq!(10f32.to_int().unwrap(), 10);
+    assert_eq!(10f64.to_int().unwrap(), 10);
 }

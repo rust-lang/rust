@@ -306,7 +306,7 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 mod test {
 
     use super::*;
-    use std::num::{Zero,One,FromStrRadix,IntConvertible};
+    use std::num::{Zero,One,FromStrRadix,FromPrimitive};
     use std::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
@@ -318,8 +318,8 @@ mod test {
 
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(
-            IntConvertible::from_int(n.numer),
-            IntConvertible::from_int(n.denom)
+            FromPrimitive::from_int(n.numer).unwrap(),
+            FromPrimitive::from_int(n.denom).unwrap()
         )
     }
 
