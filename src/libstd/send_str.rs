@@ -12,7 +12,7 @@
 
 use clone::{Clone, DeepClone};
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv};
-use cmp::{Ordering, Less};
+use cmp::Ordering;
 use container::Container;
 use default::Default;
 use str::{Str, StrSlice};
@@ -64,9 +64,8 @@ impl IntoSendStr for &'static str {
 }
 
 /*
-Section: string trait impls
-
-`SendStr `should behave like a normal string, so we don't derive.
+Section: String trait impls.
+`SendStr` should behave like a normal string, so we don't derive.
 */
 
 impl ToStr for SendStr {
@@ -90,7 +89,9 @@ impl TotalEq for SendStr {
 
 impl Ord for SendStr {
     #[inline]
-    fn lt(&self, other: &SendStr) -> bool { self.cmp(other) == Less }
+    fn lt(&self, other: &SendStr) -> bool {
+        self.as_slice().lt(&other.as_slice())
+    }
 }
 
 impl TotalOrd for SendStr {
@@ -179,7 +180,7 @@ mod tests {
     use to_str::ToStr;
 
     #[test]
-    fn test_send_str() {
+    fn test_send_str_traits() {
         let s = SendStrStatic("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
@@ -187,12 +188,6 @@ mod tests {
         assert!(s.equiv(&@"abcde"));
         assert!(s.lt(&SendStrOwned(~"bcdef")));
         assert_eq!(SendStrStatic(""), Default::default());
-        assert!(s.is_static());
-        assert!(!s.is_owned());
-
-        assert_eq!(s.clone(), s.clone());
-        assert_eq!(s.clone().into_owned(), ~"abcde");
-        assert_eq!(s.clone().deep_clone(), s.clone());
 
         let o = SendStrOwned(~"abcde");
         assert_eq!(o.len(), 5);
@@ -201,20 +196,50 @@ mod tests {
         assert!(o.equiv(&@"abcde"));
         assert!(o.lt(&SendStrStatic("bcdef")));
         assert_eq!(SendStrOwned(~""), Default::default());
-        assert!(!o.is_static());
-        assert!(o.is_owned());
-
-        assert_eq!(o.clone(), o.clone());
-        assert_eq!(o.clone().into_owned(), ~"abcde");
-        assert_eq!(o.clone().deep_clone(), o.clone());
 
         assert_eq!(s.cmp(&o), Equal);
         assert!(s.equals(&o));
         assert!(s.equiv(&o));
+
         assert_eq!(o.cmp(&s), Equal);
         assert!(o.equals(&s));
         assert!(o.equiv(&s));
+    }
 
+    #[test]
+    fn test_send_str_methods() {
+        let s = SendStrStatic("abcde");
+        assert!(s.is_static());
+        assert!(!s.is_owned());
+
+        let o = SendStrOwned(~"abcde");
+        assert!(!o.is_static());
+        assert!(o.is_owned());
+    }
+
+    #[test]
+    fn test_send_str_clone() {
+        assert_eq!(SendStrOwned(~"abcde"), SendStrStatic("abcde").clone());
+        assert_eq!(SendStrOwned(~"abcde"), SendStrStatic("abcde").deep_clone());
+
+        assert_eq!(SendStrOwned(~"abcde"), SendStrOwned(~"abcde").clone());
+        assert_eq!(SendStrOwned(~"abcde"), SendStrOwned(~"abcde").deep_clone());
+
+        assert_eq!(SendStrStatic("abcde"), SendStrStatic("abcde").clone());
+        assert_eq!(SendStrStatic("abcde"), SendStrStatic("abcde").deep_clone());
+
+        assert_eq!(SendStrStatic("abcde"), SendStrOwned(~"abcde").clone());
+        assert_eq!(SendStrStatic("abcde"), SendStrOwned(~"abcde").deep_clone());
+    }
+
+    #[test]
+    fn test_send_str_into_owned() {
+        assert_eq!(SendStrStatic("abcde").into_owned(), ~"abcde");
+        assert_eq!(SendStrOwned(~"abcde").into_owned(), ~"abcde");
+    }
+
+    #[test]
+    fn test_into_send_str() {
         assert_eq!("abcde".into_send_str(), SendStrStatic("abcde"));
         assert_eq!((~"abcde").into_send_str(), SendStrStatic("abcde"));
         assert_eq!("abcde".into_send_str(), SendStrOwned(~"abcde"));
