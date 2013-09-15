@@ -1790,17 +1790,17 @@ pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One>(start: A, stop: A) -> R
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Ord + Clone> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Eq + Ord + Clone> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
             Some(x) => Some(x),
             None => {
-                if self.done {
-                    None
-                } else {
+                if !self.done && self.range.state == self.range.stop {
                     self.done = true;
                     Some(self.range.stop.clone())
+                } else {
+                    None
                 }
             }
         }
@@ -2712,6 +2712,8 @@ mod tests {
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
         assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
     }
 
     #[test]
@@ -2720,6 +2722,8 @@ mod tests {
         assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
         assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        assert_eq!(range_step(200, -5, 1).collect::<~[int]>(), ~[]);
+        assert_eq!(range_step(200, 200, 1).collect::<~[int]>(), ~[]);
     }
 
     #[test]
@@ -2728,6 +2732,8 @@ mod tests {
         assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
         assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        assert_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), ~[]);
+        assert_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), ~[200]);
     }
 
     #[test]
