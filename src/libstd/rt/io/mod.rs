@@ -358,7 +358,10 @@ pub enum IoErrorKind {
     Closed,
     ConnectionRefused,
     ConnectionReset,
-    BrokenPipe
+    BrokenPipe,
+    PathAlreadyExists,
+    PathDoesntExist,
+    MismatchedFileTypeForOperation
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -374,7 +377,10 @@ impl ToStr for IoErrorKind {
             Closed => ~"Closed",
             ConnectionRefused => ~"ConnectionRefused",
             ConnectionReset => ~"ConnectionReset",
-            BrokenPipe => ~"BrokenPipe"
+            BrokenPipe => ~"BrokenPipe",
+            PathAlreadyExists => ~"PathAlreadyExists",
+            PathDoesntExist => ~"PathDoesntExist",
+            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation"
         }
     }
 }
