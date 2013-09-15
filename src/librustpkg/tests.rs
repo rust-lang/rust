@@ -1112,6 +1112,55 @@ fn test_extern_mod() {
 }
 
 #[test]
+fn test_extern_mod_simpler() {
+    let dir = mkdtemp(&os::tmpdir(), "test_extern_mod_simpler").expect("test_extern_mod_simpler");
+    let main_file = dir.push("main.rs");
+    let lib_depend_dir = mkdtemp(&os::tmpdir(), "foo").expect("test_extern_mod_simpler");
+    let aux_dir = lib_depend_dir.push_many(["src", "rust-awesomeness"]);
+    assert!(os::mkdir_recursive(&aux_dir, U_RWX));
+    let aux_pkg_file = aux_dir.push("lib.rs");
+
+    writeFile(&aux_pkg_file, "pub mod bar { pub fn assert_true() {  assert!(true); } }\n");
+    assert!(os::path_exists(&aux_pkg_file));
+
+    writeFile(&main_file,
+              "extern mod test = \"rust-awesomeness\";\nuse test::bar;\
+               fn main() { bar::assert_true(); }\n");
+
+    command_line_test([~"install", ~"rust-awesomeness"], &lib_depend_dir);
+
+    let exec_file = dir.push("out");
+    // Be sure to extend the existing environment
+    let env = Some([(~"RUST_PATH", lib_depend_dir.to_str())] + os::env());
+    let rustpkg_exec = rustpkg_exec();
+    let rustc = rustpkg_exec.with_filename("rustc");
+    debug!("RUST_PATH=%s %s %s \n --sysroot %s -o %s",
+                     lib_depend_dir.to_str(),
+                     rustc.to_str(),
+                     main_file.to_str(),
+                     test_sysroot().to_str(),
+                     exec_file.to_str());
+
+    let mut prog = run::Process::new(rustc.to_str(), [main_file.to_str(),
+                                                      ~"--sysroot", test_sysroot().to_str(),
+                                               ~"-o", exec_file.to_str()],
+                                     run::ProcessOptions {
+        env: env,
+        dir: Some(&dir),
+        in_fd: None,
+        out_fd: None,
+        err_fd: None
+    });
+    let outp = prog.finish_with_output();
+    if outp.status != 0 {
+        fail!("output was %s, error was %s",
+              str::from_utf8(outp.output),
+              str::from_utf8(outp.error));
+    }
+    assert!(os::path_exists(&exec_file) && is_executable(&exec_file));
+}
+
+#[test]
 fn test_import_rustpkg() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);
