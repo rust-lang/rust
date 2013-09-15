@@ -81,20 +81,10 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             // be the root of the call stack. That's the most
                             // relevant span and it's the actual invocation of
                             // the macro.
-                            let mut relevant_info = cx.backtrace();
-                            let mut einfo = relevant_info.unwrap();
-                            loop {
-                                match relevant_info {
-                                    None => { break }
-                                    Some(e) => {
-                                        einfo = e;
-                                        relevant_info = einfo.call_site.expn_info;
-                                    }
-                                }
-                            }
+                            let mac_span = original_span(cx);
 
                             let expanded =
-                                match expandfun(cx, einfo.call_site,
+                                match expandfun(cx, mac_span.call_site,
                                                 marked_before, marked_ctxt) {
                                     MRExpr(e) => e,
                                     MRAny(expr_maker,_,_) => expr_maker(),
@@ -400,11 +390,11 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 -> (Option<Stmt_>, Span) {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
-    let (mac, pth, tts, semi, ctxt) = match *s {
+    let (pth, tts, semi, ctxt) = match *s {
         StmtMac(ref mac, semi) => {
             match mac.node {
                 mac_invoc_tt(ref pth, ref tts, ctxt) => {
-                    ((*mac).clone(), pth, (*tts).clone(), semi, ctxt)
+                    (pth, (*tts).clone(), semi, ctxt)
                 }
             }
         }
@@ -431,7 +421,13 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
             let marked_ctxt = new_mark(fm,ctxt);
-            let expanded = match expandfun(cx, mac.span, marked_tts, marked_ctxt) {
+
+            // See the comment in expand_expr for why we want the original span,
+            // not the current mac.span.
+            let mac_span = original_span(cx);
+
+            let expanded = match expandfun(cx, mac_span.call_site,
+                                           marked_tts, marked_ctxt) {
                 MRExpr(e) =>
                     @codemap::Spanned { node: StmtExpr(e, ast::DUMMY_NODE_ID),
                                         span: e.span},
@@ -715,11 +711,11 @@ pub fn std_macros() -> @str {
             }
         })
     )
-    macro_rules! error( ($($arg:tt)+) => (log!(1u32, $($arg)+)) )
-    macro_rules! warn ( ($($arg:tt)+) => (log!(2u32, $($arg)+)) )
-    macro_rules! info ( ($($arg:tt)+) => (log!(3u32, $($arg)+)) )
-    macro_rules! debug( ($($arg:tt)+) => (
-        if cfg!(debug) { log!(4u32, $($arg)+) }
+    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
+    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
+    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
+    macro_rules! debug( ($($arg:tt)*) => (
+        if cfg!(debug) { log!(4u32, $($arg)*) }
     ))
 
     macro_rules! log2(
@@ -730,11 +726,11 @@ pub fn std_macros() -> @str {
             }
         })
     )
-    macro_rules! error2( ($($arg:tt)+) => (log2!(1u32, $($arg)+)) )
-    macro_rules! warn2 ( ($($arg:tt)+) => (log2!(2u32, $($arg)+)) )
-    macro_rules! info2 ( ($($arg:tt)+) => (log2!(3u32, $($arg)+)) )
-    macro_rules! debug2( ($($arg:tt)+) => (
-        if cfg!(debug) { log2!(4u32, $($arg)+) }
+    macro_rules! error2( ($($arg:tt)*) => (log2!(1u32, $($arg)*)) )
+    macro_rules! warn2 ( ($($arg:tt)*) => (log2!(2u32, $($arg)*)) )
+    macro_rules! info2 ( ($($arg:tt)*) => (log2!(3u32, $($arg)*)) )
+    macro_rules! debug2( ($($arg:tt)*) => (
+        if cfg!(debug) { log2!(4u32, $($arg)*) }
     ))
 
     macro_rules! fail(
@@ -753,8 +749,8 @@ pub fn std_macros() -> @str {
         () => (
             fail!(\"explicit failure\")
         );
-        ($($arg:tt)+) => (
-            ::std::sys::FailWithCause::fail_with(format!($($arg)+), file!(), line!())
+        ($($arg:tt)*) => (
+            ::std::sys::FailWithCause::fail_with(format!($($arg)*), file!(), line!())
         )
     )
 
@@ -958,17 +954,25 @@ pub fn std_macros() -> @str {
         )
     )
 
+    macro_rules! format(($($arg:tt)*) => (
+        format_args!(::std::fmt::format, $($arg)*)
+    ))
+    macro_rules! write(($dst:expr, $($arg:tt)*) => (
+        format_args!(|args| { ::std::fmt::write($dst, args) }, $($arg)*)
+    ))
+    macro_rules! writeln(($dst:expr, $($arg:tt)*) => (
+        format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
+    ))
     // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
     //              allocation but should rather delegate to an invocation of
     //              write! instead of format!
     macro_rules! print (
-        ($($arg:tt)+) => (::std::io::print(format!($($arg)+)))
+        ($($arg:tt)*) => (::std::io::print(format!($($arg)*)))
     )
-
     // FIXME(#6846) once stdio is redesigned, this shouldn't perform an
     //              allocation but should rather delegate to an io::Writer
     macro_rules! println (
-        ($($arg:tt)+) => (::std::io::println(format!($($arg)+)))
+        ($($arg:tt)*) => (::std::io::println(format!($($arg)*)))
     )
 
     // NOTE: use this after a snapshot lands to abstract the details
@@ -1262,6 +1266,20 @@ pub fn mtwt_cancel_outer_mark(tts: &[ast::token_tree], ctxt: ast::SyntaxContext)
     mark_tts(tts,outer_mark)
 }
 
+fn original_span(cx: @ExtCtxt) -> @codemap::ExpnInfo {
+    let mut relevant_info = cx.backtrace();
+    let mut einfo = relevant_info.unwrap();
+    loop {
+        match relevant_info {
+            None => { break }
+            Some(e) => {
+                einfo = e;
+                relevant_info = einfo.call_site.expn_info;
+            }
+        }
+    }
+    return einfo;
+}
 
 #[cfg(test)]
 mod test {
