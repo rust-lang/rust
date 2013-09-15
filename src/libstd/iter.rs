@@ -1857,7 +1857,7 @@ pub fn range_step<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: A, step: A
 impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if (self.rev && self.state > self.stop) || self.state < self.stop {
+        if (self.rev && self.state > self.stop) || (!self.rev && self.state < self.stop) {
             let result = self.state.clone();
             match self.state.checked_add(&self.step) {
                 Some(x) => self.state = x,
@@ -1891,22 +1891,14 @@ pub fn range_step_inclusive<A: CheckedAdd + Ord + Clone + Zero>(start: A, stop: 
 impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if !self.done {
-            if (self.rev && self.state > self.stop) || self.state < self.stop {
-                let result = self.state.clone();
-                match self.state.checked_add(&self.step) {
-                    Some(x) => self.state = x,
-                    None => self.done = true
-                }
-                Some(result)
-            } else {
-                if self.state == self.stop {
-                    self.done = true;
-                    Some(self.state.clone())
-                } else {
-                    None
-                }
+        if !self.done && ((self.rev && self.state >= self.stop) ||
+                          (!self.rev && self.state <= self.stop)) {
+            let result = self.state.clone();
+            match self.state.checked_add(&self.step) {
+                Some(x) => self.state = x,
+                None => self.done = true
             }
+            Some(result)
         } else {
             None
         }
@@ -2726,6 +2718,7 @@ mod tests {
     fn test_range_step() {
         assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
         assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
+        assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
     }
 
@@ -2733,6 +2726,7 @@ mod tests {
     fn test_range_step_inclusive() {
         assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
         assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
+        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
         assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
     }
 
