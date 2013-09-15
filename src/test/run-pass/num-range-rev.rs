@@ -28,11 +28,11 @@ fn int_range_rev(hi: int,  lo: int, it: &fn(int) -> bool) -> bool {
 }
 
 fn int_range_step(a: int, b: int, step: int, it: &fn(int) -> bool) -> bool {
-    int::range_step(a, b, step, it)
+    std::iter::range_step(a, b, step).advance(it)
 }
 
 fn uint_range_step(a: uint, b: uint, step: int, it: &fn(uint) -> bool) -> bool {
-    uint::range_step(a, b, step, it)
+    std::iter::range_step(a, b, step).advance(it)
 }
 
 
