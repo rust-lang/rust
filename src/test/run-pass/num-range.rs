@@ -20,11 +20,11 @@ fn int_range(lo: int, hi: int, it: &fn(int) -> bool) -> bool {
 }
 
 fn int_range_step(a: int, b: int, step: int, it: &fn(int) -> bool) -> bool {
-    int::range_step(a, b, step, it)
+    std::iter::range_step(a, b, step).advance(it)
 }
 
 fn uint_range_step(a: uint, b: uint, s: int, it: &fn(uint) -> bool) -> bool {
-    uint::range_step(a, b, s, it)
+    std::iter::range_step(a, b, s).advance(it)
 }
 
 pub fn main() {
@@ -98,35 +98,31 @@ pub fn main() {
 
     // range_step_inclusive will never pass stop element, and may skip it.
     let mut saw21 = false;
-    do uint::range_step_inclusive(0, 21, 4) |x| {
+    for x in std::iter::range_step_inclusive(0, 21, 4) {
         assert!(x <= 21);
         if x == 21 { saw21 = true; }
-        true
-    };
+    }
     assert!(!saw21);
     let mut saw21 = false;
-    do int::range_step_inclusive(0, 21, 4) |x| {
+    for x in std::iter::range_step_inclusive(0, 21, 4) {
         assert!(x <= 21);
         if x == 21 { saw21 = true; }
-        true
-    };
+    }
     assert!(!saw21);
 
     // range_step_inclusive will never pass stop element, but may visit it.
     let mut saw21 = false;
-    do uint::range_step_inclusive(0, 21, 3) |x| {
+    for x in std::iter::range_step_inclusive(0, 21, 3) {
         assert!(x <= 21);
         printfln!("saw: %u", x);
         if x == 21 { saw21 = true; }
-        true
-    };
+    }
     assert!(saw21);
     let mut saw21 = false;
-    do int::range_step_inclusive(0, 21, 3) |x| {
+    for x in std::iter::range_step_inclusive(0, 21, 3) {
         assert!(x <= 21);
         if x == 21 { saw21 = true; }
-        true
-    };
+    }
     assert!(saw21);
 
 }

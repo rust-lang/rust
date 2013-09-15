@@ -48,7 +48,7 @@ use clone::Clone;
 use cmp;
 use container::Container;
 use int;
-use iter::{Iterator, range};
+use iter::{Iterator, range, range_step};
 use local_data;
 use num;
 use prelude::*;
@@ -748,7 +748,7 @@ impl IsaacRng {
         if use_rsl {
             macro_rules! memloop (
                 ($arr:expr) => {{
-                    do u32::range_step(0, RAND_SIZE, 8) |i| {
+                    for i in range_step(0u32, RAND_SIZE, 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
                         c+=$arr[i+2]; d+=$arr[i+3];
                         e+=$arr[i+4]; f+=$arr[i+5];
@@ -758,22 +758,20 @@ impl IsaacRng {
                         self.mem[i+2]=c; self.mem[i+3]=d;
                         self.mem[i+4]=e; self.mem[i+5]=f;
                         self.mem[i+6]=g; self.mem[i+7]=h;
-                        true
-                    };
+                    }
                 }}
             );
 
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            do u32::range_step(0, RAND_SIZE, 8) |i| {
+            for i in range_step(0u32, RAND_SIZE, 8) {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
                 self.mem[i+4]=e; self.mem[i+5]=f;
                 self.mem[i+6]=g; self.mem[i+7]=h;
-                true
-            };
+            }
         }
 
         self.isaac();
@@ -794,7 +792,7 @@ impl IsaacRng {
         });
         macro_rules! rngstep(
             ($j:expr, $shift:expr) => {{
-                let base = base + $j;
+                let base = $j;
                 let mix = if $shift < 0 {
                     a >> -$shift as uint
                 } else {
@@ -813,13 +811,12 @@ impl IsaacRng {
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for &(mr_offset, m2_offset) in r.iter() {
-            do uint::range_step(0, MIDPOINT, 4) |base| {
-                rngstep!(0, 13);
-                rngstep!(1, -6);
-                rngstep!(2, 2);
-                rngstep!(3, -16);
-                true
-            };
+            for i in range_step(0u, MIDPOINT, 4) {
+                rngstep!(i + 0, 13);
+                rngstep!(i + 1, -6);
+                rngstep!(i + 2, 2);
+                rngstep!(i + 3, -16);
+            }
         }
 
         self.a = a;
