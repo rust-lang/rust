@@ -20,6 +20,7 @@ use str::StrSlice;
 use str::raw::from_c_str;
 use u32;
 use vec::ImmutableVector;
+use send_str::{SendStr, SendStrOwned, SendStrStatic};
 use cast::transmute;
 
 struct LogDirective {
@@ -110,7 +111,7 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
 
 /// Set the log level of an entry in the crate map depending on the vector
 /// of log directives
-fn update_entry(dirs: &[LogDirective], entry: *mut ModEntry) -> u32 {
+fn update_entry(dirs: &[LogDirective], entry: &mut ModEntry) -> u32 {
     let mut new_lvl: u32 = DEFAULT_LOG_LEVEL;
     let mut longest_match = -1i;
     unsafe {
@@ -123,7 +124,7 @@ fn update_entry(dirs: &[LogDirective], entry: *mut ModEntry) -> u32 {
                     }
                 }
                 Some(ref dir_name) => {
-                    let name = from_c_str((*entry).name);
+                    let name = from_c_str(entry.name);
                     let len = dir_name.len() as int;
                     if name.starts_with(*dir_name) &&
                         len >= longest_match {
@@ -133,7 +134,7 @@ fn update_entry(dirs: &[LogDirective], entry: *mut ModEntry) -> u32 {
                 }
             };
         }
-        *(*entry).log_level = new_lvl;
+        *entry.log_level = new_lvl;
     }
     if longest_match >= 0 { return 1; } else { return 0; }
 }
@@ -147,8 +148,8 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
         if settings == ~"::help" || settings == ~"?" {
             dumb_println("\nCrate log map:\n");
             unsafe {
-                do iter_crate_map(transmute(crate_map)) |entry: *mut ModEntry| {
-                    dumb_println(" "+from_c_str((*entry).name));
+                do iter_crate_map(crate_map) |entry| {
+                    dumb_println(" "+from_c_str(entry.name));
                 }
                 exit(1);
             }
@@ -157,11 +158,9 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     }
 
     let mut n_matches: u32 = 0;
-    unsafe {
-        do iter_crate_map(transmute(crate_map)) |entry: *mut ModEntry| {
-            let m = update_entry(dirs, entry);
-            n_matches += m;
-        }
+    do iter_crate_map(crate_map) |entry| {
+        let m = update_entry(dirs, entry);
+        n_matches += m;
     }
 
     if n_matches < (dirs.len() as u32) {

@@ -2949,6 +2949,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
                       llmod: ModuleRef) -> ValueRef {
+    
     let targ_cfg = sess.targ_cfg;
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
@@ -2959,9 +2960,10 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     } else {
         ~"toplevel"
     };
+
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let arrtype = Type::array(&int_type, n_subcrates as u64);
-    let maptype = Type::struct_([Type::i32(), int_type, arrtype], false);
+    let vectype = Type::struct_([int_type, int_type], false);
+    let maptype = Type::struct_([Type::i32(), int_type, vectype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2996,14 +2998,24 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         subcrates.push(p2i(ccx, cr));
         i += 1;
     }
-    subcrates.push(C_int(ccx, 0));
-
     unsafe {
+        let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
+        let vec_elements = do "_crate_map_child_vectors".with_c_str |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
+        };
+        lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
+
+        llvm::LLVMSetInitializer(vec_elements, C_array(ccx.int_type, subcrates));
         let mod_map = create_module_map(ccx);
+
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
              p2i(ccx, mod_map),
-             C_array(ccx.int_type, subcrates)]));
+             C_struct(
+                [p2i(ccx, vec_elements),
+                 C_int(ccx, (subcrates.len() * 8) as int)
+             ])
+        ]));
     }
 }
 
