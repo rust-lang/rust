@@ -15,7 +15,9 @@ use super::{SeekStyle,SeekSet, SeekCur, SeekEnd,
             Open, Read, Write, Create, ReadWrite};
 use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile,
-            FileMode, FileAccess, FileStat};
+            FileMode, FileAccess, FileStat, IoError,
+            PathAlreadyExists, PathDoesntExist,
+            MismatchedFileTypeForOperation};
 use rt::local::Local;
 use option::{Some, None};
 use path::Path;
@@ -100,7 +102,7 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
             Some(p)
         },
         Err(ioerr) => {
-            read_error::cond.raise(ioerr);
+            io_error::cond.raise(ioerr);
             None
         }
     }
@@ -230,41 +232,53 @@ impl Seek for FileStream {
     }
 }
 
-/// Represents passive information about a file (primarily exposed
-/// via the `stat()` method. Also provides methods for opening
-/// a file in various modes/permissions.
-pub trait FileInfo<'self> {
-    /// Get the filesystem path that this `FileInfo` points at,
-    /// whether it is valid or not. This way, it can be used to
-    /// to specify a file path of a non-existent file which it
-    /// later create
-    fn get_file_path(&'self self) -> &'self Path;
+// helper for grabbing a stat and ignoring any
+// error.. used in Info wrappers
+fn suppressed_stat(cb: &fn() -> Option<FileStat>) -> Option<FileStat> {
+    do io_error::cond.trap(|_| {
+        // just swallow the error.. downstream users
+        // who can make a decision based on a None result
+        // won't care
+    }).inside {
+        cb()
+    }
+}
 
-    /// Ask the operating system for information about the file
+/// Shared functionality between `FileInfo` and `DirectoryInfo`
+pub trait FileSystemInfo {
+    /// Get the filesystem path that this instance points at,
+    /// whether it is valid or not. In this way, it can be used to
+    /// to specify a path of a non-existent file which it
+    /// later creates
+    fn get_path<'a>(&'a self) -> &'a Path;
+
+    /// Ask the operating system for information about the path,
+    /// will raise a condition if an error occurs during the process
     fn stat(&self) -> Option<FileStat> {
-        use mod_stat = super::file::stat;
-        do read_error::cond.trap(|_| {
-            // FIXME: can we do something more useful here?
-        }).inside {
-            mod_stat(self.get_file_path())
-        }
+        stat(self.get_path())
     }
 
     /// returns `true` if the location pointed at by the enclosing
     /// exists on the filesystem
-    fn file_exists(&self) -> bool {
-        match self.stat() {
+    fn exists(&self) -> bool {
+        match suppressed_stat(|| self.stat()) {
             Some(_) => true,
             None => false
         }
     }
 
-    /// Whether the underlying implemention (be it a file path
-    /// or active file descriptor) is a "regular file". Will return
+}
+
+/// Represents passive information about a file (primarily exposed
+/// via the `stat()` method. Also provides methods for opening
+/// a file in various modes/permissions.
+pub trait FileInfo : FileSystemInfo {
+    /// Whether the underlying implemention (be it a file path,
+    /// or something else) points at a "regular file" on the FS. Will return
     /// false for paths to non-existent locations or directories or
     /// other non-regular files (named pipes, etc).
     fn is_file(&self) -> bool {
-        match self.stat() {
+        match suppressed_stat(|| self.stat()) {
             Some(s) => s.is_file,
             None => false
         }
@@ -273,12 +287,12 @@ pub trait FileInfo<'self> {
     /// Attempts to open a regular file for reading/writing based
     /// on provided inputs
     fn open_stream(&self, mode: FileMode, access: FileAccess) -> Option<FileStream> {
-        match self.stat() {
+        match suppressed_stat(|| self.stat()) {
             Some(s) => match s.is_file {
-                true => open(self.get_file_path(), mode, access),
+                true => open(self.get_path(), mode, access),
                 false => None // FIXME: raise condition, not a regular file..
             },
-            None => open(self.get_file_path(), mode, access)
+            None => open(self.get_path(), mode, access)
         }
     }
     /// Attempts to open a regular file for reading-only based
@@ -302,45 +316,82 @@ pub trait FileInfo<'self> {
     /// Attempt to remove a file from the filesystem, pending the closing
     /// of any open file descriptors pointing to the file
     fn unlink(&self) {
-        unlink(self.get_file_path());
+        unlink(self.get_path());
     }
 }
 
+/// `FileSystemInfo` implementation for `Path`s 
+impl FileSystemInfo for Path {
+    fn get_path<'a>(&'a self) -> &'a Path { self }
+}
 /// `FileInfo` implementation for `Path`s 
-impl<'self> FileInfo<'self> for Path {
-    fn get_file_path(&'self self) -> &'self Path { self }
-}
+impl FileInfo for Path { }
 
-/*
-/// FIXME: DOCS
-impl DirectoryInfo<'self> {
-    fn new<P: PathLike>(path: &P) -> FileInfo {
-        FileInfo(Path(path.path_as_str()))
-    }
-    // FIXME #8873 can't put this in FileSystemInfo
-    fn get_path(&'self self) -> &'self Path {
-        &*self
-    }
-    fn stat(&self) -> Option<FileStat> {
-        file::stat(self.get_path())
-    }
-    fn exists(&self) -> bool {
-        do io_error::cond.trap(|_| {
-        }).inside {
-            match self.stat() {
-                Some(_) => true,
-                None => false
-            }
+trait DirectoryInfo : FileSystemInfo {
+    /// Whether the underlying implemention (be it a file path,
+    /// or something else) points at a directory file" on the FS. Will return
+    /// false for paths to non-existent locations or if the item is
+    /// not a directory (eg files, named pipes, links, etc)
+    fn is_dir(&self) -> bool {
+        match suppressed_stat(|| self.stat()) {
+            Some(s) => s.is_dir,
+            None => false
         }
     }
-    fn is_dir(&self) -> bool {
-        
+    /// Create a directory at the location pointed to by the
+    /// type underlying the given `DirectoryInfo`. Raises a
+    /// condition if a file, directory, etc already exists
+    /// at that location or if some other error occurs during
+    /// the mkdir operation
+    fn mkdir(&self) {
+        match suppressed_stat(|| self.stat()) {
+            Some(_) => {
+                io_error::cond.raise(IoError {
+                    kind: PathAlreadyExists,
+                    desc: "path already exists",
+                    detail:
+                        Some(fmt!("%s already exists; can't mkdir it", self.get_path().to_str()))
+                })
+            },
+            None => mkdir(self.get_path())
+        }
     }
-    fn create(&self);
-    fn get_subdirs(&self, filter: &str) -> ~[Path];
-    fn get_files(&self, filter: &str) -> ~[Path];
+    /// Remove a directory at the given location pointed to by
+    /// the type underlying the given `DirectoryInfo`. Will fail
+    /// if there is no directory at the given location or if
+    fn rmdir(&self) {
+        match suppressed_stat(|| self.stat()) {
+            Some(s) => {
+                match s.is_dir {
+                    true => rmdir(self.get_path()),
+                    false => {
+                        let ioerr = IoError {
+                            kind: MismatchedFileTypeForOperation,
+                            desc: "Cannot do rmdir() on a non-directory",
+                            detail:
+                                Some(fmt!("%s is a non-directory; can't rmdir it", self.get_path().to_str()))
+                        };
+                        io_error::cond.raise(ioerr);
+                    }
+                }
+            },
+            None =>
+                io_error::cond.raise(IoError {
+                    kind: PathDoesntExist,
+                    desc: "path doesn't exist",
+                    detail: Some(fmt!("%s doesn't exist; can't rmdir it", self.get_path().to_str()))
+                })
+        }
+    }
+    fn readdir(&self) -> ~[~str] {
+        ~[]
+    }
+    //fn get_subdirs(&self, filter: &str) -> ~[Path];
+    //fn get_files(&self, filter: &str) -> ~[Path];
 }
-*/
+
+/// FIXME: DOCS
+impl DirectoryInfo for Path { }
 
 fn file_test_smoke_test_impl() {
     do run_in_mt_newsched_task {
@@ -594,8 +645,21 @@ fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
             let mut w = file.open_writer(Create);
             w.write(msg);
         }
-        assert!(file.file_exists());
+        assert!(file.exists());
         file.unlink();
-        assert!(!file.file_exists());
+        assert!(!file.exists());
+    }
+}
+
+#[test]
+fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
+    do run_in_mt_newsched_task {
+        let dir = &Path("./tmp/before_and_after_dir");
+        assert!(!dir.exists());
+        dir.mkdir();
+        assert!(dir.exists());
+        assert!(dir.is_dir());
+        dir.rmdir();
+        assert!(!dir.exists());
     }
 }
