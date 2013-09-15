@@ -97,7 +97,7 @@ fn main() {
     let args = os::args();
     let n_keys = {
         if args.len() == 2 {
-            uint::from_str(args[1]).unwrap()
+            from_str::<uint>(args[1]).unwrap()
         } else {
             1000000
         }

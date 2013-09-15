@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use from_str::from_str;
 use libc::{uintptr_t, exit, STDERR_FILENO};
 use option::{Some, None, Option};
 use rt::util::dumb_println;
@@ -28,7 +29,7 @@ static log_level_names : &'static[&'static str] = &'static["error", "warn", "inf
 
 /// Parse an individual log level that is either a number or a symbolic log level
 fn parse_log_level(level: &str) -> Option<u32> {
-    let num = u32::from_str(level);
+    let num = from_str::<u32>(level);
     let mut log_level;
     match num {
         Some(num) => {

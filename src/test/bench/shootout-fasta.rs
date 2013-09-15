@@ -128,7 +128,7 @@ fn main() {
         io::stdout()
     };
 
-    let n = int::from_str(args[1]).unwrap();
+    let n = from_str::<int>(args[1]).unwrap();
 
     let iub: ~[AminoAcids] =
         make_cumulative(~[acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),

@@ -238,20 +238,6 @@ impl Int for $T {}
 
 // String conversion functions and impl str -> num
 
-/// Parse a string as a number in base 10.
-#[inline]
-pub fn from_str(s: &str) -> Option<$T> {
-    strconv::from_str_common(s, 10u, false, false, false,
-                             strconv::ExpNone, false, false)
-}
-
-/// Parse a string as a number in the given base.
-#[inline]
-pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
-    strconv::from_str_common(s, radix, false, false, false,
-                             strconv::ExpNone, false, false)
-}
-
 /// Parse a byte slice as a number in the given base.
 #[inline]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
@@ -262,14 +248,16 @@ pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
 impl FromStr for $T {
     #[inline]
     fn from_str(s: &str) -> Option<$T> {
-        from_str(s)
+        strconv::from_str_common(s, 10u, false, false, false,
+                                 strconv::ExpNone, false, false)
     }
 }
 
 impl FromStrRadix for $T {
     #[inline]
     fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
-        from_str_radix(s, radix)
+        strconv::from_str_common(s, radix, false, false, false,
+                                 strconv::ExpNone, false, false)
     }
 }
 
@@ -347,9 +335,6 @@ mod tests {
     use num;
     use sys;
     use u16;
-    use u32;
-    use u64;
-    use u8;
 
     #[test]
     fn test_num() {
@@ -459,15 +444,15 @@ mod tests {
 
     #[test]
     pub fn test_from_str() {
-        assert_eq!(from_str("0"), Some(0u as $T));
-        assert_eq!(from_str("3"), Some(3u as $T));
-        assert_eq!(from_str("10"), Some(10u as $T));
-        assert_eq!(u32::from_str("123456789"), Some(123456789 as u32));
-        assert_eq!(from_str("00100"), Some(100u as $T));
+        assert_eq!(from_str::<$T>("0"), Some(0u as $T));
+        assert_eq!(from_str::<$T>("3"), Some(3u as $T));
+        assert_eq!(from_str::<$T>("10"), Some(10u as $T));
+        assert_eq!(from_str::<u32>("123456789"), Some(123456789 as u32));
+        assert_eq!(from_str::<$T>("00100"), Some(100u as $T));
 
-        assert!(from_str("").is_none());
-        assert!(from_str(" ").is_none());
-        assert!(from_str("x").is_none());
+        assert!(from_str::<$T>("").is_none());
+        assert!(from_str::<$T>(" ").is_none());
+        assert!(from_str::<$T>("x").is_none());
     }
 
     #[test]
@@ -514,36 +499,36 @@ mod tests {
     #[test]
     fn test_uint_from_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8::from_str("255"), Some(u8_val));
-        assert!(u8::from_str("256").is_none());
+        assert_eq!(from_str::<u8>("255"), Some(u8_val));
+        assert!(from_str::<u8>("256").is_none());
 
         u8_val += 1 as u8;
-        assert_eq!(u8::from_str("0"), Some(u8_val));
-        assert!(u8::from_str("-1").is_none());
+        assert_eq!(from_str::<u8>("0"), Some(u8_val));
+        assert!(from_str::<u8>("-1").is_none());
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16::from_str("65535"), Some(u16_val));
-        assert!(u16::from_str("65536").is_none());
+        assert_eq!(from_str::<u16>("65535"), Some(u16_val));
+        assert!(from_str::<u16>("65536").is_none());
 
         u16_val += 1 as u16;
-        assert_eq!(u16::from_str("0"), Some(u16_val));
-        assert!(u16::from_str("-1").is_none());
+        assert_eq!(from_str::<u16>("0"), Some(u16_val));
+        assert!(from_str::<u16>("-1").is_none());
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32::from_str("4294967295"), Some(u32_val));
-        assert!(u32::from_str("4294967296").is_none());
+        assert_eq!(from_str::<u32>("4294967295"), Some(u32_val));
+        assert!(from_str::<u32>("4294967296").is_none());
 
         u32_val += 1 as u32;
-        assert_eq!(u32::from_str("0"), Some(u32_val));
-        assert!(u32::from_str("-1").is_none());
+        assert_eq!(from_str::<u32>("0"), Some(u32_val));
+        assert!(from_str::<u32>("-1").is_none());
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64::from_str("18446744073709551615"), Some(u64_val));
-        assert!(u64::from_str("18446744073709551616").is_none());
+        assert_eq!(from_str::<u64>("18446744073709551615"), Some(u64_val));
+        assert!(from_str::<u64>("18446744073709551616").is_none());
 
         u64_val += 1 as u64;
-        assert_eq!(u64::from_str("0"), Some(u64_val));
-        assert!(u64::from_str("-1").is_none());
+        assert_eq!(from_str::<u64>("0"), Some(u64_val));
+        assert!(from_str::<u64>("-1").is_none());
     }
 
     #[test]

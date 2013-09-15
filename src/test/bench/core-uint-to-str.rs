@@ -21,7 +21,7 @@ fn main() {
         args
     };
 
-    let n = uint::from_str(args[1]).unwrap();
+    let n = from_str::<uint>(args[1]).unwrap();
 
     for i in range(0u, n) {
         let x = i.to_str();

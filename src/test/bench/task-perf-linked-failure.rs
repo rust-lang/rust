@@ -74,7 +74,7 @@ fn main() {
         args.clone()
     };
 
-    let num_tasks = uint::from_str(args[1]).unwrap();
+    let num_tasks = from_str::<uint>(args[1]).unwrap();
 
     // Main group #0 waits for unsupervised group #1.
     // Grandparent group #1 waits for middle group #2, then fails, killing #3.

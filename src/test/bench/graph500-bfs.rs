@@ -418,8 +418,8 @@ fn main() {
         args
     };
 
-    let scale = uint::from_str(args[1]).unwrap();
-    let num_keys = uint::from_str(args[2]).unwrap();
+    let scale = from_str::<uint>(args[1]).unwrap();
+    let num_keys = from_str::<uint>(args[2]).unwrap();
     let do_validate = false;
     let do_sequential = true;
 

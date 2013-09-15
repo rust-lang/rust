@@ -19,7 +19,6 @@ use std::io::{ReaderUtil};
 use std::io;
 use std::option::{Option, Some, None};
 use std::to_str::ToStr;
-use std::uint;
 
 #[deriving(Clone, Eq)]
 pub enum Identifier {
@@ -140,7 +139,7 @@ fn take_nonempty_prefix(rdr: @io::Reader,
 
 fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
     let (s, ch) = take_nonempty_prefix(rdr, ch, char::is_digit);
-    match uint::from_str(s) {
+    match from_str::<uint>(s) {
         None => { bad_parse::cond.raise(()); (0, ch) },
         Some(i) => (i, ch)
     }
@@ -149,7 +148,7 @@ fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
 fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
     let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
     if s.iter().all(char::is_digit) {
-        match uint::from_str(s) {
+        match from_str::<uint>(s) {
             None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
             Some(i) => (Numeric(i), ch)
         }

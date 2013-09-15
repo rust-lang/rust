@@ -37,7 +37,6 @@ use std::task;
 use std::to_str::ToStr;
 use std::f64;
 use std::os;
-use std::uint;
 
 
 // The name of a test. By convention this follows the rules for rust
@@ -253,7 +252,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let ratchet_metrics = ratchet_metrics.map_move(|s| Path(s));
 
     let ratchet_noise_percent = getopts::opt_maybe_str(&matches, "ratchet-noise-percent");
-    let ratchet_noise_percent = ratchet_noise_percent.map_move(|s| f64::from_str(s).unwrap());
+    let ratchet_noise_percent = ratchet_noise_percent.map_move(|s| from_str::<f64>(s).unwrap());
 
     let save_metrics = getopts::opt_maybe_str(&matches, "save-metrics");
     let save_metrics = save_metrics.map_move(|s| Path(s));
@@ -281,7 +280,7 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
         None => None,
         Some(s) => {
             match s.split_iter('.').to_owned_vec() {
-                [a, b] => match (uint::from_str(a), uint::from_str(b)) {
+                [a, b] => match (from_str::<uint>(a), from_str::<uint>(b)) {
                     (Some(a), Some(b)) => Some((a,b)),
                     _ => None
                 },
