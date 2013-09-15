@@ -30,12 +30,12 @@ pub trait Pos {
 }
 
 /// A byte offset
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes, Ord)]
 pub struct BytePos(uint);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq,IterBytes, Ord)]
 pub struct CharPos(uint);
 
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -44,13 +44,6 @@ pub struct CharPos(uint);
 impl Pos for BytePos {
     fn from_uint(n: uint) -> BytePos { BytePos(n) }
     fn to_uint(&self) -> uint { **self }
-}
-
-impl cmp::Ord for BytePos {
-    fn lt(&self, other: &BytePos) -> bool { **self < **other }
-    fn le(&self, other: &BytePos) -> bool { **self <= **other }
-    fn ge(&self, other: &BytePos) -> bool { **self >= **other }
-    fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
 impl Add<BytePos, BytePos> for BytePos {
@@ -68,13 +61,6 @@ impl Sub<BytePos, BytePos> for BytePos {
 impl Pos for CharPos {
     fn from_uint(n: uint) -> CharPos { CharPos(n) }
     fn to_uint(&self) -> uint { **self }
-}
-
-impl cmp::Ord for CharPos {
-    fn lt(&self, other: &CharPos) -> bool { **self < **other }
-    fn le(&self, other: &CharPos) -> bool { **self <= **other }
-    fn ge(&self, other: &CharPos) -> bool { **self >= **other }
-    fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
 impl Add<CharPos,CharPos> for CharPos {
