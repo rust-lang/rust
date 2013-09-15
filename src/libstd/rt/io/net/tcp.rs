@@ -178,12 +178,17 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8811
     fn connect_error() {
         do run_in_mt_newsched_task {
             let mut called = false;
             do io_error::cond.trap(|e| {
-                assert_eq!(e.kind, ConnectionRefused);
+                let expected_error = if cfg!(unix) {
+                    ConnectionRefused
+                } else {
+                    // On Win32, opening port 1 gives WSAEADDRNOTAVAIL error.
+                    OtherIoError
+                };
+                assert_eq!(e.kind, expected_error);
                 called = true;
             }).inside {
                 let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
