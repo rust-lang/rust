@@ -51,6 +51,21 @@ impl Timer {
 }
 
 trait TimedPort<T: Send> {
+
+ /**
+  * This implementation adds the required
+  * API for recv_timeout with an approximate
+  * but not safe behavior.
+  *
+  * Current implementations of this Trait for
+  * both PortOne and Port poll on the port every
+  * second to check for new messages. A correct
+  * implementation for recv_timeout should implement
+  * `SelectInner` and Select for UvTimer and re-write
+  * the sleep method around that.
+  *
+  * FIXME: (flaper87) #9195
+  */
   fn recv_timeout(self, msecs: u64) -> Option<T>;
 }
 
