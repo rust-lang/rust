@@ -789,3 +789,10 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateNameSpace(
         unwrapDI<DIFile>(File),
         LineNo));
 }
+
+extern "C" void LLVMDICompositeTypeSetTypeArray(
+    LLVMValueRef CompositeType,
+    LLVMValueRef TypeArray)
+{
+    unwrapDI<DICompositeType>(CompositeType).setTypeArray(unwrapDI<DIArray>(TypeArray));
+}

@@ -612,6 +612,7 @@ LLVMDIBuilderCreateOpDeref
 LLVMDIBuilderCreateOpPlus
 LLVMDIBuilderCreateComplexVariable
 LLVMDIBuilderCreateNameSpace
+LLVMDICompositeTypeSetTypeArray
 LLVMSetUnnamedAddr
 LLVMRustAddPass
 LLVMRustAddAnalysisPasses
