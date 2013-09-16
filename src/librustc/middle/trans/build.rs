@@ -644,20 +644,16 @@ pub fn InlineAsmCall(cx: @mut Block, asm: *c_char, cons: *c_char,
     B(cx).inline_asm_call(asm, cons, inputs, output, volatile, alignstack, dia)
 }
 
-pub fn Call(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
+pub fn Call(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
+            attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
-    B(cx).call(Fn, Args)
+    B(cx).call(Fn, Args, attributes)
 }
 
-pub fn FastCall(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
+pub fn CallWithConv(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef], Conv: CallConv,
+                    attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
-    B(cx).call(Fn, Args)
-}
-
-pub fn CallWithConv(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
-                    Conv: CallConv, sret: bool) -> ValueRef {
-    if cx.unreachable { return _UndefReturn(cx, Fn); }
-    B(cx).call_with_conv(Fn, Args, Conv, sret)
+    B(cx).call_with_conv(Fn, Args, Conv, attributes)
 }
 
 pub fn AtomicFence(cx: @mut Block, order: AtomicOrdering) {

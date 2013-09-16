@@ -11,7 +11,7 @@
 
 use back::{link};
 use std::libc::c_uint;
-use lib::llvm::{ValueRef, Attribute, CallConv};
+use lib::llvm::{ValueRef, Attribute, CallConv, StructRetAttribute};
 use lib::llvm::llvm;
 use lib;
 use middle::trans::machine;
@@ -266,7 +266,13 @@ pub fn trans_native_call(bcx: @mut Block,
         }
     };
 
-    let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, fn_type.sret);
+    let attrs;
+    if fn_type.sret {
+        attrs = &[(1, StructRetAttribute)];
+    } else {
+        attrs = &[];
+    }
+    let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, attrs);
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
