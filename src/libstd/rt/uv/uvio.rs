@@ -635,7 +635,11 @@ impl IoFactory for UvIoFactory {
                             Ok(FileStat {
                                 path: Path(path_str),
                                 is_file: stat.is_file(),
-                                is_dir: stat.is_dir()
+                                is_dir: stat.is_dir(),
+                                size: stat.st_size,
+                                created: stat.st_ctim.tv_sec as u64,
+                                modified: stat.st_mtim.tv_sec as u64,
+                                accessed: stat.st_atim.tv_sec as u64
                             })
                         },
                         Some(e) => {
