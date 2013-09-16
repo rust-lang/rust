@@ -78,6 +78,8 @@ pub trait IoFactory {
     //fn fs_fstat(&mut self, fd: c_int) -> Result<FileStat, IoError>;
     fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
+    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+        Result<~[Path], IoError>;
 }
 
 pub trait RtioStream {

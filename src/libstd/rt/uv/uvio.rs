@@ -704,6 +704,44 @@ impl IoFactory for UvIoFactory {
             };
         }
     }
+    fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
+        Result<~[Path], IoError> {
+        use str::StrSlice;
+        let result_cell = Cell::new_empty();
+        let result_cell_ptr: *Cell<Result<~[Path],
+                                           IoError>> = &result_cell;
+        let path_cell = Cell::new(path);
+        do task::unkillable { // FIXME(#8674)
+            let scheduler: ~Scheduler = Local::take();
+            let stat_req = file::FsRequest::new();
+            do scheduler.deschedule_running_task_and_then |_, task| {
+                let task_cell = Cell::new(task);
+                let path = path_cell.take();
+                let path_str = path.path_as_str(|p| p.to_owned());
+                do stat_req.readdir(self.uv_loop(), path, flags)
+                      |req,err| {
+                    let res = match err {
+                        None => {
+                            let rel_paths = req.get_paths();
+                            let mut paths = ~[];
+                            for r in rel_paths.iter() {
+                                paths.push(Path(path_str+"/"+*r));
+                            }
+                            Ok(paths)
+                        },
+                        Some(e) => {
+                            Err(uv_error_to_io_error(e))
+                        }
+                    };
+                    unsafe { (*result_cell_ptr).put_back(res); }
+                    let scheduler: ~Scheduler = Local::take();
+                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                };
+            };
+        };
+        assert!(!result_cell.is_empty());
+        return result_cell.take();
+    }
 }
 
 pub struct UvTcpListener {

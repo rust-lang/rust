@@ -811,6 +811,12 @@ pub unsafe fn fs_rmdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
 
     rust_uv_fs_rmdir(loop_ptr, req, path, cb)
 }
+pub unsafe fn fs_readdir(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
+                flags: c_int, cb: *u8) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_fs_readdir(loop_ptr, req, path, flags, cb)
+}
 pub unsafe fn populate_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t) {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -827,6 +833,11 @@ pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
     #[fixed_stack_segment]; #[inline(never)];
 
     rust_uv_get_result_from_fs_req(req)
+}
+pub unsafe fn get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void {
+    #[fixed_stack_segment]; #[inline(never)];
+
+    rust_uv_get_ptr_from_fs_req(req)
 }
 pub unsafe fn get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t {
     #[fixed_stack_segment]; #[inline(never)];
@@ -1014,9 +1025,12 @@ extern {
                         mode: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_rmdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
                         cb: *u8) -> c_int;
+    fn rust_uv_fs_readdir(loop_ptr: *c_void, req: *uv_fs_t, path: *c_char,
+                        flags: c_int, cb: *u8) -> c_int;
     fn rust_uv_fs_req_cleanup(req: *uv_fs_t);
     fn rust_uv_populate_uv_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t);
     fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
+    fn rust_uv_get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void;
     fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
     fn rust_uv_get_loop_from_getaddrinfo_req(req: *uv_fs_t) -> *uv_loop_t;
 

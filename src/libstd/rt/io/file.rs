@@ -108,6 +108,22 @@ pub fn stat<P: PathLike>(path: &P) -> Option<FileStat> {
     }
 }
 
+pub fn readdir<P: PathLike>(path: &P) -> Option<~[Path]> {
+    let readdir_result = unsafe {
+        let io: *mut IoFactoryObject = Local::unsafe_borrow();
+        (*io).fs_readdir(path, 0)
+    };
+    match readdir_result {
+        Ok(p) => {
+            Some(p)
+        },
+        Err(ioerr) => {
+            io_error::cond.raise(ioerr);
+            None
+        }
+    }
+}
+
 /// Read-only view of file
 pub struct FileReader { priv stream: FileStream }
 
@@ -272,6 +288,18 @@ pub trait FileSystemInfo {
 /// Represents passive information about a file (primarily exposed
 /// via the `stat()` method. Also provides methods for opening
 /// a file in various modes/permissions.
+///
+/// # Example
+///
+/// * Check if a file exists, reading from it if so
+///
+///     let f = &Path("/some/file/path.txt");
+///     if f.exists() {
+///         let reader = f.open_reader(Open);
+///         let mut mem = [0u8, 8*64000];
+///         reader.read(mem);
+///         // ...
+///     }
 pub trait FileInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) points at a "regular file" on the FS. Will return
@@ -290,7 +318,7 @@ pub trait FileInfo : FileSystemInfo {
         match suppressed_stat(|| self.stat()) {
             Some(s) => match s.is_file {
                 true => open(self.get_path(), mode, access),
-                false => None // FIXME: raise condition, not a regular file..
+                false => None
             },
             None => open(self.get_path(), mode, access)
         }
@@ -320,13 +348,16 @@ pub trait FileInfo : FileSystemInfo {
     }
 }
 
-/// `FileSystemInfo` implementation for `Path`s 
+/// `FileSystemInfo` implementation for `Path`s
 impl FileSystemInfo for Path {
     fn get_path<'a>(&'a self) -> &'a Path { self }
 }
-/// `FileInfo` implementation for `Path`s 
+/// `FileInfo` implementation for `Path`s
 impl FileInfo for Path { }
 
+/// Passive information about a directory on the filesystem. Includes
+/// Convenience methods to iterate over a directory's contents (via `readdir`, as
+/// as `mkdir` and `rmdir` operations.
 trait DirectoryInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) points at a directory file" on the FS. Will return
@@ -368,8 +399,9 @@ trait DirectoryInfo : FileSystemInfo {
                         let ioerr = IoError {
                             kind: MismatchedFileTypeForOperation,
                             desc: "Cannot do rmdir() on a non-directory",
-                            detail:
-                                Some(fmt!("%s is a non-directory; can't rmdir it", self.get_path().to_str()))
+                            detail: Some(fmt!(
+                                "%s is a non-directory; can't rmdir it",
+                                self.get_path().to_str()))
                         };
                         io_error::cond.raise(ioerr);
                     }
@@ -383,14 +415,13 @@ trait DirectoryInfo : FileSystemInfo {
                 })
         }
     }
-    fn readdir(&self) -> ~[~str] {
-        ~[]
+    fn readdir(&self) -> Option<~[Path]> {
+        readdir(self.get_path())
     }
     //fn get_subdirs(&self, filter: &str) -> ~[Path];
     //fn get_files(&self, filter: &str) -> ~[Path];
 }
 
-/// FIXME: DOCS
 impl DirectoryInfo for Path { }
 
 fn file_test_smoke_test_impl() {
@@ -661,5 +692,43 @@ fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
         assert!(dir.is_dir());
         dir.rmdir();
         assert!(!dir.exists());
+    }
+}
+
+#[test]
+fn file_test_directoryinfo_readdir() {
+    use str;
+    do run_in_mt_newsched_task {
+        let dir = &Path("./tmp/di_readdir");
+        dir.mkdir();
+        let prefix = "foo";
+        for n in range(0,3) {
+            let f = dir.push(fmt!("%d.txt", n));
+            let mut w = f.open_writer(Create);
+            let msg_str = (prefix + n.to_str().to_owned()).to_owned();
+            let msg = msg_str.as_bytes();
+            w.write(msg);
+        }
+        match dir.readdir() {
+            Some(files) => {
+                let mut mem = [0u8, .. 4];
+                for f in files.iter() {
+                    {
+                        let n = f.filestem();
+                        let mut r = f.open_reader(Open);
+                        r.read(mem);
+                        let read_str = str::from_utf8(mem);
+                        let expected = match n {
+                            Some(n) => prefix+n,
+                            None => fail!("really shouldn't happen..")
+                        };
+                        assert!(expected == read_str);
+                    }
+                    f.unlink();
+                }
+            },
+            None => fail!("shouldn't happen")
+        }
+        dir.rmdir();
     }
 }
