@@ -474,7 +474,7 @@ mod test {
         let write_val = input.as_bytes();
         let write_buf = slice_to_uv_buf(write_val);
         let write_req = FsRequest::new();
-        write_req.write_sync(loop_, stdout, write_buf, -1);
+        write_req.write_sync(loop_, STDOUT_FILENO, write_buf, -1);
     }
 
     #[test]
