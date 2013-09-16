@@ -23,6 +23,11 @@ RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*.rs)
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rs
 RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 
+# rustdoc_ng, the next generation documentation tool
+
+RUSTDOCNG_LIB := $(S)src/rustdoc_ng/lib.rs
+RUSTDOCNG_INPUTS := $(wildcard $(S)src/rustdoc_ng/*.rs)
+
 # Rusti, the JIT REPL
 RUSTI_LIB := $(S)src/librusti/rusti.rs
 RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
@@ -78,6 +83,24 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X_$(4)):			\
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc -o $$@ $$<
 
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(4)):		\
+		$$(RUSTDOCNG_LIB) $$(RUSTDOCNG_INPUTS)			\
+		$$(SREQ$(1)_T_$(4)_H_$(3))			\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4)) \
+		| $$(TLIB$(1)_T_$(4)_H_$(3))/
+	@$$(call E, compile_and_link: $$@)
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOCNG_GLOB_$(4)),$$(notdir $$@))
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --out-dir $$(@D) $$< && touch $$@
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOCNG_GLOB_$(4)),$$(notdir $$@))
+
+$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc_ng$$(X_$(4)):			\
+		$$(DRIVER_CRATE) 							\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(4))			\
+		| $$(TBIN$(1)_T_$(4)_H_$(3))/
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc_ng -o $$@ $$<
+
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4)):		\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)			\
 		$$(SREQ$(1)_T_$(4)_H_$(3))			\
@@ -102,6 +125,7 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)):		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))		\
 		| $$(TLIB$(1)_T_$(4)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
@@ -170,6 +194,19 @@ $$(HBIN$(2)_H_$(4))/rustdoc$$(X_$(4)):				\
 		| $$(HBIN$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTDOCNG_$(4)):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOCNG_$(4))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4))			\
+		$$(HSREQ$(2)_H_$(4)) \
+		| $$(HLIB$(2)_H_$(4))/
+	@$$(call E, cp: $$@)
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOCNG_GLOB_$(4)),$$(notdir $$@))
+	$$(Q)cp $$< $$@
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTDOCNG_GLOB_$(4)),$$(notdir $$@))
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOCNG_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOCNG_DSYM_GLOB_$(4))) \
+	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(4)):					\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))	\
