@@ -174,6 +174,7 @@ impl<'self> Drop for StatRecorder<'self> {
     }
 }
 
+// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
 pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
     let llfn: ValueRef = do name.with_c_str |buf| {
         unsafe {
@@ -185,18 +186,12 @@ pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) 
     return llfn;
 }
 
+// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
 pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
     return decl_fn(llmod, name, lib::llvm::CCallConv, ty);
 }
 
-// Only use this if you are going to actually define the function. It's
-// not valid to simply declare a function as internal.
-pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
-    let llfn = decl_cdecl_fn(llmod, name, ty);
-    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
-    return llfn;
-}
-
+// only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
 pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
                      cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
     match externs.find_equiv(&name) {
@@ -205,7 +200,73 @@ pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
     }
     let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name.to_owned(), f);
-    return f;
+    f
+}
+
+pub fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+                          name: &str) -> ValueRef {
+    match ccx.externs.find_equiv(&name) {
+        Some(n) => return *n,
+        None => ()
+    }
+    let f = decl_rust_fn(ccx, inputs, output, name);
+    ccx.externs.insert(name.to_owned(), f);
+    f
+}
+
+pub fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+                    name: &str) -> ValueRef {
+    let llfty = type_of_rust_fn(ccx, inputs, output);
+    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
+
+    match ty::get(output).sty {
+        // `~` pointer return values never alias because ownership is transferred
+        ty::ty_uniq(*) |
+        ty::ty_evec(_, ty::vstore_uniq) => {
+            unsafe {
+                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
+            }
+        }
+        _ => ()
+    }
+
+    let uses_outptr = type_of::return_uses_outptr(ccx.tcx, output);
+    let offset = if uses_outptr { 2 } else { 1 };
+
+    for (i, &arg_ty) in inputs.iter().enumerate() {
+        let llarg = unsafe { llvm::LLVMGetParam(llfn, (offset + i) as c_uint) };
+        match ty::get(arg_ty).sty {
+            // `~` pointer parameters never alias because ownership is transferred
+            ty::ty_uniq(*) |
+            ty::ty_evec(_, ty::vstore_uniq) |
+            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
+                unsafe {
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                }
+            }
+            _ => ()
+        }
+    }
+
+    // The out pointer will never alias with any other pointers, as the object only exists at a
+    // language level after the call. It can also be tagged with SRet to indicate that it is
+    // guaranteed to point to a usable block of memory for the type.
+    if uses_outptr {
+        unsafe {
+            let outptr = llvm::LLVMGetParam(llfn, 0);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::StructRetAttribute as c_uint);
+            llvm::LLVMAddAttribute(outptr, lib::llvm::NoAliasAttribute as c_uint);
+        }
+    }
+
+    llfn
+}
+
+pub fn decl_internal_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+                             name: &str) -> ValueRef {
+    let llfn = decl_rust_fn(ccx, inputs, output, name);
+    lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+    llfn
 }
 
 pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
@@ -809,33 +870,30 @@ pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
     C_null(Type::opaque_box(ccx).ptr_to())
 }
 
-pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t)
-    -> ValueRef {
+pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            // Currently llvm_calling_convention triggers unimpl/bug on
-            // Rust/RustIntrinsic, so those two are handled specially here.
-            let cconv = match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
-                Some(Rust) | Some(RustIntrinsic) => lib::llvm::CCallConv,
+            match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
+                Some(Rust) | Some(RustIntrinsic) => {
+                    get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name)
+                }
                 Some(*) | None => {
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
-                    c.unwrap_or(lib::llvm::CCallConv)
+                    let cconv = c.unwrap_or(lib::llvm::CCallConv);
+                    let llty = type_of_fn_from_ty(ccx, t);
+                    get_extern_fn(&mut ccx.externs, ccx.llmod, name, cconv, llty)
                 }
-            };
-            let llty = type_of_fn_from_ty(ccx, t);
-            return get_extern_fn(&mut ccx.externs, ccx.llmod, name, cconv, llty);
+            }
         }
-        ty::ty_closure(_) => {
-            let llty = type_of_fn_from_ty(ccx, t);
-            return get_extern_fn(&mut ccx.externs, ccx.llmod, name,
-            lib::llvm::CCallConv, llty);
+        ty::ty_closure(ref f) => {
+            get_extern_rust_fn(ccx, f.sig.inputs, f.sig.output, name)
         }
         _ => {
             let llty = type_of(ccx, t);
-            return get_extern_const(&mut ccx.externs, ccx.llmod, name, llty);
+            get_extern_const(&mut ccx.externs, ccx.llmod, name, llty)
         }
-    };
+    }
 }
 
 pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
@@ -868,7 +926,8 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
                               llfn,
                               llargs,
                               normal_bcx.llbb,
-                              get_landing_pad(bcx));
+                              get_landing_pad(bcx),
+                              attributes);
         return (llresult, normal_bcx);
     } else {
         unsafe {
@@ -1707,8 +1766,7 @@ pub fn new_fn_ctxt(ccx: @mut CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
                                  self_arg: self_arg,
-                                 args: &[ast::arg],
-                                 arg_tys: &[ty::t])
+                                 args: &[ast::arg])
                               -> ~[ValueRef] {
     let _icx = push_ctxt("create_llargs_for_fn_args");
 
@@ -1726,23 +1784,7 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
     // Return an array containing the ValueRefs that we get from
     // llvm::LLVMGetParam for each argument.
     do vec::from_fn(args.len()) |i| {
-        let arg_n = cx.arg_pos(i);
-        let arg_ty = arg_tys[i];
-        let llarg = unsafe {llvm::LLVMGetParam(cx.llfn, arg_n as c_uint) };
-
-        match ty::get(arg_ty).sty {
-            // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(*) |
-            ty::ty_evec(_, ty::vstore_uniq) |
-            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
-                unsafe {
-                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
-                }
-            }
-            _ => ()
-        }
-
-        llarg
+        unsafe { llvm::LLVMGetParam(cx.llfn, cx.arg_pos(i) as c_uint) }
     }
 }
 
@@ -1896,8 +1938,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg,
-                                               decl.inputs, arg_tys);
+    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
     if attr::contains_name(attributes, "fixed_stack_segment") {
@@ -1961,18 +2002,6 @@ pub fn trans_fn(ccx: @mut CrateContext,
            param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
-
-    match ty::get(output_type).sty {
-        // `~` pointer return values never alias because ownership is transferred
-        ty::ty_uniq(*) |
-        ty::ty_evec(_, ty::vstore_uniq) => {
-            unsafe {
-                llvm::LLVMAddReturnAttribute(llfndecl, lib::llvm::NoAliasAttribute as c_uint);
-            }
-        }
-        _ => ()
-    }
-
     trans_closure(ccx,
                   path.clone(),
                   decl,
@@ -2120,7 +2149,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args, arg_tys);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
 
     let bcx = fcx.entry_bcx.unwrap();
 
@@ -2298,10 +2327,28 @@ pub fn register_fn(ccx: @mut CrateContext,
                    node_id: ast::NodeId,
                    node_type: ty::t)
                    -> ValueRef {
-    let llfty = type_of_fn_from_ty(ccx, node_type);
-    register_fn_llvmty(ccx, sp, sym, node_id, lib::llvm::CCallConv, llfty)
+    let f = match ty::get(node_type).sty {
+        ty::ty_bare_fn(ref f) => {
+            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            f
+        }
+        _ => fail!("expected bare rust fn or an intrinsic")
+    };
+
+    let llfn = decl_rust_fn(ccx, f.sig.inputs, f.sig.output, sym);
+    ccx.item_symbols.insert(node_id, sym);
+
+    // FIXME #4404 android JNI hacks
+    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
+                      (*ccx.sess.building_library &&
+                       ccx.sess.targ_cfg.os == session::OsAndroid));
+    if is_entry {
+        create_entry_wrapper(ccx, sp, llfn);
+    }
+    llfn
 }
 
+// only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
 pub fn register_fn_llvmty(ccx: @mut CrateContext,
                           sp: Span,
                           sym: ~str,

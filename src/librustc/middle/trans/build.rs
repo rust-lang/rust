@@ -109,7 +109,8 @@ pub fn Invoke(cx: @mut Block,
               Fn: ValueRef,
               Args: &[ValueRef],
               Then: BasicBlockRef,
-              Catch: BasicBlockRef)
+              Catch: BasicBlockRef,
+              attributes: &[(uint, lib::llvm::Attribute)])
            -> ValueRef {
     if cx.unreachable {
         return C_null(Type::i8());
@@ -119,15 +120,7 @@ pub fn Invoke(cx: @mut Block,
     debug!("Invoke(%s with arguments (%s))",
            cx.val_to_str(Fn),
            Args.map(|a| cx.val_to_str(*a)).connect(", "));
-    B(cx).invoke(Fn, Args, Then, Catch)
-}
-
-pub fn FastInvoke(cx: @mut Block, Fn: ValueRef, Args: &[ValueRef],
-                  Then: BasicBlockRef, Catch: BasicBlockRef) {
-    if cx.unreachable { return; }
-    check_not_terminated(cx);
-    terminate(cx, "FastInvoke");
-    B(cx).fast_invoke(Fn, Args, Then, Catch);
+    B(cx).invoke(Fn, Args, Then, Catch, attributes)
 }
 
 pub fn Unreachable(cx: @mut Block) {
