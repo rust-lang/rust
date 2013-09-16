@@ -610,13 +610,10 @@ pub struct FileStat {
     /// `true` if the file pointed at by the `PathInfo` is a regular file
     is_file: bool,
     /// `true` if the file pointed at by the `PathInfo` is a directory
-    is_dir: bool
-    // `true` if the file pointed at by the `PathInfo` is a link (what this means
-    // is platform dependant)
-    /*
+    is_dir: bool,
     /// The file pointed at by the `PathInfo`'s size in bytes
     size: u64,
-    /// The file pointed at by the `PathInfo`'s time date in platform-dependent msecs
+    /// The file pointed at by the `PathInfo`'s creation time
     created: u64,
     /// The file pointed at by the `PathInfo`'s last-modification time in
     /// platform-dependent msecs
@@ -624,5 +621,4 @@ pub struct FileStat {
     /// The file pointed at by the `PathInfo`'s last-accessd time (e.g. read) in
     /// platform-dependent msecs
     accessed: u64,
-    */
 }
