@@ -25,7 +25,7 @@ RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 
 # rustdoc_ng, the next generation documentation tool
 
-RUSTDOCNG_LIB := $(S)src/rustdoc_ng/lib.rs
+RUSTDOCNG_LIB := $(S)src/rustdoc_ng/rustdoc_ng.rs
 RUSTDOCNG_INPUTS := $(wildcard $(S)src/rustdoc_ng/*.rs)
 
 # Rusti, the JIT REPL
@@ -207,6 +207,14 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTDOCNG_$(4)):					\
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOCNG_GLOB_$(4)) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOCNG_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
+
+$$(HBIN$(2)_H_$(4))/rustdoc_ng$$(X_$(4)):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc_ng$$(X_$(4))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTDOCNG_$(4))	\
+		$$(HSREQ$(2)_H_$(4))				\
+		| $$(HBIN$(2)_H_$(4))/
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(4)):					\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))	\
