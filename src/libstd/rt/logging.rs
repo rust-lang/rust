@@ -17,6 +17,7 @@ use str::raw::from_c_str;
 use u32;
 use vec::ImmutableVector;
 use cast::transmute;
+use send_str::{SendStr, SendStrOwned, SendStrStatic};
 
 struct LogDirective {
     name: Option<~str>,
@@ -168,20 +169,14 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     }
 }
 
-/// Represent a string with `Send` bound.
-pub enum SendableString {
-    OwnedString(~str),
-    StaticString(&'static str)
-}
-
 pub trait Logger {
-    fn log(&mut self, msg: SendableString);
+    fn log(&mut self, msg: SendStr);
 }
 
 pub struct StdErrLogger;
 
 impl Logger for StdErrLogger {
-    fn log(&mut self, msg: SendableString) {
+    fn log(&mut self, msg: SendStr) {
         use io::{Writer, WriterUtil};
 
         if !should_log_console() {
@@ -189,11 +184,11 @@ impl Logger for StdErrLogger {
         }
 
         let s: &str = match msg {
-            OwnedString(ref s) => {
+            SendStrOwned(ref s) => {
                 let slc: &str = *s;
                 slc
             },
-            StaticString(s) => s,
+            SendStrStatic(s) => s,
         };
 
         // Truncate the string

@@ -13,7 +13,8 @@
 use option::*;
 use os;
 use rt;
-use rt::logging::{Logger, StdErrLogger, OwnedString};
+use rt::logging::{Logger, StdErrLogger};
+use send_str::SendStrOwned;
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -56,12 +57,12 @@ fn newsched_log_str(msg: ~str) {
         match optional_task {
             Some(local) => {
                 // Use the available logger
-                (*local).logger.log(OwnedString(msg));
+                (*local).logger.log(SendStrOwned(msg));
             }
             None => {
                 // There is no logger anywhere, just write to stderr
                 let mut logger = StdErrLogger;
-                logger.log(OwnedString(msg));
+                logger.log(SendStrOwned(msg));
             }
         }
     }

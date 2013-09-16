@@ -37,6 +37,7 @@ use unstable::raw::{Repr, Slice};
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 use default::Default;
+use send_str::{SendStr, SendStrOwned};
 
 /*
 Section: Conditions
@@ -130,10 +131,12 @@ impl ToStr for ~str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
 }
+
 impl<'self> ToStr for &'self str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
 }
+
 impl ToStr for @str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
@@ -329,7 +332,6 @@ impl<'self> DoubleEndedIterator<char> for CharIterator<'self> {
         }
     }
 }
-
 
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iterator` module.
@@ -1355,6 +1357,7 @@ pub trait StrSlice<'self> {
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
     fn to_utf16(&self) -> ~[u16];
+    fn to_send_str(&self) -> SendStr;
     fn is_char_boundary(&self, index: uint) -> bool;
     fn char_range_at(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
@@ -1867,6 +1870,11 @@ impl<'self> StrSlice<'self> for &'self str {
             }
         }
         u
+    }
+
+    #[inline]
+    fn to_send_str(&self) -> SendStr {
+        SendStrOwned(self.to_owned())
     }
 
     /// Returns false if the index points into the middle of a multi-byte
@@ -2428,6 +2436,7 @@ mod tests {
     use vec;
     use vec::{Vector, ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
+    use send_str::{SendStrOwned, SendStrStatic};
 
     #[test]
     fn test_eq() {
@@ -3723,6 +3732,12 @@ mod tests {
 
         let xs = bytes!("hello", 0xff).to_owned();
         assert_eq!(from_utf8_owned_opt(xs), None);
+    }
+
+    #[test]
+    fn test_to_send_str() {
+        assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
+        assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
     }
 }
 
