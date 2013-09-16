@@ -20,7 +20,7 @@ use std::vec;
 
 use back::abi;
 use driver::session;
-use lib::llvm::ValueRef;
+use lib::llvm::{ValueRef, NoAliasAttribute, StructRetAttribute};
 use lib::llvm::llvm;
 use metadata::csearch;
 use middle::trans::base;
@@ -706,8 +706,26 @@ pub fn trans_call_inner(in_cx: @mut Block,
                 _ => {}
             }
 
+            // A function pointer is called without the declaration available, so we have to apply
+            // any attributes with ABI implications directly to the call instruction. Right now, the
+            // only attribute we need to worry about is `sret`.
+            let mut attrs = ~[];
+            if type_of::return_uses_outptr(in_cx.tcx(), ret_ty) {
+                attrs.push((1, StructRetAttribute));
+            }
+
+            // The `noalias` attribute on the return value is useful to a function ptr caller.
+            match ty::get(ret_ty).sty {
+                // `~` pointer return values never alias because ownership is transferred
+                ty::ty_uniq(*) |
+                ty::ty_evec(_, ty::vstore_uniq) => {
+                    attrs.push((0, NoAliasAttribute));
+                }
+                _ => ()
+            }
+
             // Invoke the actual rust fn and update bcx/llresult.
-            let (llret, b) = base::invoke(bcx, llfn, llargs, []);
+            let (llret, b) = base::invoke(bcx, llfn, llargs, attrs);
             bcx = b;
             llresult = llret;
 

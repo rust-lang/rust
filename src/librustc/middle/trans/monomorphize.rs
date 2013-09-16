@@ -14,14 +14,13 @@ use driver::session;
 use lib::llvm::ValueRef;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use middle::trans::base::{trans_enum_variant,push_ctxt};
-use middle::trans::base::{trans_fn, decl_internal_cdecl_fn};
+use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::datum;
 use middle::trans::machine;
 use middle::trans::meth;
-use middle::trans::type_of::type_of_fn_from_ty;
 use middle::trans::type_of;
 use middle::trans::type_use;
 use middle::trans::intrinsic;
@@ -177,7 +176,14 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
             ty::subst_tps(ccx.tcx, substs, None, llitem_ty)
         }
     };
-    let llfty = type_of_fn_from_ty(ccx, mono_ty);
+
+    let f = match ty::get(mono_ty).sty {
+        ty::ty_bare_fn(ref f) => {
+            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            f
+        }
+        _ => fail!("expected bare rust fn or an intrinsic")
+    };
 
     ccx.stats.n_monos += 1;
 
@@ -200,7 +206,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
     debug!("monomorphize_fn mangled to %s", s);
 
     let mk_lldecl = || {
-        let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, llfty);
+        let lldecl = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
         ccx.monomorphized.insert(hash_id, lldecl);
         lldecl
     };
