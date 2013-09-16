@@ -622,7 +622,6 @@ fn file_test_io_seek_shakedown() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_stat_is_correct_on_is_file() {
     do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_stat_correct_on_is_file.txt");
@@ -641,7 +640,6 @@ fn file_test_stat_is_correct_on_is_file() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_stat_is_correct_on_is_dir() {
     do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_stat_correct_on_is_dir");
@@ -656,7 +654,6 @@ fn file_test_stat_is_correct_on_is_dir() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
     do run_in_mt_newsched_task {
         let dir = &Path("./tmp/fileinfo_false_on_dir");
@@ -667,7 +664,6 @@ fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8810
 fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
     do run_in_mt_newsched_task {
         let file = &Path("./tmp/fileinfo_check_exists_b_and_a.txt");
