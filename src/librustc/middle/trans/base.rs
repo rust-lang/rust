@@ -2488,7 +2488,8 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
             let val = match item {
                 ast_map::node_item(i, pth) => {
 
-                    let my_path = vec::append((*pth).clone(), [path_name(i.ident)]);
+                    let elt = path_pretty_name(i.ident, id as u64);
+                    let my_path = vec::append_one((*pth).clone(), elt);
                     let ty = ty::node_id_to_type(ccx.tcx, i.id);
                     let sym = exported_name(ccx, my_path, ty, i.attrs);
 
