@@ -47,8 +47,7 @@ concurrency at this writing:
 
 * [`std::task`] - All code relating to tasks and task scheduling,
 * [`std::comm`] - The message passing interface,
-* [`std::pipes`] - The underlying messaging infrastructure,
-* [`extra::comm`] - Additional messaging types based on `std::pipes`,
+* [`extra::comm`] - Additional messaging types based on `std::comm`,
 * [`extra::sync`] - More exotic synchronization tools, including locks,
 * [`extra::arc`] - The Arc (atomically reference counted) type,
   for safely sharing immutable data,
@@ -56,7 +55,6 @@ concurrency at this writing:
 
 [`std::task`]: std/task.html
 [`std::comm`]: std/comm.html
-[`std::pipes`]: std/pipes.html
 [`extra::comm`]: extra/comm.html
 [`extra::sync`]: extra/sync.html
 [`extra::arc`]: extra/arc.html
@@ -125,7 +123,7 @@ receiving messages. Pipes are low-level communication building-blocks and so
 come in a variety of forms, each one appropriate for a different use case. In
 what follows, we cover the most commonly used varieties.
 
-The simplest way to create a pipe is to use the `pipes::stream`
+The simplest way to create a pipe is to use the `comm::stream`
 function to create a `(Port, Chan)` pair. In Rust parlance, a *channel*
 is a sending endpoint of a pipe, and a *port* is the receiving
 endpoint. Consider the following example of calculating two results
