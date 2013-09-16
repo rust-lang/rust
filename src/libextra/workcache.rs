@@ -496,16 +496,23 @@ fn test() {
     use std::io::WriterUtil;
     use std::{os, run};
 
-    let pth = Path("foo.c");
+    // Create a path to a new file 'filename' in the directory in which
+    // this test is running.
+    fn make_path(filename: ~str) -> Path {
+        let pth = os::self_exe_path().expect("workcache::test failed").pop().push(filename);
+        if os::path_exists(&pth) {
+            os::remove_file(&pth);
+        }
+        return pth;
+    }
+
+    let pth = make_path(~"foo.c");
     {
         let r = io::file_writer(&pth, [io::Create]);
         r.unwrap().write_str("int main() { return 0; }");
     }
 
-    let db_path = os::self_exe_path().expect("workcache::test failed").pop().push("db.json");
-    if os::path_exists(&db_path) {
-        os::remove_file(&db_path);
-    }
+    let db_path = make_path(~"db.json");
 
     let cx = Context::new(RWArc::new(Database::new(db_path)),
                           RWArc::new(Logger::new()),
@@ -514,11 +521,12 @@ fn test() {
     let s = do cx.with_prep("test1") |prep| {
 
         let subcx = cx.clone();
+        let pth = pth.clone();
 
         prep.declare_input("file", pth.to_str(), digest_file(&pth));
         do prep.exec |_exe| {
-            let out = Path("foo.o");
-            run::process_status("gcc", [~"foo.c", ~"-o", out.to_str()]);
+            let out = make_path(~"foo.o");
+            run::process_status("gcc", [pth.to_str(), ~"-o", out.to_str()]);
 
             let _proof_of_concept = subcx.prep("subfn");
             // Could run sub-rules inside here.
@@ -526,5 +534,6 @@ fn test() {
             out.to_str()
         }
     };
+
     io::println(s);
 }
