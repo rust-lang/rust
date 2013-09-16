@@ -17,6 +17,7 @@ use rt::uv::uvll;
 use rt::uv::uvll::*;
 use super::super::io::support::PathLike;
 use cast::transmute;
+use libc;
 use libc::{c_int};
 use option::{None, Some, Option};
 
@@ -28,14 +29,6 @@ pub struct RequestData {
 }
 
 impl FsRequest {
-    pub fn new_REFACTOR_ME(cb: Option<FsCallback>) -> FsRequest {
-        let fs_req = unsafe { malloc_req(UV_FS) };
-        assert!(fs_req.is_not_null());
-        let fs_req: FsRequest = NativeHandle::from_native_handle(fs_req);
-        fs_req.install_req_data(cb);
-        fs_req
-    }
-
     pub fn new() -> FsRequest {
         let fs_req = unsafe { malloc_req(UV_FS) };
         assert!(fs_req.is_not_null());
@@ -180,6 +173,17 @@ impl FsRequest {
         });
     }
 
+    pub fn readdir<P: PathLike>(self, loop_: &Loop, path: &P,
+                                flags: c_int, cb: FsCallback) {
+        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        path.path_as_str(|p| {
+            p.to_c_str().with_ref(|p| unsafe {
+            uvll::fs_readdir(loop_.native_handle(),
+                          self.native_handle(), p, flags, complete_cb_ptr)
+            })
+        });
+    }
+
     // accessors/utility funcs
     fn sync_cleanup(self, result: c_int)
           -> Result<c_int, UvError> {
@@ -233,6 +237,36 @@ impl FsRequest {
         let stat = uv_stat_t::new();
         unsafe { uvll::populate_stat(self.native_handle(), &stat); }
         stat
+    }
+
+    pub fn get_ptr(&self) -> *libc::c_void {
+        unsafe {
+            uvll::get_ptr_from_fs_req(self.native_handle())
+        }
+    }
+
+    pub fn get_paths(&mut self) -> ~[~str] {
+        use str;
+        let ptr = self.get_ptr();
+        match self.get_result() {
+            n if (n <= 0) => {
+                ~[]
+            },
+            n => {
+                let n_len = n as uint;
+                // we pass in the len that uv tells us is there
+                // for the entries and we don't continue past that..
+                // it appears that sometimes the multistring isn't
+                // correctly delimited and we stray into garbage memory?
+                // in any case, passing Some(n_len) fixes it and ensures
+                // good results
+                let raw_path_strs = unsafe {
+                    str::raw::from_c_multistring(ptr as *libc::c_char, Some(n_len)) };
+                let raw_len = raw_path_strs.len();
+                assert_eq!(raw_len, n_len);
+                raw_path_strs
+            }
+        }
     }
 
     fn cleanup_and_delete(self) {
