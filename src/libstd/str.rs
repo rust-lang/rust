@@ -22,6 +22,7 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
+use num::Times;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};
@@ -938,6 +939,7 @@ static TAG_CONT_U8: u8 = 128u8;
 
 /// Unsafe operations
 pub mod raw {
+    use option::{Option, Some};
     use cast;
     use libc;
     use ptr;
@@ -1092,20 +1094,29 @@ pub mod raw {
     }
 
     /// Parses a C "multistring", eg windows env values or
-    /// the req->ptr result in a uv_fs_readdir() call
+    /// the req->ptr result in a uv_fs_readdir() call.
+    /// Optionally, a `count` can be passed in, limiting the
+    /// parsing to only being done `count`-times.
     #[inline]
-    pub unsafe fn from_c_multistring(c: *libc::c_char) -> ~[~str] {
+    pub unsafe fn from_c_multistring(buf: *libc::c_char, count: Option<uint>) -> ~[~str] {
         #[fixed_stack_segment]; #[inline(never)];
 
-        let mut curr_ptr: uint = c as uint;
+        let mut curr_ptr: uint = buf as uint;
         let mut result = ~[];
-        while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
+        let mut ctr = 0;
+        let (limited_count, limit) = match count {
+            Some(limit) => (true, limit),
+            None => (false, 0)
+        };
+        while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char
+             && ((limited_count && ctr < limit) || !limited_count)) {
             let env_pair = from_c_str(
                 curr_ptr as *libc::c_char);
             result.push(env_pair);
             curr_ptr +=
                 libc::strlen(curr_ptr as *libc::c_char) as uint
                 + 1;
+            ctr += 1;
         }
         result
     }
@@ -1127,10 +1138,11 @@ pub mod raw {
 
     #[test]
     fn test_str_multistring_parsing() {
+        use option::None;
         unsafe {
             let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
             let ptr = vec::raw::to_ptr(input);
-            let mut result = from_c_multistring(ptr as *libc::c_char);
+            let mut result = from_c_multistring(ptr as *libc::c_char, None);
             assert!(result.len() == 2);
             let mut ctr = 0;
             for x in result.iter() {
