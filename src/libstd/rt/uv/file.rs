@@ -333,7 +333,6 @@ mod test {
                S_IWUSR, S_IRUSR};
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8814
     fn file_test_full_simple() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
@@ -409,7 +408,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME #8814
     fn file_test_full_simple_sync() {
         do run_in_bare_thread {
             // setup
