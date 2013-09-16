@@ -825,7 +825,8 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t)
     };
 }
 
-pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef])
+pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
+              attributes: &[(uint, lib::llvm::Attribute)])
            -> (ValueRef, @mut Block) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable {
@@ -865,7 +866,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef])
                 debug!("arg: %x", ::std::cast::transmute(llarg));
             }
         }
-        let llresult = Call(bcx, llfn, llargs);
+        let llresult = Call(bcx, llfn, llargs, attributes);
         return (llresult, bcx);
     }
 }
@@ -976,7 +977,7 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // Because we may have unwound across a stack boundary, we must call into
     // the runtime to figure out which stack segment we are on and place the
     // stack limit back into the TLS.
-    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, []);
+    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, [], []);
 
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
@@ -1071,7 +1072,7 @@ pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
     let V_trace_str = PointerCast(bcx, V_trace_str, Type::i8p());
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_trace_str, V_filename, C_int(ccx, V_line)];
-    Call(bcx, ccx.upcalls.trace, args);
+    Call(bcx, ccx.upcalls.trace, args, []);
 }
 
 pub fn ignore_lhs(_bcx: @mut Block, local: &ast::Local) -> bool {
@@ -1465,7 +1466,7 @@ pub fn call_memcpy(cx: @mut Block, dst: ValueRef, src: ValueRef, n_bytes: ValueR
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(align as i32);
     let volatile = C_i1(false);
-    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile]);
+    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
 }
 
 pub fn memcpy_ty(bcx: @mut Block, dst: ValueRef, src: ValueRef, t: ty::t) {
@@ -1510,7 +1511,7 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let size = machine::llsize_of(ccx, ty);
     let align = C_i32(llalign_of_min(ccx, ty) as i32);
     let volatile = C_i1(false);
-    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
+    b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
 }
 
 pub fn alloc_ty(bcx: @mut Block, t: ty::t, name: &str) -> ValueRef {
@@ -2353,7 +2354,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             llvm::LLVMGetParam(llfdecl, env_arg as c_uint)
         };
         let args = ~[llenvarg];
-        Call(bcx, main_llfn, args);
+        Call(bcx, main_llfn, args, []);
 
         finish_fn(fcx, bcx);
         return llfdecl;
@@ -2808,7 +2809,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'stati
 
 pub fn trap(bcx: @mut Block) {
     match bcx.ccx().intrinsics.find_equiv(& &"llvm.trap") {
-      Some(&x) => { Call(bcx, x, []); },
+      Some(&x) => { Call(bcx, x, [], []); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")
     }
 }
