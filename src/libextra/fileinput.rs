@@ -433,7 +433,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_make_path_option_vec() {
         let strs = [~"some/path",
                     ~"some/other/path"];
@@ -448,7 +447,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_fileinput_read_byte() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -479,7 +477,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_fileinput_read() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -500,7 +497,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec() {
         let mut all_lines = ~[];
         let filenames = make_path_option_vec(vec::from_fn(
@@ -524,7 +520,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec_state() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -547,7 +542,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_empty_files() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -572,7 +566,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_no_trailing_newline() {
         let f1 =
             Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
@@ -598,7 +591,6 @@ mod test {
 
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_next_file() {
         let filenames = make_path_option_vec(vec::from_fn(
             3,
@@ -630,7 +622,6 @@ mod test {
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))] // FIXME(#8810): rt::io::file and windows don't agree
     fn test_input_vec_missing_file() {
         do input_vec(make_path_option_vec([~"this/file/doesnt/exist"], true)) |line| {
             println(line);
