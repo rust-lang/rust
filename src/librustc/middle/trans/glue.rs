@@ -332,7 +332,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
         }
     };
 
-    Call(bcx, llfn, [C_null(Type::nil().ptr_to()), llrawptr]);
+    Call(bcx, llfn, [C_null(Type::nil().ptr_to()), llrawptr], []);
 }
 
 // See [Note-arg-mode]
@@ -424,7 +424,7 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
         let self_arg = PointerCast(bcx, v0, params[0]);
         let args = ~[self_arg];
 
-        Call(bcx, dtor_addr, args);
+        Call(bcx, dtor_addr, args, []);
 
         // Drop the fields
         let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
@@ -459,7 +459,7 @@ pub fn trans_struct_drop(mut bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: 
     let self_arg = PointerCast(bcx, v0, params[0]);
     let args = ~[self_arg];
 
-    Call(bcx, dtor_addr, args);
+    Call(bcx, dtor_addr, args, []);
 
     // Drop the fields
     let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
