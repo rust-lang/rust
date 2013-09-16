@@ -102,15 +102,15 @@ else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
   JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
-  LIBUV_OSTYPE_$(1)_$(2) := unix/freebsd
+  LIBUV_OSTYPE_$(1)_$(2) := freebsd
   LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
   JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-  LIBUV_OSTYPE_$(1)_$(2) := unix/android
+  LIBUV_OSTYPE_$(1)_$(2) := android
   LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
   JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 else
-  LIBUV_OSTYPE_$(1)_$(2) := unix/linux
+  LIBUV_OSTYPE_$(1)_$(2) := linux
   LIBUV_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/libuv/libuv.a
   JEMALLOC_LIB_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/jemalloc/lib/libjemalloc_pic.a
 endif
@@ -178,6 +178,7 @@ export PYTHONPATH := $(PYTHONPATH):$$(S)src/gyp/pylib
 $$(LIBUV_MAKEFILE_$(1)_$(2)): $$(LIBUV_DEPS)
 	(cd $(S)src/libuv/ && \
 	 $$(CFG_PYTHON) ./gyp_uv -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) -D ninja \
+	   -DOS=$$(LIBUV_OSTYPE_$(1)_$(2)) \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
 
 # XXX: Shouldn't need platform-specific conditions here
