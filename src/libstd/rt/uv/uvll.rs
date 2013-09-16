@@ -237,6 +237,7 @@ pub enum uv_handle_type {
     UV_HANDLE_TYPE_MAX
 }
 
+#[cfg(unix)]
 #[deriving(Eq)]
 pub enum uv_req_type {
     UV_UNKNOWN_REQ,
@@ -248,6 +249,31 @@ pub enum uv_req_type {
     UV_FS,
     UV_WORK,
     UV_GETADDRINFO,
+    UV_REQ_TYPE_MAX
+}
+
+// uv_req_type may have additional fields defined by UV_REQ_TYPE_PRIVATE.
+// See UV_REQ_TYPE_PRIVATE at libuv/include/uv-win.h
+#[cfg(windows)]
+#[deriving(Eq)]
+pub enum uv_req_type {
+    UV_UNKNOWN_REQ,
+    UV_REQ,
+    UV_CONNECT,
+    UV_WRITE,
+    UV_SHUTDOWN,
+    UV_UDP_SEND,
+    UV_FS,
+    UV_WORK,
+    UV_GETADDRINFO,
+    UV_ACCEPT,
+    UV_FS_EVENT_REQ,
+    UV_POLL_REQ,
+    UV_PROCESS_EXIT,
+    UV_READ,
+    UV_UDP_RECV,
+    UV_WAKEUP,
+    UV_SIGNAL_REQ,
     UV_REQ_TYPE_MAX
 }
 
@@ -298,10 +324,8 @@ fn handle_sanity_check() {
 }
 
 #[test]
-#[ignore(cfg(windows))] // FIXME #8817
-#[fixed_stack_segment]
-#[inline(never)]
 fn request_sanity_check() {
+    #[fixed_stack_segment]; #[inline(never)];
     unsafe {
         assert_eq!(UV_REQ_TYPE_MAX as uint, rust_uv_req_type_max());
     }
