@@ -926,7 +926,8 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
                               llfn,
                               llargs,
                               normal_bcx.llbb,
-                              get_landing_pad(bcx));
+                              get_landing_pad(bcx),
+                              attributes);
         return (llresult, normal_bcx);
     } else {
         unsafe {

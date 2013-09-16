@@ -154,28 +154,23 @@ impl Builder {
                   llfn: ValueRef,
                   args: &[ValueRef],
                   then: BasicBlockRef,
-                  catch: BasicBlockRef)
+                  catch: BasicBlockRef,
+                  attributes: &[(uint, lib::llvm::Attribute)])
                   -> ValueRef {
         self.count_insn("invoke");
         unsafe {
-            llvm::LLVMBuildInvoke(self.llbuilder,
-                                  llfn,
-                                  vec::raw::to_ptr(args),
-                                  args.len() as c_uint,
-                                  then,
-                                  catch,
-                                  noname())
+            let v = llvm::LLVMBuildInvoke(self.llbuilder,
+                                          llfn,
+                                          vec::raw::to_ptr(args),
+                                          args.len() as c_uint,
+                                          then,
+                                          catch,
+                                          noname());
+            for &(idx, attr) in attributes.iter() {
+                llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
+            }
+            v
         }
-    }
-
-    pub fn fast_invoke(&self,
-                       llfn: ValueRef,
-                       args: &[ValueRef],
-                       then: BasicBlockRef,
-                       catch: BasicBlockRef) {
-        self.count_insn("fastinvoke");
-        let v = self.invoke(llfn, args, then, catch);
-        lib::llvm::SetInstructionCallConv(v, lib::llvm::FastCallConv);
     }
 
     pub fn unreachable(&self) {
