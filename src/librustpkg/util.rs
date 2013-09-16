@@ -33,7 +33,7 @@ use workcache_support::{digest_file_with_date, digest_only_date};
 // you could update the match in rustpkg.rc but forget to update this list. I think
 // that should be fixed.
 static COMMANDS: &'static [&'static str] =
-    &["build", "clean", "do", "info", "install", "list", "prefer", "test", "uninstall",
+    &["build", "clean", "do", "info", "init", "install", "list", "prefer", "test", "uninstall",
       "unprefer"];
 
 
