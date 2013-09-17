@@ -127,7 +127,7 @@ struct Bored {
 }
 
 impl Drop for Bored {
-  fn drop(&self) { }
+  fn drop(&mut self) { }
 }
 
 /**

@@ -16,7 +16,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn drop(&self) { fail!("wombat") }
+    fn drop(&mut self) { fail!("wombat") }
 }
 
 fn r(i: int) -> r { r { i: i } }

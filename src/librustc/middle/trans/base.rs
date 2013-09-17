@@ -109,7 +109,7 @@ pub struct _InsnCtxt { _x: () }
 
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
-    fn drop(&self) {
+    fn drop(&mut self) {
         do local_data::modify(task_local_insn_key) |c| {
             do c.map_move |ctx| {
                 let mut ctx = (*ctx).clone();
@@ -159,7 +159,7 @@ impl<'self> StatRecorder<'self> {
 
 #[unsafe_destructor]
 impl<'self> Drop for StatRecorder<'self> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;

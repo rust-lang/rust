@@ -14,7 +14,7 @@
 
 #[lang="drop"]
 pub trait Drop {
-    fn drop(&self);
+    fn drop(&mut self);
 }
 
 #[lang="add"]
@@ -95,7 +95,7 @@ mod bench {
     }
 
     impl Drop for HasDtor {
-        fn drop(&self) {
+        fn drop(&mut self) {
         }
     }
 

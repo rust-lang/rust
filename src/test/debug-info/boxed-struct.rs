@@ -42,7 +42,7 @@ struct StructWithDestructor {
 }
 
 impl Drop for StructWithDestructor {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn main() {

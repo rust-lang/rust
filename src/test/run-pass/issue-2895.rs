@@ -19,7 +19,7 @@ struct Kitty {
 }
 
 impl Drop for Kitty {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 #[cfg(target_arch = "x86_64")]

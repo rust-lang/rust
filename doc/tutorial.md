@@ -1898,7 +1898,7 @@ struct TimeBomb {
 }
 
 impl Drop for TimeBomb {
-    fn drop(&self) {
+    fn drop(&mut self) {
         for _ in range(0, self.explosivity) {
             println("blam!");
         }

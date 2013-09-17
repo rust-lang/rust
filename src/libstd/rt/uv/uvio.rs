@@ -187,7 +187,7 @@ impl UvEventLoop {
 }
 
 impl Drop for UvEventLoop {
-    fn drop(&self) {
+    fn drop(&mut self) {
         // XXX: Need mutable finalizer
         let this = unsafe {
             transmute::<&UvEventLoop, &mut UvEventLoop>(self)
@@ -351,7 +351,7 @@ impl RemoteCallback for UvRemoteCallback {
 }
 
 impl Drop for UvRemoteCallback {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             let this: &mut UvRemoteCallback = cast::transmute_mut(self);
             do this.exit_flag.with |should_exit| {
@@ -647,7 +647,7 @@ impl UvTcpListener {
 }
 
 impl Drop for UvTcpListener {
-    fn drop(&self) {
+    fn drop(&mut self) {
         // XXX need mutable finalizer
         let self_ = unsafe { transmute::<&UvTcpListener, &mut UvTcpListener>(self) };
         do self_.home_for_io_with_sched |self_, scheduler| {
@@ -762,7 +762,7 @@ impl HomingIO for UvTcpStream {
 }
 
 impl Drop for UvTcpStream {
-    fn drop(&self) {
+    fn drop(&mut self) {
         // XXX need mutable finalizer
         let this = unsafe { transmute::<&UvTcpStream, &mut UvTcpStream>(self) };
         do this.home_for_io_with_sched |self_, scheduler| {
@@ -921,7 +921,7 @@ impl HomingIO for UvUdpSocket {
 }
 
 impl Drop for UvUdpSocket {
-    fn drop(&self) {
+    fn drop(&mut self) {
         // XXX need mutable finalizer
         let this = unsafe { transmute::<&UvUdpSocket, &mut UvUdpSocket>(self) };
         do this.home_for_io_with_sched |self_, scheduler| {
@@ -1139,7 +1139,7 @@ impl UvTimer {
 }
 
 impl Drop for UvTimer {
-    fn drop(&self) {
+    fn drop(&mut self) {
         let self_ = unsafe { transmute::<&UvTimer, &mut UvTimer>(self) };
         do self_.home_for_io_with_sched |self_, scheduler| {
             rtdebug!("closing UvTimer");
@@ -1253,7 +1253,7 @@ impl UvFileStream {
 }
 
 impl Drop for UvFileStream {
-    fn drop(&self) {
+    fn drop(&mut self) {
         let self_ = unsafe { transmute::<&UvFileStream, &mut UvFileStream>(self) };
         if self.close_on_drop {
             do self_.home_for_io_with_sched |self_, scheduler| {

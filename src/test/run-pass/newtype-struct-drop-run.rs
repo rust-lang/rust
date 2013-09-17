@@ -14,7 +14,7 @@ struct Foo(@mut int);
 
 #[unsafe_destructor]
 impl Drop for Foo {
-    fn drop(&self) {
+    fn drop(&mut self) {
         ***self = 23;
     }
 }

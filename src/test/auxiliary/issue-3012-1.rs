@@ -19,7 +19,7 @@ pub mod socket {
     }
 
     impl Drop for socket_handle {
-        fn drop(&self) {
+        fn drop(&mut self) {
             /* c::close(self.sockfd); */
         }
     }

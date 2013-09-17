@@ -1481,7 +1481,7 @@ impl MemoryMap {
 
 #[cfg(unix)]
 impl Drop for MemoryMap {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         unsafe {
@@ -1607,7 +1607,7 @@ impl MemoryMap {
 
 #[cfg(windows)]
 impl Drop for MemoryMap {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         use libc::types::os::arch::extra::{LPCVOID, HANDLE};
