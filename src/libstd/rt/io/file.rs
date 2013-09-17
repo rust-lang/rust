@@ -603,7 +603,7 @@ trait DirectoryInfo : FileSystemInfo {
             Some(_) => {
                 io_error::cond.raise(IoError {
                     kind: PathAlreadyExists,
-                    desc: "path already exists",
+                    desc: "Path already exists",
                     detail:
                         Some(fmt!("%s already exists; can't mkdir it", self.get_path().to_str()))
                 })
@@ -642,7 +642,7 @@ trait DirectoryInfo : FileSystemInfo {
             None =>
                 io_error::cond.raise(IoError {
                     kind: PathDoesntExist,
-                    desc: "path doesn't exist",
+                    desc: "Path doesn't exist",
                     detail: Some(fmt!("%s doesn't exist; can't rmdir it", self.get_path().to_str()))
                 })
         }
