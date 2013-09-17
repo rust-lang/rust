@@ -116,7 +116,7 @@ return type, such as `while` loops or assignments (`a = b`).
 
 use back::abi;
 use back::link;
-use lib::llvm::{ValueRef, llvm, SetLinkage, ExternalLinkage, False};
+use lib::llvm::{ValueRef, llvm, SetLinkage, False};
 use lib;
 use metadata::csearch;
 use middle::trans::_match;
@@ -135,6 +135,7 @@ use middle::trans::datum::*;
 use middle::trans::debuginfo;
 use middle::trans::machine;
 use middle::trans::meth;
+use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
@@ -987,6 +988,15 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
             ast::DefStatic(did, _) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
+                fn get_did(ccx: @mut CrateContext, did: ast::DefId)
+                    -> ast::DefId {
+                    if did.crate != ast::LOCAL_CRATE {
+                        inline::maybe_instantiate_inline(ccx, did)
+                    } else {
+                        did
+                    }
+                }
+
                 fn get_val(bcx: @mut Block, did: ast::DefId, const_ty: ty::t)
                            -> ValueRef {
                     // For external constants, we don't inline.
@@ -1018,7 +1028,6 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
                                                     llty.to_ref(),
                                                     buf)
                             };
-                            SetLinkage(llval, ExternalLinkage);
                             let extern_const_values = &mut bcx.ccx().extern_const_values;
                             extern_const_values.insert(did, llval);
                             llval
@@ -1026,6 +1035,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
                     }
                 }
 
+                let did = get_did(bcx.ccx(), did);
                 let val = get_val(bcx, did, const_ty);
                 DatumBlock {
                     bcx: bcx,
