@@ -189,6 +189,7 @@ pub trait CtxMethods {
     fn test(&self);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
     fn unprefer(&self, _id: &str, _vers: Option<~str>);
+    fn init(&self);
 }
 
 impl CtxMethods for BuildContext {
@@ -318,6 +319,13 @@ impl CtxMethods for BuildContext {
             }
             "test" => {
                 self.test();
+            }
+            "init" => {
+                if args.len() != 0 {
+                    return usage::init();
+                } else {
+                    self.init();
+                }
             }
             "uninstall" => {
                 if args.len() < 1 {
@@ -540,6 +548,13 @@ impl CtxMethods for BuildContext {
         fail!("test not yet implemented");
     }
 
+    fn init(&self) {
+        os::mkdir_recursive(&Path("src"),   U_RWX);
+        os::mkdir_recursive(&Path("lib"),   U_RWX);
+        os::mkdir_recursive(&Path("bin"),   U_RWX);
+        os::mkdir_recursive(&Path("build"), U_RWX);
+    }
+
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
         fail!("uninstall not yet implemented");
     }
@@ -688,6 +703,7 @@ pub fn main_args(args: &[~str]) {
                     ~"list"    => usage::list(),
                     ~"prefer" => usage::prefer(),
                     ~"test" => usage::test(),
+                    ~"init" => usage::init(),
                     ~"uninstall" => usage::uninstall(),
                     ~"unprefer" => usage::unprefer(),
                     _ => usage::general()

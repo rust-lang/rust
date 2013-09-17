@@ -148,3 +148,10 @@ and exit code will be redirected.
 Options:
     -c, --cfg      Pass a cfg flag to the package script");
 }
+
+pub fn init() {
+    io::println("rustpkg init name
+
+This makes a new workspace for working on a project named name.
+");
+}
