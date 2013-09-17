@@ -101,7 +101,17 @@ pub fn next_power_of_two(n: uint) -> uint {
     let mut tmp: uint = n - 1u;
     let mut shift: uint = 1u;
     while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }
-    return tmp + 1u;
+    tmp + 1u
+}
+
+/// Returns the smallest power of 2 greater than or equal to `n`
+#[inline]
+pub fn next_power_of_two_opt(n: uint) -> Option<uint> {
+    let halfbits: uint = sys::size_of::<uint>() * 4u;
+    let mut tmp: uint = n - 1u;
+    let mut shift: uint = 1u;
+    while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }
+    tmp.checked_add(&1)
 }
 
 #[cfg(target_word_size = "32")]

@@ -1245,6 +1245,7 @@ pub trait OwnedVector<T> {
 
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
+    fn reserve_additional(&mut self, n: uint);
     fn capacity(&self) -> uint;
     fn shrink_to_fit(&mut self);
 
@@ -1300,6 +1301,11 @@ impl<T> OwnedVector<T> for ~[T] {
      * # Arguments
      *
      * * n - The number of elements to reserve space for
+     *
+     * # Failure
+     *
+     * This method always succeeds in reserving space for `n` elements, or it does
+     * not return.
      */
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
@@ -1340,7 +1346,26 @@ impl<T> OwnedVector<T> for ~[T] {
      */
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two(n));
+        self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n));
+    }
+
+    /**
+     * Reserves capacity for at least `n` additional elements in the given vector.
+     *
+     * # Failure
+     *
+     * Fails if the new required capacity overflows uint.
+     *
+     * May also fail if `reserve` fails.
+     */
+    #[inline]
+    fn reserve_additional(&mut self, n: uint) {
+        if self.capacity() - self.len() < n {
+            match self.len().checked_add(&n) {
+                None => fail!("vec::reserve_additional: `uint` overflow"),
+                Some(new_cap) => self.reserve_at_least(new_cap)
+            }
+        }
     }
 
     /// Returns the number of elements the vector can hold without reallocating.
@@ -1376,8 +1401,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
                 let fill = (**repr).data.fill;
                 if (**repr).data.alloc <= fill {
-                    let new_len = self.len() + 1;
-                    self.reserve_at_least(new_len);
+                    self.reserve_additional(1);
                 }
 
                 push_fast(self, t);
@@ -1385,8 +1409,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let repr: **Vec<()> = cast::transmute(&mut *self);
                 let fill = (**repr).fill;
                 if (**repr).alloc <= fill {
-                    let new_len = self.len() + 1;
-                    self.reserve_at_least(new_len);
+                    self.reserve_additional(1);
                 }
 
                 push_fast(self, t);
@@ -1432,7 +1455,7 @@ impl<T> OwnedVector<T> for ~[T] {
         let self_len = self.len();
         let rhs_len = rhs.len();
         let new_len = self_len + rhs_len;
-        self.reserve_at_least(new_len);
+        self.reserve_additional(rhs.len());
         unsafe { // Note: infallible.
             let self_p = vec::raw::to_mut_ptr(*self);
             let rhs_p = vec::raw::to_ptr(rhs);
@@ -2220,6 +2243,23 @@ pub mod bytes {
     pub fn copy_memory(dst: &mut [u8], src: &[u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
+    }
+
+    /**
+     * Allocate space in `dst` and append the data in `src`.
+     */
+    #[inline]
+    pub fn push_bytes(dst: &mut ~[u8], src: &[u8]) {
+        let old_len = dst.len();
+        dst.reserve_additional(src.len());
+        unsafe {
+            do dst.as_mut_buf |p_dst, len_dst| {
+                do src.as_imm_buf |p_src, len_src| {
+                    ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
+                }
+            }
+            vec::raw::set_len(dst, old_len + src.len());
+        }
     }
 }
 
@@ -3617,6 +3657,14 @@ mod tests {
         v.reserve(-1);
         v.push(1);
         v.push(2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_overflow_does_not_cause_segfault_managed() {
+        let mut v = ~[@1];
+        v.reserve(-1);
+        v.push(@2);
     }
 
     #[test]
