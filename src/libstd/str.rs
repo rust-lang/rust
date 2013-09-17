@@ -22,7 +22,6 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use num::Times;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};
