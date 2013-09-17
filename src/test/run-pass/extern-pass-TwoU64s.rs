@@ -14,6 +14,7 @@
 // xfail-fast This works standalone on windows but not with check-fast.
 // possibly because there is another test that uses this extern fn but gives it
 // a different signature
+// xfail-fast #9205
 
 #[deriving(Eq)]
 struct TwoU64s {
