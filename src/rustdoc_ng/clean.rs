@@ -1043,27 +1043,3 @@ fn resolve_type(t: &Type) -> Type {
         ResolvedPath {path: path.clone(), typarams: tpbs.clone(), id: def_id.node}
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::NameValue;
-
-    #[test]
-    fn test_doc_collapsing() {
-        assert_eq!(collapse_docs(~"// Foo\n//Bar\n // Baz\n"), ~"Foo\nBar\nBaz");
-        assert_eq!(collapse_docs(~"* Foo\n *  Bar\n *Baz\n"), ~"Foo\n Bar\nBaz");
-        assert_eq!(collapse_docs(~"* Short desc\n *\n * Bar\n *Baz\n"), ~"Short desc\n\nBar\nBaz");
-        assert_eq!(collapse_docs(~" * Foo"), ~"Foo");
-        assert_eq!(collapse_docs(~"\n *\n *\n * Foo"), ~"Foo");
-    }
-
-    fn collapse_docs(input: ~str) -> ~str {
-        let attrs = ~[NameValue(~"doc", input)];
-        let attrs_clean = super::collapse_docs(attrs);
-
-        match attrs_clean[0] {
-            NameValue(~"doc", s) => s,
-            _ => (fail!("dude where's my doc?"))
-        }
-    }
-}

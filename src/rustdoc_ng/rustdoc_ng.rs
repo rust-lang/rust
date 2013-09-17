@@ -9,25 +9,41 @@
 // except according to those terms.
 
 #[link(name = "rustdoc_ng",
-       vers = "0.1.0",
-       uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6")];
+       vers = "0.8-pre",
+       uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6",
+       url = "https://github.com/mozilla/rust/tree/master/src/rustdoc_ng")];
+
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
-#[crate_type = "bin"];
+#[crate_type = "lib"];
 
+extern mod syntax;
+extern mod rustc;
 extern mod extra;
-extern mod rustdoc_ng;
-
-use rustdoc_ng::*;
-use std::cell::Cell;
 
 use extra::serialize::Encodable;
+use std::cell::Cell;
 
-fn main() {
+pub mod core;
+pub mod doctree;
+pub mod clean;
+pub mod visit_ast;
+pub mod fold;
+pub mod plugins;
+pub mod passes;
+
+pub static SCHEMA_VERSION: &'static str = "0.8.0";
+
+local_data_key!(pub ctxtkey: @core::DocContext)
+
+pub fn main() {
+    main_args(std::os::args());
+}
+
+pub fn main_args(args: &[~str]) {
     use extra::getopts::*;
     use extra::getopts::groups::*;
 
-    let args = std::os::args();
     let opts = ~[
         optmulti("L", "library-path", "directory to add to crate search path", "DIR"),
         optmulti("p", "plugin", "plugin to load and run", "NAME"),
@@ -62,7 +78,10 @@ fn main() {
 
     let cr = Cell::new(Path(matches.free[0]));
 
-    let crate = std::task::try(|| {let cr = cr.take(); core::run_core(libs.take(), &cr)}).unwrap();
+    let crate = do std::task::try {
+        let cr = cr.take();
+        core::run_core(libs.take(), &cr)
+    }.unwrap();
 
     // { "schema": version, "crate": { parsed crate ... }, "plugins": { output of plugins ... }}
     let mut json = ~extra::treemap::TreeMap::new();
