@@ -401,6 +401,18 @@ condition! {
     pub read_error: super::IoError -> ();
 }
 
+/// Helper for wrapper calls where you want to
+/// ignore any io_errors that might be raised
+pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
+    do io_error::cond.trap(|_| {
+        // just swallow the error.. downstream users
+        // who can make a decision based on a None result
+        // won't care
+    }).inside {
+        cb()
+    }
+}
+
 pub trait Reader {
     /// Read bytes, up to the length of `buf` and place them in `buf`.
     /// Returns the number of bytes read. The number of bytes read my
