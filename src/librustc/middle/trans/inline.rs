@@ -21,6 +21,7 @@ use std::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
+use syntax::attr;
 
 pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
     -> ast::DefId {
@@ -68,7 +69,12 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
             match item.node {
                 ast::item_static(*) => {
                     let g = get_item_val(ccx, item.id);
-                    SetLinkage(g, AvailableExternallyLinkage);
+                    // see the comment in get_item_val() as to why this check is
+                    // performed here.
+                    if !attr::contains_name(item.attrs,
+                                            "address_insignificant") {
+                        SetLinkage(g, AvailableExternallyLinkage);
+                    }
                 }
                 _ => {}
             }

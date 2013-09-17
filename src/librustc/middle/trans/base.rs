@@ -2559,10 +2559,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // LLVM type is not fully determined by the Rust type.
                             let (v, inlineable) = consts::const_expr(ccx, expr);
                             ccx.const_values.insert(id, v);
-                            if !inlineable {
-                                debug!("%s not inlined", sym);
-                                ccx.non_inlineable_statics.insert(id);
-                            }
+                            let mut inlineable = inlineable;
                             exprt = true;
 
                             unsafe {
@@ -2578,8 +2575,30 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     lib::llvm::SetUnnamedAddr(g, true);
                                     lib::llvm::SetLinkage(g,
                                         lib::llvm::InternalLinkage);
+
+                                    // This is a curious case where we must make
+                                    // all of these statics inlineable. If a
+                                    // global is tagged as
+                                    // address_insignificant, then LLVM won't
+                                    // coalesce globals unless they have an
+                                    // internal linkage type. This means that
+                                    // external crates cannot use this global.
+                                    // This is a problem for things like inner
+                                    // statics in generic functions, because the
+                                    // function will be inlined into another
+                                    // crate and then attempt to link to the
+                                    // static in the original crate, only to
+                                    // find that it's not there. On the other
+                                    // side of inlininig, the crates knows to
+                                    // not declare this static as
+                                    // available_externally (because it isn't)
+                                    inlineable = true;
                                 }
 
+                                if !inlineable {
+                                    debug!("%s not inlined", sym);
+                                    ccx.non_inlineable_statics.insert(id);
+                                }
                                 ccx.item_symbols.insert(i.id, sym);
                                 g
                             }
