@@ -96,6 +96,112 @@ pub fn read_u32v_le(dst: &mut[u32], input: &[u8]) {
     }
 }
 
+/// Read the value of a vector of bytes as a u32 value in little-endian format.
+pub fn read_u32_le(input: &[u8]) -> u32 {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_le32;
+    assert!(input.len() == 4);
+    unsafe {
+        let tmp: *i32 = transmute(input.unsafe_ref(0));
+        return to_le32(*tmp) as u32;
+    }
+}
+
+/// Read the value of a vector of bytes as a u32 value in big-endian format.
+pub fn read_u32_be(input: &[u8]) -> u32 {
+    use std::cast::transmute;
+    use std::unstable::intrinsics::to_be32;
+    assert!(input.len() == 4);
+    unsafe {
+        let tmp: *i32 = transmute(input.unsafe_ref(0));
+        return to_be32(*tmp) as u32;
+    }
+}
+
+
+#[cfg(target_arch = "x86")]
+#[cfg(target_arch = "x86_64")]
+#[inline(never)]
+unsafe fn fixed_time_eq_asm(mut lhsp: *u8, mut rhsp: *u8, mut count: uint) -> bool {
+    use std::unstable::intrinsics::uninit;
+
+    let mut result: u8 = 0;
+    let mut tmp: u8 = uninit();
+
+    asm!(
+        "
+            fixed_time_eq_loop:
+
+            mov ($1), $4
+            xor ($2), $4
+            or $4, $0
+
+            inc $1
+            inc $2
+            dec $3
+            jnz fixed_time_eq_loop
+        "
+        : "=&r" (result), "=&r" (lhsp), "=&r" (rhsp), "=&r" (count), "=&r" (tmp) // output
+        : "0" (result), "1" (lhsp), "2" (rhsp), "3" (count), "4" (tmp) // input
+        : "cc" // clobbers
+        : // flags
+    );
+
+    return result == 0;
+}
+
+#[cfg(target_arch = "arm")]
+#[inline(never)]
+unsafe fn fixed_time_eq_asm(mut lhsp: *u8, mut rhsp: *u8, mut count: uint) -> bool {
+    use std::unstable::intrinsics::uninit;
+
+    let mut result: u8 = 0;
+    let mut tmp1: u8 = uninit();
+    let mut tmp2: u8 = uninit();
+
+    asm!(
+        "
+            fixed_time_eq_loop:
+
+            ldrb $4, [$1]
+            ldrb $5, [$2]
+            eor $4, $4, $5
+            orr $0, $0, $4
+
+            add $1, $1, #1
+            add $2, $2, #1
+            subs $3, $3, #1
+            bne fixed_time_eq_loop
+        "
+        // output
+        : "=&r" (result), "=&r" (lhsp), "=&r" (rhsp), "=&r" (count), "=&r" (tmp1), "=&r" (tmp2)
+        : "0" (result), "1" (lhsp), "2" (rhsp), "3" (count), "4" (tmp1), "5" (tmp2) // input
+        : "cc" // clobbers
+        : // flags
+    );
+
+    return result == 0;
+}
+
+/// Compare two vectors using a fixed number of operations. If the two vectors are not of equal
+/// length, the function returns false immediately.
+pub fn fixed_time_eq(lhs: &[u8], rhs: &[u8]) -> bool {
+    if lhs.len() != rhs.len() {
+        return false;
+    }
+    if lhs.len() == 0 {
+        return true;
+    }
+
+    let count = lhs.len();
+
+    unsafe {
+        let lhsp = lhs.unsafe_ref(0);
+        let rhsp = rhs.unsafe_ref(0);
+        return fixed_time_eq_asm(lhsp, rhsp, count);
+    }
+}
+
 
 trait ToBits {
     /// Convert the value in bytes to the number of bits, a tuple where the 1st item is the
@@ -351,7 +457,7 @@ mod test {
     use std::rand::RngUtil;
     use std::vec;
 
-    use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
+    use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple, fixed_time_eq};
     use digest::Digest;
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
@@ -422,5 +528,25 @@ mod test {
     fn test_add_bytes_to_bits_tuple_overflow2() {
         let value: u64 = Bounded::max_value();
         add_bytes_to_bits_tuple::<u64>((value - 1, 0), 0x8000000000000000);
+    }
+
+    #[test]
+    pub fn test_fixed_time_eq() {
+        let a = [0, 1, 2];
+        let b = [0, 1, 2];
+        let c = [0, 1, 9];
+        let d = [9, 1, 2];
+        let e = [2, 1, 0];
+        let f = [2, 2, 2];
+        let g = [0, 0, 0];
+
+        assert!(fixed_time_eq(a, a));
+        assert!(fixed_time_eq(a, b));
+
+        assert!(!fixed_time_eq(a, c));
+        assert!(!fixed_time_eq(a, d));
+        assert!(!fixed_time_eq(a, e));
+        assert!(!fixed_time_eq(a, f));
+        assert!(!fixed_time_eq(a, g));
     }
 }

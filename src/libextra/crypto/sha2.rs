@@ -268,6 +268,8 @@ impl Digest for Sha512 {
     }
 
     fn output_bits(&self) -> uint { 512 }
+
+    fn block_size(&self) -> uint { 128 }
 }
 
 static H512: [u64, ..8] = [
@@ -318,6 +320,8 @@ impl Digest for Sha384 {
     }
 
     fn output_bits(&self) -> uint { 384 }
+
+    fn block_size(&self) -> uint { 128 }
 }
 
 static H384: [u64, ..8] = [
@@ -366,6 +370,8 @@ impl Digest for Sha512Trunc256 {
     }
 
     fn output_bits(&self) -> uint { 256 }
+
+    fn block_size(&self) -> uint { 128 }
 }
 
 static H512_TRUNC_256: [u64, ..8] = [
@@ -414,6 +420,8 @@ impl Digest for Sha512Trunc224 {
     }
 
     fn output_bits(&self) -> uint { 224 }
+
+    fn block_size(&self) -> uint { 128 }
 }
 
 static H512_TRUNC_224: [u64, ..8] = [
@@ -673,6 +681,8 @@ impl Digest for Sha256 {
     }
 
     fn output_bits(&self) -> uint { 256 }
+
+    fn block_size(&self) -> uint { 64 }
 }
 
 static H256: [u32, ..8] = [
@@ -723,6 +733,8 @@ impl Digest for Sha224 {
     }
 
     fn output_bits(&self) -> uint { 224 }
+
+    fn block_size(&self) -> uint { 64 }
 }
 
 static H224: [u32, ..8] = [
