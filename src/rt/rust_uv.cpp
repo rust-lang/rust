@@ -542,6 +542,10 @@ extern "C" int
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
   return req->result;
 }
+extern "C" void*
+rust_uv_get_ptr_from_fs_req(uv_fs_t* req) {
+  return req->ptr;
+}
 extern "C" uv_loop_t*
 rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
   return req->loop;
@@ -550,4 +554,51 @@ rust_uv_get_loop_from_fs_req(uv_fs_t* req) {
 extern "C" uv_loop_t*
 rust_uv_get_loop_from_getaddrinfo_req(uv_getaddrinfo_t* req) {
   return req->loop;
+}
+
+extern "C" int
+rust_uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  return uv_fs_stat(loop, req, path, cb);
+}
+extern "C" int
+rust_uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+  return uv_fs_fstat(loop, req, file, cb);
+}
+
+extern "C" void
+rust_uv_populate_uv_stat(uv_fs_t* req_in, uv_stat_t* stat_out) {
+  stat_out->st_dev = req_in->statbuf.st_dev;
+  stat_out->st_mode = req_in->statbuf.st_mode;
+  stat_out->st_nlink = req_in->statbuf.st_nlink;
+  stat_out->st_uid = req_in->statbuf.st_uid;
+  stat_out->st_gid = req_in->statbuf.st_gid;
+  stat_out->st_rdev = req_in->statbuf.st_rdev;
+  stat_out->st_ino = req_in->statbuf.st_ino;
+  stat_out->st_size = req_in->statbuf.st_size;
+  stat_out->st_blksize = req_in->statbuf.st_blksize;
+  stat_out->st_blocks = req_in->statbuf.st_blocks;
+  stat_out->st_flags = req_in->statbuf.st_flags;
+  stat_out->st_gen = req_in->statbuf.st_gen;
+  stat_out->st_atim.tv_sec = req_in->statbuf.st_atim.tv_sec;
+  stat_out->st_atim.tv_nsec = req_in->statbuf.st_atim.tv_nsec;
+  stat_out->st_mtim.tv_sec = req_in->statbuf.st_mtim.tv_sec;
+  stat_out->st_mtim.tv_nsec = req_in->statbuf.st_mtim.tv_nsec;
+  stat_out->st_ctim.tv_sec = req_in->statbuf.st_ctim.tv_sec;
+  stat_out->st_ctim.tv_nsec = req_in->statbuf.st_ctim.tv_nsec;
+  stat_out->st_birthtim.tv_sec = req_in->statbuf.st_birthtim.tv_sec;
+  stat_out->st_birthtim.tv_nsec = req_in->statbuf.st_birthtim.tv_nsec;
+}
+
+extern "C" int
+rust_uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb) {
+  return uv_fs_mkdir(loop, req, path, mode, cb);
+}
+extern "C" int
+rust_uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  return uv_fs_rmdir(loop, req, path, cb);
+}
+
+extern "C" int
+rust_uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb) {
+  return uv_fs_readdir(loop, req, path, flags, cb);
 }
