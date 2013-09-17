@@ -188,11 +188,7 @@ impl UvEventLoop {
 
 impl Drop for UvEventLoop {
     fn drop(&mut self) {
-        // XXX: Need mutable finalizer
-        let this = unsafe {
-            transmute::<&UvEventLoop, &mut UvEventLoop>(self)
-        };
-        this.uvio.uv_loop().close();
+        self.uvio.uv_loop().close();
     }
 }
 
@@ -648,9 +644,7 @@ impl UvTcpListener {
 
 impl Drop for UvTcpListener {
     fn drop(&mut self) {
-        // XXX need mutable finalizer
-        let self_ = unsafe { transmute::<&UvTcpListener, &mut UvTcpListener>(self) };
-        do self_.home_for_io_with_sched |self_, scheduler| {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task = Cell::new(task);
                 do self_.watcher.as_stream().close {
@@ -763,9 +757,7 @@ impl HomingIO for UvTcpStream {
 
 impl Drop for UvTcpStream {
     fn drop(&mut self) {
-        // XXX need mutable finalizer
-        let this = unsafe { transmute::<&UvTcpStream, &mut UvTcpStream>(self) };
-        do this.home_for_io_with_sched |self_, scheduler| {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.as_stream().close {
@@ -922,9 +914,7 @@ impl HomingIO for UvUdpSocket {
 
 impl Drop for UvUdpSocket {
     fn drop(&mut self) {
-        // XXX need mutable finalizer
-        let this = unsafe { transmute::<&UvUdpSocket, &mut UvUdpSocket>(self) };
-        do this.home_for_io_with_sched |self_, scheduler| {
+        do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
                 do self_.watcher.close {
