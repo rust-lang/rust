@@ -294,7 +294,6 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             #[cfg(target_arch = "x86")]
-            #[cfg(target_arch = "mips")]
             pub mod posix01 {
                 use libc::types::os::arch::c95::{c_short, c_long, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -305,7 +304,6 @@ pub mod types {
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
 
-                #[cfg(target_arch = "x86")]
                 pub struct stat {
                     st_dev: dev_t,
                     __pad1: c_short,
@@ -327,30 +325,6 @@ pub mod types {
                     st_ctime_nsec: c_long,
                     __unused4: c_long,
                     __unused5: c_long,
-                }
-
-                #[cfg(target_arch = "mips")]
-                pub struct stat {
-                    st_dev: c_ulong,
-                    st_pad1: [c_long, ..3],
-                    st_ino: ino_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: c_ulong,
-                    st_pad2: [c_long, ..2],
-                    st_size: off_t,
-                    st_pad3: c_long,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_blksize: blksize_t,
-                    st_blocks: blkcnt_t,
-                    st_pad5: [c_long, ..14],
                 }
             }
             #[cfg(target_arch = "arm")]
@@ -383,6 +357,40 @@ pub mod types {
                     st_ctime: time_t,
                     st_ctime_nsec: c_ulong,
                     st_ino: c_ulonglong
+                }
+            }
+            #[cfg(target_arch = "mips")]
+            pub mod posix01 {
+                use libc::types::os::arch::c95::{c_long, c_ulong, time_t};
+                use libc::types::os::arch::posix88::{gid_t, ino_t};
+                use libc::types::os::arch::posix88::{mode_t, off_t};
+                use libc::types::os::arch::posix88::{uid_t};
+
+                pub type nlink_t = u32;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i32;
+
+                pub struct stat {
+                    st_dev: c_ulong,
+                    st_pad1: [c_long, ..3],
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: c_ulong,
+                    st_pad2: [c_long, ..2],
+                    st_size: off_t,
+                    st_pad3: c_long,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_blksize: blksize_t,
+                    st_blocks: blkcnt_t,
+                    st_pad5: [c_long, ..14],
                 }
             }
             pub mod posix08 {}
@@ -1633,6 +1641,111 @@ pub mod consts {
             pub static EPIPE : c_int = 32;
             pub static EDOM : c_int = 33;
             pub static ERANGE : c_int = 34;
+
+            pub static ENOMSG: c_int = 35;
+            pub static EIDRM: c_int = 36;
+            pub static ECHRNG: c_int = 37;
+            pub static EL2NSYNC: c_int = 38;
+            pub static EL3HLT: c_int = 39;
+            pub static EL3RST: c_int = 40;
+            pub static ELNRNG: c_int = 41;
+            pub static EUNATCH: c_int = 42;
+            pub static ENOCSI: c_int = 43;
+            pub static EL2HLT: c_int = 44;
+            pub static EDEADLK: c_int = 45;
+            pub static ENOLCK: c_int = 46;
+            pub static EBADE: c_int = 50;
+            pub static EBADR: c_int = 51;
+            pub static EXFULL: c_int = 52;
+            pub static ENOANO: c_int = 53;
+            pub static EBADRQC: c_int = 54;
+            pub static EBADSLT: c_int = 55;
+            pub static EDEADLOCK: c_int = 56;
+            pub static EBFONT: c_int = 59;
+            pub static ENOSTR: c_int = 60;
+            pub static ENODATA: c_int = 61;
+            pub static ETIME: c_int = 62;
+            pub static ENOSR: c_int = 63;
+            pub static ENONET: c_int = 64;
+            pub static ENOPKG: c_int = 65;
+            pub static EREMOTE: c_int = 66;
+            pub static ENOLINK: c_int = 67;
+            pub static EADV: c_int = 68;
+            pub static ESRMNT: c_int = 69;
+            pub static ECOMM: c_int = 70;
+            pub static EPROTO: c_int = 71;
+            pub static EDOTDOT: c_int = 73;
+            pub static EMULTIHOP: c_int = 74;
+            pub static EBADMSG: c_int = 77;
+            pub static ENAMETOOLONG: c_int = 78;
+            pub static EOVERFLOW: c_int = 79;
+            pub static ENOTUNIQ: c_int = 80;
+            pub static EBADFD: c_int = 81;
+            pub static EREMCHG: c_int = 82;
+            pub static ELIBACC: c_int = 83;
+            pub static ELIBBAD: c_int = 84;
+            pub static ELIBSCN: c_int = 95;
+            pub static ELIBMAX: c_int = 86;
+            pub static ELIBEXEC: c_int = 87;
+            pub static EILSEQ: c_int = 88;
+            pub static ENOSYS: c_int = 89;
+            pub static ELOOP: c_int = 90;
+            pub static ERESTART: c_int = 91;
+            pub static ESTRPIPE: c_int = 92;
+            pub static ENOTEMPTY: c_int = 93;
+            pub static EUSERS: c_int = 94;
+            pub static ENOTSOCK: c_int = 95;
+            pub static EDESTADDRREQ: c_int = 96;
+            pub static EMSGSIZE: c_int = 97;
+            pub static EPROTOTYPE: c_int = 98;
+            pub static ENOPROTOOPT: c_int = 99;
+            pub static EPROTONOSUPPORT: c_int = 120;
+            pub static ESOCKTNOSUPPORT: c_int = 121;
+            pub static EOPNOTSUPP: c_int = 122;
+            pub static EPFNOSUPPORT: c_int = 123;
+            pub static EAFNOSUPPORT: c_int = 124;
+            pub static EADDRINUSE: c_int = 125;
+            pub static EADDRNOTAVAIL: c_int = 126;
+            pub static ENETDOWN: c_int = 127;
+            pub static ENETUNREACH: c_int = 128;
+            pub static ENETRESET: c_int = 129;
+            pub static ECONNABORTED: c_int = 130;
+            pub static ECONNRESET: c_int = 131;
+            pub static ENOBUFS: c_int = 132;
+            pub static EISCONN: c_int = 133;
+            pub static ENOTCONN: c_int = 134;
+            pub static EUCLEAN: c_int = 135;
+            pub static ENOTNAM: c_int = 137;
+            pub static ENAVAIL: c_int = 138;
+            pub static EISNAM: c_int = 139;
+            pub static EREMOTEIO: c_int = 140;
+            pub static ESHUTDOWN: c_int = 143;
+            pub static ETOOMANYREFS: c_int = 144;
+            pub static ETIMEDOUT: c_int = 145;
+            pub static ECONNREFUSED: c_int = 146;
+            pub static EHOSTDOWN: c_int = 147;
+            pub static EHOSTUNREACH: c_int = 148;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static EALREADY: c_int = 149;
+            pub static EINPROGRESS: c_int = 150;
+            pub static ESTALE: c_int = 151;
+            pub static ECANCELED: c_int = 158;
+
+            pub static ENOMEDIUM: c_int = 159;
+            pub static EMEDIUMTYPE: c_int = 160;
+            pub static ENOKEY: c_int = 161;
+            pub static EKEYEXPIRED: c_int = 162;
+            pub static EKEYREVOKED: c_int = 163;
+            pub static EKEYREJECTED: c_int = 164;
+
+            pub static EOWNERDEAD: c_int = 165;
+            pub static ENOTRECOVERABLE: c_int = 166;
+
+            pub static ERFKILL: c_int = 167;
+
+            pub static EHWPOISON: c_int = 168;
+
+            pub static EDQUOT: c_int = 1133;
         }
         pub mod posix01 {
             use libc::types::os::arch::c95::c_int;
