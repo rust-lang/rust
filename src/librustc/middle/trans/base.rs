@@ -2541,12 +2541,29 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                     let sym = exported_name(ccx, my_path, ty, i.attrs);
 
                     let v = match i.node {
-                        ast::item_static(_, m, expr) => {
+                        ast::item_static(_, _, expr) => {
+                            // If this static came from an external crate, then
+                            // we need to get the symbol from csearch instead of
+                            // using the current crate's name/version
+                            // information in the hash of the symbol
+                            debug!("making %s", sym);
+                            let sym = match ccx.external_srcs.find(&i.id) {
+                                Some(&did) => {
+                                    debug!("but found in other crate...");
+                                    csearch::get_symbol(ccx.sess.cstore, did)
+                                }
+                                None => sym
+                            };
+
                             // We need the translated value here, because for enums the
                             // LLVM type is not fully determined by the Rust type.
-                            let v = consts::const_expr(ccx, expr);
+                            let (v, inlineable) = consts::const_expr(ccx, expr);
                             ccx.const_values.insert(id, v);
-                            exprt = (m == ast::MutMutable || i.vis == ast::public);
+                            if !inlineable {
+                                debug!("%s not inlined", sym);
+                                ccx.non_inlineable_statics.insert(id);
+                            }
+                            exprt = true;
 
                             unsafe {
                                 let llty = llvm::LLVMTypeOf(v);
@@ -2997,6 +3014,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
             reexports2: cx.exp_map2,
             item_symbols: item_symbols,
             discrim_symbols: discrim_symbols,
+            non_inlineable_statics: &cx.non_inlineable_statics,
             link_meta: link_meta,
             cstore: cx.sess.cstore,
             encode_inlined_item: ie,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use lib::llvm::{AvailableExternallyLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{push_ctxt, impl_self, no_self};
@@ -53,16 +53,36 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
         }
         csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
+            ccx.external_srcs.insert(item.id, fn_id);
             ccx.stats.n_inlines += 1;
             trans_item(ccx, item);
+
+            // We're bringing an external global into this crate, but we don't
+            // want to create two copies of the global. If we do this, then if
+            // you take the address of the global in two separate crates you get
+            // two different addresses. This is bad for things like conditions,
+            // but it could possibly have other adverse side effects. We still
+            // want to achieve the optimizations related to this global,
+            // however, so we use the available_externally linkage which llvm
+            // provides
+            match item.node {
+                ast::item_static(*) => {
+                    let g = get_item_val(ccx, item.id);
+                    SetLinkage(g, AvailableExternallyLinkage);
+                }
+                _ => {}
+            }
+
             local_def(item.id)
         }
         csearch::found(ast::ii_foreign(item)) => {
           ccx.external.insert(fn_id, Some(item.id));
+          ccx.external_srcs.insert(item.id, fn_id);
           local_def(item.id)
         }
         csearch::found_parent(parent_id, ast::ii_item(item)) => {
           ccx.external.insert(parent_id, Some(item.id));
+          ccx.external_srcs.insert(item.id, parent_id);
           let mut my_id = 0;
           match item.node {
             ast::item_enum(_, _) => {
@@ -86,6 +106,7 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
         csearch::found(ast::ii_method(impl_did, is_provided, mth)) => {
           ccx.stats.n_inlines += 1;
           ccx.external.insert(fn_id, Some(mth.id));
+          ccx.external_srcs.insert(mth.id, fn_id);
           // If this is a default method, we can't look up the
           // impl type. But we aren't going to translate anyways, so don't.
           if is_provided { return local_def(mth.id); }
