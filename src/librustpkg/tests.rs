@@ -34,11 +34,7 @@ use rustc::driver::driver::{build_session, build_session_options, host_triple, o
 use syntax::diagnostic;
 use target::*;
 use package_source::PkgSrc;
-
-/// Returns the last-modified date as an Option
-fn datestamp(p: &Path) -> Option<libc::time_t> {
-    p.stat().map(|stat| stat.st_mtime)
-}
+use util::datestamp;
 
 fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
     let context = workcache::Context::new(
@@ -224,18 +220,26 @@ fn rustpkg_exec() -> Path {
 }
 
 fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
-    command_line_test_with_env(args, cwd, None).expect("Command line test failed")
+    match command_line_test_with_env(args, cwd, None) {
+        Success(r) => r,
+        _ => fail!("Command line test failed")
+    }
 }
 
-fn command_line_test_partial(args: &[~str], cwd: &Path) -> Option<ProcessOutput> {
+fn command_line_test_partial(args: &[~str], cwd: &Path) -> ProcessResult {
     command_line_test_with_env(args, cwd, None)
+}
+
+enum ProcessResult {
+    Success(ProcessOutput),
+    Fail(int) // exit code
 }
 
 /// Runs `rustpkg` (based on the directory that this executable was
 /// invoked from) with the given arguments, in the given working directory.
 /// Returns the process's output.
 fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~str)]>)
-    -> Option<ProcessOutput> {
+    -> ProcessResult {
     let cmd = rustpkg_exec().to_str();
     let env_str = match env {
         Some(ref pairs) => pairs.map(|&(ref k, ref v)| { fmt!("%s=%s", *k, *v) }).connect(","),
@@ -266,10 +270,10 @@ to make sure the command succeeded
         debug!("Command %s %? failed with exit code %?; its output was {{{ %s }}}",
               cmd, args, output.status,
               str::from_utf8(output.output) + str::from_utf8(output.error));
-        None
+        Fail(output.status)
     }
     else {
-        Some(output)
+        Success(output)
     }
 }
 
@@ -410,8 +414,11 @@ fn command_line_test_output(args: &[~str]) -> ~[~str] {
 
 fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~str] {
     let mut result = ~[];
-    let p_output = command_line_test_with_env(args,
-        &os::getcwd(), Some(env)).expect("Command-line test failed");
+    let p_output = match command_line_test_with_env(args,
+        &os::getcwd(), Some(env)) {
+        Fail(_) => fail!("Command-line test failed"),
+        Success(r) => r
+    };
     let test_output = str::from_utf8(p_output.output);
     for s in test_output.split_iter('\n') {
         result.push(s.to_owned());
@@ -420,9 +427,9 @@ fn command_line_test_output_with_env(args: &[~str], env: ~[(~str, ~str)]) -> ~[~
 }
 
 // assumes short_name and path are one and the same -- I should fix
-fn lib_output_file_name(workspace: &Path, parent: &str, short_name: &str) -> Path {
-    debug!("lib_output_file_name: given %s and parent %s and short name %s",
-           workspace.to_str(), parent, short_name);
+fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
+    debug!("lib_output_file_name: given %s and short name %s",
+           workspace.to_str(), short_name);
     library_in_workspace(&Path(short_name),
                          short_name,
                          Build,
@@ -450,19 +457,18 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
 }
 
 /// Add a comment at the end
-fn frob_source_file(workspace: &Path, pkgid: &PkgId) {
+fn frob_source_file(workspace: &Path, pkgid: &PkgId, filename: &str) {
     use conditions::bad_path::cond;
     let pkg_src_dir = workspace.push_many([~"src", pkgid.to_str()]);
-    let contents = os::list_dir_path(&pkg_src_dir);
     let mut maybe_p = None;
-    for p in contents.iter() {
-        if p.filetype() == Some(".rs") {
-            maybe_p = Some(p);
-            break;
-        }
+    let maybe_file = pkg_src_dir.push(filename);
+    debug!("Trying to frob %s -- %s", pkg_src_dir.to_str(), filename);
+    if os::path_exists(&maybe_file) {
+        maybe_p = Some(maybe_file);
     }
+    debug!("Frobbed? %?", maybe_p);
     match maybe_p {
-        Some(p) => {
+        Some(ref p) => {
             let w = io::file_writer(p, &[io::Append]);
             match w {
                 Err(s) => { let _ = cond.raise((p.clone(), fmt!("Bad path: %s", s))); }
@@ -499,7 +505,7 @@ fn test_install_valid() {
     debug!("temp_workspace = %s", temp_workspace.to_str());
     // should have test, bench, lib, and main
     let src = PkgSrc::new(temp_workspace.clone(), false, temp_pkg_id.clone());
-    ctxt.install(src);
+    ctxt.install(src, &Everything);
     // Check that all files exist
     let exec = target_executable_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("exec = %s", exec.to_str());
@@ -528,7 +534,7 @@ fn test_install_invalid() {
     // Uses task::try because of #9001
     let result = do task::try {
         let pkg_src = PkgSrc::new(temp_workspace.clone(), false, pkgid.clone());
-        ctxt.install(pkg_src);
+        ctxt.install(pkg_src, &Everything);
     };
     // Not the best test -- doesn't test that we failed in the right way.
     // Best we can do for now.
@@ -939,26 +945,28 @@ fn no_rebuilding() {
 }
 
 #[test]
-#[ignore]
 fn no_rebuilding_dep() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let bar_date_1 = datestamp(&lib_output_file_name(&workspace,
-                                                  ".rust",
-                                                  "bar"));
-    let foo_date_1 = datestamp(&output_file_name(&workspace, ~"foo"));
+    let bar_lib = lib_output_file_name(&workspace, "bar");
+    let bar_date_1 = datestamp(&bar_lib);
 
-    frob_source_file(&workspace, &p_id);
-    command_line_test([~"build", ~"foo"], &workspace);
+    frob_source_file(&workspace, &p_id, "main.rs");
+
+    // Now make `bar` read-only so that subsequent rebuilds of it will fail
+    assert!(chmod_read_only(&bar_lib));
+
+    match command_line_test_partial([~"build", ~"foo"], &workspace) {
+        Success(*) => (), // ok
+        Fail(status) if status == 65 => fail!("no_rebuilding_dep failed: it tried to rebuild bar"),
+        Fail(_) => fail!("no_rebuilding_dep failed for some other reason")
+    }
+
     let bar_date_2 = datestamp(&lib_output_file_name(&workspace,
-                                                  ".rust",
-                                                  "bar"));
-    let foo_date_2 = datestamp(&output_file_name(&workspace, ~"foo"));
+                                                   "bar"));
     assert_eq!(bar_date_1, bar_date_2);
-    assert!(foo_date_1 < foo_date_2);
-    assert!(foo_date_1 > bar_date_1);
 }
 
 #[test]
@@ -967,7 +975,7 @@ fn do_rebuild_dep_dates_change() {
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let bar_lib_name = lib_output_file_name(&workspace, "build", "bar");
+    let bar_lib_name = lib_output_file_name(&workspace, "bar");
     let bar_date = datestamp(&bar_lib_name);
     debug!("Datestamp on %s is %?", bar_lib_name.to_str(), bar_date);
     touch_source_file(&workspace, &dep_id);
@@ -983,11 +991,11 @@ fn do_rebuild_dep_only_contents_change() {
     let dep_id = PkgId::new("bar");
     let workspace = create_local_package_with_dep(&p_id, &dep_id);
     command_line_test([~"build", ~"foo"], &workspace);
-    let bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
-    frob_source_file(&workspace, &dep_id);
+    let bar_date = datestamp(&lib_output_file_name(&workspace, "bar"));
+    frob_source_file(&workspace, &dep_id, "lib.rs");
     // should adjust the datestamp
     command_line_test([~"build", ~"foo"], &workspace);
-    let new_bar_date = datestamp(&lib_output_file_name(&workspace, "build", "bar"));
+    let new_bar_date = datestamp(&lib_output_file_name(&workspace, "bar"));
     assert!(new_bar_date > bar_date);
 }
 
@@ -1309,7 +1317,6 @@ fn rust_path_hack_build_no_arg() {
 }
 
 #[test]
-#[ignore (reason = "#7402 not yet implemented")]
 fn rust_path_install_target() {
     let dir_for_path = mkdtemp(&os::tmpdir(),
         "source_workspace").expect("rust_path_install_target failed");
@@ -1464,10 +1471,13 @@ fn test_cfg_fail() {
     let workspace = create_local_package(&p_id);
     writeFile(&workspace.push_many(["src", "foo-0.1", "main.rs"]),
                "#[cfg(quux)] fn main() {}");
-    assert!(command_line_test_partial([test_sysroot().to_str(),
+    match command_line_test_partial([test_sysroot().to_str(),
                        ~"build",
                        ~"foo"],
-                      &workspace).is_none());
+                      &workspace) {
+        Success(*) => fail!("test_cfg_fail failed"),
+        _          => ()
+    }
 }
 
 
@@ -1680,6 +1690,21 @@ fn test_target_specific_install_dir() {
     assert_executable_exists(&workspace, "foo");
 }
 
+#[test]
+fn test_dependencies_terminate() {
+ //   let a_id = PkgId::new("a");
+    let b_id = PkgId::new("b");
+//    let workspace = create_local_package_with_dep(&b_id, &a_id);
+    let workspace = create_local_package(&b_id);
+    let b_dir = workspace.push_many([~"src", ~"b-0.1"]);
+  //  writeFile(&b_dir.push("lib.rs"), "extern mod a; pub fn f() {}");
+    let b_subdir = b_dir.push("test");
+    assert!(os::mkdir_recursive(&b_subdir, U_RWX));
+    writeFile(&b_subdir.push("test.rs"),
+              "extern mod b; use b::f; #[test] fn g() { f() }");
+    command_line_test([~"install", ~"b"], &workspace);
+}
+
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
     use std::libc::consts::os::posix88::{S_IXUSR};
@@ -1687,5 +1712,27 @@ fn is_executable(p: &Path) -> bool {
     match p.get_mode() {
         None => false,
         Some(mode) => mode & S_IXUSR as uint == S_IXUSR as uint
+    }
+}
+
+#[cfg(target_os = "win32")]
+fn chmod_read_only(p: &Path) -> bool {
+    #[fixed_stack_segment];
+    unsafe {
+        do p.to_str().with_c_str |src_buf| {
+            libc::chmod(src_buf, libc::consts::os::posix88::S_IRUSR as c_int) == 0 as libc::c_int
+        }
+    }
+}
+
+#[cfg(not(target_os = "win32"))]
+fn chmod_read_only(p: &Path) -> bool {
+    #[fixed_stack_segment];
+    unsafe {
+        do p.to_str().with_c_str |src_buf| {
+            libc::chmod(src_buf,
+                        libc::consts::os::posix88::S_IRUSR as libc::mode_t) == 0
+                as libc::c_int
+        }
     }
 }
