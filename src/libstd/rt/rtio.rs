@@ -81,11 +81,6 @@ pub trait IoFactory {
         Result<~[Path], IoError>;
 }
 
-pub trait RtioStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-}
-
 pub trait RtioTcpListener : RtioSocket {
     fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError>;
 }
