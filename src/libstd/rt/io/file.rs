@@ -17,7 +17,7 @@ use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile,
             FileMode, FileAccess, FileStat, IoError,
             PathAlreadyExists, PathDoesntExist,
-            MismatchedFileTypeForOperation};
+            MismatchedFileTypeForOperation, ignore_io_error};
 use rt::local::Local;
 use option::{Some, None};
 use path::Path;
@@ -248,18 +248,6 @@ impl Seek for FileStream {
     }
 }
 
-// helper for grabbing a stat and ignoring any
-// error.. used in Info wrappers
-fn suppressed_stat(cb: &fn() -> Option<FileStat>) -> Option<FileStat> {
-    do io_error::cond.trap(|_| {
-        // just swallow the error.. downstream users
-        // who can make a decision based on a None result
-        // won't care
-    }).inside {
-        cb()
-    }
-}
-
 /// Shared functionality between `FileInfo` and `DirectoryInfo`
 pub trait FileSystemInfo {
     /// Get the filesystem path that this instance points at,
@@ -277,7 +265,7 @@ pub trait FileSystemInfo {
     /// returns `true` if the location pointed at by the enclosing
     /// exists on the filesystem
     fn exists(&self) -> bool {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(_) => true,
             None => false
         }
@@ -306,7 +294,7 @@ pub trait FileInfo : FileSystemInfo {
     /// false for paths to non-existent locations or directories or
     /// other non-regular files (named pipes, etc).
     fn is_file(&self) -> bool {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(s) => s.is_file,
             None => false
         }
@@ -315,7 +303,7 @@ pub trait FileInfo : FileSystemInfo {
     /// Attempts to open a regular file for reading/writing based
     /// on provided inputs
     fn open_stream(&self, mode: FileMode, access: FileAccess) -> Option<FileStream> {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(s) => match s.is_file {
                 true => open(self.get_path(), mode, access),
                 false => None
@@ -364,7 +352,7 @@ trait DirectoryInfo : FileSystemInfo {
     /// false for paths to non-existent locations or if the item is
     /// not a directory (eg files, named pipes, links, etc)
     fn is_dir(&self) -> bool {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(s) => s.is_dir,
             None => false
         }
@@ -375,7 +363,7 @@ trait DirectoryInfo : FileSystemInfo {
     /// at that location or if some other error occurs during
     /// the mkdir operation
     fn mkdir(&self) {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(_) => {
                 io_error::cond.raise(IoError {
                     kind: PathAlreadyExists,
@@ -391,7 +379,7 @@ trait DirectoryInfo : FileSystemInfo {
     /// the type underlying the given `DirectoryInfo`. Will fail
     /// if there is no directory at the given location or if
     fn rmdir(&self) {
-        match suppressed_stat(|| self.stat()) {
+        match ignore_io_error(|| self.stat()) {
             Some(s) => {
                 match s.is_dir {
                     true => rmdir(self.get_path()),
