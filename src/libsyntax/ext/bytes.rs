@@ -30,43 +30,43 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> bas
                 // string literal, push each byte to vector expression
                 ast::lit_str(s) => {
                     for byte in s.byte_iter() {
-                        bytes.push(cx.expr_u8(sp, byte));
+                        bytes.push(cx.expr_u8(expr.span, byte));
                     }
                 }
 
                 // u8 literal, push to vector expression
                 ast::lit_uint(v, ast::ty_u8) => {
                     if v > 0xFF {
-                        cx.span_err(sp, "Too large u8 literal in bytes!")
+                        cx.span_err(expr.span, "Too large u8 literal in bytes!")
                     } else {
-                        bytes.push(cx.expr_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(expr.span, v as u8));
                     }
                 }
 
                 // integer literal, push to vector expression
                 ast::lit_int_unsuffixed(v) => {
                     if v > 0xFF {
-                        cx.span_err(sp, "Too large integer literal in bytes!")
+                        cx.span_err(expr.span, "Too large integer literal in bytes!")
                     } else if v < 0 {
-                        cx.span_err(sp, "Negative integer literal in bytes!")
+                        cx.span_err(expr.span, "Negative integer literal in bytes!")
                     } else {
-                        bytes.push(cx.expr_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(expr.span, v as u8));
                     }
                 }
 
                 // char literal, push to vector expression
                 ast::lit_char(v) => {
                     if char::from_u32(v).unwrap().is_ascii() {
-                        bytes.push(cx.expr_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(expr.span, v as u8));
                     } else {
-                        cx.span_err(sp, "Non-ascii char literal in bytes!")
+                        cx.span_err(expr.span, "Non-ascii char literal in bytes!")
                     }
                 }
 
-                _ => cx.span_err(sp, "Unsupported literal in bytes!")
+                _ => cx.span_err(expr.span, "Unsupported literal in bytes!")
             },
 
-            _ => cx.span_err(sp, "Non-literal in bytes!")
+            _ => cx.span_err(expr.span, "Non-literal in bytes!")
         }
     }
 
