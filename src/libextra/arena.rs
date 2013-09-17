@@ -93,7 +93,7 @@ fn chunk(size: uint, is_pod: bool) -> Chunk {
 
 #[unsafe_destructor]
 impl Drop for Arena {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
             do self.chunks.each |chunk| {

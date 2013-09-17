@@ -56,7 +56,7 @@ struct DtorRes {
 
 #[unsafe_destructor]
 impl Drop for DtorRes {
-    fn drop(&self) {
+    fn drop(&mut self) {
         match self.dtor {
             option::None => (),
             option::Some(f) => f()

@@ -127,7 +127,7 @@ impl CString {
 }
 
 impl Drop for CString {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
         if self.owns_buffer_ {
             unsafe {

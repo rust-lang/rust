@@ -319,40 +319,35 @@ pub struct Taskgroup {
 
 impl Drop for Taskgroup {
     // Runs on task exit.
-    fn drop(&self) {
-        unsafe {
-            // FIXME(#4330) Need self by value to get mutability.
-            let this: &mut Taskgroup = transmute(self);
-
-            // If we are failing, the whole taskgroup needs to die.
-            do RuntimeGlue::with_task_handle_and_failing |me, failing| {
-                if failing {
-                    for x in this.notifier.mut_iter() {
-                        x.failed = true;
-                    }
-                    // Take everybody down with us. After this point, every
-                    // other task in the group will see 'tg' as none, which
-                    // indicates the whole taskgroup is failing (and forbids
-                    // new spawns from succeeding).
-                    let tg = do access_group(&self.tasks) |tg| { tg.take() };
-                    // It's safe to send kill signals outside the lock, because
-                    // we have a refcount on all kill-handles in the group.
-                    kill_taskgroup(tg, me);
-                } else {
-                    // Remove ourselves from the group(s).
-                    do access_group(&self.tasks) |tg| {
-                        leave_taskgroup(tg, me, true);
-                    }
+    fn drop(&mut self) {
+        // If we are failing, the whole taskgroup needs to die.
+        do RuntimeGlue::with_task_handle_and_failing |me, failing| {
+            if failing {
+                for x in self.notifier.mut_iter() {
+                    x.failed = true;
                 }
-                // It doesn't matter whether this happens before or after dealing
-                // with our own taskgroup, so long as both happen before we die.
-                // We remove ourself from every ancestor we can, so no cleanup; no
-                // break.
-                do each_ancestor(&mut this.ancestors, |_| {}) |ancestor_group| {
-                    leave_taskgroup(ancestor_group, me, false);
-                    true
-                };
+                // Take everybody down with us. After this point, every
+                // other task in the group will see 'tg' as none, which
+                // indicates the whole taskgroup is failing (and forbids
+                // new spawns from succeeding).
+                let tg = do access_group(&self.tasks) |tg| { tg.take() };
+                // It's safe to send kill signals outside the lock, because
+                // we have a refcount on all kill-handles in the group.
+                kill_taskgroup(tg, me);
+            } else {
+                // Remove ourselves from the group(s).
+                do access_group(&self.tasks) |tg| {
+                    leave_taskgroup(tg, me, true);
+                }
             }
+            // It doesn't matter whether this happens before or after dealing
+            // with our own taskgroup, so long as both happen before we die.
+            // We remove ourself from every ancestor we can, so no cleanup; no
+            // break.
+            do each_ancestor(&mut self.ancestors, |_| {}) |ancestor_group| {
+                leave_taskgroup(ancestor_group, me, false);
+                true
+            };
         }
     }
 }
@@ -377,7 +372,7 @@ struct AutoNotify {
 }
 
 impl Drop for AutoNotify {
-    fn drop(&self) {
+    fn drop(&mut self) {
         let result = if self.failed { Failure } else { Success };
         self.notify_chan.send(result);
     }

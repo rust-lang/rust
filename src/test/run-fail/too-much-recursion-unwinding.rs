@@ -24,7 +24,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             if !*(self.recursed) {
                 *(self.recursed) = true;

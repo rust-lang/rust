@@ -78,7 +78,7 @@ struct StructWithDrop {
 }
 
 impl Drop for StructWithDrop {
-    fn drop(&self) {()}
+    fn drop(&mut self) {()}
 }
 
 fn main() {

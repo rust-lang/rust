@@ -58,7 +58,7 @@ struct r {
 
 #[unsafe_destructor]
 impl Drop for r {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn r(l: @nillist) -> r {

@@ -12,7 +12,7 @@
 struct A { x: uint }
 
 impl Drop for A {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn main() {}
