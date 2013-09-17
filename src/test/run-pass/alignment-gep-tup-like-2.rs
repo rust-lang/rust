@@ -23,13 +23,30 @@ fn make_cycle<A:'static>(a: A) {
     g.rec = Some(g);
 }
 
+struct Invoker<A,B> {
+    a: A,
+    b: B,
+}
+
+trait Invokable<A,B> {
+    fn f(&self) -> (A, B);
+}
+
+impl<A:Clone,B:Clone> Invokable<A,B> for Invoker<A,B> {
+    fn f(&self) -> (A, B) {
+        (self.a.clone(), self.b.clone())
+    }
+}
+
 fn f<A:Send + Clone + 'static,
      B:Send + Clone + 'static>(
      a: A,
      b: B)
-     -> @fn() -> (A, B) {
-    let result: @fn() -> (A, B) = || (a.clone(), b.clone());
-    result
+     -> @Invokable<A,B> {
+    @Invoker {
+        a: a,
+        b: b,
+    } as @Invokable<A,B>
 }
 
 pub fn main() {
@@ -37,7 +54,7 @@ pub fn main() {
     let y = 44_u64;
     let z = f(~x, y);
     make_cycle(z);
-    let (a, b) = z();
+    let (a, b) = z.f();
     info!("a=%u b=%u", *a as uint, b as uint);
     assert_eq!(*a, x);
     assert_eq!(b, y);

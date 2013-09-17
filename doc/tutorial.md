@@ -1469,34 +1469,6 @@ cannot be stored in data structures or returned from
 functions. Despite these limitations, stack closures are used
 pervasively in Rust code.
 
-## Managed closures
-
-When you need to store a closure in a data structure, a stack closure
-will not do, since the compiler will refuse to let you store it. For
-this purpose, Rust provides a type of closure that has an arbitrary
-lifetime, written `@fn` (boxed closure, analogous to the `@` pointer
-type described earlier). This type of closure *is* first-class.
-
-A managed closure does not directly access its environment, but merely
-copies out the values that it closes over into a private data
-structure. This means that it can not assign to these variables, and
-cannot observe updates to them.
-
-This code creates a closure that adds a given string to its argument,
-returns it from a function, and then calls it:
-
-~~~~
-fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
-    // The compiler knows that we intend this closure to be of type @fn
-    return |s| s + suffix;
-}
-
-fn main() {
-    let shout = mk_appender(~"!");
-    println(shout(~"hey ho, let's go"));
-}
-~~~~
-
 ## Owned closures
 
 Owned closures, written `~fn` in analogy to the `~` pointer type,

@@ -869,7 +869,7 @@ mod test {
     use parse::token;
     use print::pprust;
     use super::*;
-    
+
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
         pprust::print_mod(s, &crate.module, crate.attrs);
@@ -879,7 +879,7 @@ mod test {
     struct ToZzIdentFolder;
 
     impl ast_fold for ToZzIdentFolder {
-        fn fold_ident(&self, _: ident) -> ident {
+        fn fold_ident(&self, _: ast::Ident) -> ast::Ident {
             token::str_to_ident("zz")
         }
     }
@@ -920,17 +920,6 @@ mod test {
                      pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
-    }
-
-    // and in cast expressions... this appears to be an existing bug.
-    #[test] fn ident_transformation_in_types () {
-        let zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(@"fn a() {let z = 13 as int;}");
-        assert_pred!(matches_codepattern,
-                     "matches_codepattern",
-                     pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
-                                    token::get_ident_interner()),
-                     ~"fn zz(){let zz=13 as zz;}");
     }
 }
 

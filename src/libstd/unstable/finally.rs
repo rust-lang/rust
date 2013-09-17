@@ -118,14 +118,3 @@ fn test_owned() {
     spawn_with_finalizer(owned);
 }
 
-#[test]
-fn test_managed() {
-    let i = @mut 10;
-    let managed: @fn() -> int = || {
-        let r = *i;
-        *i += 10;
-        r
-    };
-    assert_eq!(do managed.finally {}, 10);
-    assert_eq!(*i, 20);
-}

@@ -24,7 +24,7 @@ mod map_reduce {
     use std::str;
     use std::task;
 
-    pub type putter = @fn(~str, ~str);
+    pub type putter<'self> = &'self fn(~str, ~str);
 
     pub type mapper = extern fn(~str, putter);
 
