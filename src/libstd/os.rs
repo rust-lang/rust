@@ -196,7 +196,7 @@ pub fn env() -> ~[(~str,~str)] {
             if (ch as uint == 0) {
                 fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
             }
-            result = unsafe { str::raw::from_c_multistring(ch as *libc::c_char, None) };
+            let result = unsafe { str::raw::from_c_multistring(ch as *libc::c_char, None) };
             FreeEnvironmentStringsA(ch);
             result
         }
