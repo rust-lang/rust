@@ -324,15 +324,16 @@ fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
             return single_result(datumblock.to_result(bcx));
         }
         lit(ConstLit(lit_id)) => {
-            let llval = consts::get_const_val(bcx.ccx(), lit_id);
+            let (llval, _) = consts::get_const_val(bcx.ccx(), lit_id);
             return single_result(rslt(bcx, llval));
         }
         var(disr_val, repr) => {
             return adt::trans_case(bcx, repr, disr_val);
         }
         range(l1, l2) => {
-            return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
-                                rslt(bcx, consts::const_expr(ccx, l2)));
+            let (l1, _) = consts::const_expr(ccx, l1);
+            let (l2, _) = consts::const_expr(ccx, l2);
+            return range_result(rslt(bcx, l1), rslt(bcx, l2));
         }
         vec_len(n, vec_len_eq, _) => {
             return single_result(rslt(bcx, C_int(ccx, n as int)));
