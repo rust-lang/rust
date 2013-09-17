@@ -135,18 +135,21 @@ impl serialize::Encoder for Encoder {
                          _id: uint,
                          cnt: uint,
                          f: &fn(&mut Encoder)) {
-        // enums are encoded as strings or vectors:
+        // enums are encoded as strings or objects
         // Bunny => "Bunny"
-        // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
-
+        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
         if cnt == 0 {
             self.wr.write_str(escape_str(name));
         } else {
-            self.wr.write_char('[');
+            self.wr.write_char('{');
+            self.wr.write_str("\"variant\"");
+            self.wr.write_char(':');
             self.wr.write_str(escape_str(name));
             self.wr.write_char(',');
+            self.wr.write_str("\"fields\"");
+            self.wr.write_str(":[");
             f(self);
-            self.wr.write_char(']');
+            self.wr.write_str("]}");
         }
     }
 
@@ -947,14 +950,20 @@ impl serialize::Decoder for Decoder {
         debug!("read_enum_variant(names=%?)", names);
         let name = match self.stack.pop() {
             String(s) => s,
-            List(list) => {
-                for v in list.move_rev_iter() {
-                    self.stack.push(v);
+            Object(o) => {
+                let n = match o.find(&~"variant").expect("invalidly encoded json") {
+                    &String(ref s) => s.clone(),
+                    _ => fail!("invalidly encoded json"),
+                };
+                match o.find(&~"fields").expect("invalidly encoded json") {
+                    &List(ref l) => {
+                        for field in l.rev_iter() {
+                            self.stack.push(field.clone());
+                        }
+                    },
+                    _ => fail!("invalidly encoded json")
                 }
-                match self.stack.pop() {
-                    String(s) => s,
-                    value => fail!("invalid variant name: %?", value),
-                }
+                n
             }
             ref json => fail!("invalid variant: %?", *json),
         };
@@ -1517,7 +1526,7 @@ mod tests {
                 let mut encoder = Encoder(wr);
                 animal.encode(&mut encoder);
             },
-            ~"[\"Frog\",\"Henry\",349]"
+            ~"{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
             do io::with_str_writer |wr| {
@@ -1921,14 +1930,14 @@ mod tests {
         assert_eq!(value, Dog);
 
         let mut decoder =
-            Decoder(from_str("[\"Frog\",\"Henry\",349]").unwrap());
+            Decoder(from_str("{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}").unwrap());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
 
     #[test]
     fn test_decode_map() {
-        let s = ~"{\"a\": \"Dog\", \"b\": [\"Frog\", \"Henry\", 349]}";
+        let s = ~"{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\"fields\":[\"Henry\", 349]}}";
         let mut decoder = Decoder(from_str(s).unwrap());
         let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder);
 
