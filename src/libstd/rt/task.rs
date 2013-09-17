@@ -444,15 +444,8 @@ impl Unwinder {
         }
 
         extern {
-            #[cfg(not(stage0))]
             #[rust_stack]
             fn rust_try(f: extern "C" fn(*c_void, *c_void),
-                        code: *c_void,
-                        data: *c_void) -> uintptr_t;
-
-            #[cfg(stage0)]
-            #[rust_stack]
-            fn rust_try(f: *u8,
                         code: *c_void,
                         data: *c_void) -> uintptr_t;
         }
@@ -490,10 +483,10 @@ mod test {
     fn tls() {
         use local_data;
         do run_in_newsched_task() {
-            static key: local_data::Key<@~str> = &local_data::Key;
+            local_data_key!(key: @~str)
             local_data::set(key, @~"data");
             assert!(*local_data::get(key, |k| k.map_move(|k| *k)).unwrap() == ~"data");
-            static key2: local_data::Key<@~str> = &local_data::Key;
+            local_data_key!(key2: @~str)
             local_data::set(key2, @~"data");
             assert!(*local_data::get(key2, |k| k.map_move(|k| *k)).unwrap() == ~"data");
         }

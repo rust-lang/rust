@@ -60,7 +60,7 @@ struct LocalVariable {
 }
 
 type LocalCache = @mut HashMap<~str, @~[u8]>;
-static tls_key: local_data::Key<LocalCache> = &local_data::Key;
+local_data_key!(tls_key: LocalCache)
 
 impl Program {
     pub fn new() -> Program {

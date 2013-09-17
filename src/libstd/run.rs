@@ -736,8 +736,6 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
             let mut tmps = vec::with_capacity(env.len());
 
             for pair in env.iter() {
-                // Use of match here is just to workaround limitations
-                // in the stage0 irrefutable pattern impl.
                 let kv = fmt!("%s=%s", pair.first(), pair.second());
                 tmps.push(kv.to_c_str());
             }

@@ -411,23 +411,6 @@ impl<T:Send> Exclusive<T> {
     }
 }
 
-#[cfg(stage0)]
-mod macro_hack {
-#[macro_escape];
-macro_rules! externfn(
-    (fn $name:ident () $(-> $ret_ty:ty),*) => (
-        extern {
-            fn $name() $(-> $ret_ty),*;
-        }
-    );
-    (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
-        extern {
-            fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
-        }
-    )
-)
-}
-
 externfn!(fn rust_create_little_lock() -> rust_little_lock)
 externfn!(fn rust_destroy_little_lock(lock: rust_little_lock))
 externfn!(fn rust_lock_little_lock(lock: rust_little_lock))
