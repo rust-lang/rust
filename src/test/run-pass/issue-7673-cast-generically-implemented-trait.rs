@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty #9253 pretty printer doesn't preserve the bounds on trait objects
-
 /*
 
 #7673 Polymorphically creating traits barely works
