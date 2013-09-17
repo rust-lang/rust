@@ -136,6 +136,7 @@ pub trait AstBuilder {
     fn expr_some(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr;
     fn expr_none(&self, sp: Span) -> @ast::Expr;
 
+    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr;
     fn expr_unreachable(&self, span: Span) -> @ast::Expr;
 
     fn pat(&self, span: Span, pat: ast::Pat_) -> @ast::Pat;
@@ -591,7 +592,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr_path(none)
     }
 
-    fn expr_unreachable(&self, span: Span) -> @ast::Expr {
+    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr {
         let loc = self.codemap().lookup_char_pos(span.lo);
         self.expr_call_global(
             span,
@@ -602,10 +603,14 @@ impl AstBuilder for @ExtCtxt {
                 self.ident_of("fail_with"),
             ],
             ~[
-                self.expr_str(span, @"internal error: entered unreachable code"),
+                self.expr_str(span, msg),
                 self.expr_str(span, loc.file.name),
                 self.expr_uint(span, loc.line),
             ])
+    }
+
+    fn expr_unreachable(&self, span: Span) -> @ast::Expr {
+        self.expr_fail(span, @"internal error: entered unreachable code")
     }
 
 
