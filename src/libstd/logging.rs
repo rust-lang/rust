@@ -37,17 +37,6 @@ pub fn console_off() {
     rt::logging::console_off();
 }
 
-#[cfg(not(test), stage0)]
-#[lang="log_type"]
-#[allow(missing_doc)]
-pub fn log_type<T>(_level: u32, object: &T) {
-    use sys;
-
-    // XXX: Bad allocation
-    let msg = sys::log_str(object);
-    newsched_log_str(msg);
-}
-
 fn newsched_log_str(msg: ~str) {
     use rt::task::Task;
     use rt::local::Local;

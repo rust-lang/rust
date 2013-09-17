@@ -490,8 +490,7 @@ fn mk_fresh_ident_interner() -> @ident_interner {
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
 pub fn get_ident_interner() -> @ident_interner {
-    static key: local_data::Key<@@::parse::token::ident_interner> =
-        &local_data::Key;
+    local_data_key!(key: @@::parse::token::ident_interner)
     match local_data::get(key, |k| k.map_move(|k| *k)) {
         Some(interner) => *interner,
         None => {

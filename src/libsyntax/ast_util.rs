@@ -804,7 +804,7 @@ pub fn new_sctable_internal() -> SCTable {
 
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_sctable() -> @mut SCTable {
-    static sctable_key: local_data::Key<@@mut SCTable> = &local_data::Key;
+    local_data_key!(sctable_key: @@mut SCTable)
     match local_data::get(sctable_key, |k| k.map_move(|k| *k)) {
         None => {
             let new_table = @@mut new_sctable_internal();
@@ -841,7 +841,7 @@ pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_resolve_table() -> @mut ResolveTable {
-    static resolve_table_key: local_data::Key<@@mut ResolveTable> = &local_data::Key;
+    local_data_key!(resolve_table_key: @@mut ResolveTable)
     match local_data::get(resolve_table_key, |k| k.map(|&k| *k)) {
         None => {
             let new_table = @@mut HashMap::new();

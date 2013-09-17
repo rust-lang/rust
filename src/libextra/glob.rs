@@ -137,16 +137,6 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
 /**
  * A compiled Unix shell style pattern.
  */
-#[cfg(stage0)]
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
-pub struct Pattern {
-    priv tokens: ~[PatternToken]
-}
-
-/**
- * A compiled Unix shell style pattern.
- */
-#[cfg(not(stage0))]
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct Pattern {
     priv tokens: ~[PatternToken]
@@ -465,39 +455,10 @@ fn is_sep(c: char) -> bool {
     }
 }
 
-/**
- * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
- */
-#[cfg(stage0)]
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
-pub struct MatchOptions {
-
-    /**
-     * Whether or not patterns should be matched in a case-sensitive manner. This
-     * currently only considers upper/lower case relationships between ASCII characters,
-     * but in future this might be extended to work with Unicode.
-     */
-    case_sensitive: bool,
-
-    /**
-     * If this is true then path-component separator characters (e.g. `/` on Posix)
-     * must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
-     */
-    require_literal_separator: bool,
-
-    /**
-     * If this is true then paths that contain components that start with a `.` will
-     * not match unless the `.` appears literally in the pattern: `*`, `?` or `[...]`
-     * will not match. This is useful because such files are conventionally considered
-     * hidden on Unix systems and it might be desirable to skip them when listing files.
-     */
-    require_literal_leading_dot: bool
-}
 
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
-#[cfg(not(stage0))]
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
 pub struct MatchOptions {
 
