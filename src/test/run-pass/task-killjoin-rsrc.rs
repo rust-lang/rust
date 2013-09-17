@@ -24,7 +24,7 @@ struct notify {
 
 #[unsafe_destructor]
 impl Drop for notify {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             error!("notify: task=%? v=%x unwinding=%b b=%b",
                    0,

@@ -105,7 +105,7 @@ pub mod jit {
     impl Engine for LLVMJITData {}
 
     impl Drop for LLVMJITData {
-        fn drop(&self) {
+        fn drop(&mut self) {
             unsafe {
                 llvm::LLVMDisposeExecutionEngine(self.ee);
                 llvm::LLVMContextDispose(self.llcx);

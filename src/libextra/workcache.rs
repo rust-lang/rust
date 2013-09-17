@@ -201,7 +201,7 @@ impl Database {
 // FIXME #4330: use &mut self here
 #[unsafe_destructor]
 impl Drop for Database {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.db_dirty {
             self.save();
         }

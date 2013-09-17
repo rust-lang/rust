@@ -321,7 +321,7 @@ impl<T: Send> Unique<T> {
 
 #[unsafe_destructor]
 impl<T: Send> Drop for Unique<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment];
         #[inline(never)];
         

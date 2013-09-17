@@ -14,7 +14,7 @@ struct socket {
 }
 
 impl Drop for socket {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 impl socket {

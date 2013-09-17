@@ -328,7 +328,7 @@ impl Task {
 }
 
 impl Drop for Task {
-    fn drop(&self) {
+    fn drop(&mut self) {
         rtdebug!("called drop for a task: %u", borrow::to_uint(self));
         rtassert!(self.destroyed)
     }

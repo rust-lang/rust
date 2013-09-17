@@ -341,7 +341,7 @@ pub struct Parser {
 #[unsafe_destructor]
 impl Drop for Parser {
     /* do not copy the parser; its state is tied to outside state */
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {

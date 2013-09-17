@@ -31,7 +31,7 @@ struct and_then_get_big_again {
 }
 
 impl Drop for and_then_get_big_again {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn and_then_get_big_again(x:int) -> and_then_get_big_again {

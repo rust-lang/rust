@@ -415,14 +415,11 @@ impl<T: Ord> DList<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for DList<T> {
-    fn drop(&self) {
-        let mut_self = unsafe {
-            cast::transmute_mut(self)
-        };
+    fn drop(&mut self) {
         // Dissolve the dlist in backwards direction
         // Just dropping the list_head can lead to stack exhaustion
         // when length is >> 1_000_000
-        let mut tail = mut_self.list_tail;
+        let mut tail = self.list_tail;
         loop {
             match tail.resolve() {
                 None => break,
@@ -432,9 +429,9 @@ impl<T> Drop for DList<T> {
                 }
             }
         }
-        mut_self.length = 0;
-        mut_self.list_head = None;
-        mut_self.list_tail = Rawlink::none();
+        self.length = 0;
+        self.list_head = None;
+        self.list_tail = Rawlink::none();
     }
 }
 
