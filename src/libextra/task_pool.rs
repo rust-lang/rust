@@ -34,7 +34,7 @@ pub struct TaskPool<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for TaskPool<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         for channel in self.channels.iter() {
             channel.send(Quit);
         }

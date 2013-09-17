@@ -13,7 +13,7 @@ struct X {
 }
 
 impl Drop for X {
-    fn drop(&self) {
+    fn drop(&mut self) {
         error!("value: %s", self.x);
     }
 }

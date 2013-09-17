@@ -20,7 +20,7 @@ fn main() {
 
     #[unsafe_destructor]
     impl Drop for foo {
-        fn drop(&self) {}
+        fn drop(&mut self) {}
     }
 
     fn foo(x: Port<()>) -> foo {

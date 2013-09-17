@@ -46,7 +46,7 @@ impl Thread {
 }
 
 impl Drop for Thread {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         assert!(self.joined);

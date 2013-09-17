@@ -74,7 +74,7 @@ impl<T> RC<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for RC<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         assert!(self.refcount() > 0);
 
         unsafe {

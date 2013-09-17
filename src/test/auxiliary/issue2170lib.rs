@@ -16,7 +16,7 @@ pub struct rsrc {
 }
 
 impl Drop for rsrc {
-    fn drop(&self) {
+    fn drop(&mut self) {
         foo(self.x);
     }
 }

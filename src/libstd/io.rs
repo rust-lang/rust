@@ -1021,7 +1021,7 @@ impl FILERes {
 }
 
 impl Drop for FILERes {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         unsafe {
@@ -1302,7 +1302,7 @@ impl FdRes {
 }
 
 impl Drop for FdRes {
-    fn drop(&self) {
+    fn drop(&mut self) {
         #[fixed_stack_segment]; #[inline(never)];
 
         unsafe {
@@ -1832,7 +1832,7 @@ pub mod fsync {
 
     #[unsafe_destructor]
     impl<T> Drop for Res<T> {
-        fn drop(&self) {
+        fn drop(&mut self) {
             match self.arg.opt_level {
                 None => (),
                 Some(level) => {

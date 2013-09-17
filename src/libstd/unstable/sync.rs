@@ -220,7 +220,7 @@ impl<T: Send> Clone for UnsafeArc<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for UnsafeArc<T>{
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             // Happens when destructing an unwrapper's handle and from `#[unsafe_no_drop_flag]`
             if self.data.is_null() {
@@ -308,7 +308,7 @@ pub struct LittleLock {
 }
 
 impl Drop for LittleLock {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             rust_destroy_little_lock(self.l);
         }

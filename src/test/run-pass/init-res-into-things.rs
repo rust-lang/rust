@@ -19,7 +19,7 @@ struct Box { x: r }
 
 #[unsafe_destructor]
 impl Drop for r {
-    fn drop(&self) {
+    fn drop(&mut self) {
         *(self.i) = *(self.i) + 1;
     }
 }
