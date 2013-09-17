@@ -8,13 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct foo { z: @fn() }
+struct foo {
+    z: Option<@Invokable>,
+}
+
+struct Thing {
+    w: @mut foo,
+}
+
+trait Invokable {
+    fn f(&self);
+}
+
+impl Invokable for Thing {
+    fn f(&self) {
+        nop_foo(self.w);
+    }
+}
 
 fn nop() { }
 fn nop_foo(_x : @mut foo) { }
 
 pub fn main() {
-    let w = @mut foo{ z: || nop() };
-    let x: @fn() = || nop_foo(w);
-    w.z = x;
+    let w = @mut foo {
+        z: None,
+    };
+    let x = @Thing {
+        w: w,
+    } as @Invokable;
+    w.z = Some(x);
 }

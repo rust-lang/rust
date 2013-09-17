@@ -14,7 +14,7 @@ pub struct Entry<A,B> {
 }
 
 pub struct alist<A,B> {
-    eq_fn: @fn(A,A) -> bool,
+    eq_fn: extern "Rust" fn(A,A) -> bool,
     data: @mut ~[Entry<A,B>]
 }
 

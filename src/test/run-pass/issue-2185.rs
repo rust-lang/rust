@@ -18,11 +18,11 @@
 //
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
-// issue-2185.rs:24 impl iterable<uint> for @fn(&fn(uint)) {
+// issue-2185.rs:24 impl iterable<uint> for &'static fn(&fn(uint)) {
 // issue-2185.rs:25     fn iter(&self, blk: &fn(v: uint)) { self( |i| blk(i) ) }
 // issue-2185.rs:26 }
 // issue-2185.rs:20:0: 22:1 note: note conflicting implementation here
-// issue-2185.rs:20 impl<A> iterable<A> for @fn(&fn(A)) {
+// issue-2185.rs:20 impl<A> iterable<A> for &'static fn(&fn(A)) {
 // issue-2185.rs:21     fn iter(&self, blk: &fn(A)) { self(blk); }
 // issue-2185.rs:22 }
 //
@@ -42,15 +42,17 @@ trait iterable<A> {
     fn iter(&self, blk: &fn(A));
 }
 
-impl<A> iterable<A> for @fn(&fn(A)) {
+impl<A> iterable<A> for &'static fn(&fn(A)) {
     fn iter(&self, blk: &fn(A)) { self(blk); }
 }
 
-impl iterable<uint> for @fn(&fn(uint)) {
+impl iterable<uint> for &'static fn(&fn(uint)) {
     fn iter(&self, blk: &fn(v: uint)) { self( |i| blk(i) ) }
 }
 
-fn filter<A,IA:iterable<A>>(self: IA, prd: @fn(A) -> bool, blk: &fn(A)) {
+fn filter<A,IA:iterable<A>>(self: IA,
+                            prd: &'static fn(A) -> bool,
+                            blk: &fn(A)) {
     do self.iter |a| {
         if prd(a) { blk(a) }
     }
@@ -73,8 +75,8 @@ fn range(lo: uint, hi: uint, it: &fn(uint)) {
 }
 
 pub fn main() {
-    let range: @fn(&fn(uint)) = |a| range(0u, 1000u, a);
-    let filt: @fn(&fn(v: uint)) = |a| filter(
+    let range: &'static fn(&fn(uint)) = |a| range(0u, 1000u, a);
+    let filt: &'static fn(&fn(v: uint)) = |a| filter(
         range,
         |&&n: uint| n % 3u != 0u && n % 5u != 0u,
         a);

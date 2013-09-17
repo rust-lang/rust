@@ -1065,8 +1065,12 @@ mod test {
               Err(f) => fail!("test_switch_implies_cfg_test: %s", f.to_err_msg())
             };
         let sessopts = build_session_options(
-            @"rustc", matches, diagnostic::emit);
-        let sess = build_session(sessopts, diagnostic::emit);
+            @"rustc",
+            matches,
+            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
+        let sess = build_session(sessopts,
+                                 @diagnostic::DefaultEmitter as
+                                    @diagnostic::Emitter);
         let cfg = build_configuration(sess);
         assert!((attr::contains_name(cfg, "test")));
     }
@@ -1083,8 +1087,12 @@ mod test {
               }
             };
         let sessopts = build_session_options(
-            @"rustc", matches, diagnostic::emit);
-        let sess = build_session(sessopts, diagnostic::emit);
+            @"rustc",
+            matches,
+            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
+        let sess = build_session(sessopts,
+                                 @diagnostic::DefaultEmitter as
+                                    @diagnostic::Emitter);
         let cfg = build_configuration(sess);
         let mut test_items = cfg.iter().filter(|m| "test" == m.name());
         assert!(test_items.next().is_some());

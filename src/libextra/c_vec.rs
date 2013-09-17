@@ -162,8 +162,11 @@ mod tests {
     }
 
     impl Runnable for LibcFree {
+        #[fixed_stack_segment]
         fn run(~self) {
-            libc::free(self.mem)
+            unsafe {
+                libc::free(self.mem)
+            }
         }
     }
 

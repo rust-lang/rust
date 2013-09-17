@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct X {
-    field: @fn:Send(),
+    field: ~fn:Send(),
 }
 
-fn foo(blk: @fn:()) -> X {
+fn foo(blk: ~fn:()) -> X {
     return X { field: blk }; //~ ERROR expected bounds `Send` but found no bounds
 }
 

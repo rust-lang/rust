@@ -217,7 +217,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
                             }));
     syntax_expanders.insert(intern(&"macro_rules"),
                             @SE(IdentTT(@SyntaxExpanderTTItem {
-                                expander: SyntaxExpanderTTItemExpanderWithContext(ext::tt::macro_rules::add_new_extension),
+                                expander: SyntaxExpanderTTItemExpanderWithContext(
+                                    ext::tt::macro_rules::add_new_extension),
                                 span: None,
                             } as @SyntaxExpanderTTItemTrait,
                             None)));
