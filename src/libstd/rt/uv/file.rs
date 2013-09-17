@@ -38,7 +38,10 @@ impl FsRequest {
 
     pub fn open<P: PathLike>(self, loop_: &Loop, path: &P, flags: int, mode: int,
                cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
@@ -49,7 +52,10 @@ impl FsRequest {
 
     pub fn open_sync<P: PathLike>(self, loop_: &Loop, path: &P,
                                   flags: int, mode: int) -> Result<c_int, UvError> {
-        let complete_cb_ptr = self.req_boilerplate(None);
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(None)
+        };
         let result = path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
@@ -60,7 +66,10 @@ impl FsRequest {
     }
 
     pub fn unlink<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
                 uvll::fs_unlink(loop_.native_handle(),
@@ -71,7 +80,10 @@ impl FsRequest {
 
     pub fn unlink_sync<P: PathLike>(self, loop_: &Loop, path: &P)
       -> Result<c_int, UvError> {
-        let complete_cb_ptr = self.req_boilerplate(None);
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(None)
+        };
         let result = path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
                 uvll::fs_unlink(loop_.native_handle(),
@@ -82,7 +94,10 @@ impl FsRequest {
     }
 
     pub fn stat<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
                 uvll::fs_stat(loop_.native_handle(),
@@ -92,7 +107,10 @@ impl FsRequest {
     }
 
     pub fn write(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         let base_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         unsafe {
@@ -103,7 +121,10 @@ impl FsRequest {
     }
     pub fn write_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
-        let complete_cb_ptr = self.req_boilerplate(None);
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(None)
+        };
         let base_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let result = unsafe {
@@ -115,7 +136,10 @@ impl FsRequest {
     }
 
     pub fn read(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         let buf_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         unsafe {
@@ -126,7 +150,10 @@ impl FsRequest {
     }
     pub fn read_sync(self, loop_: &Loop, fd: c_int, buf: Buf, offset: i64)
           -> Result<c_int, UvError> {
-        let complete_cb_ptr = self.req_boilerplate(None);
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(None)
+        };
         let buf_ptr = buf.base as *c_void;
         let len = buf.len as uint;
         let result = unsafe {
@@ -138,14 +165,20 @@ impl FsRequest {
     }
 
     pub fn close(self, loop_: &Loop, fd: c_int, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         unsafe {
             uvll::fs_close(loop_.native_handle(), self.native_handle(),
                            fd, complete_cb_ptr)
         };
     }
     pub fn close_sync(self, loop_: &Loop, fd: c_int) -> Result<c_int, UvError> {
-        let complete_cb_ptr = self.req_boilerplate(None);
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(None)
+        };
         let result = unsafe {
             uvll::fs_close(loop_.native_handle(), self.native_handle(),
                            fd, complete_cb_ptr)
@@ -154,7 +187,10 @@ impl FsRequest {
     }
 
     pub fn mkdir<P: PathLike>(self, loop_: &Loop, path: &P, mode: int, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_mkdir(loop_.native_handle(),
@@ -164,7 +200,10 @@ impl FsRequest {
     }
 
     pub fn rmdir<P: PathLike>(self, loop_: &Loop, path: &P, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_rmdir(loop_.native_handle(),
@@ -175,7 +214,10 @@ impl FsRequest {
 
     pub fn readdir<P: PathLike>(self, loop_: &Loop, path: &P,
                                 flags: c_int, cb: FsCallback) {
-        let complete_cb_ptr = self.req_boilerplate(Some(cb));
+        let complete_cb_ptr = {
+            let mut me = self;
+            me.req_boilerplate(Some(cb))
+        };
         path.path_as_str(|p| {
             p.to_c_str().with_ref(|p| unsafe {
             uvll::fs_readdir(loop_.native_handle(),
@@ -193,8 +235,7 @@ impl FsRequest {
             None => Ok(result)
         }
     }
-    fn req_boilerplate(&self, cb: Option<FsCallback>) -> *u8 {
-        // XXX: this is unsafe/mutable
+    fn req_boilerplate(&mut self, cb: Option<FsCallback>) -> *u8 {
         let result = match cb {
             Some(_) => {
                 compl_cb as *u8
@@ -204,7 +245,7 @@ impl FsRequest {
         self.install_req_data(cb);
         result
     }
-    pub fn install_req_data(&self, cb: Option<FsCallback>) {
+    pub fn install_req_data(&mut self, cb: Option<FsCallback>) {
         let fs_req = (self.native_handle()) as *uvll::uv_write_t;
         let data = ~RequestData {
             complete_cb: cb
