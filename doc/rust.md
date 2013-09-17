@@ -2401,7 +2401,7 @@ If the label is present, then `loop foo` returns control to the head of the loop
 which need not be the innermost label enclosing the `break` expression,
 but must enclose it.
 
-A `loop` expression is only permitted in the body of a loop.
+A `continue` expression is only permitted in the body of a loop.
 
 
 ### Do expressions
