@@ -108,6 +108,12 @@ impl PkgId {
         }
     }
 
+    // This is the workcache function name for the *installed*
+    // binaries for this package (as opposed to the built ones,
+    // which are per-crate).
+    pub fn install_tag(&self) -> ~str {
+        fmt!("install(%s)", self.to_str())
+    }
 }
 
 struct Prefixes {
