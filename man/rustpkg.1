@@ -11,6 +11,8 @@ This tool is a package manager for applications written in the Rust language,
 available at <\fBhttps://www.rust-lang.org\fR>. It provides commands to build,
 install and test Rust programs.
 
+\fBrustpkg\fR is still a work in progress. See \fBdoc/rustpkg.md\fR in the Rust source distribution for future plans.
+
 .SH COMMANDS
 
 .TP
@@ -25,10 +27,6 @@ Remove all generated files from the \fIbuild\fR directory in the target's worksp
 Builds the specified target, and all its dependencies, and then installs the
 build products into the \fIlib\fR and \fIbin\fR directories of their respective
 workspaces.
-.TP
-\fBtest\fR
-Builds the module called \fItest.rs\fR in the specified workspace, and then runs
-the resulting executable in test mode.
 
 .SS "BUILD COMMAND"
 
@@ -58,19 +56,8 @@ of the first entry in RUST_PATH.
 
 Examples:
 
-    $ rustpkg install git://github.com/mozilla/servo.git#1.2
+    $ rustpkg install github.com/mozilla/servo.git#1.2
     $ rustpkg install rust-glfw
-
-.SS "TEST COMMAND"
-
-    rustpkg test \fI[pkgname]\fR
-
-The test command is a shortcut for the command line:
-
-    $ rustc --test <filename> -o <filestem>test~ && ./<filestem>test~
-
-Note the suffix on the output filename (the word "test" followed by a tilde),
-which should ensure the file does not clash with a user-generated files.
 
 .SH "ENVIRONMENT"
 
@@ -186,7 +173,7 @@ rust, rustc, rustdoc, rusti
 See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
 
 .SH "AUTHOR"
-See \fBAUTHORS.txt\fR in the rust source distribution. Graydon Hoare
+See \fBAUTHORS.txt\fR in the Rust source distribution. Graydon Hoare
 <\fIgraydon@mozilla.com\fR> is the project leader.
 
 .SH "COPYRIGHT"
