@@ -196,16 +196,7 @@ pub fn env() -> ~[(~str,~str)] {
             if (ch as uint == 0) {
                 fail!("os::env() failure getting env string from OS: %s", os::last_os_error());
             }
-            let mut curr_ptr: uint = ch as uint;
-            let mut result = ~[];
-            while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
-                let env_pair = str::raw::from_c_str(
-                    curr_ptr as *libc::c_char);
-                result.push(env_pair);
-                curr_ptr +=
-                    libc::strlen(curr_ptr as *libc::c_char) as uint
-                    + 1;
-            }
+            let result = str::raw::from_c_multistring(ch as *libc::c_char, None);
             FreeEnvironmentStringsA(ch);
             result
         }

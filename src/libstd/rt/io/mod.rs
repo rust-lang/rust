@@ -245,6 +245,7 @@ Out of scope
 use prelude::*;
 use to_str::ToStr;
 use str::{StrSlice, OwnedStr};
+use path::Path;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -357,7 +358,10 @@ pub enum IoErrorKind {
     Closed,
     ConnectionRefused,
     ConnectionReset,
-    BrokenPipe
+    BrokenPipe,
+    PathAlreadyExists,
+    PathDoesntExist,
+    MismatchedFileTypeForOperation
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -373,7 +377,10 @@ impl ToStr for IoErrorKind {
             Closed => ~"Closed",
             ConnectionRefused => ~"ConnectionRefused",
             ConnectionReset => ~"ConnectionReset",
-            BrokenPipe => ~"BrokenPipe"
+            BrokenPipe => ~"BrokenPipe",
+            PathAlreadyExists => ~"PathAlreadyExists",
+            PathDoesntExist => ~"PathDoesntExist",
+            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation"
         }
     }
 }
@@ -392,6 +399,18 @@ condition! {
     // NOTE: this super::IoError should be IoError
     // Change this next time the snapshot it updated.
     pub read_error: super::IoError -> ();
+}
+
+/// Helper for wrapper calls where you want to
+/// ignore any io_errors that might be raised
+pub fn ignore_io_error<T>(cb: &fn() -> T) -> T {
+    do io_error::cond.trap(|_| {
+        // just swallow the error.. downstream users
+        // who can make a decision based on a None result
+        // won't care
+    }).inside {
+        cb()
+    }
 }
 
 pub trait Reader {
@@ -595,4 +614,23 @@ pub enum FileAccess {
     Read,
     Write,
     ReadWrite
+}
+
+pub struct FileStat {
+    /// A `Path` object containing information about the `PathInfo`'s location
+    path: Path,
+    /// `true` if the file pointed at by the `PathInfo` is a regular file
+    is_file: bool,
+    /// `true` if the file pointed at by the `PathInfo` is a directory
+    is_dir: bool,
+    /// The file pointed at by the `PathInfo`'s size in bytes
+    size: u64,
+    /// The file pointed at by the `PathInfo`'s creation time
+    created: u64,
+    /// The file pointed at by the `PathInfo`'s last-modification time in
+    /// platform-dependent msecs
+    modified: u64,
+    /// The file pointed at by the `PathInfo`'s last-accessd time (e.g. read) in
+    /// platform-dependent msecs
+    accessed: u64,
 }
