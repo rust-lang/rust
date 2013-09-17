@@ -35,15 +35,16 @@ This makes sense, as we haven't gotten it from anywhere yet!  Luckily for us,
 used like this:
 
 ~~~ {.notrust}
-$ rustpkg install fragment
+$ rustpkg install pkg_id
 ~~~
 
-This will install a package named 'fragment' into your current Rust
-environment. I called it 'fragment' in this example because when using it with
-an external package like this, it's often a URI fragment. You see, Rust has no
-central authority for packages. You can build your own `hello` library if you
-want, and that's fine. We'd both host them in different places and different
-projects would rely on whichever version they preferred.
+This will install a package named 'pkg_id' into your current Rust environment.
+I called it 'pkg_id' in this example because `rustpkg` calls this a 'package
+identifier.' When using it with an external package like this, it's often a
+URI fragment.  You see, Rust has no central authority for packages. You can
+build your own `hello` library if you want, and that's fine. We'd both host
+them in different places and different projects would rely on whichever version
+they preferred.
 
 To install the `hello` library, simply run this in your terminal:
 
@@ -71,10 +72,10 @@ Simple! That's all it takes.
 
 Before we can talk about how to make packages of your own, you have to
 understand the big concept with `rustpkg`: workspaces. A 'workspace' is simply
-a directory that has certain folders that `rustpkg` expects. Different Rust
-projects will go into different workspaces.
+a directory that has certain sub-directories that `rustpkg` expects. Different
+Rust projects will go into different workspaces.
 
-A workspace consists of any folder that has the following
+A workspace consists of any directory that has the following
 directories:
 
 * `src`: The directory where all the source code goes.
@@ -94,11 +95,11 @@ to wherever you keep your personal projects, and let's make all of the
 directories we'll need. I'll refer to this personal project directory as
 `~/src` for the rest of this tutorial.
 
-### Creating neccesary files
+### Creating our workspace
 
 ~~~ {.notrust}
 $ cd ~/src
-$ mkdir -p hello/{src/hello,build,lib,bin}
+$ mkdir -p hello/src/hello
 $ cd hello
 ~~~
 
@@ -125,13 +126,13 @@ $ git commit -am "Initial commit."
 ~~~
 
 If you're not familliar with the `cat >` idiom, it will make files with the
-text you type insie. Control-D (`^D`) ends the text for the file.
+text you type inside. Control-D (`^D`) ends the text for the file.
 
 Anyway, we've got a README and a `.gitignore`. Let's talk about that
 `.gitignore` for a minute: we are ignoring two directories, `build` and
 `.rust`. `build`, as we discussed earlier, is for build artifacts, and we don't
-want to check those into a repository. `.rust` is a folder that `rustpkg` uses
-to keep track of its own settings, as well as the source code of any other
+want to check those into a repository. `.rust` is a directory that `rustpkg`
+uses to keep track of its own settings, as well as the source code of any other
 external packages that this workspace uses. This is where that `rustpkg
 install` puts all of its files. Those are also not to go into our repository,
 so we ignore it all as well.
@@ -139,14 +140,8 @@ so we ignore it all as well.
 Next, let's add a source file:
 
 ~~~
-#[link(name = "hello",
-       vers = "0.1.0",
-       uuid = "0028fbe0-1f1f-11e3-8224-0800200c9a66",
-       url = "https://github.com/YOUR_USERNAME/hello")]; 
-
 #[desc = "A hello world Rust package."];
 #[license = "MIT"];
-#[crate_type = "lib"];
 
 pub fn world() {
     println("Hello, world.");
@@ -157,27 +152,11 @@ Put this into `src/hello/lib.rs`. Let's talk about each of these attributes:
 
 ### Crate attributes for packages
 
-`crate_type` is the simplest: we're building a library here, so we set it to
-`"lib"`. If we were making an executable of some kind, we'd set this to `"bin"`
-instead.
-
 `license` is equally simple: the license we want this code to have. I chose MIT
 here, but you should pick whatever license makes the most sense for you.
 
 `desc` is a description of the package and what it does. This should just be a
 sentence or two.
-
-`link` is the big complex attribute here. It's still not too complex: `name` is
-the name of the package, and `vers` is the version. If you're building a
-library, consider using [Semantic Versioning](http://semver.org/) as your
-versioning scheme. Future versions of `rustpkg` will assume SemVer.
-
-`uuid` is simply a unique identifier. You can generate a UUID by visiting [this
-page](http://www.famkruithof.net/uuid/uuidgen). Just copy whatever it puts out
-into the value for `uuid`. For more on UUIDs, see
-[RFC4122](http://www.ietf.org/rfc/rfc4122.txt).
-
-Finally, `url` is a URL where this package is located. Easy.
 
 ### Building your package
 
