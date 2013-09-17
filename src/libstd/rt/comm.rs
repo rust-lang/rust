@@ -363,7 +363,7 @@ impl<T> Peekable<T> for PortOne<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for ChanOne<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.suppress_finalize { return }
 
         unsafe {
@@ -391,7 +391,7 @@ impl<T> Drop for ChanOne<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for PortOne<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         if self.suppress_finalize { return }
 
         unsafe {

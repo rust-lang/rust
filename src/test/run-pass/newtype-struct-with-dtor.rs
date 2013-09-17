@@ -5,7 +5,7 @@ pub struct Fd(c_int);
 
 impl Drop for Fd {
     #[fixed_stack_segment] #[inline(never)]
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             libc::close(**self);
         }

@@ -40,7 +40,7 @@ pub struct _indenter {
 }
 
 impl Drop for _indenter {
-    fn drop(&self) { debug!("<<"); }
+    fn drop(&mut self) { debug!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {

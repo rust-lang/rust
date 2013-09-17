@@ -57,7 +57,7 @@ struct AsciiArt {
 }
 
 impl Drop for AsciiArt {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 // It's common to define a constructor sort of function to create struct instances.

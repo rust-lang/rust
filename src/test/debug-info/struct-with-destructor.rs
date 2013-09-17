@@ -37,7 +37,7 @@ struct WithDestructor {
 }
 
 impl Drop for WithDestructor {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 struct NoDestructorGuarded {
@@ -55,7 +55,7 @@ struct NestedInner {
 }
 
 impl Drop for NestedInner {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 struct NestedOuter {

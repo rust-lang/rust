@@ -73,7 +73,7 @@ impl<T> Rc<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for Rc<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;
@@ -218,7 +218,7 @@ impl<T> RcMut<T> {
 
 #[unsafe_destructor]
 impl<T> Drop for RcMut<T> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         unsafe {
             if self.ptr.is_not_null() {
                 (*self.ptr).count -= 1;

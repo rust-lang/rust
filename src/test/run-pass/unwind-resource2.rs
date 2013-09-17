@@ -18,7 +18,7 @@ struct complainer {
 
 #[unsafe_destructor]
 impl Drop for complainer {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn complainer(c: @int) -> complainer {

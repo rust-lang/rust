@@ -88,7 +88,7 @@ impl NonCopyable {
 }
 
 impl Drop for NonCopyable {
-    fn drop(&self) { }
+    fn drop(&mut self) { }
 }
 
 /// A type with no inhabitants
@@ -188,7 +188,7 @@ mod tests {
         struct Foo { five: int }
 
         impl Drop for Foo {
-            fn drop(&self) {
+            fn drop(&mut self) {
                 assert_eq!(self.five, 5);
                 unsafe {
                     did_run = true;

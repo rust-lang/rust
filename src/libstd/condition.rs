@@ -87,7 +87,7 @@ struct Guard<'self, T, U> {
 
 #[unsafe_destructor]
 impl<'self, T, U> Drop for Guard<'self, T, U> {
-    fn drop(&self) {
+    fn drop(&mut self) {
         debug!("Guard: popping handler from TLS");
         let curr = local_data::pop(self.cond.key);
         match curr {

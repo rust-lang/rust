@@ -16,7 +16,7 @@ struct Font {
 }
 
 impl Drop for Font {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 fn Font() -> Font {

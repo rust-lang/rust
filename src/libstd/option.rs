@@ -573,7 +573,7 @@ mod tests {
 
         #[unsafe_destructor]
         impl ::ops::Drop for R {
-           fn drop(&self) { *(self.i) += 1; }
+           fn drop(&mut self) { *(self.i) += 1; }
         }
 
         fn R(i: @mut int) -> R {

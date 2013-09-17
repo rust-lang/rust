@@ -235,7 +235,7 @@ pub struct Death {
 impl Drop for KillFlag {
     // Letting a KillFlag with a task inside get dropped would leak the task.
     // We could free it here, but the task should get awoken by hand somehow.
-    fn drop(&self) {
+    fn drop(&mut self) {
         match self.load(Relaxed) {
             KILL_RUNNING | KILL_KILLED => { },
             _ => rtabort!("can't drop kill flag with a blocked task inside!"),
@@ -685,7 +685,7 @@ impl Death {
 }
 
 impl Drop for Death {
-    fn drop(&self) {
+    fn drop(&mut self) {
         // Mustn't be in an atomic or unkillable section at task death.
         rtassert!(self.unkillable == 0);
         rtassert!(self.wont_sleep == 0);

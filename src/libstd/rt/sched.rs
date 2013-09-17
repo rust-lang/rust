@@ -1200,15 +1200,15 @@ mod test {
             struct S { field: () }
 
             impl Drop for S {
-                fn drop(&self) {
-                        let _foo = @0;
+                fn drop(&mut self) {
+                    let _foo = @0;
                 }
             }
 
             let s = S { field: () };
 
             do spawntask {
-                        let _ss = &s;
+                let _ss = &s;
             }
         }
     }

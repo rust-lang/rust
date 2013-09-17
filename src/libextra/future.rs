@@ -43,7 +43,7 @@ pub struct Future<A> {
 // over ~fn's that have pipes and so forth within!
 #[unsafe_destructor]
 impl<A> Drop for Future<A> {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 enum FutureState<A> {

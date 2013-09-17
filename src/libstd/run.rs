@@ -436,12 +436,9 @@ impl Process {
 }
 
 impl Drop for Process {
-    fn drop(&self) {
-        // FIXME(#4330) Need self by value to get mutability.
-        let mut_self: &mut Process = unsafe { cast::transmute(self) };
-
-        mut_self.finish();
-        mut_self.close_outputs();
+    fn drop(&mut self) {
+        self.finish();
+        self.close_outputs();
         free_handle(self.handle);
     }
 }

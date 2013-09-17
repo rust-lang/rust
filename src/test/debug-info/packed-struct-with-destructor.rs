@@ -49,7 +49,7 @@ struct Packed {
 }
 
 impl Drop for Packed {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 #[packed]
@@ -74,7 +74,7 @@ struct Unpacked {
 }
 
 impl Drop for Unpacked {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 #[packed]
@@ -94,7 +94,7 @@ struct PackedInPackedWithDrop {
 }
 
 impl Drop for PackedInPackedWithDrop {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 struct PackedInUnpackedWithDrop {
@@ -105,7 +105,7 @@ struct PackedInUnpackedWithDrop {
 }
 
 impl Drop for PackedInUnpackedWithDrop {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 #[packed]
@@ -117,7 +117,7 @@ struct UnpackedInPackedWithDrop {
 }
 
 impl Drop for UnpackedInPackedWithDrop {
-    fn drop(&self) {}
+    fn drop(&mut self) {}
 }
 
 struct DeeplyNested {
