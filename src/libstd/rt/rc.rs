@@ -78,17 +78,14 @@ impl<T> Drop for RC<T> {
         assert!(self.refcount() > 0);
 
         unsafe {
-            // FIXME(#4330) Need self by value to get mutability.
-            let this: &mut RC<T> = cast::transmute_mut(self);
-
-            match *this.get_mut_state() {
+            match *self.get_mut_state() {
                 (ref mut count, _) => {
                     *count = *count - 1
                 }
             }
 
-            if this.refcount() == 0 {
-                let _: ~(uint, T) = cast::transmute(this.p);
+            if self.refcount() == 0 {
+                let _: ~(uint, T) = cast::transmute(self.p);
             }
         }
     }
