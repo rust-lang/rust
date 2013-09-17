@@ -64,10 +64,15 @@ fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr
         _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(FromPrimitive)`")
     };
 
-    return match *substr.fields {
+    match *substr.fields {
+        StaticStruct(*) => {
+            cx.span_err(span, "`FromPrimitive` cannot be derived for structs");
+            return cx.expr_fail(span, @"");
+        }
         StaticEnum(enum_def, _) => {
             if enum_def.variants.is_empty() {
-                cx.span_fatal(span, "`FromPrimitive` cannot be derived for enums with no variants");
+                cx.span_err(span, "`FromPrimitive` cannot be derived for enums with no variants");
+                return cx.expr_fail(span, @"");
             }
 
             let mut arms = ~[];
@@ -76,8 +81,9 @@ fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr
                 match variant.node.kind {
                     ast::tuple_variant_kind(ref args) => {
                         if !args.is_empty() {
-                            cx.span_fatal(span, "`FromPrimitive` cannot be derived for \
-                                                 enum variants with arguments");
+                            cx.span_err(span, "`FromPrimitive` cannot be derived for \
+                                               enum variants with arguments");
+                            return cx.expr_fail(span, @"");
                         }
 
                         // expr for `$n == $variant as $name`
@@ -99,8 +105,9 @@ fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr
                         arms.push(arm);
                     }
                     ast::struct_variant_kind(_) => {
-                        cx.span_fatal(span, "`FromPrimitive` cannot be derived for enums \
-                                             with struct variants");
+                        cx.span_err(span, "`FromPrimitive` cannot be derived for enums \
+                                           with struct variants");
+                        return cx.expr_fail(span, @"");
                     }
                 }
             }
@@ -116,5 +123,5 @@ fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr
             cx.expr_match(span, n, arms)
         }
         _ => cx.bug("expected StaticEnum in deriving(FromPrimitive)")
-    };
+    }
 }
