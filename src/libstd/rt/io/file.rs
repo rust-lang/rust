@@ -45,17 +45,17 @@ use path::Path;
 use super::super::test::*;
 
 /// Open a file for reading/writing, as indicated by `path`.
-/// 
+///
 /// # Example
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::open;
 ///     use std::rt::io::{FileMode, FileAccess};
-/// 
+///
 ///     let p = &Path("/some/file/path.txt");
-///     
+///
 ///     do io_error::cond.trap(|_| {
 ///         // hoo-boy...
 ///     }).inside {
@@ -64,26 +64,26 @@ use super::super::test::*;
 ///             None => fail!("whoops! I'm sure this raised, anyways..");
 ///         }
 ///         // do some stuff with that stream
-/// 
+///
 ///         // the file stream will be closed at the end of this block
 ///     }
 ///     // ..
-/// 
+///
 /// `FileMode` and `FileAccess` provide information about the permissions
 /// context in which a given stream is created. More information about them
 /// can be found in `std::rt::io`'s docs.
-/// 
+///
 /// Note that, with this function, a `FileStream` is returned regardless of
 /// the access-limitations indicated by `FileAccess` (e.g. calling `write` on a
 /// `FileStream` opened as `ReadOnly` will raise an `io_error` condition at runtime). If you
 /// desire a more-correctly-constrained interface to files, use the
 /// `{open_stream, open_reader, open_writer}` methods that are a part of `FileInfo`
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function will raise an `io_error` condition under a number of different circumstances,
 /// to include but not limited to:
-/// 
+///
 /// * Opening a file that already exists with `FileMode` of `Create` or vice versa (e.g.
 ///   opening a non-existant file with `FileMode` or `Open`)
 /// * Attempting to open a file with a `FileAccess` that the user lacks permissions
@@ -110,25 +110,25 @@ pub fn open<P: PathLike>(path: &P,
 }
 
 /// Unlink a file from the underlying filesystem.
-/// 
+///
 /// # Example
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::unlink;
-/// 
+///
 ///     let p = &Path("/some/file/path.txt");
 ///     unlink(p);
 ///     // if we made it here without failing, then the
 ///     // unlink operation was successful
-/// 
+///
 /// Note that, just because an unlink call was successful, it is not
 /// guaranteed that a file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal)
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function will raise an `io_error` condition if the user lacks permissions to
 /// remove the file or if some other filesystem-level error occurs
 pub fn unlink<P: PathLike>(path: &P) {
@@ -145,20 +145,20 @@ pub fn unlink<P: PathLike>(path: &P) {
 }
 
 /// Create a new, empty directory at the provided path
-/// 
+///
 /// # Example
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::mkdir;
-/// 
+///
 ///     let p = &Path("/some/dir");
 ///     mkdir(p);
 ///     // If we got here, our directory exists! Horray!
-/// 
+///
 /// # Errors
-/// 
+///
 /// This call will raise an `io_error` condition if the user lacks permissions to make a
 /// new directory at the provided path, or if the directory already exists
 pub fn mkdir<P: PathLike>(path: &P) {
@@ -175,20 +175,20 @@ pub fn mkdir<P: PathLike>(path: &P) {
 }
 
 /// Remove an existing, empty directory
-/// 
+///
 /// # Example
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::rmdir;
-/// 
+///
 ///     let p = &Path("/some/dir");
 ///     rmdir(p);
 ///     // good riddance, you mean ol' directory
-/// 
+///
 /// # Errors
-/// 
+///
 /// This call will raise an `io_error` condition if the user lacks permissions to remove the
 /// directory at the provided path, or if the directory isn't empty
 pub fn rmdir<P: PathLike>(path: &P) {
@@ -205,21 +205,21 @@ pub fn rmdir<P: PathLike>(path: &P) {
 }
 
 /// Get information on the file, directory, etc at the provided path
-/// 
+///
 /// Given a `rt::io::support::PathLike`, query the file system to get
 /// information about a file, directory, etc.
-/// 
+///
 /// Returns a `Some(std::rt::io::PathInfo)` on success
-/// 
+///
 /// # Example
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::stat;
-/// 
+///
 ///     let p = &Path("/some/file/path.txt");
-/// 
+///
 ///     do io_error::cond.trap(|_| {
 ///         // hoo-boy...
 ///     }).inside {
@@ -230,13 +230,13 @@ pub fn rmdir<P: PathLike>(path: &P) {
 ///         if stat.is_file {
 ///             // just imagine the possibilities ...
 ///         }
-/// 
+///
 ///         // the file stream will be closed at the end of this block
 ///     }
 ///     // ..
-/// 
+///
 /// # Errors
-/// 
+///
 /// This call will raise an `io_error` condition if the user lacks the requisite
 /// permissions to perform a `stat` call on the given path or if there is no
 /// entry in the filesystem at the provided path.
@@ -325,7 +325,7 @@ impl Seek for FileReader {
 }
 
 /// Constrained version of `FileStream` that only exposes write-specific operations.
-/// 
+///
 /// Can be retreived via `FileInfo.open_writer()`.
 pub struct FileWriter { priv stream: FileStream }
 
@@ -352,15 +352,15 @@ impl Seek for FileWriter {
 }
 
 /// Unconstrained file access type that exposes read and write operations
-/// 
+///
 /// Can be retreived via `file::open()` and `FileInfo.open_stream()`.
-/// 
+///
 /// # Errors
-/// 
+///
 /// This type will raise an io_error condition if operations are attempted against
 /// it for which its underlying file descriptor was not configured at creation
 /// time, via the `FileAccess` parameter to `file::open()`.
-/// 
+///
 /// For this reason, it is best to use the access-constrained wrappers that are
 /// exposed via `FileInfo.open_reader()` and `FileInfo.open_writer()`.
 pub struct FileStream {
@@ -474,15 +474,15 @@ pub trait FileSystemInfo {
 }
 
 /// Represents a file, whose underlying path may or may not be valid
-/// 
+///
 /// # Example
-/// 
+///
 /// * Check if a file exists, reading from it if so
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::file::{FileInfo, FileReader};
-/// 
+///
 ///     let f = &Path("/some/file/path.txt");
 ///     if f.exists() {
 ///         let reader = f.open_reader(Open);
@@ -490,9 +490,9 @@ pub trait FileSystemInfo {
 ///         reader.read(mem);
 ///         // ...
 ///     }
-/// 
+///
 /// * Is the given path a file?
-/// 
+///
 ///    let f = get_file_path_from_wherever();
 ///    match f.is_file() {
 ///        true => doing_something_with_a_file(f),
@@ -567,22 +567,22 @@ impl FileSystemInfo for Path {
 impl FileInfo for Path { }
 
 /// Represents a directory, whose underlying path may or may not be valid
-/// 
+///
 /// # Example
-/// 
+///
 /// * Check if a directory exists, `mkdir`'ing it if not
-/// 
+///
 ///     use std;
 ///     use std::path::Path;
 ///     use std::rt::io::file::{DirectoryInfo};
-/// 
+///
 ///     let dir = &Path("/some/dir");
 ///     if !dir.exists() {
 ///         dir.mkdir();
 ///     }
-/// 
+///
 /// * Is the given path a directory? If so, iterate on its contents
-/// 
+///
 ///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
 ///         if dir.is_dir() {
 ///             let contents = dir.readdir();
