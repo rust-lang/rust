@@ -113,8 +113,15 @@ rust_uv_fs_write
 rust_uv_fs_read
 rust_uv_fs_close
 rust_uv_get_result_from_fs_req
+rust_uv_get_ptr_from_fs_req
 rust_uv_get_loop_from_fs_req
+rust_uv_fs_stat
+rust_uv_fs_fstat
 rust_uv_fs_req_cleanup
+rust_uv_populate_uv_stat
+rust_uv_fs_mkdir
+rust_uv_fs_rmdir
+rust_uv_fs_readdir
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
