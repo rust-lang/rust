@@ -22,8 +22,7 @@ use char;
 use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use num::Times;
-use iter::{Iterator, FromIterator, Extendable};
+use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};
 use libc;
@@ -33,7 +32,6 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use uint;
-use unstable::raw::{Repr, Slice};
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 use default::Default;
@@ -185,23 +183,15 @@ impl<'self, S: Str> StrVector for &'self [S] {
     fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
+        // `len` calculation may overflow but push_str but will check boundaries
         let len = self.iter().map(|s| s.as_slice().len()).sum();
 
-        let mut s = with_capacity(len);
+        let mut result = with_capacity(len);
 
-        unsafe {
-            do s.as_mut_buf |buf, _| {
-                let mut buf = buf;
-                for ss in self.iter() {
-                    do ss.as_slice().as_imm_buf |ssbuf, sslen| {
-                        ptr::copy_memory(buf, ssbuf, sslen);
-                        buf = buf.offset(sslen as int);
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
+        for s in self.iter() {
+            result.push_str(s.as_slice())
         }
-        s
+        result
     }
 
     /// Concatenate a vector of strings, placing a given separator between each.
@@ -212,34 +202,21 @@ impl<'self, S: Str> StrVector for &'self [S] {
         if sep.is_empty() { return self.concat(); }
 
         // this is wrong without the guarantee that `self` is non-empty
+        // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
             + self.iter().map(|s| s.as_slice().len()).sum();
-        let mut s = ~"";
+        let mut result = with_capacity(len);
         let mut first = true;
 
-        s.reserve(len);
-
-        unsafe {
-            do s.as_mut_buf |buf, _| {
-                do sep.as_imm_buf |sepbuf, seplen| {
-                    let mut buf = buf;
-                    for ss in self.iter() {
-                        do ss.as_slice().as_imm_buf |ssbuf, sslen| {
-                            if first {
-                                first = false;
-                            } else {
-                                ptr::copy_memory(buf, sepbuf, seplen);
-                                buf = buf.offset(seplen as int);
-                            }
-                            ptr::copy_memory(buf, ssbuf, sslen);
-                            buf = buf.offset(sslen as int);
-                        }
-                    }
-                }
+        for s in self.iter() {
+            if first {
+                first = false;
+            } else {
+                result.push_str(sep);
             }
-            raw::set_len(&mut s, len);
+            result.push_str(s.as_slice());
         }
-        s
+        result
     }
 }
 
@@ -961,7 +938,6 @@ static TAG_CONT_U8: u8 = 128u8;
 
 /// Unsafe operations
 pub mod raw {
-    use option::Some;
     use cast;
     use libc;
     use ptr;
@@ -1064,21 +1040,22 @@ pub mod raw {
         }
     }
 
-    /// Appends a byte to a string. (Not UTF-8 safe).
+    /// Appends a byte to a string.
+    /// The caller must preserve the valid UTF-8 property.
     #[inline]
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
-        let v: &mut ~[u8] = cast::transmute(s);
-        v.push(b);
+        as_owned_vec(s).push(b)
     }
 
-    /// Appends a vector of bytes to a string. (Not UTF-8 safe).
-    unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
-        let new_len = s.len() + bytes.len();
-        s.reserve_at_least(new_len);
-        for byte in bytes.iter() { push_byte(&mut *s, *byte); }
+    /// Appends a vector of bytes to a string.
+    /// The caller must preserve the valid UTF-8 property.
+    #[inline]
+    pub unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
+        vec::bytes::push_bytes(as_owned_vec(s), bytes);
     }
 
-    /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
+    /// Removes the last byte from a string and returns it.
+    /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
         let len = s.len();
         assert!((len > 0u));
@@ -1087,13 +1064,21 @@ pub mod raw {
         return b;
     }
 
-    /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
+    /// Removes the first byte from a string and returns it.
+    /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
         let len = s.len();
         assert!((len > 0u));
         let b = s[0];
         *s = s.slice(1, len).to_owned();
         return b;
+    }
+
+    /// Access the str in its vector representation.
+    /// The caller must preserve the valid UTF-8 property when modifying.
+    #[inline]
+    pub unsafe fn as_owned_vec<'a>(s: &'a mut ~str) -> &'a mut ~[u8] {
+        cast::transmute(s)
     }
 
     /// Sets the length of a string
@@ -1103,8 +1088,7 @@ pub mod raw {
     /// the string is actually the specified size.
     #[inline]
     pub unsafe fn set_len(s: &mut ~str, new_len: uint) {
-        let v: &mut ~[u8] = cast::transmute(s);
-        vec::raw::set_len(v, new_len)
+        vec::raw::set_len(as_owned_vec(s), new_len)
     }
 
     /// Sets the length of a string
@@ -2061,22 +2045,11 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Given a string, make a new string with repeated copies of it.
     fn repeat(&self, nn: uint) -> ~str {
-        do self.as_imm_buf |buf, len| {
-            let mut ret = with_capacity(nn * len);
-
-            unsafe {
-                do ret.as_mut_buf |rbuf, _len| {
-                    let mut rbuf = rbuf;
-
-                    do nn.times {
-                        ptr::copy_memory(rbuf, buf, len);
-                        rbuf = rbuf.offset(len as int);
-                    }
-                }
-                raw::set_len(&mut ret, nn * len);
-            }
-            ret
+        let mut ret = with_capacity(nn * self.len());
+        for _ in range(0, nn) {
+            ret.push_str(*self);
         }
+        ret
     }
 
     /// Retrieves the first character from a string slice and returns
@@ -2199,36 +2172,16 @@ impl OwnedStr for ~str {
     /// Appends a string slice to the back of a string, without overallocating
     #[inline]
     fn push_str_no_overallocate(&mut self, rhs: &str) {
-        unsafe {
-            let llen = self.len();
-            let rlen = rhs.len();
-            self.reserve(llen + rlen);
-            do self.as_imm_buf |lbuf, _llen| {
-                do rhs.as_imm_buf |rbuf, _rlen| {
-                    let dst = ptr::offset(lbuf, llen as int);
-                    let dst = cast::transmute_mut_unsafe(dst);
-                    ptr::copy_memory(dst, rbuf, rlen);
-                }
-            }
-            raw::set_len(self, llen + rlen);
-        }
+        let new_cap = self.len() + rhs.len();
+        self.reserve(new_cap);
+        self.push_str(rhs);
     }
 
     /// Appends a string slice to the back of a string
     #[inline]
     fn push_str(&mut self, rhs: &str) {
         unsafe {
-            let llen = self.len();
-            let rlen = rhs.len();
-            self.reserve_at_least(llen + rlen);
-            do self.as_imm_buf |lbuf, _llen| {
-                do rhs.as_imm_buf |rbuf, _rlen| {
-                    let dst = ptr::offset(lbuf, llen as int);
-                    let dst = cast::transmute_mut_unsafe(dst);
-                    ptr::copy_memory(dst, rbuf, rlen);
-                }
-            }
-            raw::set_len(self, llen + rlen);
+            raw::push_bytes(self, rhs.as_bytes());
         }
     }
 
@@ -2236,17 +2189,18 @@ impl OwnedStr for ~str {
     #[inline]
     fn push_char(&mut self, c: char) {
         let cur_len = self.len();
-        self.reserve_at_least(cur_len + 4); // may use up to 4 bytes
-
-        // Attempt to not use an intermediate buffer by just pushing bytes
-        // directly onto this string.
+        // may use up to 4 bytes.
         unsafe {
-            let v = self.repr();
-            let len = c.encode_utf8(cast::transmute(Slice {
-                data: ((&(*v).data) as *u8).offset(cur_len as int),
-                len: 4,
-            }));
-            raw::set_len(self, cur_len + len);
+            raw::as_owned_vec(self).reserve_additional(4);
+
+            // Attempt to not use an intermediate buffer by just pushing bytes
+            // directly onto this string.
+            let used = do self.as_mut_buf |buf, _| {
+                do vec::raw::mut_buf_as_slice(buf.offset(cur_len as int), 4) |slc| {
+                    c.encode_utf8(slc)
+                }
+            };
+            raw::set_len(self, cur_len + used);
         }
     }
 
@@ -2306,8 +2260,7 @@ impl OwnedStr for ~str {
     #[inline]
     fn reserve(&mut self, n: uint) {
         unsafe {
-            let v: &mut ~[u8] = cast::transmute(self);
-            (*v).reserve(n);
+            raw::as_owned_vec(self).reserve(n)
         }
     }
 
@@ -2329,7 +2282,7 @@ impl OwnedStr for ~str {
     /// * n - The number of bytes to reserve space for
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two(n))
+        self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n))
     }
 
     /// Returns the number of single-byte characters the string can hold without
@@ -2359,8 +2312,9 @@ impl OwnedStr for ~str {
 
     #[inline]
     fn as_mut_buf<T>(&mut self, f: &fn(*mut u8, uint) -> T) -> T {
-        let v: &mut ~[u8] = unsafe { cast::transmute(self) };
-        v.as_mut_buf(f)
+        unsafe {
+            raw::as_owned_vec(self).as_mut_buf(f)
+        }
     }
 }
 
@@ -3910,6 +3864,25 @@ mod bench {
     fn bench_with_capacity(bh: &mut BenchHarness) {
         do bh.iter {
             with_capacity(100);
+        }
+    }
+
+    #[bench]
+    fn bench_push_str(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        do bh.iter {
+            let mut r = ~"";
+            r.push_str(s);
+        }
+    }
+
+    #[bench]
+    fn bench_connect(bh: &mut BenchHarness) {
+        let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
+        let sep = "→";
+        let v = [s, s, s, s, s, s, s, s, s, s];
+        do bh.iter {
+            assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
         }
     }
 }
