@@ -75,7 +75,6 @@ pub trait IoFactory {
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError>;
     fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError>;
-    //fn fs_fstat(&mut self, fd: c_int) -> Result<FileStat, IoError>;
     fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn fs_rmdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError>;
     fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->

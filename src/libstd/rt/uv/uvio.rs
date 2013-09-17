@@ -686,9 +686,6 @@ impl IoFactory for UvIoFactory {
         assert!(!result_cell.is_empty());
         return result_cell.take();
     }
-    //fn fs_fstat(&mut self, _fd: c_int) -> Result<FileStat, IoError> {
-    //    Ok(FileStat)
-    //}
     fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
         let mode = S_IRWXU as int;
         do uv_fs_helper(self.uv_loop(), path) |mkdir_req, l, p, cb| {
