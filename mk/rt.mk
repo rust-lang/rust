@@ -24,7 +24,7 @@
 # working under these assumptions).
 
 # Hack for passing flags into LIBUV, see below.
-LIBUV_FLAGS_i386 = -m32 -fPIC
+LIBUV_FLAGS_i386 = -m32 -fPIC -I$(S)src/etc/mingw-fix-include
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
 ifeq ($(OSTYPE_$(1)), linux-androideabi)
 LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
