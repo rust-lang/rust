@@ -194,6 +194,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("bytes"),
                             builtin_normal_expander(
                                     ext::bytes::expand_syntax_ext));
+    syntax_expanders.insert(intern("fourcc"),
+                            builtin_normal_tt_no_ctxt(
+                                    ext::fourcc::expand_syntax_ext));
     syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_expander(
                                     ext::concat_idents::expand_syntax_ext));
