@@ -2660,7 +2660,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
                         ast::foreign_item_static(*) => {
-                            let ident = token::ident_to_str(&ni.ident);
+                            let ident = foreign::link_name(ccx, ni);
                             let g = do ident.with_c_str |buf| {
                                 unsafe {
                                     let ty = type_of(ccx, ty);
