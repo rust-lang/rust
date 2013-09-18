@@ -699,6 +699,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
               '\\' => { c2 = '\\'; }
               '\'' => { c2 = '\''; }
               '"' => { c2 = '"'; }
+              '0' => { c2 = '\x00'; }
               'x' => { c2 = scan_numeric_escape(rdr, 2u); }
               'u' => { c2 = scan_numeric_escape(rdr, 4u); }
               'U' => { c2 = scan_numeric_escape(rdr, 8u); }
@@ -738,6 +739,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                   '\'' => accum_str.push_char('\''),
                   '"' => accum_str.push_char('"'),
                   '\n' => consume_whitespace(rdr),
+                  '0' => accum_str.push_char('\x00'),
                   'x' => {
                     accum_str.push_char(scan_numeric_escape(rdr, 2u));
                   }
