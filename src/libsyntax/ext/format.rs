@@ -76,6 +76,7 @@ impl Context {
                 self.ecx.span_err(sp, "expected token: `,`");
                 return (extra, None);
             }
+            if *p.token == token::EOF { break } // accept trailing commas
             if named || (token::is_ident(p.token) &&
                          p.look_ahead(1, |t| *t == token::EQ)) {
                 named = true;
