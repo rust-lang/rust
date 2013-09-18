@@ -1659,7 +1659,7 @@ pub mod consts {
     pub use os::consts::arm::*;
 
     #[cfg(target_arch = "mips")]
-    use os::consts::mips::*;
+    pub use os::consts::mips::*;
 
     pub mod unix {
         pub static FAMILY: &'static str = "unix";
