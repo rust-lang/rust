@@ -134,7 +134,7 @@ pub fn version(argv0: &str) {
 
 pub fn usage(argv0: &str) {
     let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
-    printfln!("%s\
+    printfln!("%s\n\
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
