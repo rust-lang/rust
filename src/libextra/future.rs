@@ -37,15 +37,6 @@ pub struct Future<A> {
     priv state: FutureState<A>,
 }
 
-// n.b. It should be possible to get rid of this.
-// Add a test, though -- tjc
-// FIXME(#2829) -- futures should not be copyable, because they close
-// over ~fn's that have pipes and so forth within!
-#[unsafe_destructor]
-impl<A> Drop for Future<A> {
-    fn drop(&mut self) {}
-}
-
 enum FutureState<A> {
     Pending(~fn() -> A),
     Evaluating,
