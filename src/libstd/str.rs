@@ -1107,8 +1107,8 @@ pub mod raw {
             Some(limit) => (true, limit),
             None => (false, 0)
         };
-        while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char
-             && ((limited_count && ctr < limit) || !limited_count)) {
+        while(((limited_count && ctr < limit) || !limited_count)
+              && *(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
             let env_pair = from_c_str(
                 curr_ptr as *libc::c_char);
             result.push(env_pair);
