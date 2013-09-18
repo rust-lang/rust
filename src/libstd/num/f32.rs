@@ -823,39 +823,6 @@ impl num::ToStrRadix for f32 {
 }
 
 ///
-/// Convert a string in base 10 to a float.
-/// Accepts a optional decimal exponent.
-///
-/// This function accepts strings such as
-///
-/// * '3.14'
-/// * '+3.14', equivalent to '3.14'
-/// * '-3.14'
-/// * '2.5E10', or equivalently, '2.5e10'
-/// * '2.5E-10'
-/// * '.' (understood as 0)
-/// * '5.'
-/// * '.5', or, equivalently,  '0.5'
-/// * '+inf', 'inf', '-inf', 'NaN'
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-///
-/// # Return value
-///
-/// `none` if the string did not represent a valid number.  Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `num`.
-///
-#[inline]
-pub fn from_str(num: &str) -> Option<f32> {
-    strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false, false)
-}
-
-///
 /// Convert a string in base 16 to a float.
 /// Accepts a optional binary exponent.
 ///
@@ -888,40 +855,65 @@ pub fn from_str_hex(num: &str) -> Option<f32> {
                              strconv::ExpBin, false, false)
 }
 
-///
-/// Convert a string in an given base to a float.
-///
-/// Due to possible conflicts, this function does **not** accept
-/// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
-/// does it recognize exponents of any kind.
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-/// * radix - The base to use. Must lie in the range [2 .. 36]
-///
-/// # Return value
-///
-/// `none` if the string did not represent a valid number. Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `num`.
-///
-#[inline]
-pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
-    strconv::from_str_common(num, rdx, true, true, false,
-                             strconv::ExpNone, false, false)
-}
-
 impl FromStr for f32 {
+    ///
+    /// Convert a string in base 10 to a float.
+    /// Accepts a optional decimal exponent.
+    ///
+    /// This function accepts strings such as
+    ///
+    /// * '3.14'
+    /// * '+3.14', equivalent to '3.14'
+    /// * '-3.14'
+    /// * '2.5E10', or equivalently, '2.5e10'
+    /// * '2.5E-10'
+    /// * '.' (understood as 0)
+    /// * '5.'
+    /// * '.5', or, equivalently,  '0.5'
+    /// * '+inf', 'inf', '-inf', 'NaN'
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// * num - A string
+    ///
+    /// # Return value
+    ///
+    /// `none` if the string did not represent a valid number.  Otherwise,
+    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    ///
     #[inline]
-    fn from_str(val: &str) -> Option<f32> { from_str(val) }
+    fn from_str(val: &str) -> Option<f32> {
+        strconv::from_str_common(val, 10u, true, true, true,
+                                 strconv::ExpDec, false, false)
+    }
 }
 
 impl num::FromStrRadix for f32 {
+    ///
+    /// Convert a string in an given base to a float.
+    ///
+    /// Due to possible conflicts, this function does **not** accept
+    /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+    /// does it recognize exponents of any kind.
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// * num - A string
+    /// * radix - The base to use. Must lie in the range [2 .. 36]
+    ///
+    /// # Return value
+    ///
+    /// `none` if the string did not represent a valid number. Otherwise,
+    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    ///
     #[inline]
     fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
-        from_str_radix(val, rdx)
+        strconv::from_str_common(val, rdx, true, true, false,
+                                 strconv::ExpNone, false, false)
     }
 }
 
