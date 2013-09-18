@@ -18,7 +18,8 @@ use container::MutableSet;
 
 extern {
     #[cfg(not(stage0))]
-    #[crate_map]
+    #[weak_linkage]
+    #[link_name = "_rust_crate_map_toplevel"]
     static CRATE_MAP: CrateMap;
 }
 
