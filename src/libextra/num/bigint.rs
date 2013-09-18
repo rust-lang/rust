@@ -115,8 +115,8 @@ impl TotalOrd for BigUint {
         if s_len > o_len { return Greater;  }
 
         for (&self_i, &other_i) in self.data.rev_iter().zip(other.data.rev_iter()) {
-            cond!((self_i < other_i) { return Less; }
-                  (self_i > other_i) { return Greater; })
+            if self_i < other_i { return Less; }
+            if self_i > other_i { return Greater; }
         }
         return Equal;
     }
