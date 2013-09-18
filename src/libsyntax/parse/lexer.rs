@@ -409,38 +409,9 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         base = 2u;
     }
     num_str = scan_digits(rdr, base);
-    c = rdr.curr;
-    nextch(rdr);
-    if c == 'u' || c == 'i' {
-        let signed = c == 'i';
-        let mut tp = {
-            if signed { either::Left(ast::ty_i) }
-            else { either::Right(ast::ty_u) }
-        };
-        bump(rdr);
-        c = rdr.curr;
-        if c == '8' {
-            bump(rdr);
-            tp = if signed { either::Left(ast::ty_i8) }
-                      else { either::Right(ast::ty_u8) };
-        }
-        n = nextch(rdr);
-        if c == '1' && n == '6' {
-            bump(rdr);
-            bump(rdr);
-            tp = if signed { either::Left(ast::ty_i16) }
-                      else { either::Right(ast::ty_u16) };
-        } else if c == '3' && n == '2' {
-            bump(rdr);
-            bump(rdr);
-            tp = if signed { either::Left(ast::ty_i32) }
-                      else { either::Right(ast::ty_u32) };
-        } else if c == '6' && n == '4' {
-            bump(rdr);
-            bump(rdr);
-            tp = if signed { either::Left(ast::ty_i64) }
-                      else { either::Right(ast::ty_u64) };
-        }
+    let int_suff = scan_integral_suffix(rdr);
+    if int_suff.is_some() {
+        let tp = int_suff.unwrap();
         if num_str.len() == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
@@ -518,6 +489,43 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
                num_str);
         return token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
+}
+
+fn scan_integral_suffix(rdr: @mut StringReader)
+                       -> Option<either::Either<ast::int_ty, ast::uint_ty>> {
+    let mut c = rdr.curr;
+    if c == 'u' || c == 'i' {
+        let signed = c == 'i';
+        let mut tp = {
+            if signed { either::Left(ast::ty_i) }
+            else { either::Right(ast::ty_u) }
+        };
+        bump(rdr);
+        c = rdr.curr;
+        if c == '8' {
+            bump(rdr);
+            tp = if signed { either::Left(ast::ty_i8) }
+                      else { either::Right(ast::ty_u8) };
+        }
+        let n = nextch(rdr);
+        if c == '1' && n == '6' {
+            bump(rdr);
+            bump(rdr);
+            tp = if signed { either::Left(ast::ty_i16) }
+                      else { either::Right(ast::ty_u16) };
+        } else if c == '3' && n == '2' {
+            bump(rdr);
+            bump(rdr);
+            tp = if signed { either::Left(ast::ty_i32) }
+                      else { either::Right(ast::ty_u32) };
+        } else if c == '6' && n == '4' {
+            bump(rdr);
+            bump(rdr);
+            tp = if signed { either::Left(ast::ty_i64) }
+                      else { either::Right(ast::ty_u64) };
+        }
+        Some(tp)
+    } else { None }
 }
 
 fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
@@ -712,6 +720,14 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             rdr.fatal(~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
+        let int_suff = scan_integral_suffix(rdr);
+        if int_suff.is_some() {
+            let tp = int_suff.unwrap();
+            match tp {
+                either::Left(t) => return token::LIT_INT(c2 as i64, t),
+                either::Right(t) => return token::LIT_UINT(c2 as u64, t)
+            }
+        }
         return token::LIT_CHAR(c2 as u32);
       }
       '"' => {
