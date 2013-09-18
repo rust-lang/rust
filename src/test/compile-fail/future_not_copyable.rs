@@ -10,10 +10,10 @@
 
 extern mod extra;
 
-use extra::future;
+use extra::future::Future;
 
 fn main() {
-    let f = future::from_value(());
+    let f = Future::from_value(());
     let g = f;
     f.unwrap(); //~ ERROR use of moved value
 }

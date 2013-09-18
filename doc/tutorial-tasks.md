@@ -280,7 +280,7 @@ fn fib(n: uint) -> uint {
     12586269025
 }
 
-let mut delayed_fib = extra::future::spawn (|| fib(50) );
+let mut delayed_fib = extra::future::Future::spawn (|| fib(50) );
 make_a_sandwich();
 println(fmt!("fib(50) = %?", delayed_fib.get()))
 ~~~
@@ -304,7 +304,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
+    let mut futures = vec::from_fn(1000, |ind| do extra::future::Future::spawn { partial_sum(ind) });
 
     let mut final_res = 0f64;
     for ft in futures.mut_iter()  {
