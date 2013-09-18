@@ -146,7 +146,7 @@ syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 
 syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
 syn match     rustFormat      display "%%" contained
-syn match     rustSpecial     display contained /\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
+syn match     rustSpecial     display contained /\\\([nrt\\'"0]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
 syn match     rustStringContinuation display contained /\\\n\s*/
 syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat,rustSpecial,rustStringContinuation
 
@@ -180,7 +180,7 @@ syn region rustGenericLifetimeCandidate display start=/\%(<\|,\s*\)\@<='/ end=/[
 
 "rustLifetime must appear before rustCharacter, or chars will get the lifetime highlighting
 syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
-syn match   rustCharacter   /'\([^'\\]\|\\\([nrt\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial
+syn match   rustCharacter   /'\([^'\\]\|\\\([nrt\\'"0]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'\(u8\|u16\|u32\|u64\|u\|i8\|i16\|i32\|i64\|i\)\?/ contains=rustSpecial
 
 syn region    rustCommentML   start="/\*" end="\*/" contains=rustTodo
 syn region    rustComment     start="//" end="$" contains=rustTodo keepend
