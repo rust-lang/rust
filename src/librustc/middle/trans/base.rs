@@ -2652,17 +2652,18 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
-                        ast::foreign_item_static(*) if attr::contains_name(ni.attrs, "crate_map")
-                            => ccx.crate_map,
                         ast::foreign_item_static(*) => {
                             let ident = foreign::link_name(ccx, ni);
-                            let g = do ident.with_c_str |buf| {
-                                unsafe {
+                            unsafe {
+                                let g = do ident.with_c_str |buf| {
                                     let ty = type_of(ccx, ty);
                                     llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
+                                };
+                                if attr::contains_name(ni.attrs, "weak_linkage") {
+                                    lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
                                 }
-                            };
-                            g
+                                g
+                            }
                         }
                     }
                 }
