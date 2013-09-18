@@ -188,39 +188,6 @@ impl num::ToStrRadix for float {
 }
 
 ///
-/// Convert a string in base 10 to a float.
-/// Accepts a optional decimal exponent.
-///
-/// This function accepts strings such as
-///
-/// * '3.14'
-/// * '+3.14', equivalent to '3.14'
-/// * '-3.14'
-/// * '2.5E10', or equivalently, '2.5e10'
-/// * '2.5E-10'
-/// * '.' (understood as 0)
-/// * '5.'
-/// * '.5', or, equivalently,  '0.5'
-/// * '+inf', 'inf', '-inf', 'NaN'
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-///
-/// # Return value
-///
-/// `none` if the string did not represent a valid number.  Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `num`.
-///
-#[inline]
-pub fn from_str(num: &str) -> Option<float> {
-    strconv::from_str_common(num, 10u, true, true, true,
-                             strconv::ExpDec, false, false)
-}
-
-///
 /// Convert a string in base 16 to a float.
 /// Accepts a optional binary exponent.
 ///
@@ -253,40 +220,65 @@ pub fn from_str_hex(num: &str) -> Option<float> {
                              strconv::ExpBin, false, false)
 }
 
-///
-/// Convert a string in an given base to a float.
-///
-/// Due to possible conflicts, this function does **not** accept
-/// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
-/// does it recognize exponents of any kind.
-///
-/// Leading and trailing whitespace represent an error.
-///
-/// # Arguments
-///
-/// * num - A string
-/// * radix - The base to use. Must lie in the range [2 .. 36]
-///
-/// # Return value
-///
-/// `none` if the string did not represent a valid number. Otherwise,
-/// `Some(n)` where `n` is the floating-point number represented by `num`.
-///
-#[inline]
-pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
-    strconv::from_str_common(num, radix, true, true, false,
-                             strconv::ExpNone, false, false)
-}
-
 impl FromStr for float {
+    ///
+    /// Convert a string in base 10 to a float.
+    /// Accepts a optional decimal exponent.
+    ///
+    /// This function accepts strings such as
+    ///
+    /// * '3.14'
+    /// * '+3.14', equivalent to '3.14'
+    /// * '-3.14'
+    /// * '2.5E10', or equivalently, '2.5e10'
+    /// * '2.5E-10'
+    /// * '.' (understood as 0)
+    /// * '5.'
+    /// * '.5', or, equivalently,  '0.5'
+    /// * '+inf', 'inf', '-inf', 'NaN'
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// * num - A string
+    ///
+    /// # Return value
+    ///
+    /// `none` if the string did not represent a valid number.  Otherwise,
+    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    ///
     #[inline]
-    fn from_str(val: &str) -> Option<float> { from_str(val) }
+    fn from_str(val: &str) -> Option<float> {
+        strconv::from_str_common(val, 10u, true, true, true,
+                                 strconv::ExpDec, false, false)
+    }
 }
 
 impl num::FromStrRadix for float {
+    ///
+    /// Convert a string in an given base to a float.
+    ///
+    /// Due to possible conflicts, this function does **not** accept
+    /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+    /// does it recognize exponents of any kind.
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// * num - A string
+    /// * radix - The base to use. Must lie in the range [2 .. 36]
+    ///
+    /// # Return value
+    ///
+    /// `none` if the string did not represent a valid number. Otherwise,
+    /// `Some(n)` where `n` is the floating-point number represented by `num`.
+    ///
     #[inline]
     fn from_str_radix(val: &str, radix: uint) -> Option<float> {
-        from_str_radix(val, radix)
+        strconv::from_str_common(val, radix, true, true, false,
+                                 strconv::ExpNone, false, false)
     }
 }
 
@@ -1316,49 +1308,49 @@ mod tests {
 
     #[test]
     pub fn test_from_str() {
-        assert_eq!(from_str("3"), Some(3.));
-        assert_eq!(from_str("3.14"), Some(3.14));
-        assert_eq!(from_str("+3.14"), Some(3.14));
-        assert_eq!(from_str("-3.14"), Some(-3.14));
-        assert_eq!(from_str("2.5E10"), Some(25000000000.));
-        assert_eq!(from_str("2.5e10"), Some(25000000000.));
-        assert_eq!(from_str("25000000000.E-10"), Some(2.5));
-        assert_eq!(from_str("."), Some(0.));
-        assert_eq!(from_str(".e1"), Some(0.));
-        assert_eq!(from_str(".e-1"), Some(0.));
-        assert_eq!(from_str("5."), Some(5.));
-        assert_eq!(from_str(".5"), Some(0.5));
-        assert_eq!(from_str("0.5"), Some(0.5));
-        assert_eq!(from_str("-.5"), Some(-0.5));
-        assert_eq!(from_str("-5"), Some(-5.));
-        assert_eq!(from_str("inf"), Some(infinity));
-        assert_eq!(from_str("+inf"), Some(infinity));
-        assert_eq!(from_str("-inf"), Some(neg_infinity));
+        assert_eq!(from_str::<float>("3"), Some(3.));
+        assert_eq!(from_str::<float>("3.14"), Some(3.14));
+        assert_eq!(from_str::<float>("+3.14"), Some(3.14));
+        assert_eq!(from_str::<float>("-3.14"), Some(-3.14));
+        assert_eq!(from_str::<float>("2.5E10"), Some(25000000000.));
+        assert_eq!(from_str::<float>("2.5e10"), Some(25000000000.));
+        assert_eq!(from_str::<float>("25000000000.E-10"), Some(2.5));
+        assert_eq!(from_str::<float>("."), Some(0.));
+        assert_eq!(from_str::<float>(".e1"), Some(0.));
+        assert_eq!(from_str::<float>(".e-1"), Some(0.));
+        assert_eq!(from_str::<float>("5."), Some(5.));
+        assert_eq!(from_str::<float>(".5"), Some(0.5));
+        assert_eq!(from_str::<float>("0.5"), Some(0.5));
+        assert_eq!(from_str::<float>("-.5"), Some(-0.5));
+        assert_eq!(from_str::<float>("-5"), Some(-5.));
+        assert_eq!(from_str::<float>("inf"), Some(infinity));
+        assert_eq!(from_str::<float>("+inf"), Some(infinity));
+        assert_eq!(from_str::<float>("-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
-        match from_str("NaN") {
+        match from_str::<float>("NaN") {
             Some(f) => assert!(f.is_NaN()),
             None => fail!()
         }
         // note: -0 == 0, hence these slightly more complex tests
-        match from_str("-0") {
+        match from_str::<float>("-0") {
             Some(v) if v.is_zero() => assert!(v.is_negative()),
             _ => fail!()
         }
-        match from_str("0") {
+        match from_str::<float>("0") {
             Some(v) if v.is_zero() => assert!(v.is_positive()),
             _ => fail!()
         }
 
-        assert!(from_str("").is_none());
-        assert!(from_str("x").is_none());
-        assert!(from_str(" ").is_none());
-        assert!(from_str("   ").is_none());
-        assert!(from_str("e").is_none());
-        assert!(from_str("E").is_none());
-        assert!(from_str("E1").is_none());
-        assert!(from_str("1e1e1").is_none());
-        assert!(from_str("1e1.1").is_none());
-        assert!(from_str("1e1-1").is_none());
+        assert!(from_str::<float>("").is_none());
+        assert!(from_str::<float>("x").is_none());
+        assert!(from_str::<float>(" ").is_none());
+        assert!(from_str::<float>("   ").is_none());
+        assert!(from_str::<float>("e").is_none());
+        assert!(from_str::<float>("E").is_none());
+        assert!(from_str::<float>("E1").is_none());
+        assert!(from_str::<float>("1e1e1").is_none());
+        assert!(from_str::<float>("1e1.1").is_none());
+        assert!(from_str::<float>("1e1-1").is_none());
     }
 
     #[test]
