@@ -351,65 +351,69 @@ pub trait Float: Real
 /// A generic trait for converting a value to a number.
 pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
-    fn to_int(&self) -> Option<int>;
+    #[inline]
+    fn to_int(&self) -> Option<int> {
+        // XXX: Check for range.
+        self.to_i64().and_then(|x| Some(x as int))
+    }
 
     /// Converts the value of `self` to an `i8`.
     #[inline]
     fn to_i8(&self) -> Option<i8> {
         // XXX: Check for range.
-        self.to_int().and_then(|x| Some(x as i8))
+        self.to_i64().and_then(|x| Some(x as i8))
     }
 
     /// Converts the value of `self` to an `i16`.
     #[inline]
     fn to_i16(&self) -> Option<i16> {
         // XXX: Check for range.
-        self.to_int().and_then(|x| Some(x as i16))
+        self.to_i64().and_then(|x| Some(x as i16))
     }
 
     /// Converts the value of `self` to an `i32`.
     #[inline]
     fn to_i32(&self) -> Option<i32> {
         // XXX: Check for range.
-        self.to_int().and_then(|x| Some(x as i32))
+        self.to_i64().and_then(|x| Some(x as i32))
     }
 
     /// Converts the value of `self` to an `i64`.
-    #[inline]
-    fn to_i64(&self) -> Option<i64> {
-        // XXX: Check for range.
-        self.to_int().and_then(|x| Some(x as i64))
-    }
+    fn to_i64(&self) -> Option<i64>;
 
     /// Converts the value of `self` to an `uint`.
-    fn to_uint(&self) -> Option<uint>;
+    #[inline]
+    fn to_uint(&self) -> Option<uint> {
+        // XXX: Check for range.
+        self.to_u64().and_then(|x| Some(x as uint))
+    }
 
     /// Converts the value of `self` to an `u8`.
     #[inline]
     fn to_u8(&self) -> Option<u8> {
         // XXX: Check for range.
-        self.to_uint().and_then(|x| Some(x as u8))
+        self.to_u64().and_then(|x| Some(x as u8))
     }
 
     /// Converts the value of `self` to an `u16`.
     #[inline]
     fn to_u16(&self) -> Option<u16> {
         // XXX: Check for range.
-        self.to_uint().and_then(|x| Some(x as u16))
+        self.to_u64().and_then(|x| Some(x as u16))
     }
 
     /// Converts the value of `self` to an `u32`.
     #[inline]
     fn to_u32(&self) -> Option<u32> {
         // XXX: Check for range.
-        self.to_uint().and_then(|x| Some(x as u32))
+        self.to_u64().and_then(|x| Some(x as u32))
     }
 
     /// Converts the value of `self` to an `u64`.
     #[inline]
     fn to_u64(&self) -> Option<u64> {
         // XXX: Check for range.
-        self.to_uint().and_then(|x| Some(x as u64))
+        self.to_u64().and_then(|x| Some(x as u64))
     }
 
     /// Converts the value of `self` to an `f32`.
@@ -423,7 +427,7 @@ pub trait ToPrimitive {
     #[inline]
     fn to_f64(&self) -> Option<f64> {
         // XXX: Check for range.
-        self.to_float().and_then(|x| Some(x as f64))
+        self.to_i64().and_then(|x| Some(x as f64))
     }
 }
 
@@ -467,80 +471,80 @@ impl_to_primitive!(float)
 pub trait FromPrimitive {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
-    fn from_int(n: int) -> Option<Self>;
+    #[inline]
+    fn from_int(n: int) -> Option<Self> {
+        FromPrimitive::from_i64(n as i64)
+    }
 
     /// Convert an `i8` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_i8(n: i8) -> Option<Self> {
-        FromPrimitive::from_int(n as int)
+        FromPrimitive::from_i64(n as i64)
     }
 
     /// Convert an `i16` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_i16(n: i16) -> Option<Self> {
-        FromPrimitive::from_int(n as int)
+        FromPrimitive::from_i64(n as i64)
     }
 
     /// Convert an `i32` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_i32(n: i32) -> Option<Self> {
-        FromPrimitive::from_int(n as int)
+        FromPrimitive::from_i64(n as i64)
     }
 
     /// Convert an `i64` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
-    #[inline]
-    fn from_i64(n: i64) -> Option<Self> {
-        FromPrimitive::from_int(n as int)
-    }
+    fn from_i64(n: i64) -> Option<Self>;
 
     /// Convert an `uint` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
-    fn from_uint(n: uint) -> Option<Self>;
+    #[inline]
+    fn from_uint(n: uint) -> Option<Self> {
+        FromPrimitive::from_u64(n as u64)
+    }
 
     /// Convert an `u8` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_u8(n: u8) -> Option<Self> {
-        FromPrimitive::from_uint(n as uint)
+        FromPrimitive::from_u64(n as u64)
     }
 
     /// Convert an `u16` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_u16(n: u16) -> Option<Self> {
-        FromPrimitive::from_uint(n as uint)
+        FromPrimitive::from_u64(n as u64)
     }
 
     /// Convert an `u32` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_u32(n: u32) -> Option<Self> {
-        FromPrimitive::from_uint(n as uint)
+        FromPrimitive::from_u64(n as u64)
     }
 
     /// Convert an `u64` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
-    #[inline]
-    fn from_u64(n: u64) -> Option<Self> {
-        FromPrimitive::from_uint(n as uint)
-    }
+    fn from_u64(n: u64) -> Option<Self>;
 
     /// Convert a `f32` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_f32(n: f32) -> Option<Self> {
-        FromPrimitive::from_float(n as float)
+        FromPrimitive::from_f64(n as f64)
     }
 
     /// Convert a `f64` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     fn from_f64(n: f64) -> Option<Self> {
-        FromPrimitive::from_float(n as float)
+        FromPrimitive::from_i64(n as i64)
     }
 }
 

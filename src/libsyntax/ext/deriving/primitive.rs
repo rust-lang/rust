@@ -25,32 +25,32 @@ pub fn expand_deriving_from_primitive(cx: @ExtCtxt,
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: "from_int",
+                name: "from_i64",
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
                 args: ~[
-                    Literal(Path::new(~["int"])),
+                    Literal(Path::new(~["i64"])),
                 ],
                 ret_ty: Literal(Path::new_(~["std", "option", "Option"],
                                            None,
                                            ~[~Self],
                                            true)),
                 const_nonmatching: false,
-                combine_substructure: |c, s, sub| cs_from("int", c, s, sub),
+                combine_substructure: |c, s, sub| cs_from("i64", c, s, sub),
             },
             MethodDef {
-                name: "from_uint",
+                name: "from_u64",
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
                 args: ~[
-                    Literal(Path::new(~["uint"])),
+                    Literal(Path::new(~["u64"])),
                 ],
                 ret_ty: Literal(Path::new_(~["std", "option", "Option"],
                                            None,
                                            ~[~Self],
                                            true)),
                 const_nonmatching: false,
-                combine_substructure: |c, s, sub| cs_from("uint", c, s, sub),
+                combine_substructure: |c, s, sub| cs_from("u64", c, s, sub),
             },
         ]
     };

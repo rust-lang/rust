@@ -20,13 +20,13 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 #[allow(non_uppercase_statics)];
 
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use std::int;
 use std::num;
 use std::num::{Zero, One, ToStrRadix, FromStrRadix, Orderable};
 use std::num::{ToPrimitive, FromPrimitive};
 use std::rand::Rng;
 use std::str;
 use std::uint;
+use std::{i64, u64};
 use std::vec;
 
 /**
@@ -503,24 +503,24 @@ impl Integer for BigUint {
 
 impl ToPrimitive for BigUint {
     #[inline]
-    fn to_int(&self) -> Option<int> {
+    fn to_i64(&self) -> Option<i64> {
         do self.to_uint().and_then |n| {
-            // If top bit of uint is set, it's too large to convert to
+            // If top bit of u64 is set, it's too large to convert to
             // int.
             if (n >> (2*BigDigit::bits - 1) != 0) {
                 None
             } else {
-                Some(n as int)
+                Some(n as i64)
             }
         }
     }
 
     #[inline]
-    fn to_uint(&self) -> Option<uint> {
+    fn to_u64(&self) -> Option<u64> {
         match self.data.len() {
             0 => Some(0),
-            1 => Some(self.data[0] as uint),
-            2 => Some(BigDigit::to_uint(self.data[1], self.data[0])),
+            1 => Some(self.data[0] as u64),
+            2 => Some(BigDigit::to_uint(self.data[1], self.data[0]) as u64),
             _ => None
         }
     }
@@ -528,17 +528,17 @@ impl ToPrimitive for BigUint {
 
 impl FromPrimitive for BigUint {
     #[inline]
-    fn from_int(n: int) -> Option<BigUint> {
+    fn from_i64(n: i64) -> Option<BigUint> {
         if (n < 0) {
             Some(Zero::zero())
         } else {
-            FromPrimitive::from_uint(n as uint)
+            FromPrimitive::from_u64(n as u64)
         }
     }
 
     #[inline]
-    fn from_uint(n: uint) -> Option<BigUint> {
-        let n = match BigDigit::from_uint(n) {
+    fn from_u64(n: u64) -> Option<BigUint> {
+        let n = match BigDigit::from_uint(n as uint) {
             (0,  0)  => Zero::zero(),
             (0,  n0) => BigUint::new(~[n0]),
             (n1, n0) => BigUint::new(~[n0, n1])
@@ -1083,19 +1083,19 @@ impl Integer for BigInt {
 
 impl ToPrimitive for BigInt {
     #[inline]
-    fn to_int(&self) -> Option<int> {
+    fn to_i64(&self) -> Option<i64> {
         match self.sign {
-            Plus  => self.data.to_int(),
+            Plus  => self.data.to_i64(),
             Zero  => Some(0),
             Minus => {
-                do self.data.to_uint().and_then |n| {
-                    let m: uint = 1 << (2*BigDigit::bits-1);
+                do self.data.to_u64().and_then |n| {
+                    let m: u64 = 1 << (2*BigDigit::bits-1);
                     if (n > m) {
                         None
                     } else if (n == m) {
-                        Some(int::min_value)
+                        Some(i64::min_value)
                     } else {
-                        Some(-(n as int))
+                        Some(-(n as i64))
                     }
                 }
             }
@@ -1103,9 +1103,9 @@ impl ToPrimitive for BigInt {
     }
 
     #[inline]
-    fn to_uint(&self) -> Option<uint> {
+    fn to_u64(&self) -> Option<u64> {
         match self.sign {
-            Plus => self.data.to_uint(),
+            Plus => self.data.to_u64(),
             Zero => Some(0),
             Minus => None
         }
@@ -1114,13 +1114,13 @@ impl ToPrimitive for BigInt {
 
 impl FromPrimitive for BigInt {
     #[inline]
-    fn from_int(n: int) -> Option<BigInt> {
+    fn from_i64(n: i64) -> Option<BigInt> {
         if n > 0 {
-            do FromPrimitive::from_uint(n as uint).and_then |n| {
+            do FromPrimitive::from_u64(n as u64).and_then |n| {
                 Some(BigInt::from_biguint(Plus, n))
             }
         } else if n < 0 {
-            do FromPrimitive::from_uint(uint::max_value - (n as uint) + 1).and_then |n| {
+            do FromPrimitive::from_u64(u64::max_value - (n as u64) + 1).and_then |n| {
                 Some(BigInt::from_biguint(Minus, n))
             }
         } else {
@@ -1129,11 +1129,11 @@ impl FromPrimitive for BigInt {
     }
 
     #[inline]
-    fn from_uint(n: uint) -> Option<BigInt> {
+    fn from_u64(n: u64) -> Option<BigInt> {
         if n == 0 {
             Some(Zero::zero())
         } else {
-            do FromPrimitive::from_uint(n).and_then |n| {
+            do FromPrimitive::from_u64(n).and_then |n| {
                 Some(BigInt::from_biguint(Plus, n))
             }
         }
