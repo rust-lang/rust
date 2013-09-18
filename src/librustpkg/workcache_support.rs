@@ -56,3 +56,8 @@ pub fn discover_outputs(e: &mut workcache::Exec, outputs: ~[Path]) {
         e.discover_output("binary", p.to_str(), digest_only_date(p));
     }
 }
+
+/// Returns the function name for building a crate
+pub fn crate_tag(p: &Path) -> ~str {
+    p.to_str() // implicitly, it's "build(p)"...
+}
