@@ -1222,7 +1222,7 @@ pub mod raw {
         unsafe {
             let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
             let ptr = vec::raw::to_ptr(input);
-            let mut result = from_c_multistring(ptr as *libc::c_char, None);
+            let result = from_c_multistring(ptr as *libc::c_char, None);
             assert!(result.len() == 2);
             let mut ctr = 0;
             for x in result.iter() {
