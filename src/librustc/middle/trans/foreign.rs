@@ -465,7 +465,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         //     }
 
         let the_block =
-            "the block".to_c_str().with_ref(
+            "the block".with_c_str(
                 |s| llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llwrapfn, s));
 
         let builder = ccx.builder.B;
@@ -519,7 +519,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 
                 None => {
                     let slot = {
-                        "return_alloca".to_c_str().with_ref(
+                        "return_alloca".with_c_str(
                             |s| llvm::LLVMBuildAlloca(builder,
                                                       llrust_ret_ty.to_ref(),
                                                       s))

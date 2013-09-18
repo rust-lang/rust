@@ -524,13 +524,13 @@ pub fn set_always_inline(f: ValueRef) {
 }
 
 pub fn set_fixed_stack_segment(f: ValueRef) {
-    do "fixed-stack-segment".to_c_str().with_ref |buf| {
+    do "fixed-stack-segment".with_c_str |buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
     }
 }
 
 pub fn set_no_split_stack(f: ValueRef) {
-    do "no-split-stack".to_c_str().with_ref |buf| {
+    do "no-split-stack".with_c_str |buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
     }
 }

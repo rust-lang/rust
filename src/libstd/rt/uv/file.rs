@@ -43,7 +43,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                           self.native_handle(), p, flags, mode, complete_cb_ptr)
             })
@@ -57,7 +57,7 @@ impl FsRequest {
             me.req_boilerplate(None)
         };
         let result = path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
             uvll::fs_open(loop_.native_handle(),
                     self.native_handle(), p, flags, mode, complete_cb_ptr)
             })
@@ -71,7 +71,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
                 uvll::fs_unlink(loop_.native_handle(),
                               self.native_handle(), p, complete_cb_ptr)
             })
@@ -85,7 +85,7 @@ impl FsRequest {
             me.req_boilerplate(None)
         };
         let result = path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
                 uvll::fs_unlink(loop_.native_handle(),
                               self.native_handle(), p, complete_cb_ptr)
             })
@@ -99,7 +99,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
                 uvll::fs_stat(loop_.native_handle(),
                               self.native_handle(), p, complete_cb_ptr)
             })
@@ -192,7 +192,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
             uvll::fs_mkdir(loop_.native_handle(),
                           self.native_handle(), p, mode, complete_cb_ptr)
             })
@@ -205,7 +205,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
             uvll::fs_rmdir(loop_.native_handle(),
                           self.native_handle(), p, complete_cb_ptr)
             })
@@ -219,7 +219,7 @@ impl FsRequest {
             me.req_boilerplate(Some(cb))
         };
         path.path_as_str(|p| {
-            p.to_c_str().with_ref(|p| unsafe {
+            p.with_c_str(|p| unsafe {
             uvll::fs_readdir(loop_.native_handle(),
                           self.native_handle(), p, flags, complete_cb_ptr)
             })
