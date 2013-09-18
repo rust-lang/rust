@@ -343,6 +343,7 @@ CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
+RUSTC_FLAGS_mips-unknown-linux-gnu := --linker=$(CXX_mips-unknown-linux-gnu) --target-cpu mips32r2 --target-feature +mips32r2,+o32
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
@@ -480,7 +481,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifneq ($(HOST_$(1)),arm)
+  ifeq ($$(findstring $(HOST_$(1)),arm mips),)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
@@ -492,7 +493,7 @@ define CFG_MAKE_TOOLCHAIN
                     -o=$$(1)
   else
 
-  # For the ARM crosses, use the toolchain assembler
+  # For the ARM and MIPS crosses, use the toolchain assembler
   # XXX: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 
