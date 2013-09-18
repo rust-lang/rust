@@ -1535,15 +1535,15 @@ fn print_path_(s: @ps,
 
         print_ident(s, segment.identifier);
 
-        if segment.lifetime.is_some() || !segment.types.is_empty() {
-            // If this is the last segment, print the bounds.
-            if i == path.segments.len() - 1 {
-                match *opt_bounds {
-                    None => {}
-                    Some(ref bounds) => print_bounds(s, bounds, true),
-                }
+        // If this is the last segment, print the bounds.
+        if i == path.segments.len() - 1 {
+            match *opt_bounds {
+                None => {}
+                Some(ref bounds) => print_bounds(s, bounds, true),
             }
+        }
 
+        if segment.lifetime.is_some() || !segment.types.is_empty() {
             if colons_before_params {
                 word(s.s, "::")
             }
