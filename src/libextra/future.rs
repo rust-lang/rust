@@ -25,8 +25,6 @@
 
 #[allow(missing_doc)];
 
-
-use std::cast;
 use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::task;
