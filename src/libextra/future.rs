@@ -139,6 +139,23 @@ impl<A:Send> Future<A> {
 
         Future::from_port(port)
     }
+
+    pub fn spawn_with<B: Send>(v: B, blk: ~fn(B) -> A) -> Future<A> {
+        /*!
+         * Create a future from a unique closure taking one argument.
+         *
+         * The closure and its argument will be moved into a new task. The
+         * closure will be run and its result used as the value of the future.
+         */
+
+         let (port, chan) = oneshot();
+
+         do task::spawn_with((v, chan)) |(v, chan)| {
+            chan.send(blk(v));
+         }
+
+         Future::from_port(port)
+    }
 }
 
 #[cfg(test)]
@@ -191,6 +208,12 @@ mod test {
     fn test_spawn() {
         let mut f = Future::spawn(|| ~"bale");
         assert_eq!(f.get(), ~"bale");
+    }
+
+    #[test]
+    fn test_spawn_with() {
+        let mut f = Future::spawn_with(~"gale", |s| { s });
+        assert_eq!(f.get(), ~"gale");
     }
 
     #[test]
