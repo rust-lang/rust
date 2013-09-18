@@ -2388,36 +2388,10 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     let et = ccx.sess.entry_type.unwrap();
     match et {
         session::EntryMain => {
-            let llfn = create_main(ccx, main_llfn);
-            create_entry_fn(ccx, llfn, true);
+            create_entry_fn(ccx, main_llfn, true);
         }
         session::EntryStart => create_entry_fn(ccx, main_llfn, false),
         session::EntryNone => {}    // Do nothing.
-    }
-
-    fn create_main(ccx: @mut CrateContext, main_llfn: ValueRef) -> ValueRef {
-        let nt = ty::mk_nil();
-        let llfty = type_of_rust_fn(ccx, [], nt);
-        let llfdecl = decl_fn(ccx.llmod, "_rust_main",
-                              lib::llvm::CCallConv, llfty);
-
-        let fcx = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
-
-        // the args vector built in create_entry_fn will need
-        // be updated if this assertion starts to fail.
-        assert!(!fcx.caller_expects_out_pointer);
-
-        let bcx = fcx.entry_bcx.unwrap();
-        // Call main.
-        let llenvarg = unsafe {
-            let env_arg = fcx.env_arg_pos();
-            llvm::LLVMGetParam(llfdecl, env_arg as c_uint)
-        };
-        let args = ~[llenvarg];
-        Call(bcx, main_llfn, args, []);
-
-        finish_fn(fcx, bcx);
-        return llfdecl;
     }
 
     fn create_entry_fn(ccx: @mut CrateContext,
