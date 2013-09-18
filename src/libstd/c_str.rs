@@ -61,16 +61,17 @@ do my_string.with_c_str |c_buffer| {
 */
 
 use cast;
+use container::Container;
 use iter::{Iterator, range};
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
-use str;
 use str::StrSlice;
-use vec::{ImmutableVector, CopyableVector};
-use container::Container;
+use str;
+use vec::{CopyableVector, ImmutableVector, MutableVector};
+use unstable::intrinsics;
 
 /// Resolution options for the `null_byte` condition
 pub enum NullByteResolution {
@@ -241,24 +242,22 @@ impl<'self> ToCStr for &'self str {
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_bytes().to_c_str_unchecked()
     }
+
+    #[inline]
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.as_bytes().with_c_str(f)
+    }
 }
+
+// The length of the stack allocated buffer for `vec.with_c_str()`
+static BUF_LEN: uint = 32;
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
         #[fixed_stack_segment]; #[inline(never)];
         let mut cs = unsafe { self.to_c_str_unchecked() };
         do cs.with_mut_ref |buf| {
-            for i in range(0, self.len()) {
-                unsafe {
-                    let p = buf.offset(i as int);
-                    if *p == 0 {
-                        match null_byte::cond.raise(self.to_owned()) {
-                            Truncate => break,
-                            ReplaceWith(c) => *p = c
-                        }
-                    }
-                }
-            }
+            check_for_null(*self, buf);
         }
         cs
     }
@@ -275,6 +274,45 @@ impl<'self> ToCStr for &'self [u8] {
             *ptr::mut_offset(buf, self_len as int) = 0;
 
             CString::new(buf as *libc::c_char, true)
+        }
+    }
+
+    /// WARNING: This function uses an optimization to only malloc a temporary
+    /// CString when the source string is small. Do not save a reference to
+    /// the `*libc::c_char` as it may be invalid after this function call.
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        if self.len() < BUF_LEN {
+            do self.as_imm_buf |self_buf, self_len| {
+                unsafe {
+                    let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+
+                    do buf.as_mut_buf |buf, _| {
+                        ptr::copy_memory(buf, self_buf, self_len);
+                        *ptr::mut_offset(buf, self_len as int) = 0;
+
+                        check_for_null(*self, buf as *mut libc::c_char);
+
+                        f(buf as *libc::c_char)
+                    }
+                }
+            }
+        } else {
+            self.to_c_str().with_ref(f)
+        }
+    }
+}
+
+#[inline]
+fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
+    for i in range(0, v.len()) {
+        unsafe {
+            let p = buf.offset(i as int);
+            if *p == 0 {
+                match null_byte::cond.raise(v.to_owned()) {
+                    Truncate => break,
+                    ReplaceWith(c) => *p = c
+                }
+            }
         }
     }
 }
