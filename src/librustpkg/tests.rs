@@ -939,6 +939,7 @@ fn no_rebuilding() {
 }
 
 #[test]
+#[ignore]
 fn no_rebuilding_dep() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
