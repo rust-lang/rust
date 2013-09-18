@@ -396,6 +396,7 @@ use char::Char;
 use rt::io::Decorator;
 use rt::io::mem::MemWriter;
 use rt::io;
+use fmt::rt::{Keyword, LiteralNumber};
 use str;
 use sys;
 use util;
@@ -678,7 +679,7 @@ impl<'self> Formatter<'self> {
                 // offsetted value
                 for s in selectors.iter() {
                     match s.selector {
-                        Right(val) if value == val => {
+                        LiteralNumber(val) if value == val => {
                             return self.runplural(value, s.result);
                         }
                         _ => {}
@@ -690,17 +691,17 @@ impl<'self> Formatter<'self> {
                 let value = value - match offset { Some(i) => i, None => 0 };
                 for s in selectors.iter() {
                     let run = match s.selector {
-                        Left(parse::Zero) => value == 0,
-                        Left(parse::One) => value == 1,
-                        Left(parse::Two) => value == 2,
+                        Keyword(parse::Zero) => value == 0,
+                        Keyword(parse::One) => value == 1,
+                        Keyword(parse::Two) => value == 2,
 
                         // XXX: Few/Many should have a user-specified boundary
                         //      One possible option would be in the function
                         //      pointer of the 'arg: Argument' struct.
-                        Left(parse::Few) => value < 8,
-                        Left(parse::Many) => value >= 8,
+                        Keyword(parse::Few) => value < 8,
+                        Keyword(parse::Many) => value >= 8,
 
-                        Right(*) => false
+                        LiteralNumber(*) => false
                     };
                     if run {
                         return self.runplural(value, s.result);
