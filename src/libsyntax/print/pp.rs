@@ -243,7 +243,7 @@ pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
  * the entire buffered window, but can't output anything until the size is >=
  * 0 (sizes are set to negative while they're pending calculation).
  *
- * So SCAN takeks input and buffers tokens and pending calculations, while
+ * So SCAN takes input and buffers tokens and pending calculations, while
  * PRINT gobbles up completed calculations and tokens from the buffer. The
  * theory is that the two can never get more than 3N tokens apart, because
  * once there's "obviously" too much data to fit on a line, in a size
