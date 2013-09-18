@@ -10,6 +10,8 @@
 
 /*!
 
+Vector manipulation
+
 The `vec` module contains useful code to help work with vector values.
 Vectors are Rust's list type. Vectors contain zero or more values of
 homogeneous types:
