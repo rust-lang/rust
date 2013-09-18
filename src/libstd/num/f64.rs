@@ -229,35 +229,35 @@ impl Orderable for f64 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn min(&self, other: &f64) -> f64 {
-        cond!(
-            (self.is_NaN())  { *self  }
-            (other.is_NaN()) { *other }
-            (*self < *other) { *self  }
-            _                { *other }
-        )
+        match () {
+            _ if self.is_NaN()  => *self,
+            _ if other.is_NaN() => *other,
+            _ if *self < *other => *self,
+            _                   => *other,
+        }
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline]
     fn max(&self, other: &f64) -> f64 {
-        cond!(
-            (self.is_NaN())  { *self  }
-            (other.is_NaN()) { *other }
-            (*self > *other) { *self  }
-            _                { *other }
-        )
+        match () {
+            _ if self.is_NaN()  => *self,
+            _ if other.is_NaN() => *other,
+            _ if *self > *other => *self,
+            _                   => *other,
+        }
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
     /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline]
     fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
-        cond!(
-            (self.is_NaN())   { *self }
-            (!(*self <= *mx)) { *mx   }
-            (!(*self >= *mn)) { *mn   }
-            _                 { *self }
-        )
+        match () {
+            _ if self.is_NaN()   => *self,
+            _ if !(*self <= *mx) => *mx,
+            _ if !(*self >= *mn) => *mn,
+            _                    => *self,
+        }
     }
 }
 

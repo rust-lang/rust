@@ -281,11 +281,11 @@ pub fn escape_unicode(c: char, f: &fn(char)) {
     // avoid calling str::to_str_radix because we don't really need to allocate
     // here.
     f('\\');
-    let pad = cond!(
-        (c <= '\xff')   { f('x'); 2 }
-        (c <= '\uffff') { f('u'); 4 }
-        _               { f('U'); 8 }
-    );
+    let pad = match () {
+        _ if c <= '\xff'    => { f('x'); 2 }
+        _ if c <= '\uffff'  => { f('u'); 4 }
+        _                   => { f('U'); 8 }
+    };
     for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
         unsafe {
             match ((c as i32) >> offset) & 0xf {
@@ -329,13 +329,13 @@ pub fn len_utf8_bytes(c: char) -> uint {
     static MAX_FOUR_B:  uint = 2097152u;
 
     let code = c as uint;
-    cond!(
-        (code < MAX_ONE_B)   { 1u }
-        (code < MAX_TWO_B)   { 2u }
-        (code < MAX_THREE_B) { 3u }
-        (code < MAX_FOUR_B)  { 4u }
-        _ { fail!("invalid character!") }
-    )
+    match () {
+        _ if code < MAX_ONE_B   => 1u,
+        _ if code < MAX_TWO_B   => 2u,
+        _ if code < MAX_THREE_B => 3u,
+        _ if code < MAX_FOUR_B  => 4u,
+        _                       => fail!("invalid character!"),
+    }
 }
 
 impl ToStr for char {
