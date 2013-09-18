@@ -126,7 +126,7 @@ impl<R: Reader> Decorator<R> for BufferedReader<R> {
 
 /// Wraps a Writer and buffers output to it
 ///
-/// NOTE: `BufferedWriter` will NOT flush its buffer when dropped.
+/// Note that `BufferedWriter` will NOT flush its buffer when dropped.
 pub struct BufferedWriter<W> {
     priv inner: W,
     priv buf: ~[u8],
@@ -204,7 +204,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 
 /// Wraps a Stream and buffers input and output to and from it
 ///
-/// NOTE: `BufferedStream` will NOT flush its output buffer when dropped.
+/// Note that `BufferedStream` will NOT flush its output buffer when dropped.
 // FIXME #9155 this should be a newtype struct
 pub struct BufferedStream<S> {
     priv inner: BufferedReader<InternalBufferedWriter<S>>

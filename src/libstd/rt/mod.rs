@@ -198,18 +198,6 @@ pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) 
     return exit_code;
 }
 
-#[cfg(stage0)]
-mod macro_hack {
-#[macro_escape];
-macro_rules! externfn(
-    (fn $name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret_ty:ty),*) => (
-        extern {
-            fn $name($($arg_name : $arg_ty),*) $(-> $ret_ty),*;
-        }
-    )
-)
-}
-
 /// One-time runtime initialization.
 ///
 /// Initializes global state, including frobbing

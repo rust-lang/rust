@@ -13,25 +13,6 @@ use std::libc::{c_char, c_int};
 use std::{local_data, str, rt};
 use std::unstable::finally::Finally;
 
-#[cfg(stage0)]
-pub mod rustrt {
-    use std::libc::{c_char, c_int};
-
-    extern {
-        fn linenoise(prompt: *c_char) -> *c_char;
-        fn linenoiseHistoryAdd(line: *c_char) -> c_int;
-        fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
-        fn linenoiseHistorySave(file: *c_char) -> c_int;
-        fn linenoiseHistoryLoad(file: *c_char) -> c_int;
-        fn linenoiseSetCompletionCallback(callback: *u8);
-        fn linenoiseAddCompletion(completions: *(), line: *c_char);
-
-        fn rust_take_linenoise_lock();
-        fn rust_drop_linenoise_lock();
-    }
-}
-
-#[cfg(not(stage0))]
 pub mod rustrt {
     use std::libc::{c_char, c_int};
 
@@ -109,7 +90,7 @@ pub fn read(prompt: &str) -> Option<~str> {
 
 pub type CompletionCb = @fn(~str, @fn(~str));
 
-static complete_key: local_data::Key<CompletionCb> = &local_data::Key;
+local_data_key!(complete_key: CompletionCb)
 
 /// Bind to the main completion callback in the current task.
 ///

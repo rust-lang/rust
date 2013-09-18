@@ -287,7 +287,7 @@ impl Drop for CrateContext {
     }
 }
 
-static task_local_llcx_key: local_data::Key<@ContextRef> = &local_data::Key;
+local_data_key!(task_local_llcx_key: @ContextRef)
 
 pub fn task_llcx() -> ContextRef {
     let opt = local_data::get(task_local_llcx_key, |k| k.map_move(|k| *k));

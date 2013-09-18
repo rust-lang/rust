@@ -31,7 +31,6 @@
 
 use c_str::ToCStr;
 use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
-#[cfg(not(stage0))]
 use libc::ssize_t;
 use libc::{malloc, free};
 use libc;
@@ -149,73 +148,33 @@ impl uv_stat_t {
     }
 }
 
-#[cfg(stage0)]
-pub type uv_idle_cb = *u8;
-#[cfg(stage0)]
-pub type uv_alloc_cb = *u8;
-#[cfg(stage0)]
-pub type uv_read_cb = *u8;
-#[cfg(stage0)]
-pub type uv_udp_send_cb = *u8;
-#[cfg(stage0)]
-pub type uv_udp_recv_cb = *u8;
-#[cfg(stage0)]
-pub type uv_close_cb = *u8;
-#[cfg(stage0)]
-pub type uv_walk_cb = *u8;
-#[cfg(stage0)]
-pub type uv_async_cb = *u8;
-#[cfg(stage0)]
-pub type uv_connect_cb = *u8;
-#[cfg(stage0)]
-pub type uv_connection_cb = *u8;
-#[cfg(stage0)]
-pub type uv_timer_cb = *u8;
-#[cfg(stage0)]
-pub type uv_write_cb = *u8;
-#[cfg(stage0)]
-pub type uv_getaddrinfo_cb = *u8;
-
-#[cfg(not(stage0))]
 pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
                                     status: c_int);
-#[cfg(not(stage0))]
 pub type uv_alloc_cb = extern "C" fn(stream: *uv_stream_t,
                                      suggested_size: size_t) -> uv_buf_t;
-#[cfg(not(stage0))]
 pub type uv_read_cb = extern "C" fn(stream: *uv_stream_t,
                                     nread: ssize_t,
                                     buf: uv_buf_t);
-#[cfg(not(stage0))]
 pub type uv_udp_send_cb = extern "C" fn(req: *uv_udp_send_t,
                                         status: c_int);
-#[cfg(not(stage0))]
 pub type uv_udp_recv_cb = extern "C" fn(handle: *uv_udp_t,
                                         nread: ssize_t,
                                         buf: uv_buf_t,
                                         addr: *sockaddr,
                                         flags: c_uint);
-#[cfg(not(stage0))]
 pub type uv_close_cb = extern "C" fn(handle: *uv_handle_t);
-#[cfg(not(stage0))]
 pub type uv_walk_cb = extern "C" fn(handle: *uv_handle_t,
                                     arg: *c_void);
-#[cfg(not(stage0))]
 pub type uv_async_cb = extern "C" fn(handle: *uv_async_t,
                                      status: c_int);
-#[cfg(not(stage0))]
 pub type uv_connect_cb = extern "C" fn(handle: *uv_connect_t,
                                        status: c_int);
-#[cfg(not(stage0))]
 pub type uv_connection_cb = extern "C" fn(handle: *uv_connection_t,
                                           status: c_int);
-#[cfg(not(stage0))]
 pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t,
                                      status: c_int);
-#[cfg(not(stage0))]
 pub type uv_write_cb = extern "C" fn(handle: *uv_write_t,
                                      status: c_int);
-#[cfg(not(stage0))]
 pub type uv_getaddrinfo_cb = extern "C" fn(req: *uv_getaddrinfo_t,
                                            status: c_int,
                                            res: *addrinfo);

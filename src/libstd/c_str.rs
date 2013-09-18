@@ -30,9 +30,7 @@ pub enum NullByteResolution {
 
 condition! {
     // This should be &[u8] but there's a lifetime issue (#5370).
-    // NOTE: this super::NullByteResolution should be NullByteResolution
-    // Change this next time the snapshot is updated.
-    pub null_byte: (~[u8]) -> super::NullByteResolution;
+    pub null_byte: (~[u8]) -> NullByteResolution;
 }
 
 /// The representation of a C String.
