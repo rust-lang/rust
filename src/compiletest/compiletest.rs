@@ -91,10 +91,10 @@ pub fn parse_config(args: ~[~str]) -> config {
     let matches =
         &match getopts::groups::getopts(args_, groups) {
           Ok(m) => m,
-          Err(f) => fail!(getopts::fail_str(f))
+          Err(f) => fail!(f.to_err_msg())
         };
 
-    if getopts::opt_present(matches, "h") || getopts::opt_present(matches, "help") {
+    if matches.opt_present("h") || matches.opt_present("help") {
         let message = fmt!("Usage: %s [OPTIONS]  [TESTNAME...]", argv0);
         println(getopts::groups::usage(message, groups));
         println("");
@@ -102,53 +102,51 @@ pub fn parse_config(args: ~[~str]) -> config {
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
-        Path(getopts::opt_str(m, nm))
+        Path(m.opt_str(nm).unwrap())
     }
 
     config {
-        compile_lib_path: getopts::opt_str(matches, "compile-lib-path"),
-        run_lib_path: getopts::opt_str(matches, "run-lib-path"),
+        compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
+        run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
-        clang_path: getopts::opt_maybe_str(matches, "clang-path").map_move(|s| Path(s)),
-        llvm_bin_path: getopts::opt_maybe_str(matches, "llvm-bin-path").map_move(|s| Path(s)),
+        clang_path: matches.opt_str("clang-path").map_move(|s| Path(s)),
+        llvm_bin_path: matches.opt_str("llvm-bin-path").map_move(|s| Path(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
-        stage_id: getopts::opt_str(matches, "stage-id"),
-        mode: str_mode(getopts::opt_str(matches, "mode")),
-        run_ignored: getopts::opt_present(matches, "ignored"),
+        stage_id: matches.opt_str("stage-id").unwrap(),
+        mode: str_mode(matches.opt_str("mode").unwrap()),
+        run_ignored: matches.opt_present("ignored"),
         filter:
             if !matches.free.is_empty() {
                  Some(matches.free[0].clone())
             } else {
                 None
             },
-        logfile: getopts::opt_maybe_str(matches, "logfile").map_move(|s| Path(s)),
-        save_metrics: getopts::opt_maybe_str(matches, "save-metrics").map_move(|s| Path(s)),
+        logfile: matches.opt_str("logfile").map_move(|s| Path(s)),
+        save_metrics: matches.opt_str("save-metrics").map_move(|s| Path(s)),
         ratchet_metrics:
-            getopts::opt_maybe_str(matches, "ratchet-metrics").map_move(|s| Path(s)),
+            matches.opt_str("ratchet-metrics").map_move(|s| Path(s)),
         ratchet_noise_percent:
-            getopts::opt_maybe_str(matches,
-                                   "ratchet-noise-percent").map_move(|s|
-                                                                     from_str::<f64>(s).unwrap()),
-        runtool: getopts::opt_maybe_str(matches, "runtool"),
-        rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
-        jit: getopts::opt_present(matches, "jit"),
-        target: opt_str2(getopts::opt_maybe_str(matches, "target")).to_str(),
-        adb_path: opt_str2(getopts::opt_maybe_str(matches, "adb-path")).to_str(),
+            matches.opt_str("ratchet-noise-percent").and_then(|s| from_str::<f64>(s)),
+        runtool: matches.opt_str("runtool"),
+        rustcflags: matches.opt_str("rustcflags"),
+        jit: matches.opt_present("jit"),
+        target: opt_str2(matches.opt_str("target")).to_str(),
+        adb_path: opt_str2(matches.opt_str("adb-path")).to_str(),
         adb_test_dir:
-            opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")).to_str(),
+            opt_str2(matches.opt_str("adb-test-dir")).to_str(),
         adb_device_status:
-            if (opt_str2(getopts::opt_maybe_str(matches, "target")) ==
+            if (opt_str2(matches.opt_str("target")) ==
                 ~"arm-linux-androideabi") {
-                if (opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")) !=
+                if (opt_str2(matches.opt_str("adb-test-dir")) !=
                     ~"(none)" &&
-                    opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")) !=
+                    opt_str2(matches.opt_str("adb-test-dir")) !=
                     ~"") { true }
                 else { false }
             } else { false },
-        test_shard: test::opt_shard(getopts::opt_maybe_str(matches, "test-shard")),
-        verbose: getopts::opt_present(matches, "verbose")
+        test_shard: test::opt_shard(matches.opt_str("test-shard")),
+        verbose: matches.opt_present("verbose")
     }
 }
 
