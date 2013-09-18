@@ -479,3 +479,106 @@ mod tests {
         assert_eq!(c_str.as_str(), None);
     }
 }
+
+#[cfg(test)]
+mod bench {
+    use iter::range;
+    use libc;
+    use option::Some;
+    use ptr;
+    use extra::test::BenchHarness;
+
+    #[inline]
+    fn check(s: &str, c_str: *libc::c_char) {
+        do s.as_imm_buf |s_buf, s_len| {
+            for i in range(0, s_len) {
+                unsafe {
+                    assert_eq!(
+                        *ptr::offset(s_buf, i as int) as libc::c_char,
+                        *ptr::offset(c_str, i as int));
+                }
+            }
+        }
+    }
+
+    static s_short: &'static str = "Mary";
+    static s_medium: &'static str = "Mary had a little lamb";
+    static s_long: &'static str = "\
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb";
+
+    fn bench_to_str(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            let c_str = s.to_c_str();
+            do c_str.with_ref |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_to_c_str_short(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_to_c_str_medium(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_to_c_str_long(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_long)
+    }
+
+    fn bench_to_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            let c_str = unsafe { s.to_c_str_unchecked() };
+            do c_str.with_ref |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_short(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_medium(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_long(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_long)
+    }
+
+    fn bench_with_c_str(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            do s.with_c_str |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_with_c_str_short(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_with_c_str_medium(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_with_c_str_long(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_long)
+    }
+}
