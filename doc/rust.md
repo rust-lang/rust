@@ -248,7 +248,7 @@ string_body : non_double_quote
             | '\x5c' [ '\x22' | common_escape ] ;
 
 common_escape : '\x5c'
-              | 'n' | 'r' | 't'
+              | 'n' | 'r' | 't' | '0'
               | 'x' hex_digit 2
               | 'u' hex_digit 4
               | 'U' hex_digit 8 ;
