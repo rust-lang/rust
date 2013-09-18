@@ -8,12 +8,59 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Composable external iterators
+/*!
 
-The `Iterator` trait defines an interface for objects which implement iteration as a state machine.
+Composable external iterators
 
-Algorithms like `zip` are provided as `Iterator` implementations which wrap other objects
-implementing the `Iterator` trait.
+# The `Iterator` trait
+
+This module defines Rust's core iteration trait. The `Iterator` trait has one
+un-implemented method, `next`. All other methods are derived through default
+methods to perform operations such as `zip`, `chain`, `enumerate`, and `fold`.
+
+The goal of this module is to unify iteration across all containers in Rust.
+An iterator can be considered as a state machine which is used to track which
+element will be yielded next.
+
+There are various extensions also defined in this module to assist with various
+types of iteration, such as the `DoubleEndedIterator` for iterating in reverse,
+the `FromIterator` trait for creating a container from an iterator, and much
+more.
+
+## Rust's `for` loop
+
+The special syntax used by rust's `for` loop is based around the `Iterator`
+trait defined in this module. For loops can be viewed as a syntactical expansion
+into a `loop`, for example, the `for` loop in this example is essentially
+translated to the `loop` below.
+
+~~~{.rust}
+let values = ~[1, 2, 3];
+
+// "Syntactical sugar" taking advantage of an iterator
+for &x in values.iter() {
+    println!("{}", x);
+}
+
+// Rough translation of the iteration without a `for` iterator.
+let mut it = values.iter();
+loop {
+    match it.next() {
+        Some(&x) => {
+            println!("{}", x);
+        }
+        None => { break }
+    }
+}
+~~~
+
+This `for` loop syntax can be applied to any iterator over any type.
+
+## Iteration protocol and more
+
+More detailed information about iterators can be found in the [container
+tutorial](http://static.rust-lang.org/doc/master/tutorial-container.html) with
+the rest of the rust manuals.
 
 */
 

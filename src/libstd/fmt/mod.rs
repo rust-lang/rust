@@ -10,17 +10,18 @@
 
 /*!
 
-# The Formatting Module
+The Formatting Module
 
-This module contains the runtime support for the `format!` syntax extension. This
-macro is implemented in the compiler to emit calls to this module in order to
-format arguments at runtime into strings and streams.
+This module contains the runtime support for the `format!` syntax extension.
+This macro is implemented in the compiler to emit calls to this module in order
+to format arguments at runtime into strings and streams.
 
 The functions contained in this module should not normally be used in everyday
-use cases of `format!`. The assumptions made by these functions are unsafe for all
-inputs, and the compiler performs a large amount of validation on the arguments
-to `format!` in order to ensure safety at runtime. While it is possible to call
-these functions directly, it is not recommended to do so in the general case.
+use cases of `format!`. The assumptions made by these functions are unsafe for
+all inputs, and the compiler performs a large amount of validation on the
+arguments to `format!` in order to ensure safety at runtime. While it is
+possible to call these functions directly, it is not recommended to do so in the
+general case.
 
 ## Usage
 

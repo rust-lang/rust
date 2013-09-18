@@ -8,12 +8,86 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! String manipulation
-//!
-//! Strings are a packed UTF-8 representation of text, stored as
-//! buffers of u8 bytes. The buffer is not null terminated.
-//! Strings should be indexed in bytes, for efficiency, but UTF-8 unsafe
-//! operations should be avoided.
+/*!
+
+String manipulation
+
+# Basic Usage
+
+Rust's string type is one of the core primitive types of the language. While
+represented by the name `str`, the name `str` is not actually a valid type in
+Rust. Each string must also be decorated with how its ownership. This means that
+there are three common kinds of strings in rust:
+
+* `~str` - This is an owned string. This type obeys all of the normal semantics
+           of the `~T` types, meaning that it has one, and only one, owner. This
+           type cannot be implicitly copied, and is moved out of when passed to
+           other functions.
+
+* `@str` - This is a managed string. Similarly to `@T`, this type can be
+           implicitly copied, and each implicit copy will increment the
+           reference count to the string. This means that there is not "true
+           owner" of the string, and the string will be deallocated when the
+           reference count reaches 0.
+
+* `&str` - Finally, this is the borrowed string type. This type of string can
+           only be created from one of the other two kinds of strings. As the
+           name "borrowed" implies, this type of string is owned elsewhere, and
+           this string cannot be moved out of.
+
+As an example, here's a few different kinds of strings.
+
+~~~{.rust}
+let owned_string = ~"I am an owned string";
+let managed_string = @"This string is garbage-collected";
+let borrowed_string1 = "This string is borrowed with the 'static lifetime";
+let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
+let borrowed_string3: &str = managed_string; // managed strings can also be borrowed
+~~~
+
+From the example above, you can see that rust has 3 different kinds of string
+literals. The owned/managed literals correspond to the owned/managed string
+types, but the "borrowed literal" is actually more akin to C's concept of a
+static string.
+
+When a string is declared without a `~` or `@` sigil, then the string is
+allocated statically in the rodata of the executable/library. The string then
+has the type `&'static str` meaning that the string is valid for the `'static`
+lifetime, otherwise known as the lifetime of the entire program. As can be
+inferred from the type, these static strings are not mutable.
+
+# Mutability
+
+Many languages have immutable strings by default, and rust has a particular
+flavor on this idea. As with the rest of Rust types, strings are immutable by
+default. If a string is declared as `mut`, however, it may be mutated. This
+works the same way as the rest of Rust's type system in the sense that if
+there's a mutable reference to a string, there may only be one mutable reference
+to that string. With these guarantees, strings can easily transition between
+being mutable/immutable with the same benefits of having mutable strings in
+other languages.
+
+~~~{.rust}
+let mut buf = ~"testing";
+buf.push_char(' ');
+buf.push_str("123");
+assert_eq!(buf, ~"testing 123");
+~~~
+
+# Representation
+
+Rust's string type, `str`, is a sequence of unicode codepoints encoded as a
+stream of UTF-8 bytes. All safely-created strings are guaranteed to be validly
+encoded UTF-8 sequences. Additionally, strings are not guaranteed to be
+null-terminated (the null byte is a valid unicode codepoint).
+
+The actual representation of strings have direct mappings to vectors:
+
+* `~str` is the same as `~[u8]`
+* `&str` is the same as `&[u8]`
+* `@str` is the same as `@[u8]`
+
+*/
 
 use at_vec;
 use cast;
