@@ -149,6 +149,38 @@ impl reader for TtReader {
     fn dup(@mut self) -> @mut reader { dup_tt_reader(self) as @mut reader }
 }
 
+// report a lexical error spanning from `from_pos` to `rdr.last_pos`
+fn fatal_from(rdr: @mut StringReader, from_pos: BytePos, m: ~str) -> ! {
+    rdr.peek_span = codemap::mk_sp(from_pos, rdr.last_pos);
+    rdr.fatal(m);
+}
+
+// report a lexical error with the span pointing at `rdr.last_pos`
+fn fatal_curr(rdr: @mut StringReader, m: ~str) -> ! {
+    rdr.peek_span = codemap::mk_sp(rdr.last_pos, rdr.last_pos);
+    rdr.fatal(m);
+}
+
+// report a lexical error with the span pointing at one before `rdr.last_pos`
+fn fatal_last(rdr: @mut StringReader, m: ~str) -> ! {
+    let pos = match rdr.last_pos {
+        BytePos(0) => BytePos(0),
+        n => n - BytePos(1u)
+    };
+    rdr.peek_span = codemap::mk_sp(pos, pos);
+    rdr.fatal(m);
+}
+
+// report a lexical error spanning from `from_pos` to one before `rdr.last_pos`
+fn fatal_last_from(rdr: @mut StringReader, from_pos: BytePos, m: ~str) -> ! {
+    let pos = match rdr.last_pos {
+        BytePos(0) => BytePos(0),
+        n => n - BytePos(1u)
+    };
+    rdr.peek_span = codemap::mk_sp(from_pos, pos);
+    rdr.fatal(m);
+}
+
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
 fn string_advance_token(r: @mut StringReader) {
@@ -327,7 +359,8 @@ fn consume_block_comment(rdr: @mut StringReader)
             bump(rdr);
         }
         if is_eof(rdr) {
-            rdr.fatal(~"unterminated block doc-comment");
+            fatal_last_from(rdr, start_bpos - BytePos(1u),
+                            ~"unterminated block doc-comment");
         } else {
             bump(rdr);
             bump(rdr);
@@ -344,8 +377,11 @@ fn consume_block_comment(rdr: @mut StringReader)
             }
         }
     } else {
+        let start_bpos = rdr.pos - BytePos(3u);
         loop {
-            if is_eof(rdr) { rdr.fatal(~"unterminated block comment"); }
+            if is_eof(rdr) {
+                fatal_last_from(rdr, start_bpos, ~"unterminated block comment");
+            }
             if rdr.curr == '*' && nextch(rdr) == '/' {
                 bump(rdr);
                 bump(rdr);
@@ -362,6 +398,7 @@ fn consume_block_comment(rdr: @mut StringReader)
 }
 
 fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
+    let start_bpos = rdr.last_pos;
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
@@ -375,7 +412,9 @@ fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
         let exponent = scan_digits(rdr, 10u);
         if exponent.len() > 0u {
             return Some(rslt + exponent);
-        } else { rdr.fatal(~"scan_exponent: bad fp literal"); }
+        } else {
+            fatal_from(rdr, start_bpos, ~"scan_exponent: bad fp literal");
+        }
     } else { return None::<~str>; }
 }
 
@@ -399,6 +438,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     let mut base = 10u;
     let mut c = c;
     let mut n = nextch(rdr);
+    let start_bpos = rdr.last_pos;
     if c == '0' && n == 'x' {
         bump(rdr);
         bump(rdr);
@@ -442,11 +482,11 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
                       else { either::Right(ast::ty_u64) };
         }
         if num_str.len() == 0u {
-            rdr.fatal(~"no valid digits found for number");
+            fatal_from(rdr, start_bpos, ~"no valid digits found for number");
         }
         let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
-            None => rdr.fatal(~"int literal is too large")
+            None => fatal_from(rdr, start_bpos, ~"int literal is too large")
         };
 
         match tp {
@@ -464,8 +504,10 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     }
     if is_float {
         match base {
-          16u => rdr.fatal(~"hexadecimal float literal is not supported"),
-          2u => rdr.fatal(~"binary float literal is not supported"),
+          16u => fatal_from(rdr, start_bpos,
+                            ~"hexadecimal float literal is not supported"),
+          2u => fatal_from(rdr, start_bpos,
+                           ~"binary float literal is not supported"),
           _ => ()
         }
     }
@@ -507,11 +549,11 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if num_str.len() == 0u {
-            rdr.fatal(~"no valid digits found for number");
+            fatal_from(rdr, start_bpos, ~"no valid digits found for number");
         }
         let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
-            None => rdr.fatal(~"int literal is too large")
+            None => fatal_from(rdr, start_bpos, ~"int literal is too large")
         };
 
         debug!("lexing %s as an unsuffixed integer literal",
@@ -523,19 +565,23 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
 fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
     let mut accum_int = 0;
     let mut i = n_hex_digits;
+    let start_bpos = rdr.last_pos;
     while i != 0u {
         let n = rdr.curr;
-        bump(rdr);
         if !is_hex_digit(n) {
-            rdr.fatal(fmt!("illegal numeric character escape: %d", n as int));
+            fatal_curr(rdr,
+                       fmt!("illegal numeric character escape: %d",
+                            n as int));
         }
+        bump(rdr);
         accum_int *= 16;
         accum_int += hex_digit_val(n);
         i -= 1u;
     }
     match char::from_u32(accum_int as u32) {
         Some(x) => x,
-        None => rdr.fatal(fmt!("illegal numeric character escape"))
+        None => fatal_from(rdr, start_bpos,
+                           fmt!("illegal numeric character escape"))
     }
 }
 
@@ -704,12 +750,13 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
               'u' => { c2 = scan_numeric_escape(rdr, 4u); }
               'U' => { c2 = scan_numeric_escape(rdr, 8u); }
               c2 => {
-                rdr.fatal(fmt!("unknown character escape: %d", c2 as int));
+                fatal_last(rdr,
+                          fmt!("unknown character escape: %d", c2 as int));
               }
             }
         }
         if rdr.curr != '\'' {
-            rdr.fatal(~"unterminated character constant");
+            fatal_from(rdr, start, ~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
         return token::LIT_CHAR(c2 as u32);
@@ -721,7 +768,8 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         while rdr.curr != '"' {
             if is_eof(rdr) {
                 do with_str_from(rdr, n) |s| {
-                    rdr.fatal(fmt!("unterminated double quote string: %s", s));
+                    let m = fmt!("unterminated double quote string: %s", s);
+                    fatal_last_from(rdr, n, m);
                 }
             }
 
@@ -750,7 +798,8 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                     accum_str.push_char(scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
-                    rdr.fatal(fmt!("unknown string escape: %d", c2 as int));
+                    fatal_last(rdr,
+                               fmt!("unknown string escape: %d", c2 as int));
                   }
                 }
               }
@@ -786,11 +835,9 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
       c => {
-          // So the error span points to the unrecognized character
-          rdr.peek_span = codemap::mk_sp(rdr.last_pos, rdr.pos);
           let mut cs = ~"";
           char::escape_default(c, |c| cs.push_char(c));
-          rdr.fatal(fmt!("unknown start of token: %s", cs));
+          fatal_curr(rdr, fmt!("unknown start of token: %s", cs));
       }
     }
 }
