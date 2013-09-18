@@ -20,7 +20,7 @@ use std::result;
 use std::run;
 use std::str;
 use std::task;
-use extra::future;
+use extra::future::Future;
 
 #[deriving(Clone)]
 pub enum WriteInstr {
@@ -207,10 +207,10 @@ pub fn future_writer_factory(
     (writer_factory, markdown_po)
 }
 
-fn future_writer() -> (Writer, future::Future<~str>) {
+fn future_writer() -> (Writer, Future<~str>) {
     let (port, chan) = comm::stream();
     let writer: ~fn(instr: WriteInstr) = |instr| chan.send(instr.clone());
-    let future = do future::from_fn || {
+    let future = do Future::from_fn || {
         let mut res = ~"";
         loop {
             match port.recv() {
