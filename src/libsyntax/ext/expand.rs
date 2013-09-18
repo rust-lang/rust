@@ -715,7 +715,7 @@ pub fn std_macros() -> @str {
     macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
     macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
     macro_rules! debug( ($($arg:tt)*) => (
-        if cfg!(debug) { log!(4u32, $($arg)*) }
+        if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
     ))
 
     macro_rules! log2(
@@ -730,7 +730,7 @@ pub fn std_macros() -> @str {
     macro_rules! warn2 ( ($($arg:tt)*) => (log2!(2u32, $($arg)*)) )
     macro_rules! info2 ( ($($arg:tt)*) => (log2!(3u32, $($arg)*)) )
     macro_rules! debug2( ($($arg:tt)*) => (
-        if cfg!(debug) { log2!(4u32, $($arg)*) }
+        if cfg!(not(ndebug)) { log2!(4u32, $($arg)*) }
     ))
 
     macro_rules! fail(

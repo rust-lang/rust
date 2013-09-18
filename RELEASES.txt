@@ -10,8 +10,8 @@ Version 0.8 (October 2013)
       * Many trait inheritance bugs fixed.
       * Owned and borrowed trait objects work more reliably.
       * `copy` is no longer a keyword. It has been replaced by the `Clone` trait.
-      * rustc no longer emits code for the `debug!` macro unless it is passed
-        `--cfg debug`
+      * rustc can omit emission of code for the `debug!` macro if it is passed
+        `--cfg ndebug`
       * mod.rs is now "blessed". When loading `mod foo;`, rustc will now look
         for foo.rs, then foo/mod.rs, and will generate an error when both are
         present.
