@@ -59,36 +59,36 @@ pub enum LangItem {
 
     StrEqFnLangItem,                   // 19
     UniqStrEqFnLangItem,               // 20
-    FailFnLangItem,                    // 22
-    FailBoundsCheckFnLangItem,         // 23
-    ExchangeMallocFnLangItem,          // 24
-    ClosureExchangeMallocFnLangItem,   // 25
-    ExchangeFreeFnLangItem,            // 26
-    MallocFnLangItem,                  // 27
-    FreeFnLangItem,                    // 28
-    BorrowAsImmFnLangItem,             // 29
-    BorrowAsMutFnLangItem,             // 30
-    ReturnToMutFnLangItem,             // 31
-    CheckNotBorrowedFnLangItem,        // 32
-    StrDupUniqFnLangItem,              // 33
-    RecordBorrowFnLangItem,            // 34
-    UnrecordBorrowFnLangItem,          // 35
+    FailFnLangItem,                    // 21
+    FailBoundsCheckFnLangItem,         // 22
+    ExchangeMallocFnLangItem,          // 23
+    ClosureExchangeMallocFnLangItem,   // 24
+    ExchangeFreeFnLangItem,            // 25
+    MallocFnLangItem,                  // 26
+    FreeFnLangItem,                    // 27
+    BorrowAsImmFnLangItem,             // 28
+    BorrowAsMutFnLangItem,             // 29
+    ReturnToMutFnLangItem,             // 30
+    CheckNotBorrowedFnLangItem,        // 31
+    StrDupUniqFnLangItem,              // 32
+    RecordBorrowFnLangItem,            // 33
+    UnrecordBorrowFnLangItem,          // 34
 
-    StartFnLangItem,                   // 36
+    StartFnLangItem,                   // 35
 
-    TyDescStructLangItem,              // 37
-    TyVisitorTraitLangItem,            // 38
-    OpaqueStructLangItem,              // 39
+    TyDescStructLangItem,              // 36
+    TyVisitorTraitLangItem,            // 37
+    OpaqueStructLangItem,              // 38
 }
 
 pub struct LanguageItems {
-    items: [Option<DefId>, ..41]
+    items: [Option<DefId>, ..39]
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..41 ]
+            items: [ None, ..39 ]
         }
     }
 
@@ -122,27 +122,26 @@ impl LanguageItems {
 
             19 => "str_eq",
             20 => "uniq_str_eq",
-            21 => "log_type",
-            22 => "fail_",
-            23 => "fail_bounds_check",
-            24 => "exchange_malloc",
-            25 => "closure_exchange_malloc",
-            26 => "exchange_free",
-            27 => "malloc",
-            28 => "free",
-            29 => "borrow_as_imm",
-            30 => "borrow_as_mut",
-            31 => "return_to_mut",
-            32 => "check_not_borrowed",
-            33 => "strdup_uniq",
-            34 => "record_borrow",
-            35 => "unrecord_borrow",
+            21 => "fail_",
+            22 => "fail_bounds_check",
+            23 => "exchange_malloc",
+            24 => "closure_exchange_malloc",
+            25 => "exchange_free",
+            26 => "malloc",
+            27 => "free",
+            28 => "borrow_as_imm",
+            29 => "borrow_as_mut",
+            30 => "return_to_mut",
+            31 => "check_not_borrowed",
+            32 => "strdup_uniq",
+            33 => "record_borrow",
+            34 => "unrecord_borrow",
 
-            36 => "start",
+            35 => "start",
 
-            37 => "ty_desc",
-            38 => "ty_visitor",
-            39 => "opaque",
+            36 => "ty_desc",
+            37 => "ty_visitor",
+            38 => "opaque",
 
             _ => "???"
         }
