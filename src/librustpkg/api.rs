@@ -16,6 +16,7 @@ use target::*;
 use version::Version;
 use workcache_support::*;
 
+use std::os;
 use extra::arc::{Arc,RWArc};
 use extra::workcache;
 use extra::workcache::{Database, Logger, FreshnessMap};
@@ -40,11 +41,13 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
 }
 
 fn file_is_fresh(path: &str, in_hash: &str) -> bool {
-    in_hash == digest_file_with_date(&Path(path))
+    let path = Path(path);
+    os::path_exists(&path) && in_hash == digest_file_with_date(&path)
 }
 
 fn binary_is_fresh(path: &str, in_hash: &str) -> bool {
-    in_hash == digest_only_date(&Path(path))
+    let path = Path(path);
+    os::path_exists(&path) && in_hash == digest_only_date(&path)
 }
 
 pub fn new_workcache_context(p: &Path) -> workcache::Context {

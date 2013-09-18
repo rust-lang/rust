@@ -47,7 +47,7 @@ use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
 // use workcache_support::{discover_outputs, digest_only_date};
 use workcache_support::digest_only_date;
-use exit_codes::copy_failed_code;
+use exit_codes::COPY_FAILED_CODE;
 
 pub mod api;
 mod conditions;
@@ -789,10 +789,10 @@ pub fn main_args(args: &[~str]) {
         }.run(sub_cmd, rm_args.clone())
     };
     // FIXME #9262: This is using the same error code for all errors,
-    // and at least one test case succeeds if rustpkg returns copy_failed_code,
+    // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,
     // when actually, it might set the exit code for that even if a different
     // unhandled condition got raised.
-    if result.is_err() { os::set_exit_status(copy_failed_code); }
+    if result.is_err() { os::set_exit_status(COPY_FAILED_CODE); }
 
 }
 
