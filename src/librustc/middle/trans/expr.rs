@@ -343,7 +343,6 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
             _ => {}
         }
 
-        
         let scratch = scratch_datum(bcx, target_obj_ty,
                                     "__auto_borrow_obj", false);
 
