@@ -17,7 +17,6 @@ extern mod extra;
 
 use std::os;
 use std::rt;
-use std::f64;
 
 use extra::getopts;
 use extra::getopts::groups::{optopt, optflag, reqopt};
@@ -131,7 +130,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         ratchet_noise_percent:
             getopts::opt_maybe_str(matches,
                                    "ratchet-noise-percent").map_move(|s|
-                                                                     f64::from_str(s).unwrap()),
+                                                                     from_str::<f64>(s).unwrap()),
         runtool: getopts::opt_maybe_str(matches, "runtool"),
         rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
         jit: getopts::opt_present(matches, "jit"),
