@@ -962,24 +962,76 @@ parameters to allow methods with that trait to be called on values
 of that type.
 
 
-#### Unsafe functions
-
-Unsafe functions are those containing unsafe operations that are not contained in an [`unsafe` block](#unsafe-blocks).
-Such a function must be prefixed with the keyword `unsafe`.
+#### Unsafety
 
 Unsafe operations are those that potentially violate the memory-safety guarantees of Rust's static semantics.
-Specifically, the following operations are considered unsafe:
+
+The following language level features cannot be used in the safe subset of Rust:
 
   - Dereferencing a [raw pointer](#pointer-types).
-  - Casting a [raw pointer](#pointer-types) to a safe pointer type.
-  - Calling an unsafe function.
+  - Calling an unsafe function (including an intrinsic or foreign function).
+
+##### Unsafe functions
+
+Unsafe functions are functions that are not safe in all contexts and/or for all possible inputs.
+Such a function must be prefixed with the keyword `unsafe`.
 
 ##### Unsafe blocks
 
-A block of code can also be prefixed with the `unsafe` keyword, to permit a sequence of unsafe operations in an otherwise-safe function.
-This facility exists because the static semantics of Rust are a necessary approximation of the dynamic semantics.
-When a programmer has sufficient conviction that a sequence of unsafe operations is actually safe, they can encapsulate that sequence (taken as a whole) within an `unsafe` block. The compiler will consider uses of such code "safe", to the surrounding context.
+A block of code can also be prefixed with the `unsafe` keyword, to permit calling `unsafe` functions
+or dereferencing raw pointers within a safe function.
 
+When a programmer has sufficient conviction that a sequence of potentially unsafe operations is
+actually safe, they can encapsulate that sequence (taken as a whole) within an `unsafe` block. The
+compiler will consider uses of such code safe, in the surrounding context.
+
+Unsafe blocks are used to wrap foreign libraries, make direct use of hardware or implement features
+not directly present in the language. For example, Rust provides the language features necessary to
+implement memory-safe concurrency in the language but the implementation of tasks and message
+passing is in the standard library.
+
+Rust's type system is a conservative approximation of the dynamic safety requirements, so in some
+cases there is a performance cost to using safe code.  For example, a doubly-linked list is not a
+tree structure and can only be represented with managed or reference-counted pointers in safe code.
+By using `unsafe` blocks to represent the reverse links as raw pointers, it can be implemented with
+only owned pointers.
+
+##### Behavior considered unsafe
+
+This is a list of behavior which is forbidden in all Rust code. Type checking provides the guarantee
+that these issues are never caused by safe code. An `unsafe` block or function is responsible for
+never invoking this behaviour or exposing an API making it possible for it to occur in safe code.
+
+* Data races
+* Dereferencing a null/dangling raw pointer
+* Mutating an immutable value/reference, if it is not marked as non-`Freeze`
+* Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values) (uninitialized) memory
+* Breaking the [pointer aliasing rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
+  with raw pointers (a subset of the rules used by C)
+* Invoking undefined behavior via compiler intrinsics:
+    * Indexing outside of the bounds of an object with `std::ptr::offset` (`offset` intrinsic), with
+      the exception of one byte past the end which is permitted.
+    * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64` instrinsics) on
+      overlapping buffers
+* Invalid values in primitive types, even in private fields/locals:
+    * Dangling/null pointers in non-raw pointers, or slices
+    * A value other than `false` (0) or `true` (1) in a `bool`
+    * A discriminant in an `enum` not included in the type definition
+    * A value in a `char` which is a surrogate or above `char::MAX`
+    * non-UTF-8 byte sequences in a `str`
+
+##### Behaviour not considered unsafe
+
+This is a list of behaviour not considered *unsafe* in Rust terms, but that may be undesired.
+
+* Deadlocks
+* Reading data from private fields (`std::repr`, `format!("{:?}", x)`)
+* Leaks due to reference count cycles, even in the global heap
+* Exiting without calling destructors
+* Sending signals
+* Accessing/modifying the file system
+* Unsigned integer overflow (well-defined as wrapping)
+* Signed integer overflow (well-defined as two's complement representation wrapping)
 
 #### Diverging functions
 
