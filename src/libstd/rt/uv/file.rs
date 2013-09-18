@@ -370,8 +370,7 @@ mod test {
     use unstable::run_in_bare_thread;
     use path::Path;
     use rt::uv::{Loop, Buf, slice_to_uv_buf};
-    use libc::{c_int, O_CREAT, O_RDWR, O_RDONLY,
-               S_IWUSR, S_IRUSR};
+    use libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
 
     #[test]
     fn file_test_full_simple() {
@@ -603,7 +602,7 @@ mod test {
                         assert!(uverr.is_none());
                         let loop_ = req.get_loop();
                         let stat_req = FsRequest::new();
-                        do stat_req.stat(&loop_, &path) |req, uverr| {
+                        do stat_req.stat(&loop_, &path) |_req, uverr| {
                             assert!(uverr.is_some());
                         }
                     }
@@ -628,11 +627,11 @@ mod test {
                 do mkdir_req.mkdir(&loop_, &path, mode as int) |req,uverr| {
                     assert!(uverr.is_some());
                     let loop_ = req.get_loop();
-                    let stat = req.get_stat();
+                    let _stat = req.get_stat();
                     let rmdir_req = FsRequest::new();
                     do rmdir_req.rmdir(&loop_, &path) |req,uverr| {
                         assert!(uverr.is_none());
-                        let loop_ = req.get_loop();
+                        let _loop = req.get_loop();
                     }
                 }
             }
@@ -646,7 +645,7 @@ mod test {
             let mut loop_ = Loop::new();
             let path = "./tmp/never_existed_dir";
             let rmdir_req = FsRequest::new();
-            do rmdir_req.rmdir(&loop_, &path) |req,uverr| {
+            do rmdir_req.rmdir(&loop_, &path) |_req, uverr| {
                 assert!(uverr.is_some());
             }
             loop_.run();
