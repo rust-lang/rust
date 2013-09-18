@@ -283,7 +283,28 @@ pub fn compile_input(context: &BuildContext,
 
     debug!("calling compile_crate_from_input, workspace = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    compile_crate_from_input(in_file, exec, context.compile_upto(), &out_dir, sess, crate)
+    let result = compile_crate_from_input(in_file,
+                                          exec,
+                                          context.compile_upto(),
+                                          &out_dir,
+                                          sess,
+                                          crate);
+    // Discover the output
+    let discovered_output = if what == Lib  {
+        installed_library_in_workspace(&pkg_id.path, workspace)
+    }
+    else {
+        result
+    };
+    debug!("About to discover output %s", discovered_output.to_str());
+    for p in discovered_output.iter() {
+        if os::path_exists(p) {
+            exec.discover_output("binary", p.to_str(), digest_only_date(p));
+        }
+        // Nothing to do if it doesn't exist -- that could happen if we had the
+        // -S or -emit-llvm flags, etc.
+    }
+    discovered_output
 }
 
 // Should use workcache to avoid recompiling when not necessary

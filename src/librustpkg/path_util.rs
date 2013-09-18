@@ -118,7 +118,6 @@ fn target_bin_dir(workspace: &Path) -> Path {
 /// directory is, and if the file exists, return it.
 pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = target_build_dir(workspace);
-    // should use a target-specific subdirectory
     result = mk_output_path(Main, Build, pkgid, result);
     debug!("built_executable_in_workspace: checking whether %s exists",
            result.to_str());
