@@ -11,6 +11,12 @@
 //xfail-fast
 
 #[start]
+#[cfg(stage0)]
 fn start(_argc: int, _argv: **u8, _crate_map: *u8) -> int {
+    return 0;
+}
+#[start]
+#[cfg(not(stage0))]
+fn start(_argc: int, _argv: **u8) -> int {
     return 0;
 }
