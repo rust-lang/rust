@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::libc;
 use std::os;
 use extra::workcache;
 use rustc::driver::{driver, session};
@@ -26,7 +27,7 @@ use workspace::pkg_parent_workspaces;
 use path_util::{installed_library_in_workspace, U_RWX, rust_path, system_library, target_build_dir};
 use messages::error;
 
-pub use target::{OutputType, Main, Lib, Bench, Test};
+pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
 use workcache_support::{digest_file_with_date, digest_only_date};
 
 // It would be nice to have the list of commands in just one place -- for example,
@@ -171,6 +172,8 @@ pub fn compile_input(context: &BuildContext,
     // not sure if we should support anything else
 
     let out_dir = target_build_dir(workspace).push_rel(&pkg_id.path);
+    // Make the output directory if it doesn't exist already
+    assert!(os::mkdir_recursive(&out_dir, U_RWX));
 
     let binary = os::args()[0].to_managed();
 
@@ -220,7 +223,7 @@ pub fn compile_input(context: &BuildContext,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
-        addl_lib_search_paths: @mut (~[out_dir.clone()]),
+        addl_lib_search_paths: @mut (~[]),
         output_type: output_type,
         .. (*driver::build_session_options(binary, &matches, diagnostic::emit)).clone()
     };
@@ -329,6 +332,9 @@ pub fn compile_crate_from_input(input: &Path,
     // Register dependency on the source file
     exec.discover_input("file", input.to_str(), digest_file_with_date(input));
 
+    debug!("Built %s, date = %?", outputs.out_filename.to_str(),
+           datestamp(&outputs.out_filename));
+
     Some(outputs.out_filename)
 }
 
@@ -409,7 +415,8 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                             workspaces[0]
                         };
                         let (outputs_disc, inputs_disc) =
-                            context.install(PkgSrc::new(dep_workspace.clone(), false, pkg_id));
+                            context.install(PkgSrc::new(dep_workspace.clone(),
+                                false, pkg_id), &JustOne(Path(lib_crate_filename)));
                         debug!("Installed %s, returned %? dependencies and \
                                %? transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
@@ -435,10 +442,11 @@ pub fn find_and_install_dependencies(context: &BuildContext,
                         debug!("Adding additional search path: %s", lib_name);
                         let installed_library =
                             installed_library_in_workspace(&Path(lib_name), &dep_workspace)
-                                .expect( fmt!("rustpkg failed to install dependency %s",
+                                .expect(fmt!("rustpkg failed to install dependency %s",
                                               lib_name));
                         let install_dir = installed_library.pop();
-                        debug!("Installed %s into %s", lib_name, install_dir.to_str());
+                        debug!("Installed %s into %s [%?]", lib_name, install_dir.to_str(),
+                               datestamp(&installed_library));
                         save(install_dir);
                     }
                 }}
@@ -447,37 +455,6 @@ pub fn find_and_install_dependencies(context: &BuildContext,
         }
         true
     };
-}
-
-#[cfg(windows)]
-pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    /* FIXME (#1768): Investigate how to do this on win32
-       Node wraps symlinks by having a .bat,
-       but that won't work with minGW. */
-
-    false
-}
-
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "macos")]
-pub fn link_exe(src: &Path, dest: &Path) -> bool {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    use std::c_str::ToCStr;
-    use std::libc;
-
-    unsafe {
-        do src.with_c_str |src_buf| {
-            do dest.with_c_str |dest_buf| {
-                libc::link(src_buf, dest_buf) == 0 as libc::c_int &&
-                    libc::chmod(dest_buf, 755) == 0 as libc::c_int
-            }
-        }
-    }
 }
 
 pub fn mk_string_lit(s: @str) -> ast::lit {
@@ -516,3 +493,12 @@ pub fn option_to_vec<T>(x: Option<T>) -> ~[T] {
 // tjc: cheesy
 fn debug_flags() -> ~[~str] { ~[] }
 // static DEBUG_FLAGS: ~[~str] = ~[~"-Z", ~"time-passes"];
+
+
+/// Returns the last-modified date as an Option
+pub fn datestamp(p: &Path) -> Option<libc::time_t> {
+    debug!("Scrutinizing datestamp for %s - does it exist? %?", p.to_str(), os::path_exists(p));
+    let out = p.stat().map(|stat| stat.st_mtime);
+    debug!("Date = %?", out);
+    out.map(|t| { *t as libc::time_t })
+}
