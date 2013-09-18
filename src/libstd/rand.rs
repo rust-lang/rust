@@ -915,7 +915,7 @@ pub fn seed() -> ~[u8] {
 }
 
 // used to make space in TLS for a random number generator
-static tls_rng_state: local_data::Key<@@mut IsaacRng> = &local_data::Key;
+local_data_key!(tls_rng_state: @@mut IsaacRng)
 
 /**
  * Gives back a lazily initialized task-local random number generator,

@@ -863,9 +863,7 @@ pub fn std_macros() -> @str {
 
                 use super::*;
 
-                static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$input, $out>> =
-                    &::std::local_data::Key;
+                local_data_key!(key: @::std::condition::Handler<$input, $out>)
 
                 pub static cond :
                     ::std::condition::Condition<$input,$out> =
@@ -884,9 +882,7 @@ pub fn std_macros() -> @str {
 
                 use super::*;
 
-                static key: ::std::local_data::Key<
-                    @::std::condition::Handler<$input, $out>> =
-                    &::std::local_data::Key;
+                local_data_key!(key: @::std::condition::Handler<$input, $out>)
 
                 pub static cond :
                     ::std::condition::Condition<$input,$out> =
@@ -975,8 +971,6 @@ pub fn std_macros() -> @str {
         ($($arg:tt)*) => (::std::io::println(format!($($arg)*)))
     )
 
-    // NOTE: use this after a snapshot lands to abstract the details
-    // of the TLS interface.
     macro_rules! local_data_key (
         ($name:ident: $ty:ty) => (
             static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;

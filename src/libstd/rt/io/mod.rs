@@ -388,17 +388,13 @@ impl ToStr for IoErrorKind {
 // XXX: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
-    // NOTE: this super::IoError should be IoError
-    // Change this next time the snapshot is updated.
-    pub io_error: super::IoError -> ();
+    pub io_error: IoError -> ();
 }
 
 // XXX: Can't put doc comments on macros
 // Raised by `read` on error
 condition! {
-    // NOTE: this super::IoError should be IoError
-    // Change this next time the snapshot it updated.
-    pub read_error: super::IoError -> ();
+    pub read_error: IoError -> ();
 }
 
 /// Helper for wrapper calls where you want to

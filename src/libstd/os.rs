@@ -148,18 +148,6 @@ pub mod win32 {
     }
 }
 
-#[cfg(stage0)]
-mod macro_hack {
-#[macro_escape];
-macro_rules! externfn(
-    (fn $name:ident ()) => (
-        extern {
-            fn $name();
-        }
-    )
-)
-}
-
 /*
 Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.

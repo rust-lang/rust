@@ -190,7 +190,7 @@ pub mod jit {
 
     // The stage1 compiler won't work, but that doesn't really matter. TLS
     // changed only very recently to allow storage of owned values.
-    static engine_key: local_data::Key<~Engine> = &local_data::Key;
+    local_data_key!(engine_key: ~Engine)
 
     fn set_engine(engine: ~Engine) {
         local_data::set(engine_key, engine)
