@@ -152,8 +152,7 @@ impl CString {
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            let len = ptr::position(self.buf, |c| *c == 0);
-            cast::transmute((self.buf, len + 1))
+            cast::transmute((self.buf, self.len() + 1))
         }
     }
 
@@ -183,6 +182,15 @@ impl Drop for CString {
             unsafe {
                 libc::free(self.buf as *libc::c_void)
             }
+        }
+    }
+}
+
+impl Container for CString {
+    #[inline]
+    fn len(&self) -> uint {
+        unsafe {
+            ptr::position(self.buf, |c| *c == 0)
         }
     }
 }
