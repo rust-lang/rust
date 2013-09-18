@@ -2442,11 +2442,6 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let crate_map = ccx.crate_map;
-            let opaque_crate_map = do "crate_map".with_c_str |buf| {
-                llvm::LLVMBuildPointerCast(bld, crate_map, Type::i8p().to_ref(), buf)
-            };
-
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
@@ -2469,8 +2464,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                         C_null(Type::opaque_box(ccx).ptr_to()),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
-                        llvm::LLVMGetParam(llfn, 1),
-                        opaque_crate_map
+                        llvm::LLVMGetParam(llfn, 1)
                      ]
                 };
                 (start_fn, args)
@@ -2479,8 +2473,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 let args = ~[
                     C_null(Type::opaque_box(ccx).ptr_to()),
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    opaque_crate_map
+                    llvm::LLVMGetParam(llfn, 1 as c_uint)
                 ];
 
                 (rust_main, args)
@@ -2661,13 +2654,16 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                         }
                         ast::foreign_item_static(*) => {
                             let ident = foreign::link_name(ccx, ni);
-                            let g = do ident.with_c_str |buf| {
-                                unsafe {
+                            unsafe {
+                                let g = do ident.with_c_str |buf| {
                                     let ty = type_of(ccx, ty);
                                     llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
+                                };
+                                if attr::contains_name(ni.attrs, "weak_linkage") {
+                                    lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
                                 }
-                            };
-                            g
+                                g
+                            }
                         }
                     }
                 }

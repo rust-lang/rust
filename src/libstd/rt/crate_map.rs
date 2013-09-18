@@ -16,7 +16,14 @@ use vec;
 use hashmap::HashSet;
 use container::MutableSet;
 
-pub struct ModEntry{
+extern {
+    #[cfg(not(stage0))]
+    #[weak_linkage]
+    #[link_name = "_rust_crate_map_toplevel"]
+    static CRATE_MAP: CrateMap;
+}
+
+pub struct ModEntry {
     name: *c_char,
     log_level: *mut u32
 }
@@ -32,6 +39,11 @@ struct CrateMap {
     /// a dynamically sized struct, where all pointers to children are listed adjacent
     /// to the struct, terminated with NULL
     children: [*CrateMap, ..1]
+}
+
+#[cfg(not(stage0))]
+pub fn get_crate_map() -> *CrateMap {
+    &'static CRATE_MAP as *CrateMap
 }
 
 unsafe fn version(crate_map: *CrateMap) -> i32 {
