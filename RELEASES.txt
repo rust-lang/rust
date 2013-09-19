@@ -1,3 +1,148 @@
+Version 0.8 (October 2013)
+--------------------------
+
+   * ~2100 changes, numerous bugfixes
+
+   * Language
+      * The `for` loop syntax has changed to work with the `Iterator` trait.
+      * At long last, unwinding works on Windows.
+      * Default methods definitely mostly work.
+      * Many trait inheritance bugs fixed.
+      * Owned and borrowed trait objects work more reliably.
+      * `copy` is no longer a keyword. It has been replaced by the `Clone` trait.
+      * rustc no longer emits code for the `debug!` macro unless it is passed
+        `--cfg debug`
+      * mod.rs is now "blessed". When loading `mod foo;`, rustc will now look
+        for foo.rs, then foo/mod.rs, and will generate an error when both are
+        present.
+      * Strings no longer contain trailing nulls. The new `std::c_str` module
+        provides new mechanisms for converting to C strings.
+      * The type of foreign functions is now `extern "C" fn` instead of `*u8'.
+      * The FFI has been overhauled such that foreign functions are called directly,
+        instead of through a stack-switching wrapper.
+      * Calling a foreign function must be done through a Rust function with the
+        `#[fixed_stack_segment]` attribute.
+      * The `externfn!` macro can be used to declare both a foreign function and
+        a `#[fixed_stack_segment]` wrapper at once.
+      * `pub` and `priv` modifiers on `extern` blocks are no longer parsed.
+      * `unsafe` is no longer allowed on extern fns - they are all unsafe.
+      * `priv` is disallowed everywhere except for struct fields and enum variants.
+      * `&T` (besides `&'static T`) is no longer allowed in `@T`.
+      * `ref` bindings in irrefutable patterns work correctly now.
+      * `char` is now prevented from containing invalid code points.
+      * Casting to `bool` is no longer allowed.
+      * `yield` is a reserved keyword.
+      * `typeof` is a reserved keyword.
+      * Crates may be imported by URL with `extern mod foo = "url";`.
+      * Explicit enum discriminants may be given as uints as in `enum E { V = 0u }`
+      * Static vectors can be initialized with repeating elements,
+        e.g. `static foo: [u8, .. 100]: [0, .. 100];`.
+      * Static structs can be initialized with functional record update,
+        e.g. `static foo: Foo = Foo { a: 5, .. bar };`.
+      * `cfg!` can be used to conditionally execute code based on the crate
+        configuration, similarly to `#[cfg(...)]`.
+      * The `unnecessary_qualification` lint detects unneeded module
+        prefixes (default: allow).
+      * Arithmetic operations have been implemented on the SIMD types in
+        `std::unstable::simd`.
+      * Exchange allocation headers were removed, reducing memory usage.
+      * `format!` implements a completely new, extensible, and higher-performance
+        string formatting system. It will replace `fmt!`.
+      * `print!` and `println!` write formatted strings (using the `format!`
+        extension) to stdout.
+      * `write!` and `writeln!` write formatted strings (using the `format!`
+        extension) to the new Writers in `std::rt::io`.
+      * The library section in which a function or static is placed may
+        be specified with `#[link_section = "..."]`.
+      * The `proto!` syntax extension for defining bounded message protocols
+        was removed.
+      * `macro_rules!` is hygenic for `let` declarations.
+      * The `#[export_name]` attribute specifies the name of a symbol.
+      * `unreachable!` can be used to indicate unreachable code, and fails
+        if executed.
+
+   * Libraries
+      * std: Transitioned to the new runtime, written in Rust.
+      * std: Added an experimental I/O library, `rt::io`, based on the new
+        runtime.
+      * std: A new generic `range` function was added to the prelude, replacing
+        `uint::range` and friends.
+      * std: `range_rev` no longer exists. Since range is an iterator it can be
+        reversed with `range(lo, hi).invert()`.
+      * std: The `chain` method on option renamed to `and_then`; `unwrap_or_default`
+        renamed to `unwrap_or`.
+      * std: The `iterator` module was renamed to `iter`.
+      * std: Integral types now support the `checked_add`, `checked_sub`, and
+        `checked_mul` operations for detecting overflow.
+      * std: Many methods in `str`, `vec`, `option, `result` were renamed for
+        consistency.
+      * std: Methods are standardizing on conventions for casting methods:
+        `to_foo` for copying, `into_foo` for moving, `as_foo` for temporary
+        and cheap casts.
+      * std: The `CString` type in `c_str` provides new ways to convert to and
+        from C strings.
+      * std: `DoubleEndedIterator` can yield elements in two directions.
+      * std: The `mut_split` method on vectors partitions an `&mut [T]` into
+        two splices.
+      * std: `str::from_bytes` renamed to `str::from_utf8`.
+      * std: `pop_opt` and `shift_opt` methods added to vectors.
+      * std: The task-local data interface no longer uses @, and keys are
+        no longer function pointers.
+      * std: The `swap_unwrap` method of `Option` renamed to `take_unwrap`.
+      * std: Added `SharedPort` to `comm`.
+      * std: `Eq` has a default method for `ne`; only `eq` is required
+        in implementations.
+      * std: `Ord` has default methods for `le`, `gt` and `le`; only `lt`
+        is required in implementations.
+      * std: `is_utf8` performance is improved, impacting many string functions.
+      * std: `os::MemoryMap` provides cross-platform mmap.
+      * std: `ptr::offset` is now unsafe, but also more optimized. Offsets that
+        are not 'in-bounds' are considered undefined.
+      * std: Many freestanding functions in `vec` removed in favor of methods.
+      * std: Many freestanding functions on scalar types removed in favor of
+        methods.
+      * std: Many options to task builders were removed since they don't make
+        sense in the new scheduler design.
+      * std: More containers implement `FromIterator` so can be created by the
+        `collect` method.
+      * std: More complete atomic types in `unstable::atomics`.
+      * std: `comm::PortSet` removed.
+      * std: Mutating methods in the `Set` and `Map` traits have been moved into
+        the `MutableSet` and `MutableMap` traits. `Container::is_empty`,
+        `Map::contains_key`, `MutableMap::insert`, and `MutableMap::remove` have
+        default implementations.
+      * extra: `dlist`, the doubly-linked list was modernized.
+      * extra: Added a `hex` module with `ToHex` and `FromHex` traits.
+      * extra: Added `glob` module, replacing `std::os::glob`.
+      * extra: `rope` was removed.
+      * extra: `deque` was renamed to `ringbuf`. `RingBuf` implements `Deque`.
+      * extra: `net`, and `timer` were removed. The experimental replacements
+        are `std::rt::io::net` and `std::rt::io::timer`.
+      * extra: Iterators implemented for `SmallIntMap`.
+      * extra: Iterators implemented for `Bitv` and `BitvSet`.
+      * extra: `SmallIntSet` removed. Use `BitvSet`.
+      * extra: Performance of JSON parsing greatly improved.
+      * extra: `semver` updated to SemVer 2.0.0.
+      * extra: `term` handles more terminals correctly.
+      * extra: `dbg` module removed.
+
+   * Other
+      * rustc's debug info generation (`-Z debug-info`) is greatly improved.
+      * rustc accepts `--target-cpu` to compile to a specific CPU architecture,
+        similarly to gcc's `--march` flag.
+      * rustpkg has received many improvements.
+      * rustpkg supports git tags as package IDs.
+      * rustpkg builds into target-specific directories so it can be used for
+        cross-compiling.
+      * The number of concurrent test tasks is controlled by the environment
+        variable RUST_TEST_TASKS.
+      * The test harness can now report metrics for benchmarks.
+      * All tools have man pages.
+      * Programs compiled with `--test` now support the `-h` and `--help` flags.
+      * The runtime uses jemalloc for allocations.
+      * Segmented stacks are temporarily disabled as part of the transition to
+        the new runtime. Stack overflows are possible!
+
 Version 0.7 (July 2013)
 -----------------------
 
