@@ -1,6 +1,6 @@
 [attr]rust text eol=lf whitespace=tab-in-indent,trailing-space,tabwidth=4
 
-* text eol=lf
+* text=auto eol=lf
 *.cpp rust
 *.h rust
 *.rs rust
