@@ -56,7 +56,6 @@ use str;
 use sys;
 use u32;
 use uint;
-use util;
 use vec;
 use libc::size_t;
 
@@ -586,7 +585,7 @@ impl<R: Rng> RngUtil for R {
                 return Some(item.item.clone());
             }
         }
-        util::unreachable();
+        unreachable!();
     }
 
     /**

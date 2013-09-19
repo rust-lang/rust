@@ -17,19 +17,19 @@ pub fn main() {
 
             match tail {
                 [Foo { _ }, _, Foo { _ }, .. _tail] => {
-                    ::std::util::unreachable();
+                    unreachable!();
                 }
                 [Foo { string: ref a }, Foo { string: ref b }] => {
                     assert_eq!("bar", a.slice(0, a.len()));
                     assert_eq!("baz", b.slice(0, b.len()));
                 }
                 _ => {
-                    ::std::util::unreachable();
+                    unreachable!();
                 }
             }
         }
         _ => {
-            ::std::util::unreachable();
+            unreachable!();
         }
     }
 }

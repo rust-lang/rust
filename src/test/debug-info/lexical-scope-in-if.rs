@@ -78,8 +78,6 @@
 // check:$16 = -1
 // debugger:continue
 
-use std::util;
-
 fn main() {
 
     let x = 999;
@@ -102,14 +100,14 @@ fn main() {
         zzz();
         sentinel();
     } else {
-        util::unreachable();
+        unreachable!();
     }
 
     zzz();
     sentinel();
 
     if x > 1000 {
-        util::unreachable();
+        unreachable!();
     } else {
         zzz();
         sentinel();
