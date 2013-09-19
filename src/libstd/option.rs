@@ -467,15 +467,6 @@ impl<T: Default> Option<T> {
             None => Default::default()
         }
     }
-
-    /// Returns self or `Some`-wrapped default value
-    #[inline]
-    pub fn or_default(self) -> Option<T> {
-        match self {
-            None => Some(Default::default()),
-            x => x,
-        }
-    }
 }
 
 impl<T> Default for Option<T> {
@@ -483,22 +474,13 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
-impl<T:Zero> Option<T> {
+impl<T: Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline]
     pub fn unwrap_or_zero(self) -> T {
         match self {
             Some(x) => x,
             None => Zero::zero()
-        }
-    }
-
-    /// Returns self or `Some`-wrapped zero value
-    #[inline]
-    pub fn or_zero(self) -> Option<T> {
-        match self {
-            None => Some(Zero::zero()),
-            x => x
         }
     }
 }
