@@ -243,6 +243,10 @@ pub fn main() {
     }
 
     test_format_args();
+
+    // test that trailing commas are acceptable
+    format!("{}", "test",);
+    format!("{foo}", foo="test",);
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
