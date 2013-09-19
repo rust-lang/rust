@@ -22,7 +22,7 @@ pub fn to_uint<T>(thing: &T) -> uint {
 /// Determine if two borrowed pointers point to the same thing.
 #[inline]
 pub fn ref_eq<'a, 'b, T>(thing: &'a T, other: &'b T) -> bool {
-    to_uint(thing) == to_uint(other)
+    (thing as *T) == (other as *T)
 }
 
 // Equality for region pointers
@@ -69,4 +69,18 @@ impl<'self, T: TotalOrd> TotalOrd for &'self T {
 impl<'self, T: TotalEq> TotalEq for &'self T {
     #[inline]
     fn equals(&self, other: & &'self T) -> bool { (**self).equals(*other) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ref_eq;
+
+    #[test]
+    fn test_ref_eq() {
+        let x = 1;
+        let y = 1;
+
+        assert!(ref_eq(&x, &x));
+        assert!(!ref_eq(&x, &y));
+    }
 }
