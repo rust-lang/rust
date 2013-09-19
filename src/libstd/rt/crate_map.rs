@@ -16,6 +16,13 @@ use vec;
 use hashmap::HashSet;
 use container::MutableSet;
 
+// Need to tell the linker on OS X to not barf on undefined symbols
+// and instead look them up at runtime, which we need to resolve
+// the crate_map properly.
+#[cfg(target_os = "macos")]
+#[link_args = "-undefined dynamic_lookup"]
+extern {}
+
 extern {
     #[cfg(not(stage0))]
     #[weak_linkage]
