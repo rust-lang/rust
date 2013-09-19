@@ -47,9 +47,7 @@ fn default_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Exp
         cx.ident_of("Default"),
         cx.ident_of("default")
     ];
-    let default_call = || {
-        cx.expr_call_global(span, default_ident.clone(), ~[])
-    };
+    let default_call = cx.expr_call_global(span, default_ident.clone(), ~[]);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -58,13 +56,13 @@ fn default_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Exp
                     if count == 0 {
                         cx.expr_ident(span, substr.type_ident)
                     } else {
-                        let exprs = vec::from_fn(count, |_| default_call());
+                        let exprs = vec::from_elem(count, default_call);
                         cx.expr_call_ident(span, substr.type_ident, exprs)
                     }
                 }
                 Right(ref fields) => {
                     let default_fields = do fields.map |ident| {
-                        cx.field_imm(span, *ident, default_call())
+                        cx.field_imm(span, *ident, default_call)
                     };
                     cx.expr_struct_ident(span, substr.type_ident, default_fields)
                 }
