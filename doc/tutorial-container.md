@@ -4,11 +4,11 @@
 
 The container traits are defined in the `std::container` module.
 
-## Unique and managed vectors
+## Unique vectors
 
-Vectors have `O(1)` indexing and removal from the end, along with `O(1)`
-amortized insertion. Vectors are the most common container in Rust, and are
-flexible enough to fit many use cases.
+Vectors have `O(1)` indexing, push (to the end) and pop (from the end). Vectors
+are the most common container in Rust, and are flexible enough to fit many use
+cases.
 
 Vectors can also be sorted and used as efficient lookup tables with the
 `std::vec::bsearch` function, if all the elements are inserted at one time and
