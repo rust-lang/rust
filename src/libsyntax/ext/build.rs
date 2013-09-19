@@ -869,7 +869,7 @@ struct Duplicator {
 }
 
 impl fold::ast_fold for Duplicator {
-    fn new_id(&self, _: NodeId) -> NodeId { 
+    fn new_id(&self, _: NodeId) -> NodeId {
         ast::DUMMY_NODE_ID
     }
 }

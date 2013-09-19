@@ -30,31 +30,40 @@ pub mod rustrt {
 
 macro_rules! locked {
     ($expr:expr) => {
-        // FIXME #9105: can't use a static mutex in pure Rust yet.
-        rustrt::rust_take_linenoise_lock();
-        let x = $expr;
-        rustrt::rust_drop_linenoise_lock();
-        x
+        {
+            // FIXME #9105: can't use a static mutex in pure Rust yet.
+            rustrt::rust_take_linenoise_lock();
+            let x = $expr;
+            rustrt::rust_drop_linenoise_lock();
+            x
+        }
     }
 }
 
 /// Add a line to history
 pub fn add_history(line: &str) -> bool {
     do line.with_c_str |buf| {
-        (locked!(rustrt::linenoiseHistoryAdd(buf))) == 1 as c_int
+        unsafe {
+            (locked!(rustrt::linenoiseHistoryAdd(buf))) == 1 as c_int
+        }
     }
 }
 
 /// Set the maximum amount of lines stored
 pub fn set_history_max_len(len: int) -> bool {
-    (locked!(rustrt::linenoiseHistorySetMaxLen(len as c_int))) == 1 as c_int
+    unsafe {
+        (locked!(rustrt::linenoiseHistorySetMaxLen(len as c_int))) == 1
+            as c_int
+    }
 }
 
 /// Save line history to a file
 pub fn save_history(file: &str) -> bool {
     do file.with_c_str |buf| {
         // 0 on success, -1 on failure
-        (locked!(rustrt::linenoiseHistorySave(buf))) == 0 as c_int
+        unsafe {
+            (locked!(rustrt::linenoiseHistorySave(buf))) == 0 as c_int
+        }
     }
 }
 
@@ -62,14 +71,18 @@ pub fn save_history(file: &str) -> bool {
 pub fn load_history(file: &str) -> bool {
     do file.with_c_str |buf| {
         // 0 on success, -1 on failure
-        (locked!(rustrt::linenoiseHistoryLoad(buf))) == 0 as c_int
+        unsafe {
+            (locked!(rustrt::linenoiseHistoryLoad(buf))) == 0 as c_int
+        }
     }
 }
 
 /// Print out a prompt and then wait for input and return it
 pub fn read(prompt: &str) -> Option<~str> {
     do prompt.with_c_str |buf| {
-        let line = locked!(rustrt::linenoise(buf));
+        let line = unsafe {
+            locked!(rustrt::linenoise(buf))
+        };
 
         if line.is_null() { None }
         else {
