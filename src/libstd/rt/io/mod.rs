@@ -260,6 +260,9 @@ pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
+pub use self::pipe::PipeStream;
+pub use self::pipe::UnboundPipeStream;
+pub use self::process::Process;
 
 // Some extension traits that all Readers and Writers get.
 pub use self::extensions::ReaderUtil;
@@ -268,6 +271,12 @@ pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
 pub mod file;
+
+/// Synchronous, in-memory I/O.
+pub mod pipe;
+
+/// Child process management.
+pub mod process;
 
 /// Synchronous, non-blocking network I/O.
 pub mod net;
