@@ -159,6 +159,20 @@ fn fatal_span(rdr: @mut StringReader,
     rdr.fatal(m);
 }
 
+// report a lexical error spanning [`from_pos`, `to_pos`), appending an
+// escaped character to the error message
+fn fatal_span_char(rdr: @mut StringReader,
+                   from_pos: BytePos,
+                   to_pos: BytePos,
+                   m: ~str,
+                   c: char)
+                -> ! {
+    let mut m = m;
+    m.push_str(": ");
+    char::escape_default(c, |c| m.push_char(c));
+    fatal_span(rdr, from_pos, to_pos, m);
+}
+
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
 fn string_advance_token(r: @mut StringReader) {
@@ -553,9 +567,8 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
     while i != 0u {
         let n = rdr.curr;
         if !is_hex_digit(n) {
-            fatal_span(rdr, rdr.last_pos, rdr.pos,
-                       fmt!("illegal numeric character escape: %d",
-                            n as int));
+            fatal_span_char(rdr, rdr.last_pos, rdr.pos,
+                            ~"illegal numeric character escape", n);
         }
         bump(rdr);
         accum_int *= 16;
@@ -565,7 +578,7 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
     match char::from_u32(accum_int as u32) {
         Some(x) => x,
         None => fatal_span(rdr, start_bpos, rdr.last_pos,
-                           fmt!("illegal numeric character escape"))
+                           ~"illegal numeric character escape")
     }
 }
 
@@ -735,8 +748,8 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
               'u' => { c2 = scan_numeric_escape(rdr, 4u); }
               'U' => { c2 = scan_numeric_escape(rdr, 8u); }
               c2 => {
-                fatal_span(rdr, escaped_pos, rdr.last_pos,
-                          fmt!("unknown character escape: %d", c2 as int));
+                fatal_span_char(rdr, escaped_pos, rdr.last_pos,
+                                ~"unknown character escape", c2);
               }
             }
         }
@@ -790,8 +803,8 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                     accum_str.push_char(scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
-                    fatal_span(rdr, escaped_pos, rdr.last_pos,
-                               fmt!("unknown string escape: %d", c2 as int));
+                    fatal_span_char(rdr, escaped_pos, rdr.last_pos,
+                                    ~"unknown string escape", c2);
                   }
                 }
               }
@@ -827,10 +840,8 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
       c => {
-          let mut cs = ~"";
-          char::escape_default(c, |c| cs.push_char(c));
-          fatal_span(rdr, rdr.last_pos, rdr.pos,
-                     fmt!("unknown start of token: %s", cs));
+          fatal_span_char(rdr, rdr.last_pos, rdr.pos,
+                          ~"unknown start of token", c);
       }
     }
 }
