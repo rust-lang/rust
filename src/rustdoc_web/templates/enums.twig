@@ -1,0 +1,26 @@
+{% extends 'element.twig' %}
+
+{% block definition %}
+<h2>Definition</h2>
+<pre class="{{ type }}">
+{% if element.visibility == 'private' %}priv {% endif %}enum {{ element.name }}{{ render_generics(element, type_tree) }} {
+{% for variant in element.inner.fields[0].variants %}
+    {{ variant.name }}{{ short_enum_type(variant.inner.fields[0].kind, type_tree) }},
+{% endfor %}
+}
+</pre>
+{% endblock %}
+
+{% block extra %}
+    <h2>Variants</h2>
+    <table>
+        {% for variant in element.inner.fields[0].variants %}
+            <tr>
+                <td>{{ variant.name }}</td>
+                <td class="docblock">{{ extract_docs(variant) }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% include 'impls.twig' %}
+{% endblock %}

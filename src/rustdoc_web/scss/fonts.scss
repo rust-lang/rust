@@ -1,0 +1,39 @@
+body {
+    font: $contentFont;
+    line-height: 165%;
+}
+
+h1, .sidebar .location {
+    font: $titleFont;
+}
+
+h2, h3, h4 {
+    font: $subtitleFont;
+    text-transform: uppercase;
+    code {
+        text-transform: none;
+        font-size: 1.2em;
+    }
+}
+
+h4 {
+    font-size: 1em;
+}
+
+code, pre, h1.fqn {
+    font: $codeFont;
+}
+h1.fqn {
+    font-size: 26px;
+    font-weight: normal;
+}
+
+nav {
+    font: $menuFont;
+    text-transform: uppercase;
+}
+
+nav.sub {
+    font: $submenuFont;
+    text-transform: uppercase;
+}

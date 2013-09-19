@@ -1,0 +1,30 @@
+{% set all_impls = collect_impls(element, type_tree) %}
+
+{% for type, impls in all_impls %}
+    {% if impls is not empty %}
+        {% if type == 'trait_impls' %}
+            <h2 id="implementations">Trait Implementations</h2>
+        {% else %}
+            <h2 id="methods">Methods</h2>
+        {% endif %}
+
+        {% for impl in impls %}
+            <h3 class="impl"><code>impl{{ render_generics(impl, type_tree) }} {% if type == 'trait_impls' %}{{ short_type(impl.inner.fields[0].trait_, type_tree) }} for {% endif %}{{ short_type(impl.inner.fields[0].for_, type_tree) }}</code></h3>
+            <div class="methods">
+                {% for method in impl.inner.fields[0].methods %}
+                    {% set docs = extract_docs(method) %}
+                    {% if docs is empty %}
+                        {% set docs = extract_parent_docs(impl, method.name) %}
+                    {% endif %}
+
+                    {% set src_url = source_url(method, crate) %}{% if src_url is not empty %}<a title="View sources" class="source" href="{{ src_url }}">[src]</a>{% endif %}
+                    <h4 class="method"><code>{{ render_fn(method, type_tree) }}</code></h4>
+
+                    {% if docs is not empty %}
+                        <div class="docblock">{{ docs }}</div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endfor %}

@@ -1,0 +1,40 @@
+{% extends 'element.twig' %}
+
+{% block definition %}
+<h2>Definition</h2>
+
+{% set struct_type = element.inner.fields[0].struct_type %}
+{% set fields = element.inner.fields[0].fields %}
+
+{% if struct_type == 'Plain' %}
+<pre class="{{ type }}">
+{% if element.visibility == 'private' %}priv {% endif %}struct {{ element.name }}{{ render_generics(element, type_tree) }} {
+{% for field in fields %}
+    {% if field.visibility == "private" %}priv {% endif %}{{ field.name }}: {{ short_type(field.inner.fields[0].type_, type_tree) }}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+}
+</pre>
+{% elseif struct_type == 'Tuple' or struct_type == 'Newtype' %}
+    <pre class="{{ type }}">{% if element.visibility == 'private' %}priv {% endif %}struct {{ element.name }}{{ render_generics(element, type_tree) }}({% for field in fields %}{{ short_type(field.inner.fields[0].type_, type_tree) }}{% if not loop.last %}, {% endif %}{% endfor %});</pre>
+{% elseif struct_type == 'Unit' %}
+    <pre class="{{ type }}">{% if element.visibility == 'private' %}priv {% endif %}struct {{ element.name }}{{ render_generics(element, type_tree) }};</pre>
+{% else %}
+    <pre class="{{ type }}">Unkwown struct type: {{ struct_type }}</pre>
+{% endif %}
+
+{% endblock %}
+
+{% block extra %}
+    <h2>Fields</h2>
+    <table>
+        {% for field in element.inner.fields[0].fields %}
+            <tr>
+                <td>{{ field.name }}</td>
+                <td class="docblock">{{ extract_docs(field) }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% include 'impls.twig' %}
+{% endblock %}

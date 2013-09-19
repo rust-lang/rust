@@ -1,0 +1,14 @@
+{% extends 'layout.twig' %}
+
+{% block sidebar %}{% endblock %}
+{% block title %}{{ config.title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ config.title }}</h1>
+    <h2>Crates</h2>
+    <ul class="item-list">
+        {% for crate in crates %}
+            <li><a href="{{ crate.name }}/index.html">{{ crate.name }}</a></li>
+        {% endfor %}
+    </ul>
+{% endblock %}

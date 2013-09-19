@@ -1,0 +1,51 @@
+{% extends 'element.twig' %}
+
+{% block name %}
+    <h1 class="fqn">{% if type_tree.parent %}{{ breadcrumb(type_tree.parent, type_tree) }}{% endif %}<a class="{{ type }}" href="">{{ element.name }}</a></h1>
+{% endblock %}
+
+{% block definition %}
+    {% set reexports = filter_docable(type_tree.reexports, 'reexports') %}
+    {% if reexports is not empty %}
+        <h2>{{ 'reexports'|trans }}</h2>
+        <ul class="item-list">
+            {% for item in reexports %}
+                <li><code>{{ short_type(item.inner, type_tree) }}</code></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% for type in ['mod', 'struct', 'enum', 'static', 'trait', 'fn', 'typedef'] %}
+        {% set elems = filter_docable(type_tree[type ~ 's']) %}
+        {% if elems is not empty %}
+            <h2>{{ (type ~ 's')|trans }}</h2>
+            {% if type == 'static' %}
+                <table>
+                    {% for item in sort(elems) %}
+                        {% set elem = element_by_id(item.id) %}
+                        <tr>
+                            <td><code>{{ elem.def.name }}: {{ short_type(elem.def.inner.fields[0].type_, elem.tree) }} = {{ elem.def.inner.fields[0].expr }}</code></td>
+                            <td class="docblock">{{ extract_docs(elem.def) }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% else %}
+                <table>
+                    {% for item in sort(elems) %}
+                        {% set elem = element_by_id(item.id) %}
+                        <tr>
+                            <td>{{ link_to_element(item.id, type_tree) }}</td>
+                            <td class="docblock short">{{ short_description(elem.def) }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endblock %}
+
+{% block extra %}
+    {% include 'impls.twig' %}
+{% endblock %}
+
+{% block source %}{% endblock %}

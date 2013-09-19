@@ -1,0 +1,10 @@
+{% extends 'element.twig' %}
+
+{% block definition %}
+    <h2>Definition</h2>
+    <pre class="{{ type }}">{% if element.visibility == 'private' %}priv {% endif %}{{ render_fn(element, type_tree, 'fn') }}</pre>
+{% endblock %}
+
+{% block extra %}
+    {% include 'impls.twig' %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{
+  "name": "rustdoc_web",
+  "version": "0.1.0",
+  "description": "rustdoc web frontend",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Seldaek/rustdoc_web"
+  },
+  "author": "Jordi Boggiano <j.boggiano@seld.be>",
+  "license": "MIT",
+  "dependencies": {
+    "twig": "~0.5.8",
+    "node-sass": "~0.5.4",
+    "marked": "~0.2.9",
+    "glob-whatev": "~0.1.8",
+    "semver": "~2.1.0",
+    "highlight.js": "~7.3.0"
+  }
+}

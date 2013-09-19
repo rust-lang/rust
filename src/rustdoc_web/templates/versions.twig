@@ -1,0 +1,16 @@
+{% extends 'layout.twig' %}
+
+{% block sidebar %}{% endblock %}
+{% block subnav %}{% endblock %}
+{% block title %}{{ config.title }}{% endblock %}
+{% block js %}{% endblock %}
+
+{% block content %}
+    <h1>{{ config.title }}</h1>
+    <h2>Versions</h2>
+    <ul class="item-list">
+        {% for version in versions %}
+            <li><a href="{{ version.version }}/index.html">{{ version.version }}</a>{% if version.prerelease %} (snapshot){% endif %}</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

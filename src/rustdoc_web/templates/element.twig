@@ -1,0 +1,29 @@
+{% extends 'layout.twig' %}
+
+{% block content %}
+    {% block source %}
+        {% set src_url = source_url(element, crate) %}
+        {% if src_url is not empty %}
+            <a class="source" title="View sources" href="{{ src_url }}">[src]</a>
+        {% endif %}
+    {% endblock %}
+    {% block name %}
+        <h1 class="fqn">{{ breadcrumb(type_tree) }}<a class="{{ type }}" href="">{{ element.name }}</a></h1>
+    {% endblock %}
+
+    {% block short_description %}
+        <section class="docblock">{{ short_description(element) }}</section>
+    {% endblock %}
+
+    {% block definition %}{% endblock %}
+
+    {% block documentation %}
+        {% set longdesc = long_description(element) %}
+        {% if longdesc is not empty %}
+            <h2>Documentation</h2>
+            <section class="docblock">{{ longdesc }}</section>
+        {% endif %}
+    {% endblock %}
+
+    {% block extra %}{% endblock %}
+{% endblock %}

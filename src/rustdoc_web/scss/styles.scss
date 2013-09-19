@@ -1,0 +1,285 @@
+.js-only, .hidden {
+    display: none;
+}
+
+.sidebar {
+    background: $sidebarBgColor;
+    padding: $sidebarPadding;
+
+    img {
+        margin: $contentPadding auto;
+        display: block;
+    }
+
+    .location {
+        margin-bottom: $sidebarPadding;
+    }
+}
+
+.sidebar .block, pre {
+    background: #fff;
+}
+.sidebar .block, pre, .content {
+    border-bottom: 2px solid black;
+    &.trait {
+        border-color: $traitColor;
+    }
+    &.mod {
+        border-color: $modColor;
+    }
+    &.enum {
+        border-color: $enumColor;
+    }
+    &.struct {
+        border-color: $structColor;
+    }
+    &.fn {
+        border-color: $fnColor;
+    }
+}
+
+.block {
+    padding: $sidebarPadding;
+    margin-bottom: $sidebarPadding;
+    h2 {
+        margin-top: 0;
+    }
+}
+
+.content {
+    background: $contentBgColor;
+    padding: $contentPadding $contentPadding $contentPadding $contentPadding*2;
+    h1 {
+        margin-top: 0;
+    }
+    h1, h2 {
+        margin-left: -$contentPadding;
+    }
+
+    pre {
+        padding: $contentPadding;
+    }
+
+    .highlighted {
+        cursor: pointer;
+        &, a {
+            color: #000 !important;
+        }
+        background-color: #ccc;
+        &.trait {
+            background-color: $traitColorLight;
+        }
+        &.mod {
+            background-color: $modColorLight;
+        }
+        &.enum {
+            background-color: $enumColorLight;
+        }
+        &.struct {
+            background-color: $structColorLight;
+        }
+        &.fn {
+            background-color: $fnColorLight;
+        }
+    }
+
+    .docblock {
+        &.short {
+            &.nowrap {
+                display: block;
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+            }
+            p {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin: 0;
+            }
+        }
+
+        h1, h2, h3, h4, h5 {
+            margin-left: 0;
+        }
+
+        h1 {
+            font-size: 1.1em;
+        }
+        h2 {
+            font-size: 1.05em;
+        }
+        h3, h4, h5 {
+            font-size: 1em;
+        }
+    }
+
+    .source {
+        float: right;
+    }
+
+    table {
+        border-spacing: 0 5px;
+        border-collapse: separate;
+    }
+    td {
+        vertical-align: top;
+        &:first-child {
+           padding-right: $contentPadding;
+        }
+        p:first-child {
+            margin-top: 0;
+        }
+        h1, h2 {
+            margin-left: 0;
+            font-size: 1.1em;
+        }
+    }
+
+    .item-list {
+        list-style-type: none;
+        padding: 0;
+
+        li {
+            margin-bottom: 3px;
+        }
+
+        &.multi-column {
+            -moz-column-count: 5;
+            -moz-column-gap: 2.5em;
+            -webkit-column-count: 5;
+            -webkit-column-gap: 2.5em;
+            column-count: 5;
+            column-gap: 2.5em;
+            li {
+                width: 100%;
+                display: inline-block;
+            }
+        }
+    }
+
+    .fnname {
+        font-weight: normal;
+        color: $fnColorDark;
+    }
+
+    .methods, .methods .docblock {
+        margin-left: $contentPadding;
+    }
+}
+
+nav {
+    &.main {
+        padding: $contentPadding 0;
+        text-align: center;
+        .current {
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+        .separator {
+            border: 1px solid #000;
+            display: inline-block;
+            height: $menuSeparator;
+            margin: 0 $contentPadding;
+        }
+    }
+    &.sub {
+        form {
+            display: inline;
+        }
+        text-align: right;
+    }
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+nav, .content {
+    margin-left: $sidebarWidth + $contentPadding;
+    margin-right: $contentPadding;
+}
+
+a {
+    text-decoration: none;
+    color: #000;
+}
+
+.content a, .block a.current {
+    font-weight: bold;
+    &.trait {
+        color: $traitColorDark;
+    }
+    &.mod {
+        color: $modColorDark;
+    }
+    &.enum {
+        color: $enumColorDark;
+    }
+    &.struct {
+        color: $structColorDark;
+    }
+    &.fn {
+        color: $fnColorDark;
+    }
+}
+
+.search-input {
+    border: 2px solid #f2f2f2;
+    @include border-radius(2px);
+    width: 350px;
+}
+.search-results {
+    .desc {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        display: block;
+    }
+}
+
+#help {
+    background: $sidebarBgColor;
+    $helpWidth: 550px;
+    $helpHeight: 250px;
+
+    @include border-radius(4px);
+    @include box-shadow(0, 0, 6px, rgba(0,0,0,.2));
+
+    position: absolute;
+    top: 300px;
+    left: 50%;
+    margin-top: -$helpHeight / 2;
+    margin-left: -$helpWidth / 2;
+    width: $helpWidth;
+    height: $helpHeight;
+    border: 1px solid $edgeColor;
+
+    .shortcuts {
+        dt {
+            float: left;
+            @include border-radius(3px);
+            border: 1px solid $edgeColor;
+            background: #fff;
+            width: 23px;
+            text-align: center;
+            clear: left;
+            display: block;
+            margin-top: -1px;
+        }
+        dd {
+            margin: 5px 33px;
+        }
+    }
+    .infos {
+        padding-left: 0;
+    }
+
+    h1 {
+        margin-top: 0;
+    }
+
+    div {
+        width: 50%;
+        float: left;
+        padding: $contentPadding;
+    }
+}
