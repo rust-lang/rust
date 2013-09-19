@@ -25,7 +25,6 @@ rust_list_dir_wfd_fp_buf
 rust_log_console_on
 rust_log_console_off
 rust_should_log_console
-rust_set_environ
 rust_unset_sigprocmask
 rust_env_pairs
 upcall_rust_personality

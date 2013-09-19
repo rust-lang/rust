@@ -643,6 +643,29 @@ rust_valgrind_stack_deregister(unsigned int id) {
   VALGRIND_STACK_DEREGISTER(id);
 }
 
+#if defined(__WIN32__)
+
+extern "C" CDECL void
+rust_unset_sigprocmask() {
+    // empty stub for windows to keep linker happy
+}
+
+#else
+
+#include <signal.h>
+#include <unistd.h>
+
+extern "C" CDECL void
+rust_unset_sigprocmask() {
+    // this can't be safely converted to rust code because the
+    // representation of sigset_t is platform-dependent
+    sigset_t sset;
+    sigemptyset(&sset);
+    sigprocmask(SIG_SETMASK, &sset, NULL);
+}
+
+#endif
+
 //
 // Local Variables:
 // mode: C++
