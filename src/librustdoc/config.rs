@@ -125,7 +125,7 @@ pub fn parse_config_(
             }
         }
         Err(f) => {
-            Err(getopts::fail_str(f))
+            Err(f.to_err_msg())
         }
     }
 }
@@ -139,7 +139,7 @@ fn config_from_opts(
     let config = default_config(input_crate);
     let result = result::Ok(config);
     let result = do result.and_then |config| {
-        let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
+        let output_dir = matches.opt_str(opt_output_dir());
         let output_dir = output_dir.map_move(|s| Path(s));
         result::Ok(Config {
             output_dir: output_dir.unwrap_or(config.output_dir.clone()),
@@ -147,7 +147,7 @@ fn config_from_opts(
         })
     };
     let result = do result.and_then |config| {
-        let output_format = getopts::opt_maybe_str(matches, opt_output_format());
+        let output_format = matches.opt_str(opt_output_format());
         do output_format.map_move_default(result::Ok(config.clone())) |output_format| {
             do parse_output_format(output_format).and_then |output_format| {
                 result::Ok(Config {
@@ -159,7 +159,7 @@ fn config_from_opts(
     };
     let result = do result.and_then |config| {
         let output_style =
-            getopts::opt_maybe_str(matches, opt_output_style());
+            matches.opt_str(opt_output_style());
         do output_style.map_move_default(result::Ok(config.clone())) |output_style| {
             do parse_output_style(output_style).and_then |output_style| {
                 result::Ok(Config {
@@ -171,7 +171,7 @@ fn config_from_opts(
     };
     let process_output = Cell::new(process_output);
     let result = do result.and_then |config| {
-        let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
+        let pandoc_cmd = matches.opt_str(opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
             &config, pandoc_cmd, process_output.take());
         do pandoc_cmd.and_then |pandoc_cmd| {

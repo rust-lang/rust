@@ -41,7 +41,6 @@ pub fn main() {
 }
 
 pub fn main_args(args: &[~str]) {
-    use extra::getopts::*;
     use extra::getopts::groups::*;
 
     let opts = ~[
@@ -56,20 +55,20 @@ pub fn main_args(args: &[~str]) {
 
     let matches = getopts(args.tail(), opts).unwrap();
 
-    if opt_present(&matches, "h") || opt_present(&matches, "help") {
+    if matches.opt_present("h") || matches.opt_present("help") {
         println(usage(args[0], opts));
         return;
     }
 
-    let libs = Cell::new(opt_strs(&matches, "L").map(|s| Path(*s)));
+    let libs = Cell::new(matches.opt_strs("L").map(|s| Path(*s)));
 
-    let mut passes = if opt_present(&matches, "n") {
+    let mut passes = if matches.opt_present("n") {
         ~[]
     } else {
         ~[~"collapse-docs", ~"clean-comments", ~"collapse-privacy" ]
     };
 
-    opt_strs(&matches, "a").map(|x| passes.push(x.clone()));
+    matches.opt_strs("a").map(|x| passes.push(x.clone()));
 
     if matches.free.len() != 1 {
         println(usage(args[0], opts));
@@ -99,7 +98,7 @@ pub fn main_args(args: &[~str]) {
         })
     }
 
-    for pname in opt_strs(&matches, "p").move_iter() {
+    for pname in matches.opt_strs("p").move_iter() {
         pm.load_plugin(pname);
     }
 
