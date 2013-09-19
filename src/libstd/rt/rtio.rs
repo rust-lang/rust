@@ -11,11 +11,13 @@
 use libc;
 use option::*;
 use result::*;
+use comm::SharedChan;
 use libc::c_int;
 use c_str::CString;
 
 use ai = rt::io::net::addrinfo;
 use rt::io::IoError;
+use rt::io::signal::Signum;
 use super::io::process::ProcessConfig;
 use super::io::net::ip::{IpAddr, SocketAddr};
 use path::Path;
@@ -100,6 +102,8 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
+    fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
+        -> Result<~RtioSignal, IoError>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
@@ -192,3 +196,5 @@ pub trait PausibleIdleCallback {
     fn resume(&mut self);
     fn close(&mut self);
 }
+
+pub trait RtioSignal {}
