@@ -63,9 +63,8 @@ recommended.
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
-of development). As such, source builds require a connection to
-the Internet, to fetch snapshots, and an OS that can execute the
-available snapshot binaries.
+of development). The source build automatically fetches these snapshots
+from the Internet on our supported platforms.
 
 Snapshot binaries are currently built and tested on several platforms:
 
