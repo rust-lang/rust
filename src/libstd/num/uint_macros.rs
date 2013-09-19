@@ -70,11 +70,11 @@ impl Orderable for $T {
     /// Returns the number constrained within the range `mn <= self <= mx`.
     #[inline]
     fn clamp(&self, mn: &$T, mx: &$T) -> $T {
-        cond!(
-            (*self > *mx) { *mx   }
-            (*self < *mn) { *mn   }
-            _             { *self }
-        )
+        match () {
+            _ if (*self > *mx) => *mx,
+            _ if (*self < *mn) => *mn,
+            _                  => *self,
+        }
     }
 }
 
