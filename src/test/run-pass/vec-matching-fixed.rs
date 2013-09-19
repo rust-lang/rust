@@ -1,12 +1,12 @@
 fn a() {
     let x = [1, 2, 3];
     match x {
-        [1, 2, 4] => ::std::util::unreachable(),
-        [0, 2, 3, .._] => ::std::util::unreachable(),
-        [0, .._, 3] => ::std::util::unreachable(),
-        [0, .._] => ::std::util::unreachable(),
+        [1, 2, 4] => unreachable!(),
+        [0, 2, 3, .._] => unreachable!(),
+        [0, .._, 3] => unreachable!(),
+        [0, .._] => unreachable!(),
         [1, 2, 3] => (),
-        [_, _, _] => ::std::util::unreachable(),
+        [_, _, _] => unreachable!(),
     }
     match x {
         [.._] => (),

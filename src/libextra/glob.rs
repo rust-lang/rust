@@ -23,7 +23,7 @@
  * `glob`/`fnmatch` functions.
  */
 
-use std::{os, path, util};
+use std::{os, path};
 
 use sort;
 
@@ -356,7 +356,7 @@ impl Pattern {
                             chars_eq(c, c2, options.case_sensitive)
                         }
                         AnySequence => {
-                            util::unreachable()
+                            unreachable!()
                         }
                     };
                     if !matches {

@@ -356,7 +356,7 @@ fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
                                adt::represent_node(bcx, pat_id))
                 }
             }
-            ::std::util::unreachable();
+            unreachable!();
         }
         ast::DefFn(*) |
         ast::DefStruct(_) => {
