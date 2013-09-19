@@ -643,13 +643,26 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use libc::funcs::bsd44::getdtablesize;
 
     mod rustrt {
-        use libc::c_void;
-
         #[abi = "cdecl"]
         extern {
             pub fn rust_unset_sigprocmask();
-            pub fn rust_set_environ(envp: *c_void);
         }
+    }
+
+    #[cfg(windows)]
+    unsafe fn set_environ(_envp: *c_void) {}
+    #[cfg(target_os = "macos")]
+    unsafe fn set_environ(envp: *c_void) {
+        externfn!(fn _NSGetEnviron() -> *mut *c_void);
+
+        *_NSGetEnviron() = envp;
+    }
+    #[cfg(not(target_os = "macos"), not(windows))]
+    unsafe fn set_environ(envp: *c_void) {
+        extern {
+            static mut environ: *c_void;
+        }
+        environ = envp;
     }
 
     unsafe {
@@ -685,7 +698,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_envp(env) |envp| {
             if !envp.is_null() {
-                rustrt::rust_set_environ(envp);
+                set_environ(envp);
             }
             do with_argv(prog, args) |argv| {
                 execvp(*argv, argv);
