@@ -30,20 +30,4 @@ impl Foo {
     }
 }
 
-/*
-#2074 duplicate symbols with enum in boxed closure
-*/
-
-fn foo() {
-    let one: @fn() -> uint = || {
-        enum r { a }
-        a as uint
-    };
-    let two: @fn() -> uint = || {
-        enum r { a }
-        a as uint
-    };
-    one(); two();
-}
-
 fn main() {}
