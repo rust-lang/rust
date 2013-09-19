@@ -42,7 +42,7 @@ pub enum SignFormat {
 }
 
 pub trait NumStrConv {
-    fn NaN()      -> Option<Self>;
+    fn nan()      -> Option<Self>;
     fn inf()      -> Option<Self>;
     fn neg_inf()  -> Option<Self>;
     fn neg_zero() -> Option<Self>;
@@ -54,7 +54,7 @@ pub trait NumStrConv {
 macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     impl NumStrConv for $t {
         #[inline]
-        fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+        fn nan()      -> Option<$t> { Some( 0.0 / 0.0) }
         #[inline]
         fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
         #[inline]
@@ -71,7 +71,7 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
 macro_rules! impl_NumStrConv_Integer (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline] fn NaN()      -> Option<$t> { None }
+        #[inline] fn nan()      -> Option<$t> { None }
         #[inline] fn inf()      -> Option<$t> { None }
         #[inline] fn neg_inf()  -> Option<$t> { None }
         #[inline] fn neg_zero() -> Option<$t> { None }
@@ -515,7 +515,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
                 return None;
             }
         } else if buf == NAN_BUF {
-            return NumStrConv::NaN();
+            return NumStrConv::nan();
         }
     }
 
