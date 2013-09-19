@@ -32,7 +32,7 @@ impl Positioned for Point {
     }
 }
 
-impl Movable for Point;
+impl Movable for Point {}
 
 pub fn main() {
     let mut p = Point{ x: 1, y: 2};
