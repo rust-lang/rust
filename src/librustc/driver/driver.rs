@@ -30,7 +30,6 @@ use std::io;
 use std::os;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
-use extra::getopts::{opt_present};
 use extra::getopts;
 use syntax::ast;
 use syntax::abi;
@@ -606,15 +605,15 @@ pub fn build_session_options(binary: @str,
                              matches: &getopts::Matches,
                              demitter: diagnostic::Emitter)
                           -> @session::options {
-    let crate_type = if opt_present(matches, "lib") {
+    let crate_type = if matches.opt_present("lib") {
         session::lib_crate
-    } else if opt_present(matches, "bin") {
+    } else if matches.opt_present("bin") {
         session::bin_crate
     } else {
         session::unknown_crate
     };
-    let parse_only = opt_present(matches, "parse-only");
-    let no_trans = opt_present(matches, "no-trans");
+    let parse_only = matches.opt_present("parse-only");
+    let no_trans = matches.opt_present("no-trans");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -627,8 +626,8 @@ pub fn build_session_options(binary: @str,
         // to_ascii_move and to_str_move to not do a unnecessary copy.
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().to_str_ascii();
-        let flags = vec::append(getopts::opt_strs(matches, level_short),
-                                getopts::opt_strs(matches, level_name));
+        let flags = vec::append(matches.opt_strs(level_short),
+                                matches.opt_strs(level_name));
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {
@@ -644,7 +643,7 @@ pub fn build_session_options(binary: @str,
     }
 
     let mut debugging_opts = 0u;
-    let debug_flags = getopts::opt_strs(matches, "Z");
+    let debug_flags = matches.opt_strs("Z");
     let debug_map = session::debugging_opts_map();
     for debug_flag in debug_flags.iter() {
         let mut this_bit = 0u;
@@ -670,31 +669,31 @@ pub fn build_session_options(binary: @str,
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
-        } else if opt_present(matches, "S") &&
-                  opt_present(matches, "emit-llvm") {
+        } else if matches.opt_present("S") &&
+                  matches.opt_present("emit-llvm") {
             link::output_type_llvm_assembly
-        } else if opt_present(matches, "S") {
+        } else if matches.opt_present("S") {
             link::output_type_assembly
-        } else if opt_present(matches, "c") {
+        } else if matches.opt_present("c") {
             link::output_type_object
-        } else if opt_present(matches, "emit-llvm") {
+        } else if matches.opt_present("emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let sysroot_opt = getopts::opt_maybe_str(matches, "sysroot").map_move(|m| @Path(m));
-    let target = getopts::opt_maybe_str(matches, "target").unwrap_or(host_triple());
-    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu").unwrap_or(~"generic");
-    let target_feature = getopts::opt_maybe_str(matches, "target-feature").unwrap_or(~"");
-    let save_temps = getopts::opt_present(matches, "save-temps");
+    let sysroot_opt = matches.opt_str("sysroot").map_move(|m| @Path(m));
+    let target = matches.opt_str("target").unwrap_or(host_triple());
+    let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
+    let target_feature = matches.opt_str("target-feature").unwrap_or(~"");
+    let save_temps = matches.opt_present("save-temps");
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
             No
-        } else if opt_present(matches, "O") {
-            if opt_present(matches, "opt-level") {
+        } else if matches.opt_present("O") {
+            if matches.opt_present("opt-level") {
                 early_error(demitter, ~"-O and --opt-level both provided");
             }
             Default
-        } else if opt_present(matches, "opt-level") {
-            match getopts::opt_str(matches, "opt-level") {
+        } else if matches.opt_present("opt-level") {
+            match matches.opt_str("opt-level").unwrap() {
               ~"0" => No,
               ~"1" => Less,
               ~"2" => Default,
@@ -720,18 +719,17 @@ pub fn build_session_options(binary: @str,
 
     let statik = debugging_opts & session::statik != 0;
 
-    let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
-    let linker = getopts::opt_maybe_str(matches, "linker");
-    let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
+    let addl_lib_search_paths = matches.opt_strs("L").map(|s| Path(*s));
+    let linker = matches.opt_str("linker");
+    let linker_args = matches.opt_strs("link-args").flat_map( |a| {
         a.split_iter(' ').map(|arg| arg.to_owned()).collect()
     });
 
-    let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
-    let test = opt_present(matches, "test");
-    let android_cross_path = getopts::opt_maybe_str(
-        matches, "android-cross-path");
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
+    let test = matches.opt_present("test");
+    let android_cross_path = matches.opt_str("android-cross-path");
 
-    let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
+    let custom_passes = match matches.opt_str("passes") {
         None => ~[],
         Some(s) => {
             s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
@@ -739,7 +737,7 @@ pub fn build_session_options(binary: @str,
             }).collect()
         }
     };
-    let llvm_args = match getopts::opt_maybe_str(matches, "llvm-args") {
+    let llvm_args = match matches.opt_str("llvm-args") {
         None => ~[],
         Some(s) => {
             s.split_iter(|c: char| c == ' ' || c == ',').map(|s| {
@@ -1020,7 +1018,6 @@ mod test {
     use driver::driver::{build_session_options, optgroups};
 
     use extra::getopts::groups::getopts;
-    use extra::getopts;
     use syntax::attr;
     use syntax::diagnostic;
 
@@ -1030,7 +1027,7 @@ mod test {
         let matches =
             &match getopts([~"--test"], optgroups()) {
               Ok(m) => m,
-              Err(f) => fail!("test_switch_implies_cfg_test: %s", getopts::fail_str(f))
+              Err(f) => fail!("test_switch_implies_cfg_test: %s", f.to_err_msg())
             };
         let sessopts = build_session_options(
             @"rustc", matches, diagnostic::emit);
@@ -1047,7 +1044,7 @@ mod test {
             &match getopts([~"--test", ~"--cfg=test"], optgroups()) {
               Ok(m) => m,
               Err(f) => {
-                fail!("test_switch_implies_cfg_test_unless_cfg_test: %s", getopts::fail_str(f));
+                fail!("test_switch_implies_cfg_test_unless_cfg_test: %s", f.to_err_msg());
               }
             };
         let sessopts = build_session_options(
