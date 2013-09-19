@@ -151,6 +151,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn smoke() {
         let io = ~[];
         let args = ProcessConfig {
@@ -168,6 +169,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn smoke_failure() {
         let io = ~[];
         let args = ProcessConfig {
@@ -185,6 +187,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn exit_reported_right() {
         let io = ~[];
         let args = ProcessConfig {
@@ -225,6 +228,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn stdout_works() {
         let pipe = PipeStream::new().unwrap();
         let io = ~[Ignored, CreatePipe(pipe, false, true)];
@@ -240,6 +244,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn set_cwd_works() {
         let pipe = PipeStream::new().unwrap();
         let io = ~[Ignored, CreatePipe(pipe, false, true)];
@@ -256,6 +261,7 @@ mod tests {
 
     #[test]
     #[cfg(unix, not(android))]
+    #[ignore] // FIXME(#9341)
     fn stdin_works() {
         let input = PipeStream::new().unwrap();
         let output = PipeStream::new().unwrap();
