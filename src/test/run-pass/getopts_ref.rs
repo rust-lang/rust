@@ -20,8 +20,8 @@ pub fn main() {
 
     match getopts(args, opts) {
         Ok(ref m)  =>
-            assert!(!opt_present(m, "b")),
-        Err(ref f) => fail!(fail_str((*f).clone()))
+            assert!(!m.opt_present("b")),
+        Err(ref f) => fail!((*f).clone().to_err_msg())
     };
 
 }

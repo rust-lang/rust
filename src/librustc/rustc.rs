@@ -40,7 +40,7 @@ use std::result;
 use std::str;
 use std::task;
 use std::vec;
-use extra::getopts::{groups, opt_present};
+use extra::getopts::groups;
 use extra::getopts;
 use syntax::codemap;
 use syntax::diagnostic;
@@ -204,39 +204,39 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
         &match getopts::groups::getopts(args, optgroups()) {
           Ok(m) => m,
           Err(f) => {
-            early_error(demitter, getopts::fail_str(f));
+            early_error(demitter, f.to_err_msg());
           }
         };
 
-    if opt_present(matches, "h") || opt_present(matches, "help") {
+    if matches.opt_present("h") || matches.opt_present("help") {
         usage(binary);
         return;
     }
 
     // Display the available lint options if "-W help" or only "-W" is given.
-    let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
-                                 getopts::opt_strs(matches, "warn"));
+    let lint_flags = vec::append(matches.opt_strs("W"),
+                                 matches.opt_strs("warn"));
 
     let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
-        (opt_present(matches, "W") && lint_flags.is_empty());
+        (matches.opt_present("W") && lint_flags.is_empty());
 
     if show_lint_options {
         describe_warnings();
         return;
     }
 
-    let r = getopts::opt_strs(matches, "Z");
+    let r = matches.opt_strs("Z");
     if r.iter().any(|x| x == &~"help") {
         describe_debug_flags();
         return;
     }
 
-    if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
+    if matches.opt_str("passes") == Some(~"list") {
         unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
 
-    if opt_present(matches, "v") || opt_present(matches, "version") {
+    if matches.opt_present("v") || matches.opt_present("version") {
         version(binary);
         return;
     }
@@ -256,10 +256,10 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
 
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = getopts::opt_maybe_str(matches, "out-dir").map_move(|o| Path(o));
-    let ofile = getopts::opt_maybe_str(matches, "o").map_move(|o| Path(o));
+    let odir = matches.opt_str("out-dir").map_move(|o| Path(o));
+    let ofile = matches.opt_str("o").map_move(|o| Path(o));
     let cfg = build_configuration(sess);
-    let pretty = do getopts::opt_default(matches, "pretty", "normal").map_move |a| {
+    let pretty = do matches.opt_default("pretty", "normal").map_move |a| {
         parse_pretty(sess, a)
     };
     match pretty {
@@ -269,7 +269,7 @@ pub fn run_compiler(args: &[~str], demitter: diagnostic::Emitter) {
       }
       None::<PpMode> => {/* continue */ }
     }
-    let ls = opt_present(matches, "ls");
+    let ls = matches.opt_present("ls");
     if ls {
         match input {
           file_input(ref ifile) => {

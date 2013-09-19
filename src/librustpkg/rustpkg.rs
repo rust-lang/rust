@@ -641,53 +641,53 @@ pub fn main_args(args: &[~str]) {
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
-            error(fmt!("%s", getopts::fail_str(f)));
+            error(fmt!("%s", f.to_err_msg()));
 
             return;
         }
     };
-    let mut help = getopts::opt_present(matches, "h") ||
-                   getopts::opt_present(matches, "help");
-    let no_link = getopts::opt_present(matches, "no-link");
-    let no_trans = getopts::opt_present(matches, "no-trans");
-    let supplied_sysroot = getopts::opt_val(matches, "sysroot");
-    let generate_asm = getopts::opt_present(matches, "S") ||
-        getopts::opt_present(matches, "assembly");
-    let parse_only = getopts::opt_present(matches, "parse-only");
-    let pretty = getopts::opt_present(matches, "pretty");
-    let emit_llvm = getopts::opt_present(matches, "emit-llvm");
+    let mut help = matches.opt_present("h") ||
+                   matches.opt_present("help");
+    let no_link = matches.opt_present("no-link");
+    let no_trans = matches.opt_present("no-trans");
+    let supplied_sysroot = matches.opt_val("sysroot");
+    let generate_asm = matches.opt_present("S") ||
+        matches.opt_present("assembly");
+    let parse_only = matches.opt_present("parse-only");
+    let pretty = matches.opt_present("pretty");
+    let emit_llvm = matches.opt_present("emit-llvm");
 
-    if getopts::opt_present(matches, "v") ||
-       getopts::opt_present(matches, "version") {
+    if matches.opt_present("v") ||
+       matches.opt_present("version") {
         rustc::version(args[0]);
         return;
     }
 
-    let use_rust_path_hack = getopts::opt_present(matches, "r") ||
-                             getopts::opt_present(matches, "rust-path-hack");
+    let use_rust_path_hack = matches.opt_present("r") ||
+                             matches.opt_present("rust-path-hack");
 
-    let linker = getopts::opt_maybe_str(matches, "linker");
-    let link_args = getopts::opt_maybe_str(matches, "link-args");
-    let cfgs = getopts::opt_strs(matches, "cfg") + getopts::opt_strs(matches, "c");
+    let linker = matches.opt_str("linker");
+    let link_args = matches.opt_str("link-args");
+    let cfgs = matches.opt_strs("cfg") + matches.opt_strs("c");
     let mut user_supplied_opt_level = true;
-    let opt_level = match getopts::opt_maybe_str(matches, "opt-level") {
+    let opt_level = match matches.opt_str("opt-level") {
         Some(~"0") => session::No,
         Some(~"1") => session::Less,
         Some(~"2") => session::Default,
         Some(~"3") => session::Aggressive,
-        _ if getopts::opt_present(matches, "O") => session::Default,
+        _ if matches.opt_present("O") => session::Default,
         _ => {
             user_supplied_opt_level = false;
             session::No
         }
     };
 
-    let save_temps = getopts::opt_present(matches, "save-temps");
-    let target     = getopts::opt_maybe_str(matches, "target");
-    let target_cpu = getopts::opt_maybe_str(matches, "target-cpu");
+    let save_temps = matches.opt_present("save-temps");
+    let target     = matches.opt_str("target");
+    let target_cpu = matches.opt_str("target-cpu");
     let experimental_features = {
-        let strs = getopts::opt_strs(matches, "Z");
-        if getopts::opt_present(matches, "Z") {
+        let strs = matches.opt_strs("Z");
+        if matches.opt_present("Z") {
             Some(strs)
         }
         else {

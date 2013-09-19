@@ -8,93 +8,89 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Simple getopt alternative.
- *
- * Construct a vector of options, either by using reqopt, optopt, and optflag
- * or by building them from components yourself, and pass them to getopts,
- * along with a vector of actual arguments (not including argv[0]). You'll
- * either get a failure code back, or a match. You'll have to verify whether
- * the amount of 'free' arguments in the match is what you expect. Use opt_*
- * accessors to get argument values out of the matches object.
- *
- * Single-character options are expected to appear on the command line with a
- * single preceding dash; multiple-character options are expected to be
- * proceeded by two dashes. Options that expect an argument accept their
- * argument following either a space or an equals sign. Single-character
- * options don't require the space.
- *
- * # Example
- *
- * The following example shows simple command line parsing for an application
- * that requires an input file to be specified, accepts an optional output
- * file name following -o, and accepts both -h and --help as optional flags.
- *
- * ```
- *    extern mod extra;
- *    use extra::getopts::*;
- *    use std::os;
- *
- *    fn do_work(in: &str, out: Option<~str>) {
- *        println(in);
- *        println(match out {
- *            Some(x) => x,
- *            None => ~"No Output"
- *        });
- *    }
- *
- *    fn print_usage(program: &str, _opts: &[Opt]) {
- *        printfln!("Usage: %s [options]", program);
- *        println("-o\t\tOutput");
- *        println("-h --help\tUsage");
- *    }
- *
- *    fn main() {
- *        let args = os::args();
- *
- *        let program = args[0].clone();
- *
- *        let opts = ~[
- *            optopt("o"),
- *            optflag("h"),
- *            optflag("help")
- *        ];
- *        let matches = match getopts(args.tail(), opts) {
- *            Ok(m) => { m }
- *            Err(f) => { fail!(fail_str(f)) }
- *        };
- *        if opt_present(&matches, "h") || opt_present(&matches, "help") {
- *            print_usage(program, opts);
- *            return;
- *        }
- *        let output = opt_maybe_str(&matches, "o");
- *        let input: &str = if !matches.free.is_empty() {
- *            matches.free[0].clone()
- *        } else {
- *            print_usage(program, opts);
- *            return;
- *        };
- *        do_work(input, output);
- *    }
- * ```
- */
-
-#[allow(missing_doc)];
-
+//! Simple getopt alternative.
+//!
+//! Construct a vector of options, either by using reqopt, optopt, and optflag
+//! or by building them from components yourself, and pass them to getopts,
+//! along with a vector of actual arguments (not including argv[0]). You'll
+//! either get a failure code back, or a match. You'll have to verify whether
+//! the amount of 'free' arguments in the match is what you expect. Use opt_*
+//! accessors to get argument values out of the matches object.
+//!
+//! Single-character options are expected to appear on the command line with a
+//! single preceding dash; multiple-character options are expected to be
+//! proceeded by two dashes. Options that expect an argument accept their
+//! argument following either a space or an equals sign. Single-character
+//! options don't require the space.
+//!
+//! # Example
+//!
+//! The following example shows simple command line parsing for an application
+//! that requires an input file to be specified, accepts an optional output
+//! file name following -o, and accepts both -h and --help as optional flags.
+//!
+//! ```
+//! exter mod extra;
+//! use extra::getopts::*;
+//! use std::os;
+//!
+//! fn do_work(inp: &str, out: Option<~str>) {
+//!     println(inp);
+//!     println(match out {
+//!         Some(x) => x,
+//!         None => ~"No Output"
+//!     });
+//! }
+//!
+//! fn print_usage(program: &str, _opts: &[Opt]) {
+//!     printfln!("Usage: %s [options]", program);
+//!     println("-o\t\tOutput");
+//!     println("-h --help\tUsage");
+//! }
+//!
+//! fn main() {
+//!     let args = os::args();
+//!
+//!     let program = args[0].clone();
+//!
+//!     let opts = ~[
+//!         optopt("o"),
+//!         optflag("h"),
+//!         optflag("help")
+//!     ];
+//!     let matches = match getopts(args.tail(), opts) {
+//!         Ok(m) => { m }
+//!         Err(f) => { fail!(f.to_err_msg()) }
+//!     };
+//!     if matches.opt_present("h") || matches.opt_present("help") {
+//!         print_usage(program, opts);
+//!         return;
+//!     }
+//!     let output = matches.opt_str("o");
+//!     let input: &str = if !matches.free.is_empty() {
+//!         matches.free[0].clone()
+//!     } else {
+//!         print_usage(program, opts);
+//!         return;
+//!     };
+//!     do_work(input, output);
+//! }
+//! ```
 
 use std::cmp::Eq;
 use std::result::{Err, Ok};
 use std::result;
 use std::option::{Some, None};
-use std::str;
 use std::vec;
 
+/// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
 pub enum Name {
     Long(~str),
     Short(char),
 }
 
+/// Describes whether an option has an argument.
 #[deriving(Clone, Eq)]
 pub enum HasArg {
     Yes,
@@ -102,6 +98,7 @@ pub enum HasArg {
     Maybe,
 }
 
+/// Describes how often an option may occur.
 #[deriving(Clone, Eq)]
 pub enum Occur {
     Req,
@@ -109,107 +106,40 @@ pub enum Occur {
     Multi,
 }
 
-/// A description of a possible option
+/// A description of a possible option.
 #[deriving(Clone, Eq)]
 pub struct Opt {
+    /// Name of the option
     name: Name,
+    /// Wheter it has an argument
     hasarg: HasArg,
+    /// How often it can occur
     occur: Occur,
+    /// Which options it aliases
     aliases: ~[Opt],
 }
 
-fn mkname(nm: &str) -> Name {
-  if nm.len() == 1u {
-      Short(nm.char_at(0u))
-  } else {
-      Long(nm.to_owned())
-  }
-}
-
-/// Create an option that is required and takes an argument
-pub fn reqopt(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: Yes, occur: Req, aliases: ~[]};
-}
-
-/// Create an option that is optional and takes an argument
-pub fn optopt(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: Yes, occur: Optional, aliases: ~[]};
-}
-
-/// Create an option that is optional and does not take an argument
-pub fn optflag(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: No, occur: Optional, aliases: ~[]};
-}
-
-/** Create an option that is optional, does not take an argument,
-  * and may occur multiple times.
-  */
-pub fn optflagmulti(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: No, occur: Multi, aliases: ~[]};
-}
-
-/// Create an option that is optional and takes an optional argument
-pub fn optflagopt(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: Maybe, occur: Optional, aliases: ~[]};
-}
-
-/**
- * Create an option that is optional, takes an argument, and may occur
- * multiple times
- */
-pub fn optmulti(name: &str) -> Opt {
-    return Opt {name: mkname(name), hasarg: Yes, occur: Multi, aliases: ~[]};
-}
-
+/// Describes wether an option is given at all or has a value.
 #[deriving(Clone, Eq)]
 enum Optval {
     Val(~str),
     Given,
 }
 
-/**
- * The result of checking command line arguments. Contains a vector
- * of matches and a vector of free strings.
- */
+/// The result of checking command line arguments. Contains a vector
+/// of matches and a vector of free strings.
 #[deriving(Clone, Eq)]
 pub struct Matches {
+    /// Options that matched
     opts: ~[Opt],
+    /// Values of the Options that matched
     vals: ~[~[Optval]],
+    /// Free string fragments
     free: ~[~str]
 }
 
-fn is_arg(arg: &str) -> bool {
-    return arg.len() > 1 && arg[0] == '-' as u8;
-}
-
-fn name_str(nm: &Name) -> ~str {
-    return match *nm {
-      Short(ch) => str::from_char(ch),
-      Long(ref s) => (*s).clone()
-    };
-}
-
-fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
-    // search main options
-    let pos = opts.iter().position(|opt| opt.name == nm);
-    if pos.is_some() {
-        return pos
-    }
-
-    // search in aliases
-    for candidate in opts.iter() {
-        if candidate.aliases.iter().position(|opt| opt.name == nm).is_some() {
-            return opts.iter().position(|opt| opt.name == candidate.name);
-        }
-    }
-
-    None
-}
-
-/**
- * The type returned when the command line does not conform to the
- * expected format. Pass this value to <fail_str> to get an error message.
- */
+/// The type returned when the command line does not conform to the
+/// expected format. Pass this value to <fail_str> to get an error message.
 #[deriving(Clone, Eq, ToStr)]
 pub enum Fail_ {
     ArgumentMissing(~str),
@@ -219,43 +149,250 @@ pub enum Fail_ {
     UnexpectedArgument(~str),
 }
 
-/// Convert a `fail_` enum into an error string
-pub fn fail_str(f: Fail_) -> ~str {
-    return match f {
-        ArgumentMissing(ref nm) => {
-            fmt!("Argument to option '%s' missing.", *nm)
-        }
-        UnrecognizedOption(ref nm) => {
-            fmt!("Unrecognized option: '%s'.", *nm)
-        }
-        OptionMissing(ref nm) => {
-            fmt!("Required option '%s' missing.", *nm)
-        }
-        OptionDuplicated(ref nm) => {
-            fmt!("Option '%s' given more than once.", *nm)
-        }
-        UnexpectedArgument(ref nm) => {
-            fmt!("Option '%s' does not take an argument.", *nm)
-        }
-    };
+/// The type of failure that occured.
+#[deriving(Eq)]
+pub enum FailType {
+    ArgumentMissing_,
+    UnrecognizedOption_,
+    OptionMissing_,
+    OptionDuplicated_,
+    UnexpectedArgument_,
 }
 
-/**
- * The result of parsing a command line with a set of options
- * (result::t<Matches, Fail_>)
- */
+/// The result of parsing a command line with a set of options.
 pub type Result = result::Result<Matches, Fail_>;
 
-/**
- * Parse command line arguments according to the provided options
- *
- * On success returns `ok(Opt)`. Use functions such as `opt_present`
- * `opt_str`, etc. to interrogate results.  Returns `err(Fail_)` on failure.
- * Use <fail_str> to get an error message.
- */
+impl Name {
+    fn from_str(nm: &str) -> Name {
+        if nm.len() == 1u {
+            Short(nm.char_at(0u))
+        } else {
+            Long(nm.to_owned())
+        }
+    }
+
+    fn to_str(&self) -> ~str {
+        match *self {
+            Short(ch) => ch.to_str(),
+            Long(ref s) => s.to_owned()
+        }
+    }
+}
+
+impl Matches {
+    /// FIXME: #9311 This used to be private, but rustpkg somehow managed to depend on it.
+    /// No idea what this does.
+    pub fn opt_vals(&self, nm: &str) -> ~[Optval] {
+        match find_opt(self.opts, Name::from_str(nm)) {
+            Some(id) => self.vals[id].clone(),
+            None => fail!("No option '%s' defined", nm)
+        }
+    }
+
+    /// FIXME: #9311 This used to be private, but rustpkg somehow managed to depend on it.
+    /// No idea what this does.
+    pub fn opt_val(&self, nm: &str) -> Option<Optval> {
+        let vals = self.opt_vals(nm);
+        if (vals.is_empty()) {
+            None
+        } else {
+            Some(vals[0].clone())
+        }
+    }
+
+    /// Returns true if an option was matched.
+    pub fn opt_present(&self, nm: &str) -> bool {
+        !self.opt_vals(nm).is_empty()
+    }
+
+    /// Returns the number of times an option was matched.
+    pub fn opt_count(&self, nm: &str) -> uint {
+        self.opt_vals(nm).len()
+    }
+
+    /// Returns true if any of several options were matched.
+    pub fn opts_present(&self, names: &[~str]) -> bool {
+        for nm in names.iter() {
+            match find_opt(self.opts, Name::from_str(*nm)) {
+                Some(id) if !self.vals[id].is_empty() => return true,
+                _ => (),
+            };
+        }
+        false
+    }
+
+    /// Returns the string argument supplied to one of several matching options or `None`.
+    pub fn opts_str(&self, names: &[~str]) -> Option<~str> {
+        for nm in names.iter() {
+            match self.opt_val(*nm) {
+                Some(Val(ref s)) => return Some(s.clone()),
+                _ => ()
+            }
+        }
+        None
+    }
+
+    /// Returns a vector of the arguments provided to all matches of the given
+    /// option.
+    ///
+    /// Used when an option accepts multiple values.
+    pub fn opt_strs(&self, nm: &str) -> ~[~str] {
+        let mut acc: ~[~str] = ~[];
+        let r = self.opt_vals(nm);
+        for v in r.iter() {
+            match *v {
+                Val(ref s) => acc.push((*s).clone()),
+                _ => ()
+            }
+        }
+        acc
+    }
+
+    /// Returns the string argument supplied to a matching option or `None`.
+    pub fn opt_str(&self, nm: &str) -> Option<~str> {
+        let vals = self.opt_vals(nm);
+        if vals.is_empty() {
+            return None::<~str>;
+        }
+        match vals[0] {
+            Val(ref s) => Some((*s).clone()),
+            _ => None
+        }
+    }
+
+
+    /// Returns the matching string, a default, or none.
+    ///
+    /// Returns none if the option was not present, `def` if the option was
+    /// present but no argument was provided, and the argument if the option was
+    /// present and an argument was provided.
+    pub fn opt_default(&self, nm: &str, def: &str) -> Option<~str> {
+        let vals = self.opt_vals(nm);
+        if vals.is_empty() { return None; }
+        match vals[0] {
+            Val(ref s) => Some((*s).clone()),
+            _ => Some(def.to_owned())
+        }
+    }
+
+}
+
+fn is_arg(arg: &str) -> bool {
+    arg.len() > 1 && arg[0] == '-' as u8
+}
+
+fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
+    // Search main options.
+    let pos = opts.iter().position(|opt| opt.name == nm);
+    if pos.is_some() {
+        return pos
+    }
+
+    // Search in aliases.
+    for candidate in opts.iter() {
+        if candidate.aliases.iter().position(|opt| opt.name == nm).is_some() {
+            return opts.iter().position(|opt| opt.name == candidate.name);
+        }
+    }
+
+    None
+}
+
+/// Create an option that is required and takes an argument.
+pub fn reqopt(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: Yes,
+        occur: Req,
+        aliases: ~[]
+    }
+}
+
+/// Create an option that is optional and takes an argument.
+pub fn optopt(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: Yes,
+        occur: Optional,
+        aliases: ~[]
+    }
+}
+
+/// Create an option that is optional and does not take an argument.
+pub fn optflag(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: No,
+        occur: Optional,
+        aliases: ~[]
+    }
+}
+
+/// Create an option that is optional, does not take an argument,
+/// and may occur multiple times.
+pub fn optflagmulti(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: No,
+        occur: Multi,
+        aliases: ~[]
+    }
+}
+
+/// Create an option that is optional and takes an optional argument.
+pub fn optflagopt(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: Maybe,
+        occur: Optional,
+        aliases: ~[]
+    }
+}
+
+/// Create an option that is optional, takes an argument, and may occur
+/// multiple times.
+pub fn optmulti(name: &str) -> Opt {
+    Opt {
+        name: Name::from_str(name),
+        hasarg: Yes,
+        occur: Multi,
+        aliases: ~[]
+    }
+}
+
+impl Fail_ {
+    /// Convert a `Fail_` enum into an error string.
+    pub fn to_err_msg(self) -> ~str {
+        match self {
+            ArgumentMissing(ref nm) => {
+                fmt!("Argument to option '%s' missing.", *nm)
+            }
+            UnrecognizedOption(ref nm) => {
+                fmt!("Unrecognized option: '%s'.", *nm)
+            }
+            OptionMissing(ref nm) => {
+                fmt!("Required option '%s' missing.", *nm)
+            }
+            OptionDuplicated(ref nm) => {
+                fmt!("Option '%s' given more than once.", *nm)
+            }
+            UnexpectedArgument(ref nm) => {
+                fmt!("Option '%s' does not take an argument.", *nm)
+            }
+        }
+    }
+}
+
+/// Parse command line arguments according to the provided options.
+///
+/// On success returns `Ok(Opt)`. Use methods such as `opt_present`
+/// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
+/// Use `to_err_msg` to get an error message.
 pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
     let n_opts = opts.len();
+
     fn f(_x: uint) -> ~[Optval] { return ~[]; }
+
     let mut vals = vec::from_fn(n_opts, f);
     let mut free: ~[~str] = ~[];
     let l = args.len();
@@ -325,12 +462,12 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 name_pos += 1;
                 let optid = match find_opt(opts, (*nm).clone()) {
                   Some(id) => id,
-                  None => return Err(UnrecognizedOption(name_str(nm)))
+                  None => return Err(UnrecognizedOption(nm.to_str()))
                 };
                 match opts[optid].hasarg {
                   No => {
                     if !i_arg.is_none() {
-                        return Err(UnexpectedArgument(name_str(nm)));
+                        return Err(UnexpectedArgument(nm.to_str()));
                     }
                     vals[optid].push(Given);
                   }
@@ -346,7 +483,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                     if !i_arg.is_none() {
                         vals[optid].push(Val(i_arg.clone().unwrap()));
                     } else if i + 1 == l {
-                        return Err(ArgumentMissing(name_str(nm)));
+                        return Err(ArgumentMissing(nm.to_str()));
                     } else { i += 1; vals[optid].push(Val(args[i].clone())); }
                   }
                 }
@@ -360,289 +497,183 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
         let occ = opts[i].occur;
         if occ == Req {
             if n == 0 {
-                return Err(OptionMissing(name_str(&(opts[i].name))));
+                return Err(OptionMissing(opts[i].name.to_str()));
             }
         }
         if occ != Multi {
             if n > 1 {
-                return Err(OptionDuplicated(name_str(&(opts[i].name))));
+                return Err(OptionDuplicated(opts[i].name.to_str()));
             }
         }
         i += 1;
     }
-    return Ok(Matches {opts: opts.to_owned(),
-               vals: vals,
-               free: free});
+    Ok(Matches {
+        opts: opts.to_owned(),
+        vals: vals,
+        free: free
+    })
 }
 
-fn opt_vals(mm: &Matches, nm: &str) -> ~[Optval] {
-    return match find_opt(mm.opts, mkname(nm)) {
-      Some(id) => mm.vals[id].clone(),
-      None => {
-        error!("No option '%s' defined", nm);
-        fail!()
-      }
-    };
-}
-
-fn opt_val(mm: &Matches, nm: &str) -> Option<Optval> {
-    let vals = opt_vals(mm, nm);
-    if (vals.is_empty()) {
-        None
-    } else {
-        Some(opt_vals(mm, nm)[0].clone())
-    }
-}
-
-/// Returns true if an option was matched
-pub fn opt_present(mm: &Matches, nm: &str) -> bool {
-    !opt_vals(mm, nm).is_empty()
-}
-
-/// Returns the number of times an option was matched
-pub fn opt_count(mm: &Matches, nm: &str) -> uint {
-    opt_vals(mm, nm).len()
-}
-
-/// Returns true if any of several options were matched
-pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
-    for nm in names.iter() {
-        match find_opt(mm.opts, mkname(*nm)) {
-            Some(id) if !mm.vals[id].is_empty() => return true,
-            _ => (),
-        };
-    }
-    false
-}
-
-
-/**
- * Returns the string argument supplied to a matching option
- *
- * Fails if the option was not matched or if the match did not take an
- * argument
- */
-pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
-    return match opt_val(mm, nm) {
-        Some(Val(s)) => s,
-        _ => fail!()
-    };
-}
-
-/**
- * Returns the string argument supplied to one of several matching options
- *
- * Fails if the no option was provided from the given list, or if the no such
- * option took an argument
- */
-pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
-    for nm in names.iter() {
-        match opt_val(mm, *nm) {
-          Some(Val(ref s)) => return (*s).clone(),
-          _ => ()
-        }
-    }
-    fail!();
-}
-
-
-/**
- * Returns a vector of the arguments provided to all matches of the given
- * option.
- *
- * Used when an option accepts multiple values.
- */
-pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
-    let mut acc: ~[~str] = ~[];
-    let r = opt_vals(mm, nm);
-    for v in r.iter() {
-        match *v { Val(ref s) => acc.push((*s).clone()), _ => () }
-    }
-    acc
-}
-
-/// Returns the string argument supplied to a matching option or none
-pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
-    let vals = opt_vals(mm, nm);
-    if vals.is_empty() { return None::<~str>; }
-    return match vals[0] {
-        Val(ref s) => Some((*s).clone()),
-        _ => None
-    };
-}
-
-
-/**
- * Returns the matching string, a default, or none
- *
- * Returns none if the option was not present, `def` if the option was
- * present but no argument was provided, and the argument if the option was
- * present and an argument was provided.
- */
-pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
-    let vals = opt_vals(mm, nm);
-    if vals.is_empty() { return None::<~str>; }
-    return match vals[0] { Val(ref s) => Some::<~str>((*s).clone()),
-                           _      => Some::<~str>(def.to_owned()) }
-}
-
-#[deriving(Eq)]
-pub enum FailType {
-    ArgumentMissing_,
-    UnrecognizedOption_,
-    OptionMissing_,
-    OptionDuplicated_,
-    UnexpectedArgument_,
-}
-
-/** A module which provides a way to specify descriptions and
- *  groups of short and long option names, together.
- */
+/// A module which provides a way to specify descriptions and
+/// groups of short and long option names, together.
 pub mod groups {
     use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
     use getopts::{Short, Yes};
 
-    /** one group of options, e.g., both -h and --help, along with
-     * their shared description and properties
-     */
+    /// One group of options, e.g., both -h and --help, along with
+    /// their shared description and properties.
     #[deriving(Clone, Eq)]
     pub struct OptGroup {
+        /// Short Name of the `OptGroup`
         short_name: ~str,
+        /// Long Name of the `OptGroup`
         long_name: ~str,
+        /// Hint
         hint: ~str,
+        /// Description
         desc: ~str,
+        /// Whether it has an argument
         hasarg: HasArg,
+        /// How often it can occur
         occur: Occur
     }
 
-    /// Create a long option that is required and takes an argument
-    pub fn reqopt(short_name: &str, long_name: &str,
-                  desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup { short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: hint.to_owned(),
-                desc: desc.to_owned(),
-                hasarg: Yes,
-                occur: Req};
-    }
+    impl OptGroup {
+        /// Translate OptGroup into Opt.
+        /// (Both short and long names correspond to different Opts).
+        pub fn long_to_short(&self) -> Opt {
+            let OptGroup {
+                short_name: short_name,
+                long_name: long_name,
+                hasarg: hasarg,
+                occur: occur,
+                _
+            } = (*self).clone();
 
-    /// Create a long option that is optional and takes an argument
-    pub fn optopt(short_name: &str, long_name: &str,
-                  desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup {short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: hint.to_owned(),
-                desc: desc.to_owned(),
-                hasarg: Yes,
-                occur: Optional};
-    }
-
-    /// Create a long option that is optional and does not take an argument
-    pub fn optflag(short_name: &str, long_name: &str,
-                   desc: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup {short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: ~"",
-                desc: desc.to_owned(),
-                hasarg: No,
-                occur: Optional};
-    }
-
-    /// Create a long option that can occur more than once and does not
-    /// take an argument
-    pub fn optflagmulti(short_name: &str, long_name: &str,
-                   desc: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup {short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: ~"",
-                desc: desc.to_owned(),
-                hasarg: No,
-                occur: Multi};
-    }
-
-    /// Create a long option that is optional and takes an optional argument
-    pub fn optflagopt(short_name: &str, long_name: &str,
-                      desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup {short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: hint.to_owned(),
-                desc: desc.to_owned(),
-                hasarg: Maybe,
-                occur: Optional};
-    }
-
-    /**
-     * Create a long option that is optional, takes an argument, and may occur
-     * multiple times
-     */
-    pub fn optmulti(short_name: &str, long_name: &str,
-                    desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        return OptGroup {short_name: short_name.to_owned(),
-                long_name: long_name.to_owned(),
-                hint: hint.to_owned(),
-                desc: desc.to_owned(),
-                hasarg: Yes,
-                occur: Multi};
-    }
-
-    // translate OptGroup into Opt
-    // (both short and long names correspond to different Opts)
-    pub fn long_to_short(lopt: &OptGroup) -> Opt {
-        let OptGroup{short_name: short_name,
-                     long_name: long_name,
-                     hasarg: hasarg,
-                     occur: occur,
-                     _} = (*lopt).clone();
-
-        match (short_name.len(), long_name.len()) {
-            (0,0) => fail!("this long-format option was given no name"),
-
-            (0,_) => Opt {name: Long((long_name)),
-                          hasarg: hasarg,
-                          occur: occur,
-                          aliases: ~[]},
-
-            (1,0) => Opt {name: Short(short_name.char_at(0)),
-                          hasarg: hasarg,
-                          occur: occur,
-                          aliases: ~[]},
-
-            (1,_) => Opt {name: Long((long_name)),
-                          hasarg: hasarg,
-                          occur:  occur,
-                          aliases: ~[Opt {
-                              name: Short(short_name.char_at(0)),
-                              hasarg: hasarg,
-                              occur:  occur,
-                              aliases: ~[]
-                          }]},
-
-            (_,_) => fail!("something is wrong with the long-form opt")
+            match (short_name.len(), long_name.len()) {
+                (0,0) => fail!("this long-format option was given no name"),
+                (0,_) => Opt {
+                    name: Long((long_name)),
+                    hasarg: hasarg,
+                    occur: occur,
+                    aliases: ~[]
+                },
+                (1,0) => Opt {
+                    name: Short(short_name.char_at(0)),
+                    hasarg: hasarg,
+                    occur: occur,
+                    aliases: ~[]
+                },
+                (1,_) => Opt {
+                    name: Long((long_name)),
+                    hasarg: hasarg,
+                    occur:  occur,
+                    aliases: ~[
+                        Opt {
+                            name: Short(short_name.char_at(0)),
+                            hasarg: hasarg,
+                            occur:  occur,
+                            aliases: ~[]
+                        }
+                    ]
+                },
+                (_,_) => fail!("something is wrong with the long-form opt")
+            }
         }
     }
 
-    /*
-     * Parse command line args with the provided long format options
-     */
-    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> ::getopts::Result {
-        ::getopts::getopts(args, opts.map(long_to_short))
+    /// Create a long option that is required and takes an argument.
+    pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: hint.to_owned(),
+            desc: desc.to_owned(),
+            hasarg: Yes,
+            occur: Req
+        }
     }
 
-    /**
-     * Derive a usage message from a set of long options
-     */
+    /// Create a long option that is optional and takes an argument.
+    pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: hint.to_owned(),
+            desc: desc.to_owned(),
+            hasarg: Yes,
+            occur: Optional
+        }
+    }
+
+    /// Create a long option that is optional and does not take an argument.
+    pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: ~"",
+            desc: desc.to_owned(),
+            hasarg: No,
+            occur: Optional
+        }
+    }
+
+    /// Create a long option that can occur more than once and does not
+    /// take an argument.
+    pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: ~"",
+            desc: desc.to_owned(),
+            hasarg: No,
+            occur: Multi
+        }
+    }
+
+    /// Create a long option that is optional and takes an optional argument.
+    pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: hint.to_owned(),
+            desc: desc.to_owned(),
+            hasarg: Maybe,
+            occur: Optional
+        }
+    }
+
+    /// Create a long option that is optional, takes an argument, and may occur
+    /// multiple times.
+    pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+        let len = short_name.len();
+        assert!(len == 1 || len == 0);
+        OptGroup {
+            short_name: short_name.to_owned(),
+            long_name: long_name.to_owned(),
+            hint: hint.to_owned(),
+            desc: desc.to_owned(),
+            hasarg: Yes,
+            occur: Multi
+        }
+    }
+
+    /// Parse command line args with the provided long format options.
+    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> ::getopts::Result {
+        ::getopts::getopts(args, opts.map(|x| x.long_to_short()))
+    }
+
+    /// Derive a usage message from a set of long options.
     pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
         let desc_sep = "\n" + " ".repeat(24);
@@ -721,28 +752,24 @@ pub mod groups {
             row
         });
 
-        return brief.to_owned() +
-               "\n\nOptions:\n" +
-               rows.collect::<~[~str]>().connect("\n") +
-               "\n";
+        fmt!("%s\n\nOptions:\n%s\n", brief, rows.collect::<~[~str]>().connect("\n"))
     }
 
-    /** Splits a string into substrings with possibly internal whitespace,
-     *  each of them at most `lim` bytes long. The substrings have leading and trailing
-     *  whitespace removed, and are only cut at whitespace boundaries.
-     *
-     *  Note: Function was moved here from `std::str` because this module is the only place that
-     *  uses it, and because it was to specific for a general string function.
-     *
-     *  #Failure:
-     *
-     *  Fails during iteration if the string contains a non-whitespace
-     *  sequence longer than the limit.
-     */
+    /// Splits a string into substrings with possibly internal whitespace,
+    /// each of them at most `lim` bytes long. The substrings have leading and trailing
+    /// whitespace removed, and are only cut at whitespace boundaries.
+    ///
+    /// Note: Function was moved here from `std::str` because this module is the only place that
+    /// uses it, and because it was to specific for a general string function.
+    ///
+    /// #Failure:
+    ///
+    /// Fails during iteration if the string contains a non-whitespace
+    /// sequence longer than the limit.
     fn each_split_within<'a>(ss: &'a str,
                              lim: uint,
                              it: &fn(&'a str) -> bool) -> bool {
-        // Just for fun, let's write this as an state machine:
+        // Just for fun, let's write this as a state machine:
 
         enum SplitWithinState {
             A,  // leading whitespace, initial state
@@ -853,8 +880,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "test")));
-            assert_eq!(opt_str(m, "test"), ~"20");
+            assert!(m.opt_present("test"));
+            assert_eq!(m.opt_str("test").unwrap(), ~"20");
           }
           _ => { fail!("test_reqopt_long failed"); }
         }
@@ -900,8 +927,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "t")));
-            assert_eq!(opt_str(m, "t"), ~"20");
+            assert!(m.opt_present("t"));
+            assert_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -949,8 +976,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "test")));
-            assert_eq!(opt_str(m, "test"), ~"20");
+            assert!(m.opt_present("test"));
+            assert_eq!(m.opt_str("test").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -962,7 +989,7 @@ mod tests {
         let opts = ~[optopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "test")),
+          Ok(ref m) => assert!(!m.opt_present("test")),
           _ => fail!()
         }
     }
@@ -996,8 +1023,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "t")));
-            assert_eq!(opt_str(m, "t"), ~"20");
+            assert!((m.opt_present("t")));
+            assert_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1009,7 +1036,7 @@ mod tests {
         let opts = ~[optopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "t")),
+          Ok(ref m) => assert!(!m.opt_present("t")),
           _ => fail!()
         }
     }
@@ -1044,7 +1071,7 @@ mod tests {
         let opts = ~[optflag("test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(opt_present(m, "test")),
+          Ok(ref m) => assert!(m.opt_present("test")),
           _ => fail!()
         }
     }
@@ -1055,7 +1082,7 @@ mod tests {
         let opts = ~[optflag("test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "test")),
+          Ok(ref m) => assert!(!m.opt_present("test")),
           _ => fail!()
         }
     }
@@ -1067,7 +1094,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Err(f) => {
-            error!(fail_str(f.clone()));
+            error!(f.clone().to_err_msg());
             check_fail_type(f, UnexpectedArgument_);
           }
           _ => fail!()
@@ -1091,7 +1118,7 @@ mod tests {
         let opts = ~[optflag("t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(opt_present(m, "t")),
+          Ok(ref m) => assert!(m.opt_present("t")),
           _ => fail!()
         }
     }
@@ -1102,7 +1129,7 @@ mod tests {
         let opts = ~[optflag("t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "t")),
+          Ok(ref m) => assert!(!m.opt_present("t")),
           _ => fail!()
         }
     }
@@ -1141,7 +1168,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(opt_count(m, "v"), 1);
+            assert_eq!(m.opt_count("v"), 1);
           }
           _ => fail!()
         }
@@ -1154,7 +1181,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(opt_count(m, "v"), 2);
+            assert_eq!(m.opt_count("v"), 2);
           }
           _ => fail!()
         }
@@ -1167,7 +1194,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(opt_count(m, "v"), 2);
+            assert_eq!(m.opt_count("v"), 2);
           }
           _ => fail!()
         }
@@ -1180,7 +1207,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(opt_count(m, "verbose"), 1);
+            assert_eq!(m.opt_count("verbose"), 1);
           }
           _ => fail!()
         }
@@ -1193,7 +1220,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(opt_count(m, "verbose"), 2);
+            assert_eq!(m.opt_count("verbose"), 2);
           }
           _ => fail!()
         }
@@ -1207,8 +1234,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "test")));
-            assert_eq!(opt_str(m, "test"), ~"20");
+            assert!((m.opt_present("test")));
+            assert_eq!(m.opt_str("test").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1220,7 +1247,7 @@ mod tests {
         let opts = ~[optmulti("test")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "test")),
+          Ok(ref m) => assert!(!m.opt_present("test")),
           _ => fail!()
         }
     }
@@ -1243,9 +1270,9 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-              assert!(opt_present(m, "test"));
-              assert_eq!(opt_str(m, "test"), ~"20");
-              let pair = opt_strs(m, "test");
+              assert!(m.opt_present("test"));
+              assert_eq!(m.opt_str("test").unwrap(), ~"20");
+              let pair = m.opt_strs("test");
               assert!(pair[0] == ~"20");
               assert!(pair[1] == ~"30");
           }
@@ -1260,8 +1287,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "t")));
-            assert_eq!(opt_str(m, "t"), ~"20");
+            assert!((m.opt_present("t")));
+            assert_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1273,7 +1300,7 @@ mod tests {
         let opts = ~[optmulti("t")];
         let rs = getopts(args, opts);
         match rs {
-          Ok(ref m) => assert!(!opt_present(m, "t")),
+          Ok(ref m) => assert!(!m.opt_present("t")),
           _ => fail!()
         }
     }
@@ -1296,9 +1323,9 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_present(m, "t")));
-            assert_eq!(opt_str(m, "t"), ~"20");
-            let pair = opt_strs(m, "t");
+            assert!((m.opt_present("t")));
+            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            let pair = m.opt_strs("t");
             assert!(pair[0] == ~"20");
             assert!(pair[1] == ~"30");
           }
@@ -1343,18 +1370,18 @@ mod tests {
           Ok(ref m) => {
             assert!(m.free[0] == ~"prog");
             assert!(m.free[1] == ~"free1");
-            assert_eq!(opt_str(m, "s"), ~"20");
+            assert_eq!(m.opt_str("s").unwrap(), ~"20");
             assert!(m.free[2] == ~"free2");
-            assert!((opt_present(m, "flag")));
-            assert_eq!(opt_str(m, "long"), ~"30");
-            assert!((opt_present(m, "f")));
-            let pair = opt_strs(m, "m");
+            assert!((m.opt_present("flag")));
+            assert_eq!(m.opt_str("long").unwrap(), ~"30");
+            assert!((m.opt_present("f")));
+            let pair = m.opt_strs("m");
             assert!(pair[0] == ~"40");
             assert!(pair[1] == ~"50");
-            let pair = opt_strs(m, "n");
+            let pair = m.opt_strs("n");
             assert!(pair[0] == ~"-A B");
             assert!(pair[1] == ~"-60 70");
-            assert!((!opt_present(m, "notpresent")));
+            assert!((!m.opt_present("notpresent")));
           }
           _ => fail!()
         }
@@ -1369,34 +1396,34 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(opts_present(matches_single, [~"e"]));
-        assert!(opts_present(matches_single, [~"encrypt", ~"e"]));
-        assert!(opts_present(matches_single, [~"e", ~"encrypt"]));
-        assert!(!opts_present(matches_single, [~"encrypt"]));
-        assert!(!opts_present(matches_single, [~"thing"]));
-        assert!(!opts_present(matches_single, []));
+        assert!(matches_single.opts_present([~"e"]));
+        assert!(matches_single.opts_present([~"encrypt", ~"e"]));
+        assert!(matches_single.opts_present([~"e", ~"encrypt"]));
+        assert!(!matches_single.opts_present([~"encrypt"]));
+        assert!(!matches_single.opts_present([~"thing"]));
+        assert!(!matches_single.opts_present([]));
 
-        assert_eq!(opts_str(matches_single, [~"e"]), ~"foo");
-        assert_eq!(opts_str(matches_single, [~"e", ~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches_single, [~"encrypt", ~"e"]), ~"foo");
+        assert_eq!(matches_single.opts_str([~"e"]).unwrap(), ~"foo");
+        assert_eq!(matches_single.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
+        assert_eq!(matches_single.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
 
         let args_both = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let matches_both = &match getopts(args_both, opts) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(opts_present(matches_both, [~"e"]));
-        assert!(opts_present(matches_both, [~"encrypt"]));
-        assert!(opts_present(matches_both, [~"encrypt", ~"e"]));
-        assert!(opts_present(matches_both, [~"e", ~"encrypt"]));
-        assert!(!opts_present(matches_both, [~"f"]));
-        assert!(!opts_present(matches_both, [~"thing"]));
-        assert!(!opts_present(matches_both, []));
+        assert!(matches_both.opts_present([~"e"]));
+        assert!(matches_both.opts_present([~"encrypt"]));
+        assert!(matches_both.opts_present([~"encrypt", ~"e"]));
+        assert!(matches_both.opts_present([~"e", ~"encrypt"]));
+        assert!(!matches_both.opts_present([~"f"]));
+        assert!(!matches_both.opts_present([~"thing"]));
+        assert!(!matches_both.opts_present([]));
 
-        assert_eq!(opts_str(matches_both, [~"e"]), ~"foo");
-        assert_eq!(opts_str(matches_both, [~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches_both, [~"e", ~"encrypt"]), ~"foo");
-        assert_eq!(opts_str(matches_both, [~"encrypt", ~"e"]), ~"foo");
+        assert_eq!(matches_both.opts_str([~"e"]).unwrap(), ~"foo");
+        assert_eq!(matches_both.opts_str([~"encrypt"]).unwrap(), ~"foo");
+        assert_eq!(matches_both.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
+        assert_eq!(matches_both.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
     }
 
     #[test]
@@ -1407,10 +1434,10 @@ mod tests {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(opts_present(matches, [~"L"]));
-        assert_eq!(opts_str(matches, [~"L"]), ~"foo");
-        assert!(opts_present(matches, [~"M"]));
-        assert_eq!(opts_str(matches, [~"M"]), ~".");
+        assert!(matches.opts_present([~"L"]));
+        assert_eq!(matches.opts_str([~"L"]).unwrap(), ~"foo");
+        assert!(matches.opts_present([~"M"]));
+        assert_eq!(matches.opts_str([~"M"]).unwrap(), ~".");
 
     }
 
@@ -1475,7 +1502,7 @@ mod tests {
         short.aliases = ~[reqopt("b")];
         let verbose = groups::reqopt("b", "banana", "some bananas", "VAL");
 
-        assert_eq!(groups::long_to_short(&verbose), short);
+        assert_eq!(verbose.long_to_short(), short);
     }
 
     #[test]
@@ -1519,8 +1546,8 @@ mod tests {
         let args = ~[~"-a", ~"--apple", ~"-a"];
 
         let matches = groups::getopts(args, opts).unwrap();
-        assert_eq!(3, opt_count(&matches, "a"));
-        assert_eq!(3, opt_count(&matches, "apple"));
+        assert_eq!(3, matches.opt_count("a"));
+        assert_eq!(3, matches.opt_count("apple"));
     }
 
     #[test]
