@@ -31,7 +31,7 @@ impl Positioned<int> for Point {
     }
 }
 
-impl Movable<int> for Point;
+impl Movable<int> for Point {}
 
 pub fn main() {
     let mut p = Point{ x: 1, y: 2};

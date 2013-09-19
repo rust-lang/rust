@@ -1,7 +1,7 @@
 // pp-exact
 
 trait Tr { }
-impl Tr for int;
+impl Tr for int { }
 
 fn foo(x: ~Tr: Freeze) -> ~Tr: Freeze { x }
 
