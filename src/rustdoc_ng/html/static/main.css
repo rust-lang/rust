@@ -1,0 +1,270 @@
+/**
+ * Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+@import "normalize.css";
+
+* {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+/* Fonts */
+
+body {
+    font: 13px Arial, sans-serif;
+    line-height: 165%;
+}
+
+h1, .sidebar .location {
+    font: 700 22px "Oswald", Arial, sans-serif;
+}
+
+h2, h3, h4 {
+    font: 700 16px "Oswald", Arial, sans-serif;
+    text-transform: uppercase;
+}
+
+h2 code, h3 code, h4 code {
+    text-transform: none;
+    font-size: 1.2em;
+}
+
+code, pre, h1.fqn {
+    font: 15px "Inconsolata", "Consolas", "Courier New", monospace;
+}
+h1.fqn {
+    font-size: 26px;
+    font-weight: normal;
+}
+
+nav {
+    font: 700 26px "Oswald", Arial, sans-serif;
+    text-transform: uppercase;
+}
+
+nav.sub {
+    padding-top: 20px;
+    font: 700 16px "Oswald", Arial, sans-serif;
+    text-transform: uppercase;
+    text-align: right;
+}
+
+/* General structure */
+
+html, body {
+    min-height: 100%;
+    height: 100%;
+}
+
+body {
+    position: relative;
+    height: auto;
+    padding-bottom: 20px;
+}
+
+.sidebar {
+    width: 200px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    min-height: 100%;
+}
+
+.content, nav { max-width: 960px; }
+
+/* Everything else */
+
+.js-only, .hidden { display: none; }
+
+.sidebar {
+    background: #e9e9e9;
+    padding: 10px;
+}
+
+.sidebar img {
+    margin: 20px auto;
+    display: block;
+}
+
+.sidebar .location { margin-bottom: 10px; }
+.sidebar .block, pre { background: #fff; }
+.sidebar .block, pre, .content { border-bottom: 2px solid black; }
+.trait { border-color: #fcae2b !important; }
+.mod { border-color: #809fc7 !important; }
+.enum { border-color: #93bc99 !important; }
+.struct { border-color: #e53700 !important; }
+.fn { border-color: #a2777f !important; }
+
+.block {
+    padding: 10px;
+    margin-bottom: 10px;
+}
+.block h2 { margin-top: 0; }
+
+.content {
+    background: #f3f3f3;
+    padding: 20px 20px 20px 40px;
+}
+.content h1 { margin-top: 0; }
+.content h1, .content h2 { margin-left: -20px; }
+.content pre { padding: 20px; }
+
+.content .highlighted {
+    cursor: pointer;
+    color: #000 !important;
+    background-color: #ccc;
+}
+.content .highlighted a { color: #000 !important; }
+.content .highlighted.trait { background-color: #fece7e; }
+.content .highlighted.mod { background-color: #afc6e4; }
+.content .highlighted.enum { background-color: #b4d1b9; }
+.content .highlighted.struct { background-color: #e7b1a0; }
+.content .highlighted.fn { background-color: #c6afb3; }
+
+.docblock.short.nowrap {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.docblock.short p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
+    margin-left: 0;
+}
+
+.docblock h1 { font-size: 1.1em; }
+.docblock h2 { font-size: 1.05em; }
+.docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
+
+.content .source { float: right; }
+.content table {
+    border-spacing: 0 5px;
+    border-collapse: separate;
+}
+.content td { vertical-align: top; }
+.content td:first-child { padding-right: 20px; }
+.content td p:first-child { margin-top: 0; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+
+.content .item-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.content .item-list li { margin-bottom: 3px; }
+
+.content .multi-column {
+    -moz-column-count: 5;
+    -moz-column-gap: 2.5em;
+    -webkit-column-count: 5;
+    -webkit-column-gap: 2.5em;
+    column-count: 5;
+    column-gap: 2.5em;
+}
+.content .multi-column li { width: 100%; display: inline-block; }
+
+.content .method { font-size: 1em; }
+.content .methods { margin-left: 20px; }
+.content .methods .docblock { margin-left: 20px; }
+
+nav {
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+nav.main {
+    padding: 20px 0;
+    text-align: center;
+}
+nav.main .current {
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+}
+nav.main .separator {
+    border: 1px solid #000;
+    display: inline-block;
+    height: 23px;
+    margin: 0 20px;
+}
+nav.sum { text-align: right; }
+nav.sub form { display: inline; }
+
+nav, .content {
+    margin-left: 220px;
+    margin-right: 20px;
+}
+
+a {
+    text-decoration: none;
+    color: #000;
+}
+
+.content a, .block a.current { font-weight: bold; }
+
+.content a.trait, .block a.current.trait { color: #ed9603; }
+.content a.mod, .block a.current.mod { color: #4d76ae; }
+.content a.enum, .block a.current.enum { color: #5e9766; }
+.content a.struct, .block a.current.struct { color: #e53700; }
+.content a.fn, .block a.current.fn { color: #8c6067; }
+
+.search-input {
+    border: 2px solid #f2f2f2;
+    border-radius: 2px;
+    width: 350px;
+}
+.search-results .desc {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: block;
+}
+
+#help {
+    background: #e9e9e9;
+    border-radius: 4px;
+    box-shadow: 0 0 6px rgba(0,0,0,.2);
+
+    position: absolute;
+    top: 300px;
+    left: 50%;
+    margin-top: -125px;
+    margin-left: -275px;
+    width: 550px;
+    height: 250px;
+    border: 1px solid #bfbfbf;
+}
+
+#help dt {
+    float: left;
+    border-radius: 3px;
+    border: 1px solid #bfbfbf;
+    background: #fff;
+    width: 23px;
+    text-align: center;
+    clear: left;
+    display: block;
+    margin-top: -1px;
+}
+#help dd { margin: 5px 33px; }
+#help .infos { padding-left: 0; }
+#help h1 { margin-top: 0; }
+#help div {
+    width: 50%;
+    float: left;
+    padding: 20px;
+}

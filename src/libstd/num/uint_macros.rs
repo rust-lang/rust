@@ -11,6 +11,7 @@
 // FIXME(#4375): this shouldn't have to be a nested module named 'generated'
 
 #[macro_escape];
+#[doc(hidden)];
 
 macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
 

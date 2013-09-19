@@ -15,6 +15,7 @@ use its = syntax::parse::token::ident_to_str;
 
 use syntax;
 use syntax::ast;
+use syntax::attr::AttributeMethods;
 
 use std;
 use doctree;
@@ -90,6 +91,48 @@ pub struct Item {
     id: ast::NodeId,
 }
 
+impl Item {
+    /// Finds the `doc` attribute as a List and returns the list of attributes
+    /// nested inside.
+    pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
+        for attr in self.attrs.iter() {
+            match *attr {
+                List(~"doc", ref list) => { return Some(list.as_slice()); }
+                _ => {}
+            }
+        }
+        return None;
+    }
+
+    /// Finds the `doc` attribute as a NameValue and returns the corresponding
+    /// value found.
+    pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
+        for attr in self.attrs.iter() {
+            match *attr {
+                NameValue(~"doc", ref v) => { return Some(v.as_slice()); }
+                _ => {}
+            }
+        }
+        return None;
+    }
+
+    pub fn is_mod(&self) -> bool {
+        match self.inner { ModuleItem(*) => true, _ => false }
+    }
+    pub fn is_trait(&self) -> bool {
+        match self.inner { TraitItem(*) => true, _ => false }
+    }
+    pub fn is_struct(&self) -> bool {
+        match self.inner { StructItem(*) => true, _ => false }
+    }
+    pub fn is_enum(&self) -> bool {
+        match self.inner { EnumItem(*) => true, _ => false }
+    }
+    pub fn is_fn(&self) -> bool {
+        match self.inner { FunctionItem(*) => true, _ => false }
+    }
+}
+
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ItemEnum {
     StructItem(Struct),
@@ -155,7 +198,7 @@ impl Clean<Attribute> for ast::MetaItem {
 
 impl Clean<Attribute> for ast::Attribute {
     fn clean(&self) -> Attribute {
-        self.node.value.clean()
+        self.desugar_doc().node.value.clean()
     }
 }
 
@@ -437,16 +480,22 @@ pub enum TraitMethod {
 }
 
 impl TraitMethod {
-    fn is_req(&self) -> bool {
+    pub fn is_req(&self) -> bool {
         match self {
             &Required(*) => true,
             _ => false,
         }
     }
-    fn is_def(&self) -> bool {
+    pub fn is_def(&self) -> bool {
         match self {
             &Provided(*) => true,
             _ => false,
+        }
+    }
+    pub fn item<'a>(&'a self) -> &'a Item {
+        match *self {
+            Required(ref item) => item,
+            Provided(ref item) => item,
         }
     }
 }

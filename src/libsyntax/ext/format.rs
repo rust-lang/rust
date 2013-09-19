@@ -262,7 +262,7 @@ impl Context {
                 let span = match self.names.find(&name) {
                     Some(e) => e.span,
                     None => {
-                        let msg = fmt!("There is no argument named `%s`", name);
+                        let msg = fmt!("there is no argument named `%s`", name);
                         self.ecx.span_err(self.fmtsp, msg);
                         return;
                     }
