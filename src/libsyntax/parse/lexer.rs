@@ -747,27 +747,34 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         }
 
         // Otherwise it is a character constant:
-        if c2 == '\\' {
-            // '\X' for some X must be a character constant:
-            let escaped = rdr.curr;
-            let escaped_pos = rdr.last_pos;
-            bump(rdr);
-            match escaped {
-              'n' => { c2 = '\n'; }
-              'r' => { c2 = '\r'; }
-              't' => { c2 = '\t'; }
-              '\\' => { c2 = '\\'; }
-              '\'' => { c2 = '\''; }
-              '"' => { c2 = '"'; }
-              '0' => { c2 = '\x00'; }
-              'x' => { c2 = scan_numeric_escape(rdr, 2u); }
-              'u' => { c2 = scan_numeric_escape(rdr, 4u); }
-              'U' => { c2 = scan_numeric_escape(rdr, 8u); }
-              c2 => {
-                fatal_span_char(rdr, escaped_pos, rdr.last_pos,
-                                ~"unknown character escape", c2);
-              }
+        match c2 {
+            '\\' => {
+                // '\X' for some X must be a character constant:
+                let escaped = rdr.curr;
+                let escaped_pos = rdr.last_pos;
+                bump(rdr);
+                match escaped {
+                    'n' => { c2 = '\n'; }
+                    'r' => { c2 = '\r'; }
+                    't' => { c2 = '\t'; }
+                    '\\' => { c2 = '\\'; }
+                    '\'' => { c2 = '\''; }
+                    '"' => { c2 = '"'; }
+                    '0' => { c2 = '\x00'; }
+                    'x' => { c2 = scan_numeric_escape(rdr, 2u); }
+                    'u' => { c2 = scan_numeric_escape(rdr, 4u); }
+                    'U' => { c2 = scan_numeric_escape(rdr, 8u); }
+                    c2 => {
+                        fatal_span_char(rdr, escaped_pos, rdr.last_pos,
+                                        ~"unknown character escape", c2);
+                    }
+                }
             }
+            '\t' | '\n' | '\r' | '\'' => {
+                fatal_span_char(rdr, start, rdr.last_pos,
+                                ~"character constant must be escaped", c2);
+            }
+            _ => {}
         }
         if rdr.curr != '\'' {
             fatal_span_verbose(rdr,
@@ -973,7 +980,7 @@ mod test {
     }
 
     #[test] fn character_escaped() {
-        let env = setup(@"'\n'");
+        let env = setup(@"'\\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_CHAR('\n' as u32));
