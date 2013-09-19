@@ -173,6 +173,22 @@ fn fatal_span_char(rdr: @mut StringReader,
     fatal_span(rdr, from_pos, to_pos, m);
 }
 
+// report a lexical error spanning [`from_pos`, `to_pos`), appending the
+// offending string to the error message
+fn fatal_span_verbose(rdr: @mut StringReader,
+                      from_pos: BytePos,
+                      to_pos: BytePos,
+                      m: ~str)
+                   -> ! {
+    let mut m = m;
+    m.push_str(": ");
+    let s = rdr.src.slice(
+                  byte_offset(rdr, from_pos).to_uint(),
+                  byte_offset(rdr, to_pos).to_uint());
+    m.push_str(s);
+    fatal_span(rdr, from_pos, to_pos, m);
+}
+
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
 fn string_advance_token(r: @mut StringReader) {
@@ -390,8 +406,7 @@ fn consume_block_comment(rdr: @mut StringReader)
    if res.is_some() { res } else { consume_whitespace_and_comments(rdr) }
 }
 
-fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
-    let start_bpos = rdr.last_pos;
+fn scan_exponent(rdr: @mut StringReader, start_bpos: BytePos) -> Option<~str> {
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
@@ -507,7 +522,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
           _ => ()
         }
     }
-    match scan_exponent(rdr) {
+    match scan_exponent(rdr, start_bpos) {
       Some(ref s) => {
         is_float = true;
         num_str.push_str(*s);
@@ -568,7 +583,8 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
         let n = rdr.curr;
         if !is_hex_digit(n) {
             fatal_span_char(rdr, rdr.last_pos, rdr.pos,
-                            ~"illegal numeric character escape", n);
+                            ~"illegal character in numeric character escape",
+                            n);
         }
         bump(rdr);
         accum_int *= 16;
@@ -754,27 +770,25 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             }
         }
         if rdr.curr != '\'' {
-            fatal_span(rdr,
-                       // Byte offsetting here is okay because the character
-                       // before position `start` is an ascii single quote.
-                       start - BytePos(1u),
-                       rdr.last_pos,
-                       ~"unterminated character constant");
+            fatal_span_verbose(rdr,
+                               // Byte offsetting here is okay because the
+                               // character before position `start` is an
+                               // ascii single quote.
+                               start - BytePos(1u),
+                               rdr.last_pos,
+                               ~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
         return token::LIT_CHAR(c2 as u32);
       }
       '"' => {
         let mut accum_str = ~"";
-        let n = rdr.last_pos;
+        let start_bpos = rdr.last_pos;
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
-                do with_str_from(rdr, n) |s| {
-                    fatal_span(rdr, n, rdr.last_pos,
-                               fmt!("unterminated double quote string: %s",
-                                    s));
-                }
+                fatal_span(rdr, start_bpos, rdr.last_pos,
+                           ~"unterminated double quote string");
             }
 
             let ch = rdr.curr;

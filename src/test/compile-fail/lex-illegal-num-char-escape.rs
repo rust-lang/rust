@@ -9,5 +9,5 @@
 // except according to those terms.
 
 static c: char =
-    '\u539_' //~ ERROR: illegal numeric character escape
+    '\u539_' //~ ERROR: illegal character in numeric character escape
 ;
