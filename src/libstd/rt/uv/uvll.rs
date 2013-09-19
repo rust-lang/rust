@@ -132,6 +132,7 @@ pub type uv_getaddrinfo_t = c_void;
 pub type uv_process_t = c_void;
 pub type uv_pipe_t = c_void;
 pub type uv_tty_t = c_void;
+pub type uv_signal_t = c_void;
 
 pub struct uv_timespec_t {
     tv_sec: libc::c_long,
@@ -219,6 +220,8 @@ pub type uv_getaddrinfo_cb = extern "C" fn(req: *uv_getaddrinfo_t,
 pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
                                     exit_status: c_int,
                                     term_signal: c_int);
+pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
+                                      signum: c_int);
 
 pub type sockaddr = c_void;
 pub type sockaddr_in = c_void;
@@ -991,6 +994,21 @@ pub unsafe fn guess_handle(fd: c_int) -> uv_handle_type {
     rust_uv_guess_handle(fd)
 }
 
+pub unsafe fn signal_init(loop_: *uv_loop_t, handle: *uv_signal_t) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_signal_init(loop_, handle);
+}
+pub unsafe fn signal_start(handle: *uv_signal_t,
+                           signal_cb: uv_signal_cb,
+                           signum: c_int) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_signal_start(handle, signal_cb, signum);
+}
+pub unsafe fn signal_stop(handle: *uv_signal_t) -> c_int {
+    #[fixed_stack_segment]; #[inline(never)];
+    return rust_uv_signal_stop(handle);
+}
+
 pub struct uv_err_data {
     priv err_name: ~str,
     priv err_msg: ~str,
@@ -1160,4 +1178,10 @@ extern {
     //#[rust_stack] pub fn rust_AI_NUMERICSERV() -> c_int;
     //#[rust_stack] pub fn rust_AI_PASSIVE() -> c_int;
     //#[rust_stack] pub fn rust_AI_V4MAPPED() -> c_int;
+
+    fn rust_uv_signal_init(loop_: *uv_loop_t, handle: *uv_signal_t) -> c_int;
+    fn rust_uv_signal_start(handle: *uv_signal_t,
+                            signal_cb: uv_signal_cb,
+                            signum: c_int) -> c_int;
+    fn rust_uv_signal_stop(handle: *uv_signal_t) -> c_int;
 }

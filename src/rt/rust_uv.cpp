@@ -673,3 +673,18 @@ extern "C" uv_handle_type
 rust_uv_guess_handle(int fd) {
     return uv_guess_handle(fd);
 }
+
+extern "C" int
+rust_uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
+  return uv_signal_init(loop, handle);
+}
+
+extern "C" int
+rust_uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
+  return uv_signal_start(handle, signal_cb, signum);
+}
+
+extern "C" int
+rust_uv_signal_stop(uv_signal_t* handle) {
+  return uv_signal_stop(handle);
+}
