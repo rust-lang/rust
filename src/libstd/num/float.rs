@@ -807,8 +807,8 @@ impl Primitive for float {
 
 impl Float for float {
     #[inline]
-    fn NaN() -> float {
-        let value: f64 = Float::NaN();
+    fn nan() -> float {
+        let value: f64 = Float::nan();
         value as float
     }
 
@@ -832,7 +832,7 @@ impl Float for float {
 
     /// Returns `true` if the number is NaN
     #[inline]
-    fn is_NaN(&self) -> bool { (*self as f64).is_NaN() }
+    fn is_nan(&self) -> bool { (*self as f64).is_nan() }
 
     /// Returns `true` if the number is infinite
     #[inline]
@@ -973,10 +973,10 @@ mod tests {
         assert_eq!(1f.clamp(&2f, &4f), 2f);
         assert_eq!(8f.clamp(&2f, &4f), 4f);
         assert_eq!(3f.clamp(&2f, &4f), 3f);
-        let nan: float = Float::NaN();
-        assert!(3f.clamp(&nan, &4f).is_NaN());
-        assert!(3f.clamp(&2f, &nan).is_NaN());
-        assert!(nan.clamp(&2f, &4f).is_NaN());
+        let nan: float = Float::nan();
+        assert!(3f.clamp(&nan, &4f).is_nan());
+        assert!(3f.clamp(&2f, &nan).is_nan());
+        assert!(nan.clamp(&2f, &4f).is_nan());
     }
 
     #[test]
@@ -1056,10 +1056,10 @@ mod tests {
 
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
-        assert!(nan.asinh().is_NaN());
+        assert!(nan.asinh().is_nan());
         assert_approx_eq!(2.0f.asinh(), 1.443635475178810342493276740273105f);
         assert_approx_eq!((-2.0f).asinh(), -1.443635475178810342493276740273105f);
     }
@@ -1067,14 +1067,14 @@ mod tests {
     #[test]
     fn test_acosh() {
         assert_eq!(1.0f.acosh(), 0.0f);
-        assert!(0.999f.acosh().is_NaN());
+        assert!(0.999f.acosh().is_nan());
 
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         assert_eq!(inf.acosh(), inf);
-        assert!(neg_inf.acosh().is_NaN());
-        assert!(nan.acosh().is_NaN());
+        assert!(neg_inf.acosh().is_nan());
+        assert!(nan.acosh().is_nan());
         assert_approx_eq!(2.0f.acosh(), 1.31695789692481670862504634730796844f);
         assert_approx_eq!(3.0f.acosh(), 1.76274717403908605046521864995958461f);
     }
@@ -1088,14 +1088,14 @@ mod tests {
         let neg_inf: float = Float::neg_infinity();
         let inf64: f64 = Float::infinity();
         let neg_inf64: f64 = Float::neg_infinity();
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         assert_eq!(1.0f.atanh(), inf);
         assert_eq!((-1.0f).atanh(), neg_inf);
-        assert!(2f64.atanh().atanh().is_NaN());
-        assert!((-2f64).atanh().atanh().is_NaN());
-        assert!(inf64.atanh().is_NaN());
-        assert!(neg_inf64.atanh().is_NaN());
-        assert!(nan.atanh().is_NaN());
+        assert!(2f64.atanh().atanh().is_nan());
+        assert!((-2f64).atanh().atanh().is_nan());
+        assert!(inf64.atanh().is_nan());
+        assert!(neg_inf64.atanh().is_nan());
+        assert!(nan.atanh().is_nan());
         assert_approx_eq!(0.5f.atanh(), 0.54930614433405484569762261846126285f);
         assert_approx_eq!((-0.5f).atanh(), -0.54930614433405484569762261846126285f);
     }
@@ -1146,7 +1146,7 @@ mod tests {
         assert_eq!((-1f).abs(), 1f);
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f/neg_infinity).abs(), 0f);
-        assert!(NaN.abs().is_NaN());
+        assert!(NaN.abs().is_nan());
     }
 
     #[test]
@@ -1163,8 +1163,8 @@ mod tests {
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NaN.abs_sub(&-1f).is_NaN());
-        assert!(1f.abs_sub(&NaN).is_NaN());
+        assert!(NaN.abs_sub(&-1f).is_nan());
+        assert!(1f.abs_sub(&NaN).is_nan());
     }
 
     #[test]
@@ -1176,7 +1176,7 @@ mod tests {
         assert_eq!((-1f).signum(), -1f);
         assert_eq!(neg_infinity.signum(), -1f);
         assert_eq!((1f/neg_infinity).signum(), -1f);
-        assert!(NaN.signum().is_NaN());
+        assert!(NaN.signum().is_nan());
     }
 
     #[test]
@@ -1221,7 +1221,7 @@ mod tests {
 
     #[test]
     fn test_is_normal() {
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
         let zero: float = Zero::zero();
@@ -1238,7 +1238,7 @@ mod tests {
 
     #[test]
     fn test_classify() {
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
         let zero: float = Zero::zero();
@@ -1267,10 +1267,10 @@ mod tests {
 
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         assert_eq!(Float::ldexp(inf, -123), inf);
         assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
-        assert!(Float::ldexp(nan, -123).is_NaN());
+        assert!(Float::ldexp(nan, -123).is_nan());
     }
 
     #[test]
@@ -1294,10 +1294,10 @@ mod tests {
     fn test_frexp_nowin() {
         let inf: float = Float::infinity();
         let neg_inf: float = Float::neg_infinity();
-        let nan: float = Float::NaN();
+        let nan: float = Float::nan();
         assert_eq!(match inf.frexp() { (x, _) => x }, inf);
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
-        assert!(match nan.frexp() { (x, _) => x.is_NaN() })
+        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]
@@ -1328,7 +1328,7 @@ mod tests {
         assert_eq!(from_str::<float>("-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
         match from_str::<float>("NaN") {
-            Some(f) => assert!(f.is_NaN()),
+            Some(f) => assert!(f.is_nan()),
             None => fail!()
         }
         // note: -0 == 0, hence these slightly more complex tests
@@ -1375,7 +1375,7 @@ mod tests {
         assert_eq!(from_str_hex("-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
         match from_str_hex("NaN") {
-            Some(f) => assert!(f.is_NaN()),
+            Some(f) => assert!(f.is_nan()),
             None => fail!()
         }
         // note: -0 == 0, hence these slightly more complex tests
