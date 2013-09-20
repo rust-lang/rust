@@ -355,6 +355,13 @@ fn executable_exists(repo: &Path, short_name: &str) -> bool {
     os::path_exists(&exec) && is_rwx(&exec)
 }
 
+fn remove_executable_file(p: &PkgId, workspace: &Path) {
+    let exec = target_executable_in_workspace(&PkgId::new(p.short_name), workspace);
+    if os::path_exists(&exec) {
+        assert!(os::remove_file(&exec));
+    }
+}
+
 fn assert_built_executable_exists(repo: &Path, short_name: &str) {
     assert!(built_executable_exists(repo, short_name));
 }
@@ -365,6 +372,14 @@ fn built_executable_exists(repo: &Path, short_name: &str) -> bool {
     exec.is_some() && {
        let execname = exec.get_ref();
        os::path_exists(execname) && is_rwx(execname)
+    }
+}
+
+fn remove_built_executable_file(p: &PkgId, workspace: &Path) {
+    let exec = built_executable_in_workspace(&PkgId::new(p.short_name), workspace);
+    match exec {
+        Some(r) => assert!(os::remove_file(&r)),
+        None    => ()
     }
 }
 
@@ -1703,6 +1718,44 @@ fn test_dependencies_terminate() {
     writeFile(&b_subdir.push("test.rs"),
               "extern mod b; use b::f; #[test] fn g() { f() }");
     command_line_test([~"install", ~"b"], &workspace);
+}
+
+#[test]
+fn install_after_build() {
+    let b_id = PkgId::new("b");
+    let workspace = create_local_package(&b_id);
+    command_line_test([~"build", ~"b"], &workspace);
+    command_line_test([~"install", ~"b"], &workspace);
+    assert_executable_exists(&workspace, b_id.short_name);
+    assert_lib_exists(&workspace, &b_id.path, NoVersion);
+}
+
+#[test]
+fn reinstall() {
+    let b = PkgId::new("b");
+    let workspace = create_local_package(&b);
+    // 1. Install, then remove executable file, then install again,
+    // and make sure executable was re-installed
+    command_line_test([~"install", ~"b"], &workspace);
+    assert_executable_exists(&workspace, b.short_name);
+    assert_lib_exists(&workspace, &b.path, NoVersion);
+    remove_executable_file(&b, &workspace);
+    command_line_test([~"install", ~"b"], &workspace);
+    assert_executable_exists(&workspace, b.short_name);
+    // 2. Build, then remove build executable file, then build again,
+    // and make sure executable was re-built.
+    command_line_test([~"build", ~"b"], &workspace);
+    remove_built_executable_file(&b, &workspace);
+    command_line_test([~"build", ~"b"], &workspace);
+    assert_built_executable_exists(&workspace, b.short_name);
+    // 3. Install, then remove both executable and built executable,
+    // then install again, make sure both were recreated
+    command_line_test([~"install", ~"b"], &workspace);
+    remove_executable_file(&b, &workspace);
+    remove_built_executable_file(&b, &workspace);
+    command_line_test([~"install", ~"b"], &workspace);
+    assert_executable_exists(&workspace, b.short_name);
+    assert_built_executable_exists(&workspace, b.short_name);
 }
 
 /// Returns true if p exists and is executable
