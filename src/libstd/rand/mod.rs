@@ -59,7 +59,6 @@ use uint;
 use vec;
 use libc::size_t;
 
-#[path="rand/distributions.rs"]
 pub mod distributions;
 
 /// A type that can be randomly generated using an Rng
