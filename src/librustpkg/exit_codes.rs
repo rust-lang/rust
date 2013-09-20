@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static copy_failed_code: int = 65;
+pub static COPY_FAILED_CODE: int = 65;
