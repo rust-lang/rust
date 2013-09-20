@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast compile-flags directive doesn't work for check-fast
-// compile-flags: --cfg debug
 // exec-env:RUST_LOG=conditional-debug-macro-on=4
 
 fn main() {
