@@ -13,8 +13,8 @@ extern mod extra;
 use std::num::Float;
 
 pub fn main() {
-  let nan: float = Float::NaN();
-  assert!((nan).is_NaN());
+  let nan: float = Float::nan();
+  assert!((nan).is_nan());
 
   let inf: float = Float::infinity();
   let neg_inf: float = Float::neg_infinity();
@@ -73,22 +73,22 @@ pub fn main() {
   assert!(!(-inf < nan));
   assert!(!(-nan < nan));
 
-  assert!((nan + inf).is_NaN());
-  assert!((nan + -inf).is_NaN());
-  assert!((nan + 0.).is_NaN());
-  assert!((nan + 1.).is_NaN());
-  assert!((nan * 1.).is_NaN());
-  assert!((nan / 1.).is_NaN());
-  assert!((nan / 0.).is_NaN());
-  assert!((0f/0f).is_NaN());
-  assert!((-inf + inf).is_NaN());
-  assert!((inf - inf).is_NaN());
+  assert!((nan + inf).is_nan());
+  assert!((nan + -inf).is_nan());
+  assert!((nan + 0.).is_nan());
+  assert!((nan + 1.).is_nan());
+  assert!((nan * 1.).is_nan());
+  assert!((nan / 1.).is_nan());
+  assert!((nan / 0.).is_nan());
+  assert!((0f/0f).is_nan());
+  assert!((-inf + inf).is_nan());
+  assert!((inf - inf).is_nan());
 
-  assert!(!(-1f).is_NaN());
-  assert!(!(0f).is_NaN());
-  assert!(!(0.1f).is_NaN());
-  assert!(!(1f).is_NaN());
-  assert!(!(inf).is_NaN());
-  assert!(!(-inf).is_NaN());
-  assert!(!(1./-inf).is_NaN());
+  assert!(!(-1f).is_nan());
+  assert!(!(0f).is_nan());
+  assert!(!(0.1f).is_nan());
+  assert!(!(1f).is_nan());
+  assert!(!(inf).is_nan());
+  assert!(!(-inf).is_nan());
+  assert!(!(1./-inf).is_nan());
 }

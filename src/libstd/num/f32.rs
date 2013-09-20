@@ -207,8 +207,8 @@ impl Orderable for f32 {
     #[inline]
     fn min(&self, other: &f32) -> f32 {
         match () {
-            _ if self.is_NaN()  => *self,
-            _ if other.is_NaN() => *other,
+            _ if self.is_nan()  => *self,
+            _ if other.is_nan() => *other,
             _ if *self < *other => *self,
             _                   => *other,
         }
@@ -218,8 +218,8 @@ impl Orderable for f32 {
     #[inline]
     fn max(&self, other: &f32) -> f32 {
         match () {
-            _ if self.is_NaN()  => *self,
-            _ if other.is_NaN() => *other,
+            _ if self.is_nan()  => *self,
+            _ if other.is_nan() => *other,
             _ if *self > *other => *self,
             _                   => *other,
         }
@@ -230,7 +230,7 @@ impl Orderable for f32 {
     #[inline]
     fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
         match () {
-            _ if self.is_NaN()   => *self,
+            _ if self.is_nan()   => *self,
             _ if !(*self <= *mx) => *mx,
             _ if !(*self >= *mn) => *mn,
             _                    => *self,
@@ -314,7 +314,7 @@ impl Signed for f32 {
     ///
     #[inline]
     fn signum(&self) -> f32 {
-        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
+        if self.is_nan() { NaN } else { copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -471,7 +471,7 @@ impl Hyperbolic for f32 {
     #[inline]
     fn acosh(&self) -> f32 {
         match *self {
-            x if x < 1.0 => Float::NaN(),
+            x if x < 1.0 => Float::nan(),
             x => (x + ((x * x) - 1.0).sqrt()).ln(),
         }
     }
@@ -593,7 +593,7 @@ impl Primitive for f32 {
 
 impl Float for f32 {
     #[inline]
-    fn NaN() -> f32 { 0.0 / 0.0 }
+    fn nan() -> f32 { 0.0 / 0.0 }
 
     #[inline]
     fn infinity() -> f32 { 1.0 / 0.0 }
@@ -606,7 +606,7 @@ impl Float for f32 {
 
     /// Returns `true` if the number is NaN
     #[inline]
-    fn is_NaN(&self) -> bool { *self != *self }
+    fn is_nan(&self) -> bool { *self != *self }
 
     /// Returns `true` if the number is infinite
     #[inline]
@@ -617,7 +617,7 @@ impl Float for f32 {
     /// Returns `true` if the number is neither infinite or NaN
     #[inline]
     fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
+        !(self.is_nan() || self.is_infinite())
     }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
@@ -949,10 +949,10 @@ mod tests {
         assert_eq!(8f32.clamp(&2f32, &4f32), 4f32);
         assert_eq!(3f32.clamp(&2f32, &4f32), 3f32);
 
-        let nan: f32 = Float::NaN();
-        assert!(3f32.clamp(&nan, &4f32).is_NaN());
-        assert!(3f32.clamp(&2f32, &nan).is_NaN());
-        assert!(nan.clamp(&2f32, &4f32).is_NaN());
+        let nan: f32 = Float::nan();
+        assert!(3f32.clamp(&nan, &4f32).is_nan());
+        assert!(3f32.clamp(&2f32, &nan).is_nan());
+        assert!(nan.clamp(&2f32, &4f32).is_nan());
     }
 
     #[test]
@@ -1032,10 +1032,10 @@ mod tests {
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
-        assert!(nan.asinh().is_NaN());
+        assert!(nan.asinh().is_nan());
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     }
@@ -1043,14 +1043,14 @@ mod tests {
     #[test]
     fn test_acosh() {
         assert_eq!(1.0f32.acosh(), 0.0f32);
-        assert!(0.999f32.acosh().is_NaN());
+        assert!(0.999f32.acosh().is_nan());
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         assert_eq!(inf.acosh(), inf);
-        assert!(neg_inf.acosh().is_NaN());
-        assert!(nan.acosh().is_NaN());
+        assert!(neg_inf.acosh().is_nan());
+        assert!(nan.acosh().is_nan());
         assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
         assert_approx_eq!(3.0f32.acosh(), 1.76274717403908605046521864995958461f32);
     }
@@ -1065,15 +1065,15 @@ mod tests {
         assert_eq!(1.0f32.atanh(), inf32);
         assert_eq!((-1.0f32).atanh(), neg_inf32);
 
-        assert!(2f64.atanh().atanh().is_NaN());
-        assert!((-2f64).atanh().atanh().is_NaN());
+        assert!(2f64.atanh().atanh().is_nan());
+        assert!((-2f64).atanh().atanh().is_nan());
 
         let inf64: f32 = Float::infinity();
         let neg_inf64: f32 = Float::neg_infinity();
-        let nan32: f32 = Float::NaN();
-        assert!(inf64.atanh().is_NaN());
-        assert!(neg_inf64.atanh().is_NaN());
-        assert!(nan32.atanh().is_NaN());
+        let nan32: f32 = Float::nan();
+        assert!(inf64.atanh().is_nan());
+        assert!(neg_inf64.atanh().is_nan());
+        assert!(nan32.atanh().is_nan());
 
         assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
         assert_approx_eq!((-0.5f32).atanh(), -0.54930614433405484569762261846126285f32);
@@ -1125,7 +1125,7 @@ mod tests {
         assert_eq!((-1f32).abs(), 1f32);
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f32/neg_infinity).abs(), 0f32);
-        assert!(NaN.abs().is_NaN());
+        assert!(NaN.abs().is_nan());
     }
 
     #[test]
@@ -1142,8 +1142,8 @@ mod tests {
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NaN.abs_sub(&-1f32).is_NaN());
-        assert!(1f32.abs_sub(&NaN).is_NaN());
+        assert!(NaN.abs_sub(&-1f32).is_nan());
+        assert!(1f32.abs_sub(&NaN).is_nan());
     }
 
     #[test]
@@ -1155,7 +1155,7 @@ mod tests {
         assert_eq!((-1f32).signum(), -1f32);
         assert_eq!(neg_infinity.signum(), -1f32);
         assert_eq!((1f32/neg_infinity).signum(), -1f32);
-        assert!(NaN.signum().is_NaN());
+        assert!(NaN.signum().is_nan());
     }
 
     #[test]
@@ -1200,7 +1200,7 @@ mod tests {
 
     #[test]
     fn test_is_normal() {
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Zero::zero();
@@ -1217,7 +1217,7 @@ mod tests {
 
     #[test]
     fn test_classify() {
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Zero::zero();
@@ -1246,10 +1246,10 @@ mod tests {
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         assert_eq!(Float::ldexp(inf, -123), inf);
         assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
-        assert!(Float::ldexp(nan, -123).is_NaN());
+        assert!(Float::ldexp(nan, -123).is_nan());
     }
 
     #[test]
@@ -1273,9 +1273,9 @@ mod tests {
     fn test_frexp_nowin() {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
-        let nan: f32 = Float::NaN();
+        let nan: f32 = Float::nan();
         assert_eq!(match inf.frexp() { (x, _) => x }, inf)
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
-        assert!(match nan.frexp() { (x, _) => x.is_NaN() })
+        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 }
