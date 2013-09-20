@@ -27,6 +27,9 @@ Remove all generated files from the \fIbuild\fR directory in the target's worksp
 Builds the specified target, and all its dependencies, and then installs the
 build products into the \fIlib\fR and \fIbin\fR directories of their respective
 workspaces.
+.TP
+\fBinit\fR
+Initializes the current working directory into a workspace.
 
 .SS "BUILD COMMAND"
 
@@ -58,6 +61,17 @@ Examples:
 
     $ rustpkg install github.com/mozilla/servo.git#1.2
     $ rustpkg install rust-glfw
+
+.SS "INIT COMMAND"
+
+    rustpkg init
+
+This will turn the current working directory into a workspace. The first
+command you run when starting off a new project. 
+
+Example:
+
+    $ rustpkg init
 
 .SH "ENVIRONMENT"
 
