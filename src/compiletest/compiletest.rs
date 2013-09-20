@@ -109,8 +109,8 @@ pub fn parse_config(args: ~[~str]) -> config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
-        clang_path: matches.opt_str("clang-path").map_move(|s| Path(s)),
-        llvm_bin_path: matches.opt_str("llvm-bin-path").map_move(|s| Path(s)),
+        clang_path: matches.opt_str("clang-path").map(|s| Path(s)),
+        llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| Path(s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
@@ -123,10 +123,10 @@ pub fn parse_config(args: ~[~str]) -> config {
             } else {
                 None
             },
-        logfile: matches.opt_str("logfile").map_move(|s| Path(s)),
-        save_metrics: matches.opt_str("save-metrics").map_move(|s| Path(s)),
+        logfile: matches.opt_str("logfile").map(|s| Path(s)),
+        save_metrics: matches.opt_str("save-metrics").map(|s| Path(s)),
         ratchet_metrics:
-            matches.opt_str("ratchet-metrics").map_move(|s| Path(s)),
+            matches.opt_str("ratchet-metrics").map(|s| Path(s)),
         ratchet_noise_percent:
             matches.opt_str("ratchet-noise-percent").and_then(|s| from_str::<f64>(s)),
         runtool: matches.opt_str("runtool"),

@@ -96,7 +96,7 @@ impl<T:Subst + 'static> Subst for @T {
 
 impl<T:Subst> Subst for Option<T> {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Option<T> {
-        self.map(|t| t.subst(tcx, substs))
+        self.as_ref().map(|t| t.subst(tcx, substs))
     }
 }
 

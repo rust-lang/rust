@@ -209,7 +209,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                             trait_id: ast::NodeId)
 {
     let tcx = ccx.tcx;
-    let region_paramd = tcx.region_paramd_items.find(&trait_id).map_move(|x| *x);
+    let region_paramd = tcx.region_paramd_items.find(&trait_id).map(|x| *x);
     match tcx.items.get_copy(&trait_id) {
         ast_map::node_item(@ast::item {
             node: ast::item_trait(ref generics, _, ref ms),
@@ -843,7 +843,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
     let tcx = ccx.tcx;
-    let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
+    let rp = tcx.region_paramd_items.find(&it.id).map(|x| *x);
     debug2!("convert: item {} with id {} rp {:?}",
            tcx.sess.str_of(it.ident), it.id, rp);
     match it.node {
@@ -1064,7 +1064,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
       Some(&def) => return def,
       _ => {}
     }
-    let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
+    let rp = tcx.region_paramd_items.find(&it.id).map(|x| *x);
     match it.node {
         ast::item_trait(ref generics, ref supertraits, _) => {
             let self_ty = ty::mk_self(tcx, def_id);
@@ -1096,7 +1096,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
       Some(&tpt) => return tpt,
       _ => {}
     }
-    let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
+    let rp = tcx.region_paramd_items.find(&it.id).map(|x| *x);
     match it.node {
       ast::item_static(ref t, _, _) => {
         let typ = ccx.to_ty(&EmptyRscope, t);
@@ -1133,7 +1133,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
           None => { }
         }
 
-        let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
+        let rp = tcx.region_paramd_items.find(&it.id).map(|x| *x);
         let region_parameterization =
             RegionParameterization::from_variance_and_generics(rp, generics);
         let tpt = {

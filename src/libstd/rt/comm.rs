@@ -165,7 +165,7 @@ impl<T> ChanOne<T> {
                     // Port is blocked. Wake it up.
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
                     if do_resched {
-                        do recvr.wake().map_move |woken_task| {
+                        do recvr.wake().map |woken_task| {
                             Scheduler::run_task(woken_task);
                         };
                     } else {
@@ -391,7 +391,7 @@ impl<T> Drop for ChanOne<T> {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     rtassert!((*this.packet()).payload.is_none());
                     let recvr = BlockedTask::cast_from_uint(task_as_state);
-                    do recvr.wake().map_move |woken_task| {
+                    do recvr.wake().map |woken_task| {
                         Scheduler::run_task(woken_task);
                     };
                 }
@@ -501,7 +501,7 @@ impl<T> GenericPort<T> for Port<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        do self.next.take_opt().map_move_default(None) |pone| {
+        do self.next.take_opt().map_default(None) |pone| {
             match pone.try_recv() {
                 Some(StreamPayload { val, next }) => {
                     self.next.put_back(next);

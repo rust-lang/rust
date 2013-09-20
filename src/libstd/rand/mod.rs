@@ -689,7 +689,7 @@ local_data_key!(TASK_RNG_KEY: @mut TaskRng)
 /// the same sequence always. If absolute consistency is required,
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> @mut TaskRng {
-    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|&k| *k));
+    let r = local_data::get(TASK_RNG_KEY, |k| k.map(|k| *k));
     match r {
         None => {
             let rng = @mut reseeding::ReseedingRng::new(StdRng::new(),

@@ -220,7 +220,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 }
             }
         }
-        result = do blk.expr.map_move |e| {
+        result = do blk.expr.map |e| {
             do with_pp(intr) |pp, _| { pprust::print_expr(pp, e); }
         };
     }

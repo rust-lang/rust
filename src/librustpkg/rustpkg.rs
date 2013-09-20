@@ -558,7 +558,8 @@ impl CtxMethods for BuildContext {
         let maybe_executable = built_executable_in_workspace(id, source_workspace);
         let maybe_library = built_library_in_workspace(id, source_workspace);
         let target_exec = target_executable_in_workspace(id, target_workspace);
-        let target_lib = maybe_library.map(|_p| target_library_in_workspace(id, target_workspace));
+        let target_lib = maybe_library.as_ref()
+            .map(|_| target_library_in_workspace(id, target_workspace));
 
         debug2!("target_exec = {} target_lib = {:?} \
                maybe_executable = {:?} maybe_library = {:?}",
