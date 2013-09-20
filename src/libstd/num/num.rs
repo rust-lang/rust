@@ -320,12 +320,12 @@ pub trait Float: Real
                + Primitive
                + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
-    fn NaN() -> Self;
+    fn nan() -> Self;
     fn infinity() -> Self;
     fn neg_infinity() -> Self;
     fn neg_zero() -> Self;
 
-    fn is_NaN(&self) -> bool;
+    fn is_nan(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
     fn is_normal(&self) -> bool;
