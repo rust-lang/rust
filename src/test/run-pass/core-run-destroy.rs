@@ -55,6 +55,7 @@ fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(windows)]
     fn process_exists(pid: libc::pid_t) -> bool {
+        #[fixed_stack_segment];
 
         use std::libc::types::os::arch::extra::DWORD;
         use std::libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};

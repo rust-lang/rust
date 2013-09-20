@@ -278,23 +278,12 @@ impl Type {
 
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
         let tydesc_ptr = ctx.tydesc_type.ptr_to();
-        match store {
-            ty::BoxTraitStore => {
-                Type::struct_(
-                    [ tydesc_ptr, Type::opaque_box(ctx).ptr_to() ],
-                false)
-            }
-            ty::UniqTraitStore => {
-                Type::struct_(
-                    [ tydesc_ptr, Type::unique(ctx, &Type::i8()).ptr_to()],
-                false)
-            }
-            ty::RegionTraitStore(*) => {
-                Type::struct_(
-                    [ tydesc_ptr, Type::i8().ptr_to() ],
-                false)
-            }
-        }
+        let box_ty = match store {
+            ty::BoxTraitStore => Type::opaque_box(ctx),
+            ty::UniqTraitStore => Type::unique(ctx, &Type::i8()),
+            ty::RegionTraitStore(*) => Type::i8()
+        };
+        Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)
     }
 
     pub fn kind(&self) -> TypeKind {
