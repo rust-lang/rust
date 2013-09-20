@@ -420,7 +420,6 @@ mod test {
     use std::rt::io;
     use std::rt::io::Writer;
     use std::rt::io::file;
-    use std::uint;
     use std::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {

@@ -512,10 +512,8 @@ impl MatchOptions {
 
 #[cfg(test)]
 mod test {
-    use std::{io, os, unstable};
-    use std::unstable::finally::Finally;
+    use std::os;
     use super::*;
-    use tempfile;
 
     #[test]
     fn test_absolute_pattern() {

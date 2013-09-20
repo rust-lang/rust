@@ -18,7 +18,7 @@
 extern mod extra;
 
 use extra::arc;
-use extra::future;
+use extra::future::Future;
 use extra::time;
 use std::cell::Cell;
 use std::os;
@@ -94,7 +94,7 @@ fn main() {
         let (new_chan, num_port) = init();
         let num_chan2 = Cell::new(num_chan.take());
         let num_port = Cell::new(num_port);
-        let new_future = do future::spawn() {
+        let new_future = do Future::spawn() {
             let num_chan = num_chan2.take();
             let num_port1 = num_port.take();
             thread_ring(i, msg_per_task, num_chan, num_port1)
