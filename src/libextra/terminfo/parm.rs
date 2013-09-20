@@ -261,7 +261,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                                 flags.width = (cur as uint - '0' as uint);
                                 fstate = FormatStateWidth;
                             }
-                            _ => util::unreachable()
+                            _ => unreachable!()
                         }
                         state = FormatPattern(flags, fstate);
                     }
@@ -487,7 +487,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                         FormatDigit => 10,
                         FormatOctal => 8,
                         FormatHex|FormatHEX => 16,
-                        FormatString => util::unreachable()
+                        FormatString => unreachable!()
                     };
                     let mut s = ~[];
                     match op {
@@ -535,7 +535,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                                 s.push_all_move(s_);
                             }
                         }
-                        FormatString => util::unreachable()
+                        FormatString => unreachable!()
                     }
                     s
                 }

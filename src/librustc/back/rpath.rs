@@ -14,7 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use std::hashmap::HashSet;
-use std::{os, util, vec};
+use std::{os, vec};
 
 fn not_win32(os: session::Os) -> bool {
   os != session::OsWin32
@@ -116,7 +116,7 @@ pub fn get_rpath_relative_to_output(os: session::Os,
         session::OsAndroid | session::OsLinux | session::OsFreebsd
                           => "$ORIGIN",
         session::OsMacos => "@executable_path",
-        session::OsWin32 => util::unreachable()
+        session::OsWin32 => unreachable!()
     };
 
     Path(prefix).push_rel(&os::make_absolute(output).get_relative_to(&os::make_absolute(lib)))

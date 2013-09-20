@@ -27,7 +27,7 @@ use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
 use uint;
-use util::{replace, unreachable};
+use util::replace;
 use vec::{ImmutableVector, MutableVector, OwnedVector};
 use vec;
 
@@ -187,7 +187,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
         match self.buckets[idx] {
             Some(ref mut bkt) => &mut bkt.value,
-            None => unreachable()
+            None => unreachable!()
         }
     }
 
