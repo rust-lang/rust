@@ -2979,7 +2979,7 @@ tutorials on individual topics.
 * [The foreign function interface][ffi]
 * [Containers and iterators](tutorial-container.html)
 * [Error-handling and Conditions](tutorial-conditions.html)
-* [Packaging up Rust code](rustpkg)
+* [Packaging up Rust code][rustpkg]
 
 There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 
@@ -2987,7 +2987,7 @@ There is further documentation on the [wiki], however those tend to be even more
 [tasks]: tutorial-tasks.html
 [macros]: tutorial-macros.html
 [ffi]: tutorial-ffi.html
-[rustpkg]: tutorial-rustpkg.html
+[rustpkg]: rustpkg.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 

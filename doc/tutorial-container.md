@@ -4,14 +4,14 @@
 
 The container traits are defined in the `std::container` module.
 
-## Unique and managed vectors
+## Unique vectors
 
-Vectors have `O(1)` indexing and removal from the end, along with `O(1)`
-amortized insertion. Vectors are the most common container in Rust, and are
-flexible enough to fit many use cases.
+Vectors have `O(1)` indexing, push (to the end) and pop (from the end). Vectors
+are the most common container in Rust, and are flexible enough to fit many use
+cases.
 
 Vectors can also be sorted and used as efficient lookup tables with the
-`std::vec::bsearch` function, if all the elements are inserted at one time and
+`bsearch()` method, if all the elements are inserted at one time and
 deletions are unnecessary.
 
 ## Maps and sets
@@ -42,10 +42,15 @@ implementing the `IterBytes` trait.
 
 ## Double-ended queues
 
-The `extra::deque` module implements a double-ended queue with `O(1)` amortized
-inserts and removals from both ends of the container. It also has `O(1)`
-indexing like a vector. The contained elements are not required to be copyable,
-and the queue will be sendable if the contained type is sendable.
+The `extra::ringbuf` module implements a double-ended queue with `O(1)`
+amortized inserts and removals from both ends of the container. It also has
+`O(1)` indexing like a vector. The contained elements are not required to be
+copyable, and the queue will be sendable if the contained type is sendable.
+Its interface `Deque` is defined in `extra::collections`.
+
+The `extra::dlist` module implements a double-ended linked list, also
+implementing the `Deque` trait, with `O(1)` removals and inserts at either end,
+and `O(1)` concatenation.
 
 ## Priority queues
 
@@ -197,11 +202,11 @@ The function `range` (or `range_inclusive`) allows to simply iterate through a g
 
 ~~~
 for i in range(0, 5) {
-  printf!("%d ", i) // prints "0 1 2 3 4"
+  print!("{} ", i) // prints "0 1 2 3 4"
 }
 
 for i in std::iter::range_inclusive(0, 5) { // needs explicit import
-  printf!("%d ", i) // prints "0 1 2 3 4 5"
+  print!("{} ", i) // prints "0 1 2 3 4 5"
 }
 ~~~
 
@@ -233,7 +238,7 @@ let mut it = xs.iter().zip(ys.iter());
 
 // print out the pairs of elements up to (&3, &"baz")
 for (x, y) in it {
-    printfln!("%d %s", *x, *y);
+    println!("{} {}", *x, *y);
 
     if *x == 3 {
         break;
@@ -241,7 +246,7 @@ for (x, y) in it {
 }
 
 // yield and print the last pair from the iterator
-printfln!("last: %?", it.next());
+println!("last: {:?}", it.next());
 
 // the iterator is now fully consumed
 assert!(it.next().is_none());
@@ -335,13 +340,13 @@ another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 ~~~
 let xs = [1, 2, 3, 4, 5, 6];
 let mut it = xs.iter();
-printfln!("%?", it.next()); // prints `Some(&1)`
-printfln!("%?", it.next()); // prints `Some(&2)`
-printfln!("%?", it.next_back()); // prints `Some(&6)`
+println!("{:?}", it.next()); // prints `Some(&1)`
+println!("{:?}", it.next()); // prints `Some(&2)`
+println!("{:?}", it.next_back()); // prints `Some(&6)`
 
 // prints `5`, `4` and `3`
 for &x in it.invert() {
-    printfln!("%?", x)
+    println!("{}", x)
 }
 ~~~
 
@@ -356,11 +361,11 @@ let xs = [1, 2, 3, 4];
 let ys = [5, 6, 7, 8];
 let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 
-printfln!("%?", it.next()); // prints `Some(2)`
+println!("{:?}", it.next()); // prints `Some(2)`
 
 // prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
 for x in it.invert() {
-    printfln!("%?", x);
+    println!("{}", x);
 }
 ~~~
 
@@ -387,17 +392,17 @@ underlying iterators are.
 let xs = [1, 2, 3, 4, 5];
 let ys = ~[7, 9, 11];
 let mut it = xs.iter().chain(ys.iter());
-printfln!("%?", it.idx(0)); // prints `Some(&1)`
-printfln!("%?", it.idx(5)); // prints `Some(&7)`
-printfln!("%?", it.idx(7)); // prints `Some(&11)`
-printfln!("%?", it.idx(8)); // prints `None`
+println!("{:?}", it.idx(0)); // prints `Some(&1)`
+println!("{:?}", it.idx(5)); // prints `Some(&7)`
+println!("{:?}", it.idx(7)); // prints `Some(&11)`
+println!("{:?}", it.idx(8)); // prints `None`
 
 // yield two elements from the beginning, and one from the end
 it.next();
 it.next();
 it.next_back();
 
-printfln!("%?", it.idx(0)); // prints `Some(&3)`
-printfln!("%?", it.idx(4)); // prints `Some(&9)`
-printfln!("%?", it.idx(6)); // prints `None`
+println!("{:?}", it.idx(0)); // prints `Some(&3)`
+println!("{:?}", it.idx(4)); // prints `Some(&9)`
+println!("{:?}", it.idx(6)); // prints `None`
 ~~~
