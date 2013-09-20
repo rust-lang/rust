@@ -307,6 +307,7 @@ impl Rem<f64,f64> for f64 {
 }
 #[cfg(not(test))]
 impl Neg<f64> for f64 {
+    #[inline]
     fn neg(&self) -> f64 { -*self }
 }
 
