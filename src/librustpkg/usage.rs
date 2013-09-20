@@ -150,8 +150,9 @@ Options:
 }
 
 pub fn init() {
-    io::println("rustpkg init name
+    io::println("rustpkg init
 
-This makes a new workspace for working on a project named name.
+This will turn the current working directory into a workspace. The first
+command you run when starting off a new project.
 ");
 }
