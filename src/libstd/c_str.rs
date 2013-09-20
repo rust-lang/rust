@@ -250,7 +250,7 @@ impl<'self> ToCStr for &'self str {
 }
 
 // The length of the stack allocated buffer for `vec.with_c_str()`
-static BUF_LEN: uint = 32;
+static BUF_LEN: uint = 128;
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
