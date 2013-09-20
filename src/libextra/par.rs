@@ -14,7 +14,7 @@ use std::num;
 use std::ptr;
 use std::sys;
 use std::vec;
-use future_spawn = future::spawn;
+use future::Future;
 
 /**
  * The maximum number of tasks this module will spawn for a single
@@ -55,7 +55,7 @@ fn map_slices<A:Clone + Send,B:Clone + Send>(
             do xs.as_imm_buf |p, _len| {
                 let f = f();
                 let base = base;
-                let f = do future_spawn() || {
+                let f = do Future::spawn() || {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base as int),
