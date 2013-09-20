@@ -8,6 +8,58 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+
+C-string manipulation and management
+
+This modules provides the basic methods for creating and manipulating
+null-terminated strings for use with FFI calls (back to C). Most C APIs require
+that the string being passed to them is null-terminated, and by default rust's
+string types are *not* null terminated.
+
+The other problem with translating Rust strings to C strings is that Rust
+strings can validly contain a null-byte in the middle of the string (0 is a
+valid unicode codepoint). This means that not all Rust strings can actually be
+translated to C strings.
+
+# Creation of a C string
+
+A C string is managed through the `CString` type defined in this module. It
+"owns" the internal buffer of characters and will automatically deallocate the
+buffer when the string is dropped. The `ToCStr` trait is implemented for `&str`
+and `&[u8]`, but the conversions can fail due to some of the limitations
+explained above.
+
+This also means that currently whenever a C string is created, an allocation
+must be performed to place the data elsewhere (the lifetime of the C string is
+not tied to the lifetime of the original string/data buffer). If C strings are
+heavily used in applications, then caching may be advisable to prevent
+unnecessary amounts of allocations.
+
+An example of creating and using a C string would be:
+
+~~~{.rust}
+use std::libc;
+externfn!(fn puts(s: *libc::c_char))
+
+let my_string = "Hello, world!";
+
+// Allocate the C string with an explicit local that owns the string. The
+// `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
+let my_c_string = my_string.to_c_str();
+do my_c_string.with_ref |c_buffer| {
+    unsafe { puts(c_buffer); }
+}
+
+// Don't save off the allocation of the C string, the `c_buffer` will be
+// deallocated when this block returns!
+do my_string.with_c_str |c_buffer| {
+    unsafe { puts(c_buffer); }
+}
+~~~
+
+*/
+
 use cast;
 use iter::{Iterator, range};
 use libc;
