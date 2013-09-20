@@ -39,7 +39,7 @@ pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 // Reexported functions
-pub use io::{print, println};
+pub use io::{print, println, puts};
 pub use iter::range;
 pub use from_str::from_str;
 

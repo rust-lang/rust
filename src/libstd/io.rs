@@ -1702,6 +1702,22 @@ pub fn println(s: &str) {
     stdout().write_line(s);
 }
 
+/**
+* Prints every object that implements the ToStr trait to standard output, followed by a newline.
+*
+* It works like, eg, ruby's puts.
+*
+* # Example
+*
+* ~~~ {.rust}
+* // puts is imported into the prelude, and so is always available.
+* puts(3u);
+* ~~~
+*/
+pub fn puts<T: ToStr>(input: T) {
+    stdout().write_line(input.to_str());
+}
+
 pub struct BytesWriter {
     bytes: @mut ~[u8],
     pos: @mut uint,
