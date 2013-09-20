@@ -16,7 +16,7 @@ documentation.
 > the binary installer the Windows build requires a MinGW installation,
 > the precise details of which are not discussed here.
 
-[tutorial]: http://static.rust-lang.org/doc/tutorial.html
+[tutorial]: http://static.rust-lang.org/doc/master/tutorial.html
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe
 
@@ -61,7 +61,7 @@ documentation.
 
 [repo]: https://github.com/mozilla/rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/tutorial.html
+[tutorial]: http://static.rust-lang.org/doc/master/tutorial.html
 
 ## Notes
 
