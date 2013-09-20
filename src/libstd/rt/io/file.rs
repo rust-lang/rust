@@ -479,25 +479,29 @@ pub trait FileSystemInfo {
 ///
 /// * Check if a file exists, reading from it if so
 ///
-///     use std;
-///     use std::path::Path;
-///     use std::rt::io::file::{FileInfo, FileReader};
+/// ~~~{.rust}
+/// use std;
+/// use std::path::Path;
+/// use std::rt::io::file::{FileInfo, FileReader};
 ///
-///     let f = &Path("/some/file/path.txt");
-///     if f.exists() {
-///         let reader = f.open_reader(Open);
-///         let mut mem = [0u8, 8*64000];
-///         reader.read(mem);
-///         // ...
-///     }
+/// let f = &Path("/some/file/path.txt");
+/// if f.exists() {
+///     let reader = f.open_reader(Open);
+///     let mut mem = [0u8, 8*64000];
+///     reader.read(mem);
+///     // ...
+/// }
+/// ~~~
 ///
 /// * Is the given path a file?
 ///
-///    let f = get_file_path_from_wherever();
-///    match f.is_file() {
-///        true => doing_something_with_a_file(f),
-///        _ => {}
-///    }
+/// ~~~{.rust}
+/// let f = get_file_path_from_wherever();
+/// match f.is_file() {
+///    true => doing_something_with_a_file(f),
+///    _ => {}
+/// }
+/// ~~~
 pub trait FileInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) points at a "regular file" on the FS. Will return
@@ -572,27 +576,31 @@ impl FileInfo for Path { }
 ///
 /// * Check if a directory exists, `mkdir`'ing it if not
 ///
-///     use std;
-///     use std::path::Path;
-///     use std::rt::io::file::{DirectoryInfo};
+/// ~~~{.rust}
+/// use std;
+/// use std::path::Path;
+/// use std::rt::io::file::{DirectoryInfo};
 ///
-///     let dir = &Path("/some/dir");
-///     if !dir.exists() {
-///         dir.mkdir();
-///     }
+/// let dir = &Path("/some/dir");
+/// if !dir.exists() {
+///     dir.mkdir();
+/// }
+/// ~~~
 ///
 /// * Is the given path a directory? If so, iterate on its contents
 ///
-///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
-///         if dir.is_dir() {
-///             let contents = dir.readdir();
-///             for entry in contents.iter() {
-///                 if entry.is_dir() { visit_dirs(entry, cb); }
-///                 else { cb(entry); }
-///             }
+/// ~~~{.rust}
+/// fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
+///     if dir.is_dir() {
+///         let contents = dir.readdir();
+///         for entry in contents.iter() {
+///             if entry.is_dir() { visit_dirs(entry, cb); }
+///             else { cb(entry); }
 ///         }
-///         else { fail!("nope"); }
 ///     }
+///     else { fail!("nope"); }
+/// }
+/// ~~~
 trait DirectoryInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) is pointing at a directory in the underlying FS.
@@ -678,7 +686,8 @@ trait DirectoryInfo : FileSystemInfo {
 /// `DirectoryInfo` impl for `path::Path`
 impl DirectoryInfo for Path { }
 
-fn file_test_smoke_test_impl() {
+#[test]
+fn file_test_io_smoke_test() {
     do run_in_mt_newsched_task {
         let message = "it's alright. have a good time";
         let filename = &Path("./tmp/file_rt_io_file_test.txt");
@@ -701,11 +710,7 @@ fn file_test_smoke_test_impl() {
 }
 
 #[test]
-fn file_test_io_smoke_test() {
-    file_test_smoke_test_impl();
-}
-
-fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
+fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
     do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_that_does_not_exist.txt");
         let mut called = false;
@@ -718,12 +723,9 @@ fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
         assert!(called);
     }
 }
-#[test]
-fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
-    file_test_invalid_path_opened_without_create_should_raise_condition_impl();
-}
 
-fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
+#[test]
+fn file_test_iounlinking_invalid_path_should_raise_condition() {
     do run_in_mt_newsched_task {
         let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
         let mut called = false;
@@ -735,12 +737,9 @@ fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
         assert!(called);
     }
 }
-#[test]
-fn file_test_iounlinking_invalid_path_should_raise_condition() {
-    file_test_unlinking_invalid_path_should_raise_condition_impl();
-}
 
-fn file_test_io_non_positional_read_impl() {
+#[test]
+fn file_test_io_non_positional_read() {
     do run_in_mt_newsched_task {
         use str;
         let message = "ten-four";
@@ -768,11 +767,7 @@ fn file_test_io_non_positional_read_impl() {
 }
 
 #[test]
-fn file_test_io_non_positional_read() {
-    file_test_io_non_positional_read_impl();
-}
-
-fn file_test_io_seeking_impl() {
+fn file_test_io_seek_and_tell_smoke_test() {
     do run_in_mt_newsched_task {
         use str;
         let message = "ten-four";
@@ -801,11 +796,7 @@ fn file_test_io_seeking_impl() {
 }
 
 #[test]
-fn file_test_io_seek_and_tell_smoke_test() {
-    file_test_io_seeking_impl();
-}
-
-fn file_test_io_seek_and_write_impl() {
+fn file_test_io_seek_and_write() {
     do run_in_mt_newsched_task {
         use str;
         let initial_msg =   "food-is-yummy";
@@ -831,11 +822,7 @@ fn file_test_io_seek_and_write_impl() {
 }
 
 #[test]
-fn file_test_io_seek_and_write() {
-    file_test_io_seek_and_write_impl();
-}
-
-fn file_test_io_seek_shakedown_impl() {
+fn file_test_io_seek_shakedown() {
     do run_in_mt_newsched_task {
         use str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
@@ -868,11 +855,6 @@ fn file_test_io_seek_shakedown_impl() {
         }
         unlink(filename);
     }
-}
-
-#[test]
-fn file_test_io_seek_shakedown() {
-    file_test_io_seek_shakedown_impl();
 }
 
 #[test]
