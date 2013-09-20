@@ -247,6 +247,11 @@ impl<'self> ToCStr for &'self str {
     fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
         self.as_bytes().with_c_str(f)
     }
+
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.as_bytes().with_c_str_unchecked(f)
+    }
 }
 
 // The length of the stack allocated buffer for `vec.with_c_str()`
@@ -291,6 +296,23 @@ impl<'self> ToCStr for &'self [u8] {
 
                         f(buf as *libc::c_char)
                     }
+                }
+            }
+        } else {
+            self.to_c_str().with_ref(f)
+        }
+    }
+
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        if self.len() < BUF_LEN {
+            do self.as_imm_buf |self_buf, self_len| {
+                let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+
+                do buf.as_mut_buf |buf, _| {
+                    ptr::copy_memory(buf, self_buf, self_len);
+                    *ptr::mut_offset(buf, self_len as int) = 0;
+
+                    f(buf as *libc::c_char)
                 }
             }
         } else {
@@ -615,5 +637,30 @@ mod bench {
     #[bench]
     fn bench_with_c_str_long(bh: &mut BenchHarness) {
         bench_with_c_str(bh, s_long)
+    }
+
+    fn bench_with_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            unsafe {
+                do s.with_c_str_unchecked |c_str_buf| {
+                    check(s, c_str_buf)
+                }
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_short(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_medium(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_long(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_long)
     }
 }
