@@ -734,7 +734,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use rand::{XorShiftRng,RngUtil};
+    use rand::{XorShiftRng, Rng};
     use float;
     use to_str::ToStr;
 

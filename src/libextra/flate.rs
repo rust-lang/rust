@@ -106,15 +106,15 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 mod tests {
     use super::*;
     use std::rand;
-    use std::rand::RngUtil;
+    use std::rand::Rng;
 
     #[test]
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
         do 20.times {
-            let range = r.gen_uint_range(1, 10);
-            words.push(r.gen_bytes(range));
+            let range = r.gen_integer_range(1u, 10);
+            words.push(r.gen_vec::<u8>(range));
         }
         do 20.times {
             let mut input = ~[];

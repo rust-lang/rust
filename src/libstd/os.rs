@@ -1718,7 +1718,7 @@ mod tests {
     use os::{remove_file, setenv, unsetenv};
     use os;
     use path::Path;
-    use rand::RngUtil;
+    use rand::Rng;
     use rand;
     use run;
     use str::StrSlice;
@@ -1738,7 +1738,7 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         let mut rng = rand::rng();
-        let n = ~"TEST" + rng.gen_str(10u);
+        let n = ~"TEST" + rng.gen_ascii_str(10u);
         assert!(getenv(n).is_none());
         n
     }

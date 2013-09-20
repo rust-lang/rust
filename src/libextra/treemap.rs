@@ -874,7 +874,7 @@ mod test_treemap {
 
     use super::*;
 
-    use std::rand::RngUtil;
+    use std::rand::Rng;
     use std::rand;
 
     #[test]
@@ -1028,7 +1028,7 @@ mod test_treemap {
             }
 
             do 30.times {
-                let r = rng.gen_uint_range(0, ctrl.len());
+                let r = rng.gen_integer_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r);
                 assert!(map.remove(&key));
                 check_structure(&map);
