@@ -313,6 +313,36 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
         let target_obj_ty = expr_ty_adjusted(bcx, expr);
         debug!("auto_borrow_obj(target=%s)",
                target_obj_ty.repr(tcx));
+
+        // Extract source store information
+        let (source_store, source_mutbl) = match ty::get(source_datum.ty).sty {
+            ty::ty_trait(_, _, s, m, _) => (s, m),
+            _ => {
+                bcx.sess().span_bug(
+                    expr.span,
+                    fmt!("auto_borrow_trait_obj expected a trait, found %s",
+                         source_datum.ty.repr(bcx.tcx())));
+            }
+        };
+
+        // check if any borrowing is really needed or we could reuse the source_datum instead
+        match ty::get(target_obj_ty).sty {
+            ty::ty_trait(_, _, ty::RegionTraitStore(target_scope), target_mutbl, _) => {
+                if target_mutbl == ast::MutImmutable && target_mutbl == source_mutbl {
+                    match source_store {
+                        ty::RegionTraitStore(source_scope) => {
+                            if tcx.region_maps.is_subregion_of(target_scope, source_scope) {
+                                return DatumBlock { bcx: bcx, datum: source_datum };
+                            }
+                        },
+                        _ => {}
+
+                    };
+                }
+            },
+            _ => {}
+        }
+
         let scratch = scratch_datum(bcx, target_obj_ty,
                                     "__auto_borrow_obj", false);
 
@@ -331,15 +361,6 @@ pub fn trans_to_datum(bcx: @mut Block, expr: @ast::Expr) -> DatumBlock {
         // ~T, or &T, depending on source_obj_ty.
         let source_data_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_box]);
         let source_data = Load(bcx, source_data_ptr); // always a ptr
-        let (source_store, source_mutbl) = match ty::get(source_datum.ty).sty {
-            ty::ty_trait(_, _, s, m, _) => (s, m),
-            _ => {
-                bcx.sess().span_bug(
-                    expr.span,
-                    fmt!("auto_borrow_trait_obj expected a trait, found %s",
-                         source_datum.ty.repr(bcx.tcx())));
-            }
-        };
         let target_data = match source_store {
             ty::BoxTraitStore(*) => {
                 // For deref of @T or @mut T, create a dummy datum and
