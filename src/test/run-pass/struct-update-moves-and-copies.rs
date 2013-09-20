@@ -64,10 +64,10 @@ fn test0() {
     assert_eq!(f.inner.copied,    5);
     assert_eq!(*f.inner.moved,    6);
 
-    assert_eq!(b.inner.copied,    1);
+    assert_eq!(b.inner.copied,    5);
     assert_eq!(*b.inner.moved,    7);
 
-    assert_eq!(c.inner.copied,    1);
+    assert_eq!(c.inner.copied,    5);
     assert_eq!(*c.inner.moved,    8);
 }
 
