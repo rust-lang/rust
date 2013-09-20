@@ -19,14 +19,14 @@ pub fn main() {
                     //~^^ ERROR cannot move out of dereference of & pointer
                 }
                 _ => {
-                    ::std::util::unreachable();
+                    unreachable!();
                 }
             }
             let z = tail[0].clone();
             info!(fmt!("%?", z));
         }
         _ => {
-            ::std::util::unreachable();
+            unreachable!();
         }
     }
 }
