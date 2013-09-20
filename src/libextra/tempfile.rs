@@ -12,7 +12,7 @@
 
 
 use std::os;
-use std::rand::RngUtil;
+use std::rand::Rng;
 use std::rand;
 
 /// Attempts to make a temporary directory inside of `tmpdir` whose name will
@@ -20,7 +20,7 @@ use std::rand;
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let mut r = rand::rng();
     for _ in range(0u, 1000) {
-        let p = tmpdir.push(r.gen_str(16) + suffix);
+        let p = tmpdir.push(r.gen_ascii_str(16) + suffix);
         if os::make_dir(&p, 0x1c0) { // 700
             return Some(p);
         }

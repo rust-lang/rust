@@ -43,7 +43,7 @@ pub trait Deque<T> : Mutable {
 mod bench {
     use std::container::MutableMap;
     use std::{vec, rand};
-    use std::rand::RngUtil;
+    use std::rand::Rng;
     use test::BenchHarness;
 
     pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
