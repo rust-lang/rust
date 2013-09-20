@@ -130,6 +130,7 @@ Version 0.8 (October 2013)
       * rustc's debug info generation (`-Z debug-info`) is greatly improved.
       * rustc accepts `--target-cpu` to compile to a specific CPU architecture,
         similarly to gcc's `--march` flag.
+      * rustc's performance compiling small crates is much better.
       * rustpkg has received many improvements.
       * rustpkg supports git tags as package IDs.
       * rustpkg builds into target-specific directories so it can be used for
