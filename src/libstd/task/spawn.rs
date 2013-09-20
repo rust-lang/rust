@@ -182,7 +182,7 @@ fn check_generation(_younger: uint, _older: uint) { }
 
 #[inline] #[cfg(test)]
 fn incr_generation(ancestors: &AncestorList) -> uint {
-    ancestors.map_default(0, |arc| access_ancestors(arc, |a| a.generation+1))
+    ancestors.as_ref().map_default(0, |arc| access_ancestors(arc, |a| a.generation+1))
 }
 #[inline] #[cfg(not(test))]
 fn incr_generation(_ancestors: &AncestorList) -> uint { 0 }
@@ -243,7 +243,7 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
-        do ancestors.map_default((None,false)) |ancestor_arc| {
+        do ancestors.as_ref().map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
                 // Argh, but we couldn't give it to coalesce() otherwise.
@@ -386,7 +386,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: KillHandle,
                            is_member: bool) -> bool {
     let me = Cell::new(me); // :(
     // If 'None', the group was failing. Can't enlist.
-    do state.map_mut_default(false) |group| {
+    do state.as_mut().map_default(false) |group| {
         (if is_member {
             &mut group.members
         } else {
@@ -400,7 +400,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: KillHandle,
 fn leave_taskgroup(state: TaskGroupInner, me: &KillHandle, is_member: bool) {
     let me = Cell::new(me); // :(
     // If 'None', already failing and we've already gotten a kill signal.
-    do state.map_mut |group| {
+    do state.as_mut().map |group| {
         (if is_member {
             &mut group.members
         } else {
@@ -414,7 +414,7 @@ fn kill_taskgroup(state: Option<TaskGroupData>, me: &KillHandle) {
     // Might already be None, if somebody is failing simultaneously.
     // That's ok; only one task needs to do the dirty work. (Might also
     // see 'None' if somebody already failed and we got a kill signal.)
-    do state.map_move |TaskGroupData { members: members, descendants: descendants }| {
+    do state.map |TaskGroupData { members: members, descendants: descendants }| {
         for sibling in members.move_iter() {
             // Skip self - killing ourself won't do much good.
             if &sibling != me {
@@ -439,7 +439,7 @@ fn taskgroup_key() -> local_data::Key<@@mut Taskgroup> {
 struct RuntimeGlue;
 impl RuntimeGlue {
     fn kill_task(mut handle: KillHandle) {
-        do handle.kill().map_move |killed_task| {
+        do handle.kill().map |killed_task| {
             let killed_task = Cell::new(killed_task);
             do Local::borrow |sched: &mut Scheduler| {
                 sched.enqueue_task(killed_task.take());
@@ -491,7 +491,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         // with_my_taskgroup will lazily initialize the parent's taskgroup if
         // it doesn't yet exist. We don't want to call it in the unlinked case.
         do RuntimeGlue::with_my_taskgroup |spawner_group| {
-            let ancestors = AncestorList(spawner_group.ancestors.map(|x| x.clone()));
+            let ancestors = AncestorList(spawner_group.ancestors.as_ref().map(|x| x.clone()));
             if linked {
                 // Child is in the same group as spawner.
                 // Child's ancestors are spawner's ancestors.
@@ -562,7 +562,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
-        let enlist_success = do child_data.take().map_move_default(true) |child_data| {
+        let enlist_success = do child_data.take().map_default(true) |child_data| {
             let child_data = Cell::new(child_data); // :(
             do Local::borrow |me: &mut Task| {
                 let (child_tg, ancestors) = child_data.take();

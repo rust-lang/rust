@@ -74,7 +74,7 @@ trait HomingIO {
                      *
                      * RESOLUTION IDEA: Since the task is dead, we should just abort the IO action.
                      */
-                    do task.wake().map_move |mut task| {
+                    do task.wake().map |mut task| {
                         *ptr = Some(task.take_unwrap_home());
                         self.home().send(PinnedTask(task));
                     };
@@ -97,7 +97,7 @@ trait HomingIO {
                  *
                  * RESOLUTION IDEA: Since the task is dead, we should just abort the IO action.
                  */
-                do task.wake().map_move |mut task| {
+                do task.wake().map |mut task| {
                     task.give_home(old.take());
                     scheduler.make_handle().send(TaskFromFriend(task));
                 };
@@ -1672,7 +1672,7 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
                 let scheduler: ~Scheduler = Local::take();
                 do scheduler.deschedule_running_task_and_then |_, task| {
                     // unblock task
-                    do task.wake().map_move |task| {
+                    do task.wake().map |task| {
                       // send self to sched2
                       tasksFriendHandle.take().send(TaskFromFriend(task));
                     };

@@ -588,7 +588,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
                         id: NodeId,
                         _: ()) {
         self.operation.visit_id(id);
-        struct_def.ctor_id.map(|&ctor_id| self.operation.visit_id(ctor_id));
+        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
         visit::walk_struct_def(self, struct_def, ident, generics, id, ());
     }
 
@@ -783,7 +783,7 @@ pub fn new_sctable_internal() -> SCTable {
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_sctable() -> @mut SCTable {
     local_data_key!(sctable_key: @@mut SCTable)
-    match local_data::get(sctable_key, |k| k.map_move(|k| *k)) {
+    match local_data::get(sctable_key, |k| k.map(|k| *k)) {
         None => {
             let new_table = @@mut new_sctable_internal();
             local_data::set(sctable_key,new_table);
@@ -820,7 +820,7 @@ pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
 pub fn get_resolve_table() -> @mut ResolveTable {
     local_data_key!(resolve_table_key: @@mut ResolveTable)
-    match local_data::get(resolve_table_key, |k| k.map(|&k| *k)) {
+    match local_data::get(resolve_table_key, |k| k.map(|k| *k)) {
         None => {
             let new_table = @@mut HashMap::new();
             local_data::set(resolve_table_key,new_table);

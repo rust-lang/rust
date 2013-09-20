@@ -582,7 +582,7 @@ fn expand_non_macro_stmt(exts: SyntaxEnv, s: &Stmt, fld: &MacroExpander)
             // add them to the existing pending renames:
             for pr in new_pending_renames.iter() {pending_renames.push(*pr)}
             // also, don't forget to expand the init:
-            let new_init_opt = init.map(|e| fld.fold_expr(*e));
+            let new_init_opt = init.map(|e| fld.fold_expr(e));
             let rewritten_local =
                 @Local {
                     is_mutbl: is_mutbl,
@@ -725,7 +725,7 @@ pub fn expand_block_elts(exts: SyntaxEnv, b: &Block, fld: &MacroExpander)
             None => ()
         }
     }
-    let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(*x)));
+    let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(x)));
     Block{
         view_items: new_view_items,
         stmts: new_stmts,

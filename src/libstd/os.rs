@@ -514,7 +514,7 @@ pub fn self_exe_path() -> Option<Path> {
         }
     }
 
-    load_self().map_move(|path| Path(path).dir_path())
+    load_self().map(|path| Path(path).dir_path())
 }
 
 

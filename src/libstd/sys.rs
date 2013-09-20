@@ -142,7 +142,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
             // Be careful not to allocate in this block, if we're failing we may
             // have been failing due to a lack of memory in the first place...
             do Local::borrow |task: &mut Task| {
-                let n = task.name.map(|n| n.as_slice()).unwrap_or("<unnamed>");
+                let n = task.name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
                 format_args!(|args| { task.logger.log(args) },
                              "task '{}' failed at '{}', {}:{}",
                              n, msg.as_slice(), file.as_slice(), line);

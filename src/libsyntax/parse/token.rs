@@ -510,7 +510,7 @@ static RESERVED_KEYWORD_FINAL: uint = 71;
 // fresh one.
 pub fn get_ident_interner() -> @ident_interner {
     local_data_key!(key: @@::parse::token::ident_interner)
-    match local_data::get(key, |k| k.map_move(|k| *k)) {
+    match local_data::get(key, |k| k.map(|k| *k)) {
         Some(interner) => *interner,
         None => {
             let interner = mk_fresh_ident_interner();
