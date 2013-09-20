@@ -61,7 +61,7 @@ documentation.
 
 [repo]: https://github.com/mozilla/rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/tutorial.html
+[tutorial]: http://static.rust-lang.org/doc/0.7/tutorial.html
 
 ## Notes
 
