@@ -277,9 +277,6 @@ impl<'self> ToCStr for &'self [u8] {
         }
     }
 
-    /// WARNING: This function uses an optimization to only malloc a temporary
-    /// CString when the source string is small. Do not save a reference to
-    /// the `*libc::c_char` as it may be invalid after this function call.
     fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
         if self.len() < BUF_LEN {
             do self.as_imm_buf |self_buf, self_len| {
