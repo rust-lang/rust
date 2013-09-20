@@ -3,7 +3,7 @@ pub fn main() {
     if !x.is_empty() {
         let el = match x {
             [1, ..ref tail] => &tail[0],
-            _ => ::std::util::unreachable()
+            _ => unreachable!()
         };
         printfln!("%d", *el);
     }

@@ -18,7 +18,6 @@ use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::visit;
 use syntax::visit::Visitor;
-use std::util;
 
 struct EntryContext {
     session: Session,
@@ -94,7 +93,7 @@ fn find_item(item: @item, ctxt: &mut EntryContext) {
                             ctxt.non_main_fns.push((item.id, item.span));
                         }
                     }
-                    _ => util::unreachable()
+                    _ => unreachable!()
                 }
             }
 
