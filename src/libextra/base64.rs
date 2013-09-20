@@ -64,11 +64,11 @@ impl<'self> ToBase64 for &'self [u8] {
      *
      * ```rust
      * extern mod extra;
-     * use extra::base64::{ToBase64, standard};
+     * use extra::base64::{ToBase64, STANDARD};
      *
      * fn main () {
-     *     let str = [52,32].to_base64(standard);
-     *     println!("{}", str);
+     *     let str = [52,32].to_base64(STANDARD);
+     *     println!("base 64 output: {}", str);
      * }
      * ```
      */
@@ -172,16 +172,19 @@ impl<'self> FromBase64 for &'self str {
      *
      * ```rust
      * extern mod extra;
-     * use extra::base64::{ToBase64, FromBase64, standard};
+     * use extra::base64::{ToBase64, FromBase64, STANDARD};
      * use std::str;
      *
      * fn main () {
-     *     let hello_str = "Hello, World".to_base64(standard);
-     *     println!("{}", hello_str);
-     *     let bytes = hello_str.from_base64();
-     *     println!("{:?}", bytes);
-     *     let result_str = str::from_utf8(bytes);
-     *     println!("{}", result_str);
+     *     let hello_str = bytes!("Hello, World").to_base64(STANDARD);
+     *     println!("base64 output: {}", hello_str);
+     *     let res = hello_str.from_base64();
+     *     if res.is_ok() {
+     *       let optBytes = str::from_utf8_opt(res.unwrap());
+     *       if optBytes.is_some() {
+     *         println!("decoded from base64: {}", optBytes.unwrap());
+     *       }
+     *     }
      * }
      * ```
      */
