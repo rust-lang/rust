@@ -118,6 +118,17 @@ impl<T> ChanOne<T> {
             rtassert!(!rt::in_sched_context());
         }
 
+        // In order to prevent starvation of other tasks in situations
+        // where a task sends repeatedly without ever receiving, we
+        // occassionally yield instead of doing a send immediately.
+        // Only doing this if we're doing a rescheduling send,
+        // otherwise the caller is expecting not to context switch.
+        if do_resched {
+            // XXX: This TLS hit should be combined with other uses of the scheduler below
+            let sched: ~Scheduler = Local::take();
+            sched.maybe_yield();
+        }
+
         let mut this = self;
         let mut recvr_active = true;
         let packet = this.packet();
