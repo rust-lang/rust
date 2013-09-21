@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[macro_escape];
+#[doc(hidden)];
 
 macro_rules! rterrln (
     ($( $arg:expr),+) => ( {
