@@ -23,25 +23,6 @@ pub fn id<T>(x: T) -> T { x }
 #[inline]
 pub fn ignore<T>(_x: T) { }
 
-/// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
-/// original value of `*ptr`.
-///
-/// NB: This function accepts `@mut T` and not `&mut T` to avoid
-/// an obvious borrowck hazard. Typically passing in `&mut T` will
-/// cause borrow check errors because it freezes whatever location
-/// that `&mut T` is stored in (either statically or dynamically).
-#[inline]
-pub fn with<T,R>(
-    ptr: @mut T,
-    value: T,
-    op: &fn() -> R) -> R
-{
-    let prev = replace(ptr, value);
-    let result = op();
-    *ptr = prev;
-    return result;
-}
-
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
