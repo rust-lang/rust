@@ -6,7 +6,7 @@ Version 0.8 (October 2013)
    * Language
       * The `for` loop syntax has changed to work with the `Iterator` trait.
       * At long last, unwinding works on Windows.
-      * Default methods definitely mostly work.
+      * Default methods are ready for use.
       * Many trait inheritance bugs fixed.
       * Owned and borrowed trait objects work more reliably.
       * `copy` is no longer a keyword. It has been replaced by the `Clone` trait.
@@ -56,7 +56,7 @@ Version 0.8 (October 2013)
         be specified with `#[link_section = "..."]`.
       * The `proto!` syntax extension for defining bounded message protocols
         was removed.
-      * `macro_rules!` is hygenic for `let` declarations.
+      * `macro_rules!` is hygienic for `let` declarations.
       * The `#[export_name]` attribute specifies the name of a symbol.
       * `unreachable!` can be used to indicate unreachable code, and fails
         if executed.
@@ -92,7 +92,7 @@ Version 0.8 (October 2013)
       * std: Added `SharedPort` to `comm`.
       * std: `Eq` has a default method for `ne`; only `eq` is required
         in implementations.
-      * std: `Ord` has default methods for `le`, `gt` and `le`; only `lt`
+      * std: `Ord` has default methods for `le`, `gt` and `ge`; only `lt`
         is required in implementations.
       * std: `is_utf8` performance is improved, impacting many string functions.
       * std: `os::MemoryMap` provides cross-platform mmap.
@@ -130,6 +130,7 @@ Version 0.8 (October 2013)
       * rustc's debug info generation (`-Z debug-info`) is greatly improved.
       * rustc accepts `--target-cpu` to compile to a specific CPU architecture,
         similarly to gcc's `--march` flag.
+      * rustc's performance compiling small crates is much better.
       * rustpkg has received many improvements.
       * rustpkg supports git tags as package IDs.
       * rustpkg builds into target-specific directories so it can be used for
