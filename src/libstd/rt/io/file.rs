@@ -32,8 +32,7 @@ free function counterparts.
 use prelude::*;
 use super::support::PathLike;
 use super::{Reader, Writer, Seek};
-use super::{SeekStyle,SeekSet, SeekCur, SeekEnd,
-            Open, Read, Write, Create, ReadWrite};
+use super::{SeekStyle, Read, Write};
 use rt::rtio::{RtioFileStream, IoFactory, IoFactoryObject};
 use rt::io::{io_error, read_error, EndOfFile,
             FileMode, FileAccess, FileStat, IoError,
@@ -42,7 +41,6 @@ use rt::io::{io_error, read_error, EndOfFile,
 use rt::local::Local;
 use option::{Some, None};
 use path::Path;
-use super::super::test::*;
 
 /// Open a file for reading/writing, as indicated by `path`.
 ///
@@ -479,25 +477,29 @@ pub trait FileSystemInfo {
 ///
 /// * Check if a file exists, reading from it if so
 ///
-///     use std;
-///     use std::path::Path;
-///     use std::rt::io::file::{FileInfo, FileReader};
+/// ~~~{.rust}
+/// use std;
+/// use std::path::Path;
+/// use std::rt::io::file::{FileInfo, FileReader};
 ///
-///     let f = &Path("/some/file/path.txt");
-///     if f.exists() {
-///         let reader = f.open_reader(Open);
-///         let mut mem = [0u8, 8*64000];
-///         reader.read(mem);
-///         // ...
-///     }
+/// let f = &Path("/some/file/path.txt");
+/// if f.exists() {
+///     let reader = f.open_reader(Open);
+///     let mut mem = [0u8, 8*64000];
+///     reader.read(mem);
+///     // ...
+/// }
+/// ~~~
 ///
 /// * Is the given path a file?
 ///
-///    let f = get_file_path_from_wherever();
-///    match f.is_file() {
-///        true => doing_something_with_a_file(f),
-///        _ => {}
-///    }
+/// ~~~{.rust}
+/// let f = get_file_path_from_wherever();
+/// match f.is_file() {
+///    true => doing_something_with_a_file(f),
+///    _ => {}
+/// }
+/// ~~~
 pub trait FileInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) points at a "regular file" on the FS. Will return
@@ -572,27 +574,31 @@ impl FileInfo for Path { }
 ///
 /// * Check if a directory exists, `mkdir`'ing it if not
 ///
-///     use std;
-///     use std::path::Path;
-///     use std::rt::io::file::{DirectoryInfo};
+/// ~~~{.rust}
+/// use std;
+/// use std::path::Path;
+/// use std::rt::io::file::{DirectoryInfo};
 ///
-///     let dir = &Path("/some/dir");
-///     if !dir.exists() {
-///         dir.mkdir();
-///     }
+/// let dir = &Path("/some/dir");
+/// if !dir.exists() {
+///     dir.mkdir();
+/// }
+/// ~~~
 ///
 /// * Is the given path a directory? If so, iterate on its contents
 ///
-///     fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
-///         if dir.is_dir() {
-///             let contents = dir.readdir();
-///             for entry in contents.iter() {
-///                 if entry.is_dir() { visit_dirs(entry, cb); }
-///                 else { cb(entry); }
-///             }
+/// ~~~{.rust}
+/// fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
+///     if dir.is_dir() {
+///         let contents = dir.readdir();
+///         for entry in contents.iter() {
+///             if entry.is_dir() { visit_dirs(entry, cb); }
+///             else { cb(entry); }
 ///         }
-///         else { fail!("nope"); }
 ///     }
+///     else { fail!("nope"); }
+/// }
+/// ~~~
 trait DirectoryInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) is pointing at a directory in the underlying FS.
@@ -678,307 +684,291 @@ trait DirectoryInfo : FileSystemInfo {
 /// `DirectoryInfo` impl for `path::Path`
 impl DirectoryInfo for Path { }
 
-fn file_test_smoke_test_impl() {
-    do run_in_mt_newsched_task {
-        let message = "it's alright. have a good time";
-        let filename = &Path("./tmp/file_rt_io_file_test.txt");
-        {
-            let mut write_stream = open(filename, Create, ReadWrite).unwrap();
-            write_stream.write(message.as_bytes());
-        }
-        {
-            use str;
-            let mut read_stream = open(filename, Open, Read).unwrap();
-            let mut read_buf = [0, .. 1028];
-            let read_str = match read_stream.read(read_buf).unwrap() {
-                -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8(read_buf.slice_to(n))
-            };
-            assert!(read_str == message.to_owned());
-        }
-        unlink(filename);
-    }
-}
-
-#[test]
-fn file_test_io_smoke_test() {
-    file_test_smoke_test_impl();
-}
-
-fn file_test_invalid_path_opened_without_create_should_raise_condition_impl() {
-    do run_in_mt_newsched_task {
-        let filename = &Path("./tmp/file_that_does_not_exist.txt");
-        let mut called = false;
-        do io_error::cond.trap(|_| {
-            called = true;
-        }).inside {
-            let result = open(filename, Open, Read);
-            assert!(result.is_none());
-        }
-        assert!(called);
-    }
-}
-#[test]
-fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
-    file_test_invalid_path_opened_without_create_should_raise_condition_impl();
-}
-
-fn file_test_unlinking_invalid_path_should_raise_condition_impl() {
-    do run_in_mt_newsched_task {
-        let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
-        let mut called = false;
-        do io_error::cond.trap(|_| {
-            called = true;
-        }).inside {
+#[cfg(test)]
+mod test {
+    use super::super::{SeekSet, SeekCur, SeekEnd,
+                       io_error, Read, Create, Open, ReadWrite};
+    use super::super::super::test::*;
+    use option::{Some, None};
+    use path::Path;
+    use super::*;
+    use iter::range;
+    #[test]
+    fn file_test_io_smoke_test() {
+        do run_in_mt_newsched_task {
+            let message = "it's alright. have a good time";
+            let filename = &Path("./tmp/file_rt_io_file_test.txt");
+            {
+                let mut write_stream = open(filename, Create, ReadWrite).unwrap();
+                write_stream.write(message.as_bytes());
+            }
+            {
+                use str;
+                let mut read_stream = open(filename, Open, Read).unwrap();
+                let mut read_buf = [0, .. 1028];
+                let read_str = match read_stream.read(read_buf).unwrap() {
+                    -1|0 => fail!("shouldn't happen"),
+                    n => str::from_utf8(read_buf.slice_to(n))
+                };
+                assert!(read_str == message.to_owned());
+            }
             unlink(filename);
         }
-        assert!(called);
     }
-}
-#[test]
-fn file_test_iounlinking_invalid_path_should_raise_condition() {
-    file_test_unlinking_invalid_path_should_raise_condition_impl();
-}
 
-fn file_test_io_non_positional_read_impl() {
-    do run_in_mt_newsched_task {
-        use str;
-        let message = "ten-four";
-        let mut read_mem = [0, .. 8];
-        let filename = &Path("./tmp/file_rt_io_file_test_positional.txt");
-        {
-            let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
-            rw_stream.write(message.as_bytes());
+    #[test]
+    fn file_test_io_invalid_path_opened_without_create_should_raise_condition() {
+        do run_in_mt_newsched_task {
+            let filename = &Path("./tmp/file_that_does_not_exist.txt");
+            let mut called = false;
+            do io_error::cond.trap(|_| {
+                called = true;
+            }).inside {
+                let result = open(filename, Open, Read);
+                assert!(result.is_none());
+            }
+            assert!(called);
         }
-        {
-            let mut read_stream = open(filename, Open, Read).unwrap();
+    }
+
+    #[test]
+    fn file_test_iounlinking_invalid_path_should_raise_condition() {
+        do run_in_mt_newsched_task {
+            let filename = &Path("./tmp/file_another_file_that_does_not_exist.txt");
+            let mut called = false;
+            do io_error::cond.trap(|_| {
+                called = true;
+            }).inside {
+                unlink(filename);
+            }
+            assert!(called);
+        }
+    }
+
+    #[test]
+    fn file_test_io_non_positional_read() {
+        do run_in_mt_newsched_task {
+            use str;
+            let message = "ten-four";
+            let mut read_mem = [0, .. 8];
+            let filename = &Path("./tmp/file_rt_io_file_test_positional.txt");
             {
-                let read_buf = read_mem.mut_slice(0, 4);
-                read_stream.read(read_buf);
+                let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
+                rw_stream.write(message.as_bytes());
             }
             {
-                let read_buf = read_mem.mut_slice(4, 8);
-                read_stream.read(read_buf);
-            }
-        }
-        unlink(filename);
-        let read_str = str::from_utf8(read_mem);
-        assert!(read_str == message.to_owned());
-    }
-}
-
-#[test]
-fn file_test_io_non_positional_read() {
-    file_test_io_non_positional_read_impl();
-}
-
-fn file_test_io_seeking_impl() {
-    do run_in_mt_newsched_task {
-        use str;
-        let message = "ten-four";
-        let mut read_mem = [0, .. 4];
-        let set_cursor = 4 as u64;
-        let mut tell_pos_pre_read;
-        let mut tell_pos_post_read;
-        let filename = &Path("./tmp/file_rt_io_file_test_seeking.txt");
-        {
-            let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
-            rw_stream.write(message.as_bytes());
-        }
-        {
-            let mut read_stream = open(filename, Open, Read).unwrap();
-            read_stream.seek(set_cursor as i64, SeekSet);
-            tell_pos_pre_read = read_stream.tell();
-            read_stream.read(read_mem);
-            tell_pos_post_read = read_stream.tell();
-        }
-        unlink(filename);
-        let read_str = str::from_utf8(read_mem);
-        assert!(read_str == message.slice(4, 8).to_owned());
-        assert!(tell_pos_pre_read == set_cursor);
-        assert!(tell_pos_post_read == message.len() as u64);
-    }
-}
-
-#[test]
-fn file_test_io_seek_and_tell_smoke_test() {
-    file_test_io_seeking_impl();
-}
-
-fn file_test_io_seek_and_write_impl() {
-    do run_in_mt_newsched_task {
-        use str;
-        let initial_msg =   "food-is-yummy";
-        let overwrite_msg =    "-the-bar!!";
-        let final_msg =     "foo-the-bar!!";
-        let seek_idx = 3;
-        let mut read_mem = [0, .. 13];
-        let filename = &Path("./tmp/file_rt_io_file_test_seek_and_write.txt");
-        {
-            let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
-            rw_stream.write(initial_msg.as_bytes());
-            rw_stream.seek(seek_idx as i64, SeekSet);
-            rw_stream.write(overwrite_msg.as_bytes());
-        }
-        {
-            let mut read_stream = open(filename, Open, Read).unwrap();
-            read_stream.read(read_mem);
-        }
-        unlink(filename);
-        let read_str = str::from_utf8(read_mem);
-        assert!(read_str == final_msg.to_owned());
-    }
-}
-
-#[test]
-fn file_test_io_seek_and_write() {
-    file_test_io_seek_and_write_impl();
-}
-
-fn file_test_io_seek_shakedown_impl() {
-    do run_in_mt_newsched_task {
-        use str;          // 01234567890123
-        let initial_msg =   "qwer-asdf-zxcv";
-        let chunk_one = "qwer";
-        let chunk_two = "asdf";
-        let chunk_three = "zxcv";
-        let mut read_mem = [0, .. 4];
-        let filename = &Path("./tmp/file_rt_io_file_test_seek_shakedown.txt");
-        {
-            let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
-            rw_stream.write(initial_msg.as_bytes());
-        }
-        {
-            let mut read_stream = open(filename, Open, Read).unwrap();
-
-            read_stream.seek(-4, SeekEnd);
-            read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_three.to_owned());
-
-            read_stream.seek(-9, SeekCur);
-            read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_two.to_owned());
-
-            read_stream.seek(0, SeekSet);
-            read_stream.read(read_mem);
-            let read_str = str::from_utf8(read_mem);
-            assert!(read_str == chunk_one.to_owned());
-        }
-        unlink(filename);
-    }
-}
-
-#[test]
-fn file_test_io_seek_shakedown() {
-    file_test_io_seek_shakedown_impl();
-}
-
-#[test]
-fn file_test_stat_is_correct_on_is_file() {
-    do run_in_mt_newsched_task {
-        let filename = &Path("./tmp/file_stat_correct_on_is_file.txt");
-        {
-            let mut fs = open(filename, Create, ReadWrite).unwrap();
-            let msg = "hw";
-            fs.write(msg.as_bytes());
-        }
-        let stat_res = match stat(filename) {
-            Some(s) => s,
-            None => fail!("shouldn't happen")
-        };
-        assert!(stat_res.is_file);
-        unlink(filename);
-    }
-}
-
-#[test]
-fn file_test_stat_is_correct_on_is_dir() {
-    do run_in_mt_newsched_task {
-        let filename = &Path("./tmp/file_stat_correct_on_is_dir");
-        mkdir(filename);
-        let stat_res = match stat(filename) {
-            Some(s) => s,
-            None => fail!("shouldn't happen")
-        };
-        assert!(stat_res.is_dir);
-        rmdir(filename);
-    }
-}
-
-#[test]
-fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
-    do run_in_mt_newsched_task {
-        let dir = &Path("./tmp/fileinfo_false_on_dir");
-        mkdir(dir);
-        assert!(dir.is_file() == false);
-        rmdir(dir);
-    }
-}
-
-#[test]
-fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
-    do run_in_mt_newsched_task {
-        let file = &Path("./tmp/fileinfo_check_exists_b_and_a.txt");
-        {
-            let msg = "foo".as_bytes();
-            let mut w = file.open_writer(Create);
-            w.write(msg);
-        }
-        assert!(file.exists());
-        file.unlink();
-        assert!(!file.exists());
-    }
-}
-
-#[test]
-fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
-    do run_in_mt_newsched_task {
-        let dir = &Path("./tmp/before_and_after_dir");
-        assert!(!dir.exists());
-        dir.mkdir();
-        assert!(dir.exists());
-        assert!(dir.is_dir());
-        dir.rmdir();
-        assert!(!dir.exists());
-    }
-}
-
-#[test]
-fn file_test_directoryinfo_readdir() {
-    use str;
-    do run_in_mt_newsched_task {
-        let dir = &Path("./tmp/di_readdir");
-        dir.mkdir();
-        let prefix = "foo";
-        for n in range(0,3) {
-            let f = dir.push(fmt!("%d.txt", n));
-            let mut w = f.open_writer(Create);
-            let msg_str = (prefix + n.to_str().to_owned()).to_owned();
-            let msg = msg_str.as_bytes();
-            w.write(msg);
-        }
-        match dir.readdir() {
-            Some(files) => {
-                let mut mem = [0u8, .. 4];
-                for f in files.iter() {
-                    {
-                        let n = f.filestem();
-                        let mut r = f.open_reader(Open);
-                        r.read(mem);
-                        let read_str = str::from_utf8(mem);
-                        let expected = match n {
-                            Some(n) => prefix+n,
-                            None => fail!("really shouldn't happen..")
-                        };
-                        assert!(expected == read_str);
-                    }
-                    f.unlink();
+                let mut read_stream = open(filename, Open, Read).unwrap();
+                {
+                    let read_buf = read_mem.mut_slice(0, 4);
+                    read_stream.read(read_buf);
                 }
-            },
-            None => fail!("shouldn't happen")
+                {
+                    let read_buf = read_mem.mut_slice(4, 8);
+                    read_stream.read(read_buf);
+                }
+            }
+            unlink(filename);
+            let read_str = str::from_utf8(read_mem);
+            assert!(read_str == message.to_owned());
         }
-        dir.rmdir();
+    }
+
+    #[test]
+    fn file_test_io_seek_and_tell_smoke_test() {
+        do run_in_mt_newsched_task {
+            use str;
+            let message = "ten-four";
+            let mut read_mem = [0, .. 4];
+            let set_cursor = 4 as u64;
+            let mut tell_pos_pre_read;
+            let mut tell_pos_post_read;
+            let filename = &Path("./tmp/file_rt_io_file_test_seeking.txt");
+            {
+                let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
+                rw_stream.write(message.as_bytes());
+            }
+            {
+                let mut read_stream = open(filename, Open, Read).unwrap();
+                read_stream.seek(set_cursor as i64, SeekSet);
+                tell_pos_pre_read = read_stream.tell();
+                read_stream.read(read_mem);
+                tell_pos_post_read = read_stream.tell();
+            }
+            unlink(filename);
+            let read_str = str::from_utf8(read_mem);
+            assert!(read_str == message.slice(4, 8).to_owned());
+            assert!(tell_pos_pre_read == set_cursor);
+            assert!(tell_pos_post_read == message.len() as u64);
+        }
+    }
+
+    #[test]
+    fn file_test_io_seek_and_write() {
+        do run_in_mt_newsched_task {
+            use str;
+            let initial_msg =   "food-is-yummy";
+            let overwrite_msg =    "-the-bar!!";
+            let final_msg =     "foo-the-bar!!";
+            let seek_idx = 3;
+            let mut read_mem = [0, .. 13];
+            let filename = &Path("./tmp/file_rt_io_file_test_seek_and_write.txt");
+            {
+                let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
+                rw_stream.write(initial_msg.as_bytes());
+                rw_stream.seek(seek_idx as i64, SeekSet);
+                rw_stream.write(overwrite_msg.as_bytes());
+            }
+            {
+                let mut read_stream = open(filename, Open, Read).unwrap();
+                read_stream.read(read_mem);
+            }
+            unlink(filename);
+            let read_str = str::from_utf8(read_mem);
+            assert!(read_str == final_msg.to_owned());
+        }
+    }
+
+    #[test]
+    fn file_test_io_seek_shakedown() {
+        do run_in_mt_newsched_task {
+            use str;          // 01234567890123
+            let initial_msg =   "qwer-asdf-zxcv";
+            let chunk_one = "qwer";
+            let chunk_two = "asdf";
+            let chunk_three = "zxcv";
+            let mut read_mem = [0, .. 4];
+            let filename = &Path("./tmp/file_rt_io_file_test_seek_shakedown.txt");
+            {
+                let mut rw_stream = open(filename, Create, ReadWrite).unwrap();
+                rw_stream.write(initial_msg.as_bytes());
+            }
+            {
+                let mut read_stream = open(filename, Open, Read).unwrap();
+
+                read_stream.seek(-4, SeekEnd);
+                read_stream.read(read_mem);
+                let read_str = str::from_utf8(read_mem);
+                assert!(read_str == chunk_three.to_owned());
+
+                read_stream.seek(-9, SeekCur);
+                read_stream.read(read_mem);
+                let read_str = str::from_utf8(read_mem);
+                assert!(read_str == chunk_two.to_owned());
+
+                read_stream.seek(0, SeekSet);
+                read_stream.read(read_mem);
+                let read_str = str::from_utf8(read_mem);
+                assert!(read_str == chunk_one.to_owned());
+            }
+            unlink(filename);
+        }
+    }
+
+    #[test]
+    fn file_test_stat_is_correct_on_is_file() {
+        do run_in_mt_newsched_task {
+            let filename = &Path("./tmp/file_stat_correct_on_is_file.txt");
+            {
+                let mut fs = open(filename, Create, ReadWrite).unwrap();
+                let msg = "hw";
+                fs.write(msg.as_bytes());
+            }
+            let stat_res = match stat(filename) {
+                Some(s) => s,
+                None => fail!("shouldn't happen")
+            };
+            assert!(stat_res.is_file);
+            unlink(filename);
+        }
+    }
+
+    #[test]
+    fn file_test_stat_is_correct_on_is_dir() {
+        do run_in_mt_newsched_task {
+            let filename = &Path("./tmp/file_stat_correct_on_is_dir");
+            mkdir(filename);
+            let stat_res = match stat(filename) {
+                Some(s) => s,
+                None => fail!("shouldn't happen")
+            };
+            assert!(stat_res.is_dir);
+            rmdir(filename);
+        }
+    }
+
+    #[test]
+    fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
+        do run_in_mt_newsched_task {
+            let dir = &Path("./tmp/fileinfo_false_on_dir");
+            mkdir(dir);
+            assert!(dir.is_file() == false);
+            rmdir(dir);
+        }
+    }
+
+    #[test]
+    fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
+        do run_in_mt_newsched_task {
+            let file = &Path("./tmp/fileinfo_check_exists_b_and_a.txt");
+            {
+                let msg = "foo".as_bytes();
+                let mut w = file.open_writer(Create);
+                w.write(msg);
+            }
+            assert!(file.exists());
+            file.unlink();
+            assert!(!file.exists());
+        }
+    }
+
+    #[test]
+    fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
+        do run_in_mt_newsched_task {
+            let dir = &Path("./tmp/before_and_after_dir");
+            assert!(!dir.exists());
+            dir.mkdir();
+            assert!(dir.exists());
+            assert!(dir.is_dir());
+            dir.rmdir();
+            assert!(!dir.exists());
+        }
+    }
+
+    #[test]
+    fn file_test_directoryinfo_readdir() {
+        use str;
+        do run_in_mt_newsched_task {
+            let dir = &Path("./tmp/di_readdir");
+            dir.mkdir();
+            let prefix = "foo";
+            for n in range(0,3) {
+                let f = dir.push(fmt!("%d.txt", n));
+                let mut w = f.open_writer(Create);
+                let msg_str = (prefix + n.to_str().to_owned()).to_owned();
+                let msg = msg_str.as_bytes();
+                w.write(msg);
+            }
+            match dir.readdir() {
+                Some(files) => {
+                    let mut mem = [0u8, .. 4];
+                    for f in files.iter() {
+                        {
+                            let n = f.filestem();
+                            let mut r = f.open_reader(Open);
+                            r.read(mem);
+                            let read_str = str::from_utf8(mem);
+                            let expected = match n {
+                                Some(n) => prefix+n,
+                                None => fail!("really shouldn't happen..")
+                            };
+                            assert!(expected == read_str);
+                        }
+                        f.unlink();
+                    }
+                },
+                None => fail!("shouldn't happen")
+            }
+            dir.rmdir();
+        }
     }
 }
