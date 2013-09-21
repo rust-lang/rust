@@ -60,7 +60,7 @@ impl Results {
             let mut set = f();
             do timed(&mut self.random_ints) {
                 for _ in range(0, num_keys) {
-                    set.insert((rng.next() as uint) % rand_cap);
+                    set.insert(rng.gen::<uint>() % rand_cap);
                 }
             }
         }
@@ -102,7 +102,7 @@ impl Results {
             let mut set = f();
             do timed(&mut self.random_strings) {
                 for _ in range(0, num_keys) {
-                    let s = (rng.next() as uint).to_str();
+                    let s = rng.gen::<uint>().to_str();
                     set.insert(s);
                 }
             }
