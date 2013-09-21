@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Rust 0.8-pre\n"
+"Project-Id-Version: Rust 0.8\n"
 "POT-Creation-Date: 2013-08-12 02:06+0900\n"
 "PO-Revision-Date: 2013-08-05 19:40+0900\n"
 "Last-Translator: Automatically generated\n"
