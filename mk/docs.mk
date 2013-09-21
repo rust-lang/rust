@@ -213,6 +213,7 @@ else
 
 # The rustdoc executable
 RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
+RUSTDOC_NG = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc_ng$(X_$(CFG_BUILD_TRIPLE))
 
 # The library documenting macro
 # $(1) - The output directory
@@ -230,8 +231,22 @@ doc/$(1)/rust.css: rust.css
 DOCS += doc/$(1)/index.html
 endef
 
+# The library documenting macro
+# $(1) - The output directory
+# $(2) - The crate file
+# $(3) - The crate soruce files
+define libdocng
+doc/ng/$(1)/index.html: $(2) $(3) $$(RUSTDOC_NG)
+	@$$(call E, rustdoc_ng: $$@)
+	$(Q)$(RUSTDOC_NG) html $(2) -o doc/ng
+
+DOCS += doc/ng/$(1)/index.html
+endef
+
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
+$(eval $(call libdocng,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
+$(eval $(call libdocng,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
 endif
 
 

@@ -91,21 +91,9 @@ pub trait DocFolder {
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
-        let mut mod_ = None;
-        std::util::swap(&mut mod_, &mut c.module);
-        let mod_ = mod_.unwrap();
-        c.module = self.fold_item(mod_);
-        let Crate { name, module } = c;
-        match module {
-            Some(Item { inner: ModuleItem(m), name: name_, attrs: attrs_,
-            source, visibility: vis, id }) => {
-                return Crate { module: Some(Item { inner:
-                                            ModuleItem(self.fold_mod(m)),
-                                            name: name_, attrs: attrs_,
-                                            source: source, id: id, visibility: vis }), name: name};
-            },
-            Some(_) => fail!("non-module item set as module of crate"),
-            None => return Crate { module: None, name: name},
-        }
+        c.module = match std::util::replace(&mut c.module, None) {
+            Some(module) => self.fold_item(module), None => None
+        };
+        return c;
     }
 }

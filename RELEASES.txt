@@ -143,6 +143,7 @@ Version 0.8 (October 2013)
       * The runtime uses jemalloc for allocations.
       * Segmented stacks are temporarily disabled as part of the transition to
         the new runtime. Stack overflows are possible!
+      * A new documentation backend, rustdoc_ng, is available for use
 
 Version 0.7 (July 2013)
 -----------------------
