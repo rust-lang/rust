@@ -58,7 +58,7 @@ use uint;
 use vec;
 use libc::size_t;
 
-pub use self::isaac::IsaacRng;
+pub use self::isaac::{IsaacRng, Isaac64Rng};
 
 pub mod distributions;
 pub mod isaac;
@@ -74,7 +74,7 @@ impl Rand for int {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> int {
         if int::bits == 32 {
-            rng.next() as int
+            rng.gen::<i32>() as int
         } else {
             rng.gen::<i64>() as int
         }
@@ -84,28 +84,28 @@ impl Rand for int {
 impl Rand for i8 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> i8 {
-        rng.next() as i8
+        rng.next_u32() as i8
     }
 }
 
 impl Rand for i16 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> i16 {
-        rng.next() as i16
+        rng.next_u32() as i16
     }
 }
 
 impl Rand for i32 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> i32 {
-        rng.next() as i32
+        rng.next_u32() as i32
     }
 }
 
 impl Rand for i64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> i64 {
-        (rng.next() as i64 << 32) | rng.next() as i64
+        rng.next_u64() as i64
     }
 }
 
@@ -113,7 +113,7 @@ impl Rand for uint {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> uint {
         if uint::bits == 32 {
-            rng.next() as uint
+            rng.gen::<u32>() as uint
         } else {
             rng.gen::<u64>() as uint
         }
@@ -123,28 +123,28 @@ impl Rand for uint {
 impl Rand for u8 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> u8 {
-        rng.next() as u8
+        rng.next_u32() as u8
     }
 }
 
 impl Rand for u16 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> u16 {
-        rng.next() as u16
+        rng.next_u32() as u16
     }
 }
 
 impl Rand for u32 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> u32 {
-        rng.next()
+        rng.next_u32()
     }
 }
 
 impl Rand for u64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> u64 {
-        (rng.next() as u64 << 32) | rng.next() as u64
+        rng.next_u64()
     }
 }
 
@@ -159,9 +159,9 @@ static SCALE : f64 = (u32::max_value as f64) + 1.0f64;
 impl Rand for f64 {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> f64 {
-        let u1 = rng.next() as f64;
-        let u2 = rng.next() as f64;
-        let u3 = rng.next() as f64;
+        let u1 = rng.next_u32() as f64;
+        let u2 = rng.next_u32() as f64;
+        let u3 = rng.next_u32() as f64;
 
         ((u1 / SCALE + u2) / SCALE + u3) / SCALE
     }
@@ -170,7 +170,7 @@ impl Rand for f64 {
 impl Rand for bool {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> bool {
-        rng.next() & 1u32 == 1u32
+        rng.gen::<u8>() & 1 == 1
     }
 }
 
@@ -252,8 +252,23 @@ pub struct Weighted<T> {
 
 /// A random number generator
 pub trait Rng {
-    /// Return the next random integer
-    fn next(&mut self) -> u32;
+    /// Return the next random u32.
+    ///
+    /// By default this is implemented in terms of `next_u64`. An
+    /// implementation of this trait must provide at least one of
+    /// these two methods.
+    fn next_u32(&mut self) -> u32 {
+        self.next_u64() as u32
+    }
+
+    /// Return the next random u64.
+    ///
+    /// By default this is implemented in terms of `next_u32`. An
+    /// implementation of this trait must provide at least one of
+    /// these two methods.
+    fn next_u64(&mut self) -> u64 {
+        (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
+    }
 
 
     /// Return a random value of a Rand type.
@@ -594,7 +609,7 @@ pub struct XorShiftRng {
 
 impl Rng for XorShiftRng {
     #[inline]
-    fn next(&mut self) -> u32 {
+    fn next_u32(&mut self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);
         self.x = self.y;
@@ -680,8 +695,12 @@ pub fn task_rng() -> @mut IsaacRng {
 // Allow direct chaining with `task_rng`
 impl<R: Rng> Rng for @mut R {
     #[inline]
-    fn next(&mut self) -> u32 {
-        (**self).next()
+    fn next_u32(&mut self) -> u32 {
+        (**self).next_u32()
+    }
+    #[inline]
+    fn next_u64(&mut self) -> u64 {
+        (**self).next_u64()
     }
 }
 
@@ -699,34 +718,6 @@ mod test {
     use iter::{Iterator, range};
     use option::{Option, Some};
     use super::*;
-
-    #[test]
-    fn test_rng_seeded() {
-        let seed = seed(400);
-        let mut ra = IsaacRng::new_seeded(seed);
-        let mut rb = IsaacRng::new_seeded(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-    }
-
-    #[test]
-    fn test_rng_seeded_custom_seed() {
-        // much shorter than generated seeds which are 1024 bytes
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let mut ra = IsaacRng::new_seeded(seed);
-        let mut rb = IsaacRng::new_seeded(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
-    }
-
-    #[test]
-    fn test_rng_seeded_custom_seed2() {
-        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let mut ra = IsaacRng::new_seeded(seed);
-        // Regression test that isaac is actually using the above vector
-        let r = ra.next();
-        debug2!("{:?}", r);
-        assert!(r == 890007737u32 // on x86_64
-                     || r == 2935188040u32); // on x86
-    }
 
     #[test]
     fn test_gen_integer_range() {
@@ -915,6 +906,15 @@ mod bench {
     #[bench]
     fn rand_isaac(bh: &mut BenchHarness) {
         let mut rng = IsaacRng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_isaac64(bh: &mut BenchHarness) {
+        let mut rng = Isaac64Rng::new();
         do bh.iter {
             rng.gen::<uint>();
         }

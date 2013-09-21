@@ -109,7 +109,7 @@ fn main() {
         let mut rng = std::rand::IsaacRng::new_seeded([1, 1, 1, 1, 1, 1, 1]);
         let mut set = HashSet::new();
         while set.len() != n_keys {
-            let next = rng.next() as uint;
+            let next = rng.gen();
             if set.insert(next) {
                 rand.push(next);
             }

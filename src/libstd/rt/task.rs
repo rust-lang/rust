@@ -509,7 +509,7 @@ mod test {
         do run_in_newsched_task() {
             use rand::{rng, Rng};
             let mut r = rng();
-            let _ = r.next();
+            let _ = r.next_u32();
         }
     }
 
