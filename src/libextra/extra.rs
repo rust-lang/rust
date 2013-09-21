@@ -93,7 +93,6 @@ pub mod glob;
 pub mod term;
 pub mod time;
 pub mod arena;
-pub mod par;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
