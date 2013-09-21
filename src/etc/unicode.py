@@ -35,13 +35,20 @@ def load_unicode_data(f):
     c_hi = 0
     com_lo = 0
     com_hi = 0
+    cases={"upcase":[],"lowcase":[]}
+    cas_offs=0
+    cas_lo=0
+    cas_hi=0
+    curr_cas_offs=0
+    curr_cas=""
+    cas=""
     for line in fileinput.input(f):
         fields = line.split(";")
         if len(fields) != 15:
             continue
         [code, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcsae, titlecase ] = fields
+         old, iso, upcase, lowcase, titlecase ] = fields
 
         code = int(code, 16)
 
@@ -87,7 +94,30 @@ def load_unicode_data(f):
             com_lo = code
             com_hi = code
 
-    return (canon_decomp, compat_decomp, gencats, combines)
+        if upcase != "":
+            curr_cas_offs = int(upcase,16)-code
+            curr_cas="upcase"
+        elif lowcase != "":
+            curr_cas_offs = int(lowcase, 16)-code
+            curr_cas="lowcase"
+        else:
+            curr_cas_offs=0
+            curr_cas=""
+
+        if (upcase=="" and lowcase=="") or curr_cas_offs != cas_offs or curr_cas != cas:
+            if cas != "":
+                cases[cas].append((cas_lo, cas_hi, cas_offs))
+
+
+        if curr_cas_offs !=0:
+            if curr_cas != cas or curr_cas_offs != cas_offs:
+                cas_lo=code
+            cas_hi = code
+        cas=curr_cas
+        cas_offs=curr_cas_offs
+
+
+    return (canon_decomp, compat_decomp, gencats, combines, cases)
 
 
 def load_derived_core_properties(f):
@@ -172,6 +202,43 @@ def emit_property_module(f, mod, tbl):
         f.write("    }\n\n")
     f.write("}\n")
 
+def emit_case_module(f, mod, tbl):
+    f.write("pub mod %s {\n" % mod)
+    keys = tbl.keys()
+    keys.sort()
+    #emit_bsearch_range_table(f);
+    #f.write("    use option::Option;\n");
+    f.write("    use option::{Some, None};\n");
+    f.write("    use vec::ImmutableVector;\n");
+    f.write("""
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, i32)]) -> i32 {
+        use cmp::{Equal, Less, Greater};
+        match r.bsearch(|&(lo, hi, _)| {
+            if lo <= c && c <= hi { Equal }
+            else if hi < c { Less }
+            else { Greater }
+        }) {
+            Some(idx) => {
+                let (_, _, result) = r[idx];
+                result
+            }
+            None => 0
+        }
+    }\n\n
+""")
+    for cat in keys:
+        f.write("    static %s_table : &'static [(char,char,i32)] = &[\n" % cat)
+        ix = 0
+        for tup in tbl[cat]:
+            f.write(ch_prefix(ix))
+            f.write("(%s, %s, %s)" % (escape_char(tup[0]), escape_char(tup[1]), str(tup[2])))
+            ix += 1
+        f.write("\n    ];\n\n")
+
+        f.write("    pub fn %s(c: char) -> i32 {\n" % (cat+"_offset") )
+        f.write("        bsearch_range_value_table(c, %s_table)\n" % cat)
+        f.write("    }\n\n")
+    f.write("}\n")
 
 def emit_property_module_old(f, mod, tbl):
     f.write("mod %s {\n" % mod)
@@ -352,7 +419,7 @@ for i in [r]:
         os.remove(i);
 rf = open(r, "w")
 
-(canon_decomp, compat_decomp, gencats, combines) = load_unicode_data("UnicodeData.txt")
+(canon_decomp, compat_decomp, gencats, combines, cases) = load_unicode_data("UnicodeData.txt")
 
 # Preamble
 rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
@@ -373,6 +440,8 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 ''')
 
 emit_property_module(rf, "general_category", gencats)
+
+emit_case_module(rf, "case_changes", cases)
 
 emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
