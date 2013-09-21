@@ -134,6 +134,7 @@ use middle::typeck::{method_map};
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
+use util::ppaux::UserString;
 
 use std::at_vec;
 use std::hashmap::{HashSet, HashMap};
@@ -433,7 +434,21 @@ impl VisitContext {
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
+                    fn has_dtor(tcx: ty::ctxt, ty: ty::t) -> bool {
+                        use middle::ty::{get,ty_struct,ty_enum};
+                        match get(ty).sty {
+                            ty_struct(did, _) | ty_enum(did, _) => ty::has_dtor(tcx, did),
+                            _ => false,
+                        }
+                    }
+
                     if consume_with {
+                        if has_dtor(self.tcx, with_ty) {
+                            self.tcx.sess.span_err(with_expr.span,
+                                                   fmt!("cannot move out of type `%s`, \
+                                                         which defines the `Drop` trait",
+                                                        with_ty.user_string(self.tcx)));
+                        }
                         self.consume_expr(*with_expr, visitor);
                     } else {
                         self.use_expr(*with_expr, Read, visitor);
