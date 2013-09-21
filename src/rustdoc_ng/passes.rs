@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std;
+use std::num;
+use std::uint;
+
 use clean;
 use syntax::ast;
 use clean::Item;
 use plugins;
 use fold;
 use fold::DocFolder;
-
-/// A sample pass showing the minimum required work for a plugin.
-pub fn noop(crate: clean::Crate) -> plugins::PluginResult {
-    (crate, None)
-}
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
@@ -32,7 +29,7 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
                         for innerattr in l.iter() {
                             match innerattr {
                                 &clean::Word(ref s) if "hidden" == *s => {
-                                    info!("found one in strip_hidden; removing");
+                                    debug!("found one in strip_hidden; removing");
                                     return None;
                                 },
                                 _ => (),
@@ -50,7 +47,7 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
-pub fn clean_comments(crate: clean::Crate) -> plugins::PluginResult {
+pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
     impl fold::DocFolder for CommentCleaner {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -59,7 +56,7 @@ pub fn clean_comments(crate: clean::Crate) -> plugins::PluginResult {
             for attr in i.attrs.iter() {
                 match attr {
                     &clean::NameValue(~"doc", ref s) => avec.push(
-                        clean::NameValue(~"doc", clean_comment_body(s.clone()))),
+                        clean::NameValue(~"doc", unindent(*s))),
                     x => avec.push(x.clone())
                 }
             }
@@ -124,80 +121,111 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
-//Utility
-enum CleanCommentStates {
-    Collect,
-    Strip,
-    Stripped,
-}
+// n.b. this is copied from src/librustdoc/unindent_pass.rs
+pub fn unindent(s: &str) -> ~str {
+    let lines = s.any_line_iter().collect::<~[&str]>();
+    let mut saw_first_line = false;
+    let mut saw_second_line = false;
+    let min_indent = do lines.iter().fold(uint::max_value) |min_indent, line| {
 
-/// Returns the index of the last character all strings have common in their
-/// prefix.
-fn longest_common_prefix(s: ~[~str]) -> uint {
-    // find the longest common prefix
+        // After we see the first non-whitespace line, look at
+        // the line we have. If it is not whitespace, and therefore
+        // part of the first paragraph, then ignore the indentation
+        // level of the first line
+        let ignore_previous_indents =
+            saw_first_line &&
+            !saw_second_line &&
+            !line.is_whitespace();
 
-    debug!("lcp: looking into %?", s);
-    // index of the last character all the strings share
-    let mut index = 0u;
-
-    if s.len() <= 1 {
-        return 0;
-    }
-
-    // whether one of the strings has been exhausted of characters yet
-    let mut exhausted = false;
-
-    // character iterators for all the lines
-    let mut lines = s.iter().filter(|x| x.len() != 0).map(|x| x.iter()).to_owned_vec();
-
-    'outer: loop {
-        // because you can't label a while loop
-        if exhausted == true {
-            break;
-        }
-        debug!("lcp: index %u", index);
-        let mut lines = lines.mut_iter();
-        let ch = match lines.next().unwrap().next() {
-            Some(c) => c,
-            None => { exhausted = true; loop },
+        let min_indent = if ignore_previous_indents {
+            uint::max_value
+        } else {
+            min_indent
         };
-        debug!("looking for char %c", ch);
-        for line in lines {
-            match line.next() {
-                Some(c) => if c == ch { loop } else { exhausted = true; loop 'outer },
-                None => { exhausted = true; loop 'outer }
-            }
-        }
-        index += 1;
-    }
 
-    debug!("lcp: last index %u", index);
-    index
+        if saw_first_line {
+            saw_second_line = true;
+        }
+
+        if line.is_whitespace() {
+            min_indent
+        } else {
+            saw_first_line = true;
+            let mut spaces = 0;
+            do line.iter().all |char| {
+                // Only comparing against space because I wouldn't
+                // know what to do with mixed whitespace chars
+                if char == ' ' {
+                    spaces += 1;
+                    true
+                } else {
+                    false
+                }
+            };
+            num::min(min_indent, spaces)
+        }
+    };
+
+    match lines {
+        [head, .. tail] => {
+            let mut unindented = ~[ head.trim() ];
+            unindented.push_all(do tail.map |&line| {
+                if line.is_whitespace() {
+                    line
+                } else {
+                    assert!(line.len() >= min_indent);
+                    line.slice_from(min_indent)
+                }
+            });
+            unindented.connect("\n")
+        }
+        [] => s.to_owned()
+    }
 }
 
-fn clean_comment_body(s: ~str) -> ~str {
-    // FIXME #31: lots of copies in here.
-    let lines = s.line_iter().to_owned_vec();
-    match lines.len() {
-        0 => return ~"",
-        1 => return lines[0].slice_from(2).trim().to_owned(),
-        _ => (),
+#[cfg(test)]
+mod unindent_tests {
+    use super::unindent;
+
+    #[test]
+    fn should_unindent() {
+        let s = ~"    line1\n    line2";
+        let r = unindent(s);
+        assert_eq!(r, ~"line1\nline2");
     }
 
-    let mut ol = std::vec::with_capacity(lines.len());
-    for line in lines.clone().move_iter() {
-        // replace meaningless things with a single newline
-        match line {
-            x if ["/**", "/*!", "///", "//!", "*/"].contains(&x.trim()) => ol.push(~""),
-            x if x.trim() == "" => ol.push(~""),
-            x => ol.push(x.to_owned())
-        }
+    #[test]
+    fn should_unindent_multiple_paragraphs() {
+        let s = ~"    line1\n\n    line2";
+        let r = unindent(s);
+        assert_eq!(r, ~"line1\n\nline2");
     }
-    let li = longest_common_prefix(ol.clone());
 
-    let x = ol.iter()
-         .filter(|x| { debug!("cleaning line: %s", **x); true })
-         .map(|x| if x.len() == 0 { ~"" } else { x.slice_chars(li, x.char_len()).to_owned() })
-         .to_owned_vec().connect("\n");
-    x.trim().to_owned()
+    #[test]
+    fn should_leave_multiple_indent_levels() {
+        // Line 2 is indented another level beyond the
+        // base indentation and should be preserved
+        let s = ~"    line1\n\n        line2";
+        let r = unindent(s);
+        assert_eq!(r, ~"line1\n\n    line2");
+    }
+
+    #[test]
+    fn should_ignore_first_line_indent() {
+        // Thi first line of the first paragraph may not be indented as
+        // far due to the way the doc string was written:
+        //
+        // #[doc = "Start way over here
+        //          and continue here"]
+        let s = ~"line1\n    line2";
+        let r = unindent(s);
+        assert_eq!(r, ~"line1\nline2");
+    }
+
+    #[test]
+    fn should_not_ignore_first_line_indent_in_a_single_line_para() {
+        let s = ~"line1\n\n    line2";
+        let r = unindent(s);
+        assert_eq!(r, ~"line1\n\n    line2");
+    }
 }

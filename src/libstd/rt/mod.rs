@@ -54,7 +54,8 @@ Several modules in `core` are clients of `rt`:
 
 */
 
-#[doc(hidden)];
+// XXX: this should not be here.
+#[allow(missing_doc)];
 
 use cell::Cell;
 use clone::Clone;
