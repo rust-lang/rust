@@ -231,12 +231,12 @@ doc/$(1)/rust.css: rust.css
 DOCS += doc/$(1)/index.html
 endef
 
-# The library documenting macro
-# $(1) - The output directory
+# The "next generation" library documenting macro
+# $(1) - The crate name (std/extra)
 # $(2) - The crate file
-# $(3) - The crate soruce files
+# $(3) - The relevant host build triple (to depend on libstd)
 define libdocng
-doc/ng/$(1)/index.html: $(2) $(3) $$(RUSTDOC_NG)
+doc/ng/$(1)/index.html: $$(RUSTDOC_NG) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 	@$$(call E, rustdoc_ng: $$@)
 	$(Q)$(RUSTDOC_NG) html $(2) -o doc/ng
 
@@ -245,8 +245,8 @@ endef
 
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
-$(eval $(call libdocng,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
-$(eval $(call libdocng,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
+$(eval $(call libdocng,std,$(STDLIB_CRATE),$(CFG_BUILD_TRIPLE)))
+$(eval $(call libdocng,extra,$(EXTRALIB_CRATE),$(CFG_BUILD_TRIPLE)))
 endif
 
 
