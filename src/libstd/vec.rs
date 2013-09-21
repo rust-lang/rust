@@ -925,6 +925,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
+    /// Returns an iterator over the vector
     fn iter(self) -> VecIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_ptr(self);
@@ -941,6 +942,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
+    /// Returns a reversed iterator over a vector
     fn rev_iter(self) -> RevIterator<'self, T> {
         self.iter().invert()
     }
@@ -1931,6 +1933,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
@@ -1947,6 +1950,7 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
         self.mut_iter().invert()
     }
@@ -1988,11 +1992,13 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
+    /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
         ptr::mut_offset(self.repr().data as *mut T, index as int)
     }
 
     #[inline]
+    /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
