@@ -78,7 +78,13 @@ pub struct Scheduler {
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A toggleable idle callback
-    idle_callback: Option<~PausibleIdleCallback>
+    idle_callback: Option<~PausibleIdleCallback>,
+    /// A count of the number of times `maybe_yield` has been called without
+    /// actually yielding.
+    yield_check_count: uint,
+    /// A flag to tell the scheduler loop it needs to do some stealing
+    /// in order to introduce randomness as part of a yield
+    steal_for_yield: bool
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -127,7 +133,9 @@ impl Scheduler {
             run_anything: run_anything,
             friend_handle: friend,
             rng: XorShiftRng::new(),
-            idle_callback: None
+            idle_callback: None,
+            yield_check_count: 0,
+            steal_for_yield: false
         }
     }
 
@@ -373,14 +381,35 @@ impl Scheduler {
     // there, trying to steal from the remote work queues.
     fn find_work(&mut self) -> Option<~Task> {
         rtdebug!("scheduler looking for work");
-        match self.work_queue.pop() {
-            Some(task) => {
-                rtdebug!("found a task locally");
-                return Some(task)
+        if !self.steal_for_yield {
+            match self.work_queue.pop() {
+                Some(task) => {
+                    rtdebug!("found a task locally");
+                    return Some(task)
+                }
+                None => {
+                    rtdebug!("scheduler trying to steal");
+                    return self.try_steals();
+                }
             }
-            None => {
-                rtdebug!("scheduler trying to steal");
-                return self.try_steals();
+        } else {
+            // During execution of the last task, it performed a 'yield',
+            // so we're doing some work stealing in order to introduce some
+            // scheduling randomness. Otherwise we would just end up popping
+            // that same task again. This is pretty lame and is to work around
+            // the problem that work stealing is not designed for 'non-strict'
+            // (non-fork-join) task parallelism.
+            self.steal_for_yield = false;
+            match self.try_steals() {
+                Some(task) => {
+                    rtdebug!("stole a task after yielding");
+                    return Some(task);
+                }
+                None => {
+                    rtdebug!("did not steal a task after yielding");
+                    // Back to business
+                    return self.find_work();
+                }
             }
         }
     }
@@ -695,6 +724,34 @@ impl Scheduler {
             sched.enqueue_task(next_task.take());
         };
     }
+
+    /// Yield control to the scheduler, executing another task. This is guaranteed
+    /// to introduce some amount of randomness to the scheduler. Currently the
+    /// randomness is a result of performing a round of work stealing (which
+    /// may end up stealing from the current scheduler).
+    pub fn yield_now(~self) {
+        let mut this = self;
+        this.yield_check_count = 0;
+        // Tell the scheduler to start stealing on the next iteration
+        this.steal_for_yield = true;
+        do this.deschedule_running_task_and_then |sched, task| {
+            sched.enqueue_blocked_task(task);
+        }
+    }
+
+    pub fn maybe_yield(~self) {
+        // The number of times to do the yield check before yielding, chosen arbitrarily.
+        static YIELD_THRESHOLD: uint = 100;
+        let mut this = self;
+        rtassert!(this.yield_check_count < YIELD_THRESHOLD);
+        this.yield_check_count += 1;
+        if this.yield_check_count == YIELD_THRESHOLD {
+            this.yield_now();
+        } else {
+            Local::put(this);
+        }
+    }
+
 
     // * Utility Functions
 
@@ -1231,4 +1288,27 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn dont_starve_2() {
+        use rt::comm::oneshot;
+
+        do stress_factor().times {
+            do run_in_newsched_task {
+                let (port, chan) = oneshot();
+                let (_port2, chan2) = stream();
+
+                // This task should not be able to starve the other task.
+                // The sends should eventually yield.
+                do spawntask {
+                    while !port.peek() {
+                        chan2.send(());
+                    }
+                }
+
+                chan.send(());
+            }
+        }
+    }
+
 }
