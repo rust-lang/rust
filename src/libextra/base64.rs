@@ -311,11 +311,11 @@ mod test {
 
     #[test]
     fn test_base64_random() {
-        use std::rand::{task_rng, random, RngUtil};
+        use std::rand::{task_rng, random, Rng};
         use std::vec;
 
         do 1000.times {
-            let times = task_rng().gen_uint_range(1, 100);
+            let times = task_rng().gen_integer_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }

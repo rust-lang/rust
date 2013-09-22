@@ -24,7 +24,7 @@ use iter::{Iterator, FromIterator, Extendable};
 use iter::{FilterMap, Chain, Repeat, Zip};
 use num;
 use option::{None, Option, Some};
-use rand::RngUtil;
+use rand::Rng;
 use rand;
 use uint;
 use util::replace;

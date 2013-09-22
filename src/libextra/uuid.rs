@@ -62,7 +62,7 @@ use std::char::Char;
 use std::container::Container;
 use std::to_str::ToStr;
 use std::rand;
-use std::rand::RngUtil;
+use std::rand::Rng;
 use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
 
@@ -170,7 +170,7 @@ impl Uuid {
     /// of random numbers. Use the rand::Rand trait to supply
     /// a custom generator if required.
     pub fn new_v4() -> Uuid {
-        let ub = rand::task_rng().gen_bytes(16);
+        let ub = rand::task_rng().gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
         vec::bytes::copy_memory(uuid.bytes, ub, 16);
         uuid.set_variant(VariantRFC4122);
@@ -488,7 +488,7 @@ impl TotalEq for Uuid {
 impl rand::Rand for Uuid {
     #[inline]
     fn rand<R: rand::Rng>(rng: &mut R) -> Uuid {
-        let ub = rng.gen_bytes(16);
+        let ub = rng.gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
         vec::bytes::copy_memory(uuid.bytes, ub, 16);
         uuid.set_variant(VariantRFC4122);

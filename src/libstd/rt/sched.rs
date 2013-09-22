@@ -26,7 +26,7 @@ use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use borrow::{to_uint};
 use cell::Cell;
-use rand::{XorShiftRng, RngUtil};
+use rand::{XorShiftRng, Rng};
 use iter::range;
 use vec::{OwnedVector};
 
@@ -391,7 +391,7 @@ impl Scheduler {
     fn try_steals(&mut self) -> Option<~Task> {
         let work_queues = &mut self.work_queues;
         let len = work_queues.len();
-        let start_index = self.rng.gen_uint_range(0, len);
+        let start_index = self.rng.gen_integer_range(0, len);
         for index in range(0, len).map(|i| (i + start_index) % len) {
             match work_queues[index].steal() {
                 Some(task) => {
