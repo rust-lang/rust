@@ -477,7 +477,7 @@ pub fn trans_trait_callee_from_llval(bcx: @mut Block,
     debug!("(translating trait callee) loading second index from pair");
     let llboxptr = GEPi(bcx, llpair, [0u, abi::trt_field_box]);
     let llbox = Load(bcx, llboxptr);
-    let llself = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
+    let llself = PointerCast(bcx, llbox, ccx.types.opaque_box().ptr_to());
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
@@ -486,7 +486,7 @@ pub fn trans_trait_callee_from_llval(bcx: @mut Block,
                         PointerCast(bcx,
                                     GEPi(bcx, llpair,
                                          [0u, abi::trt_field_vtable]),
-                                    Type::vtable().ptr_to().ptr_to()));
+                                    ccx.types.vtable().ptr_to().ptr_to()));
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + 1]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
@@ -576,7 +576,7 @@ pub fn make_vtable(ccx: &mut CrateContext,
             components.push(ptr)
         }
 
-        let tbl = C_struct(components);
+        let tbl = C_struct(ccx, components);
         let sym = token::gensym("vtable");
         let vt_gvar = do fmt!("vtable%u", sym).with_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
@@ -621,7 +621,7 @@ fn emit_vtable_methods(bcx: @mut Block,
         if m.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    tcx.sess.str_of(ident));
-            C_null(Type::nil().ptr_to())
+            C_null(ccx.types.nil().ptr_to())
         } else {
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn

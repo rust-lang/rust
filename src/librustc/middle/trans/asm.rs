@@ -108,11 +108,11 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 
     // Depending on how many outputs we have, the return type is different
     let output = if numOutputs == 0 {
-        Type::void()
+        bcx.ccx().types.void()
     } else if numOutputs == 1 {
         val_ty(outputs[0])
     } else {
-        Type::struct_(outputs.map(|o| val_ty(*o)), false)
+        bcx.ccx().types.struct_(outputs.map(|o| val_ty(*o)), false)
     };
 
     let dialect = match ia.dialect {

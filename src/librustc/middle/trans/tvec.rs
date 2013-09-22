@@ -80,7 +80,7 @@ pub fn get_dataptr(bcx: @mut Block, vptr: ValueRef) -> ValueRef {
 pub fn pointer_add(bcx: @mut Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
-    let bptr = PointerCast(bcx, ptr, Type::i8p());
+    let bptr = PointerCast(bcx, ptr, bcx.ccx().types.i8p());
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
@@ -90,7 +90,7 @@ pub fn alloc_raw(bcx: @mut Block, unit_ty: ty::t,
     let ccx = bcx.ccx();
 
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
-    let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
+    let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.types.opaque_vec()));
 
     if heap == heap_exchange {
         let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, vecbodyty, heap_exchange, vecsize);
@@ -152,8 +152,8 @@ impl VecTypes {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
-             ccx.tn.type_to_str(self.llunit_ty),
-             ccx.tn.val_to_str(self.llunit_size))
+             ccx.types.type_to_str(self.llunit_ty),
+             ccx.types.val_to_str(self.llunit_size))
     }
 }
 
@@ -265,10 +265,11 @@ pub fn trans_lit_str(bcx: @mut Block,
         Ignore => bcx,
         SaveIn(lldest) => {
             unsafe {
+                let ccx = bcx.ccx();
                 let bytes = str_lit.len();
-                let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), str_lit);
-                let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
+                let llbytes = C_uint(ccx, bytes);
+                let llcstr = C_cstr(ccx, str_lit);
+                let llcstr = llvm::LLVMConstPointerCast(llcstr, ccx.types.i8p().to_ref());
                 Store(bcx, llcstr,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
                 Store(bcx, llbytes,
@@ -298,9 +299,10 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: @a
                 ast::ExprLit(@codemap::Spanned {
                     node: ast::lit_str(s), span
                 }) => {
-                    let llptrval = C_cstr(bcx.ccx(), s);
-                    let llptrval = PointerCast(bcx, llptrval, Type::i8p());
-                    let llsizeval = C_uint(bcx.ccx(), s.len());
+                    let ccx = bcx.ccx();
+                    let llptrval = C_cstr(ccx, s);
+                    let llptrval = PointerCast(bcx, llptrval, ccx.types.i8p());
+                    let llsizeval = C_uint(ccx, s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = scratch_datum(bcx, typ, "", false);
                     let alloc_fn = langcall(bcx, Some(span), "",
@@ -426,7 +428,7 @@ pub fn write_content(bcx: @mut Block,
 
                     let loop_counter = {
                         // i = 0
-                        let i = alloca(loop_bcx, bcx.ccx().int_type, "__i");
+                        let i = alloca(loop_bcx, bcx.ccx().types.i(), "__i");
                         Store(loop_bcx, C_uint(bcx.ccx(), 0), i);
 
                         Br(loop_bcx, cond_bcx.llbb);

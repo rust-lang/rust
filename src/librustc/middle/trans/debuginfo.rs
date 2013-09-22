@@ -322,10 +322,10 @@ pub fn create_captured_var_metadata(bcx: @mut Block,
     let byte_offset_of_var_in_env = machine::llelement_offset(cx, llvm_env_data_type, env_index);
 
     let address_operations = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()),
-         llvm::LLVMDIBuilderCreateOpPlus(Type::i64().to_ref()),
-         C_i64(byte_offset_of_var_in_env as i64),
-         llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref())]
+        [llvm::LLVMDIBuilderCreateOpDeref(cx.types.i64().to_ref()),
+         llvm::LLVMDIBuilderCreateOpPlus(cx.types.i64().to_ref()),
+         C_i64(cx, byte_offset_of_var_in_env as i64),
+         llvm::LLVMDIBuilderCreateOpDeref(cx.types.i64().to_ref())]
     };
 
     let address_op_count = match closure_sigil {
@@ -420,7 +420,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
         argument_index
     };
 
-    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()) }];
+    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().types.i64().to_ref()) }];
 
     let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
         DirectVariable { alloca: llptr }
@@ -1401,7 +1401,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
     // appropriate type name
     if ty::type_is_empty(cx.tcx, enum_type) {
         let empty_type_metadata = composite_type_metadata(cx,
-                                                          Type::nil(),
+                                                          cx.types.nil(),
                                                           enum_name,
                                                           [],
                                                           containing_scope,
@@ -1413,10 +1413,10 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
 
     // Prepare some data (llvm type, size, align, etc) about the discriminant. This data will be
     // needed in all of the following cases.
-    let discriminant_llvm_type = Type::enum_discrim(cx);
+    let discriminant_llvm_type = cx.types.enum_discrim();
     let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
 
-    assert!(Type::enum_discrim(cx) == cx.int_type);
+    assert!(cx.types.enum_discrim() == cx.types.i());
     let discriminant_base_type_metadata = type_metadata(cx, ty::mk_int(), codemap::dummy_sp());
 
     let variants = ty::enum_variants(cx.tcx, enum_def_id);
@@ -1531,6 +1531,7 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
             }
         }
     };
+
 }
 
 enum MemberOffset {
@@ -1663,7 +1664,7 @@ fn boxed_type_metadata(cx: &mut CrateContext,
         None                    => ~"BoxedType"
     };
 
-    let box_llvm_type = Type::box(cx, &content_llvm_type);
+    let box_llvm_type = cx.types.box(&content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
     assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
 
@@ -1723,10 +1724,10 @@ fn boxed_type_metadata(cx: &mut CrateContext,
                              content_llvm_type: Type)
                           -> bool {
         member_llvm_types.len() == 5 &&
-        member_llvm_types[0] == cx.int_type &&
-        member_llvm_types[1] == cx.tydesc_type.ptr_to() &&
-        member_llvm_types[2] == Type::i8().ptr_to() &&
-        member_llvm_types[3] == Type::i8().ptr_to() &&
+        member_llvm_types[0] == cx.types.i() &&
+        member_llvm_types[1] == cx.types.tydesc().ptr_to() &&
+        member_llvm_types[2] == cx.types.i8().ptr_to() &&
+        member_llvm_types[3] == cx.types.i8().ptr_to() &&
         member_llvm_types[4] == content_llvm_type
     }
 }
@@ -1767,7 +1768,7 @@ fn vec_metadata(cx: &mut CrateContext,
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
-    let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
+    let vec_llvm_type = cx.types.vec(&element_llvm_type);
     let vec_type_name: &str = fmt!("[%s]", ppaux::ty_to_str(cx.tcx, element_type));
 
     let member_llvm_types = vec_llvm_type.field_types();
@@ -1823,7 +1824,7 @@ fn boxed_vec_metadata(cx: &mut CrateContext,
                       span: Span)
                    -> DICompositeType {
     let element_llvm_type = type_of::type_of(cx, element_type);
-    let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
+    let vec_llvm_type = cx.types.vec(&element_llvm_type);
     let vec_type_name: &str = fmt!("[%s]", ppaux::ty_to_str(cx.tcx, element_type));
     let vec_metadata = vec_metadata(cx, element_type, span);
 
@@ -1886,7 +1887,7 @@ fn vec_slice_metadata(cx: &mut CrateContext,
                             -> bool {
         member_llvm_types.len() == 2 &&
         member_llvm_types[0] == type_of::type_of(cx, element_type).ptr_to() &&
-        member_llvm_types[1] == cx.int_type
+        member_llvm_types[1] == cx.types.i()
     }
 }
 
@@ -2128,7 +2129,7 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
     match debug_location {
         KnownLocation { scope, line, col } => {
             debug!("setting debug location to %u %u", line, col);
-            let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+            let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32), scope, ptr::null()];
             unsafe {
                 metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
                                                           vec::raw::to_ptr(elements),

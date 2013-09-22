@@ -405,7 +405,7 @@ impl Datum {
 
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("Datum { val=%s, ty=%s, mode=%? }",
-             ccx.tn.val_to_str(self.val),
+             ccx.types.val_to_str(self.val),
              ty_to_str(ccx.tcx, self.ty),
              self.mode)
     }
@@ -433,7 +433,7 @@ impl Datum {
          * Yields the value itself. */
 
         if ty::type_is_voidish(self.ty) {
-            C_nil()
+            C_nil(bcx.ccx())
         } else {
             match self.mode {
                 ByValue => self.val,

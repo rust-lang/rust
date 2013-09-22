@@ -52,7 +52,7 @@ impl Reflector {
     }
 
     pub fn c_bool(&mut self, b: bool) -> ValueRef {
-        C_bool(b)
+        C_bool(self.bcx.ccx(), b)
     }
 
     pub fn c_slice(&mut self, s: @str) -> ValueRef {
@@ -63,7 +63,7 @@ impl Reflector {
         let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, "", false);
         let len = C_uint(bcx.ccx(), s.len());
-        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
+        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), bcx.ccx().types.i8p());
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));
         scratch.val
@@ -325,7 +325,7 @@ impl Reflector {
                 for (i, v) in variants.iter().enumerate() {
                     let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
-                                         C_integral(self.bcx.ccx().int_type, v.disr_val, false),
+                                         C_integral(self.bcx.ccx().types.i(), v.disr_val, false),
                                          this.c_uint(v.args.len()),
                                          this.c_slice(name)];
                     do this.bracketed("enum_variant", variant_args) |this| {

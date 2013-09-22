@@ -65,7 +65,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
-use middle::trans::type_::Type;
+use middle::trans::type_::{Type, CrateTypes};
 
 use std::c_str::ToCStr;
 use std::hash;
@@ -306,7 +306,7 @@ pub fn umin(cx: @mut Block, a: ValueRef, b: ValueRef) -> ValueRef {
 // return type, use bump_ptr().
 pub fn ptr_offs(bcx: @mut Block, base: ValueRef, sz: ValueRef) -> ValueRef {
     let _icx = push_ctxt("ptr_offs");
-    let raw = PointerCast(bcx, base, Type::i8p());
+    let raw = PointerCast(bcx, base, bcx.ccx().types.i8p());
     InBoundsGEP(bcx, raw, [sz])
 }
 
@@ -332,7 +332,7 @@ pub fn opaque_box_body(bcx: @mut Block,
     let _icx = push_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let ty = type_of(ccx, body_t);
-    let ty = Type::box(ccx, &ty);
+    let ty = ccx.types.box(&ty);
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
@@ -391,7 +391,7 @@ pub fn malloc_raw_dyn(bcx: @mut Block,
         glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
         // Allocate space:
-        let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+        let tydesc = PointerCast(bcx, static_ti.tydesc, ccx.types.i8p());
         let r = callee::trans_lang_call(
             bcx,
             langcall,
@@ -629,7 +629,7 @@ pub fn compare_scalar_types(cx: @mut Block,
                 controlflow::trans_fail(
                     cx, None,
                     @"attempt to compare values of type type"),
-                C_nil())
+                C_nil(cx.ccx()))
         }
         _ => {
             // Should never get here, because t is scalar.
@@ -657,8 +657,8 @@ pub fn compare_scalar_values(cx: @mut Block,
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         match op {
-          ast::BiEq | ast::BiLe | ast::BiGe => return C_i1(true),
-          ast::BiNe | ast::BiLt | ast::BiGt => return C_i1(false),
+          ast::BiEq | ast::BiLe | ast::BiGe => return C_i1(cx.ccx(), true),
+          ast::BiNe | ast::BiLt | ast::BiGt => return C_i1(cx.ccx(), false),
           // refinements would be nice
           _ => die(cx)
         }
@@ -855,11 +855,11 @@ pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::BinOp,
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
-        let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
+        let zero = C_integral(cx.ccx().types.int_from_ast_ty(t), 0u64, false);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       ty::ty_uint(t) => {
-        let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
+        let zero = C_integral(cx.ccx().types.uint_from_ast_ty(t), 0u64, false);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       _ => {
@@ -873,7 +873,7 @@ pub fn fail_if_zero(cx: @mut Block, span: Span, divrem: ast::BinOp,
 }
 
 pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
-    C_null(Type::opaque_box(ccx).ptr_to())
+    C_null(ccx.types.opaque_box().ptr_to())
 }
 
 pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
@@ -907,7 +907,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
            -> (ValueRef, @mut Block) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable {
-        return (C_null(Type::i8()), bcx);
+        return (C_null(bcx.ccx().types.i8()), bcx);
     }
 
     match bcx.node_info {
@@ -1042,7 +1042,8 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = Type::struct_([Type::i8p(), Type::i32()], false);
+    let ccx_types = &bcx.ccx().types;
+    let llretty = ccx_types.struct_([ccx_types.i8p(), ccx_types.i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -1104,7 +1105,7 @@ pub fn find_bcx_for_scope(bcx: @mut Block, scope_id: ast::NodeId) -> @mut Block 
 
 pub fn do_spill(bcx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
-        return C_null(Type::i8p());
+        return C_null(bcx.ccx().types.i8p());
     }
     let llptr = alloc_ty(bcx, t, "");
     Store(bcx, v, llptr);
@@ -1147,8 +1148,8 @@ pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
       }
     };
     let ccx = bcx.ccx();
-    let V_trace_str = PointerCast(bcx, V_trace_str, Type::i8p());
-    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
+    let V_trace_str = PointerCast(bcx, V_trace_str, ccx.types.i8p());
+    let V_filename = PointerCast(bcx, V_filename, ccx.types.i8p());
     let args = ~[V_trace_str, V_filename, C_int(ccx, V_line)];
     Call(bcx, ccx.upcalls.trace, args, []);
 }
@@ -1539,11 +1540,11 @@ pub fn call_memcpy(cx: @mut Block, dst: ValueRef, src: ValueRef, n_bytes: ValueR
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = ccx.intrinsics.get_copy(&key);
-    let src_ptr = PointerCast(cx, src, Type::i8p());
-    let dst_ptr = PointerCast(cx, dst, Type::i8p());
-    let size = IntCast(cx, n_bytes, ccx.int_type);
-    let align = C_i32(align as i32);
-    let volatile = C_i1(false);
+    let src_ptr = PointerCast(cx, src, ccx.types.i8p());
+    let dst_ptr = PointerCast(cx, dst, ccx.types.i8p());
+    let size = IntCast(cx, n_bytes, ccx.types.i());
+    let align = C_i32(ccx, align as i32);
+    let volatile = C_i1(ccx, false);
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
 }
 
@@ -1584,11 +1585,11 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     };
 
     let llintrinsicfn = ccx.intrinsics.get_copy(&intrinsic_key);
-    let llptr = b.pointercast(llptr, Type::i8().ptr_to());
-    let llzeroval = C_u8(0);
+    let llptr = b.pointercast(llptr, ccx.types.i8p());
+    let llzeroval = C_u8(ccx, 0);
     let size = machine::llsize_of(ccx, ty);
-    let align = C_i32(llalign_of_min(ccx, ty) as i32);
-    let volatile = C_i1(false);
+    let align = C_i32(ccx, llalign_of_min(ccx, ty) as i32);
+    let volatile = C_i1(ccx, false);
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
 }
 
@@ -1703,7 +1704,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     let fcx = @mut FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
-              llvm::LLVMGetUndef(Type::i8p().to_ref())
+              llvm::LLVMGetUndef(ccx.types.i8p().to_ref())
           },
           llretptr: None,
           entry_bcx: None,
@@ -1728,7 +1729,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
 
     unsafe {
         let entry_bcx = top_scope_block(fcx, opt_node_info);
-        Load(entry_bcx, C_null(Type::i8p()));
+        Load(entry_bcx, C_null(ccx.types.i8p()));
 
         fcx.entry_bcx = Some(entry_bcx);
         fcx.alloca_insert_pt = Some(llvm::LLVMGetFirstInstruction(entry_bcx.llbb));
@@ -2406,8 +2407,8 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     fn create_entry_fn(ccx: @mut CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
-                               &ccx.int_type);
+        let llfty = ccx.types.func([ccx.types.i(), ccx.types.i8p().ptr_to()],
+                                   &ccx.types.i());
 
         // FIXME #4404 android JNI hacks
         let main_name = if *ccx.sess.building_library {
@@ -2440,11 +2441,11 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
 
                 let args = {
                     let opaque_rust_main = do "rust_main".with_c_str |buf| {
-                        llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
+                        llvm::LLVMBuildPointerCast(bld, rust_main, ccx.types.i8p().to_ref(), buf)
                     };
 
                     ~[
-                        C_null(Type::opaque_box(ccx).ptr_to()),
+                        C_null(ccx.types.opaque_box().ptr_to()),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
                         llvm::LLVMGetParam(llfn, 1)
@@ -2454,7 +2455,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             } else {
                 debug!("using user-defined start fn");
                 let args = ~[
-                    C_null(Type::opaque_box(ccx).ptr_to()),
+                    C_null(ccx.types.opaque_box().ptr_to()),
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint)
                 ];
@@ -2477,7 +2478,7 @@ pub fn fill_fn_pair(bcx: @mut Block, pair: ValueRef, llfn: ValueRef,
     let code_cell = GEPi(bcx, pair, [0u, abi::fn_field_code]);
     Store(bcx, llfn, code_cell);
     let env_cell = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-    let llenvblobptr = PointerCast(bcx, llenvptr, Type::opaque_box(ccx).ptr_to());
+    let llenvblobptr = PointerCast(bcx, llenvptr, ccx.types.opaque_box().ptr_to());
     Store(bcx, llenvblobptr, env_cell);
 }
 
@@ -2734,157 +2735,157 @@ pub fn register_method(ccx: @mut CrateContext,
 
 pub fn vp2i(cx: @mut Block, v: ValueRef) -> ValueRef {
     let ccx = cx.ccx();
-    return PtrToInt(cx, v, ccx.int_type);
+    return PtrToInt(cx, v, ccx.types.i());
 }
 
 pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstPtrToInt(v, ccx.int_type.to_ref());
+        return llvm::LLVMConstPtrToInt(v, ccx.types.i().to_ref());
     }
 }
 
 macro_rules! ifn (
     ($intrinsics:ident, $name:expr, $args:expr, $ret:expr) => ({
         let name = $name;
-        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret));
+        let f = decl_cdecl_fn(llmod, name, CrateTypes::func_($args, &$ret));
         $intrinsics.insert(name, f);
     })
 )
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
-    let i8p = Type::i8p();
+pub fn declare_intrinsics(llmod: ModuleRef, types: &CrateTypes) -> HashMap<&'static str, ValueRef> {
+    let i8p = types.i8p();
     let mut intrinsics = HashMap::new();
 
     ifn!(intrinsics, "llvm.memcpy.p0i8.p0i8.i32",
-         [i8p, i8p, Type::i32(), Type::i32(), Type::i1()], Type::void());
+         [i8p, i8p, types.i32(), types.i32(), types.i1()], types.void());
     ifn!(intrinsics, "llvm.memcpy.p0i8.p0i8.i64",
-         [i8p, i8p, Type::i64(), Type::i32(), Type::i1()], Type::void());
+         [i8p, i8p, types.i64(), types.i32(), types.i1()], types.void());
     ifn!(intrinsics, "llvm.memmove.p0i8.p0i8.i32",
-         [i8p, i8p, Type::i32(), Type::i32(), Type::i1()], Type::void());
+         [i8p, i8p, types.i32(), types.i32(), types.i1()], types.void());
     ifn!(intrinsics, "llvm.memmove.p0i8.p0i8.i64",
-         [i8p, i8p, Type::i64(), Type::i32(), Type::i1()], Type::void());
+         [i8p, i8p, types.i64(), types.i32(), types.i1()], types.void());
     ifn!(intrinsics, "llvm.memset.p0i8.i32",
-         [i8p, Type::i8(), Type::i32(), Type::i32(), Type::i1()], Type::void());
+         [i8p, types.i8(), types.i32(), types.i32(), types.i1()], types.void());
     ifn!(intrinsics, "llvm.memset.p0i8.i64",
-         [i8p, Type::i8(), Type::i64(), Type::i32(), Type::i1()], Type::void());
+         [i8p, types.i8(), types.i64(), types.i32(), types.i1()], types.void());
 
-    ifn!(intrinsics, "llvm.trap", [], Type::void());
-    ifn!(intrinsics, "llvm.frameaddress", [Type::i32()], i8p);
+    ifn!(intrinsics, "llvm.trap", [], types.void());
+    ifn!(intrinsics, "llvm.frameaddress", [types.i32()], i8p);
 
-    ifn!(intrinsics, "llvm.powi.f32", [Type::f32(), Type::i32()], Type::f32());
-    ifn!(intrinsics, "llvm.powi.f64", [Type::f64(), Type::i32()], Type::f64());
-    ifn!(intrinsics, "llvm.pow.f32",  [Type::f32(), Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.pow.f64",  [Type::f64(), Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.powi.f32", [types.f32(), types.i32()], types.f32());
+    ifn!(intrinsics, "llvm.powi.f64", [types.f64(), types.i32()], types.f64());
+    ifn!(intrinsics, "llvm.pow.f32",  [types.f32(), types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.pow.f64",  [types.f64(), types.f64()], types.f64());
 
-    ifn!(intrinsics, "llvm.sqrt.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.sqrt.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.sin.f32",  [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.sin.f64",  [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.cos.f32",  [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.cos.f64",  [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.exp.f32",  [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.exp.f64",  [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.exp2.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.exp2.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.log.f32",  [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.log.f64",  [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.log10.f32",[Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.log10.f64",[Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.log2.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.log2.f64", [Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.sqrt.f32", [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.sqrt.f64", [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.sin.f32",  [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.sin.f64",  [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.cos.f32",  [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.cos.f64",  [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.exp.f32",  [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.exp.f64",  [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.exp2.f32", [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.exp2.f64", [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.log.f32",  [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.log.f64",  [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.log10.f32",[types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.log10.f64",[types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.log2.f32", [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.log2.f64", [types.f64()], types.f64());
 
-    ifn!(intrinsics, "llvm.fma.f32",  [Type::f32(), Type::f32(), Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.fma.f64",  [Type::f64(), Type::f64(), Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.fma.f32",  [types.f32(), types.f32(), types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.fma.f64",  [types.f64(), types.f64(), types.f64()], types.f64());
 
-    ifn!(intrinsics, "llvm.fabs.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.fabs.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.floor.f32",[Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.floor.f64",[Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.ceil.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.ceil.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.trunc.f32",[Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.trunc.f64",[Type::f64()], Type::f64());
+    ifn!(intrinsics, "llvm.fabs.f32", [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.fabs.f64", [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.floor.f32",[types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.floor.f64",[types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.ceil.f32", [types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.ceil.f64", [types.f64()], types.f64());
+    ifn!(intrinsics, "llvm.trunc.f32",[types.f32()], types.f32());
+    ifn!(intrinsics, "llvm.trunc.f64",[types.f64()], types.f64());
 
-    ifn!(intrinsics, "llvm.ctpop.i8", [Type::i8()], Type::i8());
-    ifn!(intrinsics, "llvm.ctpop.i16",[Type::i16()], Type::i16());
-    ifn!(intrinsics, "llvm.ctpop.i32",[Type::i32()], Type::i32());
-    ifn!(intrinsics, "llvm.ctpop.i64",[Type::i64()], Type::i64());
+    ifn!(intrinsics, "llvm.ctpop.i8", [types.i8()], types.i8());
+    ifn!(intrinsics, "llvm.ctpop.i16",[types.i16()], types.i16());
+    ifn!(intrinsics, "llvm.ctpop.i32",[types.i32()], types.i32());
+    ifn!(intrinsics, "llvm.ctpop.i64",[types.i64()], types.i64());
 
-    ifn!(intrinsics, "llvm.ctlz.i8",  [Type::i8() , Type::i1()], Type::i8());
-    ifn!(intrinsics, "llvm.ctlz.i16", [Type::i16(), Type::i1()], Type::i16());
-    ifn!(intrinsics, "llvm.ctlz.i32", [Type::i32(), Type::i1()], Type::i32());
-    ifn!(intrinsics, "llvm.ctlz.i64", [Type::i64(), Type::i1()], Type::i64());
+    ifn!(intrinsics, "llvm.ctlz.i8",  [types.i8() , types.i1()], types.i8());
+    ifn!(intrinsics, "llvm.ctlz.i16", [types.i16(), types.i1()], types.i16());
+    ifn!(intrinsics, "llvm.ctlz.i32", [types.i32(), types.i1()], types.i32());
+    ifn!(intrinsics, "llvm.ctlz.i64", [types.i64(), types.i1()], types.i64());
 
-    ifn!(intrinsics, "llvm.cttz.i8",  [Type::i8() , Type::i1()], Type::i8());
-    ifn!(intrinsics, "llvm.cttz.i16", [Type::i16(), Type::i1()], Type::i16());
-    ifn!(intrinsics, "llvm.cttz.i32", [Type::i32(), Type::i1()], Type::i32());
-    ifn!(intrinsics, "llvm.cttz.i64", [Type::i64(), Type::i1()], Type::i64());
+    ifn!(intrinsics, "llvm.cttz.i8",  [types.i8() , types.i1()], types.i8());
+    ifn!(intrinsics, "llvm.cttz.i16", [types.i16(), types.i1()], types.i16());
+    ifn!(intrinsics, "llvm.cttz.i32", [types.i32(), types.i1()], types.i32());
+    ifn!(intrinsics, "llvm.cttz.i64", [types.i64(), types.i1()], types.i64());
 
-    ifn!(intrinsics, "llvm.bswap.i16",[Type::i16()], Type::i16());
-    ifn!(intrinsics, "llvm.bswap.i32",[Type::i32()], Type::i32());
-    ifn!(intrinsics, "llvm.bswap.i64",[Type::i64()], Type::i64());
+    ifn!(intrinsics, "llvm.bswap.i16",[types.i16()], types.i16());
+    ifn!(intrinsics, "llvm.bswap.i32",[types.i32()], types.i32());
+    ifn!(intrinsics, "llvm.bswap.i64",[types.i64()], types.i64());
 
     ifn!(intrinsics, "llvm.sadd.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.sadd.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.sadd.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.sadd.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     ifn!(intrinsics, "llvm.uadd.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.uadd.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.uadd.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.uadd.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     ifn!(intrinsics, "llvm.ssub.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.ssub.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.ssub.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.ssub.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     ifn!(intrinsics, "llvm.usub.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.usub.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.usub.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.usub.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     ifn!(intrinsics, "llvm.smul.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.smul.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.smul.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.smul.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     ifn!(intrinsics, "llvm.umul.with.overflow.i8",
-        [Type::i8(), Type::i8()], Type::struct_([Type::i8(), Type::i1()], false));
+        [types.i8(), types.i8()], types.struct_([types.i8(), types.i1()], false));
     ifn!(intrinsics, "llvm.umul.with.overflow.i16",
-        [Type::i16(), Type::i16()], Type::struct_([Type::i16(), Type::i1()], false));
+        [types.i16(), types.i16()], types.struct_([types.i16(), types.i1()], false));
     ifn!(intrinsics, "llvm.umul.with.overflow.i32",
-        [Type::i32(), Type::i32()], Type::struct_([Type::i32(), Type::i1()], false));
+        [types.i32(), types.i32()], types.struct_([types.i32(), types.i1()], false));
     ifn!(intrinsics, "llvm.umul.with.overflow.i64",
-        [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
+        [types.i64(), types.i64()], types.struct_([types.i64(), types.i1()], false));
 
     return intrinsics;
 }
 
-pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'static str, ValueRef>) {
-    ifn!(intrinsics, "llvm.dbg.declare", [Type::metadata(), Type::metadata()], Type::void());
+pub fn declare_dbg_intrinsics(llmod: ModuleRef, types: &CrateTypes, intrinsics: &mut HashMap<&'static str, ValueRef>) {
+    ifn!(intrinsics, "llvm.dbg.declare", [types.metadata(), types.metadata()], types.void());
     ifn!(intrinsics,
-         "llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
+         "llvm.dbg.value",   [types.metadata(), types.i64(), types.metadata()], types.void());
 }
 
 pub fn trap(bcx: @mut Block) {
@@ -2902,7 +2903,7 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
     let gc_metadata = do gc_metadata_name.with_c_str |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, ccx.types.i32().to_ref(), buf)
         }
     };
     unsafe {
@@ -2913,8 +2914,8 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
-    let elttype = Type::struct_([ccx.int_type, ccx.int_type], false);
-    let maptype = Type::array(&elttype, (ccx.module_data.len() + 1) as u64);
+    let elttype = ccx.types.struct_([ccx.types.i(), ccx.types.i()], false);
+    let maptype = ccx.types.array(&elttype, (ccx.module_data.len() + 1) as u64);
     let map = do "_rust_mod_map".with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
@@ -2936,10 +2937,10 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
         let s_const = C_cstr(ccx, *key);
         let s_ptr = p2i(ccx, s_const);
         let v_ptr = p2i(ccx, val);
-        let elt = C_struct([s_ptr, v_ptr]);
+        let elt = C_struct(ccx, [s_ptr, v_ptr]);
         elts.push(elt);
     }
-    let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]);
+    let term = C_struct(ccx, [C_int(ccx, 0), C_int(ccx, 0)]);
     elts.push(term);
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));
@@ -2949,9 +2950,9 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
 
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
-                      llmod: ModuleRef) -> ValueRef {
+                      llmod: ModuleRef, types: &CrateTypes) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
-    let int_type = Type::int(targ_cfg.arch);
+    let int_type = types.i();
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
@@ -2961,8 +2962,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
         ~"toplevel"
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let arrtype = Type::array(&int_type, n_subcrates as u64);
-    let maptype = Type::struct_([Type::i32(), int_type, arrtype], false);
+    let arrtype = types.array(&int_type, n_subcrates as u64);
+    let maptype = Type::struct_([types.i32(), int_type, arrtype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2991,7 +2992,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
                       cstore::get_crate_hash(cstore, i));
         let cr = do nm.with_c_str |buf| {
             unsafe {
-                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
+                llvm::LLVMAddGlobal(ccx.llmod, ccx.types.i().to_ref(), buf)
             }
         };
         subcrates.push(p2i(ccx, cr));
@@ -3001,10 +3002,10 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
 
     unsafe {
         let mod_map = create_module_map(ccx);
-        llvm::LLVMSetInitializer(map, C_struct(
-            [C_i32(1),
+        llvm::LLVMSetInitializer(map, C_struct(ccx,
+            [C_i32(ccx, 1),            
              p2i(ccx, mod_map),
-             C_array(ccx.int_type, subcrates)]));
+             C_array(ccx.types.i(), subcrates)]));
     }
 }
 
@@ -3039,7 +3040,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
-    let llconst = C_struct([llmeta]);
+    let llconst = C_struct(cx, [llmeta]);
     let mut llglobal = do "rust_metadata".with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
@@ -3052,10 +3053,10 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
         };
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
-        let t_ptr_i8 = Type::i8p();
+        let t_ptr_i8 = cx.types.i8p();
         llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8.to_ref());
         let llvm_used = do "llvm.used".with_c_str |buf| {
-            llvm::LLVMAddGlobal(cx.llmod, Type::array(&t_ptr_i8, 1).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.llmod, cx.types.array(&t_ptr_i8, 1).to_ref(), buf)
         };
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));

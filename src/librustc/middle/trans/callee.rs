@@ -624,7 +624,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
         let (llfn, llenv) = unsafe {
             match callee.data {
                 Fn(d) => {
-                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to().to_ref()))
+                    (d.llfn, llvm::LLVMGetUndef(ccx.types.opaque_box().ptr_to().to_ref()))
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
@@ -664,14 +664,14 @@ pub fn trans_call_inner(in_cx: @mut Block,
                     Some(alloc_ty(bcx, ret_ty, "__llret"))
                 } else {
                     unsafe {
-                        Some(llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()))
+                        Some(llvm::LLVMGetUndef(ccx.types.nil().ptr_to().to_ref()))
                     }
                 }
             }
         };
 
         let mut llresult = unsafe {
-            llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
+            llvm::LLVMGetUndef(ccx.types.nil().ptr_to().to_ref())
         };
 
         // The code below invokes the function, using either the Rust

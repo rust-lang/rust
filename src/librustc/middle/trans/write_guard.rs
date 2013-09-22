@@ -72,7 +72,7 @@ pub fn return_to_mut(mut bcx: @mut Block,
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
 
-    let box_ptr = Load(bcx, PointerCast(bcx, frozen_val_ref, Type::i8p().ptr_to()));
+    let box_ptr = Load(bcx, PointerCast(bcx, frozen_val_ref, bcx.ccx().types.i8p().ptr_to()));
 
     let bits_val = Load(bcx, bits_val_ref);
 
@@ -147,7 +147,7 @@ fn root(datum: &Datum,
                 DynaMut => BorrowAsMutFnLangItem,
             };
 
-            let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
+            let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, bcx.ccx().types.i8p().ptr_to()));
 
             let llresult = unpack_result!(bcx, callee::trans_lang_call(
                 bcx,
@@ -192,6 +192,6 @@ fn perform_write_guard(datum: &Datum,
     callee::trans_lang_call(
         bcx,
         langcall(bcx, Some(span), "write guard", CheckNotBorrowedFnLangItem),
-        [PointerCast(bcx, llval, Type::i8p()), filename, line],
+        [PointerCast(bcx, llval, bcx.ccx().types.i8p()), filename, line],
         Some(expr::Ignore)).bcx
 }

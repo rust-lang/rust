@@ -28,7 +28,7 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
     if !ret_def {
         ret_ty = LLVMType {
             cast: false,
-            ty: Type::void(),
+            ty: ccx.types.void(),
         };
         sret = false;
     } else if rty.kind() == Struct {
@@ -44,10 +44,10 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
         let strategy = match ccx.sess.targ_cfg.os {
             OsWin32 | OsMacos => {
                 match llsize_of_alloc(ccx, rty) {
-                    1 => RetValue(Type::i8()),
-                    2 => RetValue(Type::i16()),
-                    4 => RetValue(Type::i32()),
-                    8 => RetValue(Type::i64()),
+                    1 => RetValue(ccx.types.i8()),
+                    2 => RetValue(ccx.types.i16()),
+                    4 => RetValue(ccx.types.i32()),
+                    8 => RetValue(ccx.types.i64()),
                     _ => RetPointer
                 }
             }
@@ -73,7 +73,7 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
 
                 ret_ty = LLVMType {
                     cast: false,
-                    ty: Type::void(),
+                    ty: ccx.types.void(),
                 };
                 sret = true;
             }

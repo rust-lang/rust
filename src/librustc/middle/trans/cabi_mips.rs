@@ -93,7 +93,7 @@ fn classify_ret_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
     };
 }
 
-fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>) {
+fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>) {
     let orig_offset = *offset;
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
@@ -102,16 +102,16 @@ fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>)
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 
-    let padding = padding_ty(align, orig_offset);
+    let padding = padding_ty(ccx, align, orig_offset);
     return if !is_reg_ty(ty) {
         (LLVMType {
             cast: true,
-            ty: struct_ty(ty, padding, true)
+            ty: struct_ty(ccx, ty, padding, true)
         }, None)
     } else if padding.is_some() {
         (LLVMType {
             cast: true,
-            ty: struct_ty(ty, padding, false)
+            ty: struct_ty(ccx, ty, padding, false)
         }, None)
     } else {
         (LLVMType { cast: false, ty: ty }, None)
@@ -128,16 +128,16 @@ fn is_reg_ty(ty: Type) -> bool {
     };
 }
 
-fn padding_ty(align: uint, offset: uint) -> Option<Type> {
+fn padding_ty(ccx: &CrateContext, align: uint, offset: uint) -> Option<Type> {
     if ((align - 1 ) & offset) > 0 {
-        return Some(Type::i32());
+        return Some(ccx.types.i32());
     }
 
     return None;
 }
 
-fn coerce_to_int(size: uint) -> ~[Type] {
-    let int_ty = Type::i32();
+fn coerce_to_int(ccx: &CrateContext, size: uint) -> ~[Type] {
+    let int_ty = ccx.types.i32();
     let mut args = ~[];
 
     let mut n = size / 32;
@@ -148,27 +148,26 @@ fn coerce_to_int(size: uint) -> ~[Type] {
 
     let r = size % 32;
     if r > 0 {
-        unsafe {
-            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint)));
-        }
+        args.push(ccx.types.int_by_size(r));
     }
 
     args
 }
 
-fn struct_ty(ty: Type,
+fn struct_ty(ccx: &CrateContext, 
+             ty: Type,
              padding: Option<Type>,
              coerce: bool) -> Type {
     let size = ty_size(ty) * 8;
     let mut fields = padding.map_move_default(~[], |p| ~[p]);
 
     if coerce {
-        fields = vec::append(fields, coerce_to_int(size));
+        fields = vec::append(fields, coerce_to_int(ccx, size));
     } else {
         fields.push(ty);
     }
 
-    return Type::struct_(fields, false);
+    return ccx.types.struct_(fields, false);
 }
 
 pub fn compute_abi_info(_ccx: &mut CrateContext,
@@ -178,7 +177,7 @@ pub fn compute_abi_info(_ccx: &mut CrateContext,
     let (ret_ty, ret_attr) = if ret_def {
         classify_ret_ty(rty)
     } else {
-        (LLVMType { cast: false, ty: Type::void() }, None)
+        (LLVMType { cast: false, ty: _ccx.types.void() }, None)
     };
 
     let mut ret_ty = ret_ty;
@@ -189,7 +188,7 @@ pub fn compute_abi_info(_ccx: &mut CrateContext,
     let mut offset = if sret { 4 } else { 0 };
 
     for aty in atys.iter() {
-        let (ty, attr) = classify_arg_ty(*aty, &mut offset);
+        let (ty, attr) = classify_arg_ty(_ccx, *aty, &mut offset);
         arg_tys.push(ty);
         attrs.push(attr);
     };
@@ -197,7 +196,7 @@ pub fn compute_abi_info(_ccx: &mut CrateContext,
     if sret {
         arg_tys = vec::append(~[ret_ty], arg_tys);
         attrs = vec::append(~[ret_attr], attrs);
-        ret_ty = LLVMType { cast: false, ty: Type::void() };
+        ret_ty = LLVMType { cast: false, ty: _ccx.types.void() };
     }
 
     return FnType {

@@ -79,7 +79,7 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
 // space to be consumed.
 pub fn nonzero_llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     if llbitsize_of_real(cx, ty) == 0 {
-        unsafe { llvm::LLVMConstInt(cx.int_type.to_ref(), 1, False) }
+        unsafe { llvm::LLVMConstInt(cx.types.i().to_ref(), 1, False) }
     } else {
         llsize_of(cx, ty)
     }
@@ -110,7 +110,7 @@ pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> uint {
 pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
     unsafe {
         return llvm::LLVMConstIntCast(
-            llvm::LLVMAlignOf(ty.to_ref()), cx.int_type.to_ref(), False);
+            llvm::LLVMAlignOf(ty.to_ref()), cx.types.i().to_ref(), False);
     }
 }
 

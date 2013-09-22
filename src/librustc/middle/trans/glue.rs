@@ -45,7 +45,7 @@ pub fn trans_free(cx: @mut Block, v: ValueRef) -> @mut Block {
     let _icx = push_ctxt("trans_free");
     callee::trans_lang_call(cx,
         langcall(cx, None, "", FreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p())],
+        [PointerCast(cx, v, cx.ccx().types.i8p())],
         Some(expr::Ignore)).bcx
 }
 
@@ -53,7 +53,7 @@ pub fn trans_exchange_free(cx: @mut Block, v: ValueRef) -> @mut Block {
     let _icx = push_ctxt("trans_exchange_free");
     callee::trans_lang_call(cx,
         langcall(cx, None, "", ExchangeFreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p())],
+        [PointerCast(cx, v, cx.ccx().types.i8p())],
         Some(expr::Ignore)).bcx
 }
 
@@ -213,7 +213,8 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = Type::glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
+    let types = &ccx.types;
+    let llfnty = types.glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -310,7 +311,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
     // glue is using a simplified type, because the function already has the
     // right type. Otherwise cast to generic pointer.
     let llrawptr = if static_ti.is_none() || static_glue_fn.is_none() {
-        PointerCast(bcx, v, Type::i8p())
+        PointerCast(bcx, v, ccx.types.i8p())
     } else {
         let ty = static_ti.unwrap().ty;
         let simpl = simplified_glue_type(ccx.tcx, field, ty);
@@ -332,7 +333,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
         }
     };
 
-    Call(bcx, llfn, [C_null(Type::nil().ptr_to()), llrawptr], []);
+    Call(bcx, llfn, [C_null(ccx.types.nil().ptr_to()), llrawptr], []);
 }
 
 // See [Note-arg-mode]
@@ -433,7 +434,7 @@ pub fn trans_struct_drop_flag(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did:
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
-        Store(bcx, C_u8(0), drop_flag);
+        Store(bcx, C_u8(bcx.ccx(), 0), drop_flag);
         bcx
     }
 }
@@ -519,7 +520,7 @@ pub fn make_drop_glue(bcx: @mut Block, v0: ValueRef, t: ty::t) -> @mut Block {
 
               // Cast the vtable to a pointer to a pointer to a tydesc.
               let llvtable = PointerCast(bcx, llvtable,
-                                         ccx.tydesc_type.ptr_to().ptr_to());
+                                         ccx.types.tydesc().ptr_to().ptr_to());
               let lltydesc = Load(bcx, llvtable);
               call_tydesc_glue_full(bcx,
                                     lluniquevalue,
@@ -593,7 +594,7 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
 
           // Cast the vtable to a pointer to a pointer to a tydesc.
           let llvtable = PointerCast(bcx, llvtable,
-                                     bcx.ccx().tydesc_type.ptr_to().ptr_to());
+                                     bcx.ccx().types.tydesc().ptr_to().ptr_to());
           let lltydesc = Load(bcx, llvtable);
           call_tydesc_glue_full(bcx,
                                 lluniquevalue,
@@ -669,7 +670,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = do name.with_c_str |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, ccx.types.tydesc().to_ref(), buf)
         }
     };
 
@@ -747,7 +748,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
+    let glue_fn_ty = ccx.types.generic_glue_fn().ptr_to();
     let tyds = &mut ccx.tydescs;
     for (_, &val) in tyds.iter() {
         let ti = val;
@@ -798,9 +799,9 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
             };
 
         debug!("ti.borrow_offset: %s",
-               ccx.tn.val_to_str(ti.borrow_offset));
+               ccx.types.val_to_str(ti.borrow_offset));
 
-        let tydesc = C_named_struct(ccx.tydesc_type,
+        let tydesc = C_named_struct(ccx.types.tydesc(),
                                     [ti.size, // size
                                      ti.align, // align
                                      take_glue, // take_glue

@@ -250,7 +250,7 @@ pub fn trans_break_cont(bcx: @mut Block,
                     Some(bcx) => bcx,
                         // This is a return from a loop body block
                         None => {
-                            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.unwrap());
+                            Store(bcx, C_bool(bcx.ccx(), !to_end), bcx.fcx.llretptr.unwrap());
                             cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                             Unreachable(bcx);
                             return bcx;
@@ -345,8 +345,8 @@ fn trans_fail_value(bcx: @mut Block,
         (C_cstr(bcx.ccx(), @"<runtime>"), 0)
       }
     };
-    let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
-    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
+    let V_str = PointerCast(bcx, V_fail_str, ccx.types.i8p());
+    let V_filename = PointerCast(bcx, V_filename, ccx.types.i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
     let did = langcall(bcx, sp_opt, "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;

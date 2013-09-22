@@ -9,7 +9,8 @@
 // except according to those terms.
 
 
-use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
+use lib::llvm::{llvm, ValueRef, TypeRef, Bool, False, True};
+use lib::llvm::{ContextRef, TypeKind, TypeNames};
 use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::ty;
@@ -51,239 +52,14 @@ impl Type {
         self.rf
     }
 
-    pub fn void() -> Type {
-        ty!(llvm::LLVMVoidTypeInContext(base::task_llcx()))
-    }
-
-    pub fn nil() -> Type {
-        Type::empty_struct()
-    }
-
-    pub fn metadata() -> Type {
-        ty!(llvm::LLVMMetadataTypeInContext(base::task_llcx()))
-    }
-
-    pub fn i1() -> Type {
-        ty!(llvm::LLVMInt1TypeInContext(base::task_llcx()))
-    }
-
-    pub fn i8() -> Type {
-        ty!(llvm::LLVMInt8TypeInContext(base::task_llcx()))
-    }
-
-    pub fn i16() -> Type {
-        ty!(llvm::LLVMInt16TypeInContext(base::task_llcx()))
-    }
-
-    pub fn i32() -> Type {
-        ty!(llvm::LLVMInt32TypeInContext(base::task_llcx()))
-    }
-
-    pub fn i64() -> Type {
-        ty!(llvm::LLVMInt64TypeInContext(base::task_llcx()))
-    }
-
-    pub fn f32() -> Type {
-        ty!(llvm::LLVMFloatTypeInContext(base::task_llcx()))
-    }
-
-    pub fn f64() -> Type {
-        ty!(llvm::LLVMDoubleTypeInContext(base::task_llcx()))
-    }
-
-    pub fn bool() -> Type {
-        Type::i8()
-    }
-
-    pub fn char() -> Type {
-        Type::i32()
-    }
-
-    pub fn i8p() -> Type {
-        Type::i8().ptr_to()
-    }
-
-    pub fn int(arch: Architecture) -> Type {
-        match arch {
-            X86 | Arm | Mips => Type::i32(),
-            X86_64 => Type::i64()
-        }
-    }
-
-    pub fn float(_: Architecture) -> Type {
-        // All architectures currently just use doubles as the default
-        // float size
-        Type::f64()
-    }
-
-    pub fn int_from_ty(ctx: &CrateContext, t: ast::int_ty) -> Type {
-        match t {
-            ast::ty_i => ctx.int_type,
-            ast::ty_i8 => Type::i8(),
-            ast::ty_i16 => Type::i16(),
-            ast::ty_i32 => Type::i32(),
-            ast::ty_i64 => Type::i64()
-        }
-    }
-
-    pub fn uint_from_ty(ctx: &CrateContext, t: ast::uint_ty) -> Type {
-        match t {
-            ast::ty_u => ctx.int_type,
-            ast::ty_u8 => Type::i8(),
-            ast::ty_u16 => Type::i16(),
-            ast::ty_u32 => Type::i32(),
-            ast::ty_u64 => Type::i64()
-        }
-    }
-
-    pub fn float_from_ty(ctx: &CrateContext, t: ast::float_ty) -> Type {
-        match t {
-            ast::ty_f => ctx.float_type,
-            ast::ty_f32 => Type::f32(),
-            ast::ty_f64 => Type::f64()
-        }
-    }
-
-    pub fn size_t(arch: Architecture) -> Type {
-        Type::int(arch)
-    }
-
     pub fn func(args: &[Type], ret: &Type) -> Type {
         let vec : &[TypeRef] = unsafe { cast::transmute(args) };
         ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
                                    args.len() as c_uint, False))
     }
 
-    pub fn func_pair(cx: &CrateContext, fn_ty: &Type) -> Type {
-        Type::struct_([fn_ty.ptr_to(), Type::opaque_cbox_ptr(cx)], false)
-    }
-
     pub fn ptr(ty: Type) -> Type {
         ty!(llvm::LLVMPointerType(ty.to_ref(), 0 as c_uint))
-    }
-
-    pub fn struct_(els: &[Type], packed: bool) -> Type {
-        let els : &[TypeRef] = unsafe { cast::transmute(els) };
-        ty!(llvm::LLVMStructTypeInContext(base::task_llcx(), vec::raw::to_ptr(els),
-                                          els.len() as c_uint, packed as Bool))
-    }
-
-    pub fn named_struct(name: &str) -> Type {
-        let ctx = base::task_llcx();
-        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(ctx, s)))
-    }
-
-    pub fn empty_struct() -> Type {
-        Type::struct_([], false)
-    }
-
-    pub fn vtable() -> Type {
-        Type::array(&Type::i8().ptr_to(), 1)
-    }
-
-    pub fn generic_glue_fn(cx: &mut CrateContext) -> Type {
-        match cx.tn.find_type("glue_fn") {
-            Some(ty) => return ty,
-            None => ()
-        }
-
-        let ty = Type::glue_fn(Type::i8p());
-        cx.tn.associate_type("glue_fn", &ty);
-
-        return ty;
-    }
-
-    pub fn glue_fn(t: Type) -> Type {
-        Type::func([ Type::nil().ptr_to(), t ],
-            &Type::void())
-    }
-
-    pub fn tydesc(arch: Architecture) -> Type {
-        let mut tydesc = Type::named_struct("tydesc");
-        let glue_fn_ty = Type::glue_fn(Type::i8p()).ptr_to();
-
-        let int_ty = Type::int(arch);
-
-        // Must mirror:
-        //
-        // std::unstable::intrinsics::TyDesc
-        // type_desc in rt
-
-        let elems = [int_ty,     // size
-                     int_ty,     // align
-                     glue_fn_ty, // take
-                     glue_fn_ty, // drop
-                     glue_fn_ty, // free
-                     glue_fn_ty, // visit
-                     int_ty, // borrow_offset
-                     Type::struct_([Type::i8p(), Type::int(arch)], false)]; // name
-        tydesc.set_struct_body(elems, false);
-
-        return tydesc;
-    }
-
-    pub fn array(ty: &Type, len: u64) -> Type {
-        ty!(llvm::LLVMArrayType(ty.to_ref(), len as c_uint))
-    }
-
-    pub fn vector(ty: &Type, len: u64) -> Type {
-        ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
-    }
-
-    pub fn vec(arch: Architecture, ty: &Type) -> Type {
-        Type::struct_(
-            [ Type::int(arch), Type::int(arch), Type::array(ty, 0) ],
-        false)
-    }
-
-    pub fn opaque_vec(arch: Architecture) -> Type {
-        Type::vec(arch, &Type::i8())
-    }
-
-    #[inline]
-    pub fn box_header_fields(ctx: &CrateContext) -> ~[Type] {
-        ~[
-            ctx.int_type, ctx.tydesc_type.ptr_to(),
-            Type::i8().ptr_to(), Type::i8().ptr_to()
-        ]
-    }
-
-    pub fn box_header(ctx: &CrateContext) -> Type {
-        Type::struct_(Type::box_header_fields(ctx), false)
-    }
-
-    pub fn box(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(Type::box_header_fields(ctx) + &[*ty], false)
-    }
-
-    pub fn opaque() -> Type {
-        Type::i8()
-    }
-
-    pub fn opaque_box(ctx: &CrateContext) -> Type {
-        Type::box(ctx, &Type::opaque())
-    }
-
-    pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::box(ctx, ty)
-    }
-
-    pub fn opaque_cbox_ptr(cx: &CrateContext) -> Type {
-        Type::opaque_box(cx).ptr_to()
-    }
-
-    pub fn enum_discrim(cx: &CrateContext) -> Type {
-        cx.int_type
-    }
-
-    pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
-        let tydesc_ptr = ctx.tydesc_type.ptr_to();
-        let box_ty = match store {
-            ty::BoxTraitStore => Type::opaque_box(ctx),
-            ty::UniqTraitStore => Type::unique(ctx, &Type::i8()),
-            ty::RegionTraitStore(*) => Type::i8()
-        };
-        Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)
     }
 
     pub fn kind(&self) -> TypeKind {
@@ -366,5 +142,360 @@ impl Type {
             FP128 | PPC_FP128 => 128,
             _ => fail!("llvm_float_width called on a non-float type")
         }
+    }
+}
+
+pub struct CrateTypes {
+    priv llcx: ContextRef,
+    priv tn: TypeNames,
+    priv i1_t: Type,
+    priv i8_t: Type,
+    priv i16_t: Type,
+    priv i32_t: Type,
+    priv i64_t: Type,
+    priv f32_t: Type,
+    priv f64_t: Type,
+    priv i8p_t: Type,
+    priv tydesc_t: Type,
+    priv int_t: Type,
+    priv float_t: Type,
+    priv nil_t: Type,
+    priv void_t: Type,
+    priv str_slice_t: Type,
+    priv generic_glue_fn_t: Type,
+    priv opaque_vec_t: Type
+}
+
+/**
+ * Crate type set
+ */
+impl CrateTypes {
+    
+    /**
+     * Constriction/initialization
+     */
+    pub fn new(arch: Architecture, llcx: ContextRef) -> ~CrateTypes {
+        let mut tn = TypeNames::new();
+
+        // init primitive types
+        let i1_type = ty!(llvm::LLVMInt8TypeInContext(llcx));
+        let i8_type = ty!(llvm::LLVMInt8TypeInContext(llcx));
+        let i16_type = ty!(llvm::LLVMInt16TypeInContext(llcx));
+        let i32_type = ty!(llvm::LLVMInt32TypeInContext(llcx));
+        let i64_type = ty!(llvm::LLVMInt64TypeInContext(llcx));
+        let f32_type = ty!(llvm::LLVMFloatTypeInContext(llcx));
+        let f64_type = ty!(llvm::LLVMDoubleTypeInContext(llcx));
+        let i8p_type = i8_type.ptr_to();
+        let int_type = match arch {
+            X86 | Arm | Mips => i32_type,
+            X86_64 => i64_type
+        };
+        let float_type = f64_type; // All architectures currently just use doubles as the default float size
+        let nil_type = ty!(llvm::LLVMStructTypeInContext(llcx, vec::raw::to_ptr(&[]), 0, false as Bool));
+        let void_type = ty!(llvm::LLVMVoidTypeInContext(llcx));
+
+        // init str_slice
+        let mut str_slice_ty =  ty!("str_slice".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        str_slice_ty.set_struct_body([i8p_type, int_type], false);
+        tn.associate_type("str_slice", &str_slice_ty);
+
+        // init glue_fn type
+        let glue_fn_ty = CrateTypes::func_([nil_type.ptr_to(), i8p_type], &void_type);
+        tn.associate_type("glue_fn", &glue_fn_ty);
+
+        // init tydesc
+        let mut tydesc_type =  ty!("tydesc".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        // Must mirror: std::unstable::intrinsics::TyDesc AND type_desc in rt
+        let elems = [int_type,   // size
+                     int_type,   // align
+                     glue_fn_ty, // take
+                     glue_fn_ty, // drop
+                     glue_fn_ty, // free
+                     glue_fn_ty, // visit
+                     int_type,   // borrow_offset
+                     str_slice_ty]; // name
+        tydesc_type.set_struct_body(elems, false);
+        tn.associate_type("tydesc", &tydesc_type);
+
+        // init opaque_vec
+        let mut opaque_vec_type =  ty!("opaque_vec".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        opaque_vec_type.set_struct_body([int_type, int_type, 
+                                         ty!(llvm::LLVMArrayType(i8_type.to_ref(), 0))],
+                                        false);
+        tn.associate_type("opaque_vec", &opaque_vec_type);
+
+        // form the result struct
+        ~CrateTypes {
+            llcx: llcx,
+            tn: tn,
+            i1_t: i1_type,
+            i8_t: i8_type,
+            i16_t: i16_type,
+            i32_t: i32_type,
+            i64_t: i64_type,
+            f32_t: f32_type,
+            f64_t: f64_type,
+            i8p_t: i8p_type,
+            nil_t: nil_type,
+            void_t: void_type,
+            tydesc_t: tydesc_type,
+            int_t: int_type,
+            float_t: float_type,
+            str_slice_t: str_slice_ty,
+            generic_glue_fn_t: glue_fn_ty,
+            opaque_vec_t: opaque_vec_type
+        }
+    }
+
+    /**
+     * Primitive type getters
+     */
+
+    #[inline(always)]
+    pub fn i(&self) -> Type {
+        self.int_t
+    }
+
+    #[inline(always)]
+    pub fn f(&self) -> Type {
+        self.float_t
+    }
+
+    #[inline(always)]
+    pub fn void(&self) -> Type {
+        self.void_t
+    }
+
+    #[inline(always)]
+    pub fn nil(&self) -> Type {
+        self.nil_t
+    }
+
+    pub fn metadata(&self) -> Type {
+        ty!(llvm::LLVMMetadataTypeInContext(self.llcx))
+    }
+
+    pub fn i1(&self) -> Type {
+        ty!(llvm::LLVMInt1TypeInContext(self.llcx))
+    }
+
+    #[inline(always)]
+    pub fn i8(&self) -> Type {
+        self.i8_t
+    }
+
+    #[inline(always)]
+    pub fn i16(&self) -> Type {
+        self.i16_t
+    }
+
+    #[inline(always)]
+    pub fn i32(&self) -> Type {
+        self.i32_t
+    }
+
+    #[inline(always)]
+    pub fn i64(&self) -> Type {
+        self.i64_t
+    }
+
+    #[inline(always)]
+    pub fn f32(&self) -> Type {
+        self.f32_t
+    }
+
+    #[inline(always)]
+    pub fn f64(&self) -> Type {
+        self.f64_t
+    }
+
+    #[inline(always)]
+    pub fn bool(&self) -> Type {
+        self.i8()
+    }
+
+    #[inline(always)]
+    pub fn char(&self) -> Type {
+        self.i32()
+    }
+
+    #[inline(always)]
+    pub fn i8p(&self) -> Type {
+        self.i8p_t
+    }
+
+    pub fn int_by_size(&self, size: uint) -> Type {
+        ty!(llvm::LLVMIntTypeInContext(self.llcx, size as c_uint))
+    }
+
+
+    pub fn int_from_ast_ty(&self, t: ast::int_ty) -> Type {
+        match t {
+            ast::ty_i => self.i(),
+            ast::ty_i8 => self.i8(),
+            ast::ty_i16 => self.i16(),
+            ast::ty_i32 => self.i32(),
+            ast::ty_i64 => self.i64()
+        }
+    }
+
+    pub fn uint_from_ast_ty(&self, t: ast::uint_ty) -> Type {
+        match t {
+            ast::ty_u => self.i(),
+            ast::ty_u8 => self.i8(),
+            ast::ty_u16 => self.i16(),
+            ast::ty_u32 => self.i32(),
+            ast::ty_u64 => self.i64()
+        }
+    }
+
+    pub fn float_from_ast_ty(&self, t: ast::float_ty) -> Type {
+        match t {
+            ast::ty_f => self.f(),
+            ast::ty_f32 => self.f32(),
+            ast::ty_f64 => self.f64()
+        }
+    }
+
+    pub fn size_t(&self) -> Type {
+        self.i()
+    }
+
+    /**
+     * Complex type getters
+     */
+
+    #[inline(always)]
+    pub fn tydesc(&self) -> Type {
+        self.tydesc_t
+    }
+
+    #[inline(always)]
+    pub fn opaque_vec(&self) -> Type {
+        self.opaque_vec_t
+    }
+
+    #[inline(always)]
+    pub fn str_slice(&self) -> Type {
+        self.str_slice_t
+    }
+
+    pub fn func_(args: &[Type], ret: &Type) -> Type {
+        let vec : &[TypeRef] = unsafe { cast::transmute(args) };
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
+                                   args.len() as c_uint, False))
+    }
+
+    #[inline(always)]
+    pub fn func(&self, args: &[Type], ret: &Type) -> Type {
+        CrateTypes::func_(args, ret)
+    }
+
+    pub fn func_pair(&self, fn_ty: &Type) -> Type {
+        self.struct_([fn_ty.ptr_to(), self.opaque_cbox_ptr()], false)
+    }
+
+    pub fn struct_(&self, els: &[Type], packed: bool) -> Type {
+        let els : &[TypeRef] = unsafe { cast::transmute(els) };
+        ty!(llvm::LLVMStructTypeInContext(self.llcx, vec::raw::to_ptr(els),
+                                          els.len() as c_uint, packed as Bool))
+    }
+
+    pub fn named_struct(&self, name: &str) -> Type {
+        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(self.llcx, s)))
+    }
+
+    pub fn empty_struct(&self) -> Type {
+        self.struct_([], false)
+    }
+
+    pub fn vtable(&self) -> Type {
+        self.array(&self.i8().ptr_to(), 1)
+    }
+
+    #[inline(always)]
+    pub fn generic_glue_fn(&self) -> Type {
+        self.generic_glue_fn_t
+    }
+
+    pub fn glue_fn(&self, t: Type) -> Type {
+        self.func([ self.nil().ptr_to(), t ],
+            &self.void())
+    }
+
+    pub fn array(&self, ty: &Type, len: u64) -> Type {
+        ty!(llvm::LLVMArrayType(ty.to_ref(), len as c_uint))
+    }
+
+    pub fn vector(&self, ty: &Type, len: u64) -> Type {
+        ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
+    }
+
+    pub fn vec(&self, ty: &Type) -> Type {
+        self.struct_(
+            [ self.i(), self.i(), self.array(ty, 0) ],
+        false)
+    }
+
+    #[inline]
+    fn box_header_fields(&self) -> ~[Type] {
+        ~[
+            self.i(), self.tydesc(), self.i8p(), self.i8p()
+        ]
+    }
+
+    fn box_header(&self) -> Type {
+        self.struct_(self.box_header_fields(), false)
+    }
+
+    pub fn box(&self, ty: &Type) -> Type {
+        self.struct_(self.box_header_fields() + &[*ty], false)
+    }
+
+    pub fn opaque(&self) -> Type {
+        self.i8()
+    }
+
+    pub fn opaque_box(&self) -> Type {
+        self.box(&self.opaque())
+    }
+
+    pub fn unique(&self, ty: &Type) -> Type {
+        self.box(ty)
+    }
+
+    pub fn opaque_cbox_ptr(&self) -> Type {
+        self.opaque_box().ptr_to()
+    }
+
+    pub fn enum_discrim(&self) -> Type {
+        self.i()
+    }
+
+    pub fn opaque_trait(&self, store: ty::TraitStore) -> Type {
+        let tydesc_ptr = self.tydesc().ptr_to();
+        let box_ty = match store {
+            ty::BoxTraitStore => self.opaque_box(),
+            ty::UniqTraitStore => self.unique(&self.i8()),
+            ty::RegionTraitStore(*) => self.i8()
+        };
+        self.struct_([tydesc_ptr, box_ty.ptr_to()], false)
+    }
+
+
+    /**
+     * Utility functions
+     */
+
+    pub fn type_to_str(&self, ty: Type) -> ~str {
+        self.tn.type_to_str(ty)
+    }
+
+    pub fn val_to_str(&self, val: ValueRef) -> ~str {
+        self.tn.val_to_str(val)
+    }
+
+    pub fn types_to_str(&self, tys: &[Type]) -> ~str {
+        self.tn.types_to_str(tys)
     }
 }
