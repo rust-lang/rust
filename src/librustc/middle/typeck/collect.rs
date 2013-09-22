@@ -312,7 +312,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         //     Self => D'
         //     D,E,F => E',F',G'
         let substs = substs {
-            regions: ty::NonerasedRegions(opt_vec::Empty),
+            regions: ty::NonerasedRegions(opt_vec::with(ty::re_bound(ty::br_self))),
             self_ty: Some(self_param),
             tps: non_shifted_trait_tps + shifted_method_tps
         };
