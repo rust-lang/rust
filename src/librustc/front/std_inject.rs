@@ -19,7 +19,7 @@ use syntax::codemap;
 use syntax::fold;
 use syntax::opt_vec;
 
-static STD_VERSION: &'static str = "0.8-pre";
+static STD_VERSION: &'static str = "0.8";
 
 pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::Crate)
                                -> @ast::Crate {
