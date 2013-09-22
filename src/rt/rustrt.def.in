@@ -9,11 +9,7 @@ rust_localtime
 rust_timegm
 rust_mktime
 precise_time_ns
-rand_free
-rand_new_seeded
-rand_seed_size
 rand_gen_seed
-rand_next
 rust_path_is_dir
 rust_path_exists
 rust_get_stdin

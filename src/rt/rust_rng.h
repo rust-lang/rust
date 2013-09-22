@@ -11,22 +11,7 @@
 #ifndef RUST_RNG_H
 #define RUST_RNG_H
 
-#include "rand.h"
-
-class rust_kernel;
-
-// Initialization helpers for ISAAC RNG
-
-struct rust_rng {
-    randctx rctx;
-    bool reseedable;
-};
-
-size_t rng_seed_size();
 void rng_gen_seed(uint8_t* dest, size_t size);
-void rng_init(rust_rng *rng, char *env_seed,
-              uint8_t *user_seed, size_t seed_len);
-uint32_t rng_gen_u32(rust_rng *rng);
 
 //
 // Local Variables:
