@@ -8,140 +8,209 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rustdoc - The Rust documentation generator
-
 #[link(name = "rustdoc",
        vers = "0.8",
-       uuid = "f8abd014-b281-484d-a0c3-26e3de8e2412",
-       url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
+       uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6",
+       url = "https://github.com/mozilla/rust/tree/master/src/librustdoc")];
 
-#[comment = "The Rust documentation generator"];
+#[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod extra;
-extern mod rustc;
 extern mod syntax;
+extern mod rustc;
+extern mod extra;
 
-use std::os;
+use extra::serialize::Encodable;
+use extra::time;
+use extra::getopts::groups;
+use std::cell::Cell;
+use std::rt::io;
+use std::rt::io::Writer;
+use std::rt::io::file::FileInfo;
 
-use config::Config;
-use doc::Item;
-use doc::ItemUtils;
-
-pub mod pass;
-pub mod config;
-pub mod parse;
-pub mod extract;
-pub mod attr_parser;
-pub mod doc;
-pub mod markdown_index_pass;
-pub mod markdown_pass;
-pub mod markdown_writer;
+pub mod clean;
+pub mod core;
+pub mod doctree;
 pub mod fold;
-pub mod path_pass;
-pub mod attr_pass;
-pub mod tystr_pass;
-pub mod prune_hidden_pass;
-pub mod desc_to_brief_pass;
-pub mod text_pass;
-pub mod unindent_pass;
-pub mod trim_pass;
-pub mod astsrv;
-pub mod demo;
-pub mod sort_pass;
-pub mod sort_item_name_pass;
-pub mod sort_item_type_pass;
-pub mod page_pass;
-pub mod sectionalize_pass;
-pub mod escape_pass;
-pub mod prune_private_pass;
+pub mod html {
+    pub mod render;
+    pub mod layout;
+    pub mod markdown;
+    pub mod format;
+}
+pub mod passes;
+pub mod plugins;
+pub mod visit_ast;
+
+pub static SCHEMA_VERSION: &'static str = "0.8.0";
+
+local_data_key!(pub ctxtkey: @core::DocContext)
+
+enum OutputFormat {
+    HTML, JSON
+}
 
 pub fn main() {
-    let args = os::args();
-    main_args(args);
+    main_args(std::os::args());
+}
+
+pub fn opts() -> ~[groups::OptGroup] {
+    use extra::getopts::groups::*;
+    ~[
+        optmulti("L", "library-path", "directory to add to crate search path",
+                 "DIR"),
+        optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
+        optmulti("", "passes", "space separated list of passes to also run",
+                 "PASSES"),
+        optmulti("", "plugins", "space separated list of plugins to also load",
+                 "PLUGINS"),
+        optflag("h", "help", "show this help message"),
+        optflag("", "nodefaults", "don't run the default passes"),
+        optopt("o", "output", "where to place the output", "PATH"),
+    ]
+}
+
+pub fn usage(argv0: &str) {
+    println(groups::usage(format!("{} [options] [html|json] <crate>",
+                                  argv0), opts()));
 }
 
 pub fn main_args(args: &[~str]) {
-    if args.iter().any(|x| "-h" == *x) || args.iter().any(|x| "--help" == *x) {
-        config::usage();
+    //use extra::getopts::groups::*;
+
+    let matches = groups::getopts(args.tail(), opts()).unwrap();
+
+    if matches.opt_present("h") || matches.opt_present("help") {
+        usage(args[0]);
         return;
     }
 
-    let config = match config::parse_config(args) {
-      Ok(config) => config,
-      Err(err) => {
-        printfln!("error: %s", err);
-        return;
-      }
+    let (format, cratefile) = match matches.free.clone() {
+        [~"json", crate] => (JSON, crate),
+        [~"html", crate] => (HTML, crate),
+        [s, _] => {
+            println!("Unknown output format: `{}`", s);
+            usage(args[0]);
+            exit(1);
+        }
+        [_, .._] => {
+            println!("Expected exactly one crate to process");
+            usage(args[0]);
+            exit(1);
+        }
+        _ => {
+            println!("Expected an output format and then one crate");
+            usage(args[0]);
+            exit(1);
+        }
     };
 
-    run(config);
-}
+    // First, parse the crate and extract all relevant information.
+    let libs = Cell::new(matches.opt_strs("L").map(|s| Path(*s)));
+    let cr = Cell::new(Path(cratefile));
+    info2!("starting to run rustc");
+    let crate = do std::task::try {
+        let cr = cr.take();
+        core::run_core(libs.take(), &cr)
+    }.unwrap();
+    info2!("finished with rustc");
 
-/// Runs rustdoc over the given file
-fn run(config: Config) {
-
-    let source_file = config.input_crate.clone();
-
-    // Create an AST service from the source code
-    do astsrv::from_file(source_file.to_str()) |srv| {
-
-        // Just time how long it takes for the AST to become available
-        do time(~"wait_ast") {
-            do astsrv::exec(srv.clone()) |_ctxt| { }
-        };
-
-        // Extract the initial doc tree from the AST. This contains
-        // just names and node ids.
-        let doc = time(~"extract", || {
-            let default_name = source_file.clone();
-            extract::from_srv(srv.clone(), default_name.to_str())
-        });
-
-        // Refine and publish the document
-        pass::run_passes(srv, doc, ~[
-            // Generate type and signature strings
-            tystr_pass::mk_pass(),
-            // Record the full paths to various nodes
-            path_pass::mk_pass(),
-            // Extract the docs attributes and attach them to doc nodes
-            attr_pass::mk_pass(),
-            // Perform various text escaping
-            escape_pass::mk_pass(),
-            // Remove things marked doc(hidden)
-            prune_hidden_pass::mk_pass(),
-            // Remove things that are private
-            prune_private_pass::mk_pass(),
-            // Extract brief documentation from the full descriptions
-            desc_to_brief_pass::mk_pass(),
-            // Massage the text to remove extra indentation
-            unindent_pass::mk_pass(),
-            // Split text into multiple sections according to headers
-            sectionalize_pass::mk_pass(),
-            // Trim extra spaces from text
-            trim_pass::mk_pass(),
-            // Sort items by name
-            sort_item_name_pass::mk_pass(),
-            // Sort items again by kind
-            sort_item_type_pass::mk_pass(),
-            // Create indexes appropriate for markdown
-            markdown_index_pass::mk_pass(config.clone()),
-            // Break the document into pages if required by the
-            // output format
-            page_pass::mk_pass(config.output_style),
-            // Render
-            markdown_pass::mk_pass(
-                markdown_writer::make_writer_factory(config.clone())
-            )
-        ]);
+    // Process all of the crate attributes, extracting plugin metadata along
+    // with the passes which we are supposed to run.
+    let mut default_passes = !matches.opt_present("nodefaults");
+    let mut passes = matches.opt_strs("passes");
+    let mut plugins = matches.opt_strs("plugins");
+    match crate.module.get_ref().doc_list() {
+        Some(nested) => {
+            for inner in nested.iter() {
+                match *inner {
+                    clean::Word(~"no_default_passes") => {
+                        default_passes = false;
+                    }
+                    clean::NameValue(~"passes", ref value) => {
+                        for pass in value.word_iter() {
+                            passes.push(pass.to_owned());
+                        }
+                    }
+                    clean::NameValue(~"plugins", ref value) => {
+                        for p in value.word_iter() {
+                            plugins.push(p.to_owned());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        None => {}
     }
+    if default_passes {
+        passes.unshift(~"collapse-docs");
+        passes.unshift(~"unindent-comments");
+    }
+
+    // Load all plugins/passes into a PluginManager
+    let mut pm = plugins::PluginManager::new(Path("/tmp/rustdoc_ng/plugins"));
+    for pass in passes.iter() {
+        let plugin = match pass.as_slice() {
+            "strip-hidden" => passes::strip_hidden,
+            "unindent-comments" => passes::unindent_comments,
+            "collapse-docs" => passes::collapse_docs,
+            "collapse-privacy" => passes::collapse_privacy,
+            s => { error!("unknown pass %s, skipping", s); loop },
+        };
+        pm.add_plugin(plugin);
+    }
+    info2!("loading plugins...");
+    for pname in plugins.move_iter() {
+        pm.load_plugin(pname);
+    }
+
+    // Run everything!
+    info2!("Executing passes/plugins");
+    let (crate, res) = pm.run_plugins(crate);
+
+    info2!("going to format");
+    let started = time::precise_time_ns();
+    let output = matches.opt_str("o").map(|s| Path(*s));
+    match format {
+        HTML => { html::render::run(crate, output.unwrap_or(Path("doc"))) }
+        JSON => { jsonify(crate, res, output.unwrap_or(Path("doc.json"))) }
+    }
+    let ended = time::precise_time_ns();
+    info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1000000000f64);
 }
 
-pub fn time<T>(what: ~str, f: &fn() -> T) -> T {
-    let start = extra::time::precise_time_s();
-    let rv = f();
-    let end = extra::time::precise_time_s();
-    info!("time: %3.3f s    %s", end - start, what);
-    rv
+fn jsonify(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
+    // {
+    //   "schema": version,
+    //   "crate": { parsed crate ... },
+    //   "plugins": { output of plugins ... }
+    // }
+    let mut json = ~extra::treemap::TreeMap::new();
+    json.insert(~"schema", extra::json::String(SCHEMA_VERSION.to_owned()));
+    let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
+
+    // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
+    // straight to the Rust JSON representation.
+    let crate_json_str = do std::io::with_str_writer |w| {
+        crate.encode(&mut extra::json::Encoder(w));
+    };
+    let crate_json = match extra::json::from_str(crate_json_str) {
+        Ok(j) => j,
+        Err(_) => fail!("Rust generated JSON is invalid??")
+    };
+
+    json.insert(~"crate", crate_json);
+    json.insert(~"plugins", extra::json::Object(plugins_json));
+
+    let mut file = dst.open_writer(io::Create).unwrap();
+    let output = extra::json::Object(json).to_str();
+    file.write(output.as_bytes());
+}
+
+fn exit(status: int) -> ! {
+    #[fixed_stack_segment]; #[inline(never)];
+    use std::libc;
+    unsafe { libc::exit(status as libc::c_int) }
 }

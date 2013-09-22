@@ -213,40 +213,21 @@ else
 
 # The rustdoc executable
 RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
-RUSTDOC_NG = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc_ng$(X_$(CFG_BUILD_TRIPLE))
 
 # The library documenting macro
-# $(1) - The output directory
+# $(1) - The crate name (std/extra)
 # $(2) - The crate file
-# $(3) - The crate soruce files
+# $(3) - The relevant host build triple (to depend on libstd)
 define libdoc
-doc/$(1)/index.html: $(2) $(3) $$(RUSTDOC) doc/$(1)/rust.css
+doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 	@$$(call E, rustdoc: $$@)
-	$(Q)$(RUSTDOC) $(2) --output-dir=doc/$(1)
-
-doc/$(1)/rust.css: rust.css
-	@$$(call E, cp: $$@)
-	$(Q)cp $$< $$@
+	$(Q)$(RUSTDOC) html $(2)
 
 DOCS += doc/$(1)/index.html
 endef
 
-# The "next generation" library documenting macro
-# $(1) - The crate name (std/extra)
-# $(2) - The crate file
-# $(3) - The relevant host build triple (to depend on libstd)
-define libdocng
-doc/ng/$(1)/index.html: $$(RUSTDOC_NG) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
-	@$$(call E, rustdoc_ng: $$@)
-	$(Q)$(RUSTDOC_NG) html $(2) -o doc/ng
-
-DOCS += doc/ng/$(1)/index.html
-endef
-
-$(eval $(call libdoc,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
-$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
-$(eval $(call libdocng,std,$(STDLIB_CRATE),$(CFG_BUILD_TRIPLE)))
-$(eval $(call libdocng,extra,$(EXTRALIB_CRATE),$(CFG_BUILD_TRIPLE)))
+$(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD_TRIPLE)))
+$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD_TRIPLE)))
 endif
 
 

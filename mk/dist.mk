@@ -39,7 +39,6 @@ PKG_FILES := \
       libsyntax                                \
       rt                                       \
       librustdoc                               \
-      rustdoc_ng                               \
       rustllvm                                 \
       snapshots.txt                            \
       test)                                    \
