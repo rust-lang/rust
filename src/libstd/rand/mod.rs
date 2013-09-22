@@ -242,7 +242,6 @@ pub mod rustrt {
     use libc::size_t;
 
     extern {
-        pub fn rand_seed_size() -> size_t;
         pub fn rand_gen_seed(buf: *mut u8, sz: size_t);
     }
 }
@@ -822,8 +821,8 @@ pub fn seed() -> ~[u8] {
     #[fixed_stack_segment]; #[inline(never)];
 
     unsafe {
-        let n = rustrt::rand_seed_size() as uint;
-        let mut s = vec::from_elem(n, 0_u8);
+        let n = RAND_SIZE * 4;
+        let mut s = vec::from_elem(n as uint, 0_u8);
         do s.as_mut_buf |p, sz| {
             rustrt::rand_gen_seed(p, sz as size_t)
         }
@@ -1051,46 +1050,6 @@ mod test {
                      (~uint, @int, ~Option<~(@u32, ~(@bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (float,)))) = random();
-    }
-
-    #[test]
-    fn compare_isaac_implementation() {
-        #[fixed_stack_segment]; #[inline(never)];
-
-        // This is to verify that the implementation of the ISAAC rng is
-        // correct (i.e. matches the output of the upstream implementation,
-        // which is in the runtime)
-        use libc::size_t;
-
-        #[abi = "cdecl"]
-        mod rustrt {
-            use libc::size_t;
-
-            #[allow(non_camel_case_types)] // runtime type
-            pub enum rust_rng {}
-
-            extern {
-                pub fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
-                pub fn rand_next(rng: *rust_rng) -> u32;
-                pub fn rand_free(rng: *rust_rng);
-            }
-        }
-
-        // run against several seeds
-        do 10.times {
-            unsafe {
-                let seed = super::seed();
-                let rt_rng = do seed.as_imm_buf |p, sz| {
-                    rustrt::rand_new_seeded(p, sz as size_t)
-                };
-                let mut rng = IsaacRng::new_seeded(seed);
-
-                do 10000.times {
-                    assert_eq!(rng.next(), rustrt::rand_next(rt_rng));
-                }
-                rustrt::rand_free(rt_rng);
-            }
-        }
     }
 
     #[test]
