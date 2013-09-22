@@ -92,7 +92,7 @@ static COMMANDS: &'static [Command<'static>] = &'static [
         cmd: "doc",
         action: CallMain("rustdoc", rustdoc::main_args),
         usage_line: "generate documentation from doc comments",
-        usage_full: UsgCall(rustdoc::config::usage),
+        usage_full: UsgCall(rustdoc_help),
     },
     Command {
         cmd: "pkg",
@@ -120,6 +120,10 @@ static COMMANDS: &'static [Command<'static>] = &'static [
 
 fn rustc_help() {
     rustc::usage(os::args()[0].clone())
+}
+
+fn rustdoc_help() {
+    rustdoc::usage(os::args()[0].clone())
 }
 
 fn find_cmd(command_string: &str) -> Option<Command> {
