@@ -15,7 +15,7 @@ extern mod extra;
 use extra::time::precise_time_s;
 use std::io;
 use std::os;
-use std::rand::RngUtil;
+use std::rand::Rng;
 use std::rand;
 use std::str;
 use std::util;
@@ -85,7 +85,7 @@ fn vec_plus() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        let rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
         if r.gen() {
             v.push_all_move(rv);
         } else {
@@ -101,7 +101,7 @@ fn vec_append() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        let rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
         if r.gen() {
             v = vec::append(v, rv);
         }
@@ -117,7 +117,7 @@ fn vec_push_all() {
 
     let mut v = ~[];
     for i in range(0u, 1500) {
-        let mut rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);
+        let mut rv = vec::from_elem(r.gen_integer_range(0u, i + 1), i);
         if r.gen() {
             v.push_all(rv);
         }
