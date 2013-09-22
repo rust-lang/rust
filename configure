@@ -845,6 +845,9 @@ do
 
         # Disable unused LLVM features
         LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
+        # Disable term-info, linkage of which comes in multiple forms,
+        # making our snapshots incompatible (#9334)
+        LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
 
         case "$CFG_C_COMPILER" in
             ("ccache clang")
