@@ -1215,18 +1215,22 @@ mod test {
     #[test]
     fn dont_starve_1() {
         use rt::comm::oneshot;
+        use unstable::running_on_valgrind;
 
-        do stress_factor().times {
-            do run_in_mt_newsched_task {
-                let (port, chan) = oneshot();
+        // FIXME: #9407: should work while serialized on valgrind
+        if !running_on_valgrind() {
+            do stress_factor().times {
+                do run_in_mt_newsched_task {
+                    let (port, chan) = oneshot();
 
-                // This task should not be able to starve the sender;
-                // The sender should get stolen to another thread.
-                do spawntask {
-                    while !port.peek() { }
+                    // This task should not be able to starve the sender;
+                    // The sender should get stolen to another thread.
+                    do spawntask {
+                        while !port.peek() { }
+                    }
+
+                    chan.send(());
                 }
-
-                chan.send(());
             }
         }
     }
