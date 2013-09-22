@@ -2420,7 +2420,8 @@ However, in practice you usually want to split you code up into multiple source 
 In order to do that, Rust allows you to move the body of any module into it's own source file, which works like this:
 
 If you declare a module without its body, like `mod foo;`, the compiler will look for the
-files `foo.rs` and `foo/mod.rs`. If it finds either, it uses the content of that file as the body of the module.
+files `foo.rs` and `foo/mod.rs` inside some directory (usually the same as of the source file containing
+the `mod foo;`). If it finds either, it uses the content of that file as the body of the module.
 If it finds both, that's a compile error.
 
 So, if we want to move the content of `mod farm` into it's own file, it would look like this:
@@ -2446,7 +2447,7 @@ pub mod barn {
 # fn main() { }
 ~~~~
 
-So, in short `mod foo;` is just syntactic sugar for `mod foo { /* include content of foo.rs or foo/mod.rs here */ }`.
+In short, `mod foo;` is just syntactic sugar for `mod foo { /* content of <...>/foo.rs or <...>/foo/mod.rs */ }`.
 
 This also means that having two or more identical `mod foo;` somewhere
 in your crate hierarchy is generally a bad idea,
@@ -2455,14 +2456,14 @@ Both will result in duplicate and mutually incompatible definitions.
 
 The directory the compiler looks in for those two files is determined by starting with
 the same directory as the source file that contains the `mod foo;` declaration, and concatenating to that a
-path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;` is contained in, if any.
+path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;`
+is contained in, if any.
 
 For example, given a file with this module body:
 
 ~~~ {.ignore}
 // src/main.rs
 mod plants;
-mod fungi;
 mod animals {
     mod fish;
     mod mammals {
@@ -2477,9 +2478,6 @@ The compiler would then try all these files:
 src/plants.rs
 src/plants/mod.rs
 
-src/fungi.rs
-src/fungi/mod.rs
-
 src/animals/fish.rs
 src/animals/fish/mod.rs
 
@@ -2487,15 +2485,54 @@ src/animals/mammals/humans.rs
 src/animals/mammals/humans/mod.rs
 ~~~
 
-These rules per default result in any directory structure mirroring
-the crates's module hierarchy, and allow you to have both small modules that only need
-to consist of one source file, and big modules that group the source files of submodules together.
-
-If you need to circumvent those defaults, you can also overwrite the path a `mod foo;` would take:
+Keep in mind that identical module hierachies can still lead to different path lookups
+depending on how and where you've moved a module body to its own file.
+For example, if we move the `animals` module above into its own file...
 
 ~~~ {.ignore}
-#[path="../../area51/classified.rs"]
-mod alien;
+// src/main.rs
+mod plants;
+mod animals;
+~~~
+~~~ {.ignore}
+// src/animals.rs or src/animals/mod.rs
+mod fish;
+mod mammals {
+    mod humans;
+}
+~~~
+...then the source files of `mod animals`'s submodules can
+either be placed right next to that of its parents, or in a subdirectory if `animals` source file is:
+
+~~~ {.notrust}
+src/plants.rs
+src/plants/mod.rs
+
+src/animals.rs - if file sits next to that of parent module's:
+    src/fish.rs
+    src/fish/mod.rs
+
+    src/mammals/humans.rs
+    src/mammals/humans/mod.rs
+
+src/animals/mod.rs - if file is in it's own subdirectory:
+    src/animals/fish.rs
+    src/animals/fish/mod.rs
+
+    src/animals/mammals/humans.rs
+    src/animals/mammals/humans/mod.rs
+
+~~~
+
+These rules allow you to have both small modules that only need
+to consist of one source file each and can be conveniently placed right next to each other,
+and big complicated modules that group the source files of submodules in subdirectories.
+
+If you need to circumvent the defaults, you can also overwrite the path a `mod foo;` would take:
+
+~~~ {.ignore}
+#[path="../../area51/alien.rs"]
+mod classified;
 ~~~
 
 ## Importing names into the local scope
