@@ -44,24 +44,24 @@ fn main () {
 */
 
 use cast;
-use cmp;
 use container::Container;
 use int;
-use iter::{Iterator, range, range_step};
+use iter::{Iterator, range};
 use local_data;
 use prelude::*;
 use str;
-use sys;
 use u32;
 use u64;
 use uint;
 use vec;
-use libc::size_t;
 
 pub use self::isaac::{IsaacRng, Isaac64Rng};
+pub use self::os::OSRng;
 
 pub mod distributions;
 pub mod isaac;
+pub mod os;
+pub mod reader;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
@@ -233,15 +233,6 @@ impl<T: Rand + 'static> Rand for @T {
     fn rand<R: Rng>(rng: &mut R) -> @T { @rng.gen() }
 }
 
-#[abi = "cdecl"]
-pub mod rustrt {
-    use libc::size_t;
-
-    extern {
-        pub fn rand_gen_seed(buf: *mut u8, sz: size_t);
-    }
-}
-
 /// A value with a particular weight compared to other values
 pub struct Weighted<T> {
     /// The numerical weight of this item
@@ -252,7 +243,8 @@ pub struct Weighted<T> {
 
 /// A random number generator
 pub trait Rng {
-    /// Return the next random u32.
+    /// Return the next random u32. This rarely needs to be called
+    /// directly, prefer `r.gen()` to `r.next_u32()`.
     ///
     /// By default this is implemented in terms of `next_u64`. An
     /// implementation of this trait must provide at least one of
@@ -261,7 +253,8 @@ pub trait Rng {
         self.next_u64() as u32
     }
 
-    /// Return the next random u64.
+    /// Return the next random u64. This rarely needs to be called
+    /// directly, prefer `r.gen()` to `r.next_u64()`.
     ///
     /// By default this is implemented in terms of `next_u32`. An
     /// implementation of this trait must provide at least one of
@@ -270,6 +263,76 @@ pub trait Rng {
         (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
     }
 
+    /// Fill `dest` with random data.
+    ///
+    /// This has a default implementation in terms of `next_u64` and
+    /// `next_u32`, but should be overriden by implementations that
+    /// offer a more efficient solution than just calling those
+    /// methods repeatedly.
+    ///
+    /// This method does *not* have a requirement to bear any fixed
+    /// relationship to the other methods, for example, it does *not*
+    /// have to result in the same output as progressively filling
+    /// `dest` with `self.gen::<u8>()`, and any such behaviour should
+    /// not be relied upon.
+    ///
+    /// This method should guarantee that `dest` is entirely filled
+    /// with new data, and may fail if this is impossible
+    /// (e.g. reading past the end of a file that is being used as the
+    /// source of randomness).
+    ///
+    /// # Example
+    ///
+    /// ~~~{.rust}
+    /// use std::rand::{task_rng, Rng};
+    ///
+    /// fn main() {
+    ///    let mut v = [0u8, .. 13579];
+    ///    task_rng().fill_bytes(v);
+    ///    printfln!(v);
+    /// }
+    /// ~~~
+    fn fill_bytes(&mut self, mut dest: &mut [u8]) {
+        // this relies on the lengths being transferred correctly when
+        // transmuting between vectors like this.
+        let as_u64: &mut &mut [u64] = unsafe { cast::transmute(&mut dest) };
+        for dest in as_u64.mut_iter() {
+            *dest = self.next_u64();
+        }
+
+        // the above will have filled up the vector as much as
+        // possible in multiples of 8 bytes.
+        let mut remaining = dest.len() % 8;
+
+        // space for a u32
+        if remaining >= 4 {
+            let as_u32: &mut &mut [u32] = unsafe { cast::transmute(&mut dest) };
+            as_u32[as_u32.len() - 1] = self.next_u32();
+            remaining -= 4;
+        }
+        // exactly filled
+        if remaining == 0 { return }
+
+        // now we know we've either got 1, 2 or 3 spots to go,
+        // i.e. exactly one u32 is enough.
+        let rand = self.next_u32();
+        let remaining_index = dest.len() - remaining;
+        match dest.mut_slice_from(remaining_index) {
+            [ref mut a] => {
+                *a = rand as u8;
+            }
+            [ref mut a, ref mut b] => {
+                *a = rand as u8;
+                *b = (rand >> 8) as u8;
+            }
+            [ref mut a, ref mut b, ref mut c] => {
+                *a = rand as u8;
+                *b = (rand >> 8) as u8;
+                *c = (rand >> 16) as u8;
+            }
+            _ => fail2!("Rng.fill_bytes: the impossible occurred: remaining != 1, 2 or 3")
+        }
+    }
 
     /// Return a random value of a Rand type.
     ///
@@ -630,11 +693,9 @@ impl XorShiftRng {
         // specific size, so we can just use a fixed buffer.
         let mut s = [0u8, ..16];
         loop {
-            do s.as_mut_buf |p, sz| {
-                unsafe {
-                    rustrt::rand_gen_seed(p, sz as size_t);
-                }
-            }
+            let mut r = OSRng::new();
+            r.fill_bytes(s);
+
             if !s.iter().all(|x| *x == 0) {
                 break;
             }
@@ -660,15 +721,10 @@ impl XorShiftRng {
 
 /// Create a new random seed of length `n`.
 pub fn seed(n: uint) -> ~[u8] {
-    #[fixed_stack_segment]; #[inline(never)];
-
-    unsafe {
-        let mut s = vec::from_elem(n as uint, 0_u8);
-        do s.as_mut_buf |p, sz| {
-            rustrt::rand_gen_seed(p, sz as size_t)
-        }
-        s
-    }
+    let mut s = vec::from_elem(n as uint, 0_u8);
+    let mut r = OSRng::new();
+    r.fill_bytes(s);
+    s
 }
 
 // used to make space in TLS for a random number generator
@@ -718,6 +774,14 @@ mod test {
     use iter::{Iterator, range};
     use option::{Option, Some};
     use super::*;
+
+    #[test]
+    fn test_fill_bytes_default() {
+        let mut r = weak_rng();
+
+        let mut v = [0u8, .. 100];
+        r.fill_bytes(v);
+    }
 
     #[test]
     fn test_gen_integer_range() {
