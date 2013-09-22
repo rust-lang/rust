@@ -347,8 +347,7 @@ impl <T: FixedBuffer> StandardPadding for T {
 
 #[cfg(test)]
 mod test {
-    use std::rand::IsaacRng;
-    use std::rand::RngUtil;
+    use std::rand::{IsaacRng, Rng};
     use std::vec;
 
     use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
@@ -365,7 +364,7 @@ mod test {
         digest.reset();
 
         while count < total_size {
-            let next: uint = rng.gen_uint_range(0, 2 * blocksize + 1);
+            let next: uint = rng.gen_integer_range(0, 2 * blocksize + 1);
             let remaining = total_size - count;
             let size = if next > remaining { remaining } else { next };
             digest.input(buffer.slice_to(size));

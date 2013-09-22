@@ -23,7 +23,7 @@ use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::int;
 use std::num;
 use std::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use std::rand::{Rng, RngUtil};
+use std::rand::Rng;
 use std::str;
 use std::uint;
 use std::vec;

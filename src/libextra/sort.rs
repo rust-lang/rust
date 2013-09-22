@@ -909,7 +909,7 @@ mod tests {
 mod test_tim_sort {
 
     use sort::tim_sort;
-    use std::rand::RngUtil;
+    use std::rand::Rng;
     use std::rand;
     use std::vec;
 
@@ -1008,7 +1008,7 @@ mod big_tests {
 
     use sort::*;
 
-    use std::rand::RngUtil;
+    use std::rand::Rng;
     use std::rand;
     use std::vec;
 
@@ -1069,8 +1069,8 @@ mod big_tests {
             isSorted(arr);
 
             do 3.times {
-                let i1 = rng.gen_uint_range(0, n);
-                let i2 = rng.gen_uint_range(0, n);
+                let i1 = rng.gen_integer_range(0u, n);
+                let i2 = rng.gen_integer_range(0u, n);
                 arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
@@ -1088,7 +1088,7 @@ mod big_tests {
             isSorted(arr);
 
             do (n/100).times {
-                let idx = rng.gen_uint_range(0, n);
+                let idx = rng.gen_integer_range(0u, n);
                 arr[idx] = rng.gen();
             }
             tim_sort(arr);
@@ -1141,8 +1141,8 @@ mod big_tests {
             isSorted(arr);
 
             do 3.times {
-                let i1 = rng.gen_uint_range(0, n);
-                let i2 = rng.gen_uint_range(0, n);
+                let i1 = rng.gen_integer_range(0u, n);
+                let i2 = rng.gen_integer_range(0u, n);
                 arr.swap(i1, i2);
             }
             tim_sort(arr); // 3sort
@@ -1160,7 +1160,7 @@ mod big_tests {
             isSorted(arr);
 
             do (n/100).times {
-                let idx = rng.gen_uint_range(0, n);
+                let idx = rng.gen_integer_range(0u, n);
                 arr[idx] = @rng.gen();
             }
             tim_sort(arr);

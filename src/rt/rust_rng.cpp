@@ -32,14 +32,6 @@ win32_require(LPCTSTR fn, BOOL ok) {
 }
 #endif
 
-size_t
-rng_seed_size() {
-    randctx rctx;
-    return sizeof(rctx.randrsl);
-}
-
-// Initialization helpers for ISAAC RNG
-
 void
 rng_gen_seed(uint8_t* dest, size_t size) {
 #ifdef __WIN32__
@@ -78,59 +70,6 @@ rng_gen_seed(uint8_t* dest, size_t size) {
         // abort();
     }
 #endif
-}
-
-static void
-isaac_init(randctx *rctx, char *env_seed,
-           uint8_t* user_seed, size_t seed_len) {
-    memset(rctx, 0, sizeof(randctx));
-
-    if (user_seed != NULL) {
-        // ignore bytes after the required length
-        if (seed_len > sizeof(rctx->randrsl)) {
-            seed_len = sizeof(rctx->randrsl);
-        }
-        memcpy(&rctx->randrsl, user_seed, seed_len);
-    } else if (env_seed != NULL) {
-        ub4 seed = (ub4) atoi(env_seed);
-        for (size_t i = 0; i < RANDSIZ; i ++) {
-            memcpy(&rctx->randrsl[i], &seed, sizeof(ub4));
-            seed = (seed + 0x7ed55d16) + (seed << 12);
-        }
-    } else {
-        rng_gen_seed((uint8_t*)&rctx->randrsl,
-                     sizeof(rctx->randrsl));
-    }
-
-    randinit(rctx, 1);
-}
-
-void
-rng_init(rust_rng* rng, char* env_seed,
-         uint8_t *user_seed, size_t seed_len) {
-    isaac_init(&rng->rctx, env_seed, user_seed, seed_len);
-    rng->reseedable = !user_seed && !env_seed;
-}
-
-static void
-rng_maybe_reseed(rust_rng* rng) {
-    // If this RNG has generated more than 32KB of random data and was not
-    // seeded by the user or RUST_SEED, then we should reseed now.
-    const size_t RESEED_THRESHOLD = 32 * 1024;
-    size_t bytes_generated = rng->rctx.randc * sizeof(ub4);
-    if (bytes_generated < RESEED_THRESHOLD || !rng->reseedable) {
-        return;
-    }
-    rng_gen_seed((uint8_t*)rng->rctx.randrsl,
-                 sizeof(rng->rctx.randrsl));
-    randinit(&rng->rctx, 1);
-}
-
-uint32_t
-rng_gen_u32(rust_rng* rng) {
-    uint32_t x = isaac_rand(&rng->rctx);
-    rng_maybe_reseed(rng);
-    return x;
 }
 
 //
