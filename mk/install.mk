@@ -104,7 +104,6 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBSYNTAX_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTPKG_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTDOC_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTDOCNG_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTI_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUST_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
@@ -140,7 +139,6 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustc$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustpkg$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc_ng$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rust$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(STDLIB_GLOB_$(CFG_BUILD_TRIPLE)))
@@ -151,7 +149,6 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)$(call INSTALL_LIB,$(LIBRUST_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOCNG_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(S)/man, $(PREFIX_ROOT)/share/man/man1,rust.1)
@@ -172,7 +169,6 @@ uninstall:
 	$(Q)rm -f $(PHB)/rusti$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)rm -f $(PHB)/rust$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)rm -f $(PHB)/rustdoc$(X_$(CFG_BUILD_TRIPLE))
-	$(Q)rm -f $(PHB)/rustdoc_ng$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE))
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE))
 	$(Q)for i in \
@@ -182,7 +178,6 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD_TRIPLE))) \
-          $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTDOCNG_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTI_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUST_GLOB_$(CFG_BUILD_TRIPLE))) \
         ; \
