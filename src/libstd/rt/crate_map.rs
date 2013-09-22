@@ -23,8 +23,8 @@ use container::MutableSet;
 #[link_args = "-undefined dynamic_lookup"]
 extern {}
 
+#[cfg(not(stage0), not(windows))]
 extern {
-    #[cfg(not(stage0))]
     #[weak_linkage]
     #[link_name = "_rust_crate_map_toplevel"]
     static CRATE_MAP: CrateMap;
@@ -48,9 +48,28 @@ struct CrateMap {
     children: [*CrateMap, ..1]
 }
 
-#[cfg(not(stage0))]
+#[cfg(not(stage0), not(windows))]
 pub fn get_crate_map() -> *CrateMap {
     &'static CRATE_MAP as *CrateMap
+}
+
+#[cfg(not(stage0), windows)]
+#[fixed_stack_segment]
+#[inline(never)]
+pub fn get_crate_map() -> *CrateMap {
+    use c_str::ToCStr;
+    use unstable::dynamic_lib::dl;
+
+    let sym = unsafe {
+        let module = dl::open_internal();
+        let sym = do "__rust_crate_map_toplevel".with_c_str |buf| {
+            dl::symbol(module, buf)
+        };
+        dl::close(module);
+        sym
+    };
+
+    sym as *CrateMap
 }
 
 unsafe fn version(crate_map: *CrateMap) -> i32 {
