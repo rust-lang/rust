@@ -43,7 +43,7 @@ pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
-     types: ~CrateTypes,
+     types: @CrateTypes,
      td: TargetData,
      externs: ExternMap,
      intrinsics: HashMap<&'static str, ValueRef>,

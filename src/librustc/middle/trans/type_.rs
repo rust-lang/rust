@@ -174,11 +174,11 @@ impl CrateTypes {
     /**
      * Constriction/initialization
      */
-    pub fn new(arch: Architecture, llcx: ContextRef) -> ~CrateTypes {
+    pub fn new(arch: Architecture, llcx: ContextRef) -> @CrateTypes {
         let mut tn = TypeNames::new();
 
         // init primitive types
-        let i1_type = ty!(llvm::LLVMInt8TypeInContext(llcx));
+        let i1_type = ty!(llvm::LLVMInt1TypeInContext(llcx));
         let i8_type = ty!(llvm::LLVMInt8TypeInContext(llcx));
         let i16_type = ty!(llvm::LLVMInt16TypeInContext(llcx));
         let i32_type = ty!(llvm::LLVMInt32TypeInContext(llcx));
@@ -191,7 +191,7 @@ impl CrateTypes {
             X86_64 => i64_type
         };
         let float_type = f64_type; // All architectures currently just use doubles as the default float size
-        let nil_type = ty!(llvm::LLVMStructTypeInContext(llcx, vec::raw::to_ptr(&[]), 0, false as Bool));
+        let nil_type = ty!(llvm::LLVMStructTypeInContext(llcx, vec::raw::to_ptr(&[]), 0, False));
         let void_type = ty!(llvm::LLVMVoidTypeInContext(llcx));
 
         // init str_slice
@@ -213,7 +213,9 @@ impl CrateTypes {
                      glue_fn_ty, // free
                      glue_fn_ty, // visit
                      int_type,   // borrow_offset
-                     str_slice_ty]; // name
+                     ty!(llvm::LLVMStructTypeInContext(llcx, 
+                        vec::raw::to_ptr([i8p_type.to_ref(), int_type.to_ref()]),
+                        2, False))]; // name
         tydesc_type.set_struct_body(elems, false);
         tn.associate_type("tydesc", &tydesc_type);
 
@@ -225,7 +227,7 @@ impl CrateTypes {
         tn.associate_type("opaque_vec", &opaque_vec_type);
 
         // form the result struct
-        ~CrateTypes {
+        @CrateTypes {
             llcx: llcx,
             tn: tn,
             i1_t: i1_type,
@@ -276,7 +278,7 @@ impl CrateTypes {
     }
 
     pub fn i1(&self) -> Type {
-        ty!(llvm::LLVMInt1TypeInContext(self.llcx))
+        self.i1_t
     }
 
     #[inline(always)]
@@ -482,6 +484,18 @@ impl CrateTypes {
         self.struct_([tydesc_ptr, box_ty.ptr_to()], false)
     }
 
+
+    /**
+     * ValueRef packers
+     */
+
+     pub fn struct_val(&self, elts: &[ValueRef]) -> ValueRef {
+         unsafe {
+             do elts.as_imm_buf |ptr, len| {
+                 llvm::LLVMConstStructInContext(self.llcx, ptr, len as c_uint, False)
+             }
+         }
+     }
 
     /**
      * Utility functions

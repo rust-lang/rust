@@ -505,7 +505,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
         }
         Univariant(ref st, _dro) => {
             assert_eq!(discr, 0);
-            C_struct(ccx, build_const_struct(ccx, st, vals))
+            ccx.types.struct_val(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
             let case = &cases[discr];
@@ -513,18 +513,18 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
             let discr_ty = C_disr(ccx, discr);
             let contents = build_const_struct(ccx, case,
                                               ~[discr_ty] + vals);
-            C_struct(ccx, contents + &[padding(ccx, max_sz - case.size)])
+            ccx.types.struct_val(contents + &[padding(ccx, max_sz - case.size)])
         }
         NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, _ } => {
             if discr == nndiscr {
-                C_struct(ccx, build_const_struct(ccx, nonnull, vals))
+                ccx.types.struct_val(build_const_struct(ccx, nonnull, vals))
             } else {
                 assert_eq!(vals.len(), 0);
                 let vals = do nonnull.fields.iter().enumerate().map |(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
                 }.collect::<~[ValueRef]>();
-                C_struct(ccx, build_const_struct(ccx, nonnull, vals))
+                ccx.types.struct_val(build_const_struct(ccx, nonnull, vals))
             }
         }
     }

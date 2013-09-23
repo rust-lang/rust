@@ -213,8 +213,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
-    let types = &ccx.types;
-    let llfnty = types.glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
+    let llfnty = ccx.types.glue_fn(type_of::type_of(ccx, ti.ty).ptr_to());
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -340,7 +339,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
 pub fn call_tydesc_glue(cx: @mut Block, v: ValueRef, t: ty::t, field: uint)
     -> @mut Block {
     let _icx = push_ctxt("call_tydesc_glue");
-    let ti = get_tydesc(cx.ccx(), t);
+    let ti = get_tydesc(bcx.ccx(), t);
     call_tydesc_glue_full(cx, v, ti.tydesc, field, Some(ti));
     return cx;
 }

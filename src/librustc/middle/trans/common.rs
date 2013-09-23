@@ -844,7 +844,7 @@ pub fn C_uint(cx: &CrateContext, i: uint) -> ValueRef {
 }
 
 pub fn C_u8(cx: &CrateContext, i: uint) -> ValueRef {
-    return C_integral(cx.types.i(), i as u64, false);
+    return C_integral(cx.types.i8(), i as u64, false);
 }
 
 
