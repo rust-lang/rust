@@ -12,7 +12,7 @@
 
 extern mod extra;
 
-use std::cell::Cell;
+
 use std::comm::*;
 use std::io;
 use std::option;
@@ -158,9 +158,9 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (from_rendezvous, to_creature) = stream();
-            let from_rendezvous = Cell::new(from_rendezvous);
+            let from_rendezvous = Mut::new_some(from_rendezvous);
             do task::spawn || {
-                creature(ii, col, from_rendezvous.take(), to_rendezvous.clone(),
+                creature(ii, col, from_rendezvous.take_unwrap(), to_rendezvous.clone(),
                          to_rendezvous_log.clone());
             }
             to_creature

@@ -593,10 +593,8 @@ impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
 
 #[cfg(test)]
 mod tests {
-
     use arc::*;
 
-    use std::cell::Cell;
     use std::comm;
     use std::task;
 
@@ -627,10 +625,10 @@ mod tests {
         let arc = ~MutexArc::new(false);
         let arc2 = ~arc.clone();
         let (p,c) = comm::oneshot();
-        let (c,p) = (Cell::new(c), Cell::new(p));
+        let (c,p) = (Mut::new_some(c), Mut::new_some(p));
         do task::spawn || {
             // wait until parent gets in
-            p.take().recv();
+            p.take_unwrap().recv();
             do arc2.access_cond |state, cond| {
                 *state = true;
                 cond.signal();
@@ -638,7 +636,7 @@ mod tests {
         }
 
         do arc.access_cond |state, cond| {
-            c.take().send(());
+            c.take_unwrap().send(());
             assert!(!*state);
             while !*state {
                 cond.wait();

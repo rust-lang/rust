@@ -317,15 +317,15 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 }
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
-    use std::cell::Cell;
-    let config = Cell::new((*config).clone());
-    let testfile = Cell::new(testfile.to_str());
-    test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
+    let config = Mut::new_some((*config).clone());
+    let testfile = Mut::new_some(testfile.to_str());
+    test::DynTestFn(|| { runtest::run(config.take_unwrap(), testfile.take_unwrap()) })
 }
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
-    use std::cell::Cell;
-    let config = Cell::new((*config).clone());
-    let testfile = Cell::new(testfile.to_str());
-    test::DynMetricFn(|mm| { runtest::run_metrics(config.take(), testfile.take(), mm) })
+    let config = Mut::new_some((*config).clone());
+    let testfile = Mut::new_some(testfile.to_str());
+    do test::DynMetricFn |mm| {
+        runtest::run_metrics(config.take_unwrap(), testfile.take_unwrap(), mm)
+    }
 }

@@ -21,16 +21,16 @@ use markdown_writer::WriterFactory;
 use pass::Pass;
 use sort_pass;
 
-use std::cell::Cell;
+
 use std::str;
 use std::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
-    let writer_factory = Cell::new(writer_factory);
+    let writer_factory = Mut::new_some(writer_factory);
     Pass {
         name: ~"markdown",
-        f: |srv, doc| run(srv, doc, writer_factory.take())
+        f: |srv, doc| run(srv, doc, writer_factory.take_unwrap())
     }
 }
 

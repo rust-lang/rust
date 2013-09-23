@@ -113,7 +113,7 @@ mod test {
     use rt::io::*;
     use option::{Some, None};
     use rt::comm::oneshot;
-    use cell::Cell;
+    use mutable::Mut;
 
     #[test]  #[ignore]
     fn bind_error() {
@@ -137,13 +137,13 @@ mod test {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
-                        chan.take().send(());
+                        chan.take_unwrap().send(());
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -161,7 +161,7 @@ mod test {
             do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => {
-                        port.take().recv();
+                        port.take_unwrap().recv();
                         client.sendto([99], server_ip)
                     }
                     None => fail!()
@@ -176,13 +176,13 @@ mod test {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
-                        chan.take().send(());
+                        chan.take_unwrap().send(());
                         let mut buf = [0];
                         match server.recvfrom(buf) {
                             Some((nread, src)) => {
@@ -200,7 +200,7 @@ mod test {
             do spawntask {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => {
-                        port.take().recv();
+                        port.take_unwrap().recv();
                         client.sendto([99], server_ip)
                     }
                     None => fail!()
@@ -215,15 +215,15 @@ mod test {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
                         let mut stream = server.connect(client_ip);
-                        chan.take().send(());
+                        chan.take_unwrap().send(());
                         let mut buf = [0];
                         match stream.read(buf) {
                             Some(nread) => {
@@ -242,7 +242,7 @@ mod test {
                     Some(client) => {
                         let client = ~client;
                         let mut stream = client.connect(server_ip);
-                        port.take().recv();
+                        port.take_unwrap().recv();
                         stream.write([99]);
                     }
                     None => fail!()
@@ -257,15 +257,15 @@ mod test {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
                         let mut stream = server.connect(client_ip);
-                        chan.take().send(());
+                        chan.take_unwrap().send(());
                         let mut buf = [0];
                         match stream.read(buf) {
                             Some(nread) => {
@@ -284,7 +284,7 @@ mod test {
                     Some(client) => {
                         let client = ~client;
                         let mut stream = client.connect(server_ip);
-                        port.take().recv();
+                        port.take_unwrap().recv();
                         stream.write([99]);
                     }
                     None => fail!()

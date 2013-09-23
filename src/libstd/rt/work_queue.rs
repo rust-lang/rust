@@ -12,7 +12,7 @@ use container::Container;
 use option::*;
 use vec::OwnedVector;
 use unstable::sync::Exclusive;
-use cell::Cell;
+use mutable::Mut;
 use kinds::Send;
 use clone::Clone;
 
@@ -30,8 +30,8 @@ impl<T: Send> WorkQueue<T> {
 
     pub fn push(&mut self, value: T) {
         unsafe {
-            let value = Cell::new(value);
-            self.queue.with(|q| q.unshift(value.take()) );
+            let value = Mut::new_some(value);
+            self.queue.with(|q| q.unshift(value.take_unwrap()) );
         }
     }
 

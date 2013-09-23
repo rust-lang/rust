@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+
 use std::task;
 
 struct Port<T>(@T);
@@ -29,10 +29,10 @@ fn main() {
         }
     }
 
-    let x = Cell::new(foo(Port(@())));
+    let x = Mut::new_some(foo(Port(@())));
 
     do task::spawn {
-        let y = x.take();   //~ ERROR does not fulfill `Send`
+        let y = x.take_unwrap();   //~ ERROR does not fulfill `Send`
         error!(y);
     }
 }

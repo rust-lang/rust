@@ -32,7 +32,7 @@ use rt::stack::{StackSegment, StackPool};
 use rt::context::Context;
 use unstable::finally::Finally;
 use task::spawn::Taskgroup;
-use cell::Cell;
+use mutable::Mut;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -91,14 +91,14 @@ impl Task {
     // A helper to build a new task using the dynamically found
     // scheduler and task. Only works in GreenTask context.
     pub fn build_homed_child(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
-        let f = Cell::new(f);
-        let home = Cell::new(home);
+        let f = Mut::new_some(f);
+        let home = Mut::new_some(home);
         do Local::borrow |running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~running_task.new_child_homed(&mut sched.stack_pool,
                                                          stack_size,
-                                                         home.take(),
-                                                         f.take());
+                                                         home.take_unwrap(),
+                                                         f.take_unwrap());
             running_task.sched = Some(sched);
             new_task
         }
@@ -109,14 +109,14 @@ impl Task {
     }
 
     pub fn build_homed_root(stack_size: Option<uint>, f: ~fn(), home: SchedHome) -> ~Task {
-        let f = Cell::new(f);
-        let home = Cell::new(home);
+        let f = Mut::new_some(f);
+        let home = Mut::new_some(home);
         do Local::borrow |running_task: &mut Task| {
             let mut sched = running_task.sched.take_unwrap();
             let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
                                                  stack_size,
-                                                 home.take(),
-                                                 f.take());
+                                                 home.take_unwrap(),
+                                                 f.take_unwrap());
             running_task.sched = Some(sched);
             new_task
         }
@@ -361,7 +361,7 @@ impl Coroutine {
     }
 
     fn build_start_wrapper(start: ~fn()) -> ~fn() {
-        let start_cell = Cell::new(start);
+        let start_cell = Mut::new_some(start);
         let wrapper: ~fn() = || {
             // First code after swap to this new context. Run our
             // cleanup job.
@@ -390,7 +390,7 @@ impl Coroutine {
                     // be in task context. By moving `start` out of
                     // the closure, all the user code goes our of
                     // scope while the task is still running.
-                    let start = start_cell.take();
+                    let start = start_cell.take_unwrap();
                     start();
                 };
             }

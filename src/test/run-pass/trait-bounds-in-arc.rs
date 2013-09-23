@@ -19,7 +19,6 @@ extern mod extra;
 use extra::arc;
 use std::comm;
 use std::task;
-use std::cell;
 
 trait Pet {
     fn name(&self, blk: &fn(&str));
@@ -71,14 +70,14 @@ fn main() {
                          ~fishe  as ~Pet:Freeze+Send,
                          ~dogge2 as ~Pet:Freeze+Send]);
     let (p1,c1) = comm::stream();
-    let arc1 = cell::Cell::new(arc.clone());
-    do task::spawn { check_legs(arc1.take()); c1.send(()); }
+    let arc1 = Mut::new_some(arc.clone());
+    do task::spawn { check_legs(arc1.take_unwrap()); c1.send(()); }
     let (p2,c2) = comm::stream();
-    let arc2 = cell::Cell::new(arc.clone());
-    do task::spawn { check_names(arc2.take()); c2.send(()); }
+    let arc2 = Mut::new_some(arc.clone());
+    do task::spawn { check_names(arc2.take_unwrap()); c2.send(()); }
     let (p3,c3) = comm::stream();
-    let arc3 = cell::Cell::new(arc.clone());
-    do task::spawn { check_pedigree(arc3.take()); c3.send(()); }
+    let arc3 = Mut::new_some(arc.clone());
+    do task::spawn { check_pedigree(arc3.take_unwrap()); c3.send(()); }
     p1.recv();
     p2.recv();
     p3.recv();

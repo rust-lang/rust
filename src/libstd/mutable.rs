@@ -311,7 +311,7 @@ mod tests {
     #[test]
     fn test_option_take() {
         let obj = Mut::new(Some(3));
-        let v = None::<int>.unwrap_or_else(|| obj.take().unwrap());
+        let v = None::<int>.unwrap_or_else(|| obj.take_unwrap());
         assert_eq!(v, 3);
         assert!(obj.map(|x| x.is_none()));
     }

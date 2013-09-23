@@ -86,16 +86,16 @@ mod test {
     use rt::uv::Loop;
     use unstable::run_in_bare_thread;
     use rt::thread::Thread;
-    use cell::Cell;
+    use mutable::Mut;
 
     #[test]
     fn smoke_test() {
         do run_in_bare_thread {
             let mut loop_ = Loop::new();
             let watcher = AsyncWatcher::new(&mut loop_, |w, _| w.close(||()) );
-            let watcher_cell = Cell::new(watcher);
+            let watcher_cell = Mut::new_some(watcher);
             let thread = do Thread::start {
-                let mut watcher = watcher_cell.take();
+                let mut watcher = watcher_cell.take_unwrap();
                 watcher.send();
             };
             loop_.run();

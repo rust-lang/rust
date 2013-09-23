@@ -11,7 +11,6 @@
 use c_str::ToCStr;
 use cast::transmute;
 use cast;
-use cell::Cell;
 use mutable::Mut;
 use clone::Clone;
 use libc::{c_int, c_uint, c_void};
@@ -87,7 +86,7 @@ trait HomingIO {
     fn restore_original_home(_dummy_self: Option<Self>, old: SchedHome) {
         use rt::sched::TaskFromFriend;
 
-        let old = Cell::new(old);
+        let old = Mut::new_some(old);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |scheduler, task| {
@@ -97,7 +96,7 @@ trait HomingIO {
                  * RESOLUTION IDEA: Since the task is dead, we should just abort the IO action.
                  */
                 do task.wake().map_move |mut task| {
-                    task.give_home(old.take());
+                    task.give_home(old.take_unwrap());
                     scheduler.make_handle().send(TaskFromFriend(task));
                 };
             }
@@ -367,9 +366,8 @@ impl Drop for UvRemoteCallback {
 
 #[cfg(test)]
 mod test_remote {
-    use cell::Cell;
     use mutable::Mut;
-    use option::None;
+    use option::{Some, None};
     use rt::test::*;
     use rt::thread::Thread;
     use rt::tube::Tube;
@@ -385,11 +383,12 @@ mod test_remote {
             let remote_cell = Mut::new(None);
             do Local::borrow |sched: &mut Scheduler| {
                 let tube_clone = tube_clone.clone();
-                let tube_clone_cell = Cell::new(tube_clone);
+                let tube_clone_cell = Mut::new_some(tube_clone);
                 let remote = do sched.event_loop.remote_callback {
                     // This could be called multiple times
-                    if !tube_clone_cell.is_empty() {
-                        tube_clone_cell.take().send(1);
+                    match tube_clone_cell.take() {
+                        None => (),
+                        Some(ref mut tc) => tc.send(1)
                     }
                 };
                 remote_cell.put_back(remote);
@@ -459,7 +458,7 @@ impl IoFactory for UvIoFactory {
             do scheduler.deschedule_running_task_and_then |_, task| {
 
                 let mut tcp = TcpWatcher::new(self.uv_loop());
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
 
                 // Wait for a connection
                 do tcp.connect(addr) |stream, status| {
@@ -474,15 +473,15 @@ impl IoFactory for UvIoFactory {
 
                             // Context switch
                             let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
+                            scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                         }
                         Some(_) => {
-                            let task_cell = Cell::new(task_cell.take());
+                            let task_cell = Mut::new_some(task_cell.take_unwrap());
                             do stream.close {
                                 let res = Err(uv_error_to_io_error(status.unwrap()));
                                 unsafe { (*result_cell_ptr).put_back(res); }
                                 let scheduler: ~Scheduler = Local::take();
-                                scheduler.resume_blocked_task_immediately(task_cell.take());
+                                scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                             }
                         }
                     }
@@ -506,10 +505,10 @@ impl IoFactory for UvIoFactory {
                 do task::unkillable { // FIXME(#8674)
                     let scheduler: ~Scheduler = Local::take();
                     do scheduler.deschedule_running_task_and_then |_, task| {
-                        let task_cell = Cell::new(task);
+                        let task_cell = Mut::new_some(task);
                         do watcher.as_stream().close {
                             let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
+                            scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                         }
                     }
                     Err(uv_error_to_io_error(uverr))
@@ -529,10 +528,10 @@ impl IoFactory for UvIoFactory {
                 do task::unkillable { // FIXME(#8674)
                     let scheduler: ~Scheduler = Local::take();
                     do scheduler.deschedule_running_task_and_then |_, task| {
-                        let task_cell = Cell::new(task);
+                        let task_cell = Mut::new_some(task);
                         do watcher.close {
                             let scheduler: ~Scheduler = Local::take();
-                            scheduler.resume_blocked_task_immediately(task_cell.take());
+                            scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                         }
                     }
                     Err(uv_error_to_io_error(uverr))
@@ -576,13 +575,13 @@ impl IoFactory for UvIoFactory {
         let result_cell = Mut::new(None);
         let result_cell_ptr: *Mut<Option<Result<~RtioFileStream,
                                            IoError>>> = &result_cell;
-        let path_cell = Cell::new(path);
+        let path_cell = Mut::new_some(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             let open_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let path = path_cell.take();
+                let task_cell = Mut::new_some(task);
+                let path = path_cell.take_unwrap();
                 do open_req.open(self.uv_loop(), path, flags as int, create_mode as int)
                       |req,err| {
                     if err.is_none() {
@@ -594,12 +593,12 @@ impl IoFactory for UvIoFactory {
                         let res = Ok(fs);
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                     } else {
                         let res = Err(uv_error_to_io_error(err.unwrap()));
                         unsafe { (*result_cell_ptr).put_back(res); }
                         let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                     }
                 };
             };
@@ -621,13 +620,13 @@ impl IoFactory for UvIoFactory {
         let result_cell = Mut::new(None);
         let result_cell_ptr: *Mut<Option<Result<FileStat,
                                            IoError>>> = &result_cell;
-        let path_cell = Cell::new(path);
+        let path_cell = Mut::new_some(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             let stat_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let path = path_cell.take();
+                let task_cell = Mut::new_some(task);
+                let path = path_cell.take_unwrap();
                 let path_str = path.path_as_str(|p| p.to_owned());
                 do stat_req.stat(self.uv_loop(), path)
                       |req,err| {
@@ -650,7 +649,7 @@ impl IoFactory for UvIoFactory {
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 };
             };
         };
@@ -664,12 +663,12 @@ impl IoFactory for UvIoFactory {
         let result_cell_ptr: *Mut<Option<Result<~[IpAddr], IoError>>> = &result_cell;
         let host_ptr: *&str = &host;
         let addrinfo_req = GetAddrInfoRequest::new();
-        let addrinfo_req_cell = Cell::new(addrinfo_req);
+        let addrinfo_req_cell = Mut::new_some(addrinfo_req);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let mut addrinfo_req = addrinfo_req_cell.take();
+                let task_cell = Mut::new_some(task);
+                let mut addrinfo_req = addrinfo_req_cell.take_unwrap();
                 unsafe {
                     do addrinfo_req.getaddrinfo(self.uv_loop(),
                                                 Some(*host_ptr),
@@ -680,7 +679,7 @@ impl IoFactory for UvIoFactory {
                         };
                         (*result_cell_ptr).put_back(res);
                         let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                     }
                 }
             }
@@ -711,13 +710,13 @@ impl IoFactory for UvIoFactory {
         let result_cell = Mut::new(None);
         let result_cell_ptr: *Mut<Option<Result<~[Path],
                                                 IoError>>> = &result_cell;
-        let path_cell = Cell::new(path);
+        let path_cell = Mut::new_some(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
             let stat_req = file::FsRequest::new();
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
-                let path = path_cell.take();
+                let task_cell = Mut::new_some(task);
+                let path = path_cell.take_unwrap();
                 let path_str = path.path_as_str(|p| p.to_owned());
                 do stat_req.readdir(self.uv_loop(), path, flags)
                       |req,err| {
@@ -736,7 +735,7 @@ impl IoFactory for UvIoFactory {
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 };
             };
         };
@@ -765,10 +764,10 @@ impl Drop for UvTcpListener {
     fn drop(&mut self) {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task = Cell::new(task);
+                let task = Mut::new_some(task);
                 do self_.watcher.as_stream().close {
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task.take());
+                    scheduler.resume_blocked_task_immediately(task.take_unwrap());
                 }
             }
         }
@@ -877,10 +876,10 @@ impl Drop for UvTcpStream {
     fn drop(&mut self) {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 do self_.watcher.as_stream().close {
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
         }
@@ -903,7 +902,7 @@ impl RtioTcpStream for UvTcpStream {
 
             let buf_ptr: *&mut [u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_sched, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 // XXX: We shouldn't reallocate these callbacks every
                 // call to read
                 let alloc: AllocCallback = |_| unsafe {
@@ -928,7 +927,7 @@ impl RtioTcpStream for UvTcpStream {
                     unsafe { (*result_cell_ptr).put_back(result); }
 
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
 
@@ -944,7 +943,7 @@ impl RtioTcpStream for UvTcpStream {
             let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
             let buf_ptr: *&[u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 let mut watcher = self_.watcher.as_stream();
                 do watcher.write(buf) |_watcher, status| {
@@ -957,7 +956,7 @@ impl RtioTcpStream for UvTcpStream {
                     unsafe { (*result_cell_ptr).put_back(result); }
 
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
 
@@ -1036,10 +1035,10 @@ impl Drop for UvUdpSocket {
     fn drop(&mut self) {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 do self_.watcher.close {
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
         }
@@ -1063,7 +1062,7 @@ impl RtioUdpSocket for UvUdpSocket {
 
             let buf_ptr: *&mut [u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 let alloc: AllocCallback = |_| unsafe { slice_to_uv_buf(*buf_ptr) };
                 do self_.watcher.recv_start(alloc) |mut watcher, nread, _buf, addr, flags, status| {
                     let _ = flags; // /XXX add handling for partials?
@@ -1081,7 +1080,7 @@ impl RtioUdpSocket for UvUdpSocket {
                     unsafe { (*result_cell_ptr).put_back(result); }
 
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
 
@@ -1097,7 +1096,7 @@ impl RtioUdpSocket for UvUdpSocket {
             let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
             let buf_ptr: *&[u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
                 do self_.watcher.send(buf, dst) |_watcher, status| {
 
@@ -1109,7 +1108,7 @@ impl RtioUdpSocket for UvUdpSocket {
                     unsafe { (*result_cell_ptr).put_back(result); }
 
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
 
@@ -1257,10 +1256,10 @@ impl Drop for UvTimer {
         do self_.home_for_io_with_sched |self_, scheduler| {
             rtdebug!("closing UvTimer");
             do scheduler.deschedule_running_task_and_then |_, task| {
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 do self_.watcher.close {
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
         }
@@ -1272,11 +1271,11 @@ impl RtioTimer for UvTimer {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_sched, task| {
                 rtdebug!("sleep: entered scheduler context");
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 do self_.watcher.start(msecs, 0) |_, status| {
                     assert!(status.is_none());
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 }
             }
             self_.watcher.stop();
@@ -1312,7 +1311,7 @@ impl UvFileStream {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 let read_req = file::FsRequest::new();
                 do read_req.read(&self_.loop_, self_.fd, buf, offset) |req, uverr| {
                     let res = match uverr  {
@@ -1321,7 +1320,7 @@ impl UvFileStream {
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 };
             };
         };
@@ -1334,7 +1333,7 @@ impl UvFileStream {
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
-                let task_cell = Cell::new(task);
+                let task_cell = Mut::new_some(task);
                 let write_req = file::FsRequest::new();
                 do write_req.write(&self_.loop_, self_.fd, buf, offset) |_, uverr| {
                     let res = match uverr  {
@@ -1343,7 +1342,7 @@ impl UvFileStream {
                     };
                     unsafe { (*result_cell_ptr).put_back(res); }
                     let scheduler: ~Scheduler = Local::take();
-                    scheduler.resume_blocked_task_immediately(task_cell.take());
+                    scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                 };
             };
         };
@@ -1373,11 +1372,11 @@ impl Drop for UvFileStream {
         if self.close_on_drop {
             do self_.home_for_io_with_sched |self_, scheduler| {
                 do scheduler.deschedule_running_task_and_then |_, task| {
-                    let task_cell = Cell::new(task);
+                    let task_cell = Mut::new_some(task);
                     let close_req = file::FsRequest::new();
                     do close_req.close(&self.loop_, self_.fd) |_,_| {
                         let scheduler: ~Scheduler = Local::take();
-                        scheduler.resume_blocked_task_immediately(task_cell.take());
+                        scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
                     };
                 };
             }
@@ -1460,13 +1459,13 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
         let mut sched2 = ~Scheduler::new(~UvEventLoop::new(), work_queue2, queues.clone(),
                                          sleepers.clone());
 
-        let handle1 = Cell::new(sched1.make_handle());
-        let handle2 = Cell::new(sched2.make_handle());
-        let tasksFriendHandle = Cell::new(sched2.make_handle());
+        let handle1 = Mut::new_some(sched1.make_handle());
+        let handle2 = Mut::new_some(sched2.make_handle());
+        let tasksFriendHandle = Mut::new_some(sched2.make_handle());
 
         let on_exit: ~fn(bool) = |exit_status| {
-            handle1.take().send(Shutdown);
-            handle2.take().send(Shutdown);
+            handle1.take_unwrap().send(Shutdown);
+            handle2.take_unwrap().send(Shutdown);
             rtassert!(exit_status);
         };
 
@@ -1486,7 +1485,7 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
                     // unblock task
                     do task.wake().map_move |task| {
                       // send self to sched2
-                      tasksFriendHandle.take().send(TaskFromFriend(task));
+                      tasksFriendHandle.take_unwrap().send(TaskFromFriend(task));
                     };
                     // sched1 should now sleep since it has nothing else to do
                 }
@@ -1501,18 +1500,18 @@ fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
 
         let mut main_task = ~Task::new_root(&mut sched1.stack_pool, None, test_function);
         main_task.death.on_exit = Some(on_exit);
-        let main_task = Cell::new(main_task);
+        let main_task = Mut::new_some(main_task);
 
-        let null_task = Cell::new(~do Task::new_root(&mut sched2.stack_pool, None) || {});
+        let null_task = Mut::new_some(~do Task::new_root(&mut sched2.stack_pool, None) || {});
 
-        let sched1 = Cell::new(sched1);
-        let sched2 = Cell::new(sched2);
+        let sched1 = Mut::new_some(sched1);
+        let sched2 = Mut::new_some(sched2);
 
         let thread1 = do Thread::start {
-            sched1.take().bootstrap(main_task.take());
+            sched1.take_unwrap().bootstrap(main_task.take_unwrap());
         };
         let thread2 = do Thread::start {
-            sched2.take().bootstrap(null_task.take());
+            sched2.take_unwrap().bootstrap(null_task.take_unwrap());
         };
 
         thread1.join();
@@ -1539,12 +1538,12 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         let mut sched2 = ~Scheduler::new(~UvEventLoop::new(), work_queue2, queues.clone(),
                                          sleepers.clone());
 
-        let handle1 = Cell::new(sched1.make_handle());
-        let handle2 = Cell::new(sched2.make_handle());
+        let handle1 = Mut::new_some(sched1.make_handle());
+        let handle2 = Mut::new_some(sched2.make_handle());
 
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         let body1: ~fn() = || {
             let io: *mut IoFactoryObject = unsafe {
@@ -1553,11 +1552,11 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
             let addr = next_test_ip4();
             let socket = unsafe { (*io).udp_bind(addr) };
             assert!(socket.is_ok());
-            chan.take().send(socket);
+            chan.take_unwrap().send(socket);
         };
 
         let body2: ~fn() = || {
-            let socket = port.take().recv();
+            let socket = port.take_unwrap().recv();
             assert!(socket.is_ok());
             /* The socket goes out of scope and the destructor is called.
              * The destructor:
@@ -1568,25 +1567,25 @@ fn test_simple_homed_udp_io_bind_then_move_handle_then_home_and_close() {
         };
 
         let on_exit: ~fn(bool) = |exit| {
-            handle1.take().send(Shutdown);
-            handle2.take().send(Shutdown);
+            handle1.take_unwrap().send(Shutdown);
+            handle2.take_unwrap().send(Shutdown);
             rtassert!(exit);
         };
 
-        let task1 = Cell::new(~Task::new_root(&mut sched1.stack_pool, None, body1));
+        let task1 = Mut::new_some(~Task::new_root(&mut sched1.stack_pool, None, body1));
 
         let mut task2 = ~Task::new_root(&mut sched2.stack_pool, None, body2);
         task2.death.on_exit = Some(on_exit);
-        let task2 = Cell::new(task2);
+        let task2 = Mut::new_some(task2);
 
-        let sched1 = Cell::new(sched1);
-        let sched2 = Cell::new(sched2);
+        let sched1 = Mut::new_some(sched1);
+        let sched2 = Mut::new_some(sched2);
 
         let thread1 = do Thread::start {
-            sched1.take().bootstrap(task1.take());
+            sched1.take_unwrap().bootstrap(task1.take_unwrap());
         };
         let thread2 = do Thread::start {
-            sched2.take().bootstrap(task2.take());
+            sched2.take_unwrap().bootstrap(task2.take_unwrap());
         };
 
         thread1.join();
@@ -1599,8 +1598,8 @@ fn test_simple_tcp_server_and_client() {
     do run_in_mt_newsched_task {
         let addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         // Start the server first so it's listening when we connect
         do spawntask {
@@ -1608,7 +1607,7 @@ fn test_simple_tcp_server_and_client() {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let listener = (*io).tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
-                chan.take().send(());
+                chan.take_unwrap().send(());
                 let mut stream = acceptor.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
@@ -1622,7 +1621,7 @@ fn test_simple_tcp_server_and_client() {
 
         do spawntask {
             unsafe {
-                port.take().recv();
+                port.take_unwrap().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1653,16 +1652,16 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
         let mut client_sched = ~Scheduler::new(~UvEventLoop::new(), client_work_queue,
                                                queues.clone(), sleepers.clone());
 
-        let server_handle = Cell::new(server_sched.make_handle());
-        let client_handle = Cell::new(client_sched.make_handle());
+        let server_handle = Mut::new_some(server_sched.make_handle());
+        let client_handle = Mut::new_some(client_sched.make_handle());
 
         let server_on_exit: ~fn(bool) = |exit_status| {
-            server_handle.take().send(Shutdown);
+            server_handle.take_unwrap().send(Shutdown);
             rtassert!(exit_status);
         };
 
         let client_on_exit: ~fn(bool) = |exit_status| {
-            client_handle.take().send(Shutdown);
+            client_handle.take_unwrap().send(Shutdown);
             rtassert!(exit_status);
         };
 
@@ -1692,20 +1691,20 @@ fn test_simple_tcp_server_and_client_on_diff_threads() {
 
         let mut server_task = ~Task::new_root(&mut server_sched.stack_pool, None, server_fn);
         server_task.death.on_exit = Some(server_on_exit);
-        let server_task = Cell::new(server_task);
+        let server_task = Mut::new_some(server_task);
 
         let mut client_task = ~Task::new_root(&mut client_sched.stack_pool, None, client_fn);
         client_task.death.on_exit = Some(client_on_exit);
-        let client_task = Cell::new(client_task);
+        let client_task = Mut::new_some(client_task);
 
-        let server_sched = Cell::new(server_sched);
-        let client_sched = Cell::new(client_sched);
+        let server_sched = Mut::new_some(server_sched);
+        let client_sched = Mut::new_some(client_sched);
 
         let server_thread = do Thread::start {
-            server_sched.take().bootstrap(server_task.take());
+            server_sched.take_unwrap().bootstrap(server_task.take_unwrap());
         };
         let client_thread = do Thread::start {
-            client_sched.take().bootstrap(client_task.take());
+            client_sched.take_unwrap().bootstrap(client_task.take_unwrap());
         };
 
         server_thread.join();
@@ -1719,14 +1718,14 @@ fn test_simple_udp_server_and_client() {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_socket = (*io).udp_bind(server_addr).unwrap();
-                chan.take().send(());
+                chan.take_unwrap().send(());
                 let mut buf = [0, .. 2048];
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
@@ -1742,7 +1741,7 @@ fn test_simple_udp_server_and_client() {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_socket = (*io).udp_bind(client_addr).unwrap();
-                port.take().recv();
+                port.take_unwrap().recv();
                 client_socket.sendto([0, 1, 2, 3, 4, 5, 6, 7], server_addr);
             }
         }
@@ -1754,14 +1753,14 @@ fn test_read_and_block() {
     do run_in_mt_newsched_task {
         let addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         do spawntask {
             let io: *mut IoFactoryObject = unsafe { Local::unsafe_borrow() };
             let listener = unsafe { (*io).tcp_bind(addr).unwrap() };
             let mut acceptor = listener.listen().unwrap();
-            chan.take().send(());
+            chan.take_unwrap().send(());
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
 
@@ -1784,8 +1783,8 @@ fn test_read_and_block() {
                     // will trigger a read callback while we are
                     // not ready for it
                     do scheduler.deschedule_running_task_and_then |sched, task| {
-                        let task = Cell::new(task);
-                        sched.enqueue_blocked_task(task.take());
+                        let task = Mut::new_some(task);
+                        sched.enqueue_blocked_task(task.take_unwrap());
                     }
                 }
             }
@@ -1796,7 +1795,7 @@ fn test_read_and_block() {
 
         do spawntask {
             unsafe {
-                port.take().recv();
+                port.take_unwrap().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -1815,15 +1814,15 @@ fn test_read_read_read() {
         let addr = next_test_ip4();
         static MAX: uint = 500000;
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let listener = (*io).tcp_bind(addr).unwrap();
                 let mut acceptor = listener.listen().unwrap();
-                chan.take().send(());
+                chan.take_unwrap().send(());
                 let mut stream = acceptor.accept().unwrap();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
@@ -1836,7 +1835,7 @@ fn test_read_read_read() {
 
         do spawntask {
             unsafe {
-                port.take().recv();
+                port.take_unwrap().recv();
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
@@ -1861,14 +1860,14 @@ fn test_udp_twice() {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
         let (port, chan) = oneshot();
-        let port = Cell::new(port);
-        let chan = Cell::new(chan);
+        let port = Mut::new_some(port);
+        let chan = Mut::new_some(chan);
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client = (*io).udp_bind(client_addr).unwrap();
-                port.take().recv();
+                port.take_unwrap().recv();
                 assert!(client.sendto([1], server_addr).is_ok());
                 assert!(client.sendto([2], server_addr).is_ok());
             }
@@ -1878,7 +1877,7 @@ fn test_udp_twice() {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server = (*io).udp_bind(server_addr).unwrap();
-                chan.take().send(());
+                chan.take_unwrap().send(());
                 let mut buf1 = [0];
                 let mut buf2 = [0];
                 let (nread1, src1) = server.recvfrom(buf1).unwrap();
@@ -1906,15 +1905,15 @@ fn test_udp_many_read() {
         let (p1, c1) = oneshot();
         let (p2, c2) = oneshot();
 
-        let first = Cell::new((p1, c2));
-        let second = Cell::new((p2, c1));
+        let first = Mut::new_some((p1, c2));
+        let second = Mut::new_some((p2, c1));
 
         do spawntask {
             unsafe {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut server_out = (*io).udp_bind(server_out_addr).unwrap();
                 let mut server_in = (*io).udp_bind(server_in_addr).unwrap();
-                let (port, chan) = first.take();
+                let (port, chan) = first.take_unwrap();
                 chan.send(());
                 port.recv();
                 let msg = [1, .. 2048];
@@ -1940,7 +1939,7 @@ fn test_udp_many_read() {
                 let io: *mut IoFactoryObject = Local::unsafe_borrow();
                 let mut client_out = (*io).udp_bind(client_out_addr).unwrap();
                 let mut client_in = (*io).udp_bind(client_in_addr).unwrap();
-                let (port, chan) = second.take();
+                let (port, chan) = second.take_unwrap();
                 port.recv();
                 chan.send(());
                 let mut total_bytes_recv = 0;

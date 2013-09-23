@@ -71,7 +71,7 @@ extern mod rustc;
 extern mod syntax;
 
 use std::{libc, io, os, task};
-use std::cell::Cell;
+
 use extra::rl;
 
 use rustc::driver::{driver, session};
@@ -476,12 +476,15 @@ pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~st
         }
     }
 
-    let line = Cell::new(line);
-    let program = Cell::new(repl.program.clone());
-    let lib_search_paths = Cell::new(repl.lib_search_paths.clone());
-    let binary = Cell::new(repl.binary.clone());
+    let line = Mut::new_some(line);
+    let program = Mut::new_some(repl.program.clone());
+    let lib_search_paths = Mut::new_some(repl.lib_search_paths.clone());
+    let binary = Mut::new_some(repl.binary.clone());
     let result = do task::try {
-        run(program.take(), binary.take(), lib_search_paths.take(), line.take())
+        run(program.take_unwrap(),
+            binary.take_unwrap(),
+            lib_search_paths.take_unwrap(),
+            line.take_unwrap())
     };
 
     match result {

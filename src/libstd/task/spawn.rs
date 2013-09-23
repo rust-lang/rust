@@ -75,7 +75,7 @@ use prelude::*;
 
 use cast::transmute;
 use cast;
-use cell::Cell;
+use mutable::Mut;
 use container::MutableMap;
 use comm::{Chan, GenericChan, oneshot};
 use hashmap::{HashSet, HashSetMoveIterator};
@@ -242,7 +242,7 @@ fn each_ancestor(list:        &mut AncestorList,
         // 'do_continue'  - Did the forward_blk succeed at this point? (i.e.,
         //                  should we recurse? or should our callers unwind?)
 
-        let forward_blk = Cell::new(forward_blk);
+        let forward_blk = Mut::new_some(forward_blk);
 
         // The map defaults to None, because if ancestors is None, we're at
         // the end of the list, which doesn't make sense to coalesce.
@@ -250,7 +250,7 @@ fn each_ancestor(list:        &mut AncestorList,
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(ancestor_arc) |nobe| {
                 // Argh, but we couldn't give it to coalesce() otherwise.
-                let forward_blk = forward_blk.take();
+                let forward_blk = forward_blk.take_unwrap();
                 // Check monotonicity
                 check_generation(last_generation, nobe.generation);
                 /*##########################################################*
@@ -387,28 +387,28 @@ fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
 
 fn enlist_in_taskgroup(state: TaskGroupInner, me: KillHandle,
                            is_member: bool) -> bool {
-    let me = Cell::new(me); // :(
+    let me = Mut::new_some(me); // :(
     // If 'None', the group was failing. Can't enlist.
     do state.map_mut_default(false) |group| {
         (if is_member {
             &mut group.members
         } else {
             &mut group.descendants
-        }).insert(me.take());
+        }).insert(me.take_unwrap());
         true
     }
 }
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(state: TaskGroupInner, me: &KillHandle, is_member: bool) {
-    let me = Cell::new(me); // :(
+    let me = Mut::new_some(me); // :(
     // If 'None', already failing and we've already gotten a kill signal.
     do state.map_mut |group| {
         (if is_member {
             &mut group.members
         } else {
             &mut group.descendants
-        }).remove(me.take());
+        }).remove(me.take_unwrap());
     };
 }
 
@@ -443,9 +443,9 @@ struct RuntimeGlue;
 impl RuntimeGlue {
     fn kill_task(mut handle: KillHandle) {
         do handle.kill().map_move |killed_task| {
-            let killed_task = Cell::new(killed_task);
+            let killed_task = Mut::new_some(killed_task);
             do Local::borrow |sched: &mut Scheduler| {
-                sched.enqueue_task(killed_task.take());
+                sched.enqueue_task(killed_task.take_unwrap());
             }
         };
     }
@@ -560,17 +560,17 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
 
     rtassert!(in_green_task_context());
 
-    let child_data = Cell::new(gen_child_taskgroup(opts.linked, opts.supervised));
+    let child_data = Mut::new_some(gen_child_taskgroup(opts.linked, opts.supervised));
     let indestructible = opts.indestructible;
 
     let child_wrapper: ~fn() = || {
         // Child task runs this code.
 
         // If child data is 'None', the enlist is vacuously successful.
-        let enlist_success = do child_data.take().map_move_default(true) |child_data| {
-            let child_data = Cell::new(child_data); // :(
+        let enlist_success = do child_data.take_unwrap().map_move_default(true) |child_data| {
+            let child_data = Mut::new_some(child_data); // :(
             do Local::borrow |me: &mut Task| {
-                let (child_tg, ancestors) = child_data.take();
+                let (child_tg, ancestors) = child_data.take_unwrap();
                 let mut ancestors = ancestors;
                 let handle = me.death.kill_handle.get_ref();
                 // Atomically try to get into all of our taskgroups.
@@ -634,23 +634,23 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
             // Create a task that will later be used to join with the new scheduler
             // thread when it is ready to terminate
             let (thread_port, thread_chan) = oneshot();
-            let thread_port_cell = Cell::new(thread_port);
+            let thread_port_cell = Mut::new_some(thread_port);
             let join_task = do Task::build_child(None) {
                 rtdebug!("running join task");
-                let thread_port = thread_port_cell.take();
+                let thread_port = thread_port_cell.take_unwrap();
                 let thread: Thread = thread_port.recv();
                 thread.join();
             };
 
             // Put the scheduler into another thread
-            let new_sched_cell = Cell::new(new_sched);
-            let orig_sched_handle_cell = Cell::new((*sched).make_handle());
-            let join_task_cell = Cell::new(join_task);
+            let new_sched_cell = Mut::new_some(new_sched);
+            let orig_sched_handle_cell = Mut::new_some((*sched).make_handle());
+            let join_task_cell = Mut::new_some(join_task);
 
             let thread = do Thread::start {
-                let mut new_sched = new_sched_cell.take();
-                let mut orig_sched_handle = orig_sched_handle_cell.take();
-                let join_task = join_task_cell.take();
+                let mut new_sched = new_sched_cell.take_unwrap();
+                let mut orig_sched_handle = orig_sched_handle_cell.take_unwrap();
+                let join_task = join_task_cell.take_unwrap();
 
                 let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
                     rtdebug!("boostrapping a 1:1 scheduler");
@@ -679,9 +679,9 @@ pub fn spawn_raw(mut opts: TaskOpts, f: ~fn()) {
 
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
-        let notify_chan = Cell::new(notify_chan);
+        let notify_chan = Mut::new_some(notify_chan);
         let on_exit: ~fn(bool) = |success| {
-            notify_chan.take().send(
+            notify_chan.take_unwrap().send(
                 if success { Success } else { Failure }
             )
         };

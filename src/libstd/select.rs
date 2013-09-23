@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cell::Cell;
+use mutable::Mut;
 use comm;
 use container::Container;
 use iter::{Iterator, DoubleEndedIterator};
@@ -55,11 +55,11 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     // after letting the task get woken up. The and_then closure needs to delay
     // the task from resuming until all ports have become blocked_on.
     let (p,c) = comm::oneshot();
-    let p = Cell::new(p);
-    let c = Cell::new(c);
+    let p = Mut::new_some(p);
+    let c = Mut::new_some(c);
 
     do (|| {
-        let c = Cell::new(c.take());
+        let c = Mut::new_some(c.take_unwrap());
         let sched: ~Scheduler = Local::take();
         do sched.deschedule_running_task_and_then |sched, task| {
             let task_handles = task.make_selectable(ports.len());
@@ -73,15 +73,15 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
                 }
             }
 
-            let c = Cell::new(c.take());
-            do sched.event_loop.callback { c.take().send_deferred(()) }
+            let c = Mut::new_some(c.take_unwrap());
+            do sched.event_loop.callback { c.take_unwrap().send_deferred(()) }
         }
     }).finally {
-        let p = Cell::new(p.take());
+        let p = Mut::new_some(p.take_unwrap());
         // Unkillable is necessary not because getting killed is dangerous here,
         // but to force the recv not to use the same kill-flag that we used for
         // selecting. Otherwise a user-sender could spuriously wakeup us here.
-        do task::unkillable { p.take().recv(); }
+        do task::unkillable { p.take_unwrap().recv(); }
     }
 
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
@@ -133,7 +133,7 @@ mod test {
     use vec::*;
     use comm::GenericChan;
     use task;
-    use cell::Cell;
+    use mutable::Mut;
     use iter::{Iterator, range};
 
     #[test] #[should_fail]
@@ -250,9 +250,9 @@ mod test {
                 let (p3,c3) = oneshot();
                 let (p4,c4) = oneshot();
 
-                let x = Cell::new((c2, p3, c4));
+                let x = Mut::new_some((c2, p3, c4));
                 do task::spawn {
-                    let (c2, p3, c4) = x.take();
+                    let (c2, p3, c4) = x.take_unwrap();
                     p3.recv();   // handshake parent
                     c4.send(()); // normal receive
                     task::deschedule();
@@ -297,10 +297,10 @@ mod test {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {
-                                let c = Cell::new(c);
+                                let c = Mut::new_some(c);
                                 do spawntask_random {
                                     task::deschedule();
-                                    c.take().send(());
+                                    c.take_unwrap().send(());
                                 }
                             }
                         }
@@ -320,17 +320,17 @@ mod test {
     fn select_killed() {
         do run_in_newsched_task {
             let (success_p, success_c) = oneshot::<bool>();
-            let success_c = Cell::new(success_c);
+            let success_c = Mut::new_some(success_c);
             do task::try {
-                let success_c = Cell::new(success_c.take());
+                let success_c = Mut::new_some(success_c.take_unwrap());
                 do task::unkillable {
                     let (p,c) = oneshot();
-                    let c = Cell::new(c);
+                    let c = Mut::new_some(c);
                     do task::spawn {
                         let (dead_ps, dead_cs) = unzip(range(0u, 5).map(|_| oneshot::<()>()));
                         let mut ports = dead_ps;
                         select(ports); // should get killed; nothing should leak
-                        c.take().send(()); // must not happen
+                        c.take_unwrap().send(()); // must not happen
                         // Make sure dead_cs doesn't get closed until after select.
                         let _ = dead_cs;
                     }
@@ -340,7 +340,7 @@ mod test {
 
                     // wait for killed selector to close (NOT send on) its c.
                     // hope to send 'true'.
-                    success_c.take().send(p.try_recv().is_none());
+                    success_c.take_unwrap().send(p.try_recv().is_none());
                 }
             };
             assert!(success_p.recv());

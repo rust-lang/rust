@@ -312,15 +312,15 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = Cell::new(client_);
-    let server_ = Cell::new(server_);
+    let client_ = Mut::new_some(client_);
+    let server_ = Mut::new_some(server_);
 
     task::spawn {|client_|
-        let client__ = client_.take();
+        let client__ = client_.take_unwrap();
         client(client__);
     };
     task::spawn {|server_|
-        let server__ = server_.take();
+        let server__ = server_.take_unwrap();
         server(server_ˊ);
     };
   */

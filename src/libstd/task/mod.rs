@@ -37,7 +37,7 @@
 
 use prelude::*;
 
-use cell::Cell;
+use mutable::Mut;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
 use result::Result;
 use result;
@@ -315,10 +315,10 @@ impl TaskBuilder {
                 f
             }
         };
-        let prev_gen_body = Cell::new(prev_gen_body);
+        let prev_gen_body = Mut::new_some(prev_gen_body);
         let next_gen_body = {
             let f: ~fn(~fn()) -> ~fn() = |body| {
-                let prev_gen_body = prev_gen_body.take();
+                let prev_gen_body = prev_gen_body.take_unwrap();
                 wrapper(prev_gen_body(body))
             };
             f
@@ -366,9 +366,9 @@ impl TaskBuilder {
 
     /// Runs a task, while transferring ownership of one argument to the child.
     pub fn spawn_with<A:Send>(&mut self, arg: A, f: ~fn(v: A)) {
-        let arg = Cell::new(arg);
+        let arg = Mut::new_some(arg);
         do self.spawn {
-            f(arg.take());
+            f(arg.take_unwrap());
         }
     }
 
@@ -970,11 +970,11 @@ struct Wrapper {
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let mut b0 = task();
-    let ch = Cell::new(ch);
+    let ch = Mut::new_some(ch);
     do b0.add_wrapper |body| {
-        let ch = Cell::new(ch.take());
+        let ch = Mut::new_some(ch.take_unwrap());
         let result: ~fn() = || {
-            let ch = ch.take();
+            let ch = ch.take_unwrap();
             body();
             ch.send(());
         };
@@ -1067,12 +1067,12 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = get_sched_id();
 
-    let ch = Cell::new(ch);
+    let ch = Mut::new_some(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = get_sched_id();
-        let ch = Cell::new(ch.take());
+        let ch = Mut::new_some(ch.take_unwrap());
         do spawn {
-            let ch = ch.take();
+            let ch = ch.take_unwrap();
             let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);

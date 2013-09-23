@@ -113,7 +113,6 @@ impl<T: DeepClone> DeepClone for Rc<T> {
 #[cfg(test)]
 mod test_rc {
     use super::*;
-    use std::cell::Cell;
 
     #[test]
     fn test_clone() {

@@ -20,7 +20,7 @@ non-sendableness.
 
 use parse;
 
-use std::cell::Cell;
+
 use std::comm::{stream, SharedChan, Port};
 use std::task;
 use rustc::driver::driver;
@@ -63,10 +63,10 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let (po, ch) = stream();
 
-    let source = Cell::new(source);
-    let parse = Cell::new(parse);
+    let source = Mut::new_some(source);
+    let parse = Mut::new_some(parse);
     do task::spawn {
-        act(&po, source.take().to_managed(), parse.take());
+        act(&po, source.take_unwrap().to_managed(), parse.take_unwrap());
     }
 
     let srv_ = Srv {

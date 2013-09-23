@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast;
-use cell::Cell;
+use mutable::Mut;
 use comm;
 use libc;
 use ptr;
@@ -114,10 +114,10 @@ impl<T: Send> UnsafeArc<T> {
     /// If called when the task is already unkillable, unwrap will unkillably
     /// block; otherwise, an unwrapping task can be killed by linked failure.
     pub fn unwrap(self) -> T {
-        let this = Cell::new(self); // argh
+        let this = Mut::new_some(self); // argh
         do task::unkillable {
             unsafe {
-                let mut this = this.take();
+                let mut this = this.take_unwrap();
                 // The ~ dtor needs to run if this code succeeds.
                 let mut data: ~ArcData<T> = cast::transmute(this.data);
                 // Set up the unwrap protocol.
@@ -141,14 +141,14 @@ impl<T: Send> UnsafeArc<T> {
                         data.data.take_unwrap()
                     } else {
                         // The *next* person who sees the refcount hit 0 will wake us.
-                        let p1 = Cell::new(p1); // argh
+                        let p1 = Mut::new_some(p1); // argh
                         // Unlike the above one, this cell is necessary. It will get
                         // taken either in the do block or in the finally block.
-                        let c2_and_data = Cell::new((c2,data));
+                        let c2_and_data = Mut::new_some((c2,data));
                         do (|| {
-                            do task::rekillable { p1.take().recv(); }
+                            do task::rekillable { p1.take_unwrap().recv(); }
                             // Got here. Back in the 'unkillable' without getting killed.
-                            let (c2, data) = c2_and_data.take();
+                            let (c2, data) = c2_and_data.take_unwrap();
                             c2.send(true);
                             // FIXME(#3224): it should be like this
                             // let ~ArcData { data: user_data, _ } = data;
@@ -160,11 +160,11 @@ impl<T: Send> UnsafeArc<T> {
                                 // Killed during wait. Because this might happen while
                                 // someone else still holds a reference, we can't free
                                 // the data now; the "other" last refcount will free it.
-                                let (c2, data) = c2_and_data.take();
+                                let (c2, data) = c2_and_data.take_unwrap();
                                 c2.send(false);
                                 cast::forget(data);
                             } else {
-                                assert!(c2_and_data.is_empty());
+                                assert!(c2_and_data.map(|t| t.is_none()));
                             }
                         }
                     }
@@ -239,9 +239,9 @@ impl<T> Drop for UnsafeArc<T>{
                 // *awake* task with the data.
                 match data.unwrapper.take(Acquire) {
                     Some(~(message,response)) => {
-                        let cell = Cell::new((message, response, data));
+                        let cell = Mut::new_some((message, response, data));
                         do task::unkillable {
-                            let (message, response, data) = cell.take();
+                            let (message, response, data) = cell.take_unwrap();
                             // Send 'ready' and wait for a response.
                             message.send(());
                             // Unkillable wait. Message guaranteed to come.
@@ -418,7 +418,7 @@ externfn!(fn rust_unlock_little_lock(lock: rust_little_lock))
 
 #[cfg(test)]
 mod tests {
-    use cell::Cell;
+    use mutable::Mut;
     use comm;
     use option::*;
     use prelude::*;
@@ -542,11 +542,11 @@ mod tests {
     fn arclike_try_unwrap_unwrap_race() {
         // When an unwrap and a try_unwrap race, the unwrapper should always win.
         let x = UnsafeArc::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = Mut::new_some(x.clone());
         let (p,c) = comm::stream();
         do task::spawn {
             c.send(());
-            assert!(x2.take().unwrap() == ~~"hello");
+            assert!(x2.take_unwrap().unwrap() == ~~"hello");
             c.send(());
         }
         p.recv();
@@ -567,9 +567,9 @@ mod tests {
     #[test]
     fn exclusive_new_unwrap_contended() {
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = Mut::new_some(x.clone());
         do task::spawn {
-            let x2 = x2.take();
+            let x2 = x2.take_unwrap();
             unsafe { do x2.with |_hello| { } }
             task::deschedule();
         }
@@ -577,12 +577,12 @@ mod tests {
 
         // Now try the same thing, but with the child task blocking.
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = Mut::new_some(x.clone());
         let mut res = None;
         let mut builder = task::task();
         builder.future_result(|r| res = Some(r));
         do builder.spawn {
-            let x2 = x2.take();
+            let x2 = x2.take_unwrap();
             assert!(x2.unwrap() == ~~"hello");
         }
         // Have to get rid of our reference before blocking.
@@ -593,12 +593,12 @@ mod tests {
     #[test] #[should_fail]
     fn exclusive_new_unwrap_conflict() {
         let x = Exclusive::new(~~"hello");
-        let x2 = Cell::new(x.clone());
+        let x2 = Mut::new_some(x.clone());
         let mut res = None;
         let mut builder = task::task();
         builder.future_result(|r| res = Some(r));
         do builder.spawn {
-            let x2 = x2.take();
+            let x2 = x2.take_unwrap();
             assert!(x2.unwrap() == ~~"hello");
         }
         assert!(x.unwrap() == ~~"hello");

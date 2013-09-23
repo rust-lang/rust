@@ -20,7 +20,7 @@ extern mod extra;
 use extra::arc;
 use extra::future;
 use extra::time;
-use std::cell::Cell;
+
 use std::os;
 use std::uint;
 
@@ -78,7 +78,7 @@ fn main() {
     let msg_per_task = from_str::<uint>(args[2]).unwrap();
 
     let (num_chan, num_port) = init();
-    let num_chan = Cell::new(num_chan);
+    let num_chan = Mut::new_some(num_chan);
 
     let start = time::precise_time_s();
 
@@ -88,11 +88,11 @@ fn main() {
     for i in range(1u, num_tasks) {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
-        let num_chan2 = Cell::new(num_chan.take());
-        let num_port = Cell::new(num_port);
+        let num_chan2 = Mut::new_some(num_chan.take_unwrap());
+        let num_port = Mut::new_some(num_port);
         let new_future = do future::spawn {
-            let num_chan = num_chan2.take();
-            let num_port1 = num_port.take();
+            let num_chan = num_chan2.take_unwrap();
+            let num_port1 = num_port.take_unwrap();
             thread_ring(i, msg_per_task, num_chan, num_port1)
         };
         futures.push(new_future);
@@ -100,7 +100,7 @@ fn main() {
     };
 
     // do our iteration
-    thread_ring(0, msg_per_task, num_chan.take(), num_port);
+    thread_ring(0, msg_per_task, num_chan.take_unwrap(), num_port);
 
     // synchronize
     for f in futures.mut_iter() {

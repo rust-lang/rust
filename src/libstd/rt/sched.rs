@@ -25,7 +25,7 @@ use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{RemoteCallback, PausibleIdleCallback};
 use borrow::{to_uint};
-use cell::Cell;
+use mutable::Mut;
 use rand::{XorShiftRng, RngUtil};
 use iter::range;
 use vec::{OwnedVector};
@@ -211,9 +211,9 @@ impl Scheduler {
 
             // Our scheduler must be in the task before the event loop
             // is started.
-            let self_sched = Cell::new(self_sched);
+            let self_sched = Mut::new_some(self_sched);
             do Local::borrow |stask: &mut Task| {
-                stask.sched = Some(self_sched.take());
+                stask.sched = Some(self_sched.take_unwrap());
             };
 
             (*event_loop).run();
@@ -691,9 +691,9 @@ impl Scheduler {
     }
 
     pub fn run_task_later(next_task: ~Task) {
-        let next_task = Cell::new(next_task);
+        let next_task = Mut::new_some(next_task);
         do Local::borrow |sched: &mut Scheduler| {
-            sched.enqueue_task(next_task.take());
+            sched.enqueue_task(next_task.take_unwrap());
         };
     }
 
@@ -784,7 +784,7 @@ mod test {
     use borrow::to_uint;
     use rt::local::*;
     use rt::sched::{Scheduler};
-    use cell::Cell;
+    use mutable::Mut;
     use rt::thread::Thread;
     use rt::task::{Task, Sched};
     use rt::util;
@@ -907,7 +907,7 @@ mod test {
                 queues.clone(),
                 sleepers.clone());
 
-            let normal_handle = Cell::new(normal_sched.make_handle());
+            let normal_handle = Mut::new_some(normal_sched.make_handle());
 
             let friend_handle = normal_sched.make_handle();
 
@@ -920,7 +920,7 @@ mod test {
                 false,
                 Some(friend_handle));
 
-            let special_handle = Cell::new(special_sched.make_handle());
+            let special_handle = Mut::new_some(special_sched.make_handle());
 
             let t1_handle = special_sched.make_handle();
             let t4_handle = special_sched.make_handle();
@@ -951,26 +951,26 @@ mod test {
             };
             rtdebug!("task4 id: **%u**", borrow::to_uint(task4));
 
-            let task1 = Cell::new(task1);
-            let task2 = Cell::new(task2);
-            let task3 = Cell::new(task3);
-            let task4 = Cell::new(task4);
+            let task1 = Mut::new_some(task1);
+            let task2 = Mut::new_some(task2);
+            let task3 = Mut::new_some(task3);
+            let task4 = Mut::new_some(task4);
 
             // Signal from the special task that we are done.
             let (port, chan) = oneshot::<()>();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
                 rtdebug!("*about to submit task2*");
-                Scheduler::run_task(task2.take());
+                Scheduler::run_task(task2.take_unwrap());
                 rtdebug!("*about to submit task4*");
-                Scheduler::run_task(task4.take());
+                Scheduler::run_task(task4.take_unwrap());
                 rtdebug!("*normal_task done*");
-                port.take().recv();
-                let mut nh = normal_handle.take();
+                port.take_unwrap().recv();
+                let mut nh = normal_handle.take_unwrap();
                 nh.send(Shutdown);
-                let mut sh = special_handle.take();
+                let mut sh = special_handle.take_unwrap();
                 sh.send(Shutdown);
             };
 
@@ -978,27 +978,27 @@ mod test {
 
             let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
                 rtdebug!("*about to submit task1*");
-                Scheduler::run_task(task1.take());
+                Scheduler::run_task(task1.take_unwrap());
                 rtdebug!("*about to submit task3*");
-                Scheduler::run_task(task3.take());
+                Scheduler::run_task(task3.take_unwrap());
                 rtdebug!("*done with special_task*");
-                chan.take().send(());
+                chan.take_unwrap().send(());
             };
 
             rtdebug!("special task: %u", borrow::to_uint(special_task));
 
-            let special_sched = Cell::new(special_sched);
-            let normal_sched = Cell::new(normal_sched);
-            let special_task = Cell::new(special_task);
-            let normal_task = Cell::new(normal_task);
+            let special_sched = Mut::new_some(special_sched);
+            let normal_sched = Mut::new_some(normal_sched);
+            let special_task = Mut::new_some(special_task);
+            let normal_task = Mut::new_some(normal_task);
 
             let normal_thread = do Thread::start {
-                normal_sched.take().bootstrap(normal_task.take());
+                normal_sched.take_unwrap().bootstrap(normal_task.take_unwrap());
                 rtdebug!("finished with normal_thread");
             };
 
             let special_thread = do Thread::start {
-                special_sched.take().bootstrap(special_task.take());
+                special_sched.take_unwrap().bootstrap(special_task.take_unwrap());
                 rtdebug!("finished with special_sched");
             };
 
@@ -1026,11 +1026,11 @@ mod test {
             do spawntask {
                 let sched: ~Scheduler = Local::take();
                 do sched.deschedule_running_task_and_then |sched, task| {
-                    let task = Cell::new(task);
+                    let task = Mut::new_some(task);
                     do sched.event_loop.callback_ms(10) {
                         rtdebug!("in callback");
                         let mut sched: ~Scheduler = Local::take();
-                        sched.enqueue_blocked_task(task.take());
+                        sched.enqueue_blocked_task(task.take_unwrap());
                         Local::put(sched);
                     }
                 }
@@ -1044,20 +1044,20 @@ mod test {
 
         do run_in_bare_thread {
             let (port, chan) = oneshot::<()>();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let port = Mut::new_some(port);
+            let chan = Mut::new_some(chan);
 
             let thread_one = do Thread::start {
-                let chan = Cell::new(chan.take());
+                let chan = Mut::new_some(chan.take_unwrap());
                 do run_in_newsched_task_core {
-                    chan.take().send(());
+                    chan.take_unwrap().send(());
                 }
             };
 
             let thread_two = do Thread::start {
-                let port = Cell::new(port.take());
+                let port = Mut::new_some(port.take_unwrap());
                 do run_in_newsched_task_core {
-                    port.take().recv();
+                    port.take_unwrap().recv();
                 }
             };
 
@@ -1091,10 +1091,10 @@ mod test {
 
                 let mut handle = sched.make_handle();
 
-                let sched = Cell::new(sched);
+                let sched = Mut::new_some(sched);
 
                 let thread = do Thread::start {
-                    let mut sched = sched.take();
+                    let mut sched = sched.take_unwrap();
                     let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, ||());
                     sched.bootstrap(bootstrap_task);
                 };
@@ -1122,9 +1122,9 @@ mod test {
             let mut ports = ~[];
             do 10.times {
                 let (port, chan) = oneshot();
-                let chan_cell = Cell::new(chan);
+                let chan_cell = Mut::new_some(chan);
                 do spawntask_later {
-                    chan_cell.take().send(());
+                    chan_cell.take_unwrap().send(());
                 }
                 ports.push(port);
             }

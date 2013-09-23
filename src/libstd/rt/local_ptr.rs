@@ -18,7 +18,7 @@
 use libc::c_void;
 use cast;
 use ptr;
-use cell::Cell;
+use mutable::Mut;
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use tls = rt::thread_local_storage;
@@ -104,12 +104,12 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 
     // XXX: Need a different abstraction from 'finally' here to avoid unsafety
     let unsafe_ptr = cast::transmute_mut_region(&mut *value);
-    let value_cell = Cell::new(value);
+    let value_cell = Mut::new_some(value);
 
     do (|| {
         f(unsafe_ptr);
     }).finally {
-        put(value_cell.take());
+        put(value_cell.take_unwrap());
     }
 }
 

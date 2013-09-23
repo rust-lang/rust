@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cell::Cell;
+use mutable::Mut;
 use c_str::ToCStr;
 use cast::transmute;
 use io::{Writer, WriterUtil};
@@ -49,9 +49,9 @@ fn swap_task_borrow_list(f: &fn(~[BorrowRecord]) -> ~[BorrowRecord]) {
         None => ~[]
     };
     let borrows = f(borrows);
-    let borrows = Cell::new(borrows);
+    let borrows = Mut::new_some(borrows);
     do Local::borrow |task: &mut Task| {
-        task.borrow_list = Some(borrows.take());
+        task.borrow_list = Some(borrows.take_unwrap());
     }
 }
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use std::cell::Cell;
+
 use std::os;
 use std::result::Result;
 use std::result;
@@ -169,11 +169,11 @@ fn config_from_opts(
             }
         }
     };
-    let process_output = Cell::new(process_output);
+    let process_output = Mut::new_some(process_output);
     let result = do result.and_then |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
-            &config, pandoc_cmd, process_output.take());
+            &config, pandoc_cmd, process_output.take_unwrap());
         do pandoc_cmd.and_then |pandoc_cmd| {
             result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,

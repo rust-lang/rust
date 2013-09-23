@@ -14,7 +14,7 @@
 use container::Container;
 use kinds::Send;
 use vec::OwnedVector;
-use cell::Cell;
+use mutable::Mut;
 use option::*;
 use unstable::sync::{UnsafeArc, LittleLock};
 use clone::Clone;
@@ -42,11 +42,11 @@ impl<T: Send> MessageQueue<T> {
 
     pub fn push(&mut self, value: T) {
         unsafe {
-            let value = Cell::new(value);
+            let value = Mut::new_some(value);
             let state = self.state.get();
             do (*state).lock.lock {
                 (*state).count += 1;
-                (*state).queue.push(value.take());
+                (*state).queue.push(value.take_unwrap());
             }
         }
     }

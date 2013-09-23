@@ -14,7 +14,7 @@
 use container::Container;
 use vec::OwnedVector;
 use option::{Option, Some, None};
-use cell::Cell;
+use mutable::Mut;
 use unstable::sync::{UnsafeArc, LittleLock};
 use rt::sched::SchedHandle;
 use clone::Clone;
@@ -41,12 +41,12 @@ impl SleeperList {
     }
 
     pub fn push(&mut self, handle: SchedHandle) {
-        let handle = Cell::new(handle);
+        let handle = Mut::new_some(handle);
         unsafe {
             let state = self.state.get();
             do (*state).lock.lock {
                 (*state).count += 1;
-                (*state).stack.push(handle.take());
+                (*state).stack.push(handle.take_unwrap());
             }
         }
     }

@@ -14,7 +14,7 @@ use rt::task::Task;
 use rt::local_ptr;
 use rt::rtio::{EventLoop, IoFactoryObject};
 //use borrow::to_uint;
-use cell::Cell;
+use mutable::Mut;
 
 pub trait Local {
     fn put(value: ~Self);
@@ -58,10 +58,10 @@ impl Local for Task {
 
 impl Local for Scheduler {
     fn put(value: ~Scheduler) {
-        let value = Cell::new(value);
+        let value = Mut::new_some(value);
         do Local::borrow |task: &mut Task| {
             let task = task;
-            task.sched = Some(value.take());
+            task.sched = Some(value.take_unwrap());
         };
     }
     #[inline]

@@ -20,7 +20,7 @@ use procsrv;
 use util;
 use util::logv;
 
-use std::cell::Cell;
+
 use std::io;
 use std::os;
 use std::str;
@@ -31,8 +31,8 @@ use std::unstable::running_on_valgrind;
 use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
-    let config = Cell::new(config);
-    let testfile = Cell::new(testfile);
+    let config = Mut::new_some(config);
+    let testfile = Mut::new_some(testfile);
     // FIXME #6436: Creating another thread to run the test because this
     // is going to call waitpid. The new scheduler has some strange
     // interaction between the blocking tasks and 'friend' schedulers
@@ -43,14 +43,14 @@ pub fn run(config: config, testfile: ~str) {
     // We do _not_ create another thread if we're running on V because
     // it serializes all threads anyways.
     if running_on_valgrind() {
-        let config = config.take();
-        let testfile = testfile.take();
+        let config = config.take_unwrap();
+        let testfile = testfile.take_unwrap();
         let mut _mm = MetricMap::new();
         run_metrics(config, testfile, &mut _mm);
     } else {
         do spawn_sched(SingleThreaded) {
-            let config = config.take();
-            let testfile = testfile.take();
+            let config = config.take_unwrap();
+            let testfile = testfile.take_unwrap();
             let mut _mm = MetricMap::new();
             run_metrics(config, testfile, &mut _mm);
         }

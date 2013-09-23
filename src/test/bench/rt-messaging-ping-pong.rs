@@ -13,7 +13,7 @@ extern mod extra;
 use std::os;
 use std::uint;
 use std::rt::test::spawntask_later;
-use std::cell::Cell;
+
 
 // This is a simple bench that creates M pairs of of tasks. These
 // tasks ping-pong back and forth over a pair of streams. This is a
@@ -29,14 +29,14 @@ fn ping_pong_bench(n: uint, m: uint) {
             // Create a stream B->A
             let (pb,cb) = stream::<()>();
 
-            let pa = Cell::new(pa);
-            let ca = Cell::new(ca);
-            let pb = Cell::new(pb);
-            let cb = Cell::new(cb);
+            let pa = Mut::new_some(pa);
+            let ca = Mut::new_some(ca);
+            let pb = Mut::new_some(pb);
+            let cb = Mut::new_some(cb);
 
         do spawntask_later() || {
-            let chan = ca.take();
-            let port = pb.take();
+            let chan = ca.take_unwrap();
+            let port = pb.take_unwrap();
             do n.times {
                 chan.send(());
                 port.recv();
@@ -44,8 +44,8 @@ fn ping_pong_bench(n: uint, m: uint) {
         }
 
         do spawntask_later() || {
-            let chan = cb.take();
-            let port = pa.take();
+            let chan = cb.take_unwrap();
+            let port = pa.take_unwrap();
             do n.times {
                 port.recv();
                 chan.send(());

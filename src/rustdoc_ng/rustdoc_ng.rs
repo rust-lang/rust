@@ -22,7 +22,7 @@ extern mod rustc;
 extern mod extra;
 
 use extra::serialize::Encodable;
-use std::cell::Cell;
+
 
 pub mod core;
 pub mod doctree;
@@ -61,7 +61,7 @@ pub fn main_args(args: &[~str]) {
         return;
     }
 
-    let libs = Cell::new(opt_strs(&matches, "L").map(|s| Path(*s)));
+    let libs = Mut::new_some(opt_strs(&matches, "L").map(|s| Path(*s)));
 
     let mut passes = if opt_present(&matches, "n") {
         ~[]
@@ -76,11 +76,11 @@ pub fn main_args(args: &[~str]) {
         return;
     }
 
-    let cr = Cell::new(Path(matches.free[0]));
+    let cr = Mut::new_some(Path(matches.free[0]));
 
     let crate = do std::task::try {
-        let cr = cr.take();
-        core::run_core(libs.take(), &cr)
+        let cr = cr.take_unwrap();
+        core::run_core(libs.take_unwrap(), &cr)
     }.unwrap();
 
     // { "schema": version, "crate": { parsed crate ... }, "plugins": { output of plugins ... }}

@@ -13,7 +13,7 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
-use std::cell::Cell;
+
 use std::comm::*;
 use std::ptr;
 use std::task;
@@ -55,9 +55,9 @@ fn joinable(f: ~fn()) -> Port<bool> {
         *b = true;
     }
     let (p, c) = stream();
-    let c = Cell::new(c);
+    let c = Mut::new_some(c);
     do task::spawn_unlinked {
-        let ccc = c.take();
+        let ccc = c.take_unwrap();
         wrapper(ccc, f)
     }
     p

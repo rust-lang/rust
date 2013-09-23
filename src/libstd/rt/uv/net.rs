@@ -552,7 +552,7 @@ impl NativeHandle<*uvll::uv_udp_send_t> for UdpSendRequest {
 mod test {
     use super::*;
     use util::ignore;
-    use cell::Cell;
+    use mutable::Mut;
     use vec;
     use unstable::run_in_bare_thread;
     use rt::thread::Thread;
@@ -678,12 +678,12 @@ mod test {
                     assert!(status.is_none());
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
                     let buf = slice_to_uv_buf(msg);
-                    let msg_cell = Cell::new(msg);
+                    let msg_cell = Mut::new_some(msg);
                     do stream_watcher.write(buf) |stream_watcher, status| {
                         rtdebug!("writing");
                         assert!(status.is_none());
-                        let msg_cell = Cell::new(msg_cell.take());
-                        stream_watcher.close(||ignore(msg_cell.take()));
+                        let msg_cell = Mut::new_some(msg_cell.take_unwrap());
+                        stream_watcher.close(||ignore(msg_cell.take_unwrap()));
                     }
                 }
                 loop_.run();
@@ -754,12 +754,12 @@ mod test {
                     assert!(status.is_none());
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
                     let buf = slice_to_uv_buf(msg);
-                    let msg_cell = Cell::new(msg);
+                    let msg_cell = Mut::new_some(msg);
                     do stream_watcher.write(buf) |stream_watcher, status| {
                         rtdebug!("writing");
                         assert!(status.is_none());
-                        let msg_cell = Cell::new(msg_cell.take());
-                        stream_watcher.close(||ignore(msg_cell.take()));
+                        let msg_cell = Mut::new_some(msg_cell.take_unwrap());
+                        stream_watcher.close(||ignore(msg_cell.take_unwrap()));
                     }
                 }
                 loop_.run();

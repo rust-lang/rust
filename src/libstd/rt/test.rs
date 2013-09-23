@@ -10,7 +10,7 @@
 
 use libc;
 use option::{Some, None};
-use cell::Cell;
+use mutable::Mut;
 use clone::Clone;
 use container::Container;
 use iter::{Iterator, range};
@@ -43,9 +43,9 @@ pub fn new_test_uv_sched() -> Scheduler {
 }
 
 pub fn run_in_newsched_task(f: ~fn()) {
-    let f = Cell::new(f);
+    let f = Mut::new_some(f);
     do run_in_bare_thread {
-        run_in_newsched_task_core(f.take());
+        run_in_newsched_task_core(f.take_unwrap());
     }
 }
 
@@ -54,10 +54,10 @@ pub fn run_in_newsched_task_core(f: ~fn()) {
     use rt::sched::Shutdown;
 
     let mut sched = ~new_test_uv_sched();
-    let exit_handle = Cell::new(sched.make_handle());
+    let exit_handle = Mut::new_some(sched.make_handle());
 
     let on_exit: ~fn(bool) = |exit_status| {
-        exit_handle.take().send(Shutdown);
+        exit_handle.take_unwrap().send(Shutdown);
         rtassert!(exit_status);
     };
     let mut task = ~Task::new_root(&mut sched.stack_pool, None, f);
@@ -161,7 +161,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     // see comment in other function (raising fd limits)
     prepare_for_lots_of_tests();
 
-    let f = Cell::new(f);
+    let f = Mut::new_some(f);
 
     do run_in_bare_thread {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
@@ -201,9 +201,9 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             scheds.push(sched);
         }
 
-        let handles = Cell::new(handles);
+        let handles = Mut::new_some(handles);
         let on_exit: ~fn(bool) = |exit_status| {
-            let mut handles = handles.take();
+            let mut handles = handles.take_unwrap();
             // Tell schedulers to exit
             for handle in handles.mut_iter() {
                 handle.send(Shutdown);
@@ -211,18 +211,18 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
             rtassert!(exit_status);
         };
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take_unwrap());
         main_task.death.on_exit = Some(on_exit);
 
         let mut threads = ~[];
-        let main_task = Cell::new(main_task);
+        let main_task = Mut::new_some(main_task);
 
         let main_thread = {
             let sched = scheds.pop();
-            let sched_cell = Cell::new(sched);
+            let sched_cell = Mut::new_some(sched);
             do Thread::start {
-                let sched = sched_cell.take();
-                sched.bootstrap(main_task.take());
+                let sched = sched_cell.take_unwrap();
+                sched.bootstrap(main_task.take_unwrap());
             }
         };
         threads.push(main_thread);
@@ -232,11 +232,11 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("bootstrapping non-primary scheduler");
             };
-            let bootstrap_task_cell = Cell::new(bootstrap_task);
-            let sched_cell = Cell::new(sched);
+            let bootstrap_task_cell = Mut::new_some(bootstrap_task);
+            let sched_cell = Mut::new_some(sched);
             let thread = do Thread::start {
-                let sched = sched_cell.take();
-                sched.bootstrap(bootstrap_task_cell.take());
+                let sched = sched_cell.take_unwrap();
+                sched.bootstrap(bootstrap_task_cell.take_unwrap());
             };
 
             threads.push(thread);
@@ -276,8 +276,8 @@ pub fn spawntask_random(f: ~fn()) {
 pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
 
     let (port, chan) = oneshot();
-    let chan = Cell::new(chan);
-    let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
+    let chan = Mut::new_some(chan);
+    let on_exit: ~fn(bool) = |exit_status| chan.take_unwrap().send(exit_status);
 
     let mut new_task = Task::build_root(None, f);
     new_task.death.on_exit = Some(on_exit);
@@ -292,10 +292,10 @@ pub fn spawntask_try(f: ~fn()) -> Result<(),()> {
 /// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
 
-    let f = Cell::new(f);
+    let f = Mut::new_some(f);
 
     let thread = do Thread::start {
-        run_in_newsched_task_core(f.take());
+        run_in_newsched_task_core(f.take_unwrap());
     };
 
     return thread;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast::transmute;
-use cell::Cell;
+use mutable::Mut;
 use c_str::ToCStr;
 use libc::{c_int, c_void};
 use option::{Option, Some, None};
@@ -61,14 +61,14 @@ impl GetAddrInfoRequest {
             None => (None, null())
         };
 
-        let cb = Cell::new(cb);
+        let cb = Mut::new_some(cb);
         let wrapper_cb: GetAddrInfoCallback = |req, addrinfo, err| {
             // Capture some heap values that need to stay alive for the
             // getaddrinfo call
             let _ = &c_node;
             let _ = &c_service;
 
-            let cb = cb.take();
+            let cb = cb.take_unwrap();
             cb(req, addrinfo, err)
         };
 

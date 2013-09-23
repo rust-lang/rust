@@ -27,7 +27,7 @@
 
 
 use std::cast;
-use std::cell::Cell;
+
 use std::comm::{PortOne, oneshot};
 use std::task;
 use std::util::replace;
@@ -121,9 +121,9 @@ pub fn from_port<A:Send>(port: PortOne<A>) -> Future<A> {
      * waiting for the result to be received on the port.
      */
 
-    let port = Cell::new(port);
+    let port = Mut::new_some(port);
     do from_fn {
-        port.take().recv()
+        port.take_unwrap().recv()
     }
 }
 
@@ -149,9 +149,9 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
 
     let (port, chan) = oneshot();
 
-    let chan = Cell::new(chan);
+    let chan = Mut::new_some(chan);
     do task::spawn {
-        let chan = chan.take();
+        let chan = chan.take_unwrap();
         chan.send(blk());
     }
 
@@ -162,7 +162,6 @@ pub fn spawn<A:Send>(blk: ~fn() -> A) -> Future<A> {
 mod test {
     use future::*;
 
-    use std::cell::Cell;
     use std::comm::oneshot;
     use std::task;
 
@@ -220,9 +219,9 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = "schlorf";
-        let f = Cell::new(do spawn { expected });
+        let f = Mut::new_some(do spawn { expected });
         do task::spawn {
-            let mut f = f.take();
+            let mut f = f.take_unwrap();
             let actual = f.get();
             assert_eq!(actual, expected);
         }

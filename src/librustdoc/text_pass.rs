@@ -18,14 +18,14 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use std::cell::Cell;
+
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
-    let op = Cell::new(op);
+    let op = Mut::new_some(op);
     Pass {
         name: name.clone(),
         f: |srv: astsrv::Srv, doc: doc::Doc| -> doc::Doc {
-            run(srv, doc, op.take())
+            run(srv, doc, op.take_unwrap())
         }
     }
 }

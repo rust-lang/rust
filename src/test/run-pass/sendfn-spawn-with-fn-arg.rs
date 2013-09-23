@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+
 use std::task;
 
 pub fn main() { test05(); }
@@ -23,8 +23,8 @@ fn test05() {
         error!(*three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
-    let fn_to_send = Cell::new(fn_to_send);
+    let fn_to_send = Mut::new_some(fn_to_send);
     task::spawn(|| {
-        test05_start(fn_to_send.take());
+        test05_start(fn_to_send.take_unwrap());
     });
 }

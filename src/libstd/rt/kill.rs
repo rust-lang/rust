@@ -151,7 +151,7 @@ There are two known issues with the current scheme for exit code propagation.
 */
 
 use cast;
-use cell::Cell;
+use mutable::Mut;
 use either::{Either, Left, Right};
 use option::{Option, Some, None};
 use prelude::*;
@@ -479,15 +479,15 @@ impl KillHandle {
             // Couldn't unwrap; children still alive. Reparent entire handle as
             // our own tombstone, to be unwrapped later.
             Left(this) => {
-                let this = Cell::new(this); // :(
+                let this = Mut::new_some(this); // :(
                 do add_lazy_tombstone(parent) |other_tombstones| {
-                    let this = Cell::new(this.take()); // :(
-                    let others = Cell::new(other_tombstones); // :(
+                    let this = Mut::new_some(this.take_unwrap()); // :(
+                    let others = Mut::new_some(other_tombstones); // :(
                     || {
                         // Prefer to check tombstones that were there first,
                         // being "more fair" at the expense of tail-recursion.
-                        others.take().map_move_default(true, |f| f()) && {
-                            let mut inner = this.take().unwrap();
+                        others.take_unwrap().map_move_default(true, |f| f()) && {
+                            let mut inner = this.take_unwrap().unwrap();
                             (!inner.any_child_failed) &&
                                 inner.child_tombstones.take().map_move_default(true, |f| f())
                         }
@@ -502,14 +502,14 @@ impl KillHandle {
             // don't want to wait on now. Give them to our parent.
             Right(KillHandleInner { any_child_failed: false,
                                     child_tombstones: Some(f), _ }) => {
-                let f = Cell::new(f); // :(
+                let f = Mut::new_some(f); // :(
                 do add_lazy_tombstone(parent) |other_tombstones| {
-                    let f = Cell::new(f.take()); // :(
-                    let others = Cell::new(other_tombstones); // :(
+                    let f = Mut::new_some(f.take_unwrap()); // :(
+                    let others = Mut::new_some(other_tombstones); // :(
                     || {
                         // Prefer fairness to tail-recursion, as in above case.
-                        others.take().map_move_default(true, |f| f()) &&
-                            f.take()()
+                        others.take_unwrap().map_move_default(true, |f| f()) &&
+                            f.take_unwrap()()
                     }
                 }
             }
@@ -695,7 +695,7 @@ impl Drop for Death {
 #[cfg(test)]
 mod test {
     #[allow(unused_mut)];
-    use cell::Cell;
+    use mutable::Mut;
     use rt::test::*;
     use super::*;
     use util;
@@ -866,9 +866,9 @@ mod test {
             let mut handle = make_kill_handle();
             assert!(handle.kill().is_none());
             assert!(handle.killed());
-            let handle_cell = Cell::new(handle);
+            let handle_cell = Mut::new_some(handle);
             let result = do spawntask_try {
-                handle_cell.take().inhibit_kill(false);
+                handle_cell.take_unwrap().inhibit_kill(false);
             };
             assert!(result.is_err());
         }
@@ -881,9 +881,9 @@ mod test {
             handle.inhibit_kill(false);
             assert!(handle.kill().is_none());
             assert!(!handle.killed());
-            let handle_cell = Cell::new(handle);
+            let handle_cell = Mut::new_some(handle);
             let result = do spawntask_try {
-                handle_cell.take().allow_kill(false);
+                handle_cell.take_unwrap().allow_kill(false);
             };
             assert!(result.is_err());
         }

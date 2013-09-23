@@ -768,7 +768,6 @@ mod test {
         writer_chan: WriterChanFactory<F>,
         port: uint) {
 
-        use std::cell::Cell;
         use std::comm;
         use std::result;
         use net::ip;
@@ -785,15 +784,15 @@ mod test {
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
-        let begin_connect_chan = Cell::new(begin_connect_chan);
-        let accept_chan = Cell::new(accept_chan);
+        let begin_connect_chan = Mut::new_some(begin_connect_chan);
+        let accept_chan = Mut::new_some(accept_chan);
 
         // The server task
         let addr = addr0.clone();
         do task::spawn || {
             let iotask = &uv::global_loop::get();
-            let begin_connect_chan = begin_connect_chan.take();
-            let accept_chan = accept_chan.take();
+            let begin_connect_chan = begin_connect_chan.take_unwrap();
+            let accept_chan = accept_chan.take_unwrap();
             let listen_res = do tcp::listen(
                 addr.clone(), port, 128, iotask, |_kill_ch| {
                     // Tell the sender to initiate the connection
