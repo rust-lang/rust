@@ -16,6 +16,7 @@ use str::StrSlice;
 use str::OwnedStr;
 use container::Container;
 use cast;
+use char::{ToChar, CharEq};
 use iter::Iterator;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
 use to_bytes::IterBytes;
@@ -30,12 +31,6 @@ impl Ascii {
     #[inline]
     pub fn to_byte(self) -> u8 {
         self.chr
-    }
-
-    /// Converts a ascii character into a `char`.
-    #[inline]
-    pub fn to_char(self) -> char {
-        self.chr as char
     }
 
     /// Convert to lowercase.
@@ -63,6 +58,19 @@ impl ToStr for Ascii {
         // self.chr is always a valid utf8 byte, no need for the check
         unsafe { str::raw::from_byte(self.chr) }
     }
+}
+
+impl ToChar for Ascii {
+    #[inline]
+    fn to_char(&self) -> char { self.chr as char }
+}
+
+impl CharEq for Ascii {
+    #[inline]
+    fn matches(&self, c: char) -> bool { self.chr as char == c }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { true }
 }
 
 /// Trait for converting into an ascii type.

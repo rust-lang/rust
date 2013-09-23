@@ -93,9 +93,10 @@ use at_vec;
 use cast;
 use cast::transmute;
 use char;
-use char::Char;
+use char::{Char, ToChar, CharEq};
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
+use iter;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};
@@ -292,47 +293,6 @@ impl<'self, S: Str> StrVector for &'self [S] {
             result.push_str(s.as_slice());
         }
         result
-    }
-}
-
-/// Something that can be used to compare against a character
-pub trait CharEq {
-    /// Determine if the splitter should split at the given character
-    fn matches(&self, char) -> bool;
-    /// Indicate if this is only concerned about ASCII characters,
-    /// which can allow for a faster implementation.
-    fn only_ascii(&self) -> bool;
-}
-
-impl CharEq for char {
-    #[inline]
-    fn matches(&self, c: char) -> bool { *self == c }
-
-    fn only_ascii(&self) -> bool { (*self as uint) < 128 }
-}
-
-impl<'self> CharEq for &'self fn(char) -> bool {
-    #[inline]
-    fn matches(&self, c: char) -> bool { (*self)(c) }
-
-    fn only_ascii(&self) -> bool { false }
-}
-
-impl CharEq for extern "Rust" fn(char) -> bool {
-    #[inline]
-    fn matches(&self, c: char) -> bool { (*self)(c) }
-
-    fn only_ascii(&self) -> bool { false }
-}
-
-impl<'self, C: CharEq> CharEq for &'self [C] {
-    #[inline]
-    fn matches(&self, c: char) -> bool {
-        self.iter().any(|m| m.matches(c))
-    }
-
-    fn only_ascii(&self) -> bool {
-        self.iter().all(|m| m.only_ascii())
     }
 }
 
@@ -735,6 +695,66 @@ impl<'self> Iterator<char> for NormalizationIterator<'self> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (lower, _) = self.iter.size_hint();
         (lower, None)
+    }
+}
+
+/// An Iterator over the byte indices of all matches of `C`
+/// in a string, in reverse.
+pub type RevFindIterator<'self, C> = iter::Invert<FindIterator<'self, C>>;
+
+/// An Iterator over the byte indices of all matches of `C`
+/// in a string.
+pub struct FindIterator<'self, C> {
+    priv pred: C,
+    priv iter: FindIterEither<'self>,
+}
+
+type ByteOffsetIterator<'self> = iter::Enumerate<ByteIterator<'self>>;
+
+enum FindIterEither<'self> {
+    FindIterC(CharOffsetIterator<'self>),
+    FindIterB(ByteOffsetIterator<'self>)
+}
+
+impl<'self, C: CharEq> Iterator<uint> for FindIterator<'self, C> {
+    fn next(&mut self) -> Option<uint> {
+        #[inline]
+        fn find<T: ToChar, C: CharEq, I: Iterator<(uint, T)>>
+        (pred: &C, iter: &mut I) -> Option<uint> {
+            loop {
+                match iter.next() {
+                    None => return None,
+                    Some((i, ref t)) if pred.matches(t.to_char()) => return Some(i),
+                    _ => loop,
+                }
+            }
+        }
+
+        match self.iter {
+            FindIterC(ref mut iter) => find(&self.pred, iter),
+            FindIterB(ref mut iter) => find(&self.pred, iter),
+        }
+    }
+}
+
+impl<'self, C: CharEq> DoubleEndedIterator<uint> for FindIterator<'self, C> {
+    fn next_back(&mut self) -> Option<uint> {
+        #[inline]
+        fn find_back<T: ToChar, C: CharEq, I: DoubleEndedIterator<(uint, T)>>
+        (pred: &C, iter: &mut I) -> Option<uint> {
+            loop {
+                match iter.next_back() {
+                    None => return None,
+                    Some((i, ref t)) if pred.matches(t.to_char()) => return Some(i),
+                    _ => loop,
+                }
+            }
+        }
+
+        match self.iter {
+            FindIterC(ref mut iter) => find_back(&self.pred, iter),
+            FindIterB(ref mut iter) => find_back(&self.pred, iter),
+        }
     }
 }
 
@@ -2587,6 +2607,7 @@ mod tests {
     use vec::{Vector, ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
     use send_str::{SendStrOwned, SendStrStatic};
+    use char::CharEq;
 
     #[test]
     fn test_eq() {
@@ -3896,6 +3917,7 @@ mod bench {
     use extra::test::BenchHarness;
     use super::*;
     use prelude::*;
+    use char::CharEq;
 
     #[bench]
     fn char_iterator(bh: &mut BenchHarness) {
