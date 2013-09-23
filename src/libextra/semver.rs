@@ -10,9 +10,9 @@
 
 //! Semantic version parsing and comparison.
 //!
-//! Semantic versioning (see http://semver.org/) is a set of rules for
-//! assigning version numbers intended to convey meaning about what has
-//! changed, and how much. A version number has five parts:
+//! [Semantic versioning](http://semver.org/) is a set of rules for assigning
+//! version numbers intended to convey meaning about what has changed, and how
+//! much. A version number has five parts:
 //!
 //!  * Major number, updated for incompatible API changes
 //!  * Minor number, updated for backwards-compatible API additions
