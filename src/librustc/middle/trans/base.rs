@@ -2416,11 +2416,6 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let crate_map = ccx.crate_map;
-            let opaque_crate_map = do "crate_map".with_c_str |buf| {
-                llvm::LLVMBuildPointerCast(bld, crate_map, Type::i8p().to_ref(), buf)
-            };
-
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
@@ -2443,8 +2438,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                         C_null(Type::opaque_box(ccx).ptr_to()),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
-                        llvm::LLVMGetParam(llfn, 1),
-                        opaque_crate_map
+                        llvm::LLVMGetParam(llfn, 1)
                      ]
                 };
                 (start_fn, args)
@@ -2453,8 +2447,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 let args = ~[
                     C_null(Type::opaque_box(ccx).ptr_to()),
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    opaque_crate_map
+                    llvm::LLVMGetParam(llfn, 1 as c_uint)
                 ];
 
                 (rust_main, args)
@@ -2635,13 +2628,16 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                         }
                         ast::foreign_item_static(*) => {
                             let ident = foreign::link_name(ccx, ni);
-                            let g = do ident.with_c_str |buf| {
-                                unsafe {
+                            unsafe {
+                                let g = do ident.with_c_str |buf| {
                                     let ty = type_of(ccx, ty);
                                     llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
+                                };
+                                if attr::contains_name(ni.attrs, "weak_linkage") {
+                                    lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
                                 }
-                            };
-                            g
+                                g
+                            }
                         }
                     }
                 }
@@ -2959,7 +2955,14 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
         }
     };
-    lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+    // On windows we'd like to export the toplevel cratemap
+    // such that we can find it from libstd.
+    if targ_cfg.os == session::OsWin32 && "toplevel" == mapname {
+        lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
+    } else {
+        lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+    }
+
     return map;
 }
 
@@ -3114,6 +3117,26 @@ pub fn trans_crate(sess: session::Session,
 
     decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, ccx.crate_map);
+
+    // NOTE win32: wart with exporting crate_map symbol
+    // We set the crate map (_rust_crate_map_toplevel) to use dll_export
+    // linkage but that ends up causing the linker to look for a
+    // __rust_crate_map_toplevel symbol (extra underscore) which it will
+    // subsequently fail to find. So to mitigate that we just introduce
+    // an alias from the symbol it expects to the one that actually exists.
+    if ccx.sess.targ_cfg.os == session::OsWin32 &&
+       !*ccx.sess.building_library {
+
+        let maptype = val_ty(ccx.crate_map).to_ref();
+
+        do "__rust_crate_map_toplevel".with_c_str |buf| {
+            unsafe {
+                llvm::LLVMAddAlias(ccx.llmod, maptype,
+                                   ccx.crate_map, buf);
+            }
+        }
+    }
+
     glue::emit_tydescs(ccx);
     write_abi_version(ccx);
     if ccx.sess.opts.debuginfo {
