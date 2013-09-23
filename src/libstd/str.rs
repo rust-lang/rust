@@ -1568,6 +1568,12 @@ pub trait StrSlice<'self> {
     /// An Iterator over the string in Unicode Normalization Form KD (compatibility decomposition)
     fn nfkd_iter(&self) -> NormalizationIterator<'self>;
 
+    /// An Iterator over all indices for which `pred` matches.
+    fn find_iter<C: CharEq>(&self, pred: C) -> FindIterator<'self, C>;
+
+    /// An Iterator over all indices for which `pred` matches, in reverse.
+    fn find_iter_rev<C: CharEq>(&self, pred: C) -> RevFindIterator<'self, C>;
+
     /// Returns true if the string contains only whitespace
     ///
     /// Whitespace characters are determined by `char::is_whitespace`
@@ -1974,6 +1980,22 @@ impl<'self> StrSlice<'self> for &'self str {
             buffer: ~[],
             sorted: false,
             kind: NFKD
+        }
+    }
+
+    fn find_iter<C: CharEq>(&self, pred: C) -> FindIterator<'self, C> {
+        if pred.only_ascii() {
+            FindIterator { pred: pred, iter: FindIterB(self.byte_iter().enumerate()) }
+        } else {
+            FindIterator { pred: pred, iter: FindIterC(self.char_offset_iter()) }
+        }
+    }
+
+    fn find_iter_rev<C: CharEq>(&self, pred: C) -> RevFindIterator<'self, C>{
+        if pred.only_ascii() {
+            FindIterator { pred: pred, iter: FindIterB(self.byte_iter().enumerate()) }.invert()
+        } else {
+            FindIterator { pred: pred, iter: FindIterC(self.char_offset_iter()) }.invert()
         }
     }
 
