@@ -2692,7 +2692,7 @@ fn main() {
 
 In general, `use` creates an local alias:
 An alternate path and a possibly different name to access the same item,
-whiteout touching the original, and with both being interchangeable.
+without touching the original, and with both being interchangeable.
 
 ## Reexporting names
 
