@@ -2694,6 +2694,42 @@ mod tests {
     }
 
     #[test]
+    fn test_find_iter() {
+        assert_eq!("hello".find_iter('l').next(), Some(2u));
+        assert_eq!("hello".find_iter(|c:char| c == 'o').next(), Some(4u));
+        assert!("hello".find_iter('x').next().is_none());
+        assert!("hello".find_iter(|c:char| c == 'x').next().is_none());
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter('华').next(), Some(30u));
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter(|c: char| c == '华').next(), Some(30u));
+
+        assert_eq!("hello".find_iter('l').to_owned_vec(), ~[2, 3]);
+        assert_eq!("hello".find_iter(|c:char| c == 'o').to_owned_vec(), ~[4]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter('华').to_owned_vec(), ~[30]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter(|c: char| c == '华').to_owned_vec(), ~[30]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter('ท').to_owned_vec(), ~[12,21]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter(|c: char| c == 'ท').to_owned_vec(), ~[12,21]);
+    }
+
+    #[test]
+    fn test_find_iter_rev() {
+        assert_eq!("hello".find_iter_rev('l').next(), Some(3u));
+        assert_eq!("hello".find_iter_rev(|c:char| c == 'o').next(), Some(4u));
+        assert!("hello".find_iter_rev('x').next().is_none());
+        assert!("hello".find_iter_rev(|c:char| c == 'x').next().is_none());
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev('华').next(), Some(30u));
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev(|c: char| c == '华').next(), Some(30u));
+
+        assert_eq!("hello".find_iter_rev('l').to_owned_vec(), ~[3, 2]);
+        assert_eq!("hello".find_iter_rev(|c:char| c == 'o').to_owned_vec(), ~[4]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev('华').to_owned_vec(), ~[30]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev(|c: char| c == '华').to_owned_vec(), ~[30]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev('ท').to_owned_vec(),
+                   ~[21,12]);
+        assert_eq!("ประเทศไทย中华Việt Nam".find_iter_rev(|c: char| c == 'ท').to_owned_vec(),
+                   ~[21,12]);
+    }
+
+    #[test]
     fn test_push_str() {
         let mut s = ~"";
         s.push_str("");
