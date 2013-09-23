@@ -128,20 +128,15 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
     crate = cache.fold_crate(crate);
 
     // Add all the static files
-    write(cx.dst.push("jquery.js"), include_str!("static/jquery-2.0.3.min.js"));
-    write(cx.dst.push("main.js"), include_str!("static/main.js"));
-    write(cx.dst.push("main.css"), include_str!("static/main.css"));
-    write(cx.dst.push("normalize.css"), include_str!("static/normalize.css"));
-    write(cx.dst.push("index.html"), format!("
-        <DOCTYPE html><html><head>
-            <meta http-equiv='refresh'
-                  content=\"0; url={}/index.html\">
-        </head><body></body></html>
-    ", crate.name));
+    let dst = cx.dst.push(crate.name);
+    mkdir(&dst);
+    write(dst.push("jquery.js"), include_str!("static/jquery-2.0.3.min.js"));
+    write(dst.push("main.js"), include_str!("static/main.js"));
+    write(dst.push("main.css"), include_str!("static/main.css"));
+    write(dst.push("normalize.css"), include_str!("static/normalize.css"));
 
     {
-        mkdir(&cx.dst.push(crate.name));
-        let dst = cx.dst.push(crate.name).push("search-index.js");
+        let dst = dst.push("search-index.js");
         let mut w = BufferedWriter::new(dst.open_writer(io::CreateOrTruncate));
         let w = &mut w as &mut io::Writer;
         write!(w, "var searchIndex = [");

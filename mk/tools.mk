@@ -21,7 +21,8 @@ RUSTPKG_INPUTS := $(wildcard $(S)src/librustpkg/*.rs)
 
 # Rustdoc, the documentation tool
 RUSTDOC_LIB := $(S)src/librustdoc/rustdoc.rs
-RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
+RUSTDOC_INPUTS := $(wildcard $(addprefix $(S)src/librustdoc/,        \
+                                           *.rs */*.rs */*/*.rs))
 
 # Rusti, the JIT REPL
 RUSTI_LIB := $(S)src/librusti/rusti.rs

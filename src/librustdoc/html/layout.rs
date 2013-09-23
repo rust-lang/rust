@@ -36,7 +36,7 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
 
     <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400'
           rel='stylesheet' type='text/css'>
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}main.css\">
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}{crate}/main.css\">
 
     {favicon, select, none{} other{
         <link rel=\"icon\" href=\"#\" sizes=\"16x16\"
@@ -52,7 +52,7 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
 
     <section class=\"sidebar\">
         {logo, select, none{} other{
-            <a href='{root_path}index.html'><img src='#' alt=''/></a>
+            <a href='{root_path}{crate}/index.html'><img src='#' alt=''/></a>
         }}
 
         {sidebar}
@@ -73,9 +73,9 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
     <script>
         var rootPath = \"{root_path}\";
     </script>
-    <script src=\"{root_path}jquery.js\"></script>
+    <script src=\"{root_path}{crate}/jquery.js\"></script>
     <script src=\"{root_path}{crate}/search-index.js\"></script>
-    <script src=\"{root_path}main.js\"></script>
+    <script src=\"{root_path}{crate}/main.js\"></script>
 
     <div id=\"help\" class=\"hidden\">
         <div class=\"shortcuts\">
