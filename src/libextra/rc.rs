@@ -12,12 +12,14 @@
 
 /** Task-local reference counted smart pointers
 
-Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
-destruction. They are restricted to containing types that are either `Send` or `Freeze` (or both) to
-prevent cycles.
+Task-local reference counted smart pointers are an alternative to managed boxes
+with deterministic destruction. They are restricted to containing types that
+are either `Send` or `Freeze` (or both) to prevent cycles.
 
-Neither `Rc<T>` or `RcMut<T>` is ever `Send` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
+Neither `Rc<T>` is never `Send` and `Mut<T>` is never `Freeze`. If `T` is `Freeze`, a
 cycle cannot be created with `Rc<T>` because there is no way to modify it after creation.
+
+`Rc<Mut<U>>` requires `U` to be `Send` so that no cycles are created.
 
 */
 
@@ -55,6 +57,10 @@ impl<T> Rc<T> {
 impl<T: Send> Rc<T> {
     pub fn from_send(value: T) -> Rc<T> {
         unsafe { Rc::new(value) }
+    }
+
+    pub fn from_send_mut(value: T) -> Rc<Mut<T>> {
+        unsafe { Rc::new(Mut::new(value)) }
     }
 }
 
@@ -111,22 +117,22 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(Cell::new(5));
+        let x = Rc::from_send(Mut::new(5));
         let y = x.clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().map_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 20);
+        assert_eq!(y.borrow().map(|t| *t), 20);
     }
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(Cell::new(5));
+        let x = Rc::from_send(Mut::new(5));
         let y = x.deep_clone();
-        do x.borrow().with_mut_ref |inner| {
+        do x.borrow().map_mut |inner| {
             *inner = 20;
         }
-        assert_eq!(y.borrow().take(), 5);
+        assert_eq!(y.borrow().map(|t| *t), 5);
     }
 
     #[test]
@@ -150,146 +156,44 @@ mod test_rc {
     }
 }
 
-#[deriving(Eq)]
-enum Borrow {
-    Mutable,
-    Immutable,
-    Nothing
-}
-
-struct RcMutBox<T> {
-    value: T,
-    count: uint,
-    borrow: Borrow
-}
-
-/// Mutable reference counted pointer type
-#[no_send]
-#[no_freeze]
-#[unsafe_no_drop_flag]
-pub struct RcMut<T> {
-    priv ptr: *mut RcMutBox<T>,
-}
-
-impl<T> RcMut<T> {
-    unsafe fn new(value: T) -> RcMut<T> {
-        RcMut{ptr: owned_to_raw(~RcMutBox{value: value, count: 1, borrow: Nothing})}
-    }
-}
-
-impl<T: Send> RcMut<T> {
-    pub fn from_send(value: T) -> RcMut<T> {
-        unsafe { RcMut::new(value) }
-    }
-}
-
-impl<T: Freeze> RcMut<T> {
-    pub fn from_freeze(value: T) -> RcMut<T> {
-        unsafe { RcMut::new(value) }
-    }
-}
-
-impl<T> RcMut<T> {
-    /// Fails if there is already a mutable borrow of the box
-    #[inline]
-    pub fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
-        unsafe {
-            assert!((*self.ptr).borrow != Mutable);
-            let previous = (*self.ptr).borrow;
-            (*self.ptr).borrow = Immutable;
-            let res = f(&(*self.ptr).value);
-            (*self.ptr).borrow = previous;
-            res
-        }
-    }
-
-    /// Fails if there is already a mutable or immutable borrow of the box
-    #[inline]
-    pub fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
-        unsafe {
-            assert_eq!((*self.ptr).borrow, Nothing);
-            (*self.ptr).borrow = Mutable;
-            let res = f(&mut (*self.ptr).value);
-            (*self.ptr).borrow = Nothing;
-            res
-        }
-    }
-}
-
-#[unsafe_destructor]
-impl<T> Drop for RcMut<T> {
-    fn drop(&mut self) {
-        unsafe {
-            if self.ptr.is_not_null() {
-                (*self.ptr).count -= 1;
-                if (*self.ptr).count == 0 {
-                    let _: ~T = cast::transmute(self.ptr);
-                }
-            }
-        }
-    }
-}
-
-impl<T> Clone for RcMut<T> {
-    /// Return a shallow copy of the reference counted pointer.
-    #[inline]
-    fn clone(&self) -> RcMut<T> {
-        unsafe {
-            (*self.ptr).count += 1;
-            RcMut{ptr: self.ptr}
-        }
-    }
-}
-
-impl<T: DeepClone> DeepClone for RcMut<T> {
-    /// Return a deep copy of the reference counted pointer.
-    #[inline]
-    fn deep_clone(&self) -> RcMut<T> {
-        do self.with_borrow |x| {
-            // FIXME: #6497: should avoid freeze (slow)
-            unsafe { RcMut::new(x.deep_clone()) }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test_rc_mut {
     use super::*;
 
     #[test]
     fn test_clone() {
-        let x = RcMut::from_send(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
-        do x.with_mut_borrow |value| {
+        do x.borrow().map_mut |value| {
             *value = 20;
         }
-        do y.with_borrow |value| {
+        do y.borrow().map_mut |value| {
             assert_eq!(*value, 20);
         }
     }
 
     #[test]
     fn test_deep_clone() {
-        let x = RcMut::from_freeze(5);
+        let x = Rc::from_send_mut(5);
         let y = x.deep_clone();
-        do x.with_mut_borrow |value| {
+        do x.borrow().map_mut |value| {
             *value = 20;
         }
-        do y.with_borrow |value| {
+        do y.borrow().map |value| {
             assert_eq!(*value, 5);
         }
     }
 
     #[test]
     fn borrow_many() {
-        let x = RcMut::from_send(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do x.with_borrow |a| {
+        do x.borrow().map |a| {
             assert_eq!(*a, 5);
-            do y.with_borrow |b| {
+            do y.borrow().map |b| {
                 assert_eq!(*b, 5);
-                do x.with_borrow |c| {
+                do x.borrow().map |c| {
                     assert_eq!(*c, 5);
                 }
             }
@@ -298,41 +202,41 @@ mod test_rc_mut {
 
     #[test]
     fn modify() {
-        let x = RcMut::from_freeze(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do y.with_mut_borrow |a| {
+        do y.borrow().map_mut |a| {
             assert_eq!(*a, 5);
             *a = 6;
         }
 
-        do x.with_borrow |a| {
+        do x.borrow().map |a| {
             assert_eq!(*a, 6);
         }
     }
 
     #[test]
     fn release_immutable() {
-        let x = RcMut::from_send(5);
-        do x.with_borrow |_| {}
-        do x.with_mut_borrow |_| {}
+        let x = Rc::from_send_mut(5);
+        do x.borrow().map |_| {}
+        do x.borrow().map_mut |_| {}
     }
 
     #[test]
     fn release_mutable() {
-        let x = RcMut::from_freeze(5);
-        do x.with_mut_borrow |_| {}
-        do x.with_borrow |_| {}
+        let x = Rc::from_send_mut(5);
+        do x.borrow().map_mut |_| {}
+        do x.borrow().map |_| {}
     }
 
     #[test]
     #[should_fail]
     fn frozen() {
-        let x = RcMut::from_send(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do y.with_mut_borrow |_| {
+        do x.borrow().map |_| {
+            do y.borrow().map_mut |_| {
             }
         }
     }
@@ -340,11 +244,11 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_dupe() {
-        let x = RcMut::from_freeze(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_mut_borrow |_| {
+        do x.borrow().map_mut |_| {
+            do y.borrow().map_mut |_| {
             }
         }
     }
@@ -352,11 +256,11 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn mutable_freeze() {
-        let x = RcMut::from_send(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do x.with_mut_borrow |_| {
-            do y.with_borrow |_| {
+        do x.borrow().map_mut |_| {
+            do y.borrow().map |_| {
             }
         }
     }
@@ -364,12 +268,12 @@ mod test_rc_mut {
     #[test]
     #[should_fail]
     fn restore_freeze() {
-        let x = RcMut::from_freeze(5);
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
 
-        do x.with_borrow |_| {
-            do x.with_borrow |_| {}
-            do y.with_mut_borrow |_| {}
+        do x.borrow().map |_| {
+            do x.borrow().map |_| {}
+            do y.borrow().map_mut |_| {}
         }
     }
 }

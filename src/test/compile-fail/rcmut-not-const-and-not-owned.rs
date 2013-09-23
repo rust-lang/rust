@@ -11,10 +11,10 @@
 extern mod extra;
 
 fn o<T: Send>(_: &T) {}
-fn c<T: Freeze>(_: &T) {}
+//fn c<T: Freeze>(_: &T) {}
 
 fn main() {
-    let x = extra::rc::RcMut::from_send(0);
-    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Send`
-    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Freeze`
+    let x = extra::rc::Rc::from_send_mut(0);
+    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::Rc<std::mutable::Mut<int>>`, which does not fulfill `Send`
+    //c(&x); // XYZ instantiating a type parameter with an incompatible type `extra::rc::Rc<std::mutable::Mut<int>>`, which does not fulfill `Freeze`
 }
