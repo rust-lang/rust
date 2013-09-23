@@ -172,14 +172,23 @@ pub mod borrowck;
 ///
 /// * `argc` & `argv` - The argument vector. On Unix this information is used
 ///   by os::args.
-/// * `crate_map` - Runtime information about the executing crate, mostly for logging
 ///
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
+#[cfg(stage0)]
 pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     init(argc, argv, crate_map);
+    let exit_code = run(main);
+    cleanup();
+
+    return exit_code;
+}
+#[cfg(not(stage0))]
+pub fn start(argc: int, argv: **u8, main: ~fn()) -> int {
+
+    init(argc, argv);
     let exit_code = run(main);
     cleanup();
 
@@ -191,8 +200,17 @@ pub fn start(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 ///
 /// This is appropriate for running code that must execute on the main thread,
 /// such as the platform event loop and GUI.
+#[cfg(stage0)]
 pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     init(argc, argv, crate_map);
+    let exit_code = run_on_main_thread(main);
+    cleanup();
+
+    return exit_code;
+}
+#[cfg(not(stage0))]
+pub fn start_on_main_thread(argc: int, argv: **u8, main: ~fn()) -> int {
+    init(argc, argv);
     let exit_code = run_on_main_thread(main);
     cleanup();
 
@@ -204,6 +222,7 @@ pub fn start_on_main_thread(argc: int, argv: **u8, crate_map: *u8, main: ~fn()) 
 /// Initializes global state, including frobbing
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
+#[cfg(stage0)]
 pub fn init(argc: int, argv: **u8, crate_map: *u8) {
     // XXX: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
@@ -211,6 +230,16 @@ pub fn init(argc: int, argv: **u8, crate_map: *u8) {
         args::init(argc, argv);
         env::init();
         logging::init(crate_map);
+    }
+}
+#[cfg(not(stage0))]
+pub fn init(argc: int, argv: **u8) {
+    // XXX: Derefing these pointers is not safe.
+    // Need to propagate the unsafety to `start`.
+    unsafe {
+        args::init(argc, argv);
+        env::init();
+        logging::init();
     }
 }
 

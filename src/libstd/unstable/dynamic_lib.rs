@@ -138,7 +138,7 @@ mod test {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-mod dl {
+pub mod dl {
     use c_str::ToCStr;
     use libc;
     use path;
@@ -207,7 +207,7 @@ mod dl {
 }
 
 #[cfg(target_os = "win32")]
-mod dl {
+pub mod dl {
     use os;
     use libc;
     use path;
