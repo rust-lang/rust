@@ -200,3 +200,9 @@ rust_set_stdio_container_fd
 rust_set_stdio_container_stream
 rust_uv_process_pid
 rust_uv_pipe_init
+sdhtml_renderer
+sd_markdown_new
+sd_markdown_render
+sd_markdown_free
+bufrelease
+bufnew
