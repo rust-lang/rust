@@ -124,7 +124,7 @@ pub struct PluralArm<'self> {
 /// Enum of the 5 CLDR plural keywords. There is one more, "other", but that is
 /// specially placed in the `Plural` variant of `Method`
 ///
-/// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
+/// See: <http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html>
 #[deriving(Eq, IterBytes)]
 pub enum PluralKeyword {
     Zero, One, Two, Few, Many
