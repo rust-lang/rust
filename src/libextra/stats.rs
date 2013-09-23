@@ -31,13 +31,13 @@ pub trait Stats {
 
     /// Arithmetic mean (average) of the samples: sum divided by sample-count.
     ///
-    /// See: https://en.wikipedia.org/wiki/Arithmetic_mean
+    /// See: <https://en.wikipedia.org/wiki/Arithmetic_mean>
     fn mean(self) -> f64;
 
     /// Median of the samples: value separating the lower half of the samples from the higher half.
     /// Equal to `self.percentile(50.0)`.
     ///
-    /// See: https://en.wikipedia.org/wiki/Median
+    /// See: <https://en.wikipedia.org/wiki/Median>
     fn median(self) -> f64;
 
     /// Variance of the samples: bias-corrected mean of the squares of the differences of each
@@ -46,7 +46,7 @@ pub trait Stats {
     /// bias that would appear if we calculated a population variance, by dividing by `(n-1)` rather
     /// than `n`.
     ///
-    /// See: https://en.wikipedia.org/wiki/Variance
+    /// See: <https://en.wikipedia.org/wiki/Variance>
     fn var(self) -> f64;
 
     /// Standard deviation: the square root of the sample variance.
@@ -54,7 +54,7 @@ pub trait Stats {
     /// Note: this is not a robust statistic for non-normal distributions. Prefer the
     /// `median_abs_dev` for unknown distributions.
     ///
-    /// See: https://en.wikipedia.org/wiki/Standard_deviation
+    /// See: <https://en.wikipedia.org/wiki/Standard_deviation>
     fn std_dev(self) -> f64;
 
     /// Standard deviation as a percent of the mean value. See `std_dev` and `mean`.
@@ -69,7 +69,7 @@ pub trait Stats {
     /// by the constant `1.4826` to allow its use as a consistent estimator for the standard
     /// deviation.
     ///
-    /// See: http://en.wikipedia.org/wiki/Median_absolute_deviation
+    /// See: <http://en.wikipedia.org/wiki/Median_absolute_deviation>
     fn median_abs_dev(self) -> f64;
 
     /// Median absolute deviation as a percent of the median. See `median_abs_dev` and `median`.
@@ -81,7 +81,7 @@ pub trait Stats {
     ///
     /// Calculated by linear interpolation between closest ranks.
     ///
-    /// See: http://en.wikipedia.org/wiki/Percentile
+    /// See: <http://en.wikipedia.org/wiki/Percentile>
     fn percentile(self, pct: f64) -> f64;
 
     /// Quartiles of the sample: three values that divide the sample into four equal groups, each
@@ -89,13 +89,13 @@ pub trait Stats {
     /// function may calculate the 3 quartiles more efficiently than 3 calls to `percentile`, but
     /// is otherwise equivalent.
     ///
-    /// See also: https://en.wikipedia.org/wiki/Quartile
+    /// See: <https://en.wikipedia.org/wiki/Quartile>
     fn quartiles(self) -> (f64,f64,f64);
 
     /// Inter-quartile range: the difference between the 25th percentile (1st quartile) and the 75th
     /// percentile (3rd quartile). See `quartiles`.
     ///
-    /// See also: https://en.wikipedia.org/wiki/Interquartile_range
+    /// See: <https://en.wikipedia.org/wiki/Interquartile_range>
     fn iqr(self) -> f64;
 }
 
@@ -249,7 +249,7 @@ fn percentile_of_sorted(sorted_samples: &[f64],
 /// outliers, at the cost of biasing the sample. It differs from trimming in that it does not
 /// change the number of samples, just changes the values of those that are outliers.
 ///
-/// See: http://en.wikipedia.org/wiki/Winsorising
+/// See: <http://en.wikipedia.org/wiki/Winsorising>
 pub fn winsorize(samples: &mut [f64], pct: f64) {
     let mut tmp = samples.to_owned();
     sort::tim_sort(tmp);
