@@ -641,7 +641,7 @@ mod test {
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let mut client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
-                let count_cell = Cell::new(0);
+                let count_mut = Mut::new(0);
                 let server_stream_watcher = server_stream_watcher;
                 rtdebug!("starting read");
                 let alloc: AllocCallback = |size| {
@@ -651,22 +651,21 @@ mod test {
 
                     rtdebug!("i'm reading!");
                     let buf = vec_from_uv_buf(buf);
-                    let mut count = count_cell.take();
+                    let mut mcount = count_mut.borrow_mut();
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
                         for byte in buf.slice(0, nread as uint).iter() {
-                            assert!(*byte == count as u8);
+                            assert!(*byte == *mcount.get() as u8);
                             rtdebug!("%u", *byte as uint);
-                            count += 1;
+                            *mcount.get() += 1;
                         }
                     } else {
-                        assert_eq!(count, MAX);
+                        assert_eq!(*mcount.get(), MAX);
                         do stream_watcher.close {
                             server_stream_watcher.close(||());
                         }
                     }
-                    count_cell.put_back(count);
                 }
             }
 
@@ -716,7 +715,7 @@ mod test {
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let mut client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
-                let count_cell = Cell::new(0);
+                let count_mut = Mut::new(0);
                 let server_stream_watcher = server_stream_watcher;
                 rtdebug!("starting read");
                 let alloc: AllocCallback = |size| {
@@ -727,23 +726,22 @@ mod test {
 
                     rtdebug!("i'm reading!");
                     let buf = vec_from_uv_buf(buf);
-                    let mut count = count_cell.take();
+                    let mut mcount = count_mut.borrow_mut();
                     if status.is_none() {
                         rtdebug!("got %d bytes", nread);
                         let buf = buf.unwrap();
                         let r = buf.slice(0, nread as uint);
                         for byte in r.iter() {
-                            assert!(*byte == count as u8);
+                            assert!(*byte == *mcount.get() as u8);
                             rtdebug!("%u", *byte as uint);
-                            count += 1;
+                            *mcount.get() += 1;
                         }
                     } else {
-                        assert_eq!(count, MAX);
+                        assert_eq!(*mcount.get(), MAX);
                         do stream_watcher.close {
                             server_stream_watcher.close(||());
                         }
                     }
-                    count_cell.put_back(count);
                 }
             }
 

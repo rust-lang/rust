@@ -25,6 +25,7 @@ use unstable::sync::UnsafeArc;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
+use mutable::Mut;
 use clone::Clone;
 use tuple::ImmutableTuple;
 
@@ -433,26 +434,26 @@ type StreamPortOne<T> = PortOne<StreamPayload<T>>;
 /// A channel with unbounded size.
 pub struct Chan<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<StreamChanOne<T>>
+    next: Mut<Option<StreamChanOne<T>>>
 }
 
 /// An port with unbounded size.
 pub struct Port<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<StreamPortOne<T>>
+    next: Mut<Option<StreamPortOne<T>>>
 }
 
 pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     let (pone, cone) = oneshot();
-    let port = Port { next: Cell::new(pone) };
-    let chan = Chan { next: Cell::new(cone) };
+    let port = Port { next: Mut::new_some(pone) };
+    let chan = Chan { next: Mut::new_some(cone) };
     return (port, chan);
 }
 
 impl<T: Send> Chan<T> {
     fn try_send_inner(&self, val: T, do_resched: bool) -> bool {
         let (next_pone, next_cone) = oneshot();
-        let cone = self.next.take();
+        let cone = self.next.take_unwrap();
         self.next.put_back(next_cone);
         cone.try_send_inner(StreamPayload { val: val, next: next_pone }, do_resched)
     }
@@ -490,10 +491,11 @@ impl<T> GenericPort<T> for Port<T> {
     }
 
     fn try_recv(&self) -> Option<T> {
-        do self.next.take_opt().map_move_default(None) |pone| {
+        let mut mnext = self.next.borrow_mut();
+        do mnext.get().take().map_move_default(None) |pone| {
             match pone.try_recv() {
                 Some(StreamPayload { val, next }) => {
-                    self.next.put_back(next);
+                    *mnext.get() = Some(next);
                     Some(val)
                 }
                 None => None
@@ -504,7 +506,8 @@ impl<T> GenericPort<T> for Port<T> {
 
 impl<T> Peekable<T> for Port<T> {
     fn peek(&self) -> bool {
-        self.next.with_mut_ref(|p| p.peek())
+        let mut mnext = self.next.borrow_mut();
+        mnext.get().get_mut_ref().peek()
     }
 }
 
@@ -515,18 +518,20 @@ impl<T> Peekable<T> for Port<T> {
 impl<'self, T> SelectInner for &'self Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
-        do self.next.with_mut_ref |pone| { pone.optimistic_check() }
+        let mut mnext = self.next.borrow_mut();
+        mnext.get().get_mut_ref().optimistic_check()
     }
 
     #[inline]
     fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
-        let task = Cell::new(task);
-        do self.next.with_mut_ref |pone| { pone.block_on(sched, task.take()) }
+        let mut mnext = self.next.borrow_mut();
+        mnext.get().get_mut_ref().block_on(sched, task)
     }
 
     #[inline]
     fn unblock_from(&mut self) -> bool {
-        do self.next.with_mut_ref |pone| { pone.unblock_from() }
+        let mut mnext = self.next.borrow_mut();
+        mnext.get().get_mut_ref().unblock_from()
     }
 }
 
@@ -553,7 +558,7 @@ impl<T> Select for Port<T> { }
 
 impl<'self, T> SelectPortInner<T> for &'self Port<T> {
     fn recv_ready(self) -> Option<T> {
-        match self.next.take().recv_ready() {
+        match self.next.take_unwrap().recv_ready() {
             Some(StreamPayload { val, next }) => {
                 self.next.put_back(next);
                 Some(val)
@@ -572,7 +577,7 @@ pub struct SharedChan<T> {
 
 impl<T> SharedChan<T> {
     pub fn new(chan: Chan<T>) -> SharedChan<T> {
-        let next = chan.next.take();
+        let next = chan.next.take_unwrap();
         let next = AtomicOption::new(~next);
         SharedChan { next: UnsafeArc::new(next) }
     }
@@ -626,7 +631,7 @@ pub struct SharedPort<T> {
 impl<T> SharedPort<T> {
     pub fn new(port: Port<T>) -> SharedPort<T> {
         // Put the data port into a new link pipe
-        let next_data_port = port.next.take();
+        let next_data_port = port.next.take_unwrap();
         let (next_link_port, next_link_chan) = oneshot();
         next_link_chan.send(next_data_port);
         let next_link = AtomicOption::new(~next_link_port);

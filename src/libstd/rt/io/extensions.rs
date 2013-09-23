@@ -639,7 +639,7 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
 mod test {
     use super::ReaderUtil;
     use option::{Some, None};
-    use cell::Cell;
+    use mutable::Mut;
     use rt::io::mem::{MemReader, MemWriter};
     use rt::io::mock::MockReader;
     use rt::io::{read_error, placeholder_error};
@@ -654,16 +654,15 @@ mod test {
     #[test]
     fn read_byte_0_bytes() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    Some(0)
-                } else {
-                    buf[0] = 10;
-                    Some(1)
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                Some(0)
+            } else {
+                buf[0] = 10;
+                Some(1)
             }
         };
         let byte = reader.read_byte();
@@ -695,16 +694,15 @@ mod test {
     #[test]
     fn bytes_0_bytes() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    Some(0)
-                } else {
-                    buf[0] = 10;
-                    Some(1)
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                Some(0)
+            } else {
+                buf[0] = 10;
+                Some(1)
             }
         };
         let byte = reader.bytes().next();
@@ -744,19 +742,18 @@ mod test {
     #[test]
     fn read_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else {
+                buf[0] = 12;
+                buf[1] = 13;
+                Some(2)
             }
         };
         let bytes = reader.read_bytes(4);
@@ -783,19 +780,18 @@ mod test {
     #[test]
     fn push_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else {
+                buf[0] = 12;
+                buf[1] = 13;
+                Some(2)
             }
         };
         let mut buf = ~[8, 9];
@@ -817,17 +813,16 @@ mod test {
     #[test]
     fn push_bytes_error() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    Some(1)
-                } else {
-                    read_error::cond.raise(placeholder_error());
-                    None
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                Some(1)
+            } else {
+                read_error::cond.raise(placeholder_error());
+                None
             }
         };
         let mut buf = ~[8, 9];
@@ -843,17 +838,16 @@ mod test {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    Some(1)
-                } else {
-                    read_error::cond.raise(placeholder_error());
-                    None
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                Some(1)
+            } else {
+                read_error::cond.raise(placeholder_error());
+                None
             }
         };
         let buf = @mut ~[8, 9];
@@ -869,22 +863,21 @@ mod test {
     #[test]
     fn read_to_end() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else if *count == 1 {
-                    *count = 2;
-                    buf[0] = 12;
-                    buf[1] = 13;
-                    Some(2)
-                } else {
-                    None
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else if *mcount.get() == 1 {
+                *mcount.get() = 2;
+                buf[0] = 12;
+                buf[1] = 13;
+                Some(2)
+            } else {
+                None
             }
         };
         let buf = reader.read_to_end();
@@ -895,18 +888,17 @@ mod test {
     #[should_fail]
     fn read_to_end_error() {
         let mut reader = MockReader::new();
-        let count = Cell::new(0);
+        let count = Mut::new(0);
         reader.read = |buf| {
-            do count.with_mut_ref |count| {
-                if *count == 0 {
-                    *count = 1;
-                    buf[0] = 10;
-                    buf[1] = 11;
-                    Some(2)
-                } else {
-                    read_error::cond.raise(placeholder_error());
-                    None
-                }
+            let mut mcount = count.borrow_mut();
+            if *mcount.get() == 0 {
+                *mcount.get() = 1;
+                buf[0] = 10;
+                buf[1] = 11;
+                Some(2)
+            } else {
+                read_error::cond.raise(placeholder_error());
+                None
             }
         };
         let buf = reader.read_to_end();

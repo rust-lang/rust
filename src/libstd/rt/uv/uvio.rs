@@ -12,6 +12,7 @@ use c_str::ToCStr;
 use cast::transmute;
 use cast;
 use cell::Cell;
+use mutable::Mut;
 use clone::Clone;
 use libc::{c_int, c_uint, c_void};
 use ops::Drop;
@@ -367,6 +368,8 @@ impl Drop for UvRemoteCallback {
 #[cfg(test)]
 mod test_remote {
     use cell::Cell;
+    use mutable::Mut;
+    use option::None;
     use rt::test::*;
     use rt::thread::Thread;
     use rt::tube::Tube;
@@ -379,7 +382,7 @@ mod test_remote {
         do run_in_mt_newsched_task {
             let mut tube = Tube::new();
             let tube_clone = tube.clone();
-            let remote_cell = Cell::new_empty();
+            let remote_cell = Mut::new(None);
             do Local::borrow |sched: &mut Scheduler| {
                 let tube_clone = tube_clone.clone();
                 let tube_clone_cell = Cell::new(tube_clone);
@@ -392,7 +395,7 @@ mod test_remote {
                 remote_cell.put_back(remote);
             }
             let thread = do Thread::start {
-                remote_cell.take().fire();
+                remote_cell.take_unwrap().fire();
             };
 
             assert!(tube.recv() == 1);
@@ -778,21 +781,20 @@ impl RtioTcpListener for UvTcpListener {
     fn listen(self) -> Result<~RtioTcpAcceptorObject, IoError> {
         do self.home_for_io_consume |self_| {
             let mut acceptor = ~UvTcpAcceptor::new(self_);
-            let incoming = Cell::new(acceptor.incoming.clone());
+            let incoming = Mut::new(acceptor.incoming.clone());
             do acceptor.listener.watcher.listen |mut server, status| {
-                do incoming.with_mut_ref |incoming| {
-                    let inc = match status {
-                        Some(_) => Err(standard_error(OtherIoError)),
-                        None => {
-                            let inc = TcpWatcher::new(&server.event_loop());
-                            // first accept call in the callback guarenteed to succeed
-                            server.accept(inc.as_stream());
-                            let home = get_handle_to_current_scheduler!();
-                            Ok(~UvTcpStream { watcher: inc, home: home })
-                        }
-                    };
-                    incoming.send(inc);
-                }
+                let inc = match status {
+                    Some(_) => Err(standard_error(OtherIoError)),
+                    None => {
+                        let inc = TcpWatcher::new(&server.event_loop());
+                        // first accept call in the callback guarenteed to succeed
+                        server.accept(inc.as_stream());
+                        let home = get_handle_to_current_scheduler!();
+                        Ok(~UvTcpStream { watcher: inc, home: home })
+                    }
+                };
+                let mut mincoming = incoming.borrow_mut();
+                mincoming.get().send(inc);
             };
             Ok(acceptor)
         }

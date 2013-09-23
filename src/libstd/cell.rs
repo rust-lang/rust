@@ -13,8 +13,9 @@
 #[missing_doc];
 
 use cast::transmute_mut;
-use unstable::finally::Finally;
-use prelude::*;
+use clone::{Clone, DeepClone};
+use cmp::Eq;
+use option::{Option, Some, None};
 
 /*
 A dynamic, mutable location.
@@ -42,47 +43,24 @@ impl<T> Cell<T> {
 
     /// Yields the value, failing if the cell is empty.
     pub fn take(&self) -> T {
-        let this = unsafe { transmute_mut(self) };
-        if this.is_empty() {
-            fail!("attempt to take an empty cell");
+        unsafe {
+            let mvalue = transmute_mut(&self.value);
+            mvalue.take_unwrap()
         }
-
-        this.value.take_unwrap()
-    }
-
-    /// Yields the value if the cell is full, or `None` if it is empty.
-    pub fn take_opt(&self) -> Option<T> {
-        let this = unsafe { transmute_mut(self) };
-        this.value.take()
     }
 
     /// Returns the value, failing if the cell is full.
     pub fn put_back(&self, value: T) {
-        let this = unsafe { transmute_mut(self) };
-        if !this.is_empty() {
-            fail!("attempt to put a value back into a full cell");
+        assert!(self.value.is_none());
+        unsafe {
+            let mvalue = transmute_mut(&self.value);
+            *mvalue = Some(value);
         }
-        this.value = Some(value);
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
     pub fn is_empty(&self) -> bool {
         self.value.is_none()
-    }
-
-    /// Calls a closure with a reference to the value.
-    pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
-        do self.with_mut_ref |ptr| { op(ptr) }
-    }
-
-    /// Calls a closure with a mutable reference to the value.
-    pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
-        let mut v = Some(self.take());
-        do (|| {
-            op(v.get_mut_ref())
-        }).finally {
-            self.put_back(v.take_unwrap());
-        }
     }
 }
 
@@ -109,22 +87,4 @@ fn test_take_empty() {
 fn test_put_back_non_empty() {
     let value_cell = Cell::new(~10);
     value_cell.put_back(~20);
-}
-
-#[test]
-fn test_with_ref() {
-    let good = 6;
-    let c = Cell::new(~[1, 2, 3, 4, 5, 6]);
-    let l = do c.with_ref() |v| { v.len() };
-    assert_eq!(l, good);
-}
-
-#[test]
-fn test_with_mut_ref() {
-    let good = ~[1, 2, 3];
-    let v = ~[1, 2];
-    let c = Cell::new(v);
-    do c.with_mut_ref() |v| { v.push(3); }
-    let v = c.take();
-    assert_eq!(v, good);
 }
