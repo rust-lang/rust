@@ -31,6 +31,7 @@ Version 0.8 (October 2013)
       * `ref` bindings in irrefutable patterns work correctly now.
       * `char` is now prevented from containing invalid code points.
       * Casting to `bool` is no longer allowed.
+      * `\0` is now accepted as an escape in chars and strings.
       * `yield` is a reserved keyword.
       * `typeof` is a reserved keyword.
       * Crates may be imported by URL with `extern mod foo = "url";`.
@@ -111,6 +112,9 @@ Version 0.8 (October 2013)
         the `MutableSet` and `MutableMap` traits. `Container::is_empty`,
         `Map::contains_key`, `MutableMap::insert`, and `MutableMap::remove` have
         default implementations.
+      * std: Various `from_str` functions were removed in favor of a generic
+        `from_str` which is available in the prelude.
+      * std: `util::unreachable` removed in favor of the `unreachable!` macro.
       * extra: `dlist`, the doubly-linked list was modernized.
       * extra: Added a `hex` module with `ToHex` and `FromHex` traits.
       * extra: Added `glob` module, replacing `std::os::glob`.
@@ -125,6 +129,9 @@ Version 0.8 (October 2013)
       * extra: `semver` updated to SemVer 2.0.0.
       * extra: `term` handles more terminals correctly.
       * extra: `dbg` module removed.
+      * extra: `par` module removed.
+      * extra: `future` was cleaned up, with some method renames.
+      * extra: Most free functions in `getopts` were converted to methods.
 
    * Other
       * rustc's debug info generation (`-Z debug-info`) is greatly improved.
@@ -205,6 +212,7 @@ Version 0.7 (July 2013)
       * std: Many old internal vector and string iterators,
         incl. `any`, `all`. removed.
       * std: The `finalize` method of `Drop` renamed to `drop`.
+      * std: The `drop` method now takes `&mut self` instead of `&self`.
       * std: The prelude no longer reexports any modules, only types and traits.
       * std: Prelude additions: `print`, `println`, `FromStr`, `ApproxEq`, `Equiv`,
         `Iterator`, `IteratorUtil`, many numeric traits, many tuple traits.
