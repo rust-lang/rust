@@ -22,24 +22,21 @@ use option::{Option, Some};
 #[no_freeze]
 pub struct Mut<T> {
     priv value: T,
-    priv status: BorrowFlag,
+    priv flag: BorrowFlag,
     priv nc: util::NonCopyable,
 }
 
-enum BorrowFlag {
-    /// the Reading count increases with each ReadPtr,
-    /// starting with 0 for the first one so that all values are used.
-    Reading(uint),
-    Writing,
-    Unused,
-}
-
+// Values [1, MAX-1] represent the number of `ReaderPtr` active
+// (will not outgrow its range since `uint` is the size of the address space)
+type BorrowFlag = uint;
+static Unused: BorrowFlag = 0;
+static Writing: BorrowFlag = -1;
 
 impl<T> Mut<T> {
     /// Create a new `Mut` containing `value`
     #[inline]
     pub fn new(value: T) -> Mut<T> {
-        Mut{value: value, status: Unused, nc: util::NonCopyable}
+        Mut{value: value, flag: Unused, nc: util::NonCopyable}
     }
 
     unsafe fn as_mut<'a>(&'a self) -> &'a mut Mut<T> {
@@ -48,11 +45,11 @@ impl<T> Mut<T> {
 
     /// Consume the Mut<T> and extract the held value
     pub fn unwrap(self) -> T {
-        match self.status {
+        match self.flag {
             Unused => self.value,
             // debug assert? This case should be statically prevented
             // by regular &'a self borrowing and noncopyability.
-            Writing | Reading(*) => fail!("borrow inconsistency in Mut<T>"),
+            _ => fail!("borrow inconsistency in Mut<T>"),
         }
     }
 
@@ -66,10 +63,10 @@ impl<T> Mut<T> {
     pub fn borrow<'a>(&'a self) -> ReadPtr<'a, T> {
         unsafe {
             let mut_self = self.as_mut();
-            mut_self.status = match mut_self.status {
-                Unused => Reading(0),
-                Reading(n) => Reading(n + 1),
+            mut_self.flag = match mut_self.flag {
                 Writing => fail!("borrow: Mut<T> reserved by borrow_mut"),
+                Unused => 1,
+                n => n + 1,
             };
         }
         ReadPtr{parent: self}
@@ -85,9 +82,9 @@ impl<T> Mut<T> {
     pub fn borrow_mut<'a>(&'a self) -> WritePtr<'a, T> {
         unsafe {
             let mut_self = self.as_mut();
-            mut_self.status = match mut_self.status {
+            mut_self.flag = match mut_self.flag {
                 Unused => Writing,
-                Writing | Reading(*) => fail!("borrow_mut: Mut<T> already in use"),
+                _ => fail!("borrow_mut: Mut<T> already in use"),
             };
             WritePtr{parent: mut_self}
         }
@@ -123,9 +120,9 @@ impl<U> Mut<Option<U>> {
     pub fn take(&self) -> Option<U> {
         // specialize for performance
         unsafe {
-            match self.status {
+            match self.flag {
                 Unused => self.as_mut().value.take(),
-                Writing | Reading(*) => fail!("Mut::take: Mut<T> already in use"),
+                _ => fail!("Mut::take: Mut<T> already in use"),
             }
         }
     }
@@ -173,11 +170,10 @@ impl<'self, T> Drop for ReadPtr<'self, T> {
     fn drop(&mut self) {
         unsafe {
             let mut_par = self.parent.as_mut();
-            match mut_par.status {
-                Reading(0) => mut_par.status = Unused,
-                Reading(n) => mut_par.status = Reading(n - 1),
+            match mut_par.flag {
                 // XXX: should be debug assert?
-                Writing | Unused => error!("ReadPtr::drop: borrow inconsistency in Mut<T>")
+                Writing | Unused => error!("ReadPtr::drop: borrow inconsistency in Mut<T>"),
+                n => mut_par.flag = n - 1,
             }
         }
     }
@@ -202,10 +198,10 @@ impl<'self, T> Drop for WritePtr<'self, T> {
     fn drop(&mut self) {
         unsafe {
             let mut_par = self.parent.as_mut();
-            match mut_par.status {
-                Writing => mut_par.status = Unused,
+            match mut_par.flag {
+                Writing => mut_par.flag = Unused,
                 // XXX: should debug assert?
-                Reading(*) | Unused => error!("WritePtr::drop: borrow inconsistency in Mut<T>")
+                _ => error!("WritePtr::drop: borrow inconsistency in Mut<T>")
             }
         }
     }
@@ -243,11 +239,11 @@ pub fn test_read_then_read_x() {
     let q = obj.borrow();
     assert_eq!(r.get(), q.get());
 
-    match obj.status { Reading(1) => (), _ => fail!() }
+    match obj.flag { 2 => (), _ => fail!() }
     ignore(r);
-    match obj.status { Reading(0) => (), _ => fail!() }
+    match obj.flag { 1 => (), _ => fail!() }
     ignore(q);
-    match obj.status { Unused => (), _ => fail!() }
+    match obj.flag { Unused => (), _ => fail!() }
 }
 
 
