@@ -28,7 +28,7 @@ impl<'self> fmt::Default for Markdown<'self> {
                        CreatePipe(PipeStream::new().unwrap(), false, true)];
             let args = ProcessConfig {
                 program: "pandoc",
-                args: [],
+                args: ["-f", "mardown+autolink_bare_uris"],
                 env: None,
                 cwd: None,
                 io: io,
