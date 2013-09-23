@@ -15,7 +15,7 @@
 use cast::transmute_mut;
 use clone::{Clone, DeepClone};
 use cmp::Eq;
-use option::{Option, Some, None};
+use option::{Option, Some};
 
 /*
 A dynamic, mutable location.
@@ -36,25 +36,11 @@ impl<T> Cell<T> {
         Cell { value: Some(value) }
     }
 
-    /// Creates a new empty cell with no value inside.
-    pub fn new_empty() -> Cell<T> {
-        Cell { value: None }
-    }
-
     /// Yields the value, failing if the cell is empty.
     pub fn take(&self) -> T {
         unsafe {
             let mvalue = transmute_mut(&self.value);
             mvalue.take_unwrap()
-        }
-    }
-
-    /// Returns the value, failing if the cell is full.
-    pub fn put_back(&self, value: T) {
-        assert!(self.value.is_none());
-        unsafe {
-            let mvalue = transmute_mut(&self.value);
-            *mvalue = Some(value);
         }
     }
 
@@ -71,20 +57,12 @@ fn test_basic() {
     let value = value_cell.take();
     assert!(value == ~10);
     assert!(value_cell.is_empty());
-    value_cell.put_back(value);
-    assert!(!value_cell.is_empty());
 }
 
 #[test]
 #[should_fail]
 fn test_take_empty() {
-    let value_cell: Cell<~int> = Cell::new_empty();
+    let value_cell: Cell<~int> = Cell::new(~0);
     value_cell.take();
-}
-
-#[test]
-#[should_fail]
-fn test_put_back_non_empty() {
-    let value_cell = Cell::new(~10);
-    value_cell.put_back(~20);
+    value_cell.take();
 }

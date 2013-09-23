@@ -418,15 +418,15 @@ fn uv_fs_helper<P: PathLike>(loop_: &mut Loop, path: &P,
                              cb: ~fn(&mut FsRequest, &mut Loop, &P,
                                      ~fn(&FsRequest, Option<UvError>)))
         -> Result<(), IoError> {
-    let result_cell = Cell::new_empty();
-    let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-    let path_cell = Cell::new(path);
+    let result_cell = Mut::new(None);
+    let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
+    let path_cell = Mut::new_some(path);
     do task::unkillable { // FIXME(#8674)
         let scheduler: ~Scheduler = Local::take();
         let mut new_req = FsRequest::new();
         do scheduler.deschedule_running_task_and_then |_, task| {
-            let task_cell = Cell::new(task);
-            let path = path_cell.take();
+            let task_cell = Mut::new_some(task);
+            let path = path_cell.take_unwrap();
             do cb(&mut new_req, loop_, path) |_, err| {
                 let res = match err {
                     None => Ok(()),
@@ -434,12 +434,13 @@ fn uv_fs_helper<P: PathLike>(loop_: &mut Loop, path: &P,
                 };
                 unsafe { (*result_cell_ptr).put_back(res); }
                 let scheduler: ~Scheduler = Local::take();
-                scheduler.resume_blocked_task_immediately(task_cell.take());
+                scheduler.resume_blocked_task_immediately(task_cell.take_unwrap());
             };
         }
     }
-    assert!(!result_cell.is_empty());
-    return result_cell.take();
+    let res_opt = result_cell.take();
+    assert!(!res_opt.is_none());
+    return res_opt.unwrap();
 }
 
 impl IoFactory for UvIoFactory {
@@ -449,8 +450,8 @@ impl IoFactory for UvIoFactory {
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStreamObject, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<~RtioTcpStreamObject, IoError>>> = &result_cell;
 
         // Block this task and take ownership, switch to scheduler context
         do task::unkillable { // FIXME(#8674)
@@ -489,8 +490,9 @@ impl IoFactory for UvIoFactory {
             }
         }
 
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let result = result_cell.take();
+        assert!(result.is_some());
+        return result.unwrap()
     }
 
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListenerObject, IoError> {
@@ -571,9 +573,9 @@ impl IoFactory for UvIoFactory {
                 S_IRUSR | S_IWUSR,
             _ => 0
         };
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~RtioFileStream,
-                                           IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<~RtioFileStream,
+                                           IoError>>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
@@ -602,8 +604,9 @@ impl IoFactory for UvIoFactory {
                 };
             };
         };
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let result = result_cell.take();
+        assert!(result.is_some());
+        return result.unwrap()
     }
 
     fn fs_unlink<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
@@ -615,9 +618,9 @@ impl IoFactory for UvIoFactory {
     }
     fn fs_stat<P: PathLike>(&mut self, path: &P) -> Result<FileStat, IoError> {
         use str::StrSlice;
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<FileStat,
-                                           IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<FileStat,
+                                           IoError>>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
@@ -651,13 +654,14 @@ impl IoFactory for UvIoFactory {
                 };
             };
         };
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let result = result_cell.take();
+        assert!(result.is_some());
+        return result.unwrap()
     }
 
     fn get_host_addresses(&mut self, host: &str) -> Result<~[IpAddr], IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~[IpAddr], IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<~[IpAddr], IoError>>> = &result_cell;
         let host_ptr: *&str = &host;
         let addrinfo_req = GetAddrInfoRequest::new();
         let addrinfo_req_cell = Cell::new(addrinfo_req);
@@ -682,8 +686,9 @@ impl IoFactory for UvIoFactory {
             }
         }
         addrinfo_req.delete();
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let result = result_cell.take();
+        assert!(result.is_some());
+        return result.unwrap()
     }
     fn fs_mkdir<P: PathLike>(&mut self, path: &P) -> Result<(), IoError> {
         let mode = S_IRWXU as int;
@@ -703,9 +708,9 @@ impl IoFactory for UvIoFactory {
     fn fs_readdir<P: PathLike>(&mut self, path: &P, flags: c_int) ->
         Result<~[Path], IoError> {
         use str::StrSlice;
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<~[Path],
-                                           IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<~[Path],
+                                                IoError>>> = &result_cell;
         let path_cell = Cell::new(path);
         do task::unkillable { // FIXME(#8674)
             let scheduler: ~Scheduler = Local::take();
@@ -735,8 +740,9 @@ impl IoFactory for UvIoFactory {
                 };
             };
         };
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        let result = result_cell.take();
+        assert!(result.is_some());
+        return result.unwrap()
     }
 }
 
@@ -892,8 +898,8 @@ impl RtioSocket for UvTcpStream {
 impl RtioTcpStream for UvTcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
+            let result_cell = Mut::new(None);
+            let result_cell_ptr: *Mut<Option<Result<uint, IoError>>> = &result_cell;
 
             let buf_ptr: *&mut [u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_sched, task| {
@@ -926,15 +932,16 @@ impl RtioTcpStream for UvTcpStream {
                 }
             }
 
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            let result = result_cell.take();
+            assert!(result.is_some());
+            result.unwrap()
         }
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+            let result_cell = Mut::new(None);
+            let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
             let buf_ptr: *&[u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
@@ -954,8 +961,9 @@ impl RtioTcpStream for UvTcpStream {
                 }
             }
 
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            let result = result_cell.take();
+            assert!(result.is_some());
+            result.unwrap()
         }
     }
 
@@ -1049,8 +1057,9 @@ impl RtioSocket for UvUdpSocket {
 impl RtioUdpSocket for UvUdpSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<(uint, SocketAddr), IoError>> = &result_cell;
+            let result_cell = Mut::new(None);
+            let result_cell_ptr: *Mut<Option<Result<(uint, SocketAddr),
+                                                    IoError>>> = &result_cell;
 
             let buf_ptr: *&mut [u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
@@ -1076,15 +1085,16 @@ impl RtioUdpSocket for UvUdpSocket {
                 }
             }
 
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            let result = result_cell.take();
+            assert!(result.is_some());
+            result.unwrap()
         }
     }
 
     fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
         do self.home_for_io_with_sched |self_, scheduler| {
-            let result_cell = Cell::new_empty();
-            let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+            let result_cell = Mut::new(None);
+            let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
             let buf_ptr: *&[u8] = &buf;
             do scheduler.deschedule_running_task_and_then |_, task| {
                 let task_cell = Cell::new(task);
@@ -1103,8 +1113,9 @@ impl RtioUdpSocket for UvUdpSocket {
                 }
             }
 
-            assert!(!result_cell.is_empty());
-            result_cell.take()
+            let result = result_cell.take();
+            assert!(result.is_some());
+            result.unwrap()
         }
     }
 
@@ -1295,8 +1306,8 @@ impl UvFileStream {
         }
     }
     fn base_read(&mut self, buf: &mut [u8], offset: i64) -> Result<int, IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<int, IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<int, IoError>>> = &result_cell;
         let buf_ptr: *&mut [u8] = &buf;
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
@@ -1314,11 +1325,11 @@ impl UvFileStream {
                 };
             };
         };
-        result_cell.take()
+        result_cell.take_unwrap()
     }
     fn base_write(&mut self, buf: &[u8], offset: i64) -> Result<(), IoError> {
-        let result_cell = Cell::new_empty();
-        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
+        let result_cell = Mut::new(None);
+        let result_cell_ptr: *Mut<Option<Result<(), IoError>>> = &result_cell;
         let buf_ptr: *&[u8] = &buf;
         do self.home_for_io_with_sched |self_, scheduler| {
             do scheduler.deschedule_running_task_and_then |_, task| {
@@ -1336,7 +1347,7 @@ impl UvFileStream {
                 };
             };
         };
-        result_cell.take()
+        result_cell.take_unwrap()
     }
     fn seek_common(&mut self, pos: i64, whence: c_int) ->
         Result<u64, IoError>{
