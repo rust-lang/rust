@@ -40,7 +40,7 @@ trait Trait {
     }
 }
 
-impl Trait for Struct;
+impl Trait for Struct {}
 
 fn main() {
 

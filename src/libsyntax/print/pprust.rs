@@ -598,18 +598,12 @@ pub fn print_item(s: @ps, item: &ast::item) {
 
         print_type(s, ty);
 
-        if methods.len() == 0 {
-            word(s.s, ";");
-            end(s); // end the head-ibox
-            end(s); // end the outer cbox
-        } else {
-            space(s.s);
-            bopen(s);
-            for meth in methods.iter() {
-               print_method(s, *meth);
-            }
-            bclose(s, item.span);
+        space(s.s);
+        bopen(s);
+        for meth in methods.iter() {
+           print_method(s, *meth);
         }
+        bclose(s, item.span);
       }
       ast::item_trait(ref generics, ref traits, ref methods) => {
         head(s, visibility_qualified(item.vis, "trait"));

@@ -22,7 +22,7 @@ use libc::{c_int};
 use option::{None, Some, Option};
 
 pub struct FsRequest(*uvll::uv_fs_t);
-impl Request for FsRequest;
+impl Request for FsRequest {}
 
 pub struct RequestData {
     complete_cb: Option<FsCallback>
