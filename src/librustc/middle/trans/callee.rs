@@ -44,8 +44,6 @@ use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use util::ppaux::Repr;
 
-use middle::trans::type_::Type;
-
 use syntax::ast;
 use syntax::abi::AbiSet;
 use syntax::ast_map;

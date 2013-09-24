@@ -9,13 +9,11 @@
 // except according to those terms.
 
 
-use std::libc::c_uint;
 use std::num;
 use std::vec;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
 use middle::trans::context::CrateContext;
-use middle::trans::context::task_llcx;
 use middle::trans::cabi::*;
 
 use middle::trans::type_::Type;
@@ -93,7 +91,8 @@ fn classify_ret_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
     };
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>) {
+fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut uint)
+    -> (LLVMType, Option<Attribute>) {
     let orig_offset = *offset;
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
@@ -154,7 +153,7 @@ fn coerce_to_int(ccx: &CrateContext, size: uint) -> ~[Type] {
     args
 }
 
-fn struct_ty(ccx: &CrateContext, 
+fn struct_ty(ccx: &CrateContext,
              ty: Type,
              padding: Option<Type>,
              coerce: bool) -> Type {

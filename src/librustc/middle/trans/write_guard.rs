@@ -31,8 +31,6 @@ use middle::ty;
 use syntax::codemap::Span;
 use syntax::ast;
 
-use middle::trans::type_::Type;
-
 pub fn root_and_write_guard(datum: &Datum,
                             mut bcx: @mut Block,
                             span: Span,

@@ -15,9 +15,6 @@ use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::ty;
 
-use middle::trans::context::CrateContext;
-use middle::trans::base;
-
 use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
 
@@ -145,6 +142,10 @@ impl Type {
     }
 }
 
+/**
+ * Crate type set
+ */
+
 pub struct CrateTypes {
     priv llcx: ContextRef,
     priv tn: TypeNames,
@@ -166,11 +167,8 @@ pub struct CrateTypes {
     priv opaque_vec_t: Type
 }
 
-/**
- * Crate type set
- */
 impl CrateTypes {
-    
+
     /**
      * Constriction/initialization
      */
@@ -190,12 +188,14 @@ impl CrateTypes {
             X86 | Arm | Mips => i32_type,
             X86_64 => i64_type
         };
-        let float_type = f64_type; // All architectures currently just use doubles as the default float size
-        let nil_type = ty!(llvm::LLVMStructTypeInContext(llcx, vec::raw::to_ptr(&[]), 0, False));
+        let float_type = f64_type; // All architecture float are defaulted to doubles
+        let nil_type = ty!(llvm::LLVMStructTypeInContext(llcx, vec::raw::to_ptr(&[]),
+                                                         0, False));
         let void_type = ty!(llvm::LLVMVoidTypeInContext(llcx));
 
         // init str_slice
-        let mut str_slice_ty =  ty!("str_slice".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        let mut str_slice_ty =
+            ty!("str_slice".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
         str_slice_ty.set_struct_body([i8p_type, int_type], false);
         tn.associate_type("str_slice", &str_slice_ty);
 
@@ -205,23 +205,26 @@ impl CrateTypes {
 
         // init tydesc
         let mut tydesc_type =  ty!("tydesc".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        let glue_fn_ptr = glue_fn_ty.ptr_to();
         // Must mirror: std::unstable::intrinsics::TyDesc AND type_desc in rt
-        let elems = [int_type,   // size
-                     int_type,   // align
-                     glue_fn_ty, // take
-                     glue_fn_ty, // drop
-                     glue_fn_ty, // free
-                     glue_fn_ty, // visit
-                     int_type,   // borrow_offset
-                     ty!(llvm::LLVMStructTypeInContext(llcx, 
-                        vec::raw::to_ptr([i8p_type.to_ref(), int_type.to_ref()]),
-                        2, False))]; // name
+        let elems = [int_type,    // size
+                     int_type,    // align
+                     glue_fn_ptr, // take
+                     glue_fn_ptr, // drop
+                     glue_fn_ptr, // free
+                     glue_fn_ptr, // visit
+                     int_type,    // borrow_offset
+                     ty!(llvm::LLVMStructTypeInContext(llcx,  // name
+                                                       vec::raw::to_ptr([i8p_type.to_ref(),
+                                                                         int_type.to_ref()]),
+                                                       2, False))];
         tydesc_type.set_struct_body(elems, false);
         tn.associate_type("tydesc", &tydesc_type);
 
         // init opaque_vec
-        let mut opaque_vec_type =  ty!("opaque_vec".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
-        opaque_vec_type.set_struct_body([int_type, int_type, 
+        let mut opaque_vec_type =
+            ty!("opaque_vec".with_c_str(|s| llvm::LLVMStructCreateNamed(llcx, s)));
+        opaque_vec_type.set_struct_body([int_type, int_type,
                                          ty!(llvm::LLVMArrayType(i8_type.to_ref(), 0))],
                                         false);
         tn.associate_type("opaque_vec", &opaque_vec_type);
@@ -442,7 +445,7 @@ impl CrateTypes {
     #[inline]
     fn box_header_fields(&self) -> ~[Type] {
         ~[
-            self.i(), self.tydesc(), self.i8p(), self.i8p()
+            self.i(), self.tydesc().ptr_to(), self.i8p(), self.i8p()
         ]
     }
 

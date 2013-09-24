@@ -339,7 +339,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
 pub fn call_tydesc_glue(cx: @mut Block, v: ValueRef, t: ty::t, field: uint)
     -> @mut Block {
     let _icx = push_ctxt("call_tydesc_glue");
-    let ti = get_tydesc(bcx.ccx(), t);
+    let ti = get_tydesc(cx.ccx(), t);
     call_tydesc_glue_full(cx, v, ti.tydesc, field, Some(ti));
     return cx;
 }

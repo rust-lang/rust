@@ -420,7 +420,9 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
         argument_index
     };
 
-    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().types.i64().to_ref()) }];
+    let address_operations = &[unsafe {
+        llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().types.i64().to_ref())
+    }];
 
     let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
         DirectVariable { alloca: llptr }

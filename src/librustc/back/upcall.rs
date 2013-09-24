@@ -9,9 +9,8 @@
 // except according to those terms.
 
 
-use driver::session;
 use middle::trans::base;
-use middle::trans::type_::{Type, CrateTypes};
+use middle::trans::type_::{CrateTypes};
 use lib::llvm::{ModuleRef, ValueRef};
 
 pub struct Upcalls {

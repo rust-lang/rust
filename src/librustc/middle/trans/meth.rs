@@ -30,8 +30,6 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
 
-use middle::trans::type_::Type;
-
 use std::c_str::ToCStr;
 use std::vec;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};

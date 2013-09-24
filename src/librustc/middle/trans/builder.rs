@@ -738,8 +738,9 @@ impl Builder {
             self.count_insn("inlineasm");
             let asm = do comment_text.with_c_str |c| {
                 unsafe {
-                    llvm::LLVMConstInlineAsm(self.ccx.types.func([], &self.ccx.types.void()).to_ref(),
-                                             c, noname(), False, False)
+                    llvm::LLVMConstInlineAsm(
+                        self.ccx.types.func([], &self.ccx.types.void()).to_ref(),
+                        c, noname(), False, False)
                 }
             };
             self.call(asm, [], []);
@@ -830,7 +831,8 @@ impl Builder {
     pub fn vector_splat(&self, num_elts: uint, elt: ValueRef) -> ValueRef {
         unsafe {
             let elt_ty = val_ty(elt);
-            let Undef = llvm::LLVMGetUndef(self.ccx.types.vector(&elt_ty, num_elts as u64).to_ref());
+            let Undef = llvm::LLVMGetUndef(
+                    self.ccx.types.vector(&elt_ty, num_elts as u64).to_ref());
             let vec = self.insert_element(Undef, elt, C_i32(self.ccx, 0));
             self.shuffle_vector(vec, Undef, C_null(self.ccx.types.vector(&self.ccx.types.i32(),
                                                                          num_elts as u64)))

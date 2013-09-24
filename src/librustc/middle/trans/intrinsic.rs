@@ -30,7 +30,6 @@ use syntax::attr;
 use syntax::opt_vec;
 use util::ppaux::{ty_to_str};
 use middle::trans::machine::llsize_of;
-use middle::trans::type_::Type;
 
 pub fn trans_intrinsic(ccx: @mut CrateContext,
                        decl: ValueRef,

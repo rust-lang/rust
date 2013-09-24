@@ -19,8 +19,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux;
 
-use middle::trans::type_::Type;
-
 use syntax::ast;
 use syntax::ast::Name;
 use syntax::ast_util;

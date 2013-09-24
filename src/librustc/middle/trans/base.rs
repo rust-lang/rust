@@ -1042,7 +1042,7 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let ccx_types = &bcx.ccx().types;
+    let ccx_types = bcx.ccx().types;
     let llretty = ccx_types.struct_([ccx_types.i8p(), ccx_types.i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
@@ -2882,7 +2882,8 @@ pub fn declare_intrinsics(llmod: ModuleRef, types: &CrateTypes) -> HashMap<&'sta
     return intrinsics;
 }
 
-pub fn declare_dbg_intrinsics(llmod: ModuleRef, types: &CrateTypes, intrinsics: &mut HashMap<&'static str, ValueRef>) {
+pub fn declare_dbg_intrinsics(llmod: ModuleRef, types: &CrateTypes,
+                              intrinsics: &mut HashMap<&'static str, ValueRef>) {
     ifn!(intrinsics, "llvm.dbg.declare", [types.metadata(), types.metadata()], types.void());
     ifn!(intrinsics,
          "llvm.dbg.value",   [types.metadata(), types.i64(), types.metadata()], types.void());
@@ -2951,7 +2952,6 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
                       llmod: ModuleRef, types: &CrateTypes) -> ValueRef {
-    let targ_cfg = sess.targ_cfg;
     let int_type = types.i();
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
