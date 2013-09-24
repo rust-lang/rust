@@ -191,18 +191,16 @@ enum UseMode {
     Read         // Read no matter what the type.
 }
 
-struct ComputeModesVisitor;
-
-impl visit::Visitor<VisitContext> for ComputeModesVisitor {
+impl visit::Visitor<()> for VisitContext {
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
-                b:&Block, s:Span, n:NodeId, e:VisitContext) {
-        compute_modes_for_fn(*self, fk, fd, b, s, n, e);
+                b:&Block, s:Span, n:NodeId, _:()) {
+        compute_modes_for_fn(self, fk, fd, b, s, n);
     }
-    fn visit_expr(&mut self, ex:@Expr, e:VisitContext) {
-        compute_modes_for_expr(*self, ex, e);
+    fn visit_expr(&mut self, ex:@Expr, _:()) {
+        compute_modes_for_expr(self, ex);
     }
-    fn visit_local(&mut self, l:@Local, e:VisitContext) {
-        compute_modes_for_local(*self, l, e);
+    fn visit_local(&mut self, l:@Local, _:()) {
+        compute_modes_for_local(self, l);
     }
 }
 
@@ -210,8 +208,7 @@ pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
                      crate: &Crate) -> MoveMaps
 {
-    let mut visitor = ComputeModesVisitor;
-    let visit_cx = VisitContext {
+    let mut visit_cx = VisitContext {
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
@@ -220,7 +217,8 @@ pub fn compute_moves(tcx: ty::ctxt,
             moved_variables_set: @mut HashSet::new()
         }
     };
-    visit::walk_crate(&mut visitor, crate, visit_cx);
+    let visit_cx = &mut visit_cx;
+    visit::walk_crate(visit_cx, crate, ());
     return visit_cx.move_maps;
 }
 
@@ -238,44 +236,40 @@ pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
 ///////////////////////////////////////////////////////////////////////////
 // Expressions
 
-fn compute_modes_for_local<'a>(v: ComputeModesVisitor,
-                               local: @Local,
-                               cx: VisitContext) {
+fn compute_modes_for_local<'a>(cx: &mut VisitContext,
+                               local: @Local) {
     cx.use_pat(local.pat);
     for &init in local.init.iter() {
-        cx.use_expr(init, Read, v);
+        cx.use_expr(init, Read);
     }
 }
 
-fn compute_modes_for_fn(v: ComputeModesVisitor,
+fn compute_modes_for_fn(cx: &mut VisitContext,
                         fk: &visit::fn_kind,
                         decl: &fn_decl,
                         body: &Block,
                         span: Span,
-                        id: NodeId,
-                        cx: VisitContext) {
-    let mut v = v;
+                        id: NodeId) {
     for a in decl.inputs.iter() {
         cx.use_pat(a.pat);
     }
-    visit::walk_fn(&mut v, fk, decl, body, span, id, cx);
+    visit::walk_fn(cx, fk, decl, body, span, id, ());
 }
 
-fn compute_modes_for_expr(v: ComputeModesVisitor,
-                          expr: @Expr,
-                          cx: VisitContext)
+fn compute_modes_for_expr(cx: &mut VisitContext,
+                          expr: @Expr)
 {
-    cx.consume_expr(expr, v);
+    cx.consume_expr(expr);
 }
 
 impl VisitContext {
-    pub fn consume_exprs(&self, exprs: &[@Expr], visitor: ComputeModesVisitor) {
+    pub fn consume_exprs(&mut self, exprs: &[@Expr]) {
         for expr in exprs.iter() {
-            self.consume_expr(*expr, visitor);
+            self.consume_expr(*expr);
         }
     }
 
-    pub fn consume_expr(&self, expr: @Expr, visitor: ComputeModesVisitor) {
+    pub fn consume_expr(&mut self, expr: @Expr) {
         /*!
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -287,13 +281,13 @@ impl VisitContext {
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
         if ty::type_moves_by_default(self.tcx, expr_ty) {
             self.move_maps.moves_map.insert(expr.id);
-            self.use_expr(expr, Move, visitor);
+            self.use_expr(expr, Move);
         } else {
-            self.use_expr(expr, Read, visitor);
+            self.use_expr(expr, Read);
         };
     }
 
-    pub fn consume_block(&self, blk: &Block, visitor: ComputeModesVisitor) {
+    pub fn consume_block(&mut self, blk: &Block) {
         /*!
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -302,19 +296,17 @@ impl VisitContext {
         debug!("consume_block(blk.id=%?)", blk.id);
 
         for stmt in blk.stmts.iter() {
-            let mut v = visitor;
-            v.visit_stmt(*stmt, *self);
+            self.visit_stmt(*stmt, ());
         }
 
         for tail_expr in blk.expr.iter() {
-            self.consume_expr(*tail_expr, visitor);
+            self.consume_expr(*tail_expr);
         }
     }
 
-    pub fn use_expr(&self,
+    pub fn use_expr(&mut self,
                     expr: @Expr,
-                    expr_mode: UseMode,
-                    visitor: ComputeModesVisitor) {
+                    expr_mode: UseMode) {
         /*!
          * Indicates that `expr` is used with a given mode.  This will
          * in turn trigger calls to the subcomponents of `expr`.
@@ -351,25 +343,23 @@ impl VisitContext {
             }
 
             ExprUnary(_, UnDeref, base) => {       // *base
-                if !self.use_overloaded_operator(
-                    expr, base, [], visitor)
+                if !self.use_overloaded_operator(expr, base, [])
                 {
                     // Moving out of *base moves out of base.
-                    self.use_expr(base, comp_mode, visitor);
+                    self.use_expr(base, comp_mode);
                 }
             }
 
             ExprField(base, _, _) => {        // base.f
                 // Moving out of base.f moves out of base.
-                self.use_expr(base, comp_mode, visitor);
+                self.use_expr(base, comp_mode);
             }
 
             ExprIndex(_, lhs, rhs) => {          // lhs[rhs]
-                if !self.use_overloaded_operator(
-                    expr, lhs, [rhs], visitor)
+                if !self.use_overloaded_operator(expr, lhs, [rhs])
                 {
-                    self.use_expr(lhs, comp_mode, visitor);
-                    self.consume_expr(rhs, visitor);
+                    self.use_expr(lhs, comp_mode);
+                    self.consume_expr(rhs);
                 }
             }
 
@@ -394,20 +384,20 @@ impl VisitContext {
                 if mode == Move {
                     self.move_maps.moves_map.insert(callee.id);
                 }
-                self.use_expr(callee, mode, visitor);
-                self.use_fn_args(callee.id, *args, visitor);
+                self.use_expr(callee, mode);
+                self.use_fn_args(callee.id, *args);
             }
 
             ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => { // callee.m(args)
                 // Implicit self is equivalent to & mode, but every
                 // other kind should be + mode.
-                self.use_receiver(rcvr, visitor);
-                self.use_fn_args(callee_id, *args, visitor);
+                self.use_receiver(rcvr);
+                self.use_fn_args(callee_id, *args);
             }
 
             ExprStruct(_, ref fields, opt_with) => {
                 for field in fields.iter() {
-                    self.consume_expr(field.expr, visitor);
+                    self.consume_expr(field.expr);
                 }
 
                 for with_expr in opt_with.iter() {
@@ -449,22 +439,22 @@ impl VisitContext {
                                                          which defines the `Drop` trait",
                                                         with_ty.user_string(self.tcx)));
                         }
-                        self.consume_expr(*with_expr, visitor);
+                        self.consume_expr(*with_expr);
                     } else {
-                        self.use_expr(*with_expr, Read, visitor);
+                        self.use_expr(*with_expr, Read);
                     }
                 }
             }
 
             ExprTup(ref exprs) => {
-                self.consume_exprs(*exprs, visitor);
+                self.consume_exprs(*exprs);
             }
 
             ExprIf(cond_expr, ref then_blk, opt_else_expr) => {
-                self.consume_expr(cond_expr, visitor);
-                self.consume_block(then_blk, visitor);
+                self.consume_expr(cond_expr);
+                self.consume_block(then_blk);
                 for else_expr in opt_else_expr.iter() {
-                    self.consume_expr(*else_expr, visitor);
+                    self.consume_expr(*else_expr);
                 }
             }
 
@@ -472,27 +462,27 @@ impl VisitContext {
                 // We must do this first so that `arms_have_by_move_bindings`
                 // below knows which bindings are moves.
                 for arm in arms.iter() {
-                    self.consume_arm(arm, visitor);
+                    self.consume_arm(arm);
                 }
 
                 // The discriminant may, in fact, be partially moved
                 // if there are by-move bindings, but borrowck deals
                 // with that itself.
-                self.use_expr(discr, Read, visitor);
+                self.use_expr(discr, Read);
             }
 
             ExprParen(base) => {
                 // Note: base is not considered a *component* here, so
                 // use `expr_mode` not `comp_mode`.
-                self.use_expr(base, expr_mode, visitor);
+                self.use_expr(base, expr_mode);
             }
 
             ExprVec(ref exprs, _) => {
-                self.consume_exprs(*exprs, visitor);
+                self.consume_exprs(*exprs);
             }
 
             ExprAddrOf(_, base) => {   // &base
-                self.use_expr(base, Read, visitor);
+                self.use_expr(base, Read);
             }
 
             ExprLogLevel |
@@ -502,70 +492,67 @@ impl VisitContext {
             ExprLit(*) => {}
 
             ExprLoop(ref blk, _) => {
-                self.consume_block(blk, visitor);
+                self.consume_block(blk);
             }
 
             ExprWhile(cond_expr, ref blk) => {
-                self.consume_expr(cond_expr, visitor);
-                self.consume_block(blk, visitor);
+                self.consume_expr(cond_expr);
+                self.consume_block(blk);
             }
 
             ExprForLoop(*) => fail!("non-desugared expr_for_loop"),
 
             ExprUnary(_, _, lhs) => {
-                if !self.use_overloaded_operator(
-                    expr, lhs, [], visitor)
+                if !self.use_overloaded_operator(expr, lhs, [])
                 {
-                    self.consume_expr(lhs, visitor);
+                    self.consume_expr(lhs);
                 }
             }
 
             ExprBinary(_, _, lhs, rhs) => {
-                if !self.use_overloaded_operator(
-                    expr, lhs, [rhs], visitor)
+                if !self.use_overloaded_operator(expr, lhs, [rhs])
                 {
-                    self.consume_expr(lhs, visitor);
-                    self.consume_expr(rhs, visitor);
+                    self.consume_expr(lhs);
+                    self.consume_expr(rhs);
                 }
             }
 
             ExprBlock(ref blk) => {
-                self.consume_block(blk, visitor);
+                self.consume_block(blk);
             }
 
             ExprRet(ref opt_expr) => {
                 for expr in opt_expr.iter() {
-                    self.consume_expr(*expr, visitor);
+                    self.consume_expr(*expr);
                 }
             }
 
             ExprAssign(lhs, rhs) => {
-                self.use_expr(lhs, Read, visitor);
-                self.consume_expr(rhs, visitor);
+                self.use_expr(lhs, Read);
+                self.consume_expr(rhs);
             }
 
             ExprCast(base, _) => {
-                self.consume_expr(base, visitor);
+                self.consume_expr(base);
             }
 
             ExprAssignOp(_, _, lhs, rhs) => {
                 // FIXME(#4712) --- Overloaded operators?
                 //
-                // if !self.use_overloaded_operator(
-                //     expr, DoDerefArgs, lhs, [rhs], visitor)
+                // if !self.use_overloaded_operator(expr, DoDerefArgs, lhs, [rhs])
                 // {
-                self.consume_expr(lhs, visitor);
-                self.consume_expr(rhs, visitor);
+                self.consume_expr(lhs);
+                self.consume_expr(rhs);
                 // }
             }
 
             ExprRepeat(base, count, _) => {
-                self.consume_expr(base, visitor);
-                self.consume_expr(count, visitor);
+                self.consume_expr(base);
+                self.consume_expr(count);
             }
 
             ExprDoBody(base) => {
-                self.use_expr(base, comp_mode, visitor);
+                self.use_expr(base, comp_mode);
             }
 
             ExprFnBlock(ref decl, ref body) => {
@@ -574,11 +561,11 @@ impl VisitContext {
                 }
                 let cap_vars = self.compute_captures(expr.id);
                 self.move_maps.capture_map.insert(expr.id, cap_vars);
-                self.consume_block(body, visitor);
+                self.consume_block(body);
             }
 
             ExprVstore(base, _) => {
-                self.use_expr(base, comp_mode, visitor);
+                self.use_expr(base, comp_mode);
             }
 
             ExprMac(*) => {
@@ -589,40 +576,39 @@ impl VisitContext {
         }
     }
 
-    pub fn use_overloaded_operator(&self,
+    pub fn use_overloaded_operator(&mut self,
                                    expr: &Expr,
                                    receiver_expr: @Expr,
-                                   arg_exprs: &[@Expr],
-                                   visitor: ComputeModesVisitor)
+                                   arg_exprs: &[@Expr])
                                    -> bool {
         if !self.method_map.contains_key(&expr.id) {
             return false;
         }
 
-        self.use_receiver(receiver_expr, visitor);
+        self.use_receiver(receiver_expr);
 
         // for overloaded operatrs, we are always passing in a
         // borrowed pointer, so it's always read mode:
         for arg_expr in arg_exprs.iter() {
-            self.use_expr(*arg_expr, Read, visitor);
+            self.use_expr(*arg_expr, Read);
         }
 
         return true;
     }
 
-    pub fn consume_arm(&self, arm: &Arm, visitor: ComputeModesVisitor) {
+    pub fn consume_arm(&mut self, arm: &Arm) {
         for pat in arm.pats.iter() {
             self.use_pat(*pat);
         }
 
         for guard in arm.guard.iter() {
-            self.consume_expr(*guard, visitor);
+            self.consume_expr(*guard);
         }
 
-        self.consume_block(&arm.body, visitor);
+        self.consume_block(&arm.body);
     }
 
-    pub fn use_pat(&self, pat: @Pat) {
+    pub fn use_pat(&mut self, pat: @Pat) {
         /*!
          *
          * Decides whether each binding in a pattern moves the value
@@ -651,28 +637,26 @@ impl VisitContext {
         }
     }
 
-    pub fn use_receiver(&self,
-                        receiver_expr: @Expr,
-                        visitor: ComputeModesVisitor) {
-        self.use_fn_arg(receiver_expr, visitor);
+    pub fn use_receiver(&mut self,
+                        receiver_expr: @Expr) {
+        self.use_fn_arg(receiver_expr);
     }
 
-    pub fn use_fn_args(&self,
+    pub fn use_fn_args(&mut self,
                        _: NodeId,
-                       arg_exprs: &[@Expr],
-                       visitor: ComputeModesVisitor) {
+                       arg_exprs: &[@Expr]) {
         //! Uses the argument expressions.
         for arg_expr in arg_exprs.iter() {
-            self.use_fn_arg(*arg_expr, visitor);
+            self.use_fn_arg(*arg_expr);
         }
     }
 
-    pub fn use_fn_arg(&self, arg_expr: @Expr, visitor: ComputeModesVisitor) {
+    pub fn use_fn_arg(&mut self, arg_expr: @Expr) {
         //! Uses the argument.
-        self.consume_expr(arg_expr, visitor)
+        self.consume_expr(arg_expr)
     }
 
-    pub fn arms_have_by_move_bindings(&self,
+    pub fn arms_have_by_move_bindings(&mut self,
                                       moves_map: MovesMap,
                                       arms: &[Arm])
                                       -> Option<@Pat> {
@@ -693,7 +677,7 @@ impl VisitContext {
         ret
     }
 
-    pub fn compute_captures(&self, fn_expr_id: NodeId) -> @[CaptureVar] {
+    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> @[CaptureVar] {
         debug!("compute_capture_vars(fn_expr_id=%?)", fn_expr_id);
         let _indenter = indenter();
 
