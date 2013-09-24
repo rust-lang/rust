@@ -18,6 +18,7 @@ use clean;
 use html::render::{cache_key, current_location_key};
 
 pub struct VisSpace(Option<ast::visibility>);
+pub struct PuritySpace(ast::purity);
 pub struct Method<'self>(&'self clean::SelfTy, &'self clean::FnDecl);
 
 impl fmt::Default for clean::Generics {
@@ -228,11 +229,7 @@ impl fmt::Default for clean::Type {
                     None => {}
                 }
                 write!(f.buf, "{}{}fn{}",
-                       match decl.purity {
-                           ast::unsafe_fn => "unsafe ",
-                           ast::extern_fn => "extern ",
-                           ast::impure_fn => ""
-                       },
+                       PuritySpace(decl.purity),
                        match decl.onceness {
                            ast::Once => "once ",
                            ast::Many => "",
@@ -242,11 +239,7 @@ impl fmt::Default for clean::Type {
             }
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",
-                       match decl.purity {
-                           ast::unsafe_fn => "unsafe ",
-                           ast::extern_fn => "extern ",
-                           ast::impure_fn => ""
-                       },
+                       PuritySpace(decl.purity),
                        match decl.abi {
                            ~"" | ~"\"Rust\"" => ~"",
                            ref s => " " + *s + " ",
@@ -359,6 +352,16 @@ impl fmt::Default for VisSpace {
             Some(ast::public) => { write!(f.buf, "pub "); }
             Some(ast::private) => { write!(f.buf, "priv "); }
             Some(ast::inherited) | None => {}
+        }
+    }
+}
+
+impl fmt::Default for PuritySpace {
+    fn fmt(p: &PuritySpace, f: &mut fmt::Formatter) {
+        match **p {
+            ast::unsafe_fn => write!(f.buf, "unsafe "),
+            ast::extern_fn => write!(f.buf, "extern "),
+            ast::impure_fn => {}
         }
     }
 }

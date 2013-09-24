@@ -107,6 +107,7 @@ pub struct Function {
     id: NodeId,
     name: Ident,
     vis: ast::visibility,
+    purity: ast::purity,
     where: Span,
     generics: ast::Generics,
 }
