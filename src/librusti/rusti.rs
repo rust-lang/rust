@@ -72,12 +72,14 @@ extern mod syntax;
 
 use std::{libc, io, os, task};
 use std::cell::Cell;
+use extra::rl::CompletionCb;
 use extra::rl;
 
 use rustc::driver::{driver, session};
 use rustc::back::link::jit;
-use syntax::{ast, diagnostic};
+use syntax::{ast, codemap, diagnostic};
 use syntax::ast_util::*;
+use syntax::diagnostic::Emitter;
 use syntax::parse::token;
 use syntax::print::pprust;
 
@@ -107,6 +109,28 @@ enum CmdAction {
     action_run_line(~str),
 }
 
+struct EncodableWarningEmitter;
+
+impl diagnostic::Emitter for EncodableWarningEmitter {
+    fn emit(&self,
+            cm: Option<(@codemap::CodeMap, codemap::Span)>,
+            msg: &str,
+            lvl: diagnostic::level) {
+        diagnostic::DefaultEmitter.emit(cm, msg, lvl);
+        if msg.contains("failed to find an implementation of trait") &&
+           msg.contains("extra::serialize::Encodable") {
+            diagnostic::DefaultEmitter.emit(cm,
+                                            "Currrently rusti serializes \
+                                             bound locals between different \
+                                             lines of input. This means that \
+                                             all values of local variables \
+                                             need to be encodable, and this \
+                                             type isn't encodable",
+                                            diagnostic::note);
+        }
+    }
+}
+
 /// Run an input string in a Repl, returning the new Repl.
 fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
        input: ~str) -> (~Program, Option<~jit::Engine>)
@@ -124,18 +148,9 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // extra helpful information if the error crops up. Otherwise people are
     // bound to be very confused when they find out code is running that they
     // never typed in...
-    let sess = driver::build_session(options, |cm, msg, lvl| {
-        diagnostic::emit(cm, msg, lvl);
-        if msg.contains("failed to find an implementation of trait") &&
-           msg.contains("extra::serialize::Encodable") {
-            diagnostic::emit(cm,
-                             "Currrently rusti serializes bound locals between \
-                              different lines of input. This means that all \
-                              values of local variables need to be encodable, \
-                              and this type isn't encodable",
-                             diagnostic::note);
-        }
-    });
+    let sess = driver::build_session(options,
+                                     @EncodableWarningEmitter as
+                                        @diagnostic::Emitter);
     let intr = token::get_ident_interner();
 
     //
@@ -243,7 +258,9 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     let input = driver::str_input(code.to_managed());
     let cfg = driver::build_configuration(sess);
     let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
-    let sess = driver::build_session(options, diagnostic::emit);
+    let sess = driver::build_session(options,
+                                     @diagnostic::DefaultEmitter as
+                                        @diagnostic::Emitter);
 
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
     let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
@@ -305,7 +322,9 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(src_path.clone());
-        let sess = driver::build_session(options, diagnostic::emit);
+        let sess = driver::build_session(options,
+                                         @diagnostic::DefaultEmitter as
+                                            @diagnostic::Emitter);
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess);
         let outputs = driver::build_output_filenames(
@@ -502,6 +521,19 @@ pub fn main() {
     main_args(args);
 }
 
+struct Completer;
+
+impl CompletionCb for Completer {
+    fn complete(&self, line: ~str, suggest: &fn(~str)) {
+        if line.starts_with(":") {
+            suggest(~":clear");
+            suggest(~":exit");
+            suggest(~":help");
+            suggest(~":load");
+        }
+    }
+}
+
 pub fn main_args(args: &[~str]) {
     #[fixed_stack_segment]; #[inline(never)];
 
@@ -525,13 +557,8 @@ pub fn main_args(args: &[~str]) {
         println("unstable. If you encounter problems, please use the");
         println("compiler instead. Type :help for help.");
 
-        do rl::complete |line, suggest| {
-            if line.starts_with(":") {
-                suggest(~":clear");
-                suggest(~":exit");
-                suggest(~":help");
-                suggest(~":load");
-            }
+        unsafe {
+            rl::complete(@Completer as @CompletionCb)
         }
     }
 

@@ -13,11 +13,11 @@ struct parameterized1<'self> {
 }
 
 struct not_parameterized1 {
-    g: @fn()
+    g: &'static fn()
 }
 
 struct not_parameterized2 {
-    g: @fn()
+    g: &'static fn()
 }
 
 fn take1(p: parameterized1) -> parameterized1 { p }

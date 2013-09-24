@@ -36,37 +36,39 @@
  * still held if needed.
  */
 
-
-use std::option;
 use std::ptr;
+use std::routine::Runnable;
+use std::util;
 
 /**
  * The type representing a foreign chunk of memory
- *
  */
 pub struct CVec<T> {
     priv base: *mut T,
     priv len: uint,
-    priv rsrc: @DtorRes
+    priv rsrc: @DtorRes,
 }
 
 struct DtorRes {
-  dtor: Option<@fn()>,
+    dtor: Option<~Runnable>,
 }
 
 #[unsafe_destructor]
 impl Drop for DtorRes {
     fn drop(&mut self) {
-        match self.dtor {
-            option::None => (),
-            option::Some(f) => f()
+        let dtor = util::replace(&mut self.dtor, None);
+        match dtor {
+            None => (),
+            Some(f) => f.run()
         }
     }
 }
 
-fn DtorRes(dtor: Option<@fn()>) -> DtorRes {
-    DtorRes {
-        dtor: dtor
+impl DtorRes {
+    fn new(dtor: Option<~Runnable>) -> DtorRes {
+        DtorRes {
+            dtor: dtor,
+        }
     }
 }
 
@@ -83,10 +85,10 @@ fn DtorRes(dtor: Option<@fn()>) -> DtorRes {
  * * len - The number of elements in the buffer
  */
 pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
-    return CVec{
+    return CVec {
         base: base,
         len: len,
-        rsrc: @DtorRes(option::None)
+        rsrc: @DtorRes::new(None)
     };
 }
 
@@ -101,12 +103,12 @@ pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
  * * dtor - A function to run when the value is destructed, useful
  *          for freeing the buffer, etc.
  */
-pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
-  -> CVec<T> {
+pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: ~Runnable)
+                                 -> CVec<T> {
     return CVec{
         base: base,
         len: len,
-        rsrc: @DtorRes(option::Some(dtor))
+        rsrc: @DtorRes::new(Some(dtor))
     };
 }
 
@@ -153,6 +155,20 @@ mod tests {
 
     use std::libc::*;
     use std::libc;
+    use std::routine::Runnable;
+
+    struct LibcFree {
+        mem: *c_void,
+    }
+
+    impl Runnable for LibcFree {
+        #[fixed_stack_segment]
+        fn run(~self) {
+            unsafe {
+                libc::free(self.mem)
+            }
+        }
+    }
 
     fn malloc(n: size_t) -> CVec<u8> {
         #[fixed_stack_segment];
@@ -163,12 +179,11 @@ mod tests {
 
             assert!(mem as int != 0);
 
-            return c_vec_with_dtor(mem as *mut u8, n as uint, || f(mem));
-        }
-
-        fn f(mem: *c_void) {
-            #[fixed_stack_segment]; #[inline(never)];
-            unsafe { libc::free(mem) }
+            return c_vec_with_dtor(mem as *mut u8,
+                                   n as uint,
+                                   ~LibcFree {
+                                    mem: mem,
+                                   } as ~Runnable);
         }
     }
 

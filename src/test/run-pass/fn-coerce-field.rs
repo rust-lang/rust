@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct r {
-    field: @fn()
+struct r<'self> {
+    field: &'self fn()
 }
 
 pub fn main() {

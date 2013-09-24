@@ -21,12 +21,11 @@ use syntax::attr;
 use syntax::codemap::{dummy_sp, Span, ExpnInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
+use syntax::fold::ast_fold;
 use syntax::fold;
 use syntax::opt_vec;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
-
-type node_id_gen = @fn() -> ast::NodeId;
 
 struct Test {
     span: Span,
@@ -61,9 +60,89 @@ pub fn modify_for_testing(sess: session::Session,
     }
 }
 
-fn generate_test_harness(sess: session::Session,
-                         crate: @ast::Crate)
-                      -> @ast::Crate {
+struct TestHarnessGenerator {
+    cx: @mut TestCtxt,
+}
+
+impl fold::ast_fold for TestHarnessGenerator {
+    fn fold_crate(&self, c: &ast::Crate) -> ast::Crate {
+        let folded = fold::noop_fold_crate(c, self);
+
+        // Add a special __test module to the crate that will contain code
+        // generated for the test harness
+        ast::Crate {
+            module: add_test_module(self.cx, &folded.module),
+            .. folded
+        }
+    }
+
+    fn fold_item(&self, i: @ast::item) -> Option<@ast::item> {
+        self.cx.path.push(i.ident);
+        debug!("current path: %s",
+               ast_util::path_name_i(self.cx.path.clone()));
+
+        if is_test_fn(self.cx, i) || is_bench_fn(i) {
+            match i.node {
+                ast::item_fn(_, purity, _, _, _)
+                    if purity == ast::unsafe_fn => {
+                    let sess = self.cx.sess;
+                    sess.span_fatal(i.span,
+                                    "unsafe functions cannot be used for \
+                                     tests");
+                }
+                _ => {
+                    debug!("this is a test function");
+                    let test = Test {
+                        span: i.span,
+                        path: self.cx.path.clone(),
+                        bench: is_bench_fn(i),
+                        ignore: is_ignored(self.cx, i),
+                        should_fail: should_fail(i)
+                    };
+                    self.cx.testfns.push(test);
+                    // debug!("have %u test/bench functions",
+                    //        cx.testfns.len());
+                }
+            }
+        }
+
+        let res = fold::noop_fold_item(i, self);
+        self.cx.path.pop();
+        return res;
+    }
+
+    fn fold_mod(&self, m: &ast::_mod) -> ast::_mod {
+        // Remove any #[main] from the AST so it doesn't clash with
+        // the one we're going to add. Only if compiling an executable.
+
+        fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
+            if !*cx.sess.building_library {
+                @ast::item {
+                    attrs: do item.attrs.iter().filter_map |attr| {
+                        if "main" != attr.name() {
+                            Some(*attr)
+                        } else {
+                            None
+                        }
+                    }.collect(),
+                    .. (*item).clone()
+                }
+            } else {
+                item
+            }
+        }
+
+        let mod_nomain = ast::_mod {
+            view_items: m.view_items.clone(),
+            items: m.items.iter().map(|i| nomain(self.cx, *i)).collect(),
+        };
+
+        fold::noop_fold_mod(&mod_nomain, self)
+    }
+}
+
+fn generate_test_harness(sess: session::Session, crate: @ast::Crate)
+                         -> @ast::Crate {
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         crate: crate,
@@ -81,12 +160,9 @@ fn generate_test_harness(sess: session::Session,
         }
     });
 
-    let precursor = @fold::AstFoldFns {
-        fold_crate: |a,b| fold_crate(cx, a, b),
-        fold_item: |a,b| fold_item(cx, a, b),
-        fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
-
-    let fold = fold::make_fold(precursor);
+    let fold = TestHarnessGenerator {
+        cx: cx
+    };
     let res = @fold.fold_crate(&*crate);
     ext_cx.bt_pop();
     return res;
@@ -99,85 +175,6 @@ fn strip_test_functions(crate: &ast::Crate) -> @ast::Crate {
         !attr::contains_name(attrs, "test") &&
         !attr::contains_name(attrs, "bench")
     }
-}
-
-fn fold_mod(cx: @mut TestCtxt,
-            m: &ast::_mod,
-            fld: @fold::ast_fold)
-         -> ast::_mod {
-    // Remove any #[main] from the AST so it doesn't clash with
-    // the one we're going to add. Only if compiling an executable.
-
-    fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
-        if !*cx.sess.building_library {
-            @ast::item {
-                attrs: do item.attrs.iter().filter_map |attr| {
-                    if "main" != attr.name() {
-                        Some(*attr)
-                    } else {
-                        None
-                    }
-                }.collect(),
-                .. (*item).clone()
-            }
-        } else {
-            item
-        }
-    }
-
-    let mod_nomain = ast::_mod {
-        view_items: m.view_items.clone(),
-        items: m.items.iter().map(|i| nomain(cx, *i)).collect(),
-    };
-
-    fold::noop_fold_mod(&mod_nomain, fld)
-}
-
-fn fold_crate(cx: @mut TestCtxt, c: &ast::Crate, fld: @fold::ast_fold)
-              -> ast::Crate {
-    let folded = fold::noop_fold_crate(c, fld);
-
-    // Add a special __test module to the crate that will contain code
-    // generated for the test harness
-    ast::Crate {
-        module: add_test_module(cx, &folded.module),
-        .. folded
-    }
-}
-
-
-fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
-          -> Option<@ast::item> {
-    cx.path.push(i.ident);
-    debug!("current path: %s",
-           ast_util::path_name_i(cx.path.clone()));
-
-    if is_test_fn(cx, i) || is_bench_fn(i) {
-        match i.node {
-          ast::item_fn(_, purity, _, _, _) if purity == ast::unsafe_fn => {
-            let sess = cx.sess;
-            sess.span_fatal(
-                i.span,
-                "unsafe functions cannot be used for tests");
-          }
-          _ => {
-            debug!("this is a test function");
-            let test = Test {
-                span: i.span,
-                path: cx.path.clone(),
-                bench: is_bench_fn(i),
-                ignore: is_ignored(cx, i),
-                should_fail: should_fail(i)
-            };
-            cx.testfns.push(test);
-            // debug!("have %u test/bench functions", cx.testfns.len());
-          }
-        }
-    }
-
-    let res = fold::noop_fold_item(i, fld);
-    cx.path.pop();
-    return res;
 }
 
 fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {

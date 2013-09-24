@@ -11,9 +11,22 @@
 use driver::session::Session;
 
 use syntax::ast;
-use syntax::ast_util;
+use syntax::fold::ast_fold;
+
+struct NodeIdAssigner {
+    sess: Session,
+}
+
+impl ast_fold for NodeIdAssigner {
+    fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
+        assert_eq!(old_id, ast::DUMMY_NODE_ID);
+        self.sess.next_node_id()
+    }
+}
 
 pub fn assign_node_ids(sess: Session, crate: @ast::Crate) -> @ast::Crate {
-    let fold = ast_util::node_id_assigner(|| sess.next_node_id());
+    let fold = NodeIdAssigner {
+        sess: sess,
+    };
     @fold.fold_crate(crate)
 }

@@ -24,6 +24,7 @@ use middle;
 use util::ppaux::ty_to_str;
 
 use std::at_vec;
+use std::libc;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize;
@@ -287,26 +288,24 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
     ebml_w.end_tag();
 }
 
-// Produces a simplified copy of the AST which does not include things
-// that we do not need to or do not want to export.  For example, we
-// do not include any nested items: if these nested items are to be
-// inlined, their AST will be exported separately (this only makes
-// sense because, in Rust, nested items are independent except for
-// their visibility).
-//
-// As it happens, trans relies on the fact that we do not export
-// nested items, as otherwise it would get confused when translating
-// inlined items.
-fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: &ast::Block, fld: @fold::ast_fold) -> ast::Block {
+struct NestedItemsDropper {
+    contents: (),
+}
+
+impl fold::ast_fold for NestedItemsDropper {
+    fn fold_block(&self, blk: &ast::Block) -> ast::Block {
         let stmts_sans_items = do blk.stmts.iter().filter_map |stmt| {
             match stmt.node {
-              ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
-              ast::StmtDecl(@codemap::Spanned { node: ast::DeclLocal(_), span: _}, _)
-                => Some(*stmt),
-              ast::StmtDecl(@codemap::Spanned { node: ast::DeclItem(_), span: _}, _)
-                => None,
-              ast::StmtMac(*) => fail!("unexpanded macro in astencode")
+                ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
+                ast::StmtDecl(@codemap::Spanned {
+                    node: ast::DeclLocal(_),
+                    span: _
+                }, _) => Some(*stmt),
+                ast::StmtDecl(@codemap::Spanned {
+                    node: ast::DeclItem(_),
+                    span: _
+                }, _) => None,
+                ast::StmtMac(*) => fail!("unexpanded macro in astencode")
             }
         }.collect();
         let blk_sans_items = ast::Block {
@@ -318,13 +317,24 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
             rules: blk.rules,
             span: blk.span,
         };
-        fold::noop_fold_block(&blk_sans_items, fld)
+        fold::noop_fold_block(&blk_sans_items, self)
     }
+}
 
-    let fld = fold::make_fold(@fold::AstFoldFns {
-        fold_block: drop_nested_items,
-        .. *fold::default_ast_fold()
-    });
+// Produces a simplified copy of the AST which does not include things
+// that we do not need to or do not want to export.  For example, we
+// do not include any nested items: if these nested items are to be
+// inlined, their AST will be exported separately (this only makes
+// sense because, in Rust, nested items are independent except for
+// their visibility).
+//
+// As it happens, trans relies on the fact that we do not export
+// nested items, as otherwise it would get confused when translating
+// inlined items.
+fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
+    let fld = NestedItemsDropper {
+        contents: (),
+    };
 
     match *ii {
         //hack: we're not dropping items
@@ -341,14 +351,24 @@ fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
     Decodable::decode(&mut d)
 }
 
+struct AstRenumberer {
+    xcx: @ExtendedDecodeContext,
+}
+
+impl fold::ast_fold for AstRenumberer {
+    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
+        self.xcx.tr_id(id)
+    }
+    fn new_span(&self, span: Span) -> Span {
+        self.xcx.tr_span(span)
+    }
+}
+
 fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
     -> ast::inlined_item {
-    let fld = fold::make_fold(@fold::AstFoldFns{
-        new_id: |a| xcx.tr_id(a),
-        new_span: |a| xcx.tr_span(a),
-        .. *fold::default_ast_fold()
-    });
-
+    let fld = AstRenumberer {
+        xcx: xcx,
+    };
     match ii {
         ast::ii_item(i) => ast::ii_item(fld.fold_item(i).unwrap()),
         ast::ii_method(d, is_provided, m) =>
@@ -830,6 +850,26 @@ impl write_tag_and_id for writer::Encoder {
     }
 }
 
+struct SideTableEncodingIdVisitor {
+    ecx_ptr: *libc::c_void,
+    new_ebml_w: writer::Encoder,
+    maps: Maps,
+}
+
+impl ast_util::IdVisitingOperation for SideTableEncodingIdVisitor {
+    fn visit_id(&self, id: ast::NodeId) {
+        // Note: this will cause a copy of ebml_w, which is bad as
+        // it is mutable. But I believe it's harmless since we generate
+        // balanced EBML.
+        let mut new_ebml_w = self.new_ebml_w.clone();
+        // See above
+        let ecx: &e::EncodeContext = unsafe {
+            cast::transmute(self.ecx_ptr)
+        };
+        encode_side_tables_for_id(ecx, self.maps, &mut new_ebml_w, id)
+    }
+}
+
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
@@ -837,22 +877,16 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
     ebml_w.start_tag(c::tag_table as uint);
     let new_ebml_w = (*ebml_w).clone();
 
-    // Because the ast visitor uses @fn, I can't pass in
-    // ecx directly, but /I/ know that it'll be fine since
-    // the lifetime is tied to the CrateContext that
-    // lives this entire section.
-    let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
-    ast_util::visit_ids_for_inlined_item(
-        ii,
-        |id: ast::NodeId| {
-            // Note: this will cause a copy of ebml_w, which is bad as
-            // it is mutable. But I believe it's harmless since we generate
-            // balanced EBML.
-            let mut new_ebml_w = new_ebml_w.clone();
-            // See above
-            let ecx : &e::EncodeContext = unsafe { cast::transmute(ecx_ptr) };
-            encode_side_tables_for_id(ecx, maps, &mut new_ebml_w, id)
-        });
+    // Because the ast visitor uses @IdVisitingOperation, I can't pass in
+    // ecx directly, but /I/ know that it'll be fine since the lifetime is
+    // tied to the CrateContext that lives throughout this entire section.
+    ast_util::visit_ids_for_inlined_item(ii, @SideTableEncodingIdVisitor {
+        ecx_ptr: unsafe {
+            cast::transmute(ecx)
+        },
+        new_ebml_w: new_ebml_w,
+        maps: maps,
+    } as @ast_util::IdVisitingOperation);
     ebml_w.end_tag();
 }
 
