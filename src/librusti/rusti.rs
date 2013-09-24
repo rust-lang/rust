@@ -517,8 +517,7 @@ pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~st
 }
 
 pub fn main() {
-    let args = os::args();
-    main_args(args);
+    os::set_exit_status(main_args(os::args()));
 }
 
 struct Completer;
@@ -534,7 +533,7 @@ impl CompletionCb for Completer {
     }
 }
 
-pub fn main_args(args: &[~str]) {
+pub fn main_args(args: &[~str]) -> int {
     #[fixed_stack_segment]; #[inline(never)];
 
     let input = io::stdin();
@@ -576,6 +575,8 @@ pub fn main_args(args: &[~str]) {
             }
         }
     }
+
+    return 0;
 }
 
 #[cfg(test)]
