@@ -11,6 +11,8 @@
 use std::num;
 use std::uint;
 
+use syntax::ast;
+
 use clean;
 use clean::Item;
 use plugins;

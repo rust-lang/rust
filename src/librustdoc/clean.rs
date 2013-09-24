@@ -471,8 +471,7 @@ impl Clean<Item> for doctree::Trait {
 
 impl Clean<Type> for ast::trait_ref {
     fn clean(&self) -> Type {
-        let t = Unresolved(self.path.clean(), None, self.ref_id);
-        resolve_type(&t)
+        resolve_type(self.path.clean(), None, self.ref_id)
     }
 }
 
@@ -517,9 +516,6 @@ impl Clean<TraitMethod> for ast::trait_method {
 /// it does not preserve mutability or boxes.
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Type {
-    /// Most types start out as "Unresolved". It serves as an intermediate stage between cleaning
-    /// and type resolution.
-    Unresolved(Path, Option<~[TyParamBound]>, ast::NodeId),
     /// structs/enums/traits (anything that'd be an ast::ty_path)
     ResolvedPath { path: Path, typarams: Option<~[TyParamBound]>, id: ast::NodeId },
     /// Reference to an item in an external crate (fully qualified path)
@@ -558,25 +554,25 @@ impl Clean<Type> for ast::Ty {
         debug!("cleaning type `%?`", self);
         let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
         debug!("span corresponds to `%s`", codemap.span_to_str(self.span));
-        let t = match self.node {
+        match self.node {
             ty_nil => Unit,
-            ty_ptr(ref m) =>  RawPointer(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
+            ty_ptr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
             ty_rptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
-                             type_: ~resolve_type(&m.ty.clean())},
-            ty_box(ref m) => Managed(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
-            ty_uniq(ref m) => Unique(~resolve_type(&m.ty.clean())),
-            ty_vec(ref m) => Vector(~resolve_type(&m.ty.clean())),
-            ty_fixed_length_vec(ref m, ref e) => FixedVector(~resolve_type(&m.ty.clean()),
+                             type_: ~m.ty.clean()},
+            ty_box(ref m) => Managed(m.mutbl.clean(), ~m.ty.clean()),
+            ty_uniq(ref m) => Unique(~m.ty.clean()),
+            ty_vec(ref m) => Vector(~m.ty.clean()),
+            ty_fixed_length_vec(ref m, ref e) => FixedVector(~m.ty.clean(),
                                                              e.span.to_src()),
-            ty_tup(ref tys) => Tuple(tys.iter().map(|x| resolve_type(&x.clean())).collect()),
-            ty_path(ref p, ref tpbs, id) => Unresolved(p.clean(), tpbs.clean(), id),
+            ty_tup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
+            ty_path(ref p, ref tpbs, id) =>
+                resolve_type(p.clean(), tpbs.clean(), id),
             ty_closure(ref c) => Closure(~c.clean()),
             ty_bare_fn(ref barefn) => BareFunction(~barefn.clean()),
             ty_bot => Bottom,
             ref x => fail!("Unimplemented type %?", x),
-        };
-        resolve_type(&t)
+        }
     }
 }
 
@@ -1039,13 +1035,9 @@ fn remove_comment_tags(s: &str) -> ~str {
 }
 
 /// Given a Type, resolve it using the def_map
-fn resolve_type(t: &Type) -> Type {
+fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
+                id: ast::NodeId) -> Type {
     use syntax::ast::*;
-
-    let (path, tpbs, id) = match t {
-        &Unresolved(ref path, ref tbps, id) => (path, tbps, id),
-        _ => return (*t).clone(),
-    };
 
     let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
     debug!("searching for %? in defmap", id);
