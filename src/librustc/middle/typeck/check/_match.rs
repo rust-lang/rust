@@ -37,12 +37,12 @@ pub fn check_match(fcx: @mut FnCtxt,
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
     for arm in arms.iter() {
-        let pcx = pat_ctxt {
+        let mut pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
         };
 
-        for p in arm.pats.iter() { check_pat(&pcx, *p, discrim_ty);}
+        for p in arm.pats.iter() { check_pat(&mut pcx, *p, discrim_ty);}
     }
 
     // The result of the match is the common supertype of all the
