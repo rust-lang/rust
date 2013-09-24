@@ -25,6 +25,7 @@ use ext::build::AstBuilder;
 use codemap::Span;
 
 pub mod clone;
+pub mod copy;
 pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
@@ -83,6 +84,9 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                         match tname.as_slice() {
                             "Clone" => expand!(clone::expand_deriving_clone),
                             "DeepClone" => expand!(clone::expand_deriving_deep_clone),
+
+                            "Copy" => expand!(copy::expand_deriving_copy),
+                            "DeepCopy" => expand!(copy::expand_deriving_deep_copy),
 
                             "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
 

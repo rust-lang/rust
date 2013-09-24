@@ -149,6 +149,7 @@ pub mod iter;
 pub mod to_str;
 pub mod to_bytes;
 pub mod clone;
+pub mod copy;
 pub mod io;
 pub mod hash;
 pub mod container;

@@ -46,6 +46,7 @@ pub use from_str::from_str;
 // Reexported types and traits
 pub use c_str::ToCStr;
 pub use clone::{Clone, DeepClone};
+pub use copy::{Copy, DeepCopy};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
