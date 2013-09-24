@@ -27,7 +27,7 @@ impl<'self> ToHex for &'self [u8] {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::hex::ToHex;
      *
@@ -35,7 +35,7 @@ impl<'self> ToHex for &'self [u8] {
      *     let str = [52,32].to_hex();
      *     printfln!("%s", str);
      * }
-     * ~~~
+     * ```
      */
     fn to_hex(&self) -> ~str {
         let mut v = vec::with_capacity(self.len() * 2);
@@ -70,7 +70,7 @@ impl<'self> FromHex for &'self str {
      *
      * This converts a string literal to hexadecimal and back.
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::hex::{FromHex, ToHex};
      * use std::str;
@@ -83,7 +83,7 @@ impl<'self> FromHex for &'self str {
      *     let result_str = str::from_utf8(bytes);
      *     printfln!("%s", result_str);
      * }
-     * ~~~
+     * ```
      */
     fn from_hex(&self) -> Result<~[u8], ~str> {
         // This may be an overestimate if there is any whitespace

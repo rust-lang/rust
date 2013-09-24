@@ -23,7 +23,7 @@ of a value and take action, always accounting for the `None` case.
 
 # Example
 
-~~~
+ ```
 let msg = Some(~"howdy");
 
 // Take a reference to the contained string
@@ -37,7 +37,7 @@ let unwrapped_msg = match msg {
     Some(m) => m,
     None => ~"default message"
 };
-~~~
+ ```
 
 */
 
