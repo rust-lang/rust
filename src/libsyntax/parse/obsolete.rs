@@ -65,6 +65,7 @@ pub enum ObsoleteSyntax {
     ObsoletePrivVisibility,
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
+    ObsoleteEmptyImpl,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -255,6 +256,10 @@ impl ParserObsoleteMethods for Parser {
                 "const pointer",
                 "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
                  `@Foo`"
+            ),
+            ObsoleteEmptyImpl => (
+                "empty implementation",
+                "instead of `impl A;`, write `impl A {}`"
             ),
         };
 
