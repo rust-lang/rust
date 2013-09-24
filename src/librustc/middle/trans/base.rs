@@ -2321,6 +2321,23 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
     }
 }
 
+fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
+                      llfn: ValueRef) {
+    ccx.item_symbols.insert(node_id, sym);
+
+    if !*ccx.sess.building_library {
+        lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+    }
+
+    // FIXME #4404 android JNI hacks
+    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
+                      (*ccx.sess.building_library &&
+                       ccx.sess.targ_cfg.os == session::OsAndroid));
+    if is_entry {
+        create_entry_wrapper(ccx, sp, llfn);
+    }
+}
+
 pub fn register_fn(ccx: @mut CrateContext,
                    sp: Span,
                    sym: ~str,
@@ -2336,15 +2353,7 @@ pub fn register_fn(ccx: @mut CrateContext,
     };
 
     let llfn = decl_rust_fn(ccx, f.sig.inputs, f.sig.output, sym);
-    ccx.item_symbols.insert(node_id, sym);
-
-    // FIXME #4404 android JNI hacks
-    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
-                      (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::OsAndroid));
-    if is_entry {
-        create_entry_wrapper(ccx, sp, llfn);
-    }
+    finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
 
@@ -2361,15 +2370,7 @@ pub fn register_fn_llvmty(ccx: @mut CrateContext,
            ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
     let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty);
-    ccx.item_symbols.insert(node_id, sym);
-
-    // FIXME #4404 android JNI hacks
-    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
-                      (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::OsAndroid));
-    if is_entry {
-        create_entry_wrapper(ccx, sp, llfn);
-    }
+    finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
 
