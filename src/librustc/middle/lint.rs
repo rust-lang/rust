@@ -375,8 +375,6 @@ enum AnyVisitor {
     NewVisitor(@mut visit::Visitor<()>),
 }
 
-type VCObj = @mut Visitor<@mut Context>;
-
 struct Context {
     // All known lint modes (string versions)
     dict: @LintDict,
