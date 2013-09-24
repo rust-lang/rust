@@ -162,7 +162,7 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
                 _ => true
             }).map(|x| x.clone()).collect();
             if "" != docstr {
-                a.push(clean::NameValue(~"doc", docstr.trim().to_owned()));
+                a.push(clean::NameValue(~"doc", docstr));
             }
             i.attrs = a;
             self.fold_item_recur(i)
