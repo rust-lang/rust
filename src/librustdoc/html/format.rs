@@ -97,7 +97,8 @@ impl fmt::Default for clean::Path {
     }
 }
 
-fn resolved_path(w: &mut io::Writer, id: ast::NodeId, path: &clean::Path) {
+fn resolved_path(w: &mut io::Writer, id: ast::NodeId,
+                 path: &clean::Path, print_all: bool) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
     let last = path.segments.last();
@@ -119,47 +120,73 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId, path: &clean::Path) {
     // Did someone say rightward-drift?
     do local_data::get(current_location_key) |loc| {
         let loc = loc.unwrap();
+
+        if print_all {
+            let mut root = match path.segments[0].name.as_slice() {
+                "super" => ~"../",
+                "self" => ~"",
+                _ => "../".repeat(loc.len() - 1),
+            };
+            let amt = path.segments.len() - 1;
+            for seg in path.segments.slice_to(amt).iter() {
+                if "super" == seg.name || "self" == seg.name {
+                    write!(w, "{}::", seg.name);
+                } else {
+                    root.push_str(seg.name);
+                    root.push_str("/");
+                    write!(w, "<a class='mod'
+                                  href='{}index.html'>{}</a>::",
+                           root,
+                           seg.name);
+                }
+            }
+        }
+
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
                 match cache.paths.find(&id) {
                     // This is a documented path, link to it!
                     Some(&(ref fqp, shortty)) => {
                         let fqn = fqp.connect("::");
-                        let mut same = 0;
-                        for (a, b) in loc.iter().zip(fqp.iter()) {
-                            if *a == *b {
-                                same += 1;
-                            } else {
-                                break;
-                            }
-                        }
+                        let same = loc.iter().zip(fqp.iter())
+                                      .take_while(|&(a, b)| *a == *b).len();
 
                         let mut url = ~"";
-                        for _ in range(same, loc.len()) {
+                        if "super" == path.segments[0].name {
                             url.push_str("../");
+                        } else if "self" != path.segments[0].name {
+                            url.push_str("../".repeat(loc.len() - same));
                         }
-                        if same == fqp.len() {
-                            url.push_str(shortty);
-                            url.push_str(".");
-                            url.push_str(*fqp.last());
-                            url.push_str(".html");
-                        } else {
+                        if same < fqp.len() {
                             let remaining = fqp.slice_from(same);
                             let to_link = remaining.slice_to(remaining.len() - 1);
                             for component in to_link.iter() {
                                 url.push_str(*component);
                                 url.push_str("/");
                             }
-                            url.push_str(shortty);
-                            url.push_str(".");
-                            url.push_str(*remaining.last());
-                            url.push_str(".html");
                         }
-
+                        match shortty {
+                            "mod" => {
+                                url.push_str(*fqp.last());
+                                url.push_str("/index.html");
+                            }
+                            _ => {
+                                url.push_str(shortty);
+                                url.push_str(".");
+                                url.push_str(*fqp.last());
+                                url.push_str(".html");
+                            }
+                        }
                         write!(w, "<a class='{}' href='{}' title='{}'>{}</a>{}",
                                shortty, url, fqn, last.name, generics);
                     }
                     None => {
+                        if print_all {
+                            let amt = path.segments.len() - 1;
+                            for seg in path.segments.iter().take(amt) {
+                                write!(w, "{}::", seg.name);
+                            }
+                        }
                         write!(w, "{}{}", last.name, generics);
                     }
                 };
@@ -178,9 +205,8 @@ impl fmt::Default for clean::Type {
                     }
                 }
             }
-            clean::Unresolved(*) => unreachable!(),
             clean::ResolvedPath{id, typarams: ref typarams, path: ref path} => {
-                resolved_path(f.buf, id, path);
+                resolved_path(f.buf, id, path, false);
                 match *typarams {
                     Some(ref params) => {
                         f.buf.write("&lt;".as_bytes());
@@ -363,6 +389,66 @@ impl fmt::Default for PuritySpace {
             ast::unsafe_fn => write!(f.buf, "unsafe "),
             ast::extern_fn => write!(f.buf, "extern "),
             ast::impure_fn => {}
+        }
+    }
+}
+
+impl fmt::Default for clean::ViewPath {
+    fn fmt(v: &clean::ViewPath, f: &mut fmt::Formatter) {
+        match *v {
+            clean::SimpleImport(ref name, ref src) => {
+                if *name == src.path.segments.last().name {
+                    write!(f.buf, "use {};", *src);
+                } else {
+                    write!(f.buf, "use {} = {};", *name, *src);
+                }
+            }
+            clean::GlobImport(ref src) => {
+                write!(f.buf, "use {}::*;", *src);
+            }
+            clean::ImportList(ref src, ref names) => {
+                write!(f.buf, "use {}::\\{", *src);
+                for (i, n) in names.iter().enumerate() {
+                    if i > 0 { write!(f.buf, ", "); }
+                    write!(f.buf, "{}", *n);
+                }
+                write!(f.buf, "\\};");
+            }
+        }
+    }
+}
+
+impl fmt::Default for clean::ImportSource {
+    fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
+        match v.did {
+            Some(did) if ast_util::is_local(did) => {
+                resolved_path(f.buf, did.node, &v.path, true);
+            }
+            _ => {
+                for (i, seg) in v.path.segments.iter().enumerate() {
+                    if i > 0 { write!(f.buf, "::") }
+                    write!(f.buf, "{}", seg.name);
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Default for clean::ViewListIdent {
+    fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
+        match v.source {
+            Some(did) if ast_util::is_local(did) => {
+                let path = clean::Path {
+                    global: false,
+                    segments: ~[clean::PathSegment {
+                        name: v.name.clone(),
+                        lifetime: None,
+                        types: ~[],
+                    }]
+                };
+                resolved_path(f.buf, did.node, &path, false);
+            }
+            _ => write!(f.buf, "{}", v.name),
         }
     }
 }

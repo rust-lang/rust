@@ -930,26 +930,45 @@ impl Clean<ViewItemInner> for ast::view_item_ {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewPath {
-    SimpleImport(~str, Path, ast::NodeId),
-    GlobImport(Path, ast::NodeId),
-    ImportList(Path, ~[ViewListIdent], ast::NodeId)
+    // use str = source;
+    SimpleImport(~str, ImportSource),
+    // use source::*;
+    GlobImport(ImportSource),
+    // use source::{a, b, c};
+    ImportList(ImportSource, ~[ViewListIdent]),
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct ImportSource {
+    path: Path,
+    did: Option<ast::DefId>,
 }
 
 impl Clean<ViewPath> for ast::view_path {
     fn clean(&self) -> ViewPath {
         match self.node {
-            ast::view_path_simple(ref i, ref p, ref id) => SimpleImport(i.clean(), p.clean(), *id),
-            ast::view_path_glob(ref p, ref id) => GlobImport(p.clean(), *id),
-            ast::view_path_list(ref p, ref pl, ref id) => ImportList(p.clean(), pl.clean(), *id),
+            ast::view_path_simple(ref i, ref p, id) =>
+                SimpleImport(i.clean(), resolve_use_source(p.clean(), id)),
+            ast::view_path_glob(ref p, id) =>
+                GlobImport(resolve_use_source(p.clean(), id)),
+            ast::view_path_list(ref p, ref pl, id) =>
+                ImportList(resolve_use_source(p.clean(), id), pl.clean()),
         }
     }
 }
 
-pub type ViewListIdent = ~str;
+#[deriving(Clone, Encodable, Decodable)]
+pub struct ViewListIdent {
+    name: ~str,
+    source: Option<ast::DefId>,
+}
 
 impl Clean<ViewListIdent> for ast::path_list_ident {
     fn clean(&self) -> ViewListIdent {
-        self.node.name.clean()
+        ViewListIdent {
+            name: self.node.name.clean(),
+            source: resolve_def(self.node.id),
+        }
     }
 }
 
@@ -1092,6 +1111,18 @@ fn resolve_type(t: &Type) -> Type {
         let cname = cratedata.name.to_owned();
         External(cname + "::" + path, ty)
     } else {
-        ResolvedPath {path: path.clone(), typarams: tpbs.clone(), id: def_id.node}
+        ResolvedPath {path: path.clone(), typarams: tpbs, id: def_id.node}
     }
+}
+
+fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
+    ImportSource {
+        path: path,
+        did: resolve_def(id),
+    }
+}
+
+fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
+    let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
+    dm.find(&id).map_move(|&d| ast_util::def_id_of_def(d))
 }
