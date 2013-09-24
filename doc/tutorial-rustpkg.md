@@ -7,7 +7,7 @@ package up your Rust code and share it with other people. This tutorial will
 get you started on all of the concepts and commands you need to give the gift
 of Rust code to someone else.
 
-## Installing External Packages
+# Installing External Packages
 
 First, let's try to use an external package somehow. I've made a sample package
 called `hello` to demonstrate how to do so.  Here's how `hello` is used:
@@ -68,7 +68,7 @@ Hello, world.
 
 Simple! That's all it takes.
 
-## Workspaces
+# Workspaces
 
 Before we can talk about how to make packages of your own, you have to
 understand the big concept with `rustpkg`: workspaces. A 'workspace' is simply
@@ -88,14 +88,14 @@ There are also default file names you'll want to follow as well:
 * `main.rs`: A file that's going to become an executable.
 * `lib.rs`: A file that's going to become a library.
 
-## Building your own Package
+# Building your own Package
 
 Now that you've got workspaces down, let's build your own copy of `hello`. Go
 to wherever you keep your personal projects, and let's make all of the
 directories we'll need. I'll refer to this personal project directory as
 `~/src` for the rest of this tutorial.
 
-### Creating our workspace
+## Creating our workspace
 
 ~~~ {.notrust}
 $ cd ~/src
@@ -150,7 +150,7 @@ pub fn world() {
 
 Put this into `src/hello/lib.rs`. Let's talk about each of these attributes:
 
-### Crate attributes for packages
+## Crate attributes for packages
 
 `license` is equally simple: the license we want this code to have. I chose MIT
 here, but you should pick whatever license makes the most sense for you.
@@ -158,7 +158,7 @@ here, but you should pick whatever license makes the most sense for you.
 `desc` is a description of the package and what it does. This should just be a
 sentence or two.
 
-### Building your package
+## Building your package
 
 Building your package is simple:
 
@@ -206,7 +206,7 @@ note: Installed package github.com/YOUR_USERNAME/hello-0.1 to /home/yourusername
 
 That's it!
 
-## More resources
+# More resources
 
 There's a lot more going on with `rustpkg`, this is just to get you started.
 Check out [the rustpkg manual](rustpkg.html) for the full details on how to
