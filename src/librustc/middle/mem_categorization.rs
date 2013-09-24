@@ -187,8 +187,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(gc_ptr(m)))
         }
 
-        ty::ty_estr(ty::vstore_box) |
-        ty::ty_closure(ty::ClosureTy {sigil: ast::ManagedSigil, _}) => {
+        ty::ty_estr(ty::vstore_box) => {
             Some(deref_ptr(gc_ptr(ast::MutImmutable)))
         }
 
@@ -515,7 +514,8 @@ impl mem_categorization_ctxt {
                           (ast::BorrowedSigil, ast::Once) => true,
                           // Heap closures always capture by copy/move, and can
                           // move out iff they are once.
-                          (ast::OwnedSigil, _) | (ast::ManagedSigil, _) => false,
+                          (ast::OwnedSigil, _) |
+                          (ast::ManagedSigil, _) => false,
 
                       };
                       if var_is_refd {

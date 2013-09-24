@@ -116,8 +116,7 @@ fn stack_check_fn<'a>(v: StackCheckVisitor,
         visit::fk_anon(*) | visit::fk_fn_block => {
             match ty::get(ty::node_id_to_type(in_cx.tcx, id)).sty {
                 ty::ty_bare_fn(*) |
-                ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) |
-                ty::ty_closure(ty::ClosureTy {sigil: ast::ManagedSigil, _}) => {
+                ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
                     false
                 }
                 _ => {

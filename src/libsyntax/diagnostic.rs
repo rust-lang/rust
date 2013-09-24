@@ -15,9 +15,12 @@ use std::io;
 use std::local_data;
 use extra::term;
 
-pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, Span)>,
-                       msg: &str,
-                       lvl: level);
+pub trait Emitter {
+    fn emit(&self,
+            cmsp: Option<(@codemap::CodeMap, Span)>,
+            msg: &str,
+            lvl: level);
+}
 
 // a handler deals with errors; certain errors
 // (fatal, bug, unimpl) may cause immediate exit,
@@ -55,7 +58,7 @@ pub trait span_handler {
 
 struct HandlerT {
     err_count: uint,
-    emit: Emitter,
+    emit: @Emitter,
 }
 
 struct CodemapT {
@@ -91,11 +94,11 @@ impl span_handler for CodemapT {
 
 impl handler for HandlerT {
     fn fatal(@mut self, msg: &str) -> ! {
-        (self.emit)(None, msg, fatal);
+        self.emit.emit(None, msg, fatal);
         fail!();
     }
     fn err(@mut self, msg: &str) {
-        (self.emit)(None, msg, error);
+        self.emit.emit(None, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count(@mut self) {
@@ -120,10 +123,10 @@ impl handler for HandlerT {
         self.fatal(s);
     }
     fn warn(@mut self, msg: &str) {
-        (self.emit)(None, msg, warning);
+        self.emit.emit(None, msg, warning);
     }
     fn note(@mut self, msg: &str) {
-        (self.emit)(None, msg, note);
+        self.emit.emit(None, msg, note);
     }
     fn bug(@mut self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
@@ -135,7 +138,7 @@ impl handler for HandlerT {
             cmsp: Option<(@codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
-        (self.emit)(cmsp, msg, lvl);
+        self.emit.emit(cmsp, msg, lvl);
     }
 }
 
@@ -145,19 +148,22 @@ pub fn ice_msg(msg: &str) -> ~str {
 
 pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
                     -> @mut span_handler {
-    @mut CodemapT { handler: handler, cm: cm } as @mut span_handler
+    @mut CodemapT {
+        handler: handler,
+        cm: cm,
+    } as @mut span_handler
 }
 
-pub fn mk_handler(emitter: Option<Emitter>) -> @mut handler {
-    let emit: Emitter = match emitter {
+pub fn mk_handler(emitter: Option<@Emitter>) -> @mut handler {
+    let emit: @Emitter = match emitter {
         Some(e) => e,
-        None => {
-            let emit: Emitter = |cmsp, msg, t| emit(cmsp, msg, t);
-            emit
-        }
+        None => @DefaultEmitter as @Emitter
     };
 
-    @mut HandlerT { err_count: 0, emit: emit } as @mut handler
+    @mut HandlerT {
+        err_count: 0,
+        emit: emit,
+    } as @mut handler
 }
 
 #[deriving(Eq)]
@@ -230,31 +236,30 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
     print_maybe_styled(fmt!("%s\n", msg), term::attr::Bold);
 }
 
-pub fn collect(messages: @mut ~[~str])
-            -> @fn(Option<(@codemap::CodeMap, Span)>, &str, level) {
-    let f: @fn(Option<(@codemap::CodeMap, Span)>, &str, level) =
-        |_o, msg: &str, _l| { messages.push(msg.to_str()); };
-    f
-}
+pub struct DefaultEmitter;
 
-pub fn emit(cmsp: Option<(@codemap::CodeMap, Span)>, msg: &str, lvl: level) {
-    match cmsp {
-      Some((cm, sp)) => {
-        let sp = cm.adjust_span(sp);
-        let ss = cm.span_to_str(sp);
-        let lines = cm.span_to_lines(sp);
-        print_diagnostic(ss, lvl, msg);
-        highlight_lines(cm, sp, lvl, lines);
-        print_macro_backtrace(cm, sp);
-      }
-      None => {
-        print_diagnostic("", lvl, msg);
-      }
+impl Emitter for DefaultEmitter {
+    fn emit(&self,
+            cmsp: Option<(@codemap::CodeMap, Span)>,
+            msg: &str,
+            lvl: level) {
+        match cmsp {
+            Some((cm, sp)) => {
+                let sp = cm.adjust_span(sp);
+                let ss = cm.span_to_str(sp);
+                let lines = cm.span_to_lines(sp);
+                print_diagnostic(ss, lvl, msg);
+                highlight_lines(cm, sp, lvl, lines);
+                print_macro_backtrace(cm, sp);
+            }
+            None => print_diagnostic("", lvl, msg),
+        }
     }
 }
 
 fn highlight_lines(cm: @codemap::CodeMap,
-                   sp: Span, lvl: level,
+                   sp: Span,
+                   lvl: level,
                    lines: @codemap::FileLines) {
     let fm = lines.file;
 

@@ -55,7 +55,6 @@ impl<'self,T> Finally<T> for &'self fn() -> T {
 }
 
 finally_fn!(~fn() -> T)
-finally_fn!(@fn() -> T)
 finally_fn!(extern "Rust" fn() -> T)
 
 struct Finallyalizer<'self> {
@@ -119,14 +118,3 @@ fn test_owned() {
     spawn_with_finalizer(owned);
 }
 
-#[test]
-fn test_managed() {
-    let i = @mut 10;
-    let managed: @fn() -> int = || {
-        let r = *i;
-        *i += 10;
-        r
-    };
-    assert_eq!(do managed.finally {}, 10);
-    assert_eq!(*i, 20);
-}

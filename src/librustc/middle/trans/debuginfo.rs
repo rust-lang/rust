@@ -1086,6 +1086,36 @@ fn pointer_type_metadata(cx: &mut CrateContext,
     return ptr_metadata;
 }
 
+trait MemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &mut CrateContext)
+                                  -> ~[MemberDescription];
+}
+
+struct StructMemberDescriptionFactory {
+    fields: ~[ty::field],
+    span: Span,
+}
+
+impl MemberDescriptionFactory for StructMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &mut CrateContext)
+                                  -> ~[MemberDescription] {
+        do self.fields.map |field| {
+            let name = if field.ident.name == special_idents::unnamed_field.name {
+                @""
+            } else {
+                token::ident_to_str(&field.ident)
+            };
+
+            MemberDescription {
+                name: name,
+                llvm_type: type_of::type_of(cx, field.mt.ty),
+                type_metadata: type_metadata(cx, field.mt.ty, self.span),
+                offset: ComputedMemberOffset,
+            }
+        }
+    }
+}
+
 fn prepare_struct_metadata(cx: &mut CrateContext,
                            struct_type: ty::t,
                            def_id: ast::DefId,
@@ -1114,22 +1144,10 @@ fn prepare_struct_metadata(cx: &mut CrateContext,
         metadata_stub: struct_metadata_stub,
         llvm_type: struct_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: |cx| {
-            do fields.map |field| {
-                let name = if field.ident.name == special_idents::unnamed_field.name {
-                    @""
-                } else {
-                    token::ident_to_str(&field.ident)
-                };
-
-                MemberDescription {
-                    name: name,
-                    llvm_type: type_of::type_of(cx, field.mt.ty),
-                    type_metadata: type_metadata(cx, field.mt.ty, span),
-                    offset: ComputedMemberOffset,
-                }
-            }
-        }
+        member_description_factory: @StructMemberDescriptionFactory {
+            fields: fields,
+            span: span,
+        } as @MemberDescriptionFactory,
     }
 }
 
@@ -1139,7 +1157,7 @@ enum RecursiveTypeDescription {
         metadata_stub: DICompositeType,
         llvm_type: Type,
         file_metadata: DIFile,
-        member_description_factory: @fn(cx: &mut CrateContext) -> ~[MemberDescription],
+        member_description_factory: @MemberDescriptionFactory,
     },
     FinalMetadata(DICompositeType)
 }
@@ -1167,7 +1185,8 @@ impl RecursiveTypeDescription {
                 debug_context(cx).created_types.insert(cache_id, metadata_stub);
 
                 // ... then create the member descriptions ...
-                let member_descriptions = member_description_factory(cx);
+                let member_descriptions = member_description_factory.
+                    create_member_descriptions(cx);
 
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
@@ -1177,6 +1196,25 @@ impl RecursiveTypeDescription {
                                               file_metadata,
                                               codemap::dummy_sp());
                 return metadata_stub;
+            }
+        }
+    }
+}
+
+struct TupleMemberDescriptionFactory {
+    component_types: ~[ty::t],
+    span: Span,
+}
+
+impl MemberDescriptionFactory for TupleMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &mut CrateContext)
+                                  -> ~[MemberDescription] {
+        do self.component_types.map |&component_type| {
+            MemberDescription {
+                name: @"",
+                llvm_type: type_of::type_of(cx, component_type),
+                type_metadata: type_metadata(cx, component_type, self.span),
+                offset: ComputedMemberOffset,
             }
         }
     }
@@ -1192,8 +1230,6 @@ fn prepare_tuple_metadata(cx: &mut CrateContext,
 
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
-    // Needs to be copied for closure below :(
-    let component_types = component_types.to_owned();
 
     UnfinishedMetadata {
         cache_id: cache_id_for_type(tuple_type),
@@ -1205,17 +1241,147 @@ fn prepare_tuple_metadata(cx: &mut CrateContext,
                                           span),
         llvm_type: tuple_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: |cx| {
-            do component_types.map |&component_type| {
+        member_description_factory: @TupleMemberDescriptionFactory {
+            component_types: component_types.to_owned(),
+            span: span,
+        } as @MemberDescriptionFactory
+    }
+}
+
+struct GeneralMemberDescriptionFactory {
+    type_rep: @adt::Repr,
+    variants: @~[@ty::VariantInfo],
+    discriminant_type_metadata: ValueRef,
+    containing_scope: DIScope,
+    file_metadata: DIFile,
+    span: Span,
+}
+
+impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &mut CrateContext)
+                                  -> ~[MemberDescription] {
+        // Capture type_rep, so we don't have to copy the struct_defs array
+        let struct_defs = match *self.type_rep {
+            adt::General(ref struct_defs) => struct_defs,
+            _ => cx.sess.bug("unreachable")
+        };
+
+        do struct_defs
+            .iter()
+            .enumerate()
+            .map |(i, struct_def)| {
+                let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
+                    describe_variant(cx,
+                                     struct_def,
+                                     self.variants[i],
+                                     Some(self.discriminant_type_metadata),
+                                     self.containing_scope,
+                                     self.file_metadata,
+                                     self.span);
+
+                let member_descriptions =
+                    member_desc_factory.create_member_descriptions(cx);
+
+                set_members_of_composite_type(cx,
+                                              variant_type_metadata,
+                                              variant_llvm_type,
+                                              member_descriptions,
+                                              self.file_metadata,
+                                              codemap::dummy_sp());
                 MemberDescription {
                     name: @"",
-                    llvm_type: type_of::type_of(cx, component_type),
-                    type_metadata: type_metadata(cx, component_type, span),
-                    offset: ComputedMemberOffset,
+                    llvm_type: variant_llvm_type,
+                    type_metadata: variant_type_metadata,
+                    offset: FixedMemberOffset { bytes: 0 },
                 }
+        }.collect()
+    }
+}
+
+struct EnumVariantMemberDescriptionFactory {
+    args: ~[(@str, ty::t)],
+    discriminant_type_metadata: Option<DIType>,
+    span: Span,
+}
+
+impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
+    fn create_member_descriptions(&self, cx: &mut CrateContext)
+                                  -> ~[MemberDescription] {
+        do self.args.iter().enumerate().map |(i, &(name, ty))| {
+            MemberDescription {
+                name: name,
+                llvm_type: type_of::type_of(cx, ty),
+                type_metadata: match self.discriminant_type_metadata {
+                    Some(metadata) if i == 0 => metadata,
+                    _ => type_metadata(cx, ty, self.span)
+                },
+                offset: ComputedMemberOffset,
+            }
+        }.collect()
+    }
+}
+
+fn describe_variant(cx: &mut CrateContext,
+                    struct_def: &adt::Struct,
+                    variant_info: &ty::VariantInfo,
+                    discriminant_type_metadata: Option<DIType>,
+                    containing_scope: DIScope,
+                    file_metadata: DIFile,
+                    span: Span)
+                 -> (DICompositeType, Type, @MemberDescriptionFactory) {
+    let variant_name = token::ident_to_str(&variant_info.name);
+    let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
+                                          struct_def.packed);
+    // Could some consistency checks here: size, align, field count, discr type
+
+    // Find the source code location of the variant's definition
+    let variant_definition_span = if variant_info.id.crate == ast::LOCAL_CRATE {
+        match cx.tcx.items.find(&variant_info.id.node) {
+            Some(&ast_map::node_variant(ref variant, _, _)) => variant.span,
+            ref node => {
+                cx.sess.span_warn(span,
+                    fmt!("debuginfo::enum_metadata()::adt_struct_metadata() - Unexpected node \
+                          type: %?. This is a bug.", node));
+                codemap::dummy_sp()
             }
         }
+    } else {
+        // For definitions from other crates we have no location information available.
+        codemap::dummy_sp()
+    };
+
+    let metadata_stub = create_struct_stub(cx,
+                                           variant_llvm_type,
+                                           variant_name,
+                                           containing_scope,
+                                           file_metadata,
+                                           variant_definition_span);
+
+    // Get the argument names from the enum variant info
+    let mut arg_names = match variant_info.arg_names {
+        Some(ref names) => do names.map |ident| { token::ident_to_str(ident) },
+        None => do variant_info.args.map |_| { @"" }
+    };
+
+    // If this is not a univariant enum, there is also the (unnamed) discriminant field
+    if discriminant_type_metadata.is_some() {
+        arg_names.insert(0, @"");
     }
+
+    // Build an array of (field name, field type) pairs to be captured in the factory closure.
+    let args: ~[(@str, ty::t)] = arg_names.iter()
+        .zip(struct_def.fields.iter())
+        .map(|(&s, &t)| (s, t))
+        .collect();
+
+    let member_description_factory =
+        @EnumVariantMemberDescriptionFactory {
+            args: args,
+            discriminant_type_metadata: discriminant_type_metadata,
+            span: span,
+        } as @MemberDescriptionFactory;
+
+    (metadata_stub, variant_llvm_type, member_description_factory)
 }
 
 fn prepare_enum_metadata(cx: &mut CrateContext,
@@ -1336,42 +1502,14 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
                 metadata_stub: enum_metadata,
                 llvm_type: enum_llvm_type,
                 file_metadata: file_metadata,
-                member_description_factory: |cx| {
-                    // Capture type_rep, so we don't have to copy the struct_defs array
-                    let struct_defs = match *type_rep {
-                        adt::General(ref struct_defs) => struct_defs,
-                        _ => cx.sess.bug("unreachable")
-                    };
-
-                    do struct_defs
-                        .iter()
-                        .enumerate()
-                        .map |(i, struct_def)| {
-                            let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
-                                describe_variant(cx,
-                                                 struct_def,
-                                                 variants[i],
-                                                 Some(discriminant_type_metadata),
-                                                 containing_scope,
-                                                 file_metadata,
-                                                 span);
-
-                            let member_descriptions = member_desc_factory(cx);
-
-                            set_members_of_composite_type(cx,
-                                                          variant_type_metadata,
-                                                          variant_llvm_type,
-                                                          member_descriptions,
-                                                          file_metadata,
-                                                          codemap::dummy_sp());
-                            MemberDescription {
-                                name: @"",
-                                llvm_type: variant_llvm_type,
-                                type_metadata: variant_type_metadata,
-                                offset: FixedMemberOffset { bytes: 0 },
-                            }
-                    }.collect()
-                }
+                member_description_factory: @GeneralMemberDescriptionFactory {
+                    type_rep: type_rep,
+                    variants: variants,
+                    discriminant_type_metadata: discriminant_type_metadata,
+                    containing_scope: containing_scope,
+                    file_metadata: file_metadata,
+                    span: span,
+                } as @MemberDescriptionFactory,
             }
         }
         adt::NullablePointer { nonnull: ref struct_def, nndiscr, _ } => {
@@ -1393,76 +1531,6 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
             }
         }
     };
-
-    fn describe_variant(cx: &mut CrateContext,
-                        struct_def: &adt::Struct,
-                        variant_info: &ty::VariantInfo,
-                        discriminant_type_metadata: Option<DIType>,
-                        containing_scope: DIScope,
-                        file_metadata: DIFile,
-                        span: Span)
-                     -> (DICompositeType, Type, @fn(&mut CrateContext) -> ~[MemberDescription]) {
-        let variant_name = token::ident_to_str(&variant_info.name);
-        let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
-                                              struct_def.packed);
-        // Could some consistency checks here: size, align, field count, discr type
-
-        // Find the source code location of the variant's definition
-        let variant_definition_span = if variant_info.id.crate == ast::LOCAL_CRATE {
-            match cx.tcx.items.find(&variant_info.id.node) {
-                Some(&ast_map::node_variant(ref variant, _, _)) => variant.span,
-                ref node => {
-                    cx.sess.span_warn(span,
-                        fmt!("debuginfo::enum_metadata()::adt_struct_metadata() - Unexpected node \
-                              type: %?. This is a bug.", node));
-                    codemap::dummy_sp()
-                }
-            }
-        } else {
-            // For definitions from other crates we have no location information available.
-            codemap::dummy_sp()
-        };
-
-        let metadata_stub = create_struct_stub(cx,
-                                               variant_llvm_type,
-                                               variant_name,
-                                               containing_scope,
-                                               file_metadata,
-                                               variant_definition_span);
-
-        // Get the argument names from the enum variant info
-        let mut arg_names = match variant_info.arg_names {
-            Some(ref names) => do names.map |ident| { token::ident_to_str(ident) },
-            None => do variant_info.args.map |_| { @"" }
-        };
-
-        // If this is not a univariant enum, there is also the (unnamed) discriminant field
-        if discriminant_type_metadata.is_some() {
-            arg_names.insert(0, @"");
-        }
-
-        // Build an array of (field name, field type) pairs to be captured in the factory closure.
-        let args: ~[(@str, ty::t)] = arg_names.iter()
-            .zip(struct_def.fields.iter())
-            .map(|(&s, &t)| (s, t))
-            .collect();
-
-        let member_description_factory: @fn(cx: &mut CrateContext) -> ~[MemberDescription] = |cx| {
-            do args.iter().enumerate().map |(i, &(name, ty))| {
-                MemberDescription {
-                    name: name,
-                    llvm_type: type_of::type_of(cx, ty),
-                    type_metadata: match discriminant_type_metadata {
-                        Some(metadata) if i == 0 => metadata,
-                        _ => type_metadata(cx, ty, span)
-                    },
-                    offset: ComputedMemberOffset,
-                }
-            }.collect()
-        };
-
-        (metadata_stub, variant_llvm_type, member_description_factory)
-    }
 }
 
 enum MemberOffset {

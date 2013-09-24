@@ -485,9 +485,11 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_closure_ptr(&mut self, ck: uint) -> bool {
-        self.align_to::<@fn()>();
-        if ! self.inner.visit_closure_ptr(ck) { return false; }
-        self.bump_past::<@fn()>();
+        self.align_to::<~fn()>();
+        if ! self.inner.visit_closure_ptr(ck) {
+            return false
+        }
+        self.bump_past::<~fn()>();
         true
     }
 }
