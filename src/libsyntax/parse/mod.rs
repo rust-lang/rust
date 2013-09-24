@@ -324,16 +324,9 @@ mod test {
     use abi;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
-    use util::parser_testing::{string_to_tts_and_sess, string_to_parser};
+    use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
-
-    // map a string to tts, return the tt without its parsesess
-    fn string_to_tts_only(source_str : @str) -> ~[ast::token_tree] {
-        let (tts,_ps) = string_to_tts_and_sess(source_str);
-        tts
-    }
-
 
     #[cfg(test)] fn to_json_str<E : Encodable<extra::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
@@ -396,7 +389,7 @@ mod test {
     }
 
     #[test] fn string_to_tts_1 () {
-        let (tts,_ps) = string_to_tts_and_sess(@"fn a (b : int) { b; }");
+        let tts = string_to_tts(@"fn a (b : int) { b; }");
         assert_eq!(to_json_str(@tts),
         ~"[\
     {\
