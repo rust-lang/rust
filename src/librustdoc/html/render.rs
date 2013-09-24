@@ -288,7 +288,9 @@ impl<'self> DocFolder for Cache {
         } else { false };
         match item.inner {
             clean::StructItem(*) | clean::EnumItem(*) |
-            clean::TypedefItem(*) | clean::TraitItem(*) => {
+            clean::TypedefItem(*) | clean::TraitItem(*) |
+            clean::FunctionItem(*) | clean::ModuleItem(*) |
+            clean::VariantItem(*) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
             }
             _ => {}
@@ -479,6 +481,8 @@ impl Context {
         }
 
         match item.inner {
+            // modules are special because they add a namespace. We also need to
+            // recurse into the items of the module as well.
             clean::ModuleItem(*) => {
                 let name = item.name.get_ref().to_owned();
                 let item = Cell::new(item);
@@ -498,11 +502,29 @@ impl Context {
                     }
                 }
             }
+
+            // Things which don't have names (like impls) don't get special
+            // pages dedicated to them.
             _ if item.name.is_some() => {
                 let dst = self.dst.push(item_path(&item));
                 let writer = dst.open_writer(io::CreateOrTruncate);
                 render(writer.unwrap(), self, &item, true);
+
+                // recurse if necessary
+                let name = item.name.get_ref().clone();
+                match item.inner {
+                    clean::EnumItem(e) => {
+                        let mut it = e.variants.move_iter();
+                        do self.recurse(name) |this| {
+                            for item in it {
+                                f(this, item);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
             }
+
             _ => {}
         }
     }
@@ -696,17 +718,43 @@ fn item_module(w: &mut io::Writer, cx: &Context,
 
                 write!(w, "
                     <tr>
-                        <td><code>{}: {} = </code>{}</td>
+                        <td><code>{}static {}: {} = </code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",
+                VisSpace(myitem.visibility),
                 *myitem.name.get_ref(),
                 s.type_,
                 Initializer(s.expr),
                 Markdown(blank(myitem.doc_value())));
             }
 
+            clean::ViewItemItem(ref item) => {
+                match item.inner {
+                    clean::ExternMod(ref name, ref src, _, _) => {
+                        write!(w, "<tr><td><code>extern mod {}",
+                               name.as_slice());
+                        match *src {
+                            Some(ref src) => write!(w, " = \"{}\"",
+                                                    src.as_slice()),
+                            None => {}
+                        }
+                        write!(w, ";</code></td></tr>");
+                    }
+
+                    clean::Import(ref imports) => {
+                        for import in imports.iter() {
+                            write!(w, "<tr><td><code>{}{}</code></td></tr>",
+                                   VisSpace(myitem.visibility),
+                                   *import);
+                        }
+                    }
+                }
+
+            }
+
             _ => {
+                if myitem.name.is_none() { loop }
                 write!(w, "
                     <tr>
                         <td><a class='{class}' href='{href}'
