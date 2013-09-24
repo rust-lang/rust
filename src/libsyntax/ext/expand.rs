@@ -944,7 +944,7 @@ pub fn std_macros() -> @str {
 
     # Example
 
-    ~~~ {.rust}
+    ```rust
     fn choose_weighted_item(v: &[Item]) -> Item {
         assert!(!v.is_empty());
         let mut so_far = 0u;
@@ -958,7 +958,7 @@ pub fn std_macros() -> @str {
         // type checker that it isn't possible to get down here
         unreachable!();
     }
-    ~~~
+    ```
 
     */
     macro_rules! unreachable (() => (

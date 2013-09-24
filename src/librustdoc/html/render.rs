@@ -32,7 +32,7 @@ use syntax::ast;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method};
+use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
 
@@ -401,8 +401,16 @@ impl Context {
             let mut task = task::task();
             task.unlinked(); // we kill things manually
             task.name(format!("worker{}", i));
-            do task.spawn_with(cache.clone()) |cache| {
+            task.spawn_with(cache.clone(),
+                            |cache| worker(cache, &port, &chan, &prog_chan));
+
+            fn worker(cache: RWArc<Cache>,
+                      port: &SharedPort<Work>,
+                      chan: &SharedChan<Work>,
+                      prog_chan: &SharedChan<Progress>) {
+                #[fixed_stack_segment]; // we hit markdown FFI *a lot*
                 local_data::set(cache_key, cache);
+
                 loop {
                     match port.recv() {
                         Process(cx, item) => {
@@ -425,28 +433,20 @@ impl Context {
             }
         }
 
-        let watcher_chan = chan.clone();
-        let (done_port, done_chan) = comm::stream();
-        do task::spawn {
-            let mut jobs = 0;
-            loop {
-                match prog_port.recv() {
-                    JobNew => jobs += 1,
-                    JobDone => jobs -= 1,
-                }
-
-                if jobs == 0 { break }
+        chan.send(Process(self, item));
+        let mut jobs = 1;
+        loop {
+            match prog_port.recv() {
+                JobNew => jobs += 1,
+                JobDone => jobs -= 1,
             }
 
-            for _ in range(0, WORKERS) {
-                watcher_chan.send(Die);
-            }
-            done_chan.send(());
+            if jobs == 0 { break }
         }
 
-        prog_chan.send(JobNew);
-        chan.send(Process(self, item));
-        done_port.recv();
+        for _ in range(0, WORKERS) {
+            chan.send(Die);
+        }
     }
 
     fn item(&mut self, item: clean::Item, f: &fn(&mut Context, clean::Item)) {
@@ -717,8 +717,9 @@ fn item_module(w: &mut io::Writer, cx: &Context,
 }
 
 fn item_function(w: &mut io::Writer, it: &clean::Item, f: &clean::Function) {
-    write!(w, "<pre class='fn'>{vis}fn {name}{generics}{decl}</pre>",
+    write!(w, "<pre class='fn'>{vis}{purity}fn {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
+           purity = PuritySpace(f.purity),
            name = it.name.get_ref().as_slice(),
            generics = f.generics,
            decl = f.decl);

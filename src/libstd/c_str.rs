@@ -38,7 +38,7 @@ unnecessary amounts of allocations.
 
 An example of creating and using a C string would be:
 
-~~~{.rust}
+```rust
 use std::libc;
 externfn!(fn puts(s: *libc::c_char))
 
@@ -56,7 +56,7 @@ do my_c_string.with_ref |c_buffer| {
 do my_string.with_c_str |c_buffer| {
     unsafe { puts(c_buffer); }
 }
-~~~
+ ```
 
 */
 
@@ -204,9 +204,9 @@ pub trait ToCStr {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let s = "PATH".with_c_str(|path| libc::getenv(path))
-    /// ~~~
+    /// ```
     ///
     /// # Failure
     ///

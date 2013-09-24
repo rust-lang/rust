@@ -12,7 +12,6 @@ use std::num;
 use std::uint;
 
 use clean;
-use syntax::ast;
 use clean::Item;
 use plugins;
 use fold;
@@ -66,27 +65,6 @@ pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
     }
     let mut cleaner = CommentCleaner;
     let crate = cleaner.fold_crate(crate);
-    (crate, None)
-}
-
-pub fn collapse_privacy(crate: clean::Crate) -> plugins::PluginResult {
-    struct PrivacyCollapser {
-        stack: ~[clean::Visibility]
-    }
-    impl fold::DocFolder for PrivacyCollapser {
-        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
-            if i.visibility.is_some() {
-                if i.visibility == Some(ast::inherited) {
-                    i.visibility = Some(self.stack.last().clone());
-                } else {
-                    self.stack.push(i.visibility.clone().unwrap());
-                }
-            }
-            self.fold_item_recur(i)
-        }
-    }
-    let mut privacy = PrivacyCollapser { stack: ~[] };
-    let crate = privacy.fold_crate(crate);
     (crate, None)
 }
 

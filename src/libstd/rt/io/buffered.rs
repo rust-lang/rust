@@ -17,7 +17,7 @@
 //!
 //! # Examples
 //!
-//! ~~~
+//! ```
 //! let tcp_stream = TcpStream::connect(addr);
 //! let reader = BufferedReader::new(tcp_stream);
 //!
@@ -26,17 +26,17 @@
 //!     Some(nread) => println!("Read {} bytes", nread),
 //!     None => println!("At the end of the stream!")
 //! }
-//! ~~~
+//! ```
 //!
-//! ~~~
+//! ```
 //! let tcp_stream = TcpStream::connect(addr);
 //! let writer = BufferedWriter::new(tcp_stream);
 //!
 //! writer.write("hello, world".as_bytes());
 //! writer.flush();
-//! ~~~
+//! ```
 //!
-//! ~~~
+//! ```
 //! let tcp_stream = TcpStream::connect(addr);
 //! let stream = BufferedStream::new(tcp_stream);
 //!
@@ -48,7 +48,7 @@
 //!     Some(nread) => println!("Read {} bytes", nread),
 //!     None => println!("At the end of the stream!")
 //! }
-//! ~~~
+//! ```
 //!
 
 use prelude::*;

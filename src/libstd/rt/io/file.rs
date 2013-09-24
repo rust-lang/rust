@@ -477,7 +477,7 @@ pub trait FileSystemInfo {
 ///
 /// * Check if a file exists, reading from it if so
 ///
-/// ~~~{.rust}
+/// ```rust
 /// use std;
 /// use std::path::Path;
 /// use std::rt::io::file::{FileInfo, FileReader};
@@ -489,17 +489,17 @@ pub trait FileSystemInfo {
 ///     reader.read(mem);
 ///     // ...
 /// }
-/// ~~~
+/// ```
 ///
 /// * Is the given path a file?
 ///
-/// ~~~{.rust}
+/// ```rust
 /// let f = get_file_path_from_wherever();
 /// match f.is_file() {
 ///    true => doing_something_with_a_file(f),
 ///    _ => {}
 /// }
-/// ~~~
+/// ```
 pub trait FileInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) points at a "regular file" on the FS. Will return
@@ -574,7 +574,7 @@ impl FileInfo for Path { }
 ///
 /// * Check if a directory exists, `mkdir`'ing it if not
 ///
-/// ~~~{.rust}
+/// ```rust
 /// use std;
 /// use std::path::Path;
 /// use std::rt::io::file::{DirectoryInfo};
@@ -583,11 +583,11 @@ impl FileInfo for Path { }
 /// if !dir.exists() {
 ///     dir.mkdir();
 /// }
-/// ~~~
+/// ```
 ///
 /// * Is the given path a directory? If so, iterate on its contents
 ///
-/// ~~~{.rust}
+/// ```rust
 /// fn visit_dirs(dir: &Path, cb: &fn(&Path)) {
 ///     if dir.is_dir() {
 ///         let contents = dir.readdir();
@@ -598,7 +598,7 @@ impl FileInfo for Path { }
 ///     }
 ///     else { fail!("nope"); }
 /// }
-/// ~~~
+/// ```
 trait DirectoryInfo : FileSystemInfo {
     /// Whether the underlying implemention (be it a file path,
     /// or something else) is pointing at a directory in the underlying FS.

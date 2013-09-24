@@ -28,7 +28,7 @@ unlikely.
 
 To create a new random (V4) UUID and print it out in hexadecimal form:
 
-~~~ {.rust}
+```rust
 extern mod extra;
 use extra::uuid::Uuid;
 
@@ -36,7 +36,7 @@ fn main() {
     let uuid1 = Uuid::new_v4();
     println(uuid1.to_str());
 }
-~~~
+ ```
 
 # Strings
 

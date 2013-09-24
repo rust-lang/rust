@@ -71,14 +71,14 @@ before reporting whether it succeeded or failed. A watching parent will only
 report success if it succeeded and all its children also reported success;
 otherwise, it will report failure. This is most useful for writing test cases:
 
-~~~
+ ```
 #[test]
 fn test_something_in_another_task {
     do spawn {
         assert!(collatz_conjecture_is_false());
     }
 }
-~~~
+ ```
 
 Here, as the child task will certainly outlive the parent task, we might miss
 the failure of the child when deciding whether or not the test case passed.

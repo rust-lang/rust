@@ -684,7 +684,7 @@ do
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
       libuv libuv/src/ares libuv/src/eio libuv/src/ev \
-      jemalloc
+      jemalloc sundown/src sundown/html
     do
       make_dir $t/rt/stage$s/$i
     done

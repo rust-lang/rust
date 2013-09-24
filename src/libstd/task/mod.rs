@@ -26,11 +26,11 @@
  *
  * # Example
  *
- * ~~~
+ * ```
  * do spawn {
  *     log(error, "Hello, World!");
  * }
- * ~~~
+ * ```
  */
 
 #[allow(missing_doc)];
@@ -565,7 +565,7 @@ pub fn failing() -> bool {
  *
  * # Example
  *
- * ~~~
+ * ```
  * do task::unkillable {
  *     // detach / deschedule / destroy must all be called together
  *     rustrt::rust_port_detach(po);
@@ -573,7 +573,7 @@ pub fn failing() -> bool {
  *     task::deschedule();
  *     rustrt::rust_port_destroy(po);
  * }
- * ~~~
+ * ```
  */
 pub fn unkillable<U>(f: &fn() -> U) -> U {
     use rt::task::Task;
@@ -602,7 +602,7 @@ pub fn unkillable<U>(f: &fn() -> U) -> U {
  *
  * # Example
  *
- * ~~~
+ * ```
  * do task::unkillable {
  *     do task::rekillable {
  *          // Task is killable
