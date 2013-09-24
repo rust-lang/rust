@@ -72,7 +72,7 @@ impl<T: 'static> LocalData for T {}
 //
 // One of the most important operations is loaning a value via `get` to a
 // caller. In doing so, the slot that the TLS entry is occupying cannot be
-// invalidated because upon returning it's loan state must be updated. Currently
+// invalidated because upon returning its loan state must be updated. Currently
 // the TLS map is a vector, but this is possibly dangerous because the vector
 // can be reallocated/moved when new values are pushed onto it.
 //
