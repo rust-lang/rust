@@ -25,8 +25,8 @@ modify/read the slot specified by the key.
 ~~~{.rust}
 use std::local_data;
 
-local_data_key!(key_int: int);
-local_data_key!(key_vector: ~[int]);
+local_data_key!(key_int: int)
+local_data_key!(key_vector: ~[int])
 
 local_data::set(key_int, 3);
 local_data::get(key_int, |opt| assert_eq!(opt, Some(&3)));
