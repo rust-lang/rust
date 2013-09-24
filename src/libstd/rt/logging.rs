@@ -12,7 +12,7 @@ use libc::{uintptr_t, exit, STDERR_FILENO};
 use option::{Some, None, Option};
 use rt::util::dumb_println;
 use rt::crate_map::{ModEntry, iter_crate_map};
-#[cfg(not(stage0))] use rt::crate_map::get_crate_map;
+use rt::crate_map::get_crate_map;
 use str::StrSlice;
 use str::raw::from_c_str;
 use u32;
@@ -211,22 +211,6 @@ impl Logger for StdErrLogger {
 }
 /// Configure logging by traversing the crate map and setting the
 /// per-module global logging flags based on the logging spec
-#[fixed_stack_segment] #[inline(never)]
-#[cfg(stage0)]
-pub fn init(crate_map: *u8) {
-    use os;
-
-    let log_spec = os::getenv("RUST_LOG");
-    match log_spec {
-        Some(spec) => {
-            update_log_settings(crate_map, spec);
-        }
-        None => {
-            update_log_settings(crate_map, ~"");
-        }
-    }
-}
-#[cfg(not(stage0))]
 pub fn init() {
     use os;
 
