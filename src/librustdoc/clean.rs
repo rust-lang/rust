@@ -345,6 +345,7 @@ impl Clean<SelfTy> for ast::explicit_self {
 pub struct Function {
     decl: FnDecl,
     generics: Generics,
+    purity: ast::purity,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -358,6 +359,7 @@ impl Clean<Item> for doctree::Function {
             inner: FunctionItem(Function {
                 decl: self.decl.clean(),
                 generics: self.generics.clean(),
+                purity: self.purity,
             }),
         }
     }
