@@ -23,14 +23,13 @@ use to_str;
 pub use cmath::c_float_targ_consts::*;
 
 use self::delegated::*;
+use self::delegated_intrinsics::*;
 
 macro_rules! delegate(
     (
         $(
             fn $name:ident(
-                $(
-                    $arg:ident : $arg_ty:ty
-                ),*
+                $($arg:ident : $arg_ty:ty),*
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
@@ -39,10 +38,9 @@ macro_rules! delegate(
         mod delegated {
             use cmath::c_float_utils;
             use libc::{c_float, c_int};
-            use unstable::intrinsics;
 
             $(
-                #[inline] #[fixed_stack_segment] #[inline(never)]
+                #[fixed_stack_segment] #[inline(never)]
                 pub fn $name($( $arg : $arg_ty ),*) -> $rv {
                     unsafe {
                         $bound_name($( $arg ),*)
@@ -53,7 +51,31 @@ macro_rules! delegate(
     )
 )
 
-delegate!(
+macro_rules! delegate_intrinsics(
+    (
+        $(
+            fn $name:ident(
+                $($arg:ident : $arg_ty:ty),*
+            ) -> $rv:ty = $bound_name:path
+        ),*
+    ) => (
+        // An inner module is required to get the #[inline] attribute on the
+        // functions.
+        mod delegated_intrinsics {
+            use unstable::intrinsics;
+            use libc::c_int;
+
+            $(
+                #[inline]
+                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                    unsafe { $bound_name($( $arg ),*) }
+                }
+            )*
+        }
+    )
+)
+
+delegate_intrinsics!(
     // intrinsics
     fn abs(n: f32) -> f32 = intrinsics::fabsf32,
     fn cos(n: f32) -> f32 = intrinsics::cosf32,
@@ -67,8 +89,10 @@ delegate!(
     fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
     fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
     fn sin(n: f32) -> f32 = intrinsics::sinf32,
-    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
+    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32
+)
 
+delegate!(
     // LLVM 3.3 required to use intrinsics for these four
     fn ceil(n: c_float) -> c_float = c_float_utils::ceil,
     fn trunc(n: c_float) -> c_float = c_float_utils::trunc,
