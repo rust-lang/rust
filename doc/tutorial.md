@@ -1875,7 +1875,7 @@ unless they contain managed boxes, managed closures, or borrowed pointers.
 * `Freeze` - Constant (immutable) types.
 These are types that do not contain anything intrinsically mutable.
 Intrinsically mutable values include `@mut`
-and `Cell` in the standard library.
+and `Mut` in the standard library.
 
 * `'static` - Non-borrowed types.
 These are types that do not contain any data whose lifetime is bound to
