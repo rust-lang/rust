@@ -52,15 +52,15 @@ use to_str::ToStr;
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::not(true)
 * false
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::not(false)
 * true
-* ~~~
+* ```
 */
 pub fn not(v: bool) -> bool { !v }
 
@@ -69,15 +69,15 @@ pub fn not(v: bool) -> bool { !v }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::and(true, false)
 * false
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::and(true, true)
 * true
-* ~~~
+* ```
 */
 pub fn and(a: bool, b: bool) -> bool { a && b }
 
@@ -86,15 +86,15 @@ pub fn and(a: bool, b: bool) -> bool { a && b }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::or(true, false)
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::or(false, false)
 * false
-* ~~~
+* ```
 */
 pub fn or(a: bool, b: bool) -> bool { a || b }
 
@@ -105,15 +105,15 @@ pub fn or(a: bool, b: bool) -> bool { a || b }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::xor(true, false)
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::xor(true, true)
 * false
-* ~~~
+* ```
 */
 pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 
@@ -126,15 +126,15 @@ pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::implies(true, true)
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::implies(true, false)
 * false
-* ~~~
+* ```
 */
 pub fn implies(a: bool, b: bool) -> bool { !a || b }
 
@@ -143,15 +143,15 @@ pub fn implies(a: bool, b: bool) -> bool { !a || b }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::is_true(true)
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::is_true(false)
 * false
-* ~~~
+* ```
 */
 pub fn is_true(v: bool) -> bool { v }
 
@@ -160,15 +160,15 @@ pub fn is_true(v: bool) -> bool { v }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::is_false(false)
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::is_false(true)
 * false
-* ~~~
+* ```
 */
 pub fn is_false(v: bool) -> bool { !v }
 
@@ -179,20 +179,20 @@ pub fn is_false(v: bool) -> bool { !v }
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> FromStr::from_str::<bool>("true")
 * Some(true)
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> FromStr::from_str::<bool>("false")
 * Some(false)
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> FromStr::from_str::<bool>("not even a boolean")
 * None
-* ~~~
+* ```
 */
 impl FromStr for bool {
     fn from_str(s: &str) -> Option<bool> {
@@ -209,15 +209,15 @@ impl FromStr for bool {
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> true.to_str()
 * "true"
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> false.to_str()
 * "false"
-* ~~~
+* ```
 */
 impl ToStr for bool {
     #[inline]
@@ -232,11 +232,11 @@ impl ToStr for bool {
 * There are no guarantees about the order values will be given.
 *
 * # Examples
-* ~~~
+* ```
 * do std::bool::all_values |x: bool| {
 *     println(x.to_str())
 * }
-* ~~~
+* ```
 */
 pub fn all_values(blk: &fn(v: bool)) {
     blk(true);
@@ -248,15 +248,15 @@ pub fn all_values(blk: &fn(v: bool)) {
 *
 * # Examples
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::to_bit(true)
 * 1
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> std::bool::to_bit(false)
 * 0
-* ~~~
+* ```
 */
 #[inline]
 pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
@@ -269,12 +269,12 @@ pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 * ~~~rust
 * rusti> !true
 * false
-* ~~~
+* ```
 *
 * ~~~rust
 * rusti> !false
 * true
-* ~~~
+* ```
 */
 #[cfg(not(test))]
 impl Not<bool> for bool {
@@ -299,25 +299,25 @@ impl TotalOrd for bool {
 *
 * Two booleans are equal if they have the same value.
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> false.eq(&true)
 * false
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> false == false
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> false != true
 * true
-* ~~~
+* ```
 *
-* ~~~ {.rust}
+* ```rust
 * rusti> false.ne(&false)
 * false
-* ~~~
+* ```
 */
 #[cfg(not(test))]
 impl Eq for bool {

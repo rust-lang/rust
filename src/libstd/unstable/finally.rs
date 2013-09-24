@@ -14,13 +14,13 @@ stack closures that emulates Java-style try/finally blocks.
 
 # Example
 
-~~~
+ ```
 do || {
     ...
 }.finally {
     always_run_this();
 }
-~~~
+ ```
 */
 
 use ops::Drop;

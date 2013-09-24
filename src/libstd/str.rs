@@ -37,13 +37,13 @@ there are three common kinds of strings in rust:
 
 As an example, here's a few different kinds of strings.
 
-~~~{.rust}
+```rust
 let owned_string = ~"I am an owned string";
 let managed_string = @"This string is garbage-collected";
 let borrowed_string1 = "This string is borrowed with the 'static lifetime";
 let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
 let borrowed_string3: &str = managed_string; // managed strings can also be borrowed
-~~~
+ ```
 
 From the example above, you can see that rust has 3 different kinds of string
 literals. The owned/managed literals correspond to the owned/managed string
@@ -67,12 +67,12 @@ to that string. With these guarantees, strings can easily transition between
 being mutable/immutable with the same benefits of having mutable strings in
 other languages.
 
-~~~{.rust}
+```rust
 let mut buf = ~"testing";
 buf.push_char(' ');
 buf.push_str("123");
 assert_eq!(buf, ~"testing 123");
-~~~
+ ```
 
 # Representation
 
@@ -1513,10 +1513,10 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v: ~[char] = "abc åäö".iter().collect();
     /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
-    /// ~~~
+    /// ```
     #[inline]
     fn iter(&self) -> CharIterator<'self> {
         CharIterator{string: *self}
@@ -1558,13 +1558,13 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".split_iter(' ').collect();
     /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
     ///
     /// let v: ~[&str] = "abc1def2ghi".split_iter(|c: char| c.is_digit()).collect();
     /// assert_eq!(v, ~["abc", "def", "ghi"]);
-    /// ~~~
+    /// ```
     #[inline]
     fn split_iter<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep> {
         CharSplitIterator {
@@ -1597,10 +1597,10 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v: ~[&str] = "A.B.".split_terminator_iter('.').collect();
     /// assert_eq!(v, ~["A", "B"]);
-    /// ~~~
+    /// ```
     #[inline]
     fn split_terminator_iter<Sep: CharEq>(&self, sep: Sep)
         -> CharSplitIterator<'self, Sep> {
@@ -1615,10 +1615,10 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".rsplit_iter(' ').collect();
     /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
-    /// ~~~
+    /// ```
     #[inline]
     fn rsplit_iter<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'self, Sep> {
         self.split_iter(sep).invert()
@@ -1655,10 +1655,10 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v: ~[&str] = "abcXXXabcYYYabc".split_str_iter("abc").collect()
     /// assert_eq!(v, ["", "XXX", "YYY", ""]);
-    /// ~~~
+    /// ```
     #[inline]
     fn split_str_iter(&self, sep: &'self str) -> StrSplitIterator<'self> {
         StrSplitIterator {
@@ -1853,11 +1853,11 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
     /// assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
     /// assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
-    /// ~~~
+    /// ```
     #[inline]
     fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
         self.trim_left_chars(to_trim).trim_right_chars(to_trim)
@@ -1871,11 +1871,11 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
     /// assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
     /// assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
-    /// ~~~
+    /// ```
     #[inline]
     fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
         match self.find(|c: char| !to_trim.matches(c)) {
@@ -1892,11 +1892,11 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
     /// assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
     /// assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
-    /// ~~~
+    /// ```
     #[inline]
     fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
         match self.rfind(|c: char| !to_trim.matches(c)) {
@@ -2000,7 +2000,7 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let s = "中华Việt Nam";
     /// let i = 0u;
     /// while i < s.len() {
@@ -2008,11 +2008,11 @@ impl<'self> StrSlice<'self> for &'self str {
     ///     printfln!("%u: %c", i, ch);
     ///     i = next;
     /// }
-    /// ~~~
+    /// ```
     ///
     /// # Example output
     ///
-    /// ~~~
+    /// ```
     /// 0: 中
     /// 3: 华
     /// 6: V
@@ -2023,7 +2023,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// 13: N
     /// 14: a
     /// 15: m
-    /// ~~~
+    /// ```
     ///
     /// # Arguments
     ///
@@ -2228,7 +2228,7 @@ impl<'self> StrSlice<'self> for &'self str {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let string = "a\nb\nc";
     /// let mut lines = ~[];
     /// for line in string.line_iter() { lines.push(line) }
@@ -2236,7 +2236,7 @@ impl<'self> StrSlice<'self> for &'self str {
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
     /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
-    /// ~~~
+    /// ```
     #[inline]
     fn subslice_offset(&self, inner: &str) -> uint {
         do self.as_imm_buf |a, a_len| {
