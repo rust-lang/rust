@@ -2995,7 +2995,7 @@ There is further documentation on the [wiki], however those tend to be even more
 [tasks]: tutorial-tasks.html
 [macros]: tutorial-macros.html
 [ffi]: tutorial-ffi.html
-[rustpkg]: rustpkg.html
+[rustpkg]: tutorial-rustpkg.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 
