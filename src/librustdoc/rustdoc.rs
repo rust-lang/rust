@@ -63,6 +63,7 @@ static PASSES: &'static [Pass] = &[
 static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
     "collapse-docs",
+    "strip-hidden",
     "strip-private",
 ];
 
