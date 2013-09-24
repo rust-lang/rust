@@ -28,7 +28,6 @@ extern mod rustc;
 use std::io;
 use std::os;
 use std::run;
-use std::libc::exit;
 
 enum ValidUsage {
     Valid(int), Invalid
@@ -235,7 +234,7 @@ pub fn main() {
 
     if (os_args.len() > 1 && (os_args[1] == ~"-v" || os_args[1] == ~"--version")) {
         rustc::version(os_args[0]);
-        unsafe { exit(0); }
+        return;
     }
 
     let args = os_args.tail();
@@ -245,8 +244,11 @@ pub fn main() {
         for command in r.iter() {
             let result = do_command(command, args.tail());
             match result {
-                Valid(exit_code) => unsafe { exit(exit_code.to_i32()) },
-                _                => loop
+                Valid(exit_code) => {
+                    os::set_exit_status(exit_code);
+                    return;
+                }
+                _ => loop
             }
         }
     }
