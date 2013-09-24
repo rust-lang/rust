@@ -13,14 +13,6 @@
 // A simple test of starting the runtime manually
 
 #[start]
-#[cfg(stage0)]
-fn start(argc: int, argv: **u8, crate_map: *u8) -> int {
-    do std::rt::start(argc, argv, crate_map) {
-        info!("creating my own runtime is joy");
-    }
-}
-#[start]
-#[cfg(not(stage0))]
 fn start(argc: int, argv: **u8) -> int {
     do std::rt::start(argc, argv) {
         info!("creating my own runtime is joy");

@@ -23,7 +23,7 @@ use container::MutableSet;
 #[link_args = "-undefined dynamic_lookup"]
 extern {}
 
-#[cfg(not(stage0), not(windows))]
+#[cfg(not(windows))]
 extern {
     #[weak_linkage]
     #[link_name = "_rust_crate_map_toplevel"]
@@ -48,12 +48,12 @@ struct CrateMap {
     children: [*CrateMap, ..1]
 }
 
-#[cfg(not(stage0), not(windows))]
+#[cfg(not(windows))]
 pub fn get_crate_map() -> *CrateMap {
     &'static CRATE_MAP as *CrateMap
 }
 
-#[cfg(not(stage0), windows)]
+#[cfg(windows)]
 #[fixed_stack_segment]
 #[inline(never)]
 pub fn get_crate_map() -> *CrateMap {
