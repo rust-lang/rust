@@ -30,7 +30,7 @@ impl Add<MyInt, MyInt> for MyInt {
     fn add(&self, other: &MyInt) -> MyInt { self.chomp(other) }
 }
 
-impl MyNum for MyInt;
+impl MyNum for MyInt {}
 
 fn f<T:MyNum>(x: T, y: T) -> T {
     return x.add(&y).chomp(&y);

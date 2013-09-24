@@ -40,7 +40,7 @@ trait Trait<T1> {
     }
 }
 
-impl<T> Trait<T> for Struct;
+impl<T> Trait<T> for Struct {}
 
 fn main() {
 
