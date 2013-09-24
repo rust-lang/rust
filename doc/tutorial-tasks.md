@@ -423,7 +423,7 @@ do_some_work();
 While it isn't possible for a task to recover from failure, tasks may notify
 each other of failure. The simplest way of handling task failure is with the
 `try` function, which is similar to `spawn`, but immediately blocks waiting
-for the child task to finish. `try` returns a value of type `Result<int,
+for the child task to finish. `try` returns a value of type `Result<T,
 ()>`. `Result` is an `enum` type with two variants: `Ok` and `Err`. In this
 case, because the type arguments to `Result` are `int` and `()`, callers can
 pattern-match on a result to check whether it's an `Ok` result with an `int`
