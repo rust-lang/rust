@@ -23,7 +23,7 @@ pub enum RestrictionResult {
     SafeIf(@LoanPath, ~[Restriction])
 }
 
-pub fn compute_restrictions(bccx: @BorrowckCtxt,
+pub fn compute_restrictions(bccx: &BorrowckCtxt,
                             span: Span,
                             cmt: mc::cmt,
                             restr: RestrictionSet) -> RestrictionResult {
@@ -39,13 +39,13 @@ pub fn compute_restrictions(bccx: @BorrowckCtxt,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct RestrictionsContext {
-    bccx: @BorrowckCtxt,
+struct RestrictionsContext<'self> {
+    bccx: &'self BorrowckCtxt,
     span: Span,
     cmt_original: mc::cmt
 }
 
-impl RestrictionsContext {
+impl<'self> RestrictionsContext<'self> {
     fn tcx(&self) -> ty::ctxt {
         self.bccx.tcx
     }
