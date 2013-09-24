@@ -78,8 +78,8 @@ assert_eq!(buf, ~"testing 123");
 
 Rust's string type, `str`, is a sequence of unicode codepoints encoded as a
 stream of UTF-8 bytes. All safely-created strings are guaranteed to be validly
-encoded UTF-8 sequences. Additionally, strings are not guaranteed to be
-null-terminated (the null byte is a valid unicode codepoint).
+encoded UTF-8 sequences. Additionally, strings are not null-terminated
+and can contain null codepoints.
 
 The actual representation of strings have direct mappings to vectors:
 
