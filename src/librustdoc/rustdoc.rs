@@ -61,10 +61,10 @@ static PASSES: &'static [Pass] = &[
 ];
 
 static DEFAULT_PASSES: &'static [&'static str] = &[
-    "unindent-comments",
-    "collapse-docs",
     "strip-hidden",
     "strip-private",
+    "collapse-docs",
+    "unindent-comments",
 ];
 
 local_data_key!(pub ctxtkey: @core::DocContext)
