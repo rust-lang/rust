@@ -81,6 +81,7 @@ pub enum lint {
     while_true,
     path_statement,
     unrecognized_lint,
+    no_lint_reason,
     non_camel_case_types,
     non_uppercase_statics,
     type_limits,
@@ -123,7 +124,7 @@ pub enum level {
 pub struct LintSpec {
     lint: lint,
     desc: &'static str,
-    default: level
+    default: level,
 }
 
 impl Ord for LintSpec {
@@ -193,6 +194,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unrecognized_lint,
         desc: "unrecognized lint attribute",
         default: warn
+     }),
+
+    ("no_lint_reason",
+     LintSpec {
+        lint: no_lint_reason,
+        desc: "lint setting without a reason",
+        default: allow,
      }),
 
     ("non_camel_case_types",
@@ -477,7 +485,7 @@ impl Context {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        do each_lint(self.tcx.sess, attrs) |meta, level, lintname| {
+        do each_lint(self.tcx.sess, attrs, self) |meta, level, lintname| {
             match self.dict.find_equiv(&lintname) {
                 None => {
                     self.span_lint(
@@ -487,6 +495,8 @@ impl Context {
                         level_to_str(level), lintname));
                 }
                 Some(lint) => {
+                    error!(meta);
+                    error!(attrs);
                     let lint = lint.lint;
                     let now = self.get_level(lint);
                     if now == forbid && level != forbid {
@@ -603,16 +613,18 @@ impl Context {
 
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::Attribute],
+                 cx: @mut Context,
                  f: &fn(@ast::MetaItem, level, @str) -> bool) -> bool {
     let xs = [allow, warn, deny, forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);
         for attr in attrs.iter().filter(|m| level_name == m.name()) {
+            let mut found_reason = false;
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
                 _ => {
-                    sess.span_err(meta.span, "malformed lint attribute");
+                    sess.span_err(meta.span, "malformed lint attribute: not a list");
                     loop;
                 }
             };
@@ -622,14 +634,26 @@ pub fn each_lint(sess: session::Session,
                         if !f(*meta, level, lintname) {
                             return false;
                         }
-                    }
+                    },
+                    ast::MetaNameValue(n, _v) => {
+                        if "reason" != n {
+                            sess.span_err(meta.span,
+                                          "malformed lint attribute: unrecognized name/value pair");
+                        } else {
+                            found_reason = true;
+                        }
+                    },
                     _ => {
-                        sess.span_err(meta.span, "malformed lint attribute");
+                        sess.span_err(meta.span, "malformed lint attribute: not a word");
                     }
                 }
             }
+            if !found_reason {
+                cx.span_lint(no_lint_reason, meta.span, "lint attribute without reason");
+            }
         }
     }
+
     true
 }
 
