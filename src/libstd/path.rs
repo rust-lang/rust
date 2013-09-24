@@ -236,16 +236,16 @@ pub trait GenericPath : Clone + Eq + ToStr {
 
     /// Returns `true` iff `child` is a suffix of `parent`. See the test
     /// case for examples.
-    pub fn is_parent_of(parent: &Path, child: &Path) -> bool {
-        if !parent.is_absolute() || child.is_absolute()
-            || parent.components.len() < child.components.len()
-            || parent.components.is_empty() {
+    fn is_parent_of(&self, child: &Self) -> bool {
+        if !self.is_absolute() || child.is_absolute()
+            || self.components().len() < child.components().len()
+            || self.components().is_empty() {
             return false;
         }
         let child_components = child.components().len();
-        let parent_components = parent.components().len();
-        let to_drop = parent.components.len() - child_components;
-        parent.components.slice(to_drop, parent_components) == child.components
+        let parent_components = self.components().len();
+        let to_drop = self.components().len() - child_components;
+        self.components().slice(to_drop, parent_components) == child.components()
     }
 
     fn components<'a>(&'a self) -> &'a [~str];
@@ -1468,14 +1468,22 @@ mod tests {
 
     #[test]
     fn test_is_parent_of() {
-        assert!(is_parent_of(&PosixPath("/a/b/c/d/e"), &PosixPath("c/d/e")));
-        assert!(!is_parent_of(&PosixPath("a/b/c/d/e"), &PosixPath("c/d/e")));
-        assert!(!is_parent_of(&PosixPath("/a/b/c/d/e"), &PosixPath("/c/d/e")));
-        assert!(!is_parent_of(&PosixPath(""), &PosixPath("")));
-        assert!(!is_parent_of(&PosixPath(""), &PosixPath("a/b/c")));
-        assert!(is_parent_of(&PosixPath("/a/b/c"), &PosixPath("")));
-        assert!(is_parent_of(&PosixPath("/a/b/c"), &PosixPath("a/b/c")));
-        assert!(!is_parent_of(&PosixPath("/a/b/c"), &PosixPath("d/e/f")));
+        fn is_parent_of_pp(p: &PosixPath, q: &PosixPath) -> bool {
+            p.is_parent_of(q)
+        }
+
+        assert!(is_parent_of_pp(&PosixPath("/a/b/c/d/e"), &PosixPath("c/d/e")));
+        assert!(!is_parent_of_pp(&PosixPath("a/b/c/d/e"), &PosixPath("c/d/e")));
+        assert!(!is_parent_of_pp(&PosixPath("/a/b/c/d/e"), &PosixPath("/c/d/e")));
+        assert!(!is_parent_of_pp(&PosixPath(""), &PosixPath("")));
+        assert!(!is_parent_of_pp(&PosixPath(""), &PosixPath("a/b/c")));
+        assert!(is_parent_of_pp(&PosixPath("/a/b/c"), &PosixPath("")));
+        assert!(is_parent_of_pp(&PosixPath("/a/b/c"), &PosixPath("a/b/c")));
+        assert!(!is_parent_of_pp(&PosixPath("/a/b/c"), &PosixPath("d/e/f")));
+
+        fn is_parent_of_wp(p: &WindowsPath, q: &WindowsPath) -> bool {
+            p.is_parent_of(q)
+        }
 
         let abcde = WindowsPath("C:\\a\\b\\c\\d\\e");
         let rel_abcde = WindowsPath("a\\b\\c\\d\\e");
@@ -1486,13 +1494,14 @@ mod tests {
         let rel_abc = WindowsPath("a\\b\\c");
         let def = WindowsPath("d\\e\\f");
 
-        assert!(is_parent_of(&abcde, &cde));
-        assert!(!is_parent_of(&rel_abcde, &cde));
-        assert!(!is_parent_of(&abcde, &slashcde));
-        assert!(!is_parent_of(&empty, &empty));
-        assert!(is_parent_of(&abc, &empty);
-        assert!(is_parent_of(&abc, &rel_abc));
-        assert!(!is_parent_of(&abc, &def));
+        assert!(is_parent_of_wp(&abcde, &cde));
+        assert!(!is_parent_of_wp(&rel_abcde, &cde));
+        assert!(!is_parent_of_wp(&abcde, &slashcde));
+        assert!(!is_parent_of_wp(&empty, &empty));
+        assert!(!is_parent_of_wp(&empty, &rel_abc));
+        assert!(is_parent_of_wp(&abc, &empty));
+        assert!(is_parent_of_wp(&abc, &rel_abc));
+        assert!(!is_parent_of_wp(&abc, &def));
     }
 
 }
