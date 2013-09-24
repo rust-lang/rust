@@ -22,7 +22,7 @@ To declare a new key for storing local data of a particular type, use the
 named and annotated. This name is then passed to the functions in this module to
 modify/read the slot specified by the key.
 
-~~~{.rust}
+```rust
 use std::local_data;
 
 local_data_key!(key_int: int)
@@ -33,7 +33,7 @@ local_data::get(key_int, |opt| assert_eq!(opt, Some(&3)));
 
 local_data::set(key_vector, ~[4]);
 local_data::get(key_vector, |opt| assert_eq!(opt, Some(&~[4])));
-~~~
+ ```
 
 */
 

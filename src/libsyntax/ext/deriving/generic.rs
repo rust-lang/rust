@@ -59,7 +59,7 @@ associated with. It is only not `None` when the associated field has
 an identifier in the source code. For example, the `x`s in the
 following snippet
 
-~~~
+ ```
 struct A { x : int }
 
 struct B(int);
@@ -82,7 +82,7 @@ represented as a count of 0.
 
 The following simplified `Eq` is used for in-code examples:
 
-~~~
+ ```
 trait Eq {
     fn eq(&self, other: &Self);
 }
@@ -91,7 +91,7 @@ impl Eq for int {
         *self == *other
     }
 }
-~~~
+ ```
 
 Some examples of the values of `SubstructureFields` follow, using the
 above `Eq`, `A`, `B` and `C`.
@@ -100,50 +100,50 @@ above `Eq`, `A`, `B` and `C`.
 
 When generating the `expr` for the `A` impl, the `SubstructureFields` is
 
-~~~
+ ```
 Struct(~[(Some(<ident of x>),
          <expr for &self.x>,
          ~[<expr for &other.x])])
-~~~
+ ```
 
 For the `B` impl, called with `B(a)` and `B(b)`,
 
-~~~
+ ```
 Struct(~[(None,
           <expr for &a>
           ~[<expr for &b>])])
-~~~
+ ```
 
 ## Enums
 
 When generating the `expr` for a call with `self == C0(a)` and `other
 == C0(b)`, the SubstructureFields is
 
-~~~
+ ```
 EnumMatching(0, <ast::variant for C0>,
              ~[None,
                <expr for &a>,
                ~[<expr for &b>]])
-~~~
+ ```
 
 For `C1 {x}` and `C1 {x}`,
 
-~~~
+ ```
 EnumMatching(1, <ast::variant for C1>,
              ~[Some(<ident of x>),
                <expr for &self.x>,
                ~[<expr for &other.x>]])
-~~~
+ ```
 
 For `C0(a)` and `C1 {x}` ,
 
-~~~
+ ```
 EnumNonMatching(~[(0, <ast::variant for B0>,
                    ~[(None, <expr for &a>)]),
                   (1, <ast::variant for B1>,
                    ~[(Some(<ident of x>),
                       <expr for &other.x>)])])
-~~~
+ ```
 
 (and vice versa, but with the order of the outermost list flipped.)
 
@@ -158,7 +158,7 @@ StaticStruct(<ast::struct_def of B>, Left(1))
 
 StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
                                    (<ident of C1>, Right(~[<ident of x>]))])
-~~~
+ ```
 
 */
 
@@ -547,7 +547,7 @@ impl<'self> MethodDef<'self> {
     }
 
     /**
-    ~~~
+    ```
     #[deriving(Eq)]
     struct A { x: int, y: int }
 
@@ -565,7 +565,7 @@ impl<'self> MethodDef<'self> {
             }
         }
     }
-    ~~~
+    ```
     */
     fn expand_struct_method_body(&self,
                                  cx: @ExtCtxt,
@@ -638,7 +638,7 @@ impl<'self> MethodDef<'self> {
     }
 
     /**
-    ~~~
+    ```
     #[deriving(Eq)]
     enum A {
         A1
@@ -661,7 +661,7 @@ impl<'self> MethodDef<'self> {
             }
         }
     }
-    ~~~
+    ```
     */
     fn expand_enum_method_body(&self,
                                cx: @ExtCtxt,
@@ -681,13 +681,13 @@ impl<'self> MethodDef<'self> {
     /**
     Creates the nested matches for an enum definition recursively, i.e.
 
-    ~~~
+    ```
     match self {
        Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
        Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },
        ...
     }
-    ~~~
+    ```
 
     It acts in the most naive way, so every branch (and subbranch,
     subsubbranch, etc) exists, not just the ones where all the variants in
@@ -1058,10 +1058,10 @@ pub fn cs_fold(use_foldl: bool,
 Call the method that is being derived on all the fields, and then
 process the collected results. i.e.
 
-~~~
+ ```
 f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
               self_2.method(__arg_1_2, __arg_2_2)])
-~~~
+ ```
 */
 #[inline]
 pub fn cs_same_method(f: &fn(@ExtCtxt, Span, ~[@Expr]) -> @Expr,

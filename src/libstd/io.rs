@@ -1047,11 +1047,11 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 *
 * # Example
 *
-* ~~~ {.rust}
+* ```rust
 * let stdin = std::io::stdin();
 * let line = stdin.read_line();
 * std::io::print(line);
-* ~~~
+* ```
 */
 pub fn stdin() -> @Reader {
     #[fixed_stack_segment]; #[inline(never)];
@@ -1650,10 +1650,10 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 *
 * # Example
 *
-* ~~~ {.rust}
+* ```rust
 * let stdout = std::io::stdout();
 * stdout.write_str("hello\n");
-* ~~~
+* ```
 */
 pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 
@@ -1662,10 +1662,10 @@ pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 *
 * # Example
 *
-* ~~~ {.rust}
+* ```rust
 * let stderr = std::io::stderr();
 * stderr.write_str("hello\n");
-* ~~~
+* ```
 */
 pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
@@ -1677,10 +1677,10 @@ pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 *
 * # Example
 *
-* ~~~ {.rust}
+* ```rust
 * // print is imported into the prelude, and so is always available.
 * print("hello");
-* ~~~
+* ```
 */
 pub fn print(s: &str) {
     stdout().write_str(s);
@@ -1693,10 +1693,10 @@ pub fn print(s: &str) {
 *
 * # Example
 *
-* ~~~ {.rust}
+* ```rust
 * // println is imported into the prelude, and so is always available.
 * println("hello");
-* ~~~
+* ```
 */
 pub fn println(s: &str) {
     stdout().write_line(s);
