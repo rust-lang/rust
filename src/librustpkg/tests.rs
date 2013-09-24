@@ -985,6 +985,7 @@ fn no_rebuilding_dep() {
 }
 
 #[test]
+#[ignore]
 fn do_rebuild_dep_dates_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
@@ -1001,6 +1002,7 @@ fn do_rebuild_dep_dates_change() {
 }
 
 #[test]
+#[ignore]
 fn do_rebuild_dep_only_contents_change() {
     let p_id = PkgId::new("foo");
     let dep_id = PkgId::new("bar");
