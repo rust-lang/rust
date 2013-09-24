@@ -641,6 +641,7 @@ mod test {
     use io_util::BufReader;
 
     use std::io::BytesWriter;
+    use std::mutable::Mut;
     use std::task;
 
     #[test]

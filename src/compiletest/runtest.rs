@@ -22,6 +22,7 @@ use util::logv;
 
 
 use std::io;
+use std::mutable::Mut;
 use std::os;
 use std::str;
 use std::task::{spawn_sched, SingleThreaded};

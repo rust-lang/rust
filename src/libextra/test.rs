@@ -32,6 +32,7 @@ use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::libc;
 use std::io;
+use std::mutable::Mut;
 use std::result;
 use std::task;
 use std::to_str::ToStr;

@@ -54,7 +54,6 @@ pub use num::Times;
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
-pub use mutable::Mut;
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};

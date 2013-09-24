@@ -18,6 +18,7 @@
 extern mod extra;
 use extra::arc;
 use std::comm;
+use std::mutable::Mut;
 use std::task;
 
 trait Pet {

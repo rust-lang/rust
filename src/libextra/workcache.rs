@@ -20,6 +20,7 @@ use treemap::TreeMap;
 
 use std::comm::{PortOne, oneshot};
 use std::{io, os, task};
+use std::mutable::Mut;
 
 /**
 *

@@ -41,6 +41,7 @@ pub fn main() {
 }
 
 pub fn main_args(args: &[~str]) {
+    use std::mutable::Mut;
     use extra::getopts::*;
     use extra::getopts::groups::*;
 

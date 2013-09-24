@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use std::mutable::Mut;
 use std::task;
 
 struct Port<T>(@T);

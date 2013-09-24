@@ -10,6 +10,7 @@
 
 extern mod extra;
 
+use std::mutable::Mut;
 use std::os;
 use std::uint;
 use std::rt::test::spawntask_later;

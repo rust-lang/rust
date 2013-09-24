@@ -139,6 +139,7 @@ fn creature(
 }
 
 fn rendezvous(nn: uint, set: ~[color]) {
+    use std::mutable::Mut;
 
     // these ports will allow us to hear from the creatures
     let (from_creatures, to_rendezvous) = stream::<CreatureInfo>();

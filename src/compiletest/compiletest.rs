@@ -15,6 +15,7 @@
 
 extern mod extra;
 
+use std::mutable::Mut;
 use std::os;
 use std::rt;
 

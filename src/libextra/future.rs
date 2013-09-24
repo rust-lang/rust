@@ -29,6 +29,7 @@
 use std::cast;
 
 use std::comm::{PortOne, oneshot};
+use std::mutable::Mut;
 use std::task;
 use std::util::replace;
 
@@ -163,6 +164,7 @@ mod test {
     use future::*;
 
     use std::comm::oneshot;
+    use std::mutable::Mut;
     use std::task;
 
     #[test]

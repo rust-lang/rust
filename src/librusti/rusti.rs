@@ -449,6 +449,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 pub fn run_line(repl: &mut Repl, input: @io::Reader, out: @io::Writer, line: ~str,
                 use_rl: bool) -> bool
 {
+    use std::mutable::Mut;
+
     if line.starts_with(":") {
         // drop the : and the \n (one byte each)
         let full = line.slice(1, line.len());

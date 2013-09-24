@@ -19,6 +19,7 @@
 
 
 use std::comm;
+use std::mutable::Mut;
 use std::os;
 use std::task;
 use std::uint;

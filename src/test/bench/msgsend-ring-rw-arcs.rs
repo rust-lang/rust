@@ -21,6 +21,7 @@ use extra::arc;
 use extra::future;
 use extra::time;
 
+use std::mutable::Mut;
 use std::os;
 use std::uint;
 

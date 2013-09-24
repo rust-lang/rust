@@ -24,6 +24,7 @@ use util::common::indenter;
 use util::ppaux::{Repr};
 
 use std::hashmap::{HashMap, HashSet};
+use std::mutable::Mut;
 use std::uint;
 use std::vec;
 use syntax::ast;

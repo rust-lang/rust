@@ -60,7 +60,7 @@ pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 }
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
-
+    use std::mutable::Mut;
     let (po, ch) = stream();
 
     let source = Mut::new_some(source);

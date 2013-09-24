@@ -25,6 +25,7 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 
 use std::cast;
+use std::mutable::Mut;
 use std::ptr;
 use std::unstable::intrinsics;
 
@@ -116,7 +117,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(Mut::new(5));
+        let x = Rc::from_send_mut(5);
         let y = x.clone();
         do x.borrow().map_mut |inner| {
             *inner = 20;
@@ -126,7 +127,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(Mut::new(5));
+        let x = Rc::from_send_mut(5);
         let y = x.deep_clone();
         do x.borrow().map_mut |inner| {
             *inner = 20;

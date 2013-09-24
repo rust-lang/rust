@@ -597,6 +597,7 @@ mod tests {
 
     use std::comm;
     use std::task;
+    use std::mutable::Mut;
 
     #[test]
     fn manually_share_arc() {

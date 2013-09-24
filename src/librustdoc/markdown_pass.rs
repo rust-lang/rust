@@ -22,6 +22,7 @@ use pass::Pass;
 use sort_pass;
 
 
+use std::mutable::Mut;
 use std::str;
 use std::vec;
 use syntax;

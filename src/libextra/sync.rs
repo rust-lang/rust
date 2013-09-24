@@ -695,6 +695,7 @@ mod tests {
 
     use std::cast;
     use std::comm;
+    use std::mutable::Mut;
     use std::result;
     use std::task;
 

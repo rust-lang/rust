@@ -18,7 +18,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-
+use std::mutable::Mut;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Mut::new_some(op);

@@ -15,6 +15,7 @@
 
 
 use std::comm::*;
+use std::mutable::Mut;
 use std::ptr;
 use std::task;
 
