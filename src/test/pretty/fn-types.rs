@@ -12,6 +12,5 @@
 
 fn from_foreign_fn(_x: extern "Rust" fn()) { }
 fn from_stack_closure(_x: &fn()) { }
-fn from_box_closure(_x: @fn()) { }
 fn from_unique_closure(_x: ~fn()) { }
 fn main() { }

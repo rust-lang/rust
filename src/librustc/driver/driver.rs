@@ -113,8 +113,8 @@ pub fn build_configuration(sess: Session) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str],
-                  demitter: diagnostic::Emitter) -> ast::CrateConfig {
+fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
+                  -> ast::CrateConfig {
     do cfgspecs.move_iter().map |s| {
         let sess = parse::new_parse_sess(Some(demitter));
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
@@ -439,15 +439,70 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     phase_6_link_output(sess, &trans, outputs);
 }
 
-pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
-                          ppm: PpMode) {
+struct IdentifiedAnnotation {
+    contents: (),
+}
 
-    fn ann_paren_for_expr(node: pprust::ann_node) {
+impl pprust::pp_ann for IdentifiedAnnotation {
+    fn pre(&self, node: pprust::ann_node) {
         match node {
-          pprust::node_expr(s, _) => pprust::popen(s),
-          _ => ()
+            pprust::node_expr(s, _) => pprust::popen(s),
+            _ => ()
         }
     }
+    fn post(&self, node: pprust::ann_node) {
+        match node {
+            pprust::node_item(s, item) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, item.id.to_str());
+            }
+            pprust::node_block(s, ref blk) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, ~"block " + blk.id.to_str());
+            }
+            pprust::node_expr(s, expr) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, expr.id.to_str());
+                pprust::pclose(s);
+            }
+            pprust::node_pat(s, pat) => {
+                pp::space(s.s);
+                pprust::synth_comment(s, ~"pat " + pat.id.to_str());
+            }
+        }
+    }
+}
+
+struct TypedAnnotation {
+    analysis: CrateAnalysis,
+}
+
+impl pprust::pp_ann for TypedAnnotation {
+    fn pre(&self, node: pprust::ann_node) {
+        match node {
+            pprust::node_expr(s, _) => pprust::popen(s),
+            _ => ()
+        }
+    }
+    fn post(&self, node: pprust::ann_node) {
+        let tcx = self.analysis.ty_cx;
+        match node {
+            pprust::node_expr(s, expr) => {
+                pp::space(s.s);
+                pp::word(s.s, "as");
+                pp::space(s.s);
+                pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+                pprust::pclose(s);
+            }
+            _ => ()
+        }
+    }
+}
+
+pub fn pretty_print_input(sess: Session,
+                          cfg: ast::CrateConfig,
+                          input: &input,
+                          ppm: PpMode) {
     fn ann_typed_post(tcx: ty::ctxt, node: pprust::ann_node) {
         match node {
           pprust::node_expr(s, expr) => {
@@ -458,28 +513,6 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
             pprust::pclose(s);
           }
           _ => ()
-        }
-    }
-    fn ann_identified_post(node: pprust::ann_node) {
-        match node {
-          pprust::node_item(s, item) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, item.id.to_str());
-          }
-          pprust::node_block(s, ref blk) => {
-            pp::space(s.s);
-            pprust::synth_comment(
-                s, ~"block " + blk.id.to_str());
-          }
-          pprust::node_expr(s, expr) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, expr.id.to_str());
-            pprust::pclose(s);
-          }
-          pprust::node_pat(s, pat) => {
-            pp::space(s.s);
-            pprust::synth_comment(s, ~"pat " + pat.id.to_str());
-          }
         }
     }
 
@@ -494,28 +527,30 @@ pub fn pretty_print_input(sess: Session, cfg: ast::CrateConfig, input: &input,
 
     let annotation = match ppm {
         PpmIdentified | PpmExpandedIdentified => {
-            pprust::pp_ann {
-                pre: ann_paren_for_expr,
-                post: ann_identified_post
-            }
+            @IdentifiedAnnotation {
+                contents: (),
+            } as @pprust::pp_ann
         }
         PpmTyped => {
             let analysis = phase_3_run_analysis_passes(sess, crate);
-            pprust::pp_ann {
-                pre: ann_paren_for_expr,
-                post: |a| ann_typed_post(analysis.ty_cx, a)
-            }
+            @TypedAnnotation {
+                analysis: analysis
+            } as @pprust::pp_ann
         }
-        _ => pprust::no_ann()
+        _ => @pprust::no_ann::new() as @pprust::pp_ann,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
     do io::with_str_reader(src) |rdr| {
-        pprust::print_crate(sess.codemap, token::get_ident_interner(),
-                            sess.span_diagnostic, crate,
+        pprust::print_crate(sess.codemap,
+                            token::get_ident_interner(),
+                            sess.span_diagnostic,
+                            crate,
                             source_name(input),
-                            rdr, io::stdout(),
-                            annotation, is_expanded);
+                            rdr,
+                            io::stdout(),
+                            annotation,
+                            is_expanded);
     }
 }
 
@@ -554,8 +589,8 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
     ("mips",   abi::Mips)];
 
 pub fn build_target_config(sopts: @session::options,
-                           demitter: diagnostic::Emitter)
-                        -> @session::config {
+                           demitter: @diagnostic::Emitter)
+                           -> @session::config {
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
       None => early_error(demitter, ~"unknown operating system")
@@ -603,8 +638,8 @@ pub fn host_triple() -> ~str {
 
 pub fn build_session_options(binary: @str,
                              matches: &getopts::Matches,
-                             demitter: diagnostic::Emitter)
-                          -> @session::options {
+                             demitter: @diagnostic::Emitter)
+                             -> @session::options {
     let crate_type = if matches.opt_present("lib") {
         session::lib_crate
     } else if matches.opt_present("bin") {
@@ -777,8 +812,8 @@ pub fn build_session_options(binary: @str,
     return sopts;
 }
 
-pub fn build_session(sopts: @session::options,
-                     demitter: diagnostic::Emitter) -> Session {
+pub fn build_session(sopts: @session::options, demitter: @diagnostic::Emitter)
+                     -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -789,9 +824,9 @@ pub fn build_session(sopts: @session::options,
 
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
-                      demitter: diagnostic::Emitter,
+                      demitter: @diagnostic::Emitter,
                       span_diagnostic_handler: @mut diagnostic::span_handler)
-                   -> Session {
+                      -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
@@ -1000,8 +1035,8 @@ pub fn build_output_filenames(input: &input,
     }
 }
 
-pub fn early_error(emitter: diagnostic::Emitter, msg: ~str) -> ! {
-    emitter(None, msg, diagnostic::fatal);
+pub fn early_error(emitter: @diagnostic::Emitter, msg: ~str) -> ! {
+    emitter.emit(None, msg, diagnostic::fatal);
     fail!();
 }
 
@@ -1030,8 +1065,12 @@ mod test {
               Err(f) => fail!("test_switch_implies_cfg_test: %s", f.to_err_msg())
             };
         let sessopts = build_session_options(
-            @"rustc", matches, diagnostic::emit);
-        let sess = build_session(sessopts, diagnostic::emit);
+            @"rustc",
+            matches,
+            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
+        let sess = build_session(sessopts,
+                                 @diagnostic::DefaultEmitter as
+                                    @diagnostic::Emitter);
         let cfg = build_configuration(sess);
         assert!((attr::contains_name(cfg, "test")));
     }
@@ -1048,8 +1087,12 @@ mod test {
               }
             };
         let sessopts = build_session_options(
-            @"rustc", matches, diagnostic::emit);
-        let sess = build_session(sessopts, diagnostic::emit);
+            @"rustc",
+            matches,
+            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
+        let sess = build_session(sessopts,
+                                 @diagnostic::DefaultEmitter as
+                                    @diagnostic::Emitter);
         let cfg = build_configuration(sess);
         let mut test_items = cfg.iter().filter(|m| "test" == m.name());
         assert!(test_items.next().is_some());

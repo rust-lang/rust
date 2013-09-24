@@ -110,7 +110,9 @@ impl<'self> PkgScript<'self> {
             .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(script.clone());
-        let sess = driver::build_session(options, diagnostic::emit);
+        let sess = driver::build_session(options,
+                                         @diagnostic::DefaultEmitter as
+                                            @diagnostic::Emitter);
         let cfg = driver::build_configuration(sess);
         let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
         let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);

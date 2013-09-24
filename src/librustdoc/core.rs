@@ -11,9 +11,10 @@
 use rustc;
 use rustc::{driver, middle};
 
-use syntax;
-use syntax::parse;
 use syntax::ast;
+use syntax::diagnostic;
+use syntax::parse;
+use syntax;
 
 use std::os;
 use std::local_data;
@@ -48,9 +49,11 @@ fn get_ast_and_resolve(cpath: &Path, libs: ~[Path]) -> DocContext {
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
-    let sess = driver::driver::build_session_(sessopts, parsesess.cm,
-                                                  syntax::diagnostic::emit,
-                                                  span_diagnostic_handler);
+    let sess = driver::driver::build_session_(sessopts,
+                                              parsesess.cm,
+                                              @diagnostic::DefaultEmitter as
+                                                @diagnostic::Emitter,
+                                              span_diagnostic_handler);
 
     let mut cfg = build_configuration(sess);
     cfg.push(@dummy_spanned(ast::MetaWord(@"stage2")));

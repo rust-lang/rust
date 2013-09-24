@@ -218,14 +218,25 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, bounds: bounds, _}) => {
+        ty::ty_closure(ty::ClosureTy {
+            sigil: OwnedSigil,
+            bounds: bounds,
+            _
+        }) => {
             b(|cx, fv| check_for_uniq(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, bounds: bounds, _}) => {
-            b(|cx, fv| check_for_box(cx, fv, bounds))
+        ty::ty_closure(ty::ClosureTy {
+            sigil: ManagedSigil,
+            _
+        }) => {
+            // can't happen
         }
-        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, bounds: bounds,
-                                      region: region, _}) => {
+        ty::ty_closure(ty::ClosureTy {
+            sigil: BorrowedSigil,
+            bounds: bounds,
+            region: region,
+            _
+        }) => {
             b(|cx, fv| check_for_block(cx, fv, bounds, region))
         }
         ty::ty_bare_fn(_) => {

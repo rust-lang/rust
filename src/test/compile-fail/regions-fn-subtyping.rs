@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn of<T>() -> @fn(T) { fail!(); }
-fn subtype<T>(x: @fn(T)) { fail!(); }
+fn of<T>() -> &fn(T) { fail!(); }
+fn subtype<T>(x: &fn(T)) { fail!(); }
 
 fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // Here, x, y, and z are free.  Other letters
@@ -40,18 +40,6 @@ fn test_fn<'x,'y,'z,T>(_x: &'x T, _y: &'y T, _z: &'z T) {
 
     subtype::<&fn<'x,'y>(&'x T, &'y T)>(
         of::<&fn<'a,'b>(&'a T, &'b T)>()); //~ ERROR mismatched types
-
-    subtype::<&fn<'x,'a>(&'x T) -> @fn(&'a T)>(
-        of::<&fn<'x,'a>(&'x T) -> @fn(&'a T)>());
-
-    subtype::<&fn<'a>(&'a T) -> @fn(&'a T)>(
-        of::<&fn<'a,'b>(&'a T) -> @fn(&'b T)>()); //~ ERROR mismatched types
-
-    subtype::<&fn<'a>(&'a T) -> @fn(&'a T)>(
-        of::<&fn<'x,'b>(&'x T) -> @fn(&'b T)>()); //~ ERROR mismatched types
-
-    subtype::<&fn<'a,'b>(&'a T) -> @fn(&'b T)>(
-        of::<&fn<'a>(&'a T) -> @fn(&'a T)>());
 }
 
 fn main() {}

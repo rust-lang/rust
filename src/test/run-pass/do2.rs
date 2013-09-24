@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(f: @fn(int) -> int) -> int { f(10) }
+fn f(f: &fn(int) -> int) -> int { f(10) }
 
 pub fn main() {
     assert_eq!(do f() |i| { i }, 10);

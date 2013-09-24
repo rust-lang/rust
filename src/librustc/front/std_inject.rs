@@ -16,6 +16,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap::dummy_sp;
 use syntax::codemap;
+use syntax::fold::ast_fold;
 use syntax::fold;
 use syntax::opt_vec;
 
@@ -38,91 +39,103 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
-fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
-    fn spanned<T>(x: T) -> codemap::Spanned<T> {
-        codemap::Spanned { node: x, span: dummy_sp() }
+fn spanned<T>(x: T) -> codemap::Spanned<T> {
+    codemap::Spanned {
+        node: x,
+        span: dummy_sp(),
+    }
+}
+
+struct StandardLibraryInjector {
+    sess: Session,
+}
+
+impl fold::ast_fold for StandardLibraryInjector {
+    fn fold_crate(&self, crate: &ast::Crate) -> ast::Crate {
+        let version = STD_VERSION.to_managed();
+        let vi1 = ast::view_item {
+            node: ast::view_item_extern_mod(self.sess.ident_of("std"),
+                                            None,
+                                            ~[],
+                                            ast::DUMMY_NODE_ID),
+            attrs: ~[
+                attr::mk_attr(attr::mk_name_value_item_str(@"vers", version))
+            ],
+            vis: ast::private,
+            span: dummy_sp()
+        };
+
+        let vis = vec::append(~[vi1], crate.module.view_items);
+        let mut new_module = ast::_mod {
+            view_items: vis,
+            ..crate.module.clone()
+        };
+
+        if !no_prelude(crate.attrs) {
+            // only add `use std::prelude::*;` if there wasn't a
+            // `#[no_implicit_prelude];` at the crate level.
+            new_module = self.fold_mod(&new_module);
+        }
+
+        // FIXME #2543: Bad copy.
+        ast::Crate {
+            module: new_module,
+            ..(*crate).clone()
+        }
     }
 
-    let precursor = @fold::AstFoldFns {
-        fold_crate: |crate, fld| {
-            let n1 = ast::DUMMY_NODE_ID;
-            let vi1 = ast::view_item {
-                node: ast::view_item_extern_mod(
-                        sess.ident_of("std"), None, ~[], n1),
-                attrs: ~[
-                    attr::mk_attr(
-                        attr::mk_name_value_item_str(@"vers", STD_VERSION.to_managed()))
-                ],
-                vis: ast::private,
-                span: dummy_sp()
-            };
+    fn fold_item(&self, item: @ast::item) -> Option<@ast::item> {
+        if !no_prelude(item.attrs) {
+            // only recur if there wasn't `#[no_implicit_prelude];`
+            // on this item, i.e. this means that the prelude is not
+            // implicitly imported though the whole subtree
+            fold::noop_fold_item(item, self)
+        } else {
+            Some(item)
+        }
+    }
 
-            let vis = vec::append(~[vi1], crate.module.view_items);
-            let mut new_module = ast::_mod {
-                view_items: vis,
-                ..crate.module.clone()
-            };
+    fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
+        let prelude_path = ast::Path {
+            span: dummy_sp(),
+            global: false,
+            segments: ~[
+                ast::PathSegment {
+                    identifier: self.sess.ident_of("std"),
+                    lifetime: None,
+                    types: opt_vec::Empty,
+                },
+                ast::PathSegment {
+                    identifier: self.sess.ident_of("prelude"),
+                    lifetime: None,
+                    types: opt_vec::Empty,
+                },
+            ],
+        };
 
-            if !no_prelude(crate.attrs) {
-                // only add `use std::prelude::*;` if there wasn't a
-                // `#[no_implicit_prelude];` at the crate level.
-                new_module = fld.fold_mod(&new_module);
-            }
+        let vp = @spanned(ast::view_path_glob(prelude_path,
+                                              ast::DUMMY_NODE_ID));
+        let vi2 = ast::view_item {
+            node: ast::view_item_use(~[vp]),
+            attrs: ~[],
+            vis: ast::private,
+            span: dummy_sp(),
+        };
 
-            // FIXME #2543: Bad copy.
-            ast::Crate {
-                module: new_module,
-                ..(*crate).clone()
-            }
-        },
-        fold_item: |item, fld| {
-            if !no_prelude(item.attrs) {
-                // only recur if there wasn't `#[no_implicit_prelude];`
-                // on this item, i.e. this means that the prelude is not
-                // implicitly imported though the whole subtree
-                fold::noop_fold_item(item, fld)
-            } else {
-                Some(item)
-            }
-        },
-        fold_mod: |module, fld| {
-            let n2 = ast::DUMMY_NODE_ID;
+        let vis = vec::append(~[vi2], module.view_items);
 
-            let prelude_path = ast::Path {
-                span: dummy_sp(),
-                global: false,
-                segments: ~[
-                    ast::PathSegment {
-                        identifier: sess.ident_of("std"),
-                        lifetime: None,
-                        types: opt_vec::Empty,
-                    },
-                    ast::PathSegment {
-                        identifier: sess.ident_of("prelude"),
-                        lifetime: None,
-                        types: opt_vec::Empty,
-                    },
-                ],
-            };
+        // FIXME #2543: Bad copy.
+        let new_module = ast::_mod {
+            view_items: vis,
+            ..(*module).clone()
+        };
+        fold::noop_fold_mod(&new_module, self)
+    }
+}
 
-            let vp = @spanned(ast::view_path_glob(prelude_path, n2));
-            let vi2 = ast::view_item { node: ast::view_item_use(~[vp]),
-                                        attrs: ~[],
-                                        vis: ast::private,
-                                        span: dummy_sp() };
-
-            let vis = vec::append(~[vi2], module.view_items);
-
-            // FIXME #2543: Bad copy.
-            let new_module = ast::_mod {
-                view_items: vis,
-                ..(*module).clone()
-            };
-            fold::noop_fold_mod(&new_module, fld)
-        },
-        ..*fold::default_ast_fold()
+fn inject_libstd_ref(sess: Session, crate: &ast::Crate) -> @ast::Crate {
+    let fold = StandardLibraryInjector {
+        sess: sess,
     };
-
-    let fold = fold::make_fold(precursor);
     @fold.fold_crate(crate)
 }

@@ -15,6 +15,7 @@ use ast_util;
 use codemap::{Span, respan, dummy_sp};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
+use fold;
 use opt_vec;
 use opt_vec::OptVec;
 
@@ -860,5 +861,34 @@ impl AstBuilder for @ExtCtxt {
         self.view_use(sp, vis,
                       ~[@respan(sp,
                                 ast::view_path_glob(self.path(sp, path), ast::DUMMY_NODE_ID))])
+    }
+}
+
+struct Duplicator {
+    cx: @ExtCtxt,
+}
+
+impl fold::ast_fold for Duplicator {
+    fn new_id(&self, _: NodeId) -> NodeId {
+        ast::DUMMY_NODE_ID
+    }
+}
+
+pub trait Duplicate {
+    //
+    // Duplication functions
+    //
+    // These functions just duplicate AST nodes.
+    //
+
+    fn duplicate(&self, cx: @ExtCtxt) -> Self;
+}
+
+impl Duplicate for @ast::Expr {
+    fn duplicate(&self, cx: @ExtCtxt) -> @ast::Expr {
+        let folder = @Duplicator {
+            cx: cx,
+        } as @fold::ast_fold;
+        folder.fold_expr(*self)
     }
 }

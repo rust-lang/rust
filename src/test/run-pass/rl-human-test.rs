@@ -22,6 +22,20 @@ use extra::rl;
 
 static HISTORY_FILE: &'static str = "rl-human-test-history.txt";
 
+struct TestCompleter;
+
+impl rl::CompletionCb for TestCompleter {
+    fn complete(&self, line: ~str, suggest: &fn(~str)) {
+        if line.is_empty() {
+            suggest(~"empty")
+        } else {
+            for c in line.rev_iter().take(3) {
+                suggest(format!("{0}{1}{1}{1}", line, c))
+            }
+        }
+    }
+}
+
 fn main() {
     // don't run this in robot mode, but still typecheck it.
     if !cfg!(robot_mode) {
@@ -42,14 +56,8 @@ The bool return values of each step are printed.",
 
         println!("restricting history length: {}", rl::set_history_max_len(3));
 
-        do rl::complete |line, suggest| {
-            if line.is_empty() {
-                suggest(~"empty")
-            } else {
-                for c in line.rev_iter().take(3) {
-                    suggest(format!("{0}{1}{1}{1}", line, c))
-                }
-            }
+        unsafe {
+            rl::complete(@TestCompleter as @rl::CompletionCb);
         }
 
         println!("adding 'one': {}", rl::add_history("one"));

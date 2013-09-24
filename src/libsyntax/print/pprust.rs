@@ -37,15 +37,25 @@ pub enum ann_node<'self> {
     node_expr(@ps, &'self ast::Expr),
     node_pat(@ps, &'self ast::Pat),
 }
-pub struct pp_ann {
-    pre: @fn(ann_node),
-    post: @fn(ann_node)
+
+pub trait pp_ann {
+    fn pre(&self, _node: ann_node) {}
+    fn post(&self, _node: ann_node) {}
 }
 
-pub fn no_ann() -> pp_ann {
-    fn ignore(_node: ann_node) { }
-    return pp_ann {pre: ignore, post: ignore};
+pub struct no_ann {
+    contents: (),
 }
+
+impl no_ann {
+    pub fn new() -> no_ann {
+        no_ann {
+            contents: (),
+        }
+    }
+}
+
+impl pp_ann for no_ann {}
 
 pub struct CurrentCommentAndLiteral {
     cur_cmnt: uint,
@@ -60,7 +70,7 @@ pub struct ps {
     literals: Option<~[comments::lit]>,
     cur_cmnt_and_lit: @mut CurrentCommentAndLiteral,
     boxes: @mut ~[pp::breaks],
-    ann: pp_ann
+    ann: @pp_ann
 }
 
 pub fn ibox(s: @ps, u: uint) {
@@ -74,12 +84,13 @@ pub fn end(s: @ps) {
 }
 
 pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
-    return rust_printer_annotated(writer, intr, no_ann());
+    return rust_printer_annotated(writer, intr, @no_ann::new() as @pp_ann);
 }
 
 pub fn rust_printer_annotated(writer: @io::Writer,
                               intr: @ident_interner,
-                              ann: pp_ann) -> @ps {
+                              ann: @pp_ann)
+                              -> @ps {
     return @ps {
         s: pp::mk_printer(writer, default_columns),
         cm: None::<@CodeMap>,
@@ -109,7 +120,7 @@ pub fn print_crate(cm: @CodeMap,
                    filename: @str,
                    input: @io::Reader,
                    out: @io::Writer,
-                   ann: pp_ann,
+                   ann: @pp_ann,
                    is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
@@ -484,7 +495,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
-    (s.ann.pre)(ann_node);
+    s.ann.pre(ann_node);
     match item.node {
       ast::item_static(ref ty, m, expr) => {
         head(s, visibility_qualified(item.vis, "static"));
@@ -635,7 +646,7 @@ pub fn print_item(s: @ps, item: &ast::item) {
         end(s);
       }
     }
-    (s.ann.post)(ann_node);
+    s.ann.post(ann_node);
 }
 
 fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
@@ -958,7 +969,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
     }
     maybe_print_comment(s, blk.span.lo);
     let ann_node = node_block(s, blk);
-    (s.ann.pre)(ann_node);
+    s.ann.pre(ann_node);
     match embedded {
       block_block_fn => end(s),
       block_normal => bopen(s)
@@ -979,7 +990,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
       _ => ()
     }
     bclose_maybe_open(s, blk.span, indented, close_box);
-    (s.ann.post)(ann_node);
+    s.ann.post(ann_node);
 }
 
 pub fn print_if(s: @ps, test: &ast::Expr, blk: &ast::Block,
@@ -1121,7 +1132,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
-    (s.ann.pre)(ann_node);
+    s.ann.pre(ann_node);
     match expr.node {
         ast::ExprVstore(e, v) => {
             print_expr_vstore(s, v);
@@ -1456,7 +1467,7 @@ pub fn print_expr(s: @ps, expr: &ast::Expr) {
           pclose(s);
       }
     }
-    (s.ann.post)(ann_node);
+    s.ann.post(ann_node);
     end(s);
 }
 
@@ -1578,7 +1589,7 @@ pub fn print_bounded_path(s: @ps, path: &ast::Path,
 pub fn print_pat(s: @ps, pat: &ast::Pat) {
     maybe_print_comment(s, pat.span.lo);
     let ann_node = node_pat(s, pat);
-    (s.ann.pre)(ann_node);
+    s.ann.pre(ann_node);
     /* Pat isn't normalized, but the beauty of it
      is that it doesn't matter */
     match pat.node {
@@ -1678,7 +1689,7 @@ pub fn print_pat(s: @ps, pat: &ast::Pat) {
         word(s.s, "]");
       }
     }
-    (s.ann.post)(ann_node);
+    s.ann.post(ann_node);
 }
 
 pub fn explicit_self_to_str(explicit_self: &ast::explicit_self_, intr: @ident_interner) -> ~str {
@@ -2252,17 +2263,6 @@ pub fn print_fn_header_info(s: @ps,
     print_onceness(s, onceness);
     word(s.s, "fn");
     print_opt_sigil(s, opt_sigil);
-}
-
-pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> &'static str {
-    match opt_p {
-      None => "fn",
-      Some(p) => match p {
-          ast::BorrowedSigil => "fn&",
-          ast::OwnedSigil => "fn~",
-          ast::ManagedSigil => "fn@"
-      }
-    }
 }
 
 pub fn purity_to_str(p: ast::purity) -> &'static str {

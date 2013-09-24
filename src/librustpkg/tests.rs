@@ -1567,8 +1567,11 @@ fn test_linker_build() {
     let matches = getopts([], optgroups());
     let options = build_session_options(@"rustpkg",
                                         matches.get_ref(),
-                                        diagnostic::emit);
-    let sess = build_session(options, diagnostic::emit);
+                                        @diagnostic::DefaultEmitter as
+                                            @diagnostic::Emitter);
+    let sess = build_session(options,
+                             @diagnostic::DefaultEmitter as
+                                @diagnostic::Emitter);
     command_line_test([test_sysroot().to_str(),
                        ~"install",
                        ~"--linker",
