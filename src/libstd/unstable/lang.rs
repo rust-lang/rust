@@ -93,21 +93,6 @@ pub unsafe fn check_not_borrowed(a: *u8,
     borrowck::check_not_borrowed(a, file, line)
 }
 
-#[cfg(stage0)]
-#[lang="start"]
-pub fn start(main: *u8, argc: int, argv: **c_char,
-             crate_map: *u8) -> int {
-    use rt;
-
-    unsafe {
-        return do rt::start(argc, argv as **u8, crate_map) {
-            let main: extern "Rust" fn() = transmute(main);
-            main();
-        };
-    }
-}
-
-#[cfg(not(stage0))]
 #[lang="start"]
 pub fn start(main: *u8, argc: int, argv: **c_char) -> int {
     use rt;
