@@ -158,12 +158,10 @@ impl<'self> Iterator<Piece<'self>> for Parser<'self> {
             Some((_, '{')) => {
                 self.cur.next();
                 let ret = Some(Argument(self.argument()));
-                if !self.consume('}') {
-                    self.err(~"unterminated format string");
-                }
+                self.must_consume('}');
                 ret
             }
-            Some((pos, '\\')) => {
+            Some((pos, '%')) => {
                 self.cur.next();
                 self.escape(); // ensure it's a valid escape sequence
                 Some(String(self.string(pos + 1))) // skip the '\' character
@@ -211,9 +209,27 @@ impl<'self> Parser<'self> {
         }
     }
 
+    /// Forcibly consume the specified character, or else emit an error
+    fn must_consume(&mut self, expected: char) {
+        match self.cur.clone().next() {
+            Some((_, maybe)) if expected == maybe => { self.cur.next(); }
+            Some((_, found)) => {
+                self.err(fmt!("expected '%c' but found '%c'", expected, found));
+            }
+            None => {
+                self.err(fmt!("expected '%c' but string was terminated", expected))
+            }
+        }
+    }
+
     /// Attempts to consume any amount of whitespace followed by a character
     fn wsconsume(&mut self, c: char) -> bool {
         self.ws(); self.consume(c)
+    }
+
+    /// Similar to `wsconsume`, but invokes must_consume instead of consume
+    fn ws_must_consume(&mut self, c: char) {
+        self.ws(); self.must_consume(c)
     }
 
     /// Consumes all whitespace characters until the first non-whitespace
@@ -232,7 +248,7 @@ impl<'self> Parser<'self> {
     fn escape(&mut self) -> char {
         match self.cur.next() {
             Some((_, c @ '#')) | Some((_, c @ '{')) |
-            Some((_, c @ '\\')) | Some((_, c @ '}')) => { c }
+            Some((_, c @ '%')) | Some((_, c @ '}')) => { c }
             Some((_, c)) => {
                 self.err(fmt!("invalid escape character `%c`", c));
                 c
@@ -251,7 +267,7 @@ impl<'self> Parser<'self> {
         loop {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
-                Some((pos, '\\')) | Some((pos, '#')) |
+                Some((pos, '%')) | Some((pos, '#')) |
                 Some((pos, '}')) | Some((pos, '{')) => {
                     return self.input.slice(start, pos);
                 }
@@ -362,15 +378,11 @@ impl<'self> Parser<'self> {
         self.ws();
         match self.word() {
             "select" => {
-                if !self.wsconsume(',') {
-                    self.err(~"`select` must be followed by `,`");
-                }
+                self.ws_must_consume(',');
                 Some(self.select())
             }
             "plural" => {
-                if !self.wsconsume(',') {
-                    self.err(~"`plural` must be followed by `,`");
-                }
+                self.ws_must_consume(',');
                 Some(self.plural())
             }
             "" => {
@@ -396,15 +408,11 @@ impl<'self> Parser<'self> {
                 self.err(~"cannot have an empty selector");
                 break
             }
-            if !self.wsconsume('{') {
-                self.err(~"selector must be followed by `{`");
-            }
+            self.ws_must_consume('{');
             self.depth += 1;
             let pieces = self.collect();
             self.depth -= 1;
-            if !self.wsconsume('}') {
-                self.err(~"selector case must be terminated by `}`");
-            }
+            self.ws_must_consume('}');
             if selector == "other" {
                 if !other.is_none() {
                     self.err(~"multiple `other` statements in `select");
@@ -451,9 +459,7 @@ impl<'self> Parser<'self> {
                             self.err(fmt!("expected `offset`, found `%s`",
                                           word));
                         } else {
-                            if !self.consume(':') {
-                                self.err(~"`offset` must be followed by `:`");
-                            }
+                            self.must_consume(':');
                             match self.integer() {
                                 Some(i) => { offset = Some(i); }
                                 None => {
@@ -499,15 +505,11 @@ impl<'self> Parser<'self> {
                     }
                 }
             };
-            if !self.wsconsume('{') {
-                self.err(~"selector must be followed by `{`");
-            }
+            self.ws_must_consume('{');
             self.depth += 1;
             let pieces = self.collect();
             self.depth -= 1;
-            if !self.wsconsume('}') {
-                self.err(~"selector case must be terminated by `}`");
-            }
+            self.ws_must_consume('}');
             if isother {
                 if !other.is_none() {
                     self.err(~"multiple `other` statements in `select");
@@ -629,16 +631,16 @@ mod tests {
     #[test]
     fn simple() {
         same("asdf", ~[String("asdf")]);
-        same("a\\{b", ~[String("a"), String("{b")]);
-        same("a\\#b", ~[String("a"), String("#b")]);
-        same("a\\}b", ~[String("a"), String("}b")]);
-        same("a\\}", ~[String("a"), String("}")]);
-        same("\\}", ~[String("}")]);
+        same("a%{b", ~[String("a"), String("{b")]);
+        same("a%#b", ~[String("a"), String("#b")]);
+        same("a%}b", ~[String("a"), String("}b")]);
+        same("a%}", ~[String("a"), String("}")]);
+        same("%}", ~[String("}")]);
     }
 
     #[test] #[should_fail] fn invalid01() { musterr("{") }
-    #[test] #[should_fail] fn invalid02() { musterr("\\") }
-    #[test] #[should_fail] fn invalid03() { musterr("\\a") }
+    #[test] #[should_fail] fn invalid02() { musterr("%") }
+    #[test] #[should_fail] fn invalid03() { musterr("%a") }
     #[test] #[should_fail] fn invalid04() { musterr("{3a}") }
     #[test] #[should_fail] fn invalid05() { musterr("{:|}") }
     #[test] #[should_fail] fn invalid06() { musterr("{:>>>}") }

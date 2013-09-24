@@ -43,7 +43,7 @@ pub fn main() {
     // Various edge cases without formats
     t!(format!(""), "");
     t!(format!("hello"), "hello");
-    t!(format!("hello \\{"), "hello {");
+    t!(format!("hello %{"), "hello {");
 
     // default formatters should work
     t!(format!("{}", 1i), "1");
@@ -222,10 +222,10 @@ pub fn main() {
     t!(format!("{:+10.3f}", -1.0f), "    -1.000");
 
     // Escaping
-    t!(format!("\\{"), "{");
-    t!(format!("\\}"), "}");
-    t!(format!("\\#"), "#");
-    t!(format!("\\\\"), "\\");
+    t!(format!("%{"), "{");
+    t!(format!("%}"), "}");
+    t!(format!("%#"), "#");
+    t!(format!("%%"), "%");
 
     test_write();
     test_print();
