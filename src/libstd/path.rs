@@ -233,6 +233,21 @@ pub trait GenericPath : Clone + Eq + ToStr {
         result
     }
 
+
+    /// Returns `true` iff `child` is a suffix of `parent`. See the test
+    /// case for examples.
+    pub fn is_parent_of(parent: &Path, child: &Path) -> bool {
+        if !parent.is_absolute() || child.is_absolute()
+            || parent.components.len() < child.components.len()
+            || parent.components.is_empty() {
+            return false;
+        }
+        let child_components = child.components().len();
+        let parent_components = parent.components().len();
+        let to_drop = parent.components.len() - child_components;
+        parent.components.slice(to_drop, parent_components) == child.components
+    }
+
     fn components<'a>(&'a self) -> &'a [~str];
 }
 
@@ -1448,6 +1463,36 @@ mod tests {
                WindowsPath(".").to_str());
         assert_eq!(res, WindowsPath("."));
 
+    }
+
+
+    #[test]
+    fn test_is_parent_of() {
+        assert!(is_parent_of(&PosixPath("/a/b/c/d/e"), &PosixPath("c/d/e")));
+        assert!(!is_parent_of(&PosixPath("a/b/c/d/e"), &PosixPath("c/d/e")));
+        assert!(!is_parent_of(&PosixPath("/a/b/c/d/e"), &PosixPath("/c/d/e")));
+        assert!(!is_parent_of(&PosixPath(""), &PosixPath("")));
+        assert!(!is_parent_of(&PosixPath(""), &PosixPath("a/b/c")));
+        assert!(is_parent_of(&PosixPath("/a/b/c"), &PosixPath("")));
+        assert!(is_parent_of(&PosixPath("/a/b/c"), &PosixPath("a/b/c")));
+        assert!(!is_parent_of(&PosixPath("/a/b/c"), &PosixPath("d/e/f")));
+
+        let abcde = WindowsPath("C:\\a\\b\\c\\d\\e");
+        let rel_abcde = WindowsPath("a\\b\\c\\d\\e");
+        let cde   = WindowsPath("c\\d\\e");
+        let slashcde = WindowsPath("C:\\c\\d\\e");
+        let empty = WindowsPath("");
+        let abc = WindowsPath("C:\\a\\b\\c");
+        let rel_abc = WindowsPath("a\\b\\c");
+        let def = WindowsPath("d\\e\\f");
+
+        assert!(is_parent_of(&abcde, &cde));
+        assert!(!is_parent_of(&rel_abcde, &cde));
+        assert!(!is_parent_of(&abcde, &slashcde));
+        assert!(!is_parent_of(&empty, &empty));
+        assert!(is_parent_of(&abc, &empty);
+        assert!(is_parent_of(&abc, &rel_abc));
+        assert!(!is_parent_of(&abc, &def));
     }
 
 }
