@@ -59,11 +59,19 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
         let mut i = 0u;
         let mut j = lines.len();
-        while i < j && lines[i].trim().is_empty() {
-            i += 1u;
+        // first line of all-stars should be omitted
+        if lines.len() > 0 && lines[0].iter().all(|c| c == '*') {
+            i += 1;
         }
-        while j > i && lines[j - 1u].trim().is_empty() {
-            j -= 1u;
+        while i < j && lines[i].trim().is_empty() {
+            i += 1;
+        }
+        // like the first, a last line of all stars should be omitted
+        if j > i && lines[j - 1].iter().skip(1).all(|c| c == '*') {
+            j -= 1;
+        }
+        while j > i && lines[j - 1].trim().is_empty() {
+            j -= 1;
         }
         return lines.slice(i, j).to_owned();
     }
@@ -106,8 +114,12 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
     }
 
-    if comment.starts_with("//") {
-        return comment.slice(3u, comment.len()).to_owned();
+    // one-line comments lose their prefix
+    static ONLINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
+    for prefix in ONLINERS.iter() {
+        if comment.starts_with(*prefix) {
+            return comment.slice_from(prefix.len()).to_owned();
+        }
     }
 
     if comment.starts_with("/*") {
@@ -384,29 +396,42 @@ mod test {
 
     #[test] fn test_block_doc_comment_1() {
         let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
-        let correct_stripped = " Test \n*  Test\n   Test";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+        assert_eq!(stripped, ~" Test \n*  Test\n   Test");
     }
 
     #[test] fn test_block_doc_comment_2() {
         let comment = "/**\n * Test\n *  Test\n*/";
-        let correct_stripped = " Test\n  Test";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+        assert_eq!(stripped, ~" Test\n  Test");
     }
 
     #[test] fn test_block_doc_comment_3() {
         let comment = "/**\n let a: *int;\n *a = 5;\n*/";
-        let correct_stripped = " let a: *int;\n *a = 5;";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+        assert_eq!(stripped, ~" let a: *int;\n *a = 5;");
+    }
+
+    #[test] fn test_block_doc_comment_4() {
+        let comment = "/*******************\n test\n *********************/";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped, ~" test");
     }
 
     #[test] fn test_line_doc_comment() {
-        let comment = "/// Test";
-        let correct_stripped = " Test";
-        let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+        let stripped = strip_doc_comment_decoration("/// test");
+        assert_eq!(stripped, ~" test");
+        let stripped = strip_doc_comment_decoration("///! test");
+        assert_eq!(stripped, ~" test");
+        let stripped = strip_doc_comment_decoration("// test");
+        assert_eq!(stripped, ~" test");
+        let stripped = strip_doc_comment_decoration("// test");
+        assert_eq!(stripped, ~" test");
+        let stripped = strip_doc_comment_decoration("///test");
+        assert_eq!(stripped, ~"test");
+        let stripped = strip_doc_comment_decoration("///!test");
+        assert_eq!(stripped, ~"test");
+        let stripped = strip_doc_comment_decoration("//test");
+        assert_eq!(stripped, ~"test");
     }
 }
