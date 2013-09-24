@@ -589,6 +589,7 @@ impl<'self> fmt::Default for Item<'self> {
             clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
+            clean::VariantItem(*) => item_variant(fmt.buf, it.cx, it.item),
             _ => {}
         }
     }
@@ -930,7 +931,8 @@ fn item_enum(w: &mut io::Writer, it: &clean::Item, e: &clean::Enum) {
     } else {
         write!(w, " \\{\n");
         for v in e.variants.iter() {
-            let name = v.name.get_ref().as_slice();
+            let name = format!("<a name='variant.{0}'>{0}</a>",
+                               v.name.get_ref().as_slice());
             match v.inner {
                 clean::VariantItem(ref var) => {
                     match var.kind {
@@ -1158,4 +1160,13 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
         sort::quick_sort(*items, |i1, i2| i1 < i2);
     }
     return map;
+}
+
+fn item_variant(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
+    write!(w, "<DOCTYPE html><html><head>\
+                <meta http-equiv='refresh' content='0; \
+                      url=../enum.{}.html\\#variant.{}'>\
+               </head><body></body></html>",
+           *cx.current.last(),
+           it.name.get_ref().as_slice());
 }
