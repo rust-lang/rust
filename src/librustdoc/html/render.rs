@@ -32,7 +32,7 @@ use syntax::ast;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method};
+use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
 
@@ -717,8 +717,9 @@ fn item_module(w: &mut io::Writer, cx: &Context,
 }
 
 fn item_function(w: &mut io::Writer, it: &clean::Item, f: &clean::Function) {
-    write!(w, "<pre class='fn'>{vis}fn {name}{generics}{decl}</pre>",
+    write!(w, "<pre class='fn'>{vis}{purity}fn {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
+           purity = PuritySpace(f.purity),
            name = it.name.get_ref().as_slice(),
            generics = f.generics,
            decl = f.decl);
