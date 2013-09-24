@@ -173,7 +173,6 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
-// n.b. this is copied from src/librustdoc/unindent_pass.rs
 pub fn unindent(s: &str) -> ~str {
     let lines = s.any_line_iter().collect::<~[&str]>();
     let mut saw_first_line = false;
