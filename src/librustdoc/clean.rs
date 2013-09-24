@@ -15,6 +15,7 @@ use its = syntax::parse::token::ident_to_str;
 
 use syntax;
 use syntax::ast;
+use syntax::ast_util;
 use syntax::attr::AttributeMethods;
 
 use std;
@@ -283,7 +284,7 @@ impl Clean<Item> for ast::method {
             attrs: self.attrs.clean(),
             source: self.span.clean(),
             id: self.self_id.clone(),
-            visibility: None,
+            visibility: self.vis.clean(),
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
                 self_: self.explicit_self.clean(),

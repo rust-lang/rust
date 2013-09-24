@@ -56,11 +56,14 @@ static PASSES: &'static [Pass] = &[
      "removes excess indentation on comments in order for markdown to like it"),
     ("collapse-docs", passes::collapse_docs,
      "concatenates all document attributes into one document attribute"),
+    ("strip-private", passes::strip_private,
+     "strips all private items from a crate which cannot be seen externally"),
 ];
 
 static DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
     "collapse-docs",
+    "strip-private",
 ];
 
 local_data_key!(pub ctxtkey: @core::DocContext)

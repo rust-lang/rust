@@ -615,13 +615,21 @@ fn document(w: &mut io::Writer, item: &clean::Item) {
 fn item_module(w: &mut io::Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) {
     document(w, item);
+    debug2!("{:?}", items);
     let mut indices = vec::from_fn(items.len(), |i| i);
 
-    fn lt(i1: &clean::Item, i2: &clean::Item) -> bool {
+    fn lt(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> bool {
         if shortty(i1) == shortty(i2) {
             return i1.name < i2.name;
         }
         match (&i1.inner, &i2.inner) {
+            (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
+                match (&a.inner, &b.inner) {
+                    (&clean::ExternMod(*), _) => true,
+                    (_, &clean::ExternMod(*)) => false,
+                    _ => idx1 < idx2,
+                }
+            }
             (&clean::ViewItemItem(*), _) => true,
             (_, &clean::ViewItemItem(*)) => false,
             (&clean::ModuleItem(*), _) => true,
@@ -638,18 +646,19 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             (_, &clean::FunctionItem(*)) => false,
             (&clean::TypedefItem(*), _) => true,
             (_, &clean::TypedefItem(*)) => false,
-            _ => false,
+            _ => idx1 < idx2,
         }
     }
 
+    debug2!("{:?}", indices);
     do sort::quick_sort(indices) |&i1, &i2| {
-        lt(&items[i1], &items[i2])
+        lt(&items[i1], &items[i2], i1, i2)
     }
 
+    debug2!("{:?}", indices);
     let mut curty = "";
     for &idx in indices.iter() {
         let myitem = &items[idx];
-        if myitem.name.is_none() { loop }
 
         let myty = shortty(myitem);
         if myty != curty {

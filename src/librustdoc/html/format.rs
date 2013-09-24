@@ -13,6 +13,7 @@ use std::local_data;
 use std::rt::io;
 
 use syntax::ast;
+use syntax::ast_util;
 
 use clean;
 use html::render::{cache_key, current_location_key};
