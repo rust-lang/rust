@@ -114,7 +114,7 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
     }
 }
 
-fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: Span, id: ast::NodeId)
+fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                            -> Option<ty::t> {
     let fcx = wbcx.fcx;
     let tcx = fcx.ccx.tcx;
@@ -196,7 +196,7 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: Span, id: ast::NodeId)
     }
 }
 
-fn maybe_resolve_type_vars_for_node(wbcx: @mut WbCtxt,
+fn maybe_resolve_type_vars_for_node(wbcx: &mut WbCtxt,
                                     sp: Span,
                                     id: ast::NodeId)
                                  -> Option<ty::t> {
@@ -215,15 +215,13 @@ struct WbCtxt {
     success: bool,
 }
 
-struct WbVisitor;
-
-fn visit_stmt(s: @ast::Stmt, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_stmt(s: @ast::Stmt, wbcx: &mut WbCtxt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
-    visit::walk_stmt(v, s, wbcx);
+    visit::walk_stmt(wbcx, s, ());
 }
 
-fn visit_expr(e: @ast::Expr, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_expr(e: @ast::Expr, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -268,19 +266,19 @@ fn visit_expr(e: @ast::Expr, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
         _ => ()
     }
 
-    visit::walk_expr(v, e, wbcx);
+    visit::walk_expr(wbcx, e, ());
 }
 
-fn visit_block(b: &ast::Block, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
 
     resolve_type_vars_for_node(wbcx, b.span, b.id);
-    visit::walk_block(v, b, wbcx);
+    visit::walk_block(wbcx, b, ());
 }
 
-fn visit_pat(p: @ast::Pat, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_pat(p: @ast::Pat, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -291,10 +289,10 @@ fn visit_pat(p: @ast::Pat, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
            wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
                                    p.id)));
-    visit::walk_pat(v, p, wbcx);
+    visit::walk_pat(wbcx, p, ());
 }
 
-fn visit_local(l: @ast::Local, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
@@ -314,25 +312,25 @@ fn visit_local(l: @ast::Local, (wbcx, v): (@mut WbCtxt, &mut WbVisitor)) {
             wbcx.success = false;
         }
     }
-    visit::walk_local(v, l, wbcx);
+    visit::walk_local(wbcx, l, ());
 }
-fn visit_item(_item: @ast::item, (_wbcx, _v): (@mut WbCtxt, &mut WbVisitor)) {
+fn visit_item(_item: @ast::item, _wbcx: &mut WbCtxt) {
     // Ignore items
 }
 
-impl Visitor<@mut WbCtxt> for WbVisitor {
-    fn visit_item(&mut self, i:@ast::item, e:@mut WbCtxt) { visit_item(i, (e, self)); }
-    fn visit_stmt(&mut self, s:@ast::Stmt, e:@mut WbCtxt) { visit_stmt(s, (e, self)); }
-    fn visit_expr(&mut self, ex:@ast::Expr, e:@mut WbCtxt) { visit_expr(ex, (e, self)); }
-    fn visit_block(&mut self, b:&ast::Block, e:@mut WbCtxt) { visit_block(b, (e, self)); }
-    fn visit_pat(&mut self, p:@ast::Pat, e:@mut WbCtxt) { visit_pat(p, (e, self)); }
-    fn visit_local(&mut self, l:@ast::Local, e:@mut WbCtxt) { visit_local(l, (e, self)); }
+impl Visitor<()> for WbCtxt {
+    fn visit_item(&mut self, i:@ast::item, _:()) { visit_item(i, self); }
+    fn visit_stmt(&mut self, s:@ast::Stmt, _:()) { visit_stmt(s, self); }
+    fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(ex, self); }
+    fn visit_block(&mut self, b:&ast::Block, _:()) { visit_block(b, self); }
+    fn visit_pat(&mut self, p:@ast::Pat, _:()) { visit_pat(p, self); }
+    fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
 }
 
 pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::Expr) -> bool {
-    let wbcx = @mut WbCtxt { fcx: fcx, success: true };
-    let mut visit = WbVisitor;
-    visit.visit_expr(e, wbcx);
+    let mut wbcx = WbCtxt { fcx: fcx, success: true };
+    let wbcx = &mut wbcx;
+    wbcx.visit_expr(e, ());
     return wbcx.success;
 }
 
@@ -340,16 +338,16 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
                                blk: &ast::Block,
                                self_info: Option<SelfInfo>) -> bool {
-    let wbcx = @mut WbCtxt { fcx: fcx, success: true };
-    let mut visit = WbVisitor;
-    visit.visit_block(blk, wbcx);
+    let mut wbcx = WbCtxt { fcx: fcx, success: true };
+    let wbcx = &mut wbcx;
+    wbcx.visit_block(blk, ());
     for self_info in self_info.iter() {
         resolve_type_vars_for_node(wbcx,
                                    self_info.span,
                                    self_info.self_id);
     }
     for arg in decl.inputs.iter() {
-        visit.visit_pat(arg.pat, wbcx);
+        wbcx.visit_pat(arg.pat, ());
         // Privacy needs the type for the whole pattern, not just each binding
         if !pat_util::pat_is_binding(fcx.tcx().def_map, arg.pat) {
             resolve_type_vars_for_node(wbcx, arg.pat.span, arg.pat.id);
