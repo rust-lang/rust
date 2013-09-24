@@ -388,6 +388,51 @@ mod test {
         string_to_expr(@"::abc::def::return");
     }
 
+    // check the token-tree-ization of macros
+    #[test] fn string_to_tts_macro () {
+        let tts = string_to_tts(@"macro_rules! zip (($a)=>($a))");
+        match tts {
+            [ast::tt_tok(_,_),
+             ast::tt_tok(_,token::NOT),
+             ast::tt_tok(_,_),
+             ast::tt_delim(delim_elts)] =>
+                match *delim_elts {
+                [ast::tt_tok(_,token::LPAREN),
+                 ast::tt_delim(first_set),
+                 ast::tt_tok(_,token::FAT_ARROW),
+                 ast::tt_delim(second_set),
+                 ast::tt_tok(_,token::RPAREN)] =>
+                    match *first_set {
+                    [ast::tt_tok(_,token::LPAREN),
+                     ast::tt_tok(_,token::DOLLAR),
+                     ast::tt_tok(_,_),
+                     ast::tt_tok(_,token::RPAREN)] =>
+                        match *second_set {
+                        [ast::tt_tok(_,token::LPAREN),
+                         ast::tt_tok(_,token::DOLLAR),
+                         ast::tt_tok(_,_),
+                         ast::tt_tok(_,token::RPAREN)] =>
+                            assert_eq!("correct","correct"),
+                        _ => assert_eq!("wrong 4","correct")
+                    },
+                    _ => {
+                        error!("failing value 3: %?",first_set);
+                        assert_eq!("wrong 3","correct")
+                    }
+                },
+                _ => {
+                    error!("failing value 2: %?",delim_elts);
+                    assert_eq!("wrong","correct");
+                }
+
+            },
+            _ => {
+                error!("failing value: %?",tts);
+                assert_eq!("wrong 1","correct");
+            }
+        }
+    }
+
     #[test] fn string_to_tts_1 () {
         let tts = string_to_tts(@"fn a (b : int) { b; }");
         assert_eq!(to_json_str(@tts),
