@@ -25,14 +25,13 @@ pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
 
 use self::delegated::*;
+use self::delegated_intrinsics::*;
 
 macro_rules! delegate(
     (
         $(
             fn $name:ident(
-                $(
-                    $arg:ident : $arg_ty:ty
-                ),*
+                $($arg:ident : $arg_ty:ty),*
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
@@ -41,10 +40,9 @@ macro_rules! delegate(
         mod delegated {
             use cmath::c_double_utils;
             use libc::{c_double, c_int};
-            use unstable::intrinsics;
 
             $(
-                #[inline] #[fixed_stack_segment] #[inline(never)]
+                #[fixed_stack_segment] #[inline(never)]
                 pub fn $name($( $arg : $arg_ty ),*) -> $rv {
                     unsafe {
                         $bound_name($( $arg ),*)
@@ -55,7 +53,31 @@ macro_rules! delegate(
     )
 )
 
-delegate!(
+macro_rules! delegate_intrinsics(
+    (
+        $(
+            fn $name:ident(
+                $($arg:ident : $arg_ty:ty),*
+            ) -> $rv:ty = $bound_name:path
+        ),*
+    ) => (
+        // An inner module is required to get the #[inline] attribute on the
+        // functions.
+        mod delegated_intrinsics {
+            use unstable::intrinsics;
+            use libc::c_int;
+
+            $(
+                #[inline]
+                pub fn $name($( $arg : $arg_ty ),*) -> $rv {
+                    unsafe { $bound_name($( $arg ),*) }
+                }
+            )*
+        }
+    )
+)
+
+delegate_intrinsics!(
     // intrinsics
     fn abs(n: f64) -> f64 = intrinsics::fabsf64,
     fn cos(n: f64) -> f64 = intrinsics::cosf64,
@@ -69,8 +91,10 @@ delegate!(
     fn pow(n: f64, e: f64) -> f64 = intrinsics::powf64,
     fn powi(n: f64, e: c_int) -> f64 = intrinsics::powif64,
     fn sin(n: f64) -> f64 = intrinsics::sinf64,
-    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
+    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64
+)
 
+delegate!(
     // LLVM 3.3 required to use intrinsics for these four
     fn ceil(n: c_double) -> c_double = c_double_utils::ceil,
     fn trunc(n: c_double) -> c_double = c_double_utils::trunc,
