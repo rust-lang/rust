@@ -42,8 +42,11 @@ pub trait Orderable: Ord {
     fn clamp(&self, mn: &Self, mx: &Self) -> Self;
 }
 
+/// Return the smaller number.
 #[inline(always)] pub fn min<T: Orderable>(x: T, y: T) -> T { x.min(&y) }
+/// Return the larger number.
 #[inline(always)] pub fn max<T: Orderable>(x: T, y: T) -> T { x.max(&y) }
+/// Returns the number constrained within the range `mn <= self <= mx`.
 #[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
 
 pub trait Zero {
@@ -51,12 +54,14 @@ pub trait Zero {
     fn is_zero(&self) -> bool;
 }
 
+/// Returns `0` of appropriate type.
 #[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
 
 pub trait One {
     fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
+/// Returns `1` of appropriate type.
 #[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 pub trait Signed: Num
@@ -69,8 +74,26 @@ pub trait Signed: Num
     fn is_negative(&self) -> bool;
 }
 
+/// Computes the absolute value.
+///
+/// For float, f32, and f64, `NaN` will be returned if the number is `NaN`
 #[inline(always)] pub fn abs<T: Signed>(value: T) -> T { value.abs() }
+/// The positive difference of two numbers.
+///
+/// Returns `zero` if the number is less than or equal to `other`,
+/// otherwise the difference between `self` and `other` is returned.
 #[inline(always)] pub fn abs_sub<T: Signed>(x: T, y: T) -> T { x.abs_sub(&y) }
+/// Returns the sign of the number.
+///
+/// For float, f32, f64:
+/// - `1.0` if the number is positive, `+0.0` or `infinity`
+/// - `-1.0` if the number is negative, `-0.0` or `neg_infinity`
+/// - `NaN` if the number is `NaN`
+///
+/// For int:
+/// - `0` if the number is zero
+/// - `1` if the number is positive
+/// - `-1` if the number is negative
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
 pub trait Unsigned: Num {}
@@ -106,7 +129,11 @@ pub trait Integer: Num
     fn is_odd(&self) -> bool;
 }
 
+/// Calculates the Greatest Common Divisor (GCD) of the number and `other`.
+///
+/// The result is always positive.
 #[inline(always)] pub fn gcd<T: Integer>(x: T, y: T) -> T { x.gcd(&y) }
+/// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
 #[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
 pub trait Round {
@@ -132,10 +159,23 @@ pub trait Algebraic {
     fn hypot(&self, other: &Self) -> Self;
 }
 
+/// Raise a number to a power.
+///
+/// # Example
+///
+/// ```rust
+/// let sixteen: float = num::pow(2.0, 4.0);
+/// assert_eq!(sixteen, 16.0);
+/// ```
 #[inline(always)] pub fn pow<T: Algebraic>(value: T, n: T) -> T { value.pow(&n) }
+/// Take the squre root of a number.
 #[inline(always)] pub fn sqrt<T: Algebraic>(value: T) -> T { value.sqrt() }
+/// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
 #[inline(always)] pub fn rsqrt<T: Algebraic>(value: T) -> T { value.rsqrt() }
+/// Take the cubic root of a number.
 #[inline(always)] pub fn cbrt<T: Algebraic>(value: T) -> T { value.cbrt() }
+/// Calculate the length of the hypotenuse of a right-angle triangle given legs of length `x` and
+/// `y`.
 #[inline(always)] pub fn hypot<T: Algebraic>(x: T, y: T) -> T { x.hypot(&y) }
 
 pub trait Trigonometric {
@@ -151,15 +191,23 @@ pub trait Trigonometric {
     fn sin_cos(&self) -> (Self, Self);
 }
 
+/// Sine function.
 #[inline(always)] pub fn sin<T: Trigonometric>(value: T) -> T { value.sin() }
+/// Cosine function.
 #[inline(always)] pub fn cos<T: Trigonometric>(value: T) -> T { value.cos() }
+/// Tangent function.
 #[inline(always)] pub fn tan<T: Trigonometric>(value: T) -> T { value.tan() }
 
+/// Compute the arcsine of the number.
 #[inline(always)] pub fn asin<T: Trigonometric>(value: T) -> T { value.asin() }
+/// Compute the arccosine of the number.
 #[inline(always)] pub fn acos<T: Trigonometric>(value: T) -> T { value.acos() }
+/// Compute the arctangent of the number.
 #[inline(always)] pub fn atan<T: Trigonometric>(value: T) -> T { value.atan() }
 
+/// Compute the arctangent with 2 arguments.
 #[inline(always)] pub fn atan2<T: Trigonometric>(x: T, y: T) -> T { x.atan2(&y) }
+/// Simultaneously computes the sine and cosine of the number.
 #[inline(always)] pub fn sin_cos<T: Trigonometric>(value: T) -> (T, T) { value.sin_cos() }
 
 pub trait Exponential {
@@ -172,12 +220,18 @@ pub trait Exponential {
     fn log10(&self) -> Self;
 }
 
+/// Returns `e^(value)`, (the exponential function).
 #[inline(always)] pub fn exp<T: Exponential>(value: T) -> T { value.exp() }
+/// Returns 2 raised to the power of the number, `2^(value)`.
 #[inline(always)] pub fn exp2<T: Exponential>(value: T) -> T { value.exp2() }
 
+/// Returns the natural logarithm of the number.
 #[inline(always)] pub fn ln<T: Exponential>(value: T) -> T { value.ln() }
+/// Returns the logarithm of the number with respect to an arbitrary base.
 #[inline(always)] pub fn log<T: Exponential>(value: T, base: T) -> T { value.log(&base) }
+/// Returns the base 2 logarithm of the number.
 #[inline(always)] pub fn log2<T: Exponential>(value: T) -> T { value.log2() }
+/// Returns the base 10 logarithm of the number.
 #[inline(always)] pub fn log10<T: Exponential>(value: T) -> T { value.log10() }
 
 pub trait Hyperbolic: Exponential {
@@ -190,12 +244,18 @@ pub trait Hyperbolic: Exponential {
     fn atanh(&self) -> Self;
 }
 
+/// Hyperbolic cosine function.
 #[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
+/// Hyperbolic sine function.
 #[inline(always)] pub fn cosh<T: Hyperbolic>(value: T) -> T { value.cosh() }
+/// Hyperbolic tangent function.
 #[inline(always)] pub fn tanh<T: Hyperbolic>(value: T) -> T { value.tanh() }
 
+/// Inverse hyperbolic sine function.
 #[inline(always)] pub fn asinh<T: Hyperbolic>(value: T) -> T { value.asinh() }
+/// Inverse hyperbolic cosine function.
 #[inline(always)] pub fn acosh<T: Hyperbolic>(value: T) -> T { value.acosh() }
+/// Inverse hyperbolic tangent function.
 #[inline(always)] pub fn atanh<T: Hyperbolic>(value: T) -> T { value.atanh() }
 
 /// Defines constants and methods common to real numbers
@@ -345,8 +405,16 @@ pub trait Float: Real
     fn next_after(&self, other: Self) -> Self;
 }
 
+/// Returns the exponential of the number, minus `1`, `exp(n) - 1`, in a way
+/// that is accurate even if the number is close to zero.
 #[inline(always)] pub fn exp_m1<T: Float>(value: T) -> T { value.exp_m1() }
+/// Returns the natural logarithm of the number plus `1`, `ln(n + 1)`, more
+/// accurately than if the operations were performed separately.
 #[inline(always)] pub fn ln_1p<T: Float>(value: T) -> T { value.ln_1p() }
+/// Fused multiply-add. Computes `(a * b) + c` with only one rounding error.
+///
+/// This produces a more accurate result with better performance (on some
+/// architectures) than a separate multiplication operation followed by an add.
 #[inline(always)] pub fn mul_add<T: Float>(a: T, b: T, c: T) -> T { a.mul_add(b, c) }
 
 /// A generic trait for converting a value to a number.
@@ -788,7 +856,7 @@ impl_from_primitive!(u64, n.to_u64())
 impl_from_primitive!(f32, n.to_f32())
 impl_from_primitive!(f64, n.to_f64())
 
-/// Cast from one machine scalar to another
+/// Cast from one machine scalar to another.
 ///
 /// # Example
 ///
@@ -841,7 +909,7 @@ pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
-/// A utility function that just calls FromStrRadix::from_str_radix
+/// A utility function that just calls FromStrRadix::from_str_radix.
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
