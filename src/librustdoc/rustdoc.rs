@@ -122,7 +122,7 @@ pub fn main_args(args: &[~str]) -> int {
         for &name in DEFAULT_PASSES.iter() {
             println!("{:>20s}", name);
         }
-        return;
+        return 0;
     }
 
     let (format, cratefile) = match matches.free.clone() {
