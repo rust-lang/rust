@@ -2035,6 +2035,11 @@ impl Parser {
 
     // parse a single token tree from the input.
     pub fn parse_token_tree(&self) -> token_tree {
+        // FIXME #6994: currently, this is too eager. It
+        // parses token trees but also identifies tt_seq's
+        // and tt_nonterminals; it's too early to know yet
+        // whether something will be a nonterminal or a seq
+        // yet.
         maybe_whole!(deref self, nt_tt);
 
         // this is the fall-through for the 'match' below.

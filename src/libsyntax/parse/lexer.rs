@@ -875,7 +875,6 @@ fn consume_whitespace(rdr: @mut StringReader) {
 mod test {
     use super::*;
 
-    use ast;
     use codemap::{BytePos, CodeMap, Span};
     use diagnostic;
     use parse::token;
