@@ -80,9 +80,9 @@ impl<T, U> ImmutableTuple<T, U> for (T, U) {
 
 macro_rules! tuple_impls {
     ($(
-        ($cloneable_trait:ident, $immutable_trait:ident) {
+        ($move_trait:ident, $immutable_trait:ident) {
             $(($get_fn:ident, $get_ref_fn:ident) -> $T:ident {
-                $get_pattern:pat => $ret:expr
+                $move_pattern:pat, $ref_pattern:pat => $ret:expr
             })+
         }
     )+) => {
@@ -93,15 +93,16 @@ macro_rules! tuple_impls {
             #[cfg(not(test))] use num::Zero;
 
             $(
-                pub trait $cloneable_trait<$($T),+> {
-                    $(fn $get_fn(&self) -> $T;)+
+                pub trait $move_trait<$($T),+> {
+                    $(fn $get_fn(self) -> $T;)+
                 }
 
-                impl<$($T:Clone),+> $cloneable_trait<$($T),+> for ($($T,)+) {
+                impl<$($T),+> $move_trait<$($T),+> for ($($T,)+) {
                     $(
                         #[inline]
-                        fn $get_fn(&self) -> $T {
-                            self.$get_ref_fn().clone()
+                        fn $get_fn(self) -> $T {
+                            let $move_pattern = self;
+                            $ret
                         }
                     )+
                 }
@@ -114,7 +115,8 @@ macro_rules! tuple_impls {
                     $(
                         #[inline]
                         fn $get_ref_fn<'a>(&'a self) -> &'a $T {
-                            match *self { $get_pattern => $ret }
+                            let $ref_pattern = *self;
+                            $ret
                         }
                     )+
                 }
@@ -221,118 +223,118 @@ macro_rules! lexical_cmp {
 
 
 tuple_impls! {
-    (CloneableTuple1, ImmutableTuple1) {
-        (n0, n0_ref) -> A { (ref a,) => a }
+    (Tuple1, ImmutableTuple1) {
+        (n0, n0_ref) -> A { (a,), (ref a,) => a }
     }
 
-    (CloneableTuple2, ImmutableTuple2) {
-        (n0, n0_ref) -> A { (ref a,_) => a }
-        (n1, n1_ref) -> B { (_,ref b) => b }
+    (Tuple2, ImmutableTuple2) {
+        (n0, n0_ref) -> A { (a,_), (ref a,_) => a }
+        (n1, n1_ref) -> B { (_,b), (_,ref b) => b }
     }
 
-    (CloneableTuple3, ImmutableTuple3) {
-        (n0, n0_ref) -> A { (ref a,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c) => c }
+    (Tuple3, ImmutableTuple3) {
+        (n0, n0_ref) -> A { (a,_,_), (ref a,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_), (_,ref b,_) => b }
+        (n2, n2_ref) -> C { (_,_,c), (_,_,ref c) => c }
     }
 
-    (CloneableTuple4, ImmutableTuple4) {
-        (n0, n0_ref) -> A { (ref a,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d) => d }
+    (Tuple4, ImmutableTuple4) {
+        (n0, n0_ref) -> A { (a,_,_,_), (ref a,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_), (_,ref b,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_), (_,_,ref c,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d), (_,_,_,ref d) => d }
     }
 
-    (CloneableTuple5, ImmutableTuple5) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e) => e }
+    (Tuple5, ImmutableTuple5) {
+        (n0, n0_ref) -> A { (a,_,_,_,_), (ref a,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_), (_,ref b,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_), (_,_,ref c,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_), (_,_,_,ref d,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e), (_,_,_,_,ref e) => e }
     }
 
-    (CloneableTuple6, ImmutableTuple6) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e,_) => e }
-        (n5, n5_ref) -> F { (_,_,_,_,_,ref f) => f }
+    (Tuple6, ImmutableTuple6) {
+        (n0, n0_ref) -> A { (a,_,_,_,_,_), (ref a,_,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_,_), (_,ref b,_,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_,_), (_,_,ref c,_,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_,_), (_,_,_,ref d,_,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e,_), (_,_,_,_,ref e,_) => e }
+        (n5, n5_ref) -> F { (_,_,_,_,_,f), (_,_,_,_,_,ref f) => f }
     }
 
-    (CloneableTuple7, ImmutableTuple7) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_,_,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e,_,_) => e }
-        (n5, n5_ref) -> F { (_,_,_,_,_,ref f,_) => f }
-        (n6, n6_ref) -> G { (_,_,_,_,_,_,ref g) => g }
+    (Tuple7, ImmutableTuple7) {
+        (n0, n0_ref) -> A { (a,_,_,_,_,_,_), (ref a,_,_,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_,_,_), (_,ref b,_,_,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_,_,_), (_,_,ref c,_,_,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_,_,_), (_,_,_,ref d,_,_,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e,_,_), (_,_,_,_,ref e,_,_) => e }
+        (n5, n5_ref) -> F { (_,_,_,_,_,f,_), (_,_,_,_,_,ref f,_) => f }
+        (n6, n6_ref) -> G { (_,_,_,_,_,_,g), (_,_,_,_,_,_,ref g) => g }
     }
 
-    (CloneableTuple8, ImmutableTuple8) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_,_,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_,_,_,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e,_,_,_) => e }
-        (n5, n5_ref) -> F { (_,_,_,_,_,ref f,_,_) => f }
-        (n6, n6_ref) -> G { (_,_,_,_,_,_,ref g,_) => g }
-        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,ref h) => h }
+    (Tuple8, ImmutableTuple8) {
+        (n0, n0_ref) -> A { (a,_,_,_,_,_,_,_), (ref a,_,_,_,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_,_,_,_), (_,ref b,_,_,_,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_,_,_,_), (_,_,ref c,_,_,_,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_,_,_,_), (_,_,_,ref d,_,_,_,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e,_,_,_), (_,_,_,_,ref e,_,_,_) => e }
+        (n5, n5_ref) -> F { (_,_,_,_,_,f,_,_), (_,_,_,_,_,ref f,_,_) => f }
+        (n6, n6_ref) -> G { (_,_,_,_,_,_,g,_), (_,_,_,_,_,_,ref g,_) => g }
+        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,h), (_,_,_,_,_,_,_,ref h) => h }
     }
 
-    (CloneableTuple9, ImmutableTuple9) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_,_,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_,_,_,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_,_,_,_,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e,_,_,_,_) => e }
-        (n5, n5_ref) -> F { (_,_,_,_,_,ref f,_,_,_) => f }
-        (n6, n6_ref) -> G { (_,_,_,_,_,_,ref g,_,_) => g }
-        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,ref h,_) => h }
-        (n8, n8_ref) -> I { (_,_,_,_,_,_,_,_,ref i) => i }
+    (Tuple9, ImmutableTuple9) {
+        (n0, n0_ref) -> A { (a,_,_,_,_,_,_,_,_), (ref a,_,_,_,_,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_,_,_,_,_), (_,ref b,_,_,_,_,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_,_,_,_,_), (_,_,ref c,_,_,_,_,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_,_,_,_,_), (_,_,_,ref d,_,_,_,_,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e,_,_,_,_), (_,_,_,_,ref e,_,_,_,_) => e }
+        (n5, n5_ref) -> F { (_,_,_,_,_,f,_,_,_), (_,_,_,_,_,ref f,_,_,_) => f }
+        (n6, n6_ref) -> G { (_,_,_,_,_,_,g,_,_), (_,_,_,_,_,_,ref g,_,_) => g }
+        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,h,_), (_,_,_,_,_,_,_,ref h,_) => h }
+        (n8, n8_ref) -> I { (_,_,_,_,_,_,_,_,i), (_,_,_,_,_,_,_,_,ref i) => i }
     }
 
-    (CloneableTuple10, ImmutableTuple10) {
-        (n0, n0_ref) -> A { (ref a,_,_,_,_,_,_,_,_,_) => a }
-        (n1, n1_ref) -> B { (_,ref b,_,_,_,_,_,_,_,_) => b }
-        (n2, n2_ref) -> C { (_,_,ref c,_,_,_,_,_,_,_) => c }
-        (n3, n3_ref) -> D { (_,_,_,ref d,_,_,_,_,_,_) => d }
-        (n4, n4_ref) -> E { (_,_,_,_,ref e,_,_,_,_,_) => e }
-        (n5, n5_ref) -> F { (_,_,_,_,_,ref f,_,_,_,_) => f }
-        (n6, n6_ref) -> G { (_,_,_,_,_,_,ref g,_,_,_) => g }
-        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,ref h,_,_) => h }
-        (n8, n8_ref) -> I { (_,_,_,_,_,_,_,_,ref i,_) => i }
-        (n9, n9_ref) -> J { (_,_,_,_,_,_,_,_,_,ref j) => j }
+    (Tuple10, ImmutableTuple10) {
+        (n0, n0_ref) -> A { (a,_,_,_,_,_,_,_,_,_), (ref a,_,_,_,_,_,_,_,_,_) => a }
+        (n1, n1_ref) -> B { (_,b,_,_,_,_,_,_,_,_), (_,ref b,_,_,_,_,_,_,_,_) => b }
+        (n2, n2_ref) -> C { (_,_,c,_,_,_,_,_,_,_), (_,_,ref c,_,_,_,_,_,_,_) => c }
+        (n3, n3_ref) -> D { (_,_,_,d,_,_,_,_,_,_), (_,_,_,ref d,_,_,_,_,_,_) => d }
+        (n4, n4_ref) -> E { (_,_,_,_,e,_,_,_,_,_), (_,_,_,_,ref e,_,_,_,_,_) => e }
+        (n5, n5_ref) -> F { (_,_,_,_,_,f,_,_,_,_), (_,_,_,_,_,ref f,_,_,_,_) => f }
+        (n6, n6_ref) -> G { (_,_,_,_,_,_,g,_,_,_), (_,_,_,_,_,_,ref g,_,_,_) => g }
+        (n7, n7_ref) -> H { (_,_,_,_,_,_,_,h,_,_), (_,_,_,_,_,_,_,ref h,_,_) => h }
+        (n8, n8_ref) -> I { (_,_,_,_,_,_,_,_,i,_), (_,_,_,_,_,_,_,_,ref i,_) => i }
+        (n9, n9_ref) -> J { (_,_,_,_,_,_,_,_,_,j), (_,_,_,_,_,_,_,_,_,ref j) => j }
     }
 
-    (CloneableTuple11, ImmutableTuple11) {
-        (n0,  n0_ref)  -> A { (ref a,_,_,_,_,_,_,_,_,_,_) => a }
-        (n1,  n1_ref)  -> B { (_,ref b,_,_,_,_,_,_,_,_,_) => b }
-        (n2,  n2_ref)  -> C { (_,_,ref c,_,_,_,_,_,_,_,_) => c }
-        (n3,  n3_ref)  -> D { (_,_,_,ref d,_,_,_,_,_,_,_) => d }
-        (n4,  n4_ref)  -> E { (_,_,_,_,ref e,_,_,_,_,_,_) => e }
-        (n5,  n5_ref)  -> F { (_,_,_,_,_,ref f,_,_,_,_,_) => f }
-        (n6,  n6_ref)  -> G { (_,_,_,_,_,_,ref g,_,_,_,_) => g }
-        (n7,  n7_ref)  -> H { (_,_,_,_,_,_,_,ref h,_,_,_) => h }
-        (n8,  n8_ref)  -> I { (_,_,_,_,_,_,_,_,ref i,_,_) => i }
-        (n9,  n9_ref)  -> J { (_,_,_,_,_,_,_,_,_,ref j,_) => j }
-        (n10, n10_ref) -> K { (_,_,_,_,_,_,_,_,_,_,ref k) => k }
+    (Tuple11, ImmutableTuple11) {
+        (n0,  n0_ref)  -> A { (a,_,_,_,_,_,_,_,_,_,_), (ref a,_,_,_,_,_,_,_,_,_,_) => a }
+        (n1,  n1_ref)  -> B { (_,b,_,_,_,_,_,_,_,_,_), (_,ref b,_,_,_,_,_,_,_,_,_) => b }
+        (n2,  n2_ref)  -> C { (_,_,c,_,_,_,_,_,_,_,_), (_,_,ref c,_,_,_,_,_,_,_,_) => c }
+        (n3,  n3_ref)  -> D { (_,_,_,d,_,_,_,_,_,_,_), (_,_,_,ref d,_,_,_,_,_,_,_) => d }
+        (n4,  n4_ref)  -> E { (_,_,_,_,e,_,_,_,_,_,_), (_,_,_,_,ref e,_,_,_,_,_,_) => e }
+        (n5,  n5_ref)  -> F { (_,_,_,_,_,f,_,_,_,_,_), (_,_,_,_,_,ref f,_,_,_,_,_) => f }
+        (n6,  n6_ref)  -> G { (_,_,_,_,_,_,g,_,_,_,_), (_,_,_,_,_,_,ref g,_,_,_,_) => g }
+        (n7,  n7_ref)  -> H { (_,_,_,_,_,_,_,h,_,_,_), (_,_,_,_,_,_,_,ref h,_,_,_) => h }
+        (n8,  n8_ref)  -> I { (_,_,_,_,_,_,_,_,i,_,_), (_,_,_,_,_,_,_,_,ref i,_,_) => i }
+        (n9,  n9_ref)  -> J { (_,_,_,_,_,_,_,_,_,j,_), (_,_,_,_,_,_,_,_,_,ref j,_) => j }
+        (n10, n10_ref) -> K { (_,_,_,_,_,_,_,_,_,_,k), (_,_,_,_,_,_,_,_,_,_,ref k) => k }
     }
 
-    (CloneableTuple12, ImmutableTuple12) {
-        (n0,  n0_ref)  -> A { (ref a,_,_,_,_,_,_,_,_,_,_,_) => a }
-        (n1,  n1_ref)  -> B { (_,ref b,_,_,_,_,_,_,_,_,_,_) => b }
-        (n2,  n2_ref)  -> C { (_,_,ref c,_,_,_,_,_,_,_,_,_) => c }
-        (n3,  n3_ref)  -> D { (_,_,_,ref d,_,_,_,_,_,_,_,_) => d }
-        (n4,  n4_ref)  -> E { (_,_,_,_,ref e,_,_,_,_,_,_,_) => e }
-        (n5,  n5_ref)  -> F { (_,_,_,_,_,ref f,_,_,_,_,_,_) => f }
-        (n6,  n6_ref)  -> G { (_,_,_,_,_,_,ref g,_,_,_,_,_) => g }
-        (n7,  n7_ref)  -> H { (_,_,_,_,_,_,_,ref h,_,_,_,_) => h }
-        (n8,  n8_ref)  -> I { (_,_,_,_,_,_,_,_,ref i,_,_,_) => i }
-        (n9,  n9_ref)  -> J { (_,_,_,_,_,_,_,_,_,ref j,_,_) => j }
-        (n10, n10_ref) -> K { (_,_,_,_,_,_,_,_,_,_,ref k,_) => k }
-        (n11, n11_ref) -> L { (_,_,_,_,_,_,_,_,_,_,_,ref l) => l }
+    (Tuple12, ImmutableTuple12) {
+        (n0,  n0_ref)  -> A { (a,_,_,_,_,_,_,_,_,_,_,_), (ref a,_,_,_,_,_,_,_,_,_,_,_) => a }
+        (n1,  n1_ref)  -> B { (_,b,_,_,_,_,_,_,_,_,_,_), (_,ref b,_,_,_,_,_,_,_,_,_,_) => b }
+        (n2,  n2_ref)  -> C { (_,_,c,_,_,_,_,_,_,_,_,_), (_,_,ref c,_,_,_,_,_,_,_,_,_) => c }
+        (n3,  n3_ref)  -> D { (_,_,_,d,_,_,_,_,_,_,_,_), (_,_,_,ref d,_,_,_,_,_,_,_,_) => d }
+        (n4,  n4_ref)  -> E { (_,_,_,_,e,_,_,_,_,_,_,_), (_,_,_,_,ref e,_,_,_,_,_,_,_) => e }
+        (n5,  n5_ref)  -> F { (_,_,_,_,_,f,_,_,_,_,_,_), (_,_,_,_,_,ref f,_,_,_,_,_,_) => f }
+        (n6,  n6_ref)  -> G { (_,_,_,_,_,_,g,_,_,_,_,_), (_,_,_,_,_,_,ref g,_,_,_,_,_) => g }
+        (n7,  n7_ref)  -> H { (_,_,_,_,_,_,_,h,_,_,_,_), (_,_,_,_,_,_,_,ref h,_,_,_,_) => h }
+        (n8,  n8_ref)  -> I { (_,_,_,_,_,_,_,_,i,_,_,_), (_,_,_,_,_,_,_,_,ref i,_,_,_) => i }
+        (n9,  n9_ref)  -> J { (_,_,_,_,_,_,_,_,_,j,_,_), (_,_,_,_,_,_,_,_,_,ref j,_,_) => j }
+        (n10, n10_ref) -> K { (_,_,_,_,_,_,_,_,_,_,k,_), (_,_,_,_,_,_,_,_,_,_,ref k,_) => k }
+        (n11, n11_ref) -> L { (_,_,_,_,_,_,_,_,_,_,_,l), (_,_,_,_,_,_,_,_,_,_,_,ref l) => l }
     }
 }
 
