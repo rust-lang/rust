@@ -394,13 +394,14 @@ pub fn monitor(f: ~fn(@diagnostic::Emitter)) {
 }
 
 pub fn main() {
-    let args = os::args();
-    main_args(args);
+    std::os::set_exit_status(main_args(std::os::args()));
 }
 
-pub fn main_args(args: &[~str]) {
+pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
     do monitor |demitter| {
         run_compiler(owned_args, demitter);
     }
+
+    return 0;
 }

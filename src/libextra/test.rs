@@ -30,7 +30,6 @@ use treemap::TreeMap;
 
 use std::clone::Clone;
 use std::comm::{stream, SharedChan, GenericPort, GenericChan};
-use std::libc;
 use std::io;
 use std::result;
 use std::task;
@@ -125,8 +124,9 @@ pub type MetricDiff = TreeMap<~str,MetricChange>;
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
-            Ok(o) => o,
-            Err(msg) => fail!(msg)
+            Some(Ok(o)) => o,
+            Some(Err(msg)) => fail!(msg),
+            None => return
         };
     if !run_tests_console(&opts, tests) { fail!("Some tests failed"); }
 }
@@ -189,7 +189,7 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
                      "A.B")]
 }
 
-fn usage(binary: &str, helpstr: &str) -> ! {
+fn usage(binary: &str, helpstr: &str) {
     #[fixed_stack_segment]; #[inline(never)];
 
     let message = fmt!("Usage: %s [OPTIONS] [FILTER]", binary);
@@ -217,20 +217,19 @@ Test Attributes:
                      tests. This may also be written as #[ignore(cfg(...))] to
                      ignore the test on certain configurations.");
     }
-    unsafe { libc::exit(0) }
 }
 
 // Parses command line arguments into test options
-pub fn parse_opts(args: &[~str]) -> OptRes {
+pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
         match groups::getopts(args_, optgroups()) {
           Ok(m) => m,
-          Err(f) => return Err(f.to_err_msg())
+          Err(f) => return Some(Err(f.to_err_msg()))
         };
 
-    if matches.opt_present("h") { usage(args[0], "h"); }
-    if matches.opt_present("help") { usage(args[0], "help"); }
+    if matches.opt_present("h") { usage(args[0], "h"); return None; }
+    if matches.opt_present("help") { usage(args[0], "help"); return None; }
 
     let filter =
         if matches.free.len() > 0 {
@@ -272,7 +271,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         logfile: logfile
     };
 
-    Ok(test_opts)
+    Some(Ok(test_opts))
 }
 
 pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
@@ -1228,7 +1227,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-            Ok(o) => o,
+            Some(Ok(o)) => o,
             _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == opts.filter.clone().unwrap());
@@ -1238,7 +1237,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-            Ok(o) => o,
+            Some(Ok(o)) => o,
             _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));
