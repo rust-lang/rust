@@ -1267,7 +1267,9 @@ fn test_rust_path_can_contain_package_dirs_without_flag() {
 #[test]
 fn rust_path_hack_cwd() {
    // Same as rust_path_hack_test, but the CWD is the dir to build out of
-   let cwd = mkdtemp(&os::tmpdir(), "pkg_files").expect("rust_path_hack_cwd");
+   let cwd = mkdtemp(&os::tmpdir(), "foo").expect("rust_path_hack_cwd");
+   let cwd = cwd.push("foo");
+   assert!(os::mkdir_recursive(&cwd, U_RWX));
    writeFile(&cwd.push("lib.rs"), "pub fn f() { }");
 
    let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
@@ -1761,6 +1763,41 @@ fn reinstall() {
     command_line_test([~"install", ~"b"], &workspace);
     assert_executable_exists(&workspace, b.short_name);
     assert_built_executable_exists(&workspace, b.short_name);
+}
+
+#[test]
+fn correct_package_name_with_rust_path_hack() {
+    /*
+    Set rust_path_hack flag
+
+    Try to install bar
+    Check that:
+    - no output gets produced in any workspace
+    - there's an error
+    */
+
+    // Set RUST_PATH to something containing only the sources for foo
+    let foo_id = PkgId::new("foo");
+    let bar_id = PkgId::new("bar");
+    let foo_workspace = create_local_package(&foo_id);
+    let dest_workspace = mk_empty_workspace(&Path("bar"), &NoVersion, "dest_workspace");
+
+    writeFile(&dest_workspace.push_many(["src", "bar-0.1", "main.rs"]),
+              "extern mod blat; fn main() { let _x = (); }");
+
+    let rust_path = Some(~[(~"RUST_PATH", fmt!("%s:%s", dest_workspace.to_str(),
+                        foo_workspace.push_many(["src", "foo-0.1"]).to_str()))]);
+    // bar doesn't exist, but we want to make sure rustpkg doesn't think foo is bar
+    command_line_test_with_env([~"install", ~"--rust-path-hack", ~"bar"],
+                               &dest_workspace, rust_path);
+    assert!(!executable_exists(&dest_workspace, "bar"));
+    assert!(!lib_exists(&dest_workspace, &bar_id.path.clone(), bar_id.version.clone()));
+    assert!(!executable_exists(&dest_workspace, "foo"));
+    assert!(!lib_exists(&dest_workspace, &foo_id.path.clone(), foo_id.version.clone()));
+    assert!(!executable_exists(&foo_workspace, "bar"));
+    assert!(!lib_exists(&foo_workspace, &bar_id.path.clone(), bar_id.version.clone()));
+    assert!(!executable_exists(&foo_workspace, "foo"));
+    assert!(!lib_exists(&foo_workspace, &foo_id.path.clone(), foo_id.version.clone()));
 }
 
 /// Returns true if p exists and is executable

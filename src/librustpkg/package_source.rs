@@ -59,7 +59,8 @@ impl PkgSrc {
         use conditions::nonexistent_package::cond;
 
         debug!("Checking package source for package ID %s, \
-               workspace = %s", id.to_str(), workspace.to_str());
+               workspace = %s use_rust_path_hack = %?",
+               id.to_str(), workspace.to_str(), use_rust_path_hack);
 
         let mut to_try = ~[];
         if use_rust_path_hack {
