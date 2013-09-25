@@ -15,6 +15,7 @@ use its = syntax::parse::token::ident_to_str;
 
 use syntax;
 use syntax::ast;
+use syntax::ast_util;
 use syntax::attr::AttributeMethods;
 
 use std;
@@ -283,7 +284,7 @@ impl Clean<Item> for ast::method {
             attrs: self.attrs.clean(),
             source: self.span.clean(),
             id: self.self_id.clone(),
-            visibility: None,
+            visibility: self.vis.clean(),
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
                 self_: self.explicit_self.clean(),
@@ -345,6 +346,7 @@ impl Clean<SelfTy> for ast::explicit_self {
 pub struct Function {
     decl: FnDecl,
     generics: Generics,
+    purity: ast::purity,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -358,6 +360,7 @@ impl Clean<Item> for doctree::Function {
             inner: FunctionItem(Function {
                 decl: self.decl.clean(),
                 generics: self.generics.clean(),
+                purity: self.purity,
             }),
         }
     }
@@ -468,8 +471,7 @@ impl Clean<Item> for doctree::Trait {
 
 impl Clean<Type> for ast::trait_ref {
     fn clean(&self) -> Type {
-        let t = Unresolved(self.path.clean(), None, self.ref_id);
-        resolve_type(&t)
+        resolve_type(self.path.clean(), None, self.ref_id)
     }
 }
 
@@ -514,9 +516,6 @@ impl Clean<TraitMethod> for ast::trait_method {
 /// it does not preserve mutability or boxes.
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Type {
-    /// Most types start out as "Unresolved". It serves as an intermediate stage between cleaning
-    /// and type resolution.
-    Unresolved(Path, Option<~[TyParamBound]>, ast::NodeId),
     /// structs/enums/traits (anything that'd be an ast::ty_path)
     ResolvedPath { path: Path, typarams: Option<~[TyParamBound]>, id: ast::NodeId },
     /// Reference to an item in an external crate (fully qualified path)
@@ -555,25 +554,25 @@ impl Clean<Type> for ast::Ty {
         debug!("cleaning type `%?`", self);
         let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
         debug!("span corresponds to `%s`", codemap.span_to_str(self.span));
-        let t = match self.node {
+        match self.node {
             ty_nil => Unit,
-            ty_ptr(ref m) =>  RawPointer(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
+            ty_ptr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
             ty_rptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
-                             type_: ~resolve_type(&m.ty.clean())},
-            ty_box(ref m) => Managed(m.mutbl.clean(), ~resolve_type(&m.ty.clean())),
-            ty_uniq(ref m) => Unique(~resolve_type(&m.ty.clean())),
-            ty_vec(ref m) => Vector(~resolve_type(&m.ty.clean())),
-            ty_fixed_length_vec(ref m, ref e) => FixedVector(~resolve_type(&m.ty.clean()),
+                             type_: ~m.ty.clean()},
+            ty_box(ref m) => Managed(m.mutbl.clean(), ~m.ty.clean()),
+            ty_uniq(ref m) => Unique(~m.ty.clean()),
+            ty_vec(ref m) => Vector(~m.ty.clean()),
+            ty_fixed_length_vec(ref m, ref e) => FixedVector(~m.ty.clean(),
                                                              e.span.to_src()),
-            ty_tup(ref tys) => Tuple(tys.iter().map(|x| resolve_type(&x.clean())).collect()),
-            ty_path(ref p, ref tpbs, id) => Unresolved(p.clean(), tpbs.clean(), id),
+            ty_tup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
+            ty_path(ref p, ref tpbs, id) =>
+                resolve_type(p.clean(), tpbs.clean(), id),
             ty_closure(ref c) => Closure(~c.clean()),
             ty_bare_fn(ref barefn) => BareFunction(~barefn.clean()),
             ty_bot => Bottom,
             ref x => fail!("Unimplemented type %?", x),
-        };
-        resolve_type(&t)
+        }
     }
 }
 
@@ -927,26 +926,45 @@ impl Clean<ViewItemInner> for ast::view_item_ {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewPath {
-    SimpleImport(~str, Path, ast::NodeId),
-    GlobImport(Path, ast::NodeId),
-    ImportList(Path, ~[ViewListIdent], ast::NodeId)
+    // use str = source;
+    SimpleImport(~str, ImportSource),
+    // use source::*;
+    GlobImport(ImportSource),
+    // use source::{a, b, c};
+    ImportList(ImportSource, ~[ViewListIdent]),
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct ImportSource {
+    path: Path,
+    did: Option<ast::DefId>,
 }
 
 impl Clean<ViewPath> for ast::view_path {
     fn clean(&self) -> ViewPath {
         match self.node {
-            ast::view_path_simple(ref i, ref p, ref id) => SimpleImport(i.clean(), p.clean(), *id),
-            ast::view_path_glob(ref p, ref id) => GlobImport(p.clean(), *id),
-            ast::view_path_list(ref p, ref pl, ref id) => ImportList(p.clean(), pl.clean(), *id),
+            ast::view_path_simple(ref i, ref p, id) =>
+                SimpleImport(i.clean(), resolve_use_source(p.clean(), id)),
+            ast::view_path_glob(ref p, id) =>
+                GlobImport(resolve_use_source(p.clean(), id)),
+            ast::view_path_list(ref p, ref pl, id) =>
+                ImportList(resolve_use_source(p.clean(), id), pl.clean()),
         }
     }
 }
 
-pub type ViewListIdent = ~str;
+#[deriving(Clone, Encodable, Decodable)]
+pub struct ViewListIdent {
+    name: ~str,
+    source: Option<ast::DefId>,
+}
 
 impl Clean<ViewListIdent> for ast::path_list_ident {
     fn clean(&self) -> ViewListIdent {
-        self.node.name.clean()
+        ViewListIdent {
+            name: self.node.name.clean(),
+            source: resolve_def(self.node.id),
+        }
     }
 }
 
@@ -1017,13 +1035,9 @@ fn remove_comment_tags(s: &str) -> ~str {
 }
 
 /// Given a Type, resolve it using the def_map
-fn resolve_type(t: &Type) -> Type {
+fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
+                id: ast::NodeId) -> Type {
     use syntax::ast::*;
-
-    let (path, tpbs, id) = match t {
-        &Unresolved(ref path, ref tbps, id) => (path, tbps, id),
-        _ => return (*t).clone(),
-    };
 
     let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
     debug!("searching for %? in defmap", id);
@@ -1089,6 +1103,18 @@ fn resolve_type(t: &Type) -> Type {
         let cname = cratedata.name.to_owned();
         External(cname + "::" + path, ty)
     } else {
-        ResolvedPath {path: path.clone(), typarams: tpbs.clone(), id: def_id.node}
+        ResolvedPath {path: path.clone(), typarams: tpbs, id: def_id.node}
     }
+}
+
+fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
+    ImportSource {
+        path: path,
+        did: resolve_def(id),
+    }
+}
+
+fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
+    let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
+    dm.find(&id).map_move(|&d| ast_util::def_id_of_def(d))
 }

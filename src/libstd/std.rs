@@ -58,8 +58,7 @@ they contained the following prologue:
 #[crate_type = "lib"];
 
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      passes = "strip-hidden")];
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico")];
 
 // Don't link to std. We are std.
 #[no_std];

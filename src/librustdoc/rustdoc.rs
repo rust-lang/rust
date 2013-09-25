@@ -45,6 +45,28 @@ pub mod visit_ast;
 
 pub static SCHEMA_VERSION: &'static str = "0.8.0";
 
+type Pass = (&'static str,                                      // name
+             extern fn(clean::Crate) -> plugins::PluginResult,  // fn
+             &'static str);                                     // description
+
+static PASSES: &'static [Pass] = &[
+    ("strip-hidden", passes::strip_hidden,
+     "strips all doc(hidden) items from the output"),
+    ("unindent-comments", passes::unindent_comments,
+     "removes excess indentation on comments in order for markdown to like it"),
+    ("collapse-docs", passes::collapse_docs,
+     "concatenates all document attributes into one document attribute"),
+    ("strip-private", passes::strip_private,
+     "strips all private items from a crate which cannot be seen externally"),
+];
+
+static DEFAULT_PASSES: &'static [&'static str] = &[
+    "strip-hidden",
+    "strip-private",
+    "collapse-docs",
+    "unindent-comments",
+];
+
 local_data_key!(pub ctxtkey: @core::DocContext)
 
 enum OutputFormat {
@@ -61,7 +83,8 @@ pub fn opts() -> ~[groups::OptGroup] {
         optmulti("L", "library-path", "directory to add to crate search path",
                  "DIR"),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
-        optmulti("", "passes", "space separated list of passes to also run",
+        optmulti("", "passes", "space separated list of passes to also run, a \
+                                value of `list` will print available passes",
                  "PASSES"),
         optmulti("", "plugins", "space separated list of plugins to also load",
                  "PLUGINS"),
@@ -83,6 +106,22 @@ pub fn main_args(args: &[~str]) -> int {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
+        return 0;
+    }
+
+    let mut default_passes = !matches.opt_present("nodefaults");
+    let mut passes = matches.opt_strs("passes");
+    let mut plugins = matches.opt_strs("plugins");
+
+    if passes == ~[~"list"] {
+        println("Available passes for running rustdoc:");
+        for &(name, _, description) in PASSES.iter() {
+            println!("{:>20s} - {}", name, description);
+        }
+        println("\nDefault passes for rustdoc:");
+        for &name in DEFAULT_PASSES.iter() {
+            println!("{:>20s}", name);
+        }
         return 0;
     }
 
@@ -118,9 +157,6 @@ pub fn main_args(args: &[~str]) -> int {
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    let mut default_passes = !matches.opt_present("nodefaults");
-    let mut passes = matches.opt_strs("passes");
-    let mut plugins = matches.opt_strs("plugins");
     match crate.module.get_ref().doc_list() {
         Some(nested) => {
             for inner in nested.iter() {
@@ -145,19 +181,20 @@ pub fn main_args(args: &[~str]) -> int {
         None => {}
     }
     if default_passes {
-        passes.unshift(~"collapse-docs");
-        passes.unshift(~"unindent-comments");
+        for name in DEFAULT_PASSES.rev_iter() {
+            passes.unshift(name.to_owned());
+        }
     }
 
     // Load all plugins/passes into a PluginManager
     let mut pm = plugins::PluginManager::new(Path("/tmp/rustdoc_ng/plugins"));
     for pass in passes.iter() {
-        let plugin = match pass.as_slice() {
-            "strip-hidden" => passes::strip_hidden,
-            "unindent-comments" => passes::unindent_comments,
-            "collapse-docs" => passes::collapse_docs,
-            "collapse-privacy" => passes::collapse_privacy,
-            s => { error!("unknown pass %s, skipping", s); loop },
+        let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
+            Some(i) => PASSES[i].n1(),
+            None => {
+                error2!("unknown pass {}, skipping", *pass);
+                loop
+            },
         };
         pm.add_plugin(plugin);
     }

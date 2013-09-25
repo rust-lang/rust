@@ -221,6 +221,7 @@ a {
 .content a.enum, .block a.current.enum { color: #5e9766; }
 .content a.struct, .block a.current.struct { color: #e53700; }
 .content a.fn, .block a.current.fn { color: #8c6067; }
+.content .fnname { color: #8c6067; }
 
 .search-input {
     border: 2px solid #f2f2f2;

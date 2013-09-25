@@ -17,7 +17,7 @@
  * In this example, a large vector of floats is shared between several tasks.
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
- * ~~~ {.rust}
+ * ```rust
  * extern mod std;
  * use extra::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
@@ -34,7 +34,7 @@
  *           // Work with the local numbers
  *       }
  *   }
- * ~~~
+ * ```
  */
 
 #[allow(missing_doc)];
@@ -440,7 +440,7 @@ impl<T:Freeze + Send> RWArc<T> {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * do arc.write_downgrade |mut write_token| {
      *     do write_token.write_cond |state, condvar| {
      *         ... exclusive access with mutable state ...
@@ -450,7 +450,7 @@ impl<T:Freeze + Send> RWArc<T> {
      *         ... shared access with immutable state ...
      *     }
      * }
-     * ~~~
+     * ```
      */
     pub fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
         unsafe {
