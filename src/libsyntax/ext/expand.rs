@@ -1640,9 +1640,10 @@ mod test {
                   macro_rules! user(($x:ident) => ({letty!($x); $x}))
                   fn main() -> int {user!(z)}",
                  ~[~[0]], false),
-                // FIXME #8062: this test exposes a *potential* bug; our system does
-                // not behave exactly like MTWT, but I haven't thought of a way that
-                // this could cause a bug in Rust, yet.
+                // no longer a fixme #8062: this test exposes a *potential* bug; our system does
+                // not behave exactly like MTWT, but a conversation with Matthew Flatt
+                // suggests that this can only occur in the presence of local-expand, which
+                // we have no plans to support.
                 // ("fn main() {let hrcoo = 19; macro_rules! getx(()=>(hrcoo)); getx!();}",
                 // ~[~[0]], true)
                 // FIXME #6994: the next string exposes the bug referred to in issue 6994, so I'm
@@ -1655,6 +1656,7 @@ mod test {
                 //   fn a(){g!(z)}"
                 // create a really evil test case where a $x appears inside a binding of $x
                 // but *shouldnt* bind because it was inserted by a different macro....
+                // can't write this test case until we have macro-generating macros.
             ];
         for (idx,s) in tests.iter().enumerate() {
             run_renaming_test(s,idx);

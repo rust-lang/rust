@@ -740,7 +740,7 @@ pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
 }
 
 // Extend a syntax context with a given mark and table
-// FIXME #4536 : currently pub to allow testing
+// FIXME #8215 : currently pub to allow testing
 pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
     -> SyntaxContext {
     let key = (tail,m);
@@ -769,7 +769,7 @@ pub fn new_rename(id:Ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
 }
 
 // Extend a syntax context with a given rename and sctable
-// FIXME #4536 : currently pub to allow testing
+// FIXME #8215 : currently pub to allow testing
 pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
     -> SyntaxContext {
     let key = (tail,id,to);
@@ -792,7 +792,7 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
 
 /// Make a fresh syntax context table with EmptyCtxt in slot zero
 /// and IllegalCtxt in slot one.
-// FIXME #4536 : currently pub to allow testing
+// FIXME #8215 : currently pub to allow testing
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
         table: ~[EmptyCtxt,IllegalCtxt],
@@ -834,7 +834,7 @@ pub fn mtwt_resolve(id : Ident) -> Name {
     resolve_internal(id, get_sctable(), get_resolve_table())
 }
 
-// FIXME #4536: must be pub for testing
+// FIXME #8215: must be pub for testing
 pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 
 // okay, I admit, putting this in TLS is not so nice:
@@ -853,7 +853,7 @@ pub fn get_resolve_table() -> @mut ResolveTable {
 
 // Resolve a syntax object to a name, per MTWT.
 // adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
-// FIXME #4536 : currently pub to allow testing
+// FIXME #8215 : currently pub to allow testing
 pub fn resolve_internal(id : Ident,
                         table : &mut SCTable,
                         resolve_table : &mut ResolveTable) -> Name {
