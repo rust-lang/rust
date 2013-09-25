@@ -3226,11 +3226,12 @@ pub mod funcs {
         pub mod glob {
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::common::posix01::{glob_t};
+            use option::Option;
 
             extern {
                 pub fn glob(pattern: *c_char,
                             flags: c_int,
-                            errfunc: extern "C" fn(epath: *c_char, errno: int) -> int,
+                            errfunc: Option<extern "C" fn(epath: *c_char, errno: int) -> int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }
