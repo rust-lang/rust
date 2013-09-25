@@ -164,6 +164,8 @@ pub struct CrateTypes {
     priv void_t: Type,
     priv str_slice_t: Type,
     priv generic_glue_fn_t: Type,
+    priv opaque_box_t: Type,
+    priv box_header_fields: ~[Type],
     priv opaque_vec_t: Type
 }
 
@@ -229,6 +231,16 @@ impl CrateTypes {
                                         false);
         tn.associate_type("opaque_vec", &opaque_vec_type);
 
+        // init opaque_box
+        let box_h_fields = ~[int_type, tydesc_type.ptr_to(), i8p_type, i8p_type];
+        let obox_h_fields = [int_type.to_ref(),
+                             tydesc_type.ptr_to().to_ref(),
+                             i8p_type.to_ref(),
+                             i8p_type.to_ref(),
+                             i8_type.to_ref()];
+        let opaque_box_type = ty!(llvm::LLVMStructTypeInContext(
+            llcx, vec::raw::to_ptr(obox_h_fields), obox_h_fields.len() as c_uint, False));
+
         // form the result struct
         @CrateTypes {
             llcx: llcx,
@@ -248,6 +260,8 @@ impl CrateTypes {
             float_t: float_type,
             str_slice_t: str_slice_ty,
             generic_glue_fn_t: glue_fn_ty,
+            opaque_box_t: opaque_box_type,
+            box_header_fields: box_h_fields,
             opaque_vec_t: opaque_vec_type
         }
     }
@@ -442,19 +456,8 @@ impl CrateTypes {
         false)
     }
 
-    #[inline]
-    fn box_header_fields(&self) -> ~[Type] {
-        ~[
-            self.i(), self.tydesc().ptr_to(), self.i8p(), self.i8p()
-        ]
-    }
-
-    fn box_header(&self) -> Type {
-        self.struct_(self.box_header_fields(), false)
-    }
-
     pub fn box(&self, ty: &Type) -> Type {
-        self.struct_(self.box_header_fields() + &[*ty], false)
+        self.struct_(self.box_header_fields + &[*ty], false)
     }
 
     pub fn opaque(&self) -> Type {
@@ -462,7 +465,7 @@ impl CrateTypes {
     }
 
     pub fn opaque_box(&self) -> Type {
-        self.box(&self.opaque())
+        self.opaque_box_t
     }
 
     pub fn unique(&self, ty: &Type) -> Type {
