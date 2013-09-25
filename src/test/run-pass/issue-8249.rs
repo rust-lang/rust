@@ -20,6 +20,6 @@ fn foo(a: &mut A) {
     C{ foo: a };
 }
 
-fn main() {
+pub fn main() {
 }
 

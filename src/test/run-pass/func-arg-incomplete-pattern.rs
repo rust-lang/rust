@@ -11,7 +11,7 @@ fn foo(Foo {x, _}: Foo) -> *uint {
     addr
 }
 
-fn main() {
+pub fn main() {
     let obj = ~1;
     let objptr: *uint = &*obj;
     let f = Foo {x: obj, y: ~2};

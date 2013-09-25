@@ -27,7 +27,7 @@
 // run-fail/borrowck-wg-autoderef-and-autoborrowvec-combined-fail-issue-6272.rs
 
 
-fn main() {
+pub fn main() {
     let a = @mut 3i;
     let b = @mut [a];
     let c = @mut [3];

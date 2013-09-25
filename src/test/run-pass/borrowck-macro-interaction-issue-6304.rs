@@ -26,4 +26,4 @@ impl Foo {
   fn check_id(&mut self, s: int) { fail!() }
 }
  
-fn main() { }
+pub fn main() { }

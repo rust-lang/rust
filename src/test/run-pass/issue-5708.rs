@@ -39,7 +39,7 @@ impl<'self> Outer<'self> {
     }
 }
 
-fn main() {
+pub fn main() {
     let inner = 5;
     let outer = Outer::new(&inner as &Inner);
     outer.inner.print();

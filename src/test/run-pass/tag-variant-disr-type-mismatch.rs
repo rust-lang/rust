@@ -13,4 +13,4 @@ enum color {
     blue = 2,
 }
 
-fn main() {}
+pub fn main() {}

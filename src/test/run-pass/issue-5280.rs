@@ -20,6 +20,6 @@ impl FontTableTagConversions for FontTableTag {
   }
 }
 
-fn main() {
+pub fn main() {
     5.tag_to_str();
 }

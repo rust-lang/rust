@@ -16,9 +16,9 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::ty::{node_id_to_type, lookup_item_type};
+use middle::astencode;
 use middle::ty;
 use middle::typeck;
-use middle::astencode;
 use middle;
 
 use std::hashmap::{HashMap, HashSet};
@@ -58,6 +58,7 @@ pub struct EncodeParams<'self> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
+    exported_items: @middle::privacy::ExportedItems,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'self HashSet<ast::NodeId>,
@@ -88,6 +89,7 @@ pub struct EncodeContext<'self> {
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
+    exported_items: @middle::privacy::ExportedItems,
     item_symbols: &'self HashMap<ast::NodeId, ~str>,
     discrim_symbols: &'self HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'self HashSet<ast::NodeId>,
@@ -881,7 +883,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
                         index: @mut ~[entry<i64>],
-                        path: &[ast_map::path_elt]) {
+                        path: &[ast_map::path_elt],
+                        vis: ast::visibility) {
     let tcx = ecx.tcx;
 
     fn add_to_index_(item: @item, ebml_w: &writer::Encoder,
@@ -912,6 +915,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         if !ecx.non_inlineable_statics.contains(&item.id) {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         }
+        encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
       item_fn(_, purity, _, ref generics, _) => {
@@ -929,6 +933,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
+        encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
       item_mod(ref m) => {
@@ -955,7 +960,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             ebml_w.wr_str(def_to_str(local_def(foreign_item.id)));
             ebml_w.end_tag();
         }
-
+        encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
       item_ty(*) => {
@@ -967,6 +972,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
+        encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
       item_enum(ref enum_definition, ref generics) => {
@@ -987,6 +993,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this enumeration.
         encode_inherent_implementations(ecx, ebml_w, def_id);
 
+        encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
 
         encode_enum_variant_info(ecx,
@@ -1018,6 +1025,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(ebml_w, item.attrs);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
+        encode_visibility(ebml_w, vis);
 
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
@@ -1264,7 +1272,12 @@ fn my_visit_item(i:@item, items: ast_map::map, ebml_w:&writer::Encoder,
             let mut ebml_w = ebml_w.clone();
             // See above
             let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
-            encode_info_for_item(ecx, &mut ebml_w, i, index, *pt);
+            let vis = if ecx.exported_items.contains(&i.id) {
+                ast::public
+            } else {
+                ast::inherited
+            };
+            encode_info_for_item(ecx, &mut ebml_w, i, index, *pt, vis);
         }
         _ => fail!("bad item")
     }
@@ -1727,6 +1740,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         diag,
         tcx,
         reexports2,
+        exported_items,
         discrim_symbols,
         cstore,
         encode_inlined_item,
@@ -1742,6 +1756,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         tcx: tcx,
         stats: stats,
         reexports2: reexports2,
+        exported_items: exported_items,
         item_symbols: item_symbols,
         discrim_symbols: discrim_symbols,
         non_inlineable_statics: non_inlineable_statics,

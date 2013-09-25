@@ -41,7 +41,7 @@ impl X {
     }
 }
 
-fn main() {
+pub fn main() {
     let n = X;
     assert_eq!(n.f(), 0);
     assert_eq!(n.g(), 1);

@@ -33,7 +33,7 @@ struct Lots {
     j: (),
 }
 
-fn main() {
+pub fn main() {
     let lots: Lots = Zero::zero();
     assert!(lots.is_zero());
 }

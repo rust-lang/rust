@@ -12,7 +12,7 @@ mod x {
     pub fn g() -> uint {14}
 }
 
-fn main(){
+pub fn main(){
     // should *not* shadow the module x:
     let x = 9;
     // use it to avoid warnings:

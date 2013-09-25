@@ -39,7 +39,7 @@ fn do_it_imm(obj: &Foo, v: uint) {
     assert_eq!(v, y);
 }
 
-fn main() {
+pub fn main() {
     let mut x = 22_u;
     let obj = &mut x as &mut Foo;
     do_it_mut(obj);

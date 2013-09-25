@@ -21,7 +21,7 @@ trait Foo : Send {
 
 impl <T: Send> Foo for T { }
 
-fn main() {
+pub fn main() {
     let (p,c) = comm::stream();
     1193182.foo(c);
     assert!(p.recv() == 1193182);

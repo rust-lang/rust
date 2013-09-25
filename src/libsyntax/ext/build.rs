@@ -702,7 +702,7 @@ impl AstBuilder for @ExtCtxt {
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     node: node,
-                    vis: ast::public,
+                    vis: ast::inherited,
                     span: span }
     }
 

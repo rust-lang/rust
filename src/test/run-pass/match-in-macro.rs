@@ -20,6 +20,6 @@ macro_rules! match_inside_expansion(
     )
 )
 
-fn main() {
+pub fn main() {
     assert_eq!(match_inside_expansion!(),129);
 }

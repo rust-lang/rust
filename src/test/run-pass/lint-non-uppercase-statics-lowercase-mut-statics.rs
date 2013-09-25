@@ -14,4 +14,4 @@
 
 static mut bar: int = 2;
 
-fn main() {}
+pub fn main() {}

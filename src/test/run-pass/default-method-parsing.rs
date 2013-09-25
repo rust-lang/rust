@@ -12,4 +12,4 @@ trait Foo {
     fn m(&self, _:int) { }
 }
 
-fn main() { }
+pub fn main() { }

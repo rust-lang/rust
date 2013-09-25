@@ -22,7 +22,7 @@ fn baz() {
     if "" == "" {}
 }
 
-fn main() {
+pub fn main() {
     bar();
     baz();
 }

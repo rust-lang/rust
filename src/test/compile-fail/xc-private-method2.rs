@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Clone, DeepClone)]
-struct S<T>(T, ());
+// xfail-fast
+// aux-build:xc_private_method_lib.rs
 
-pub fn main() {
-    let _ = S(1i, ()).clone().deep_clone();
+extern mod xc_private_method_lib;
+
+fn main() {
+    let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();  //~ ERROR method `meth_struct` is private
+
+    let _ = xc_private_method_lib::Variant1(20).meth_enum();  //~ ERROR method `meth_enum` is private
 }

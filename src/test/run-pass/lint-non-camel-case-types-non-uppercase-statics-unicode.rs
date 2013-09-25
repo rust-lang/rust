@@ -18,4 +18,4 @@ struct ヒ;
 
 static ラ: uint = 0;
 
-fn main() {}
+pub fn main() {}

@@ -10,7 +10,7 @@
 
 static static_vec: &'static [u8] = bytes!("abc", 0xFF, '!');
 
-fn main() {
+pub fn main() {
     let vec = bytes!("abc");
     assert_eq!(vec, &[97_u8, 98_u8, 99_u8]);
 

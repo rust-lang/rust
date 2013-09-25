@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // original problem
-fn foo<T>() -> int {
+pub fn foo<T>() -> int {
     {
         static foo: int = 2;
         foo

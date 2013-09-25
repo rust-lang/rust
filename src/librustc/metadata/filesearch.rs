@@ -150,7 +150,7 @@ fn make_rustpkg_target_lib_path(dir: &Path,
     dir.push_rel(&Path(libdir()).push(target_triple.to_owned()))
 }
 
-fn get_or_default_sysroot() -> Path {
+pub fn get_or_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::Some(ref p) => (*p).pop(),
       option::None => fail!("can't determine value for sysroot")

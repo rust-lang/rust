@@ -1661,6 +1661,9 @@ impl Resolver {
                            ident: Ident,
                            new_parent: ReducedGraphParent) {
         let privacy = visibility_to_privacy(visibility);
+        debug!("(building reduced graph for \
+                external crate) building external def, priv %?",
+               privacy);
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id) => {
@@ -1788,7 +1791,8 @@ impl Resolver {
     fn build_reduced_graph_for_external_crate_def(@mut self,
                                                   root: @mut Module,
                                                   def_like: DefLike,
-                                                  ident: Ident) {
+                                                  ident: Ident,
+                                                  visibility: visibility) {
         match def_like {
             DlDef(def) => {
                 // Add the new child item, if necessary.
@@ -1798,11 +1802,12 @@ impl Resolver {
                         // eagerly.
                         do csearch::each_child_of_item(self.session.cstore,
                                                        def_id)
-                                |def_like, child_ident| {
+                                |def_like, child_ident, vis| {
                             self.build_reduced_graph_for_external_crate_def(
                                 root,
                                 def_like,
-                                child_ident)
+                                child_ident,
+                                vis)
                         }
                     }
                     _ => {
@@ -1813,7 +1818,7 @@ impl Resolver {
                                            dummy_sp());
 
                         self.handle_external_def(def,
-                                                 public,
+                                                 visibility,
                                                  child_name_bindings,
                                                  self.session.str_of(ident),
                                                  ident,
@@ -1897,10 +1902,11 @@ impl Resolver {
                                     let def = DefFn(
                                         static_method_info.def_id,
                                         static_method_info.purity);
+
+                                    let p = visibility_to_privacy(
+                                        static_method_info.vis);
                                     method_name_bindings.define_value(
-                                        Public,
-                                        def,
-                                        dummy_sp());
+                                        p, def, dummy_sp());
                                 }
                             }
 
@@ -1931,12 +1937,13 @@ impl Resolver {
         };
 
         do csearch::each_child_of_item(self.session.cstore, def_id)
-                |def_like, child_ident| {
+                |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: %s",
                    token::ident_to_str(&child_ident));
             self.build_reduced_graph_for_external_crate_def(module,
                                                             def_like,
-                                                            child_ident)
+                                                            child_ident,
+                                                            visibility)
         }
         module.populated = true
     }
@@ -1956,10 +1963,11 @@ impl Resolver {
                                                   root: @mut Module) {
         do csearch::each_top_level_item_of_crate(self.session.cstore,
                                                  root.def_id.unwrap().crate)
-                |def_like, ident| {
+                |def_like, ident, visibility| {
             self.build_reduced_graph_for_external_crate_def(root,
                                                             def_like,
-                                                            ident)
+                                                            ident,
+                                                            visibility)
         }
     }
 

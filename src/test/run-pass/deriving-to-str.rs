@@ -34,7 +34,7 @@ impl ToStr for Custom {
     fn to_str(&self) -> ~str { ~"yay" }
 }
 
-fn main() {
+pub fn main() {
     assert_eq!(B1.to_str(), ~"B1");
     assert_eq!(B2.to_str(), ~"B2");
     assert_eq!(C1(3).to_str(), ~"C1(3)");

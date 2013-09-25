@@ -12,7 +12,7 @@
 
 extern fn f(x: uint) -> uint { x * 2 }
 
-fn main() {
+pub fn main() {
     #[fixed_stack_segment];
 
     let x = f(22);

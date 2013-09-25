@@ -127,7 +127,7 @@ impl WorkMap {
     }
 }
 
-struct Database {
+pub struct Database {
     db_filename: Path,
     db_cache: TreeMap<~str, ~str>,
     db_dirty: bool
@@ -207,7 +207,7 @@ impl Drop for Database {
     }
 }
 
-struct Logger {
+pub struct Logger {
     // FIXME #4432: Fill in
     a: ()
 }
@@ -223,10 +223,10 @@ impl Logger {
     }
 }
 
-type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
+pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
-struct Context {
+pub struct Context {
     db: RWArc<Database>,
     logger: RWArc<Logger>,
     cfg: Arc<json::Object>,
@@ -239,13 +239,13 @@ struct Context {
     freshness: Arc<FreshnessMap>
 }
 
-struct Prep<'self> {
+pub struct Prep<'self> {
     ctxt: &'self Context,
     fn_name: &'self str,
     declared_inputs: WorkMap,
 }
 
-struct Exec {
+pub struct Exec {
     discovered_inputs: WorkMap,
     discovered_outputs: WorkMap
 }

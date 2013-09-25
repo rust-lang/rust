@@ -17,7 +17,7 @@ struct S<T, S> {
     c: S
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let s = S { a: 0xff_ff_ff_ffu32, b: 1, c: 0xaa_aa_aa_aa as i32 };
         let transd : [u8, .. 9] = cast::transmute(s);
