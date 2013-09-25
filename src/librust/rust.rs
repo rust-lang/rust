@@ -44,7 +44,7 @@ impl ValidUsage {
 
 enum Action {
     Call(extern "Rust" fn(args: &[~str]) -> ValidUsage),
-    CallMain(&'static str, extern "Rust" fn(&[~str])),
+    CallMain(&'static str, extern "Rust" fn(&[~str]) -> int),
 }
 
 enum UsageSource<'self> {
@@ -185,18 +185,17 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
     }
 }
 
-fn invoke(prog: &str, args: &[~str], f: &fn(&[~str])) {
+fn invoke(prog: &str, args: &[~str], f: &fn(&[~str]) -> int) -> int {
     let mut osargs = ~[prog.to_owned()];
     osargs.push_all_move(args.to_owned());
-    f(osargs);
+    f(osargs)
 }
 
 fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
     match command.action {
         Call(f) => f(args),
         CallMain(prog, f) => {
-            invoke(prog, args, f);
-            Valid(0)
+            Valid(invoke(prog, args, f))
         }
     }
 }

@@ -615,11 +615,10 @@ impl CtxMethods for BuildContext {
 
 pub fn main() {
     io::println("WARNING: The Rust package manager is experimental and may be unstable");
-    let args = os::args();
-    main_args(args);
+    os::set_exit_status(main_args(os::args()));
 }
 
-pub fn main_args(args: &[~str]) {
+pub fn main_args(args: &[~str]) -> int {
     let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
                                         getopts::optflag("no-link"),
                                         getopts::optflag("no-trans"),
@@ -645,7 +644,7 @@ pub fn main_args(args: &[~str]) {
         result::Err(f) => {
             error(fmt!("%s", f.to_err_msg()));
 
-            return;
+            return 1;
         }
     };
     let mut help = matches.opt_present("h") ||
@@ -662,7 +661,7 @@ pub fn main_args(args: &[~str]) {
     if matches.opt_present("v") ||
        matches.opt_present("version") {
         rustc::version(args[0]);
-        return;
+        return 0;
     }
 
     let use_rust_path_hack = matches.opt_present("r") ||
@@ -701,7 +700,8 @@ pub fn main_args(args: &[~str]) {
     args.shift();
 
     if (args.len() < 1) {
-        return usage::general();
+        usage::general();
+        return 1;
     }
 
     let rustc_flags = RustcFlags {
@@ -739,11 +739,14 @@ pub fn main_args(args: &[~str]) {
         }
     }
     let cmd = match cmd_opt {
-        None => return usage::general(),
+        None => {
+            usage::general();
+            return 0;
+        }
         Some(cmd) => {
             help |= context::flags_ok_for_cmd(&rustc_flags, cfgs, *cmd, user_supplied_opt_level);
             if help {
-                return match *cmd {
+                match *cmd {
                     ~"build" => usage::build(),
                     ~"clean" => usage::clean(),
                     ~"do" => usage::do_cmd(),
@@ -757,6 +760,7 @@ pub fn main_args(args: &[~str]) {
                     ~"unprefer" => usage::unprefer(),
                     _ => usage::general()
                 };
+                return 0;
             } else {
                 cmd
             }
@@ -794,8 +798,8 @@ pub fn main_args(args: &[~str]) {
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,
     // when actually, it might set the exit code for that even if a different
     // unhandled condition got raised.
-    if result.is_err() { os::set_exit_status(COPY_FAILED_CODE); }
-
+    if result.is_err() { return COPY_FAILED_CODE; }
+    return 0;
 }
 
 /**
