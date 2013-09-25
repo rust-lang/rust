@@ -21,7 +21,7 @@ distributions like normal and exponential.
 
 # Examples
 
-~~~ {.rust}
+```rust
 use std::rand;
 use std::rand::Rng;
 
@@ -31,16 +31,16 @@ fn main() {
         printfln!("int: %d, uint: %u", rng.gen(), rng.gen())
     }
 }
-~~~
+ ```
 
-~~~ {.rust}
+```rust
 use std::rand;
 
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
     printfln!(tuple_ptr)
 }
-~~~
+ ```
 */
 
 use cast;
@@ -264,7 +264,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
@@ -273,7 +273,7 @@ pub trait Rng {
     ///    printfln!(x);
     ///    printfln!(rng.gen::<(float, bool)>());
     /// }
-    /// ~~~
+    /// ```
     #[inline(always)]
     fn gen<T: Rand>(&mut self) -> T {
         Rand::rand(self)
@@ -283,7 +283,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
@@ -292,7 +292,7 @@ pub trait Rng {
     ///    printfln!(x);
     ///    printfln!(rng.gen_vec::<(float, bool)>(5));
     /// }
-    /// ~~~
+    /// ```
     fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
         vec::from_fn(len, |_| self.gen())
     }
@@ -308,7 +308,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
@@ -318,7 +318,7 @@ pub trait Rng {
     ///    let m: i16 = rng.gen_integer_range(-40, 400);
     ///    printfln!(m);
     /// }
-    /// ~~~
+    /// ```
     fn gen_integer_range<T: Rand + Int>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "RNG.gen_integer_range called with low >= high");
         let range = (high - low).to_u64();
@@ -335,7 +335,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     /// use std::rand::Rng;
     ///
@@ -343,7 +343,7 @@ pub trait Rng {
     ///     let mut rng = rand::rng();
     ///     printfln!("%b", rng.gen_weighted_bool(3));
     /// }
-    /// ~~~
+    /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
         n == 0 || self.gen_integer_range(0, n) == 0
     }
@@ -353,13 +353,13 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
     ///    println(rand::task_rng().gen_ascii_str(10));
     /// }
-    /// ~~~
+    /// ```
     fn gen_ascii_str(&mut self, len: uint) -> ~str {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                                              abcdefghijklmnopqrstuvwxyz\
@@ -381,14 +381,14 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
     ///     printfln!(rand::task_rng().choose_option([1,2,4,8,16,32]));
     ///     printfln!(rand::task_rng().choose_option([]));
     /// }
-    /// ~~~
+    /// ```
     fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
             None
@@ -402,7 +402,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     /// use std::rand::Rng;
     ///
@@ -413,7 +413,7 @@ pub trait Rng {
     ///              rand::Weighted {weight: 2, item: 'c'}];
     ///     printfln!("%c", rng.choose_weighted(x));
     /// }
-    /// ~~~
+    /// ```
     fn choose_weighted<T:Clone>(&mut self, v: &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).expect("Rng.choose_weighted: total weight is 0")
     }
@@ -423,7 +423,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     /// use std::rand::Rng;
     ///
@@ -434,7 +434,7 @@ pub trait Rng {
     ///              rand::Weighted {weight: 2, item: 'c'}];
     ///     printfln!(rng.choose_weighted_option(x));
     /// }
-    /// ~~~
+    /// ```
     fn choose_weighted_option<T:Clone>(&mut self, v: &[Weighted<T>])
                                        -> Option<T> {
         let mut total = 0u;
@@ -460,7 +460,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     /// use std::rand::Rng;
     ///
@@ -471,7 +471,7 @@ pub trait Rng {
     ///              rand::Weighted {weight: 2, item: 'c'}];
     ///     printfln!(rng.weighted_vec(x));
     /// }
-    /// ~~~
+    /// ```
     fn weighted_vec<T:Clone>(&mut self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for item in v.iter() {
@@ -486,13 +486,13 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
     ///     printfln!(rand::task_rng().shuffle(~[1,2,3]));
     /// }
-    /// ~~~
+    /// ```
     fn shuffle<T>(&mut self, values: ~[T]) -> ~[T] {
         let mut v = values;
         self.shuffle_mut(v);
@@ -503,7 +503,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
@@ -514,7 +514,7 @@ pub trait Rng {
     ///    rng.shuffle_mut(y);
     ///    printfln!(y);
     /// }
-    /// ~~~
+    /// ```
     fn shuffle_mut<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
         while i >= 2u {
@@ -529,7 +529,7 @@ pub trait Rng {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// use std::rand;
     ///
     /// fn main() {
@@ -537,7 +537,7 @@ pub trait Rng {
     ///    let sample = rng.sample(range(1, 100), 5);
     ///    printfln!(sample);
     /// }
-    /// ~~~
+    /// ```
     fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
         let mut reservoir : ~[A] = vec::with_capacity(n);
         for (i, elem) in iter.enumerate() {

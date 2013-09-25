@@ -346,9 +346,9 @@ impl Round for f32 {
     ///
     /// The fractional part of the number, satisfying:
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert!(x == trunc(x) + fract(x))
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn fract(&self) -> f32 { *self - self.trunc() }

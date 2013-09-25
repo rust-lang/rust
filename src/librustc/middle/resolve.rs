@@ -2499,6 +2499,26 @@ impl Resolver {
         assert!(import_resolution.outstanding_references >= 1);
         import_resolution.outstanding_references -= 1;
 
+        // record what this import resolves to for later uses in documentation,
+        // this may resolve to either a value or a type, but for documentation
+        // purposes it's good enough to just favor one over the other.
+        match i.value_target {
+            Some(target) => {
+                self.def_map.insert(i.value_id,
+                                    target.bindings.value_def.get_ref().def);
+            }
+            None => {}
+        }
+        match i.type_target {
+            Some(target) => {
+                match target.bindings.type_def.get_ref().type_def {
+                    Some(def) => { self.def_map.insert(i.type_id, def); }
+                    None => {}
+                }
+            }
+            None => {}
+        }
+
         debug!("(resolving single import) successfully resolved import");
         return Success(());
     }
@@ -2624,6 +2644,14 @@ impl Resolver {
             let name_bindings =
                 @mut Resolver::create_name_bindings_from_module(*module);
             merge_import_resolution(name, name_bindings);
+        }
+
+        // Record the destination of this import
+        match containing_module.def_id {
+            Some(did) => {
+                self.def_map.insert(id, DefMod(did));
+            }
+            None => {}
         }
 
         debug!("(resolving glob import) successfully resolved import");

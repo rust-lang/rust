@@ -29,7 +29,7 @@
 //! that requires an input file to be specified, accepts an optional output
 //! file name following -o, and accepts both -h and --help as optional flags.
 //!
-//! ```
+//! ~~~{.rust}
 //! exter mod extra;
 //! use extra::getopts::*;
 //! use std::os;
@@ -75,7 +75,7 @@
 //!     };
 //!     do_work(input, output);
 //! }
-//! ```
+//! ~~~
 
 use std::cmp::Eq;
 use std::result::{Err, Ok};

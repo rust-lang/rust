@@ -19,17 +19,17 @@ same manner.
 
 A condition is declared through the `condition!` macro provided by the compiler:
 
-~~~{.rust}
+```rust
 condition! {
     pub my_error: int -> ~str;
 }
-~~~
+ ```
 
 This macro declares an inner module called `my_error` with one static variable,
 `cond` that is a static `Condition` instance. To help understand what the other
 parameters are used for, an example usage of this condition would be:
 
-~~~{.rust}
+```rust
 do my_error::cond.trap(|raised_int| {
 
     // the condition `my_error` was raised on, and the value it raised is stored
@@ -51,7 +51,7 @@ do my_error::cond.trap(|raised_int| {
     println(my_error::cond.raise(4)); // prints "oh well"
 
 }
-~~~
+ ```
 
 Condition handling is useful in cases where propagating errors is either to
 cumbersome or just not necessary in the first place. It should also be noted,
@@ -96,14 +96,14 @@ impl<T, U> Condition<T, U> {
     ///
     /// # Example
     ///
-    /// ~~~{.rust}
+    /// ```rust
     /// condition! { my_error: int -> int; }
     ///
     /// let trap = my_error::cond.trap(|error| error + 3);
     ///
     /// // use `trap`'s inside method to register the handler and then run a
     /// // block of code with the handler registered
-    /// ~~~
+    /// ```
     pub fn trap<'a>(&'a self, h: &'a fn(T) -> U) -> Trap<'a, T, U> {
         let h: Closure = unsafe { ::cast::transmute(h) };
         let prev = local_data::get(self.key, |k| k.map(|&x| *x));
@@ -173,14 +173,14 @@ impl<'self, T, U> Trap<'self, T, U> {
     ///
     /// # Example
     ///
-    /// ~~~{.rust}
+    /// ```rust
     /// condition! { my_error: int -> int; }
     ///
     /// let result = do my_error::cond.trap(|error| error + 3).inside {
     ///     my_error::cond.raise(4)
     /// };
     /// assert_eq!(result, 7);
-    /// ~~~
+    /// ```
     pub fn inside<V>(&self, inner: &'self fn() -> V) -> V {
         let _g = Guard { cond: self.cond };
         debug!("Trap: pushing handler to TLS");
