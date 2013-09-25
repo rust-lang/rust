@@ -68,7 +68,7 @@ impl<'self> ToBase64 for &'self [u8] {
      *
      * fn main () {
      *     let str = [52,32].to_base64(standard);
-     *     printfln!("%s", str);
+     *     println!("{}", str);
      * }
      * ```
      */
@@ -177,11 +177,11 @@ impl<'self> FromBase64 for &'self str {
      *
      * fn main () {
      *     let hello_str = "Hello, World".to_base64(standard);
-     *     printfln!("%s", hello_str);
+     *     println!("{}", hello_str);
      *     let bytes = hello_str.from_base64();
-     *     printfln!("%?", bytes);
+     *     println!("{:?}", bytes);
      *     let result_str = str::from_utf8(bytes);
-     *     printfln!("%s", result_str);
+     *     println!("{}", result_str);
      * }
      * ```
      */

@@ -25,9 +25,9 @@ static k : K = K {a: 10, b: 20, c: D {d: 30, e: 40}};
 static m : int = k.c.e;
 
 pub fn main() {
-    printfln!(p);
-    printfln!(q);
-    printfln!(t);
+    println!("{:?}", p);
+    println!("{:?}", q);
+    println!("{:?}", t);
     assert_eq!(p, 3);
     assert_eq!(q, 3);
     assert_eq!(t, 20);

@@ -66,7 +66,7 @@ fn generic_extension(cx: @ExtCtxt,
                      rhses: &[@named_match])
                      -> MacResult {
     if cx.trace_macros() {
-        printfln!("%s! { %s }",
+        println!("{}! \\{ {} \\}",
                   cx.str_of(name),
                   print::pprust::tt_to_str(
                       &ast::tt_delim(@mut arg.to_owned()),
@@ -194,7 +194,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                          rhses: &[@named_match])
                          -> MacResult {
         if cx.trace_macros() {
-            printfln!("%s! { %s }",
+            println!("{}! \\{ {} \\}",
                       cx.str_of(name),
                       print::pprust::tt_to_str(
                           &ast::tt_delim(@mut arg.to_owned()),

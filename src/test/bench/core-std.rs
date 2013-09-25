@@ -55,7 +55,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: &fn()) {
     test();
     let stop = precise_time_s();
 
-    printfln!("%s:\t\t%f ms", name, (stop - start) * 1000f);
+    println!("{}:\t\t{} ms", name, (stop - start) * 1000f);
 }
 
 fn shift_push() {

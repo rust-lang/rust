@@ -35,5 +35,5 @@ impl Shape {
 
 pub fn main(){
     let s = Circle(Point { x: 1f, y: 2f }, 3f);
-    printfln!("%f", s.area(s));
+    println!("{}", s.area(s));
 }

@@ -14,5 +14,5 @@ fn f<'r, T>(v: &'r T) -> &'r fn()->T { id::<&'r fn()->T>(|| *v) } //~ ERROR cann
 
 fn main() {
     let v = &5;
-    printfln!("%d", f(v)());
+    println!("{}", f(v)());
 }
