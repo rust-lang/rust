@@ -52,7 +52,7 @@ enum OutputFormat {
 }
 
 pub fn main() {
-    main_args(std::os::args());
+    std::os::set_exit_status(main_args(std::os::args()));
 }
 
 pub fn opts() -> ~[groups::OptGroup] {
@@ -76,14 +76,14 @@ pub fn usage(argv0: &str) {
                                   argv0), opts()));
 }
 
-pub fn main_args(args: &[~str]) {
+pub fn main_args(args: &[~str]) -> int {
     //use extra::getopts::groups::*;
 
     let matches = groups::getopts(args.tail(), opts()).unwrap();
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
-        return;
+        return 0;
     }
 
     let (format, cratefile) = match matches.free.clone() {
@@ -92,17 +92,17 @@ pub fn main_args(args: &[~str]) {
         [s, _] => {
             println!("Unknown output format: `{}`", s);
             usage(args[0]);
-            exit(1);
+            return 1;
         }
         [_, .._] => {
             println!("Expected exactly one crate to process");
             usage(args[0]);
-            exit(1);
+            return 1;
         }
         _ => {
             println!("Expected an output format and then one crate");
             usage(args[0]);
-            exit(1);
+            return 1;
         }
     };
 
@@ -179,6 +179,8 @@ pub fn main_args(args: &[~str]) {
     }
     let ended = time::precise_time_ns();
     info2!("Took {:.03f}s", (ended as f64 - started as f64) / 1000000000f64);
+
+    return 0;
 }
 
 fn jsonify(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
@@ -207,10 +209,4 @@ fn jsonify(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     let mut file = dst.open_writer(io::Create).unwrap();
     let output = extra::json::Object(json).to_str();
     file.write(output.as_bytes());
-}
-
-fn exit(status: int) -> ! {
-    #[fixed_stack_segment]; #[inline(never)];
-    use std::libc;
-    unsafe { libc::exit(status as libc::c_int) }
 }
