@@ -345,20 +345,18 @@ impl IrMaps {
     }
 }
 
-struct ErrorCheckVisitor;
-
-impl Visitor<@Liveness> for ErrorCheckVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:@Liveness) {
-        check_fn(self, fk, fd, b, s, n, e);
+impl Visitor<()> for Liveness {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, _:()) {
+        check_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l:@Local, e:@Liveness) {
-        check_local(self, l, e);
+    fn visit_local(&mut self, l:@Local, _:()) {
+        check_local(self, l);
     }
-    fn visit_expr(&mut self, ex:@Expr, e:@Liveness) {
-        check_expr(self, ex, e);
+    fn visit_expr(&mut self, ex:@Expr, _:()) {
+        check_expr(self, ex);
     }
-    fn visit_arm(&mut self, a:&Arm, e:@Liveness) {
-        check_arm(self, a, e);
+    fn visit_arm(&mut self, a:&Arm, _:()) {
+        check_arm(self, a);
     }
 }
 
@@ -419,12 +417,11 @@ fn visit_fn(v: &mut LivenessVisitor,
     };
 
     // compute liveness
-    let lsets = @Liveness(fn_maps, specials);
-    let entry_ln = (*lsets).compute(decl, body);
+    let mut lsets = Liveness(fn_maps, specials);
+    let entry_ln = lsets.compute(decl, body);
 
     // check for various error conditions
-    let mut check_vt = ErrorCheckVisitor;
-    check_vt.visit_block(body, lsets);
+    lsets.visit_block(body, ());
     lsets.check_ret(id, sp, fk, entry_ln);
     lsets.warn_about_unused_args(decl, entry_ln);
 }
@@ -1423,7 +1420,7 @@ impl Liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(vt: &mut ErrorCheckVisitor, local: @Local, this: @Liveness) {
+fn check_local(this: &mut Liveness, local: @Local) {
     match local.init {
       Some(_) => {
         this.warn_about_unused_or_dead_vars_in_pat(local.pat);
@@ -1449,48 +1446,48 @@ fn check_local(vt: &mut ErrorCheckVisitor, local: @Local, this: @Liveness) {
       }
     }
 
-    visit::walk_local(vt, local, this);
+    visit::walk_local(this, local, ());
 }
 
-fn check_arm(vt: &mut ErrorCheckVisitor, arm: &Arm, this: @Liveness) {
+fn check_arm(this: &mut Liveness, arm: &Arm) {
     do this.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     }
-    visit::walk_arm(vt, arm, this);
+    visit::walk_arm(this, arm, ());
 }
 
-fn check_expr(vt: &mut ErrorCheckVisitor, expr: @Expr, this: @Liveness) {
+fn check_expr(this: &mut Liveness, expr: @Expr) {
     match expr.node {
       ExprAssign(l, r) => {
-        this.check_lvalue(l, vt);
-        vt.visit_expr(r, this);
+        this.check_lvalue(l);
+        this.visit_expr(r, ());
 
-        visit::walk_expr(vt, expr, this);
+        visit::walk_expr(this, expr, ());
       }
 
       ExprAssignOp(_, _, l, _) => {
-        this.check_lvalue(l, vt);
+        this.check_lvalue(l);
 
-        visit::walk_expr(vt, expr, this);
+        visit::walk_expr(this, expr, ());
       }
 
       ExprInlineAsm(ref ia) => {
         for &(_, input) in ia.inputs.iter() {
-          vt.visit_expr(input, this);
+          this.visit_expr(input, ());
         }
 
         // Output operands must be lvalues
         for &(_, out) in ia.outputs.iter() {
           match out.node {
             ExprAddrOf(_, inner) => {
-              this.check_lvalue(inner, vt);
+              this.check_lvalue(inner);
             }
             _ => {}
           }
-          vt.visit_expr(out, this);
+          this.visit_expr(out, ());
         }
 
-        visit::walk_expr(vt, expr, this);
+        visit::walk_expr(this, expr, ());
       }
 
       // no correctness conditions related to liveness
@@ -1502,19 +1499,18 @@ fn check_expr(vt: &mut ErrorCheckVisitor, expr: @Expr, this: @Liveness) {
       ExprAgain(*) | ExprLit(_) | ExprBlock(*) |
       ExprMac(*) | ExprAddrOf(*) | ExprStruct(*) | ExprRepeat(*) |
       ExprParen(*) | ExprFnBlock(*) | ExprPath(*) | ExprSelf(*) => {
-        visit::walk_expr(vt, expr, this);
+        visit::walk_expr(this, expr, ());
       }
       ExprForLoop(*) => fail!("non-desugared expr_for_loop")
     }
 }
 
-fn check_fn(_v: &mut ErrorCheckVisitor,
+fn check_fn(_v: &Liveness,
             _fk: &visit::fn_kind,
             _decl: &fn_decl,
             _body: &Block,
             _sp: Span,
-            _id: NodeId,
-            _self: @Liveness) {
+            _id: NodeId) {
     // do not check contents of nested fns
 }
 
@@ -1549,7 +1545,7 @@ impl Liveness {
         }
     }
 
-    pub fn check_lvalue(@self, expr: @Expr, vt: &mut ErrorCheckVisitor) {
+    pub fn check_lvalue(&mut self, expr: @Expr) {
         match expr.node {
           ExprPath(_) => {
             match self.tcx.def_map.get_copy(&expr.id) {
@@ -1578,7 +1574,7 @@ impl Liveness {
           _ => {
             // For other kinds of lvalues, no checks are required,
             // and any embedded expressions are actually rvalues
-            visit::walk_expr(vt, expr, self);
+            visit::walk_expr(self, expr, ());
           }
        }
     }

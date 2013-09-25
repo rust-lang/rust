@@ -570,18 +570,20 @@ pub fn trans_lang_call_with_type_params(bcx: @mut Block,
 }
 
 
-struct CalleeTranslationVisitor;
+struct CalleeTranslationVisitor {
+    flag: bool,
+}
 
-impl Visitor<@mut bool> for CalleeTranslationVisitor {
+impl Visitor<()> for CalleeTranslationVisitor {
 
-    fn visit_item(&mut self, _:@ast::item, _:@mut bool) { }
+    fn visit_item(&mut self, _:@ast::item, _:()) { }
 
-    fn visit_expr(&mut self, e:@ast::Expr, cx:@mut bool) {
+    fn visit_expr(&mut self, e:@ast::Expr, _:()) {
 
-            if !*cx {
+            if !self.flag {
                 match e.node {
-                  ast::ExprRet(_) => *cx = true,
-                  _ => visit::walk_expr(self, e, cx),
+                  ast::ExprRet(_) => self.flag = true,
+                  _ => visit::walk_expr(self, e, ()),
                 }
             }
     }
@@ -589,10 +591,9 @@ impl Visitor<@mut bool> for CalleeTranslationVisitor {
 }
 
 pub fn body_contains_ret(body: &ast::Block) -> bool {
-    let cx = @mut false;
-    let mut v = CalleeTranslationVisitor;
-    visit::walk_block(&mut v, body, cx);
-    *cx
+    let mut v = CalleeTranslationVisitor{ flag: false };
+    visit::walk_block(&mut v, body, ());
+    v.flag
 }
 
 pub fn trans_call_inner(in_cx: @mut Block,

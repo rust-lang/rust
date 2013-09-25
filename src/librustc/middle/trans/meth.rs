@@ -61,9 +61,9 @@ pub fn trans_impl(ccx: @mut CrateContext,
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
-        let mut v = TransItemVisitor;
+        let mut v = TransItemVisitor{ ccx: ccx };
         for method in methods.iter() {
-            visit::walk_method_helper(&mut v, *method, ccx);
+            visit::walk_method_helper(&mut v, *method, ());
         }
         return;
     }
@@ -80,8 +80,8 @@ pub fn trans_impl(ccx: @mut CrateContext,
                          None,
                          llfn);
         } else {
-            let mut v = TransItemVisitor;
-            visit::walk_method_helper(&mut v, *method, ccx);
+            let mut v = TransItemVisitor{ ccx: ccx };
+            visit::walk_method_helper(&mut v, *method, ());
         }
     }
 }
