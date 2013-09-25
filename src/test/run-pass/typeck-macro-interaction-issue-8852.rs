@@ -17,6 +17,6 @@ macro_rules! test(
 
 test!(x + y)
 
-fn main() {
+pub fn main() {
     foo(A(1), A(2));
 }

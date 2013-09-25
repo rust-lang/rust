@@ -21,7 +21,7 @@ impl<E> Graph<int, E> for HashMap<int, int> {
     }
 }
 
-fn main() {
+pub fn main() {
     let g : ~HashMap<int, int> = ~HashMap::new();
     let _g2 : ~Graph<int,int> = g as ~Graph<int,int>;
 }

@@ -15,4 +15,4 @@ trait Foo {
     fn foo(&self, mut v: int) { v = 1; }
 }
 
-fn main() {}
+pub fn main() {}

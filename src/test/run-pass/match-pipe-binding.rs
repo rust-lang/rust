@@ -59,7 +59,7 @@ fn test5() {
     }
 }
 
-fn main() {
+pub fn main() {
     test1();
     test2();
     test3();

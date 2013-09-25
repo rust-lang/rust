@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     // Make sure that this view item is filtered out because otherwise it would
     // trigger a compilation error
     #[cfg(not_present)] use foo = bar;

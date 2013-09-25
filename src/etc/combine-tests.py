@@ -29,6 +29,8 @@ for t in os.listdir(run_pass):
         if not ("xfail-test" in s or
                 "xfail-fast" in s or
                 "xfail-win32" in s):
+            if not "pub fn main" in s and "fn main" in s:
+                print("Warning: no public entry point in " + t)
             stage2_tests.append(t)
         f.close()
 

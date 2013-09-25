@@ -19,7 +19,7 @@ impl Drop for Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let y = @mut 32;
     {
         let _x = Foo(y);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let box1 = @mut 42;
     let _x = *(&mut *box1) == 42 || *(&mut *box1) == 31337;
 }

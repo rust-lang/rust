@@ -16,7 +16,7 @@ mod bar {
     local_data_key!(pub baz: float)
 }
 
-fn main() {
+pub fn main() {
     local_data::get(foo, |x| assert!(x.is_none()));
     local_data::get(bar::baz, |y| assert!(y.is_none()));
 

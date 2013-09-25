@@ -29,4 +29,4 @@ fn e(x: ~Foo) { // sugar for ~Foo:Owned
     b(x);
 }
 
-fn main() { }
+pub fn main() { }

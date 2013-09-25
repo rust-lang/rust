@@ -15,7 +15,7 @@ enum Flopsy {
 static BAR:uint = Bunny as uint;
 static BAR2:uint = BAR;
 
-fn main() {
+pub fn main() {
     let _v = [0, .. Bunny as uint];
     let _v = [0, .. BAR];
     let _v = [0, .. BAR2];

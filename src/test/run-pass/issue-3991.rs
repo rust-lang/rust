@@ -18,4 +18,4 @@ impl HasNested {
     }
 }
 
-fn main() {}
+pub fn main() {}
