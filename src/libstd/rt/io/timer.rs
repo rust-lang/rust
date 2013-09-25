@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use comm;
+use kinds::Send;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::io::{io_error};
@@ -48,10 +50,65 @@ impl Timer {
     }
 }
 
+trait TimedPort<T: Send> {
+
+ /**
+  * This implementation adds the required
+  * API for recv_timeout with an approximate
+  * but not safe behavior.
+  *
+  * Current implementations of this Trait for
+  * both PortOne and Port poll on the port every
+  * second to check for new messages. A correct
+  * implementation for recv_timeout should implement
+  * `SelectInner` and Select for UvTimer and re-write
+  * the sleep method around that.
+  *
+  * FIXME: (flaper87) #9195
+  */
+  fn recv_timeout(self, msecs: u64) -> Option<T>;
+}
+
+impl<T: Send> TimedPort<T> for comm::PortOne<T> {
+
+    fn recv_timeout(self, msecs: u64) -> Option<T> {
+        let mut tout = msecs;
+        let mut timer = Timer::new().unwrap();
+
+        while tout > 0 {
+            if self.peek() { return Some(self.recv()); }
+            timer.sleep(1000);
+            tout -= 1000;
+        }
+
+        None
+    }
+}
+
+
+impl<T: Send> TimedPort<T> for comm::Port<T> {
+
+    fn recv_timeout(self, msecs: u64) -> Option<T> {
+        let mut tout = msecs;
+        let mut timer = Timer::new().unwrap();
+
+        while tout > 0 {
+            if self.peek() { return Some(self.recv()); }
+            timer.sleep(1000);
+            tout -= 1000;
+        }
+
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use rt::test::*;
+    use task;
+    use comm;
+
     #[test]
     fn test_io_timer_sleep_simple() {
         do run_in_mt_newsched_task {
@@ -64,6 +121,34 @@ mod test {
     fn test_io_timer_sleep_standalone() {
         do run_in_mt_newsched_task {
             sleep(1)
+        }
+    }
+
+    #[test]
+    fn test_recv_timeout() {
+        do run_in_newsched_task {
+            let (p, c) = comm::stream::<int>();
+            do task::spawn {
+                let mut t = Timer::new().unwrap();
+                t.sleep(1000);
+                c.send(1);
+            }
+
+            assert!(p.recv_timeout(2000).unwrap() == 1);
+        }
+    }
+
+    #[test]
+    fn test_recv_timeout_expire() {
+        do run_in_newsched_task {
+            let (p, c) = comm::stream::<int>();
+            do task::spawn {
+                let mut t = Timer::new().unwrap();
+                t.sleep(3000);
+                c.send(1);
+            }
+
+            assert!(p.recv_timeout(1000).is_none());
         }
     }
 }
