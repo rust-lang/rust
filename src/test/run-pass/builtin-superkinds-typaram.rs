@@ -15,4 +15,4 @@ trait Foo : Send { }
 
 impl <T: Send> Foo for T { }
 
-fn main() { }
+pub fn main() { }

@@ -39,6 +39,6 @@ impl Scheduler {
     }
 }
 
-fn main() {
+pub fn main() {
     let _sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop);
 }

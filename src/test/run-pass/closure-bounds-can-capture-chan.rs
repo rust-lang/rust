@@ -14,7 +14,7 @@ fn foo(blk: ~fn:Send()) {
     blk();
 }
 
-fn main() {
+pub fn main() {
     let (p,c) = comm::stream();
     do foo {
         c.send(());

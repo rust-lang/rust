@@ -17,7 +17,7 @@ fn both<'r>(v: &'r [uint]) -> &'r [uint] {
     subslice1(subslice1(v))
 }
 
-fn main() {
+pub fn main() {
     let v = ~[1,2,3];
     both(v);
 }

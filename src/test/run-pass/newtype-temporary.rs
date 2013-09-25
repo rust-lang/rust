@@ -14,6 +14,6 @@ fn foo() -> Foo {
     Foo(42)
 }
 
-fn main() {
+pub fn main() {
     assert_eq!(*foo(), 42);
 }

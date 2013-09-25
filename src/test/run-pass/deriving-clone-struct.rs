@@ -31,4 +31,4 @@ struct S {
     _nil: ()
 }
 
-fn main() {}
+pub fn main() {}

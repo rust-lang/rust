@@ -14,4 +14,4 @@ trait Foo : Send { }
 
 impl Foo for int { }
 
-fn main() { }
+pub fn main() { }

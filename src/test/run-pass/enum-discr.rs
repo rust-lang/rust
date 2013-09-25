@@ -12,7 +12,7 @@ enum Hero {
     Spiderman = -4
 }
 
-fn main() {
+pub fn main() {
     let pet: Animal = Snake;
     let hero: Hero = Superman;
     assert!(pet as uint == 3);

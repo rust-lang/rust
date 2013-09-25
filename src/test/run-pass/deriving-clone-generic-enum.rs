@@ -15,7 +15,7 @@ enum E<T,U> {
     C
 }
 
-fn main() {
+pub fn main() {
     let _ = A::<int, int>(1i).clone();
     let _ = B(1i, 1.234).deep_clone();
 }

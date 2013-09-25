@@ -35,7 +35,7 @@ struct ShortCircuit {
     y: FailCmp
 }
 
-fn main() {
+pub fn main() {
     let a = ShortCircuit { x: 1, y: FailCmp };
     let b = ShortCircuit { x: 2, y: FailCmp };
 

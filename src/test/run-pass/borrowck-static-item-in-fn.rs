@@ -10,6 +10,6 @@
 
 // Regression test for issue #7740
 
-fn main() {
+pub fn main() {
     static A: &'static char = &'A';
 }

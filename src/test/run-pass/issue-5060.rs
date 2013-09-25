@@ -22,7 +22,7 @@ macro_rules! print_hd_tl (
     })
 )
 
-fn main() {
+pub fn main() {
     print_hd_tl!(x, y, z, w)
 }
 

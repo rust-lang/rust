@@ -20,6 +20,6 @@ struct MyStruct;
 
 impl TraitWithDefaultMethod for MyStruct { }
 
-fn main() {
+pub fn main() {
     MyStruct.method();
 }

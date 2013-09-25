@@ -14,7 +14,7 @@ use std::hashmap::HashMap;
 // outside the loop, breaks, then _picks back up_ and continues
 // iterating with it.
 
-fn main() {
+pub fn main() {
     let mut h = HashMap::new();
     let kvs = [(1, 10), (2, 20), (3, 30)];
     for &(k,v) in kvs.iter() {
