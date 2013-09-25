@@ -352,6 +352,7 @@ mod test {
 
     use cryptoutil::{add_bytes_to_bits, add_bytes_to_bits_tuple};
     use digest::Digest;
+    use hex::FromHex;
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
     /// correct.
@@ -372,8 +373,10 @@ mod test {
         }
 
         let result_str = digest.result_str();
+        let result_bytes = digest.result_bytes();
 
-        assert!(expected == result_str);
+        assert_eq!(expected, result_str.as_slice());
+        assert_eq!(expected.from_hex().unwrap(), result_bytes);
     }
 
     // A normal addition - no overflow occurs
