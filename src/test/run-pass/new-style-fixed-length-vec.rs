@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::println;
-
 static FOO: [int, ..3] = [1, 2, 3];
 
 pub fn main() {
-    printfln!("%d %d %d", FOO[0], FOO[1], FOO[2]);
+    println!("{} {} {}", FOO[0], FOO[1], FOO[2]);
 }

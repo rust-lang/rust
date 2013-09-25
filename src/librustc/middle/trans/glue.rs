@@ -646,8 +646,8 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
-        printfln!("%u\t%s", llsize_of_real(ccx, llty),
-                  ppaux::ty_to_str(ccx.tcx, t));
+        println!("{}\t{}", llsize_of_real(ccx, llty),
+                 ppaux::ty_to_str(ccx.tcx, t));
     }
 
     let has_header = match ty::get(t).sty {

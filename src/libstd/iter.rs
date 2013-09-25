@@ -413,7 +413,7 @@ pub trait Iterator<A> {
     /// use std::iter::count;
     ///
     /// for i in count(0, 10) {
-    ///     printfln!("%d", i);
+    ///     println!("{}", i);
     /// }
     /// ```
     #[inline]

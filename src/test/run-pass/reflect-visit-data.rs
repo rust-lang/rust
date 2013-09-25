@@ -647,9 +647,9 @@ pub fn main() {
 
         let r = u.vals.clone();
         for s in r.iter() {
-            printfln!("val: %s", *s);
+            println!("val: {}", *s);
         }
-        error!("%?", u.vals.clone());
+        error2!("{:?}", u.vals.clone());
         assert_eq!(u.vals.clone(),
                    ~[ ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"]);
     }
