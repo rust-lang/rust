@@ -2,7 +2,7 @@ fn run(f: &fn()) {
     f()
 }
 
-fn main() {
+pub fn main() {
     let f: ~fn() = || ();
     run(f);
 }

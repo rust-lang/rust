@@ -34,7 +34,7 @@ impl<T: Clone> Getter<T> for Option<T> {
 }
 
 
-fn main() {
+pub fn main() {
     assert_eq!(3.do_get2(), (3, 3));
     assert_eq!(Some(~"hi").do_get2(), (~"hi", ~"hi"));
 }

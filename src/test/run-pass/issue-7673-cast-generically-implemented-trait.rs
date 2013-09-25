@@ -14,7 +14,7 @@
 
 */
 
-fn main() {}
+pub fn main() {}
 
 trait A {}
 impl<T: 'static> A for T {}

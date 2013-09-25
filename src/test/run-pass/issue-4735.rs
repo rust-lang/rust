@@ -21,7 +21,7 @@ impl Drop for NonCopyable {
     }
 }
 
-fn main() {
+pub fn main() {
     let t = ~0;
     let p = unsafe { transmute::<~int, *c_void>(t) };
     let _z = NonCopyable(p);

@@ -14,7 +14,7 @@ impl A for B {}
 
 fn foo(_: &mut A) {}
 
-fn main() {
+pub fn main() {
     let mut b = B;
     foo(&mut b as &mut A);
 }

@@ -22,4 +22,4 @@ trait TragicallySelfIsNotSend: Send {
     }
 }
 
-fn main(){}
+pub fn main(){}

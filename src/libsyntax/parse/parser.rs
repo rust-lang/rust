@@ -922,7 +922,7 @@ impl Parser {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
-            let vis = p.parse_non_priv_visibility();
+            let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
@@ -3753,7 +3753,7 @@ impl Parser {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
 
-        let visa = self.parse_non_priv_visibility();
+        let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
@@ -3801,7 +3801,7 @@ impl Parser {
     // Parses two variants (with the region/type params always optional):
     //    impl<T> Foo { ... }
     //    impl<T> ToStr for ~[T] { ... }
-    fn parse_item_impl(&self, visibility: ast::visibility) -> item_info {
+    fn parse_item_impl(&self) -> item_info {
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();
 
@@ -3845,11 +3845,6 @@ impl Parser {
         } else {
             None
         };
-
-        // Do not allow visibility to be specified.
-        if visibility != ast::inherited {
-            self.obsolete(*self.span, ObsoleteImplVisibility);
-        }
 
         let mut meths = ~[];
         if self.eat(&token::SEMI) {
@@ -4012,18 +4007,6 @@ impl Parser {
         if self.eat_keyword(keywords::Pub) { public }
         else if self.eat_keyword(keywords::Priv) { private }
         else { inherited }
-    }
-
-    // parse visibility, but emits an obsolete error if it's private
-    fn parse_non_priv_visibility(&self) -> visibility {
-        match self.parse_visibility() {
-            public => public,
-            inherited => inherited,
-            private => {
-                self.obsolete(*self.last_span, ObsoletePrivVisibility);
-                inherited
-            }
-        }
     }
 
     fn parse_staticness(&self) -> bool {
@@ -4218,7 +4201,7 @@ impl Parser {
     // parse a function declaration from a foreign module
     fn parse_item_foreign_fn(&self,  attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
-        let vis = self.parse_non_priv_visibility();
+        let vis = self.parse_visibility();
 
         // Parse obsolete purity.
         let purity = self.parse_fn_purity();
@@ -4354,11 +4337,6 @@ impl Parser {
                 self.obsolete(*self.last_span, ObsoleteNamedExternModule);
             }
 
-            // Do not allow visibility to be specified.
-            if visibility != ast::inherited {
-                self.obsolete(*self.last_span, ObsoleteExternVisibility);
-            }
-
             let abis = opt_abis.unwrap_or(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();
@@ -4369,7 +4347,7 @@ impl Parser {
                                           self.last_span.hi,
                                           ident,
                                           item_foreign_mod(m),
-                                          public,
+                                          visibility,
                                           maybe_append(attrs, Some(inner))));
         }
 
@@ -4616,7 +4594,7 @@ impl Parser {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_non_priv_visibility();
+        let visibility = self.parse_visibility();
 
         // must be a view item:
         if self.eat_keyword(keywords::Use) {
@@ -4724,8 +4702,7 @@ impl Parser {
         }
         if self.eat_keyword(keywords::Impl) {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) =
-                self.parse_item_impl(visibility);
+            let (ident, item_, extra_attrs) = self.parse_item_impl();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
@@ -4748,7 +4725,7 @@ impl Parser {
         maybe_whole!(iovi self, nt_item);
         let lo = self.span.lo;
 
-        let visibility = self.parse_non_priv_visibility();
+        let visibility = self.parse_visibility();
 
         if (self.is_keyword(keywords::Const) || self.is_keyword(keywords::Static)) {
             // FOREIGN CONST ITEM

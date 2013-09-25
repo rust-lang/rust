@@ -1,6 +1,6 @@
 // Tests that matching rvalues with drops does not crash.
 
-fn main() {
+pub fn main() {
     match ~[1, 2, 3] {
         x => {
             assert_eq!(x.len(), 3);

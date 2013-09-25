@@ -18,4 +18,4 @@ struct X<T>(());
 
 impl <T> Foo for X<T> { }
 
-fn main() { }
+pub fn main() { }

@@ -9,9 +9,13 @@
 // except according to those terms.
 
 //! A pass that checks to make sure private fields and methods aren't used
-//! outside their scopes.
+//! outside their scopes. This pass will also generate a set of exported items
+//! which are available for use externally when compiled as a library.
+
+use std::hashmap::HashSet;
 
 use metadata::csearch;
+use middle::resolve::ExportMap2;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
 use middle::typeck::{method_map, method_origin, method_param};
@@ -37,9 +41,23 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::ast::{_mod,Expr,item,Block,Pat};
 
+// This set is a set of all item nodes which can be used by external crates if
+// we're building a library. The necessary qualifications for this are that all
+// items leading down to the current item (excluding an `impl`) must be `pub`.
+pub type ExportedItems = HashSet<NodeId>;
+
+type Context<'self> = (&'self method_map, &'self ExportMap2);
+
 struct PrivacyVisitor {
     tcx: ty::ctxt,
     privileged_items: @mut ~[NodeId],
+
+    // A set of all items which are re-exported to be used across crates
+    exported_items: ExportedItems,
+
+    // A flag as to whether the current path is public all the way down to the
+    // current point or not
+    path_all_public: bool,
 }
 
 impl PrivacyVisitor {
@@ -265,15 +283,20 @@ impl PrivacyVisitor {
                                                      .last()
                                                      .identifier)));
                     }
-                } else if csearch::get_item_visibility(self.tcx.sess.cstore,
-                                                       def_id) != public {
-                    self.tcx.sess.span_err(span,
-                                      fmt!("function `%s` is private",
-                                           token::ident_to_str(
-                                                &path.segments
-                                                     .last()
-                                                     .identifier)));
+                //} else if csearch::get_item_visibility(self.tcx.sess.cstore,
+                //                                       def_id) != public {
+                //    self.tcx.sess.span_err(span,
+                //                      fmt!("function `%s` is private",
+                //                           token::ident_to_str(
+                //                                &path.segments
+                //                                     .last()
+                //                                     .identifier)));
                 }
+                // If this is a function from a non-local crate, then the
+                // privacy check is enforced during resolve. All public items
+                // will be tagged as such in the crate metadata and then usage
+                // of the private items will be blocked during resolve. Hence,
+                // if this isn't from the local crate, nothing to check.
             }
             _ => {}
         }
@@ -341,31 +364,78 @@ impl PrivacyVisitor {
     }
 }
 
-impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
+impl<'self> Visitor<Context<'self>> for PrivacyVisitor {
 
-    fn visit_mod<'mm>(&mut self, the_module:&_mod, _:Span, _:NodeId,
-                      method_map:&'mm method_map) {
+    fn visit_mod(&mut self, the_module:&_mod, _:Span, _:NodeId,
+                 cx: Context<'self>) {
 
             let n_added = self.add_privileged_items(the_module.items);
 
-            visit::walk_mod(self, the_module, method_map);
+            visit::walk_mod(self, the_module, cx);
 
             do n_added.times {
                 ignore(self.privileged_items.pop());
             }
     }
 
-    fn visit_item<'mm>(&mut self, item:@item, method_map:&'mm method_map) {
+    fn visit_item(&mut self, item:@item, cx: Context<'self>) {
 
-            // Do not check privacy inside items with the resolve_unexported
-            // attribute. This is used for the test runner.
-            if !attr::contains_name(item.attrs, "!resolve_unexported") {
-                check_sane_privacy(self.tcx, item);
-                visit::walk_item(self, item, method_map);
+        // Do not check privacy inside items with the resolve_unexported
+        // attribute. This is used for the test runner.
+        if attr::contains_name(item.attrs, "!resolve_unexported") {
+            return;
+        }
+
+        // Disallow unnecessary visibility qualifiers
+        check_sane_privacy(self.tcx, item);
+
+        // Keep track of whether this item is available for export or not.
+        let orig_all_pub = self.path_all_public;
+        match item.node {
+            // impls/extern blocks do not break the "public chain" because they
+            // cannot have visibility qualifiers on them anyway
+            ast::item_impl(*) | ast::item_foreign_mod(*) => {}
+
+            // Private by default, hence we only retain the "public chain" if
+            // `pub` is explicitly listed.
+            _ => {
+                self.path_all_public = orig_all_pub && item.vis == ast::public;
             }
+        }
+        debug2!("public path at {}: {}", item.id, self.path_all_public);
+
+        if self.path_all_public {
+            debug2!("all the way public {}", item.id);
+            self.exported_items.insert(item.id);
+
+            // All re-exported items in a module which is public should also be
+            // public (in terms of how they should get encoded)
+            match item.node {
+                ast::item_mod(*) => {
+                    let (_, exp_map2) = cx;
+                    match exp_map2.find(&item.id) {
+                        Some(exports) => {
+                            for export in exports.iter() {
+                                if export.reexport && is_local(export.def_id) {
+                                    debug2!("found reexported {:?}", export);
+                                    let id = export.def_id.node;
+                                    self.exported_items.insert(id);
+                                }
+                            }
+                        }
+                        None => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        visit::walk_item(self, item, cx);
+
+        self.path_all_public = orig_all_pub;
     }
 
-    fn visit_block<'mm>(&mut self, block:&Block, method_map:&'mm method_map) {
+    fn visit_block(&mut self, block:&Block, cx: Context<'self>) {
 
             // Gather up all the privileged items.
             let mut n_added = 0;
@@ -383,7 +453,7 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                 }
             }
 
-            visit::walk_block(self, block, method_map);
+            visit::walk_block(self, block, cx);
 
             do n_added.times {
                 ignore(self.privileged_items.pop());
@@ -391,8 +461,8 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
 
     }
 
-    fn visit_expr<'mm>(&mut self, expr:@Expr, method_map:&'mm method_map) {
-
+    fn visit_expr(&mut self, expr:@Expr, cx: Context<'self>) {
+        let (method_map, _) = cx;
             match expr.node {
                 ExprField(base, ident, _) => {
                     // Method calls are now a special syntactic form,
@@ -499,11 +569,11 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                 _ => {}
             }
 
-            visit::walk_expr(self, expr, method_map);
+            visit::walk_expr(self, expr, cx);
 
     }
 
-    fn visit_pat<'mm>(&mut self, pattern:@Pat, method_map:&'mm method_map) {
+    fn visit_pat(&mut self, pattern:@Pat, cx: Context<'self>) {
 
             match pattern.node {
                 PatStruct(_, ref fields, _) => {
@@ -550,20 +620,24 @@ impl<'self> Visitor<&'self method_map> for PrivacyVisitor {
                 _ => {}
             }
 
-            visit::walk_pat(self, pattern, method_map);
+            visit::walk_pat(self, pattern, cx);
     }
 }
 
-pub fn check_crate<'mm>(tcx: ty::ctxt,
-                        method_map: &'mm method_map,
-                        crate: &ast::Crate) {
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: &method_map,
+                   exp_map2: &ExportMap2,
+                   crate: &ast::Crate) -> ExportedItems {
     let privileged_items = @mut ~[];
 
     let mut visitor = PrivacyVisitor {
         tcx: tcx,
         privileged_items: privileged_items,
+        exported_items: HashSet::new(),
+        path_all_public: true, // start out as public
     };
-    visit::walk_crate(&mut visitor, crate, method_map);
+    visit::walk_crate(&mut visitor, crate, (method_map, exp_map2));
+    return visitor.exported_items;
 }
 
 /// Validates all of the visibility qualifers placed on the item given. This
@@ -571,17 +645,45 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
 /// anything. In theory these qualifiers wouldn't parse, but that may happen
 /// later on down the road...
 fn check_sane_privacy(tcx: ty::ctxt, item: @ast::item) {
+    let check_inherited = |sp: Span, vis: ast::visibility, note: &str| {
+        if vis != ast::inherited {
+            tcx.sess.span_err(sp, "unnecessary visibility qualifier");
+            if note.len() > 0 {
+                tcx.sess.span_note(sp, note);
+            }
+        }
+    };
+    let check_not_priv = |sp: Span, vis: ast::visibility, note: &str| {
+        if vis == ast::private {
+            tcx.sess.span_err(sp, "unnecessary `priv` qualifier");
+            if note.len() > 0 {
+                tcx.sess.span_note(sp, note);
+            }
+        }
+    };
     match item.node {
         // implementations of traits don't need visibility qualifiers because
         // that's controlled by having the trait in scope.
         ast::item_impl(_, Some(*), _, ref methods) => {
+            check_inherited(item.span, item.vis,
+                            "visibility qualifiers have no effect on trait impls");
             for m in methods.iter() {
-                match m.vis {
-                    ast::private | ast::public => {
-                        tcx.sess.span_err(m.span, "unnecessary visibility")
-                    }
-                    ast::inherited => {}
-                }
+                check_inherited(m.span, m.vis, "");
+            }
+        }
+
+        ast::item_impl(_, _, _, ref methods) => {
+            check_inherited(item.span, item.vis,
+                            "place qualifiers on individual methods instead");
+            for i in methods.iter() {
+                check_not_priv(i.span, i.vis, "functions are private by default");
+            }
+        }
+        ast::item_foreign_mod(ref fm) => {
+            check_inherited(item.span, item.vis,
+                            "place qualifiers on individual functions instead");
+            for i in fm.items.iter() {
+                check_not_priv(i.span, i.vis, "functions are private by default");
             }
         }
 
@@ -624,22 +726,18 @@ fn check_sane_privacy(tcx: ty::ctxt, item: @ast::item) {
             for m in methods.iter() {
                 match *m {
                     ast::provided(ref m) => {
-                        match m.vis {
-                            ast::private | ast::public => {
-                                tcx.sess.span_err(m.span, "unnecessary \
-                                                           visibility");
-                            }
-                            ast::inherited => {}
-                        }
+                        check_inherited(m.span, m.vis,
+                                        "unnecessary visibility");
                     }
-                    // this is warned about in the parser
                     ast::required(*) => {}
                 }
             }
         }
 
-        ast::item_impl(*) | ast::item_static(*) | ast::item_foreign_mod(*) |
+        ast::item_static(*) |
         ast::item_fn(*) | ast::item_mod(*) | ast::item_ty(*) |
-        ast::item_mac(*) => {}
+        ast::item_mac(*) => {
+            check_not_priv(item.span, item.vis, "items are private by default");
+        }
     }
 }

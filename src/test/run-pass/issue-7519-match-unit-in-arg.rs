@@ -14,6 +14,6 @@
 
 fn foo(():()) { }
 
-fn main() {
+pub fn main() {
     foo(());
 }

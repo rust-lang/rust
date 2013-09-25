@@ -14,7 +14,7 @@ struct Foo {
     baz: uint
 }
 
-fn main() {
+pub fn main() {
     let foo = Foo { bar: 1, baz: 2 };
     let brw = &foo.baz;
 

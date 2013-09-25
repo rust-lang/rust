@@ -12,7 +12,7 @@
 
 use std::io;
 
-fn main() {
+pub fn main() {
     return;
     while io::stdin().read_line() != ~"quit" { };
 }

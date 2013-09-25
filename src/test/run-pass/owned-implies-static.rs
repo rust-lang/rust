@@ -10,6 +10,6 @@
 
 fn f<T: 'static>(_x: T) {}
 
-fn main() {
+pub fn main() {
     f(~5);
 }

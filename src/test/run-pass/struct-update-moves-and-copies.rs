@@ -94,7 +94,7 @@ fn test2() {
     assert_eq!(c.noncopy.v, 22);
 }
 
-fn main() {
+pub fn main() {
     test0();
     test1();
     test2();

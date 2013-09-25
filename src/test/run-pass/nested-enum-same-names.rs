@@ -30,4 +30,4 @@ impl Foo {
     }
 }
 
-fn main() {}
+pub fn main() {}
