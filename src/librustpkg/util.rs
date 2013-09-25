@@ -439,26 +439,30 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                         let pkg_id = PkgId::new(lib_name);
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &pkg_id);
-                        let dep_workspace = if workspaces.is_empty() {
-                            error(fmt!("Couldn't find package %s, which is needed by %s, \
-                                            in any of the workspaces in the RUST_PATH (%?)",
-                                            lib_name,
-                                            self.parent.to_str(),
-                                            rust_path()));
+                        let source_workspace = if workspaces.is_empty() {
+                            error(fmt!("Couldn't find package %s \
+                                       in any of the workspaces in the RUST_PATH (%s)",
+                                       lib_name,
+                                       rust_path().map(|s| s.to_str()).connect(":")));
                             cond.raise((pkg_id.clone(), ~"Dependency not found"))
                         }
-                        else {
+                            else {
                             workspaces[0]
                         };
                         let (outputs_disc, inputs_disc) =
-                            self.context.install(PkgSrc::new(dep_workspace.clone(),
-                                                             false,
+                            self.context.install(PkgSrc::new(source_workspace.clone(),
+                            // Use the rust_path_hack to search for dependencies iff
+                            // we were already using it
+                            self.context.context.use_rust_path_hack,
                                                              pkg_id),
                                                  &JustOne(Path(
-                                                    lib_crate_filename)));
+                                    lib_crate_filename)));
                         debug!("Installed %s, returned %? dependencies and \
                                %? transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());
+                        // It must have installed *something*...
+                        assert!(!outputs_disc.is_empty());
+                        let target_workspace = outputs_disc[0].pop();
                         for dep in outputs_disc.iter() {
                             debug!("Discovering a binary input: %s", dep.to_str());
                             self.exec.discover_input("binary",
@@ -471,31 +475,24 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
                                                          *dep,
                                                          digest_file_with_date(&Path(*dep)));
                             }
-                            else if *what == ~"binary" {
+                                else if *what == ~"binary" {
                                 self.exec.discover_input(*what,
                                                          *dep,
                                                          digest_only_date(&Path(*dep)));
                             }
-                            else {
+                                else {
                                 fail!("Bad kind: %s", *what);
                             }
                         }
                         // Also, add an additional search path
-                        debug!("Adding additional search path: %s", lib_name);
-                        let installed_library =
-                            installed_library_in_workspace(&Path(lib_name), &dep_workspace)
-                                .expect(fmt!("rustpkg failed to install dependency %s",
-                                              lib_name));
-                        let install_dir = installed_library.pop();
-                        debug!("Installed %s into %s [%?]", lib_name, install_dir.to_str(),
-                               datestamp(&installed_library));
-                        (self.save)(install_dir);
+                        debug!("Installed %s into %s", lib_name, target_workspace.to_str());
+                        (self.save)(target_workspace);
                     }
-                }}
+                }
+            }
             // Ignore `use`s
             _ => ()
         }
-
         visit::walk_view_item(self, vi, env)
     }
 }
