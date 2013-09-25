@@ -226,7 +226,9 @@ struct env {
     idstack: @mut ~[NodeId]
 }
 
-struct CheckItemRecursionVisitor;
+struct CheckItemRecursionVisitor {
+    env: env,
+}
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
@@ -242,27 +244,27 @@ pub fn check_item_recursion(sess: Session,
         idstack: @mut ~[]
     };
 
-    let mut visitor = CheckItemRecursionVisitor;
-    visitor.visit_item(it, env);
+    let mut visitor = CheckItemRecursionVisitor { env: env };
+    visitor.visit_item(it, ());
 }
 
-impl Visitor<env> for CheckItemRecursionVisitor {
-    fn visit_item(&mut self, it: @item, env: env) {
-        if env.idstack.iter().any(|x| x == &(it.id)) {
-            env.sess.span_fatal(env.root_it.span, "recursive constant");
+impl Visitor<()> for CheckItemRecursionVisitor {
+    fn visit_item(&mut self, it: @item, _: ()) {
+        if self.env.idstack.iter().any(|x| x == &(it.id)) {
+            self.env.sess.span_fatal(self.env.root_it.span, "recursive constant");
         }
-        env.idstack.push(it.id);
-        visit::walk_item(self, it, env);
-        env.idstack.pop();
+        self.env.idstack.push(it.id);
+        visit::walk_item(self, it, ());
+        self.env.idstack.pop();
     }
 
-    fn visit_expr(&mut self, e: @Expr, env: env) {
+    fn visit_expr(&mut self, e: @Expr, _: ()) {
         match e.node {
-            ExprPath(*) => match env.def_map.find(&e.id) {
+            ExprPath(*) => match self.env.def_map.find(&e.id) {
                 Some(&DefStatic(def_id, _)) if ast_util::is_local(def_id) =>
-                    match env.ast_map.get_copy(&def_id.node) {
+                    match self.env.ast_map.get_copy(&def_id.node) {
                         ast_map::node_item(it, _) => {
-                            self.visit_item(it, env);
+                            self.visit_item(it, ());
                         }
                         _ => fail!("const not bound to an item")
                     },
@@ -270,6 +272,6 @@ impl Visitor<env> for CheckItemRecursionVisitor {
             },
             _ => ()
         }
-        visit::walk_expr(self, e, env);
+        visit::walk_expr(self, e, ());
     }
 }
