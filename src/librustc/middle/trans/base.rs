@@ -2950,7 +2950,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = Type::array(&int_type, n_subcrates as u64);
-    let maptype = Type::struct_([Type::i32(), Type::i8p(), int_type, arrtype], false);
+    let maptype = Type::struct_([Type::i32(), int_type, arrtype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2991,8 +2991,6 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
         let mod_map = create_module_map(ccx);
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
-             // FIXME #8431 This used to be the annihilate function, now it's nothing
-             C_null(Type::i8p()),
              p2i(ccx, mod_map),
              C_array(ccx.int_type, subcrates)]));
     }
