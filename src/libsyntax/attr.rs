@@ -385,8 +385,7 @@ pub fn find_repr_attr(diagnostic: @mut span_handler, attr: @ast::MetaItem, acc: 
             for item in items.iter() {
                 match item.node {
                     ast::MetaWord(word) => {
-                        let word: &str = word;
-                        let hint = match word {
+                        let hint = match word.as_slice() {
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => ReprExtern,
                             _ => match int_type_of_word(word) {

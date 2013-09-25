@@ -111,7 +111,8 @@ pub static tag_items_data_item_reexport_def_id: uint = 0x4e;
 pub static tag_items_data_item_reexport_name: uint = 0x4f;
 
 // used to encode crate_ctxt side tables
-#[deriving(Eq)] #[repr(uint)]
+#[deriving(Eq)]
+#[repr(uint)]
 pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,
 
