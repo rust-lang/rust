@@ -2194,11 +2194,13 @@ pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
     }
 }
 
-pub struct TransItemVisitor;
+pub struct TransItemVisitor {
+    ccx: @mut CrateContext,
+}
 
-impl Visitor<@mut CrateContext> for TransItemVisitor {
-    fn visit_item(&mut self, i: @ast::item, ccx: @mut CrateContext) {
-        trans_item(ccx, i);
+impl Visitor<()> for TransItemVisitor {
+    fn visit_item(&mut self, i: @ast::item, _:()) {
+        trans_item(self.ccx, i);
     }
 }
 
@@ -2235,8 +2237,8 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
-            let mut v = TransItemVisitor;
-            v.visit_block(body, ccx);
+            let mut v = TransItemVisitor{ ccx: ccx };
+            v.visit_block(body, ());
         }
       }
       ast::item_impl(ref generics, _, _, ref ms) => {
@@ -2288,8 +2290,8 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
         // functions, but the trait still needs to be walked. Otherwise default
         // methods with items will not get translated and will cause ICE's when
         // metadata time comes around.
-        let mut v = TransItemVisitor;
-        visit::walk_item(&mut v, item, ccx);
+        let mut v = TransItemVisitor{ ccx: ccx };
+        visit::walk_item(&mut v, item, ());
       }
       _ => {/* fall through */ }
     }
