@@ -273,7 +273,11 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             lib::llvm::RelocPIC,
                             OptLevel,
-                            true
+                            if (sess.opts.debugging_opts & session::no_segmented_stacks) == 0 {
+                                true
+                            } else {
+                                false
+                            }
                         )
                     }
                 }

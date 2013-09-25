@@ -81,6 +81,7 @@ pub static print_llvm_passes:       uint = 1 << 27;
 pub static no_vectorize_loops:      uint = 1 << 28;
 pub static no_vectorize_slp:        uint = 1 << 29;
 pub static no_prepopulate_passes:   uint = 1 << 30;
+pub static no_segmented_stacks:     uint = 1 << 31;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -138,6 +139,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-vectorize-slp",
       ~"Don't run LLVM's SLP vectorization passes",
       no_vectorize_slp),
+      (~"no-segmented-stacks", ~"Disable segmented stacks", no_segmented_stacks),
     ]
 }
 
