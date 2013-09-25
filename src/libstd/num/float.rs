@@ -414,9 +414,9 @@ impl Round for float {
     ///
     /// The fractional part of the number, satisfying:
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert!(x == trunc(x) + fract(x))
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn fract(&self) -> float { *self - self.trunc() }

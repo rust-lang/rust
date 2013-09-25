@@ -62,7 +62,7 @@ impl<'self> ToBase64 for &'self [u8] {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::base64::{ToBase64, standard};
      *
@@ -70,7 +70,7 @@ impl<'self> ToBase64 for &'self [u8] {
      *     let str = [52,32].to_base64(standard);
      *     printfln!("%s", str);
      * }
-     * ~~~
+     * ```
      */
     fn to_base64(&self, config: Config) -> ~str {
         let bytes = match config.char_set {
@@ -170,7 +170,7 @@ impl<'self> FromBase64 for &'self str {
      *
      * This converts a string literal to base64 and back.
      *
-     * ~~~ {.rust}
+     * ```rust
      * extern mod extra;
      * use extra::base64::{ToBase64, FromBase64, standard};
      * use std::str;
@@ -183,7 +183,7 @@ impl<'self> FromBase64 for &'self str {
      *     let result_str = str::from_utf8(bytes);
      *     printfln!("%s", result_str);
      * }
-     * ~~~
+     * ```
      */
     fn from_base64(&self) -> Result<~[u8], ~str> {
         let mut r = ~[];

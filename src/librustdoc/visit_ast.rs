@@ -75,7 +75,7 @@ impl RustdocVisitor {
             }
         }
 
-        fn visit_fn(item: &ast::item, fd: &ast::fn_decl, _purity: &ast::purity,
+        fn visit_fn(item: &ast::item, fd: &ast::fn_decl, purity: &ast::purity,
                      _abi: &AbiSet, gen: &ast::Generics) -> Function {
             debug!("Visiting fn");
             Function {
@@ -86,6 +86,7 @@ impl RustdocVisitor {
                 name: item.ident,
                 where: item.span,
                 generics: gen.clone(),
+                purity: *purity,
             }
         }
 

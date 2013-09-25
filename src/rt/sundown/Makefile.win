@@ -1,0 +1,33 @@
+
+CFLAGS=/O2 /EHsc /I"src/" /I"examples"/ /I"html"/
+CC=cl
+
+SUNDOWN_SRC=\
+	src\markdown.obj \
+	src\stack.obj \
+	src\buffer.obj \
+	src\autolink.obj \
+	html\html.obj \
+	html\html_smartypants.obj \
+	html\houdini_html_e.obj \
+	html\houdini_href_e.obj
+
+all: sundown.dll sundown.exe
+
+sundown.dll: $(SUNDOWN_SRC) sundown.def
+	$(CC) $(SUNDOWN_SRC) sundown.def /link /DLL $(LDFLAGS) /out:$@
+
+sundown.exe: examples\sundown.obj $(SUNDOWN_SRC)
+	$(CC) examples\sundown.obj $(SUNDOWN_SRC) /link $(LDFLAGS) /out:$@
+
+# housekeeping
+clean:
+	del $(SUNDOWN_SRC)
+	del sundown.dll sundown.exe
+	del sundown.exp sundown.lib
+
+# generic object compilations
+
+.c.obj:
+	$(CC) $(CFLAGS) /c $< /Fo$@
+

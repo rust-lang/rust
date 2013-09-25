@@ -14,13 +14,13 @@
  *
  * # Example
  *
- * ~~~ {.rust}
+ * ```rust
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
  * let mut delayed_fib = extra::future::spawn (|| fib(5000) );
  * make_a_sandwich();
  * printfln!("fib(5000) = %?", delayed_fib.get())
- * ~~~
+ * ```
  */
 
 #[allow(missing_doc)];

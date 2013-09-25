@@ -51,18 +51,18 @@ pub struct GlobIterator {
  * Consider a directory `/media/pictures` containing only the files `kittens.jpg`,
  * `puppies.jpg` and `hamsters.gif`:
  *
- * ~~~ {.rust}
+ * ```rust
  * for path in glob("/media/pictures/*.jpg") {
  *     println(path.to_str());
  * }
- * ~~~
+ * ```
  *
  * The above code will print:
  *
- * ~~~
+ * ```
  * /media/pictures/kittens.jpg
  * /media/pictures/puppies.jpg
- * ~~~
+ * ```
  */
 pub fn glob(pattern: &str) -> GlobIterator {
     glob_with(pattern, MatchOptions::new())
@@ -270,11 +270,11 @@ impl Pattern {
      *
      * # Example
      *
-     * ~~~ {.rust}
+     * ```rust
      * assert!(Pattern::new("c?t").matches("cat"));
      * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
      * assert!(Pattern::new("d*g").matches("doog"));
-     * ~~~
+     * ```
      */
     pub fn matches(&self, str: &str) -> bool {
         self.matches_with(str, MatchOptions::new())
@@ -492,13 +492,13 @@ impl MatchOptions {
      *
      * This function always returns this value:
      *
-     * ~~~ {.rust}
+     * ```rust
      * MatchOptions {
      *     case_sensitive: true,
      *     require_literal_separator: false.
      *     require_literal_leading_dot: false
      * }
-     * ~~~
+     * ```
      */
     pub fn new() -> MatchOptions {
         MatchOptions {

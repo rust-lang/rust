@@ -16,10 +16,10 @@ The `vec` module contains useful code to help work with vector values.
 Vectors are Rust's list type. Vectors contain zero or more values of
 homogeneous types:
 
-~~~ {.rust}
+```rust
 let int_vector = [1,2,3];
 let str_vector = ["one", "two", "three"];
-~~~
+ ```
 
 This is a big module, but for a high-level overview:
 
@@ -40,11 +40,11 @@ case.
 An example is the method `.slice(a, b)` that returns an immutable "view" into
 a vector or a vector slice from the index interval `[a, b)`:
 
-~~~ {.rust}
+```rust
 let numbers = [0, 1, 2];
 let last_numbers = numbers.slice(1, 3);
 // last_numbers is now &[1, 2]
-~~~
+ ```
 
 Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
 on such vectors. These methods deal with adding elements or otherwise changing
@@ -53,11 +53,11 @@ the allocation of the vector.
 An example is the method `.push(element)` that will add an element at the end
 of the vector:
 
-~~~ {.rust}
+```rust
 let mut numbers = ~[0, 1, 2];
 numbers.push(7);
 // numbers is now ~[0, 1, 2, 7];
-~~~
+ ```
 
 ## Implementations of other traits
 
@@ -74,12 +74,12 @@ The method `iter()` returns an iteration value for a vector or a vector slice.
 The iterator yields borrowed pointers to the vector's elements, so if the element
 type of the vector is `int`, the element type of the iterator is `&int`.
 
-~~~ {.rust}
+```rust
 let numbers = [0, 1, 2];
 for &x in numbers.iter() {
     println!("{} is a number!", x);
 }
-~~~
+ ```
 
 * `.rev_iter()` returns an iterator with the same values as `.iter()`,
   but going in the reverse order, starting with the back element.
@@ -1000,12 +1000,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`,
      * `[3,4]`):
      *
-     * ~~~ {.rust}
+     * ```rust
      * let v = &[1,2,3,4];
      * for win in v.window_iter() {
      *     printfln!(win);
      * }
-     * ~~~
+     * ```
      *
      */
     fn window_iter(self, size: uint) -> WindowIter<'self, T> {
@@ -1029,12 +1029,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * Print the vector two elements at a time (i.e. `[1,2]`,
      * `[3,4]`, `[5]`):
      *
-     * ~~~ {.rust}
+     * ```rust
      * let v = &[1,2,3,4,5];
      * for win in v.chunk_iter() {
      *     printfln!(win);
      * }
-     * ~~~
+     * ```
      *
      */
     fn chunk_iter(self, size: uint) -> ChunkIter<'self, T> {
@@ -1279,13 +1279,13 @@ impl<T> OwnedVector<T> for ~[T] {
     ///
     /// # Examples
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let v = ~[~"a", ~"b"];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println(s);
     /// }
-    /// ~~~
+    /// ```
     fn move_iter(self) -> MoveIterator<T> {
         MoveIterator { v: self, idx: 0 }
     }
@@ -1449,11 +1449,11 @@ impl<T> OwnedVector<T> for ~[T] {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let mut a = ~[~1];
     /// a.push_all_move(~[~2, ~3, ~4]);
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
-    /// ~~~
+    /// ```
     #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let self_len = self.len();
@@ -1697,11 +1697,11 @@ impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
     ///
     /// # Example
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// let mut a = ~[1];
     /// a.push_all([2, 3, 4]);
     /// assert!(a == ~[1, 2, 3, 4]);
-    /// ~~~
+    /// ```
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();

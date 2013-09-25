@@ -67,10 +67,10 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  *
  * # Example
  *
- * ~~~ {.rust}
+ * ```rust
  * let v: &[u8] = transmute("L");
  * assert!(v == [76u8]);
- * ~~~
+ * ```
  */
 #[inline]
 pub unsafe fn transmute<L, G>(thing: L) -> G {

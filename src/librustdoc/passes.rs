@@ -11,8 +11,9 @@
 use std::num;
 use std::uint;
 
-use clean;
 use syntax::ast;
+
+use clean;
 use clean::Item;
 use plugins;
 use fold;
@@ -47,6 +48,78 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
+/// Strip private items from the point of view of a crate or externally from a
+/// crate, specified by the `xcrate` flag.
+pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
+    struct Stripper;
+    impl fold::DocFolder for Stripper {
+        fn fold_item(&mut self, i: Item) -> Option<Item> {
+            match i.inner {
+                // These items can all get re-exported
+                clean::TypedefItem(*) | clean::StaticItem(*) |
+                clean::StructItem(*) | clean::EnumItem(*) |
+                clean::TraitItem(*) | clean::FunctionItem(*) |
+                clean::ViewItemItem(*) | clean::MethodItem(*) => {
+                    // XXX: re-exported items should get surfaced in the docs as
+                    //      well (using the output of resolve analysis)
+                    if i.visibility != Some(ast::public) {
+                        return None;
+                    }
+                }
+
+                // These are public-by-default (if the enum was public)
+                clean::VariantItem(*) => {
+                    if i.visibility == Some(ast::private) {
+                        return None;
+                    }
+                }
+
+                // We show these regardless of whether they're public/private
+                // because it's useful to see sometimes
+                clean::StructFieldItem(*) => {}
+
+                // handled below
+                clean::ModuleItem(*) => {}
+
+                // impls/tymethods have no control over privacy
+                clean::ImplItem(*) | clean::TyMethodItem(*) => {}
+            }
+
+            let fastreturn = match i.inner {
+                // nothing left to do for traits (don't want to filter their
+                // methods out, visibility controlled by the trait)
+                clean::TraitItem(*) => true,
+
+                // implementations of traits are always public.
+                clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
+
+                _ => false,
+            };
+
+            let i = if fastreturn {
+                return Some(i);
+            } else {
+                self.fold_item_recur(i)
+            };
+
+            match i {
+                Some(i) => {
+                    match i.inner {
+                        // emptied modules/impls have no need to exist
+                        clean::ModuleItem(ref m) if m.items.len() == 0 => None,
+                        clean::ImplItem(ref i) if i.methods.len() == 0 => None,
+                        _ => Some(i),
+                    }
+                }
+                None => None,
+            }
+        }
+    }
+    let mut stripper = Stripper;
+    let crate = stripper.fold_crate(crate);
+    (crate, None)
+}
+
 pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
     impl fold::DocFolder for CommentCleaner {
@@ -66,27 +139,6 @@ pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
     }
     let mut cleaner = CommentCleaner;
     let crate = cleaner.fold_crate(crate);
-    (crate, None)
-}
-
-pub fn collapse_privacy(crate: clean::Crate) -> plugins::PluginResult {
-    struct PrivacyCollapser {
-        stack: ~[clean::Visibility]
-    }
-    impl fold::DocFolder for PrivacyCollapser {
-        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
-            if i.visibility.is_some() {
-                if i.visibility == Some(ast::inherited) {
-                    i.visibility = Some(self.stack.last().clone());
-                } else {
-                    self.stack.push(i.visibility.clone().unwrap());
-                }
-            }
-            self.fold_item_recur(i)
-        }
-    }
-    let mut privacy = PrivacyCollapser { stack: ~[] };
-    let crate = privacy.fold_crate(crate);
     (crate, None)
 }
 
@@ -110,7 +162,7 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
                 _ => true
             }).map(|x| x.clone()).collect();
             if "" != docstr {
-                a.push(clean::NameValue(~"doc", docstr.trim().to_owned()));
+                a.push(clean::NameValue(~"doc", docstr));
             }
             i.attrs = a;
             self.fold_item_recur(i)
@@ -121,7 +173,6 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
-// n.b. this is copied from src/librustdoc/unindent_pass.rs
 pub fn unindent(s: &str) -> ~str {
     let lines = s.any_line_iter().collect::<~[&str]>();
     let mut saw_first_line = false;

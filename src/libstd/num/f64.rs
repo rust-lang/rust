@@ -364,9 +364,9 @@ impl Round for f64 {
     ///
     /// The fractional part of the number, satisfying:
     ///
-    /// ~~~ {.rust}
+    /// ```rust
     /// assert!(x == trunc(x) + fract(x))
-    /// ~~~
+    /// ```
     ///
     #[inline]
     fn fract(&self) -> f64 { *self - self.trunc() }
