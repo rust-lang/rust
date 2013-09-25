@@ -54,43 +54,38 @@ use syntax::visit::Visitor;
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    current_item: NodeId
 }
 
-struct KindAnalysisVisitor;
+impl Visitor<()> for Context {
 
-impl Visitor<Context> for KindAnalysisVisitor {
-
-    fn visit_expr(&mut self, ex:@Expr, e:Context) {
-        check_expr(self, ex, e);
+    fn visit_expr(&mut self, ex:@Expr, _:()) {
+        check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, e:Context) {
-        check_fn(self, fk, fd, b, s, n, e);
+    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:&Block, s:Span, n:NodeId, _:()) {
+        check_fn(self, fk, fd, b, s, n);
     }
 
-    fn visit_ty(&mut self, t:&Ty, e:Context) {
-        check_ty(self, t, e);
+    fn visit_ty(&mut self, t:&Ty, _:()) {
+        check_ty(self, t);
     }
-    fn visit_item(&mut self, i:@item, e:Context) {
-        check_item(self, i, e);
+    fn visit_item(&mut self, i:@item, _:()) {
+        check_item(self, i);
     }
 }
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    crate: &Crate) {
-    let ctx = Context {
+    let mut ctx = Context {
         tcx: tcx,
         method_map: method_map,
-        current_item: -1
     };
-    let mut visit = KindAnalysisVisitor;
-    visit::walk_crate(&mut visit, crate, ctx);
+    visit::walk_crate(&mut ctx, crate, ());
     tcx.sess.abort_if_errors();
 }
 
-fn check_struct_safe_for_destructor(cx: Context,
+fn check_struct_safe_for_destructor(cx: &mut Context,
                                     span: Span,
                                     struct_did: DefId) {
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
@@ -120,7 +115,7 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_impl_of_trait(cx: Context, it: @item, trait_ref: &trait_ref, self_type: &Ty) {
+fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_type: &Ty) {
     let ast_trait_def = cx.tcx.def_map.find(&trait_ref.ref_id)
                             .expect("trait ref not in def map!");
     let trait_def_id = ast_util::def_id_of_def(*ast_trait_def);
@@ -156,7 +151,7 @@ fn check_impl_of_trait(cx: Context, it: @item, trait_ref: &trait_ref, self_type:
     }
 }
 
-fn check_item(visitor: &mut KindAnalysisVisitor, item: @item, cx: Context) {
+fn check_item(cx: &mut Context, item: @item) {
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
             item_impl(_, Some(ref trait_ref), ref self_type, _) => {
@@ -166,16 +161,15 @@ fn check_item(visitor: &mut KindAnalysisVisitor, item: @item, cx: Context) {
         }
     }
 
-    let cx = Context { current_item: item.id, ..cx };
-    visit::walk_item(visitor, item, cx);
+    visit::walk_item(cx, item, ());
 }
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the NodeId for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: Context, id: NodeId,
-                            b: &fn(checker: &fn(Context, @freevar_entry))) {
-    fn check_for_uniq(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
+fn with_appropriate_checker(cx: &Context, id: NodeId,
+                            b: &fn(checker: &fn(&Context, @freevar_entry))) {
+    fn check_for_uniq(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
@@ -187,7 +181,7 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
         check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_box(cx: Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
+    fn check_for_box(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
@@ -198,7 +192,7 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
         check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
 
-    fn check_for_block(cx: Context, fv: &freevar_entry,
+    fn check_for_block(cx: &Context, fv: &freevar_entry,
                        bounds: ty::BuiltinBounds, region: ty::Region) {
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
@@ -209,7 +203,7 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
                              bounds, Some(var_t));
     }
 
-    fn check_for_bare(cx: Context, fv: @freevar_entry) {
+    fn check_for_bare(cx: &Context, fv: @freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
             "can't capture dynamic environment in a fn item; \
@@ -252,13 +246,12 @@ fn with_appropriate_checker(cx: Context, id: NodeId,
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
-    v: &mut KindAnalysisVisitor,
+    cx: &mut Context,
     fk: &visit::fn_kind,
     decl: &fn_decl,
     body: &Block,
     sp: Span,
-    fn_id: NodeId,
-    cx: Context) {
+    fn_id: NodeId) {
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -268,10 +261,10 @@ fn check_fn(
         }
     }
 
-    visit::walk_fn(v, fk, decl, body, sp, fn_id, cx);
+    visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());
 }
 
-pub fn check_expr(v: &mut KindAnalysisVisitor, e: @Expr, cx: Context) {
+pub fn check_expr(cx: &mut Context, e: @Expr) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
@@ -336,10 +329,10 @@ pub fn check_expr(v: &mut KindAnalysisVisitor, e: @Expr, cx: Context) {
         }
         _ => {}
     }
-    visit::walk_expr(v, e, cx);
+    visit::walk_expr(cx, e, ());
 }
 
-fn check_ty(v: &mut KindAnalysisVisitor, aty: &Ty, cx: Context) {
+fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
       ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
@@ -354,11 +347,11 @@ fn check_ty(v: &mut KindAnalysisVisitor, aty: &Ty, cx: Context) {
       }
       _ => {}
     }
-    visit::walk_ty(v, aty, cx);
+    visit::walk_ty(cx, aty, ());
 }
 
 // Calls "any_missing" if any bounds were missing.
-pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
+pub fn check_builtin_bounds(cx: &Context, ty: ty::t, bounds: ty::BuiltinBounds,
                             any_missing: &fn(ty::BuiltinBounds))
 {
     let kind = ty::type_contents(cx.tcx, ty);
@@ -373,7 +366,7 @@ pub fn check_builtin_bounds(cx: Context, ty: ty::t, bounds: ty::BuiltinBounds,
     }
 }
 
-pub fn check_typaram_bounds(cx: Context,
+pub fn check_typaram_bounds(cx: &Context,
                     _type_parameter_id: NodeId,
                     sp: Span,
                     ty: ty::t,
@@ -389,7 +382,7 @@ pub fn check_typaram_bounds(cx: Context,
     }
 }
 
-pub fn check_freevar_bounds(cx: Context, sp: Span, ty: ty::t,
+pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
@@ -412,7 +405,7 @@ pub fn check_freevar_bounds(cx: Context, sp: Span, ty: ty::t,
     }
 }
 
-pub fn check_trait_cast_bounds(cx: Context, sp: Span, ty: ty::t,
+pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(sp,
@@ -423,7 +416,7 @@ pub fn check_trait_cast_bounds(cx: Context, sp: Span, ty: ty::t,
     }
 }
 
-fn is_nullary_variant(cx: Context, ex: @Expr) -> bool {
+fn is_nullary_variant(cx: &Context, ex: @Expr) -> bool {
     match ex.node {
       ExprPath(_) => {
         match cx.tcx.def_map.get_copy(&ex.id) {
@@ -437,7 +430,7 @@ fn is_nullary_variant(cx: Context, ex: @Expr) -> bool {
     }
 }
 
-fn check_imm_free_var(cx: Context, def: Def, sp: Span) {
+fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
     match def {
         DefLocal(_, is_mutbl) => {
             if is_mutbl {
@@ -457,7 +450,7 @@ fn check_imm_free_var(cx: Context, def: Def, sp: Span) {
     }
 }
 
-fn check_copy(cx: Context, ty: ty::t, sp: Span, reason: &str) {
+fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
     debug!("type_contents(%s)=%s",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
@@ -469,7 +462,7 @@ fn check_copy(cx: Context, ty: ty::t, sp: Span, reason: &str) {
     }
 }
 
-pub fn check_send(cx: Context, ty: ty::t, sp: Span) -> bool {
+pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_sendable(cx.tcx, ty) {
         cx.tcx.sess.span_err(
             sp, fmt!("value has non-sendable type `%s`",
@@ -525,7 +518,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
 ///
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
-    cx: Context,
+    cx: &Context,
     source: &Expr,
     target: &Expr)
 {
@@ -601,7 +594,7 @@ pub fn check_cast_for_escaping_regions(
         }
     }
 
-    fn is_subregion_of(cx: Context, r_sub: ty::Region, r_sup: ty::Region) -> bool {
+    fn is_subregion_of(cx: &Context, r_sub: ty::Region, r_sup: ty::Region) -> bool {
         cx.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 }
