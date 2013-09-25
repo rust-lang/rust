@@ -220,6 +220,12 @@ pub fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
     let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
 
     match ty::get(output).sty {
+        // functions returning bottom may unwind, but can never return normally
+        ty::ty_bot => {
+            unsafe {
+                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
+            }
+        }
         // `~` pointer return values never alias because ownership is transferred
         ty::ty_uniq(*) |
         ty::ty_evec(_, ty::vstore_uniq) => {
