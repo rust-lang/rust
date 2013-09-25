@@ -11,7 +11,7 @@
 
 use back::{link};
 use std::libc::c_uint;
-use lib::llvm::{ValueRef, Attribute, CallConv, StructRetAttribute};
+use lib::llvm::{ValueRef, CallConv, StructRetAttribute};
 use lib::llvm::llvm;
 use lib;
 use middle::trans::machine;
@@ -183,8 +183,7 @@ pub fn trans_native_call(bcx: @mut Block,
                                          llsig.llret_ty,
                                          ret_def);
 
-    let all_arg_tys: &[cabi::LLVMType] = fn_type.arg_tys;
-    let all_attributes: &[Option<Attribute>] = fn_type.attrs;
+    let arg_tys: &[cabi::ArgType] = fn_type.arg_tys;
 
     let mut llargs_foreign = ~[];
 
@@ -192,20 +191,18 @@ pub fn trans_native_call(bcx: @mut Block,
     // pointer that Rust gave us. Sometimes we have to bitcast
     // because foreign fns return slightly different (but equivalent)
     // views on the same type (e.g., i64 in place of {i32,i32}).
-    let (arg_tys, attributes) = {
-        if fn_type.sret {
-            if all_arg_tys[0].cast {
+    if fn_type.ret_ty.is_indirect() {
+        match fn_type.ret_ty.cast {
+            Some(ty) => {
                 let llcastedretptr =
-                    BitCast(bcx, llretptr, all_arg_tys[0].ty.ptr_to());
+                    BitCast(bcx, llretptr, ty.ptr_to());
                 llargs_foreign.push(llcastedretptr);
-            } else {
+            }
+            None => {
                 llargs_foreign.push(llretptr);
             }
-            (all_arg_tys.tail(), all_attributes.tail())
-        } else {
-            (all_arg_tys, all_attributes)
         }
-    };
+    }
 
     for (i, &llarg_rust) in llargs_rust.iter().enumerate() {
         let mut llarg_rust = llarg_rust;
@@ -231,16 +228,16 @@ pub fn trans_native_call(bcx: @mut Block,
                ccx.tn.val_to_str(llarg_rust));
 
         // Check whether we need to do any casting
-        let foreignarg_ty = arg_tys[i].ty;
-        if arg_tys[i].cast {
-            llarg_rust = BitCast(bcx, llarg_rust, foreignarg_ty.ptr_to());
+        match arg_tys[i].cast {
+            Some(ty) => llarg_rust = BitCast(bcx, llarg_rust, ty.ptr_to()),
+            None => ()
         }
 
         debug2!("llarg_rust={} (after casting)",
                ccx.tn.val_to_str(llarg_rust));
 
         // Finally, load the value if needed for the foreign ABI
-        let foreign_indirect = attributes[i].is_some();
+        let foreign_indirect = arg_tys[i].is_indirect();
         let llarg_foreign = if foreign_indirect {
             llarg_rust
         } else {
@@ -250,6 +247,11 @@ pub fn trans_native_call(bcx: @mut Block,
         debug2!("argument {}, llarg_foreign={}",
                i, ccx.tn.val_to_str(llarg_foreign));
 
+        // fill padding with undef value
+        match arg_tys[i].pad {
+            Some(ty) => llargs_foreign.push(C_undef(ty)),
+            None => ()
+        }
         llargs_foreign.push(llarg_foreign);
     }
 
@@ -268,7 +270,7 @@ pub fn trans_native_call(bcx: @mut Block,
     // any attributes with ABI implications directly to the call instruction. Right now, the
     // only attribute we need to worry about is `sret`.
     let attrs;
-    if fn_type.sret {
+    if fn_type.ret_ty.is_indirect() {
         attrs = &[(1, StructRetAttribute)];
     } else {
         attrs = &[];
@@ -280,9 +282,12 @@ pub fn trans_native_call(bcx: @mut Block,
     // type to match because some ABIs will use a different type than
     // the Rust type. e.g., a {u32,u32} struct could be returned as
     // u64.
-    if ret_def && !fn_type.sret {
+    if ret_def && !fn_type.ret_ty.is_indirect() {
         let llrust_ret_ty = llsig.llret_ty;
-        let llforeign_ret_ty = fn_type.ret_ty.ty;
+        let llforeign_ret_ty = match fn_type.ret_ty.cast {
+            Some(ty) => ty,
+            None => fn_type.ret_ty.ty
+        };
 
         debug2!("llretptr={}", ccx.tn.val_to_str(llretptr));
         debug2!("llforeign_retval={}", ccx.tn.val_to_str(llforeign_retval));
@@ -474,17 +479,17 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = ~[];
         let mut next_foreign_arg_counter: c_uint = 0;
-        let next_foreign_arg: &fn() -> c_uint = {
-            || {
-                next_foreign_arg_counter += 1;
+        let next_foreign_arg: &fn(pad: bool) -> c_uint = {
+            |pad: bool| {
+                next_foreign_arg_counter += if pad { 2 } else { 1 };
                 next_foreign_arg_counter - 1
             }
         };
 
         // If there is an out pointer on the foreign function
         let foreign_outptr = {
-            if tys.fn_ty.sret {
-                Some(llvm::LLVMGetParam(llwrapfn, next_foreign_arg()))
+            if tys.fn_ty.ret_ty.is_indirect() {
+                Some(llvm::LLVMGetParam(llwrapfn, next_foreign_arg(false)))
             } else {
                 None
             }
@@ -553,9 +558,12 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         for i in range(0, tys.fn_sig.inputs.len()) {
             let rust_ty = tys.fn_sig.inputs[i];
             let llrust_ty = tys.llsig.llarg_tys[i];
-            let foreign_index = next_foreign_arg();
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
-            let foreign_indirect = tys.fn_ty.attrs[foreign_index].is_some();
+            let llforeign_arg_ty = tys.fn_ty.arg_tys[i];
+            let foreign_indirect = llforeign_arg_ty.is_indirect();
+
+            // skip padding
+            let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
             let mut llforeign_arg = llvm::LLVMGetParam(llwrapfn, foreign_index);
 
             debug2!("llforeign_arg \\#{}: {}",
@@ -578,7 +586,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
             // If the types in the ABI and the Rust types don't match,
             // bitcast the llforeign_arg pointer so it matches the types
             // Rust expects.
-            if tys.fn_ty.arg_tys[foreign_index].cast {
+            if llforeign_arg_ty.cast.is_some() {
                 assert!(!foreign_indirect);
                 llforeign_arg = llvm::LLVMBuildBitCast(
                     builder, llforeign_arg,
@@ -604,7 +612,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         };
 
         // Get the return value where the foreign fn expects it.
-        let llforeign_ret_ty = tys.fn_ty.ret_ty.ty;
+        let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
+            Some(ty) => ty,
+            None => tys.fn_ty.ret_ty.ty
+        };
         match foreign_outptr {
             None if !tys.ret_def => {
                 // Function returns `()` or `bot`, which in Rust is the LLVM
@@ -744,9 +755,38 @@ fn foreign_types_for_fn_ty(ccx: &mut CrateContext,
 }
 
 fn lltype_for_fn_from_foreign_types(tys: &ForeignTypes) -> Type {
-    let llargument_tys: ~[Type] =
-        tys.fn_ty.arg_tys.iter().map(|t| t.ty).collect();
-    let llreturn_ty = tys.fn_ty.ret_ty.ty;
+    let mut llargument_tys = ~[];
+
+    let ret_ty = tys.fn_ty.ret_ty;
+    let llreturn_ty = if ret_ty.is_indirect() {
+        llargument_tys.push(ret_ty.ty.ptr_to());
+        Type::void()
+    } else {
+        match ret_ty.cast {
+            Some(ty) => ty,
+            None => ret_ty.ty
+        }
+    };
+
+    for &arg_ty in tys.fn_ty.arg_tys.iter() {
+        // add padding
+        match arg_ty.pad {
+            Some(ty) => llargument_tys.push(ty),
+            None => ()
+        }
+
+        let llarg_ty = if arg_ty.is_indirect() {
+            arg_ty.ty.ptr_to()
+        } else {
+            match arg_ty.cast {
+                Some(ty) => ty,
+                None => arg_ty.ty
+            }
+        };
+
+        llargument_tys.push(llarg_ty);
+    }
+
     Type::func(llargument_tys, &llreturn_ty)
 }
 
@@ -757,8 +797,27 @@ pub fn lltype_for_foreign_fn(ccx: &mut CrateContext, ty: ty::t) -> Type {
 
 fn add_argument_attributes(tys: &ForeignTypes,
                            llfn: ValueRef) {
-    for (i, a) in tys.fn_ty.attrs.iter().enumerate() {
-        match *a {
+    let mut i = 0;
+
+    if tys.fn_ty.ret_ty.is_indirect() {
+        match tys.fn_ty.ret_ty.attr {
+            Some(attr) => {
+                let llarg = get_param(llfn, i);
+                unsafe {
+                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
+                }
+            }
+            None => {}
+        }
+
+        i += 1;
+    }
+
+    for &arg_ty in tys.fn_ty.arg_tys.iter() {
+        // skip padding
+        if arg_ty.pad.is_some() { i += 1; }
+
+        match arg_ty.attr {
             Some(attr) => {
                 let llarg = get_param(llfn, i);
                 unsafe {
@@ -767,5 +826,7 @@ fn add_argument_attributes(tys: &ForeignTypes,
             }
             None => ()
         }
+
+        i += 1;
     }
 }
