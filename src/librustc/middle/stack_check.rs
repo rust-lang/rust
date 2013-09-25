@@ -28,56 +28,53 @@ use util::ppaux::Repr;
 
 #[deriving(Clone)]
 struct Context {
-    tcx: ty::ctxt,
     safe_stack: bool
 }
 
-struct StackCheckVisitor;
+struct StackCheckVisitor {
+    tcx: ty::ctxt,
+}
 
 impl Visitor<Context> for StackCheckVisitor {
     fn visit_item(&mut self, i:@ast::item, e:Context) {
-        stack_check_item(*self, i, e);
+        stack_check_item(self, i, e);
     }
     fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
                 b:&ast::Block, s:Span, n:ast::NodeId, e:Context) {
-        stack_check_fn(*self, fk, fd, b, s, n, e);
+        stack_check_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_expr(&mut self, ex:@ast::Expr, e:Context) {
-        stack_check_expr(*self, ex, e);
+        stack_check_expr(self, ex, e);
     }
 }
 
 pub fn stack_check_crate(tcx: ty::ctxt,
                          crate: &ast::Crate) {
-    let new_cx = Context {
-        tcx: tcx,
-        safe_stack: false
-    };
-    let mut visitor = StackCheckVisitor;
+    let new_cx = Context { safe_stack: false };
+    let mut visitor = StackCheckVisitor { tcx: tcx };
     visit::walk_crate(&mut visitor, crate, new_cx);
 }
 
-fn stack_check_item(v: StackCheckVisitor,
+fn stack_check_item(v: &mut StackCheckVisitor,
                     item: @ast::item,
                     in_cx: Context) {
-    let mut v = v;
     match item.node {
         ast::item_fn(_, ast::extern_fn, _, _, _) => {
             // an extern fn is already being called from C code...
-            let new_cx = Context {safe_stack: true, ..in_cx};
-            visit::walk_item(&mut v, item, new_cx);
+            let new_cx = Context {safe_stack: true};
+            visit::walk_item(v, item, new_cx);
         }
         ast::item_fn(*) => {
             let safe_stack = fixed_stack_segment(item.attrs);
-            let new_cx = Context {safe_stack: safe_stack, ..in_cx};
-            visit::walk_item(&mut v, item, new_cx);
+            let new_cx = Context {safe_stack: safe_stack};
+            visit::walk_item(v, item, new_cx);
         }
         ast::item_impl(_, _, _, ref methods) => {
             // visit_method() would make this nicer
             for &method in methods.iter() {
                 let safe_stack = fixed_stack_segment(method.attrs);
-                let new_cx = Context {safe_stack: safe_stack, ..in_cx};
-                visit::walk_method_helper(&mut v, method, new_cx);
+                let new_cx = Context {safe_stack: safe_stack};
+                visit::walk_method_helper(v, method, new_cx);
             }
         }
         ast::item_trait(_, _, ref methods) => {
@@ -85,15 +82,15 @@ fn stack_check_item(v: StackCheckVisitor,
                 match *method {
                     ast::provided(@ref method) => {
                         let safe_stack = fixed_stack_segment(method.attrs);
-                        let new_cx = Context {safe_stack: safe_stack, ..in_cx};
-                        visit::walk_method_helper(&mut v, method, new_cx);
+                        let new_cx = Context {safe_stack: safe_stack};
+                        visit::walk_method_helper(v, method, new_cx);
                     }
                     ast::required(*) => ()
                 }
             }
         }
         _ => {
-            visit::walk_item(&mut v, item, in_cx);
+            visit::walk_item(v, item, in_cx);
         }
     }
 
@@ -102,7 +99,7 @@ fn stack_check_item(v: StackCheckVisitor,
     }
 }
 
-fn stack_check_fn<'a>(v: StackCheckVisitor,
+fn stack_check_fn<'a>(v: &mut StackCheckVisitor,
                       fk: &visit::fn_kind,
                       decl: &ast::fn_decl,
                       body: &ast::Block,
@@ -114,7 +111,7 @@ fn stack_check_fn<'a>(v: StackCheckVisitor,
             in_cx.safe_stack // see stack_check_item above
         }
         visit::fk_anon(*) | visit::fk_fn_block => {
-            match ty::get(ty::node_id_to_type(in_cx.tcx, id)).sty {
+            match ty::get(ty::node_id_to_type(v.tcx, id)).sty {
                 ty::ty_bare_fn(*) |
                 ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
                     false
@@ -125,26 +122,25 @@ fn stack_check_fn<'a>(v: StackCheckVisitor,
             }
         }
     };
-    let new_cx = Context {safe_stack: safe_stack, ..in_cx};
+    let new_cx = Context {safe_stack: safe_stack};
     debug!("stack_check_fn(safe_stack=%b, id=%?)", safe_stack, id);
-    let mut v = v;
-    visit::walk_fn(&mut v, fk, decl, body, sp, id, new_cx);
+    visit::walk_fn(v, fk, decl, body, sp, id, new_cx);
 }
 
-fn stack_check_expr<'a>(v: StackCheckVisitor,
+fn stack_check_expr<'a>(v: &mut StackCheckVisitor,
                         expr: @ast::Expr,
                         cx: Context) {
     debug!("stack_check_expr(safe_stack=%b, expr=%s)",
-           cx.safe_stack, expr.repr(cx.tcx));
+           cx.safe_stack, expr.repr(v.tcx));
     if !cx.safe_stack {
         match expr.node {
             ast::ExprCall(callee, _, _) => {
-                let callee_ty = ty::expr_ty(cx.tcx, callee);
-                debug!("callee_ty=%s", callee_ty.repr(cx.tcx));
+                let callee_ty = ty::expr_ty(v.tcx, callee);
+                debug!("callee_ty=%s", callee_ty.repr(v.tcx));
                 match ty::get(callee_ty).sty {
                     ty::ty_bare_fn(ref fty) => {
                         if !fty.abis.is_rust() && !fty.abis.is_intrinsic() {
-                            call_to_extern_fn(cx, callee);
+                            call_to_extern_fn(v, callee);
                         }
                     }
                     _ => {}
@@ -153,18 +149,17 @@ fn stack_check_expr<'a>(v: StackCheckVisitor,
             _ => {}
         }
     }
-    let mut v = v;
-    visit::walk_expr(&mut v, expr, cx);
+    visit::walk_expr(v, expr, cx);
 }
 
-fn call_to_extern_fn(cx: Context, callee: @ast::Expr) {
+fn call_to_extern_fn(v: &mut StackCheckVisitor, callee: @ast::Expr) {
     // Permit direct calls to extern fns that are annotated with
     // #[rust_stack]. This is naturally a horrible pain to achieve.
     match callee.node {
         ast::ExprPath(*) => {
-            match cx.tcx.def_map.find(&callee.id) {
+            match v.tcx.def_map.find(&callee.id) {
                 Some(&ast::DefFn(id, _)) if id.crate == ast::LOCAL_CRATE => {
-                    match cx.tcx.items.find(&id.node) {
+                    match v.tcx.items.find(&id.node) {
                         Some(&ast_map::node_foreign_item(item, _, _, _)) => {
                             if attr::contains_name(item.attrs, "rust_stack") {
                                 return;
@@ -179,7 +174,7 @@ fn call_to_extern_fn(cx: Context, callee: @ast::Expr) {
         _ => {}
     }
 
-    cx.tcx.sess.add_lint(lint::cstack,
+    v.tcx.sess.add_lint(lint::cstack,
                          callee.id,
                          callee.span,
                          fmt!("invoking non-Rust fn in fn without \
