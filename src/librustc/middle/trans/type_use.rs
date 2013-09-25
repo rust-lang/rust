@@ -81,7 +81,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: DefId, n_tps: uint)
     // Conservatively assume full use for recursive loops
     ccx.type_use_cache.insert(fn_id, @vec::from_elem(n_tps, use_all));
 
-    let cx = Context {
+    let mut cx = Context {
         ccx: ccx,
         uses: @mut vec::from_elem(n_tps, 0u)
     };
@@ -112,7 +112,7 @@ pub fn type_uses_for(ccx: @mut CrateContext, fn_id: DefId, n_tps: uint)
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, _, ref body),
                                       _ }, _) |
       ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
-        handle_body(&cx, body);
+        handle_body(&mut cx, body);
       }
       ast_map::node_trait_method(*) => {
         // This will be a static trait method. For now, we just assume
@@ -414,39 +414,36 @@ pub fn mark_for_expr(cx: &Context, e: &Expr) {
     }
 }
 
-struct TypeUseVisitor;
+impl Visitor<()> for Context {
 
-impl<'self> Visitor<&'self Context> for TypeUseVisitor {
-
-    fn visit_expr<'a>(&mut self, e:@Expr, cx: &'a Context) {
-            visit::walk_expr(self, e, cx);
-            mark_for_expr(cx, e);
+    fn visit_expr(&mut self, e:@Expr, _: ()) {
+            visit::walk_expr(self, e, ());
+            mark_for_expr(self, e);
     }
 
-    fn visit_local<'a>(&mut self, l:@Local, cx: &'a Context) {
-            visit::walk_local(self, l, cx);
-            node_type_needs(cx, use_repr, l.id);
+    fn visit_local(&mut self, l:@Local, _:()) {
+            visit::walk_local(self, l, ());
+            node_type_needs(self, use_repr, l.id);
     }
 
-    fn visit_pat<'a>(&mut self, p:@Pat, cx: &'a Context) {
-            visit::walk_pat(self, p, cx);
-            node_type_needs(cx, use_repr, p.id);
+    fn visit_pat(&mut self, p:@Pat, _: ()) {
+            visit::walk_pat(self, p, ());
+            node_type_needs(self, use_repr, p.id);
     }
 
-    fn visit_block<'a>(&mut self, b:&Block, cx: &'a Context) {
-            visit::walk_block(self, b, cx);
+   fn visit_block(&mut self, b:&Block, _: ()) {
+            visit::walk_block(self, b, ());
             for e in b.expr.iter() {
-                node_type_needs(cx, use_repr, e.id);
+                node_type_needs(self, use_repr, e.id);
             }
     }
 
-    fn visit_item<'a>(&mut self, _:@item, _: &'a Context) {
+    fn visit_item(&mut self, _:@item, _: ()) {
         // do nothing
     }
 
 }
 
-pub fn handle_body(cx: &Context, body: &Block) {
-    let mut v = TypeUseVisitor;
-    v.visit_block(body, cx);
+pub fn handle_body(cx: &mut Context, body: &Block) {
+    cx.visit_block(body, ());
 }
