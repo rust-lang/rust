@@ -547,6 +547,52 @@ impl FromPrimitive for BigUint {
     }
 }
 
+pub trait ToBigUint {
+    fn to_biguint(&self) -> Option<BigUint>;
+}
+
+impl ToBigUint for BigInt {
+    #[inline]
+    fn to_biguint(&self) -> Option<BigUint> {
+        if self.sign == Plus {
+            Some(self.data.clone())
+        } else if self.sign == Zero {
+            Some(Zero::zero())
+        } else {
+            None
+        }
+    }
+}
+
+impl ToBigUint for BigUint {
+    #[inline]
+    fn to_biguint(&self) -> Option<BigUint> {
+        Some(self.clone())
+    }
+}
+
+macro_rules! impl_to_biguint(
+    ($T:ty, $from_ty:path) => {
+        impl ToBigUint for $T {
+            #[inline]
+            fn to_biguint(&self) -> Option<BigUint> {
+                $from_ty(*self)
+            }
+        }
+    }
+)
+
+impl_to_biguint!(int,  FromPrimitive::from_int)
+impl_to_biguint!(i8,   FromPrimitive::from_i8)
+impl_to_biguint!(i16,  FromPrimitive::from_i16)
+impl_to_biguint!(i32,  FromPrimitive::from_i32)
+impl_to_biguint!(i64,  FromPrimitive::from_i64)
+impl_to_biguint!(uint, FromPrimitive::from_uint)
+impl_to_biguint!(u8,   FromPrimitive::from_u8)
+impl_to_biguint!(u16,  FromPrimitive::from_u16)
+impl_to_biguint!(u32,  FromPrimitive::from_u32)
+impl_to_biguint!(u64,  FromPrimitive::from_u64)
+
 impl ToStrRadix for BigUint {
     fn to_str_radix(&self, radix: uint) -> ~str {
         assert!(1 < radix && radix <= 16);
@@ -1139,6 +1185,50 @@ impl FromPrimitive for BigInt {
         }
     }
 }
+
+pub trait ToBigInt {
+    fn to_bigint(&self) -> Option<BigInt>;
+}
+
+impl ToBigInt for BigInt {
+    #[inline]
+    fn to_bigint(&self) -> Option<BigInt> {
+        Some(self.clone())
+    }
+}
+
+impl ToBigInt for BigUint {
+    #[inline]
+    fn to_bigint(&self) -> Option<BigInt> {
+        if self.is_zero() {
+            Some(Zero::zero())
+        } else {
+            Some(BigInt { sign: Plus, data: self.clone() })
+        }
+    }
+}
+
+macro_rules! impl_to_bigint(
+    ($T:ty, $from_ty:path) => {
+        impl ToBigInt for $T {
+            #[inline]
+            fn to_bigint(&self) -> Option<BigInt> {
+                $from_ty(*self)
+            }
+        }
+    }
+)
+
+impl_to_bigint!(int,  FromPrimitive::from_int)
+impl_to_bigint!(i8,   FromPrimitive::from_i8)
+impl_to_bigint!(i16,  FromPrimitive::from_i16)
+impl_to_bigint!(i32,  FromPrimitive::from_i32)
+impl_to_bigint!(i64,  FromPrimitive::from_i64)
+impl_to_bigint!(uint, FromPrimitive::from_uint)
+impl_to_bigint!(u8,   FromPrimitive::from_u8)
+impl_to_bigint!(u16,  FromPrimitive::from_u16)
+impl_to_bigint!(u32,  FromPrimitive::from_u32)
+impl_to_bigint!(u64,  FromPrimitive::from_u64)
 
 impl ToStrRadix for BigInt {
     #[inline]
