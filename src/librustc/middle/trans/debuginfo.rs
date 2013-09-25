@@ -109,7 +109,6 @@ use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::unstable::atomics;
 use std::vec;
-use syntax::attr;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token;
@@ -1422,10 +1421,8 @@ fn prepare_enum_metadata(cx: &mut CrateContext,
     let discriminant_type_metadata = |inttype| {
         let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
         let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
-        let discriminant_base_type_metadata = type_metadata(cx, match inttype {
-            attr::SignedInt(t) => ty::mk_mach_int(t),
-            attr::UnsignedInt(t) => ty::mk_mach_uint(t)
-        }, codemap::dummy_sp());
+        let discriminant_base_type_metadata = type_metadata(cx, adt::ty_of_inttype(inttype),
+                                                            codemap::dummy_sp());
         do enum_name.with_c_str |enum_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateEnumerationType(

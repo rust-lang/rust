@@ -359,7 +359,7 @@ fn bounds_usable(cx: &mut CrateContext, ity: IntType, bounds: &IntBounds) -> boo
     }
 }
 
-fn ty_of_inttype(ity: IntType) -> ty::t {
+pub fn ty_of_inttype(ity: IntType) -> ty::t {
     match ity {
         attr::SignedInt(t) => ty::mk_mach_int(t),
         attr::UnsignedInt(t) => ty::mk_mach_uint(t)
