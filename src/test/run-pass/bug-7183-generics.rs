@@ -33,7 +33,7 @@ impl<T: Speak> Speak for Option<T> {
 }
 
 
-fn main() {
+pub fn main() {
     assert_eq!(3.hi(), ~"hello: 3");
     assert_eq!(Some(Some(3)).hi(), ~"something!something!hello: 3");
     assert_eq!(None::<int>.hi(), ~"hello - none");

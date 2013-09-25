@@ -13,7 +13,7 @@ fn swap(f: &fn(~[int]) -> ~[int]) -> ~[int] {
     f(x)
 }
 
-fn main() {
+pub fn main() {
     let v = swap(|mut x| { x.push(4); x });
     let w = do swap |mut x| { x.push(4); x };
     assert_eq!(v, w);

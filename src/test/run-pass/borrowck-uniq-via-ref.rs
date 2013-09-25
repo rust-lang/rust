@@ -50,5 +50,5 @@ fn box_imm_recs(v: &Outer) {
     borrow(v.f.g.h); // OK
 }
 
-fn main() {
+pub fn main() {
 }

@@ -16,4 +16,4 @@ fn decode() -> ~str {
     ~""
 }
 
-fn main() {}
+pub fn main() {}

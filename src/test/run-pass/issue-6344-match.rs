@@ -13,7 +13,7 @@ impl Drop for A {
     fn drop(&mut self) {}
 }
 
-fn main() {
+pub fn main() {
     let a = A { x: 0 };
 
     match a {

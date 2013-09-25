@@ -26,7 +26,7 @@ fn noncopyable() -> noncopyable {
 
 struct wrapper(noncopyable);
 
-fn main() {
+pub fn main() {
     let x1 = wrapper(noncopyable());
     let _x2 = *x1;
 }

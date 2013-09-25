@@ -43,5 +43,5 @@ fn match_mut_reg(v: &mut Option<int>) {
     }
 }
 
-fn main() {
+pub fn main() {
 }

@@ -31,6 +31,6 @@ impl Y for int {
 
 impl Z for int {}
 
-fn main() {
+pub fn main() {
     assert_eq!(12.x(), 12);
 }

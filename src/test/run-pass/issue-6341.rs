@@ -15,4 +15,4 @@ impl Drop for A {
     fn drop(&mut self) {}
 }
 
-fn main() {}
+pub fn main() {}

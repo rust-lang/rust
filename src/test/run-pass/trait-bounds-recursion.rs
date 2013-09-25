@@ -24,4 +24,4 @@ trait C {
     fn id<T:J<T>>(x:T) -> T { x.j() }
 }
 
-fn main() { }
+pub fn main() { }

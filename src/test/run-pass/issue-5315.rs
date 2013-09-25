@@ -10,7 +10,7 @@
 
 struct A(bool);
 
-fn main() {
+pub fn main() {
     let f = A;
     f(true);
 }

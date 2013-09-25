@@ -22,7 +22,7 @@ fn test_float(e: f32) -> f32 {
     e2
 }
 
-fn main() {
+pub fn main() {
     assert_eq!(test_int(3i32), 9i32);
     assert_eq!(test_float(3f32), 9f32);
 }

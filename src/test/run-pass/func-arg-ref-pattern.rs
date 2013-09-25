@@ -13,7 +13,7 @@ fn checkval(~ref x: ~uint) -> uint {
     *x
 }
 
-fn main() {
+pub fn main() {
     let obj = ~1;
     let objptr: *uint = &*obj;
     let xptr = getaddr(obj);

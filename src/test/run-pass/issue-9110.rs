@@ -19,4 +19,4 @@ macro_rules! silly_macro(
 
 silly_macro!()
 
-fn main() {}
+pub fn main() {}

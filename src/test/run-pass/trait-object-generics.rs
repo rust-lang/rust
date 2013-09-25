@@ -40,7 +40,7 @@ impl<V> Trait<u8,V> for () {
     fn method(&self, _x: Type<(u8,V)>) -> int { 0 }
 }
 
-fn main () {
+pub fn main () {
     let a = @() as @Trait<u8, u8>;
     assert_eq!(a.method(Constant), 0);
 }

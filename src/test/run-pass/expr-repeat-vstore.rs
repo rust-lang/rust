@@ -1,6 +1,6 @@
 use std::io::println;
 
-fn main() {
+pub fn main() {
     let v: ~[int] = ~[ 1, ..5 ];
     println(v[0].to_str());
     println(v[1].to_str());

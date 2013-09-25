@@ -14,5 +14,5 @@ fn foo(a: &mut io::Writer) {
     a.write([])
 }
 
-fn main(){}
+pub fn main(){}
 
