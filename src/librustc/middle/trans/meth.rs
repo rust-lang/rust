@@ -520,8 +520,7 @@ pub fn vtable_id(ccx: @mut CrateContext,
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                &psubsts,
-                None)
+                &psubsts)
         }
 
         // can't this be checked at the callee?
