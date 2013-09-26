@@ -1484,6 +1484,9 @@ pub trait StrSlice<'self> {
     fn subslice_offset(&self, inner: &str) -> uint;
 
     fn as_imm_buf<T>(&self, f: &fn(*u8, uint) -> T) -> T;
+
+    fn to_lower_default(&self) -> ~str;
+    fn to_upper_default(&self) -> ~str;
 }
 
 /// Extension methods for strings
@@ -2264,6 +2267,28 @@ impl<'self> StrSlice<'self> for &'self str {
         let v: &[u8] = unsafe { cast::transmute(*self) };
         v.as_imm_buf(f)
     }
+
+    /// Convert all characters in the string to lowercase
+    fn to_lower_default(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for c in self.iter() {
+            out.push_char(c.to_lower_default());
+        }
+        out
+    }
+
+    /// Convert all characters in the string to uppercase
+    fn to_upper_default(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for c in self.iter() {
+            out.push_char(c.to_upper_default());
+        }
+        out
+    }
+
+    //FIXME #9363: implement to_lower and to_upper which take into acount locale
 }
 
 #[allow(missing_doc)]
@@ -3815,6 +3840,17 @@ mod tests {
         assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
         assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
     }
+
+    #[test]
+    fn test_to_lower_default() {
+        assert_eq!("ŗƲΣꓔ!".to_lower_default(), ~"ŗʋσꓔ!" )
+    }
+
+    #[test]
+    fn test_to_upper_default() {
+        assert_eq!("ŗƲΣꓔ!".to_upper_default(), ~"ŖƲΣꓔ!" )
+    }
+
 }
 
 #[cfg(test)]

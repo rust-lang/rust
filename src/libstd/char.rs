@@ -14,7 +14,7 @@ use cast::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use str::StrSlice;
-use unicode::{derived_property, general_category, decompose};
+use unicode::{derived_property, general_category, decompose, case_changes};
 use to_str::ToStr;
 use str;
 
@@ -229,6 +229,22 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
+/// Returns the lowercase form of a given unicode character.
+/// Makes a best-effort attempt without checking locale.
+pub fn to_lower_default(u: char) -> char {
+    let off = case_changes::lowcase_offset(u);
+    from_u32( (((u as u32) as i32) + off) as u32 ).unwrap()
+}
+
+/// Returns the uppercase form of a given unicode character.
+/// Makes a best-effort attempt without checking locale.
+pub fn to_upper_default(u: char) -> char {
+    let off = case_changes::upcase_offset(u);
+    from_u32( (((u as u32) as i32) + off) as u32 ).unwrap()
+}
+
+//FIXME #9363: implement to_upper and to_lower which take into acount locale
+
 // Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
 static S_BASE: uint = 0xAC00;
 static L_BASE: uint = 0x1100;
@@ -376,6 +392,9 @@ pub trait Char {
     ///
     /// This will then return the number of characters written to the slice.
     fn encode_utf8(&self, dst: &mut [u8]) -> uint;
+
+    fn to_lower_default(&self) -> char;
+    fn to_upper_default(&self) -> char;
 }
 
 impl Char for char {
@@ -431,6 +450,10 @@ impl Char for char {
             return 4;
         }
     }
+
+    fn to_lower_default(&self) -> char { to_lower_default(*self) }
+    fn to_upper_default(&self) -> char { to_upper_default(*self) }
+
 }
 
 #[cfg(not(test))]
@@ -569,4 +592,16 @@ fn test_escape_unicode() {
 fn test_to_str() {
     let s = 't'.to_str();
     assert_eq!(s, ~"t");
+}
+
+#[test]
+fn test_to_lower_default() {
+    assert_eq!('ŗ'.to_lower_default(), 'ŗ');
+    assert_eq!('Ʋ'.to_lower_default(), 'ʋ');
+}
+
+#[test]
+fn test_to_upper_default() {
+    assert_eq!('ŗ'.to_upper_default(), 'Ŗ');
+    assert_eq!('Ʋ'.to_upper_default(), 'Ʋ');
 }
