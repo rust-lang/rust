@@ -21,7 +21,7 @@ use std::to_bytes;
 use std::uint;
 
 #[deriving(Clone, Eq)]
-struct Url {
+pub struct Url {
     scheme: ~str,
     user: Option<UserInfo>,
     host: ~str,
@@ -32,7 +32,7 @@ struct Url {
 }
 
 #[deriving(Clone, Eq)]
-struct UserInfo {
+pub struct UserInfo {
     user: ~str,
     pass: Option<~str>
 }
