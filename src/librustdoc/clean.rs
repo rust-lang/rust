@@ -16,6 +16,7 @@ use its = syntax::parse::token::ident_to_str;
 use syntax;
 use syntax::ast;
 use syntax::ast_util;
+use syntax::attr;
 use syntax::attr::AttributeMethods;
 
 use std;
@@ -204,6 +205,25 @@ impl Clean<Attribute> for ast::Attribute {
     fn clean(&self) -> Attribute {
         self.desugar_doc().node.value.clean()
     }
+}
+
+// This is a rough approximation that gets us what we want.
+impl<'self> attr::AttrMetaMethods for &'self Attribute {
+    fn name(&self) -> @str {
+        match **self {
+            Word(ref n) | List(ref n, _) | NameValue(ref n, _) =>
+                n.to_managed()
+        }
+    }
+
+    fn value_str(&self) -> Option<@str> {
+        match **self {
+            NameValue(_, ref v) => Some(v.to_managed()),
+            _ => None,
+        }
+    }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
+    fn name_str_pair(&self) -> Option<(@str, @str)> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable)]

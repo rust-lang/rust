@@ -320,7 +320,7 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[deriving(Eq,Ord,Clone)]
+#[deriving(Eq,Ord,Clone,ToStr)]
 pub enum StabilityLevel {
     Deprecated,
     Experimental,
