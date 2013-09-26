@@ -3,7 +3,7 @@ extern mod extra;
 use std::comm::Chan;
 use std::task;
 
-type RingBuffer = ~[float];
+type RingBuffer = ~[f64];
 type SamplesFn = ~fn(samples: &RingBuffer);
 
 enum Msg

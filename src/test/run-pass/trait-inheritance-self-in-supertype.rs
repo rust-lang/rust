@@ -2,7 +2,7 @@
 
 use std::num;
 
-pub static FUZZY_EPSILON: float = 0.1;
+pub static FUZZY_EPSILON: f64 = 0.1;
 
 pub trait FuzzyEq<Eps> {
     fn fuzzy_eq(&self, other: &Self) -> bool;

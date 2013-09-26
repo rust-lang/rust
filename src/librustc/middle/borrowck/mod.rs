@@ -115,9 +115,9 @@ pub fn check_crate(
     return (bccx.root_map, bccx.write_guard_map);
 
     fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
-        let stat_f = stat as float;
-        let total = bccx.stats.guaranteed_paths as float;
-        format!("{} ({:.0f}%)", stat  , stat_f * 100f / total)
+        let stat_f = stat as f64;
+        let total = bccx.stats.guaranteed_paths as f64;
+        format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
     }
 }
 

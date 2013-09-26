@@ -1,6 +1,6 @@
 enum T {
     A(int),
-    B(float)
+    B(f64)
 }
 
 macro_rules! test(

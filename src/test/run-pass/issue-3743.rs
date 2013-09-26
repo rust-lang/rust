@@ -9,14 +9,14 @@
 // except according to those terms.
 
 struct Vec2 {
-    x: float,
-    y: float
+    x: f64,
+    y: f64
 }
 
 // methods we want to export as methods as well as operators
 impl Vec2 {
 #[inline(always)]
-    fn vmul(self, other: float) -> Vec2 {
+    fn vmul(self, other: f64) -> Vec2 {
         Vec2 { x: self.x * other, y: self.y * other }
     }
 }
@@ -29,22 +29,22 @@ impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs,Res> for Vec2 {
     fn mul(&self, rhs: &Rhs) -> Res { rhs.mul_vec2_by(self) }
 }
 
-// Implementation of 'float as right-hand-side of Vec2::Mul'
-impl RhsOfVec2Mul<Vec2> for float {
+// Implementation of 'f64 as right-hand-side of Vec2::Mul'
+impl RhsOfVec2Mul<Vec2> for f64 {
     fn mul_vec2_by(&self, lhs: &Vec2) -> Vec2 { lhs.vmul(*self) }
 }
 
 // Usage with failing inference
 pub fn main() {
-    let a = Vec2 { x: 3f, y: 4f };
+    let a = Vec2 { x: 3.0, y: 4.0 };
 
     // the following compiles and works properly
-    let v1: Vec2 = a * 3f;
+    let v1: Vec2 = a * 3.0;
     println!("{} {}", v1.x, v1.y);
 
     // the following compiles but v2 will not be Vec2 yet and
     // using it later will cause an error that the type of v2
     // must be known
-    let v2 = a * 3f;
+    let v2 = a * 3.0;
     println!("{} {}", v2.x, v2.y); // error regarding v2's type
 }

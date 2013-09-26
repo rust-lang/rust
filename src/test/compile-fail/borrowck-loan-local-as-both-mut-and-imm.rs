@@ -10,7 +10,7 @@
 
 use std::either::{Either, Left, Right};
 
-    fn f(x: &mut Either<int,float>, y: &Either<int,float>) -> int {
+    fn f(x: &mut Either<int,f64>, y: &Either<int,f64>) -> int {
         match *y {
             Left(ref z) => {
                 *x = Right(1.0);
@@ -21,14 +21,14 @@ use std::either::{Either, Left, Right};
     }
 
     fn g() {
-        let mut x: Either<int,float> = Left(3);
+        let mut x: Either<int,f64> = Left(3);
         println(f(&mut x, &x).to_str()); //~ ERROR cannot borrow
     }
 
     fn h() {
-        let mut x: Either<int,float> = Left(3);
-        let y: &Either<int, float> = &x;
-        let z: &mut Either<int, float> = &mut x; //~ ERROR cannot borrow
+        let mut x: Either<int,f64> = Left(3);
+        let y: &Either<int, f64> = &x;
+        let z: &mut Either<int, f64> = &mut x; //~ ERROR cannot borrow
         *z = *y;
     }
 

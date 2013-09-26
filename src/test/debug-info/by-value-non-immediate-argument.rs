@@ -44,7 +44,7 @@
 #[deriving(Clone)]
 struct Struct {
     a: int,
-    b: float
+    b: f64
 }
 
 #[deriving(Clone)]
@@ -61,11 +61,11 @@ fn fun_fun(StructStruct { a: x, b: Struct { a: y, b: z } }: StructStruct) {
     zzz();
 }
 
-fn tup(a: (int, uint, float, float)) {
+fn tup(a: (int, uint, f64, f64)) {
     zzz();
 }
 
-struct Newtype(float, float, int, uint);
+struct Newtype(f64, f64, int, uint);
 
 fn new_type(a: Newtype) {
     zzz();

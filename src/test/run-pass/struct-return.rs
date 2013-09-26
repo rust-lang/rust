@@ -51,9 +51,9 @@ fn test2() {
                  b: 0b_1010_1010_u8,
                  c: 1.0987654321e-15_f64 };
         let ff = rustrt::rust_dbg_abi_2(f);
-        error2!("a: {}", ff.a as float);
+        error2!("a: {}", ff.a as f64);
         error2!("b: {}", ff.b as uint);
-        error2!("c: {}", ff.c as float);
+        error2!("c: {}", ff.c as f64);
         assert_eq!(ff.a, f.c + 1.0f64);
         assert_eq!(ff.b, 0xff_u8);
         assert_eq!(ff.c, f.a - 1.0f64);

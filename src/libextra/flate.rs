@@ -127,7 +127,7 @@ mod tests {
             let out = inflate_bytes(cmp);
             debug2!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
-                   100.0 * ((cmp.len() as float) / (input.len() as float)));
+                   100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input, out);
         }
     }

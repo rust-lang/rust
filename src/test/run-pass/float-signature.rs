@@ -11,8 +11,8 @@
 
 
 pub fn main() {
-    fn foo(n: float) -> float { return n + 0.12345; }
-    let n: float = 0.1;
-    let m: float = foo(n);
+    fn foo(n: f64) -> f64 { return n + 0.12345; }
+    let n: f64 = 0.1;
+    let m: f64 = foo(n);
     info2!("{}", m);
 }

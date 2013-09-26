@@ -92,8 +92,8 @@ pub fn precise_time_ns() -> u64 {
  * Returns the current value of a high-resolution performance counter
  * in seconds since an unspecified epoch.
  */
-pub fn precise_time_s() -> float {
-    return (precise_time_ns() as float) / 1000000000.;
+pub fn precise_time_s() -> f64 {
+    return (precise_time_ns() as f64) / 1000000000.;
 }
 
 pub fn tzset() {
@@ -905,7 +905,7 @@ fn do_strftime(format: &str, tm: &Tm) -> ~str {
 mod tests {
     use super::*;
 
-    use std::float;
+    use std::f64;
     use std::os;
     use std::result::{Err, Ok};
 
@@ -934,7 +934,7 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        debug2!("s0={} sec", float::to_str_digits(s0, 9u));
+        debug2!("s0={} sec", f64::to_str_digits(s0, 9u));
         assert!(s0 > 0.);
         let ns0 = (s0 * 1000000000.) as u64;
         debug2!("ns0={:?} ns", ns0);

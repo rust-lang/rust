@@ -14,8 +14,8 @@ enum Foo {
         y: int
     },
     Baz {
-        x: float,
-        y: float
+        x: f64,
+        y: f64
     }
 }
 

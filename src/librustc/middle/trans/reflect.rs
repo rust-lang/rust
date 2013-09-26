@@ -168,7 +168,6 @@ impl Reflector {
           ty::ty_uint(ast::ty_u16) => self.leaf("u16"),
           ty::ty_uint(ast::ty_u32) => self.leaf("u32"),
           ty::ty_uint(ast::ty_u64) => self.leaf("u64"),
-          ty::ty_float(ast::ty_f) => self.leaf("float"),
           ty::ty_float(ast::ty_f32) => self.leaf("f32"),
           ty::ty_float(ast::ty_f64) => self.leaf("f64"),
 

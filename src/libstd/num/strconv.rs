@@ -83,7 +83,6 @@ macro_rules! impl_NumStrConv_Integer (($t:ty) => (
 
 // FIXME: #4955
 // Replace by two generic impls for traits 'Integral' and 'Floating'
-impl_NumStrConv_Floating!(float)
 impl_NumStrConv_Floating!(f32)
 impl_NumStrConv_Floating!(f64)
 
@@ -735,8 +734,8 @@ mod test {
 mod bench {
     use extra::test::BenchHarness;
     use rand::{XorShiftRng, Rng};
-    use float;
     use to_str::ToStr;
+    use f64;
 
     #[bench]
     fn uint_to_str_rand(bh: &mut BenchHarness) {
@@ -750,7 +749,7 @@ mod bench {
     fn float_to_str_rand(bh: &mut BenchHarness) {
         let mut rng = XorShiftRng::new();
         do bh.iter {
-            float::to_str(rng.gen());
+            f64::to_str(rng.gen());
         }
     }
 }

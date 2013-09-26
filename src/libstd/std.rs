@@ -109,7 +109,6 @@ pub mod prelude;
 #[path = "num/u32.rs"]  pub mod u32;
 #[path = "num/u64.rs"]  pub mod u64;
 
-#[path = "num/float.rs"] pub mod float;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 

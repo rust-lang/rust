@@ -19,16 +19,16 @@ use std::rand;
 use std::uint;
 
 struct Results {
-    sequential_ints: float,
-    random_ints: float,
-    delete_ints: float,
+    sequential_ints: f64,
+    random_ints: f64,
+    delete_ints: f64,
 
-    sequential_strings: float,
-    random_strings: float,
-    delete_strings: float
+    sequential_strings: f64,
+    random_strings: f64,
+    delete_strings: f64
 }
 
-fn timed(result: &mut float, op: &fn()) {
+fn timed(result: &mut f64, op: &fn()) {
     let start = extra::time::precise_time_s();
     op();
     let end = extra::time::precise_time_s();
@@ -127,7 +127,7 @@ fn write_header(header: &str) {
     io::stdout().write_str("\n");
 }
 
-fn write_row(label: &str, value: float) {
+fn write_row(label: &str, value: f64) {
     io::stdout().write_str(format!("{:30s} {} s\n", label, value));
 }
 
@@ -143,13 +143,13 @@ fn write_results(label: &str, results: &Results) {
 
 fn empty_results() -> Results {
     Results {
-        sequential_ints: 0f,
-        random_ints: 0f,
-        delete_ints: 0f,
+        sequential_ints: 0.0,
+        random_ints: 0.0,
+        delete_ints: 0.0,
 
-        sequential_strings: 0f,
-        random_strings: 0f,
-        delete_strings: 0f,
+        sequential_strings: 0.0,
+        random_strings: 0.0,
+        delete_strings: 0.0,
     }
 }
 

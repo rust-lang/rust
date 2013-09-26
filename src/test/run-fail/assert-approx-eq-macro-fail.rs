@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:left: 1.00001 does not approximately equal right: 1
+// error-pattern:left: 1.00001f64 does not approximately equal right: 1f64
 pub fn main() {
-    assert_approx_eq!(1.00001f, 1.0f);
+    assert_approx_eq!(1.00001f64, 1.0);
 }

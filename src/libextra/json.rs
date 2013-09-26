@@ -18,10 +18,11 @@
 
 use std::char;
 use std::cast::transmute;
-use std::float;
+use std::f64;
 use std::hashmap::HashMap;
 use std::io::WriterUtil;
 use std::io;
+use std::num;
 use std::str;
 use std::to_str;
 
@@ -32,7 +33,7 @@ use treemap::TreeMap;
 /// Represents a json value
 #[deriving(Clone, Eq)]
 pub enum Json {
-    Number(float),
+    Number(f64),
     String(~str),
     Boolean(bool),
     List(List),
@@ -99,17 +100,17 @@ pub fn Encoder(wr: @io::Writer) -> Encoder {
 impl serialize::Encoder for Encoder {
     fn emit_nil(&mut self) { self.wr.write_str("null") }
 
-    fn emit_uint(&mut self, v: uint) { self.emit_float(v as float); }
-    fn emit_u64(&mut self, v: u64) { self.emit_float(v as float); }
-    fn emit_u32(&mut self, v: u32) { self.emit_float(v as float); }
-    fn emit_u16(&mut self, v: u16) { self.emit_float(v as float); }
-    fn emit_u8(&mut self, v: u8)   { self.emit_float(v as float); }
+    fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
+    fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
+    fn emit_u32(&mut self, v: u32) { self.emit_f64(v as f64); }
+    fn emit_u16(&mut self, v: u16) { self.emit_f64(v as f64); }
+    fn emit_u8(&mut self, v: u8)   { self.emit_f64(v as f64); }
 
-    fn emit_int(&mut self, v: int) { self.emit_float(v as float); }
-    fn emit_i64(&mut self, v: i64) { self.emit_float(v as float); }
-    fn emit_i32(&mut self, v: i32) { self.emit_float(v as float); }
-    fn emit_i16(&mut self, v: i16) { self.emit_float(v as float); }
-    fn emit_i8(&mut self, v: i8)   { self.emit_float(v as float); }
+    fn emit_int(&mut self, v: int) { self.emit_f64(v as f64); }
+    fn emit_i64(&mut self, v: i64) { self.emit_f64(v as f64); }
+    fn emit_i32(&mut self, v: i32) { self.emit_f64(v as f64); }
+    fn emit_i16(&mut self, v: i16) { self.emit_f64(v as f64); }
+    fn emit_i8(&mut self, v: i8)   { self.emit_f64(v as f64); }
 
     fn emit_bool(&mut self, v: bool) {
         if v {
@@ -119,11 +120,8 @@ impl serialize::Encoder for Encoder {
         }
     }
 
-    fn emit_f64(&mut self, v: f64) { self.emit_float(v as float); }
-    fn emit_f32(&mut self, v: f32) { self.emit_float(v as float); }
-    fn emit_float(&mut self, v: float) {
-        self.wr.write_str(float::to_str_digits(v, 6u));
-    }
+    fn emit_f64(&mut self, v: f64) { self.wr.write_str(f64::to_str_digits(v, 6u)) }
+    fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) { self.wr.write_str(escape_str(v)) }
@@ -260,17 +258,17 @@ pub fn PrettyEncoder(wr: @io::Writer) -> PrettyEncoder {
 impl serialize::Encoder for PrettyEncoder {
     fn emit_nil(&mut self) { self.wr.write_str("null") }
 
-    fn emit_uint(&mut self, v: uint) { self.emit_float(v as float); }
-    fn emit_u64(&mut self, v: u64) { self.emit_float(v as float); }
-    fn emit_u32(&mut self, v: u32) { self.emit_float(v as float); }
-    fn emit_u16(&mut self, v: u16) { self.emit_float(v as float); }
-    fn emit_u8(&mut self, v: u8)   { self.emit_float(v as float); }
+    fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
+    fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
+    fn emit_u32(&mut self, v: u32) { self.emit_f64(v as f64); }
+    fn emit_u16(&mut self, v: u16) { self.emit_f64(v as f64); }
+    fn emit_u8(&mut self, v: u8)   { self.emit_f64(v as f64); }
 
-    fn emit_int(&mut self, v: int) { self.emit_float(v as float); }
-    fn emit_i64(&mut self, v: i64) { self.emit_float(v as float); }
-    fn emit_i32(&mut self, v: i32) { self.emit_float(v as float); }
-    fn emit_i16(&mut self, v: i16) { self.emit_float(v as float); }
-    fn emit_i8(&mut self, v: i8)   { self.emit_float(v as float); }
+    fn emit_int(&mut self, v: int) { self.emit_f64(v as f64); }
+    fn emit_i64(&mut self, v: i64) { self.emit_f64(v as f64); }
+    fn emit_i32(&mut self, v: i32) { self.emit_f64(v as f64); }
+    fn emit_i16(&mut self, v: i16) { self.emit_f64(v as f64); }
+    fn emit_i8(&mut self, v: i8)   { self.emit_f64(v as f64); }
 
     fn emit_bool(&mut self, v: bool) {
         if v {
@@ -280,11 +278,8 @@ impl serialize::Encoder for PrettyEncoder {
         }
     }
 
-    fn emit_f64(&mut self, v: f64) { self.emit_float(v as float); }
-    fn emit_f32(&mut self, v: f32) { self.emit_float(v as float); }
-    fn emit_float(&mut self, v: float) {
-        self.wr.write_str(float::to_str_digits(v, 6u));
-    }
+    fn emit_f64(&mut self, v: f64) { self.wr.write_str(f64::to_str_digits(v, 6u)) }
+    fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) { self.wr.write_str(escape_str(v)); }
@@ -585,11 +580,11 @@ impl<T : Iterator<char>> Parser<T> {
     }
 
     fn parse_number(&mut self) -> Result<Json, Error> {
-        let mut neg = 1f;
+        let mut neg = 1.0;
 
         if self.ch == '-' {
             self.bump();
-            neg = -1f;
+            neg = -1.0;
         }
 
         let mut res = match self.parse_integer() {
@@ -614,8 +609,8 @@ impl<T : Iterator<char>> Parser<T> {
         Ok(Number(neg * res))
     }
 
-    fn parse_integer(&mut self) -> Result<float, Error> {
-        let mut res = 0f;
+    fn parse_integer(&mut self) -> Result<f64, Error> {
+        let mut res = 0.0;
 
         match self.ch {
           '0' => {
@@ -631,8 +626,8 @@ impl<T : Iterator<char>> Parser<T> {
             while !self.eof() {
                 match self.ch {
                   '0' .. '9' => {
-                    res *= 10f;
-                    res += ((self.ch as int) - ('0' as int)) as float;
+                    res *= 10.0;
+                    res += ((self.ch as int) - ('0' as int)) as f64;
 
                     self.bump();
                   }
@@ -646,7 +641,7 @@ impl<T : Iterator<char>> Parser<T> {
         Ok(res)
     }
 
-    fn parse_decimal(&mut self, res: float) -> Result<float, Error> {
+    fn parse_decimal(&mut self, res: f64) -> Result<f64, Error> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
@@ -656,12 +651,12 @@ impl<T : Iterator<char>> Parser<T> {
         }
 
         let mut res = res;
-        let mut dec = 1f;
+        let mut dec = 1.0;
         while !self.eof() {
             match self.ch {
               '0' .. '9' => {
-                dec /= 10f;
-                res += (((self.ch as int) - ('0' as int)) as float) * dec;
+                dec /= 10.0;
+                res += (((self.ch as int) - ('0' as int)) as f64) * dec;
 
                 self.bump();
               }
@@ -672,7 +667,7 @@ impl<T : Iterator<char>> Parser<T> {
         Ok(res)
     }
 
-    fn parse_exponent(&mut self, mut res: float) -> Result<float, Error> {
+    fn parse_exponent(&mut self, mut res: f64) -> Result<f64, Error> {
         self.bump();
 
         let mut exp = 0u;
@@ -702,7 +697,7 @@ impl<T : Iterator<char>> Parser<T> {
             }
         }
 
-        let exp = float::pow_with_uint(10u, exp);
+        let exp: f64 = num::pow_with_uint(10u, exp);
         if neg_exp {
             res /= exp;
         } else {
@@ -892,17 +887,17 @@ impl serialize::Decoder for Decoder {
         }
     }
 
-    fn read_u64(&mut self)  -> u64  { self.read_float() as u64 }
-    fn read_u32(&mut self)  -> u32  { self.read_float() as u32 }
-    fn read_u16(&mut self)  -> u16  { self.read_float() as u16 }
-    fn read_u8 (&mut self)  -> u8   { self.read_float() as u8 }
-    fn read_uint(&mut self) -> uint { self.read_float() as uint }
+    fn read_u64(&mut self)  -> u64  { self.read_f64() as u64 }
+    fn read_u32(&mut self)  -> u32  { self.read_f64() as u32 }
+    fn read_u16(&mut self)  -> u16  { self.read_f64() as u16 }
+    fn read_u8 (&mut self)  -> u8   { self.read_f64() as u8 }
+    fn read_uint(&mut self) -> uint { self.read_f64() as uint }
 
-    fn read_i64(&mut self) -> i64 { self.read_float() as i64 }
-    fn read_i32(&mut self) -> i32 { self.read_float() as i32 }
-    fn read_i16(&mut self) -> i16 { self.read_float() as i16 }
-    fn read_i8 (&mut self) -> i8  { self.read_float() as i8 }
-    fn read_int(&mut self) -> int { self.read_float() as int }
+    fn read_i64(&mut self) -> i64 { self.read_f64() as i64 }
+    fn read_i32(&mut self) -> i32 { self.read_f64() as i32 }
+    fn read_i16(&mut self) -> i16 { self.read_f64() as i16 }
+    fn read_i8 (&mut self) -> i8  { self.read_f64() as i8 }
+    fn read_int(&mut self) -> int { self.read_f64() as int }
 
     fn read_bool(&mut self) -> bool {
         debug2!("read_bool");
@@ -912,15 +907,15 @@ impl serialize::Decoder for Decoder {
         }
     }
 
-    fn read_f64(&mut self) -> f64 { self.read_float() as f64 }
-    fn read_f32(&mut self) -> f32 { self.read_float() as f32 }
-    fn read_float(&mut self) -> float {
-        debug2!("read_float");
+    fn read_f64(&mut self) -> f64 {
+        debug2!("read_f64");
         match self.stack.pop() {
             Number(f) => f,
             value => fail2!("not a number: {:?}", value)
         }
     }
+    fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
+    fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
 
     fn read_char(&mut self) -> char {
         let mut v = ~[];
@@ -1192,55 +1187,51 @@ impl ToJson for @Json {
 }
 
 impl ToJson for int {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for i8 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for i16 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for i32 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for i64 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for uint {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for u8 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for u16 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for u32 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for u64 {
-    fn to_json(&self) -> Json { Number(*self as float) }
-}
-
-impl ToJson for float {
-    fn to_json(&self) -> Json { Number(*self) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self as f64) }
 }
 
 impl ToJson for f64 {
-    fn to_json(&self) -> Json { Number(*self as float) }
+    fn to_json(&self) -> Json { Number(*self) }
 }
 
 impl ToJson for () {
@@ -1374,17 +1365,17 @@ mod tests {
 
     #[test]
     fn test_write_number() {
-        assert_eq!(Number(3f).to_str(), ~"3");
-        assert_eq!(Number(3f).to_pretty_str(), ~"3");
+        assert_eq!(Number(3.0).to_str(), ~"3");
+        assert_eq!(Number(3.0).to_pretty_str(), ~"3");
 
-        assert_eq!(Number(3.1f).to_str(), ~"3.1");
-        assert_eq!(Number(3.1f).to_pretty_str(), ~"3.1");
+        assert_eq!(Number(3.1).to_str(), ~"3.1");
+        assert_eq!(Number(3.1).to_pretty_str(), ~"3.1");
 
-        assert_eq!(Number(-1.5f).to_str(), ~"-1.5");
-        assert_eq!(Number(-1.5f).to_pretty_str(), ~"-1.5");
+        assert_eq!(Number(-1.5).to_str(), ~"-1.5");
+        assert_eq!(Number(-1.5).to_pretty_str(), ~"-1.5");
 
-        assert_eq!(Number(0.5f).to_str(), ~"0.5");
-        assert_eq!(Number(0.5f).to_pretty_str(), ~"0.5");
+        assert_eq!(Number(0.5).to_str(), ~"0.5");
+        assert_eq!(Number(0.5).to_pretty_str(), ~"0.5");
     }
 
     #[test]
@@ -1422,7 +1413,7 @@ mod tests {
         let longTestList = List(~[
             Boolean(false),
             Null,
-            List(~[String(~"foo\nbar"), Number(3.5f)])]);
+            List(~[String(~"foo\nbar"), Number(3.5)])]);
 
         assert_eq!(longTestList.to_str(),
             ~"[false,null,[\"foo\\nbar\",3.5]]");
@@ -1649,45 +1640,45 @@ mod tests {
         assert_eq!(from_str("1e+"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid number"}));
 
-        assert_eq!(from_str("3"), Ok(Number(3f)));
-        assert_eq!(from_str("3.1"), Ok(Number(3.1f)));
-        assert_eq!(from_str("-1.2"), Ok(Number(-1.2f)));
-        assert_eq!(from_str("0.4"), Ok(Number(0.4f)));
-        assert_eq!(from_str("0.4e5"), Ok(Number(0.4e5f)));
-        assert_eq!(from_str("0.4e+15"), Ok(Number(0.4e15f)));
-        assert_eq!(from_str("0.4e-01"), Ok(Number(0.4e-01f)));
-        assert_eq!(from_str(" 3 "), Ok(Number(3f)));
+        assert_eq!(from_str("3"), Ok(Number(3.0)));
+        assert_eq!(from_str("3.1"), Ok(Number(3.1)));
+        assert_eq!(from_str("-1.2"), Ok(Number(-1.2)));
+        assert_eq!(from_str("0.4"), Ok(Number(0.4)));
+        assert_eq!(from_str("0.4e5"), Ok(Number(0.4e5)));
+        assert_eq!(from_str("0.4e+15"), Ok(Number(0.4e15)));
+        assert_eq!(from_str("0.4e-01"), Ok(Number(0.4e-01)));
+        assert_eq!(from_str(" 3 "), Ok(Number(3.0)));
     }
 
     #[test]
     fn test_decode_numbers() {
         let mut decoder = Decoder(from_str("3").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 3f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 3.0);
 
         let mut decoder = Decoder(from_str("3.1").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 3.1f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 3.1);
 
         let mut decoder = Decoder(from_str("-1.2").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, -1.2f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, -1.2);
 
         let mut decoder = Decoder(from_str("0.4").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 0.4f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 0.4);
 
         let mut decoder = Decoder(from_str("0.4e5").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 0.4e5f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 0.4e5);
 
         let mut decoder = Decoder(from_str("0.4e15").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 0.4e15f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 0.4e15);
 
         let mut decoder = Decoder(from_str("0.4e-01").unwrap());
-        let v: float = Decodable::decode(&mut decoder);
-        assert_eq!(v, 0.4e-01f);
+        let v: f64 = Decodable::decode(&mut decoder);
+        assert_eq!(v, 0.4e-01);
     }
 
     #[test]
@@ -1769,11 +1760,11 @@ mod tests {
         assert_eq!(from_str("[ false ]"), Ok(List(~[Boolean(false)])));
         assert_eq!(from_str("[null]"), Ok(List(~[Null])));
         assert_eq!(from_str("[3, 1]"),
-                     Ok(List(~[Number(3f), Number(1f)])));
+                     Ok(List(~[Number(3.0), Number(1.0)])));
         assert_eq!(from_str("\n[3, 2]\n"),
-                     Ok(List(~[Number(3f), Number(2f)])));
+                     Ok(List(~[Number(3.0), Number(2.0)])));
         assert_eq!(from_str("[2, [4, 1]]"),
-               Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
+               Ok(List(~[Number(2.0), List(~[Number(4.0), Number(1.0)])])));
     }
 
     #[test]
@@ -1855,7 +1846,7 @@ mod tests {
 
         assert_eq!(from_str("{}").unwrap(), mk_object([]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object([(~"a", Number(3.0f))]));
+                  mk_object([(~"a", Number(3.0))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
@@ -1882,7 +1873,7 @@ mod tests {
                           "]" +
                       "}").unwrap(),
                   mk_object([
-                      (~"a", Number(1.0f)),
+                      (~"a", Number(1.0)),
                       (~"b", List(~[
                           Boolean(true),
                           String(~"foo\nbar"),
