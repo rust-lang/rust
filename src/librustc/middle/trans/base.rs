@@ -90,8 +90,6 @@ use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::visit;
 use syntax::visit::Visitor;
 
-pub use middle::trans::context::task_llcx;
-
 local_data_key!(task_local_insn_key: @~[&'static str])
 
 pub fn with_insn_ctxt(blk: &fn(&[&'static str])) {
@@ -1639,24 +1637,6 @@ pub struct BasicBlocks {
     sa: BasicBlockRef,
 }
 
-pub fn mk_staticallocas_basic_block(llfn: ValueRef) -> BasicBlockRef {
-    unsafe {
-        let cx = task_llcx();
-        do "static_allocas".with_c_str | buf| {
-            llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)
-        }
-    }
-}
-
-pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
-    unsafe {
-        let cx = task_llcx();
-        do "return".with_c_str |buf| {
-            llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)
-        }
-    }
-}
-
 // Creates and returns space for, or returns the argument representing, the
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> ValueRef {
@@ -3042,7 +3022,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
         astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
-    let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
+    let llmeta = C_bytes(cx, encoder::encode_metadata(encode_parms, crate));
     let llconst = C_struct(cx, [llmeta]);
     let mut llglobal = do "rust_metadata".with_c_str |buf| {
         unsafe {

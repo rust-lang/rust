@@ -18,7 +18,6 @@ use lib::llvm::{True, False, Bool};
 use lib::llvm::{llvm};
 use lib;
 use middle::lang_items::LangItem;
-use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::glue;
@@ -265,7 +264,9 @@ impl FunctionContext {
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {
         if self.llreturn.is_none() {
-            self.llreturn = Some(base::mk_return_basic_block(self.llfn));
+            self.llreturn = Some(do "return".with_c_str |buf| {
+                unsafe { llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx, self.llfn, buf) }
+            });
         }
 
         self.llreturn.unwrap()
@@ -903,10 +904,10 @@ pub fn C_struct(cx: &CrateContext, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
+pub fn C_packed_struct(cx: &CrateContext, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do elts.as_imm_buf |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(cx.llcx, ptr, len as c_uint, True)
         }
     }
 }
@@ -925,10 +926,10 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = cast::transmute(vec::raw::to_ptr(bytes));
-        return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
+        return llvm::LLVMConstStringInContext(cx.llcx, ptr, bytes.len() as c_uint, True);
     }
 }
 

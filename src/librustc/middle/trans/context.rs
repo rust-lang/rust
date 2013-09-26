@@ -30,7 +30,6 @@ use middle::trans::type_::{Type, CrateTypes};
 use std::c_str::ToCStr;
 use std::hash;
 use std::hashmap::{HashMap, HashSet};
-use std::local_data;
 use std::vec;
 use std::libc::c_uint;
 use syntax::ast;
@@ -130,7 +129,6 @@ impl CrateContext {
                -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
-            set_task_llcx(llcx);
             let llmod = do name.with_c_str |buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             };
@@ -268,21 +266,5 @@ impl CrateContext {
 #[unsafe_destructor]
 impl Drop for CrateContext {
     fn drop(&mut self) {
-        unset_task_llcx();
     }
-}
-
-local_data_key!(task_local_llcx_key: @ContextRef)
-
-pub fn task_llcx() -> ContextRef {
-    let opt = local_data::get(task_local_llcx_key, |k| k.map_move(|k| *k));
-    *opt.expect("task-local LLVMContextRef wasn't ever set!")
-}
-
-fn set_task_llcx(c: ContextRef) {
-    local_data::set(task_local_llcx_key, @c);
-}
-
-fn unset_task_llcx() {
-    local_data::pop(task_local_llcx_key);
 }
