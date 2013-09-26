@@ -540,13 +540,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     }
     /// Pops the last path component off of `self` and returns it.
     /// If `self` represents the root of the file hierarchy, None is returned.
-    fn pop_opt(&mut self) -> Option<~[u8]>;
+    fn pop(&mut self) -> Option<~[u8]>;
     /// Pops the last path component off of `self` and returns it as a string, if possible.
     /// `self` will still be modified even if None is returned.
-    /// See `pop_opt` for details.
+    /// See `pop` for details.
     #[inline]
-    fn pop_opt_str(&mut self) -> Option<~str> {
-        self.pop_opt().and_then(|v| str::from_utf8_owned_opt(v))
+    fn pop_str(&mut self) -> Option<~str> {
+        self.pop().and_then(|v| str::from_utf8_owned_opt(v))
     }
 
     /// Returns a new Path constructed by joining `self` with the given path (as a byte vector).
@@ -593,6 +593,21 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If `self` is absolute and `base` is relative, or on Windows if both
     /// paths refer to separate drives, an absolute path is returned.
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
+
+    /// Executes a callback with the receiver and every parent
+    fn each_parent(&self, f: &fn(&Self) -> bool) -> bool {
+        let mut p = self.clone();
+        loop {
+            if !f(&p) {
+                return false;
+            }
+            let f = p.pop();
+            if f.is_none() || bytes!("..") == f.unwrap() {
+                break;
+            }
+        }
+        true
+    }
 }
 
 /// A trait that represents the unsafe operations on GenericPaths

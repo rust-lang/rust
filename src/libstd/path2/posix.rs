@@ -196,7 +196,7 @@ impl GenericPath for Path {
         }
     }
 
-    fn pop_opt(&mut self) -> Option<~[u8]> {
+    fn pop(&mut self) -> Option<~[u8]> {
         match self.sepidx {
             None if bytes!(".") == self.repr => None,
             None => {
@@ -400,7 +400,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
         else if comp == bytes!("..") {
             if is_abs && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
-            else { comps.pop_opt(); changed = true }
+            else { comps.pop(); changed = true }
         } else { comps.push(comp) }
     }
     if changed {
@@ -861,7 +861,7 @@ mod tests {
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let mut p = Path::from_str($path);
-                    let file = p.pop_opt_str();
+                    let file = p.pop_str();
                     assert_eq!(p.as_str(), Some($left));
                     assert_eq!(file.map(|s| s.as_slice()), $right);
                 }
@@ -869,7 +869,7 @@ mod tests {
             (v: [$($path:expr),+], [$($left:expr),+], Some($($right:expr),+)) => (
                 {
                     let mut p = Path::from_vec(b!($($path),+));
-                    let file = p.pop_opt();
+                    let file = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file.map(|v| v.as_slice()), Some(b!($($right),+)));
                 }
@@ -877,7 +877,7 @@ mod tests {
             (v: [$($path:expr),+], [$($left:expr),+], None) => (
                 {
                     let mut p = Path::from_vec(b!($($path),+));
-                    let file = p.pop_opt();
+                    let file = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file, None);
                 }
@@ -899,8 +899,8 @@ mod tests {
         t!(s: "/a", "/", Some("a"));
         t!(s: "/", "/", None);
 
-        assert_eq!(Path::from_vec(b!("foo/bar", 0x80)).pop_opt_str(), None);
-        assert_eq!(Path::from_vec(b!("foo", 0x80, "/bar")).pop_opt_str(), Some(~"bar"));
+        assert_eq!(Path::from_vec(b!("foo/bar", 0x80)).pop_str(), None);
+        assert_eq!(Path::from_vec(b!("foo", 0x80, "/bar")).pop_str(), Some(~"bar"));
     }
 
     #[test]
@@ -1309,5 +1309,59 @@ mod tests {
         t!(s: "..", [".."]);
         t!(s: "../..", ["..", ".."]);
         t!(s: "../../foo", ["..", "..", "foo"]);
+    }
+
+    #[test]
+    fn test_each_parent() {
+        assert!(Path::from_str("/foo/bar").each_parent(|_| true));
+        assert!(!Path::from_str("/foo/bar").each_parent(|_| false));
+
+        macro_rules! t(
+            (s: $path:expr, $exp:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    let exp: &[&str] = $exp;
+                    let mut comps = exp.iter().map(|&x|x);
+                    do path.each_parent |p| {
+                        let p = p.as_str();
+                        assert!(p.is_some());
+                        let e = comps.next();
+                        assert!(e.is_some());
+                        assert_eq!(p.unwrap(), e.unwrap());
+                        true
+                    };
+                    assert!(comps.next().is_none());
+                }
+            );
+            (v: $path:expr, $exp:expr) => (
+                {
+                    let path = Path::from_vec($path);
+                    let exp: &[&[u8]] = $exp;
+                    let mut comps = exp.iter().map(|&x|x);
+                    do path.each_parent |p| {
+                        let p = p.as_vec();
+                        let e = comps.next();
+                        assert!(e.is_some());
+                        assert_eq!(p, e.unwrap());
+                        true
+                    };
+                    assert!(comps.next().is_none());
+                }
+            )
+        )
+
+        t!(s: "/foo/bar", ["/foo/bar", "/foo", "/"]);
+        t!(s: "/foo/bar/baz", ["/foo/bar/baz", "/foo/bar", "/foo", "/"]);
+        t!(s: "/foo", ["/foo", "/"]);
+        t!(s: "/", ["/"]);
+        t!(s: "foo/bar/baz", ["foo/bar/baz", "foo/bar", "foo", "."]);
+        t!(s: "foo/bar", ["foo/bar", "foo", "."]);
+        t!(s: "foo", ["foo", "."]);
+        t!(s: ".", ["."]);
+        t!(s: "..", [".."]);
+        t!(s: "../../foo", ["../../foo", "../.."]);
+
+        t!(v: b!("foo/bar", 0x80), [b!("foo/bar", 0x80), b!("foo"), b!(".")]);
+        t!(v: b!(0xff, "/bar"), [b!(0xff, "/bar"), b!(0xff), b!(".")]);
     }
 }
