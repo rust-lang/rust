@@ -577,11 +577,6 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
       }
-      ty::ty_evec(_, ty::vstore_slice(_))
-      | ty::ty_estr(ty::vstore_slice(_)) => {
-        bcx
-      }
-      ty::ty_closure(_) => bcx,
       ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);
@@ -602,7 +597,6 @@ pub fn make_take_glue(bcx: @mut Block, v: ValueRef, t: ty::t) -> @mut Block {
                                 None);
           bcx
       }
-      ty::ty_opaque_closure_ptr(_) => bcx,
       ty::ty_struct(did, _) => {
         let tcx = bcx.tcx();
         let bcx = iter_structural_ty(bcx, v, t, take_ty);
