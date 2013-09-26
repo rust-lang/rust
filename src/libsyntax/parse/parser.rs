@@ -922,6 +922,7 @@ impl Parser {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
+            let vis_span = *self.span;
             let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
@@ -947,7 +948,7 @@ impl Parser {
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 if vis != ast::inherited {
-                    self.obsolete(*self.last_span,
+                    self.obsolete(vis_span,
                                   ObsoleteTraitFuncVisibility);
                 }
                 required(TypeMethod {
