@@ -37,16 +37,7 @@ pub fn console_off() {
     rt::logging::console_off();
 }
 
-#[cfg(stage0)]
-#[doc(hidden)]
-pub fn log(_level: u32, s: ~str) {
-    // this is a terrible approximation, but it gets the job done (for stage0 at
-    // least)
-    ::io::println(s);
-}
-
 #[allow(missing_doc)]
-#[cfg(not(stage0))]
 pub fn log(_level: u32, args: &fmt::Arguments) {
     use rt::task::Task;
     use rt::local::Local;
