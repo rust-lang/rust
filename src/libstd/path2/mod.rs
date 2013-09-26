@@ -16,7 +16,7 @@ use clone::Clone;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::StrSlice;
+use str::{OwnedStr, Str, StrSlice};
 use vec;
 use vec::{CopyableVector, OwnedCopyableVector, OwnedVector};
 use vec::{ImmutableEqVector, ImmutableVector};
@@ -139,6 +139,51 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns the path as a byte vector
     fn as_vec<'a>(&'a self) -> &'a [u8];
+
+    /// Provides the path as a string
+    ///
+    /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
+    /// replacement char. This involves allocation.
+    #[inline]
+    fn as_display_str<T>(&self, f: &fn(&str) -> T) -> T {
+        match self.as_str() {
+            Some(s) => f(s),
+            None => {
+                let s = self.to_display_str();
+                f(s.as_slice())
+            }
+        }
+    }
+
+    /// Returns the path as a string
+    ///
+    /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
+    /// replacement char. This involves allocation.
+    ///
+    /// This is similar to `as_display_str()` except it will always allocate a new ~str.
+    fn to_display_str(&self) -> ~str {
+        // FIXME (#9516): Don't decode utf-8 manually here once we have a good way to do it in str
+        // This is a truly horrifically bad implementation, done as a functionality stopgap until
+        // we have a proper utf-8 decoder. I don't really want to write one here.
+        static REPLACEMENT_CHAR: char = '\uFFFD';
+
+        let mut v = self.as_vec();
+        let mut s = str::with_capacity(v.len());
+        while !v.is_empty() {
+            let w = str::utf8_char_width(v[0]);
+            if w == 0u {
+                s.push_char(REPLACEMENT_CHAR);
+                v = v.slice_from(1);
+            } else if v.len() < w || !str::is_utf8(v.slice_to(w)) {
+                s.push_char(REPLACEMENT_CHAR);
+                v = v.slice_from(1);
+            } else {
+                s.push_str(unsafe { ::cast::transmute(v.slice_to(w)) });
+                v = v.slice_from(w);
+            }
+        }
+        s
+    }
 
     /// Returns the directory component of `self`, as a byte vector (with no trailing separator).
     /// If `self` has no directory component, returns ['.'].
