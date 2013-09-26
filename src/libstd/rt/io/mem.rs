@@ -128,7 +128,7 @@ impl Decorator<~[u8]> for MemReader {
 
 
 /// Writes to a fixed-size byte slice
-struct BufWriter<'self> {
+pub struct BufWriter<'self> {
     buf: &'self mut [u8],
     pos: uint
 }
@@ -156,7 +156,7 @@ impl<'self> Seek for BufWriter<'self> {
 
 
 /// Reads from a fixed-size byte slice
-struct BufReader<'self> {
+pub struct BufReader<'self> {
     buf: &'self [u8],
     pos: uint
 }
