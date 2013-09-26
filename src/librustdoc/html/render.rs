@@ -521,6 +521,14 @@ impl Context {
                             }
                         }
                     }
+                    clean::StructItem(s) => {
+                        let mut it = s.fields.move_iter();
+                        do self.recurse(name) |this| {
+                            for item in it {
+                                f(this, item);
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -590,6 +598,8 @@ impl<'self> fmt::Default for Item<'self> {
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
             clean::VariantItem(*) => item_variant(fmt.buf, it.cx, it.item),
+            clean::StructFieldItem(*) => item_struct_field(fmt.buf, it.cx,
+                                                           it.item),
             _ => {}
         }
     }
@@ -980,11 +990,12 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
             for field in fields.iter() {
                 match field.inner {
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "    {}{}: {},\n{}",
+                        write!(w, "    {}<a name='field.{name}'>{name}</a>: \
+                                   {},\n{}",
                                VisSpace(field.visibility),
-                               field.name.get_ref().as_slice(),
                                ty.type_,
-                               tab);
+                               tab,
+                               name = field.name.get_ref().as_slice());
                     }
                     _ => unreachable!()
                 }
@@ -1166,6 +1177,15 @@ fn item_variant(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
     write!(w, "<DOCTYPE html><html><head>\
                 <meta http-equiv='refresh' content='0; \
                       url=../enum.{}.html\\#variant.{}'>\
+               </head><body></body></html>",
+           *cx.current.last(),
+           it.name.get_ref().as_slice());
+}
+
+fn item_struct_field(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
+    write!(w, "<DOCTYPE html><html><head>\
+                <meta http-equiv='refresh' content='0; \
+                      url=../struct.{}.html\\#field.{}'>\
                </head><body></body></html>",
            *cx.current.last(),
            it.name.get_ref().as_slice());
