@@ -28,6 +28,7 @@ use extra::json::ToJson;
 use extra::sort;
 
 use syntax::ast;
+use syntax::attr;
 
 use clean;
 use doctree;
@@ -568,6 +569,18 @@ impl<'self> Item<'self> {
 
 impl<'self> fmt::Default for Item<'self> {
     fn fmt(it: &Item<'self>, fmt: &mut fmt::Formatter) {
+        match attr::find_stability(it.item.attrs.iter()) {
+            Some(stability) => {
+                write!(fmt.buf,
+                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
+                       lvl = stability.level.to_str(),
+                       reason = match stability.text {
+                           Some(s) => s, None => @"",
+                       });
+            }
+            None => {}
+        }
+
         // Write the breadcrumb trail header for the top
         write!(fmt.buf, "<h1 class='fqn'>");
         match it.item.inner {

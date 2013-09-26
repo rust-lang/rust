@@ -269,3 +269,18 @@ a {
     float: left;
     padding: 20px;
 }
+
+.stability {
+    border-left: 5px solid #000;
+    border-radius: 3px;
+    padding: 0 3px;
+    float: right;
+    background: #fff;
+    text-transform: lowercase;
+}
+.stability.Deprecated { border-color: #D60027; color: #880017; }
+.stability.Experimental { border-color: #EC5315; color: #a53c0e; }
+.stability.Unstable { border-color: #FFD700; color: #b39800; }
+.stability.Stable { border-color: #AEC516; color: #7c8b10; }
+.stability.Frozen { border-color: #009431; color: #007726; }
+.stability.Locked { border-color: #0084B6; color: #00668c; }
