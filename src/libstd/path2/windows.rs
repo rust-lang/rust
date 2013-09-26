@@ -24,6 +24,9 @@ use util;
 use vec::Vector;
 use super::{GenericPath, GenericPathUnsafe};
 
+#[cfg(target_os = "win32")]
+use libc;
+
 /// Iterator that yields successive components of a Path
 pub type ComponentIter<'self> = str::CharSplitIterator<'self, char>;
 
@@ -1058,6 +1061,76 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 fn prefix_is_sep(p: Option<PathPrefix>, c: u8) -> bool {
     c.is_ascii() && if !prefix_is_verbatim(p) { is_sep2(c as char) }
                     else { is_sep(c as char) }
+}
+
+// Stat support
+#[cfg(target_os = "win32")]
+impl Path {
+    /// Calls stat() on the represented file and returns the resulting libc::stat
+    pub fn stat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
+        do self.with_c_str |buf| {
+            let mut st = super::stat::arch::default_stat();
+            match unsafe { libc::stat(buf, &mut st) } {
+                0 => Some(st),
+                _ => None
+            }
+        }
+    }
+
+    /// Returns whether the represented file exists
+    pub fn exists(&self) -> bool {
+        match self.stat() {
+            None => None,
+            Some(st) => Some(st.st_size as i64)
+        }
+    }
+
+    /// Returns the filesize of the represented file
+    pub fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some(st.st_size as i64)
+        }
+    }
+
+    /// Returns the mode of the represented file
+    pub fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some(st.st_mode as uint)
+        }
+    }
+
+    /// Returns the atime of the represented file, as (secs, nsecs)
+    ///
+    /// nsecs is always 0
+    pub fn get_atime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_atime as i64, 0))
+        }
+    }
+
+    /// Returns the mtime of the represented file, as (secs, nsecs)
+    ///
+    /// nsecs is always 0
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_mtime as i64, 0))
+        }
+    }
+
+    /// Returns the ctime of the represented file, as (secs, nsecs)
+    ///
+    /// nsecs is always 0
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_ctime as i64, 0))
+        }
+    }
 }
 
 #[cfg(test)]
