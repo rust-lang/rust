@@ -2544,6 +2544,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 };
 
+                                if !*ccx.sess.building_library {
+                                    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+                                }
+
                                 // Apply the `unnamed_addr` attribute if
                                 // requested
                                 if attr::contains_name(i.attrs,
@@ -3058,29 +3062,16 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
     }
 }
 
-fn mk_global(ccx: &CrateContext,
-             name: &str,
-             llval: ValueRef,
-             internal: bool)
-          -> ValueRef {
+// Writes the current ABI version into the crate.
+pub fn write_abi_version(ccx: &mut CrateContext) {
     unsafe {
-        let llglobal = do name.with_c_str |buf| {
+        let llval = C_uint(ccx, abi::abi_version);
+        let llglobal = do "rust_abi_version".with_c_str |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(llglobal, llval);
         llvm::LLVMSetGlobalConstant(llglobal, True);
-
-        if internal {
-            lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
-        }
-
-        return llglobal;
     }
-}
-
-// Writes the current ABI version into the crate.
-pub fn write_abi_version(ccx: &mut CrateContext) {
-    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version), false);
 }
 
 pub fn trans_crate(sess: session::Session,
