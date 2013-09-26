@@ -50,7 +50,7 @@ use path::Path;
 ///     use std::path::Path;
 ///     use std::rt::io::support::PathLike;
 ///     use std::rt::io::file::open;
-///     use std::rt::io::{FileMode, FileAccess};
+///     use std::rt::io::{Create, ReadWrite};
 ///
 ///     let p = &Path("/some/file/path.txt");
 ///
@@ -480,7 +480,7 @@ pub trait FileSystemInfo {
 /// ```rust
 /// use std;
 /// use std::path::Path;
-/// use std::rt::io::file::{FileInfo, FileReader};
+/// use std::rt::io::Open;
 ///
 /// let f = &Path("/some/file/path.txt");
 /// if f.exists() {
