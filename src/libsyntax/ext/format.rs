@@ -22,7 +22,6 @@ use std::vec;
 
 #[deriving(Eq)]
 enum ArgumentType {
-    Unknown,
     Known(@str),
     Unsigned,
     String,
@@ -153,14 +152,13 @@ impl Context {
                     parse::ArgumentIs(i) => Left(i),
                     parse::ArgumentNamed(s) => Right(s.to_managed()),
                 };
-                let ty = if arg.format.ty == "" {
-                    Unknown
-                } else { Known(arg.format.ty.to_managed()) };
-                self.verify_arg_type(pos, ty);
 
                 // and finally the method being applied
                 match arg.method {
-                    None => {}
+                    None => {
+                        let ty = Known(arg.format.ty.to_managed());
+                        self.verify_arg_type(pos, ty);
+                    }
                     Some(ref method) => { self.verify_method(pos, *method); }
                 }
             }
@@ -253,7 +251,7 @@ impl Context {
                     return;
                 }
                 self.verify_same(self.args[arg].span, ty, self.arg_types[arg]);
-                if ty != Unknown || self.arg_types[arg].is_none() {
+                if self.arg_types[arg].is_none() {
                     self.arg_types[arg] = Some(ty);
                 }
             }
@@ -269,7 +267,7 @@ impl Context {
                 };
                 self.verify_same(span, ty,
                                  self.name_types.find(&name).map(|&x| *x));
-                if ty != Unknown || !self.name_types.contains_key(&name) {
+                if !self.name_types.contains_key(&name) {
                     self.name_types.insert(name, ty);
                 }
                 // Assign this named argument a slot in the arguments array if
@@ -292,9 +290,8 @@ impl Context {
     /// that: `Some(None) == Some(Some(x))`
     fn verify_same(&self, sp: Span, ty: ArgumentType,
                    before: Option<ArgumentType>) {
-        if ty == Unknown { return }
         let cur = match before {
-            Some(Unknown) | None => return,
+            None => return,
             Some(t) => t,
         };
         if ty == cur { return }
@@ -649,9 +646,9 @@ impl Context {
         };
 
         let fmt_trait = match ty {
-            Unknown => "Default",
             Known(tyname) => {
                 match tyname.as_slice() {
+                    ""  => "Default",
                     "?" => "Poly",
                     "b" => "Bool",
                     "c" => "Char",
