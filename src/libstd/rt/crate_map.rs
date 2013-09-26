@@ -10,7 +10,6 @@
 
 
 use libc::c_char;
-#[cfg(stage0)] use libc::c_void;
 use ptr;
 use ptr::RawPtr;
 use vec;
@@ -40,17 +39,6 @@ struct CrateMapV0 {
     children: [*CrateMap, ..1]
 }
 
-#[cfg(stage0)]
-struct CrateMap {
-    version: i32,
-    annihilate_fn: *c_void,
-    entries: *ModEntry,
-    /// a dynamically sized struct, where all pointers to children are listed adjacent
-    /// to the struct, terminated with NULL
-    children: [*CrateMap, ..1]
-}
-
-#[cfg(not(stage0))]
 struct CrateMap {
     version: i32,
     entries: *ModEntry,

@@ -125,36 +125,7 @@ impl FailWithCause for &'static str {
     }
 }
 
-// This stage0 version is incredibly wrong.
-#[cfg(stage0)]
-pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use option::{Some, None};
-    use rt::in_green_task_context;
-    use rt::task::Task;
-    use rt::local::Local;
-    use rt::logging::Logger;
-    use str::Str;
-
-    unsafe {
-        let msg = str::raw::from_c_str(msg);
-        let file = str::raw::from_c_str(file);
-        if in_green_task_context() {
-            rterrln!("task failed at '%s', %s:%i", msg, file, line as int);
-        } else {
-            rterrln!("failed in non-task context at '%s', %s:%i",
-                     msg, file, line as int);
-        }
-
-        let task: *mut Task = Local::unsafe_borrow();
-        if (*task).unwinder.unwinding {
-            rtabort!("unwinding again");
-        }
-        (*task).unwinder.begin_unwind();
-    }
-}
-
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
-#[cfg(not(stage0))]
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use rt::in_green_task_context;
     use rt::task::Task;
