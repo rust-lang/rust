@@ -1,7 +1,7 @@
-Version 0.8 (October 2013)
+Version 0.8 (September 2013)
 --------------------------
 
-   * ~2100 changes, numerous bugfixes
+   * ~2200 changes, numerous bugfixes
 
    * Language
       * The `for` loop syntax has changed to work with the `Iterator` trait.
