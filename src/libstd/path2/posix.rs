@@ -287,6 +287,12 @@ impl Path {
         GenericPath::from_vec(v)
     }
 
+    /// Returns a new Path from a byte vector, if possible
+    #[inline]
+    pub fn from_vec_opt(v: &[u8]) -> Option<Path> {
+        GenericPath::from_vec_opt(v)
+    }
+
     /// Returns a new Path from a string
     ///
     /// # Failure
@@ -295,6 +301,12 @@ impl Path {
     #[inline]
     pub fn from_str(s: &str) -> Path {
         GenericPath::from_str(s)
+    }
+
+    /// Returns a new Path from a string, if possible
+    #[inline]
+    pub fn from_str_opt(s: &str) -> Option<Path> {
+        GenericPath::from_str_opt(s)
     }
 
     /// Converts the Path into an owned byte vector
@@ -473,6 +485,14 @@ mod tests {
         let p = Path::from_vec(b!("foo/bar", 0x80));
         assert_eq!(p.as_str(), None);
         assert_eq!(Path::from_vec(b!("foo", 0xff, "/bar")).into_str(), None);
+    }
+
+    #[test]
+    fn test_opt_paths() {
+        assert_eq!(Path::from_vec_opt(b!("foo/bar", 0)), None);
+        t!(v: Path::from_vec_opt(b!("foo/bar")).unwrap(), b!("foo/bar"));
+        assert_eq!(Path::from_str_opt("foo/bar\0"), None);
+        t!(s: Path::from_str_opt("foo/bar").unwrap(), "foo/bar");
     }
 
     #[test]
