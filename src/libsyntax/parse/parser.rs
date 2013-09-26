@@ -1786,6 +1786,17 @@ impl Parser {
             }
         } else if self.eat_keyword(keywords::Loop) {
             return self.parse_loop_expr(None);
+        } else if self.eat_keyword(keywords::Continue) {
+            let lo = self.span.lo;
+            let ex = if self.token_is_lifetime(&*self.token) {
+                let lifetime = self.get_lifetime(&*self.token);
+                self.bump();
+                ExprAgain(Some(lifetime.name))
+            } else {
+                ExprAgain(None)
+            };
+            let hi = self.span.hi;
+            return self.mk_expr(lo, hi, ex);
         } else if self.eat_keyword(keywords::Match) {
             return self.parse_match_expr();
         } else if self.eat_keyword(keywords::Unsafe) {
@@ -2578,6 +2589,7 @@ impl Parser {
             return self.mk_expr(lo, hi, ExprLoop(body, opt_ident));
         } else {
             // This is a 'continue' expression
+            // FIXME #9467 rm support for 'loop' here after snapshot
             if opt_ident.is_some() {
                 self.span_err(*self.last_span,
                               "a label may not be used with a `loop` expression");
