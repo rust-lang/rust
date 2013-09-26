@@ -431,41 +431,200 @@ pub trait ToPrimitive {
     }
 }
 
-macro_rules! impl_to_primitive(
-    ($T:ty) => (
-        impl ToPrimitive for $T {
-            #[inline] fn to_int(&self)   -> Option<int>   { Some(*self as int)   }
-            #[inline] fn to_i8(&self)    -> Option<i8>    { Some(*self as i8)    }
-            #[inline] fn to_i16(&self)   -> Option<i16>   { Some(*self as i16)   }
-            #[inline] fn to_i32(&self)   -> Option<i32>   { Some(*self as i32)   }
-            #[inline] fn to_i64(&self)   -> Option<i64>   { Some(*self as i64)   }
-
-            #[inline] fn to_uint(&self)  -> Option<uint>  { Some(*self as uint)  }
-            #[inline] fn to_u8(&self)    -> Option<u8>    { Some(*self as u8)    }
-            #[inline] fn to_u16(&self)   -> Option<u16>   { Some(*self as u16)   }
-            #[inline] fn to_u32(&self)   -> Option<u32>   { Some(*self as u32)   }
-            #[inline] fn to_u64(&self)   -> Option<u64>   { Some(*self as u64)   }
-
-            #[inline] fn to_float(&self) -> Option<float> { Some(*self as float) }
-            #[inline] fn to_f32(&self)   -> Option<f32>   { Some(*self as f32)   }
-            #[inline] fn to_f64(&self)   -> Option<f64>   { Some(*self as f64)   }
+macro_rules! impl_to_primitive_int_to_int(
+    ($SrcT:ty, $DstT:ty) => (
+        {
+            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+                Some(*self as $DstT)
+            } else {
+                let n = *self as i64;
+                let min_value: $DstT = Bounded::min_value();
+                let max_value: $DstT = Bounded::max_value();
+                if min_value as i64 <= n && n <= max_value as i64 {
+                    Some(*self as $DstT)
+                } else {
+                    None
+                }
+            }
         }
     )
 )
 
-impl_to_primitive!(u8)
-impl_to_primitive!(u16)
-impl_to_primitive!(u32)
-impl_to_primitive!(u64)
-impl_to_primitive!(uint)
-impl_to_primitive!(i8)
-impl_to_primitive!(i16)
-impl_to_primitive!(i32)
-impl_to_primitive!(i64)
-impl_to_primitive!(int)
-impl_to_primitive!(f32)
-impl_to_primitive!(f64)
-impl_to_primitive!(float)
+macro_rules! impl_to_primitive_int_to_uint(
+    ($SrcT:ty, $DstT:ty) => (
+        {
+            let zero: $SrcT = Zero::zero();
+            let max_value: $DstT = Bounded::max_value();
+            if zero <= *self && *self as u64 <= max_value as u64 {
+                Some(*self as $DstT)
+            } else {
+                None
+            }
+        }
+    )
+)
+
+macro_rules! impl_to_primitive_int(
+    ($T:ty) => (
+        impl ToPrimitive for $T {
+            #[inline]
+            fn to_int(&self) -> Option<int> { impl_to_primitive_int_to_int!($T, int) }
+            #[inline]
+            fn to_i8(&self) -> Option<i8> { impl_to_primitive_int_to_int!($T, i8) }
+            #[inline]
+            fn to_i16(&self) -> Option<i16> { impl_to_primitive_int_to_int!($T, i16) }
+            #[inline]
+            fn to_i32(&self) -> Option<i32> { impl_to_primitive_int_to_int!($T, i32) }
+            #[inline]
+            fn to_i64(&self) -> Option<i64> { impl_to_primitive_int_to_int!($T, i64) }
+
+            #[inline]
+            fn to_uint(&self) -> Option<uint> { impl_to_primitive_int_to_uint!($T, uint) }
+            #[inline]
+            fn to_u8(&self) -> Option<u8> { impl_to_primitive_int_to_uint!($T, u8) }
+            #[inline]
+            fn to_u16(&self) -> Option<u16> { impl_to_primitive_int_to_uint!($T, u16) }
+            #[inline]
+            fn to_u32(&self) -> Option<u32> { impl_to_primitive_int_to_uint!($T, u32) }
+            #[inline]
+            fn to_u64(&self) -> Option<u64> { impl_to_primitive_int_to_uint!($T, u64) }
+
+            #[inline]
+            fn to_f32(&self) -> Option<f32> { Some(*self as f32) }
+            #[inline]
+            fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
+        }
+    )
+)
+
+impl_to_primitive_int!(int)
+impl_to_primitive_int!(i8)
+impl_to_primitive_int!(i16)
+impl_to_primitive_int!(i32)
+impl_to_primitive_int!(i64)
+
+macro_rules! impl_to_primitive_uint_to_int(
+    ($DstT:ty) => (
+        {
+            let max_value: $DstT = Bounded::max_value();
+            if *self as u64 <= max_value as u64 {
+                Some(*self as $DstT)
+            } else {
+                None
+            }
+        }
+    )
+)
+
+macro_rules! impl_to_primitive_uint_to_uint(
+    ($SrcT:ty, $DstT:ty) => (
+        {
+            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+                Some(*self as $DstT)
+            } else {
+                let zero: $SrcT = Zero::zero();
+                let max_value: $DstT = Bounded::max_value();
+                if zero <= *self && *self as u64 <= max_value as u64 {
+                    Some(*self as $DstT)
+                } else {
+                    None
+                }
+            }
+        }
+    )
+)
+
+macro_rules! impl_to_primitive_uint(
+    ($T:ty) => (
+        impl ToPrimitive for $T {
+            #[inline]
+            fn to_int(&self) -> Option<int> { impl_to_primitive_uint_to_int!(int) }
+            #[inline]
+            fn to_i8(&self) -> Option<i8> { impl_to_primitive_uint_to_int!(i8) }
+            #[inline]
+            fn to_i16(&self) -> Option<i16> { impl_to_primitive_uint_to_int!(i16) }
+            #[inline]
+            fn to_i32(&self) -> Option<i32> { impl_to_primitive_uint_to_int!(i32) }
+            #[inline]
+            fn to_i64(&self) -> Option<i64> { impl_to_primitive_uint_to_int!(i64) }
+
+            #[inline]
+            fn to_uint(&self) -> Option<uint> { impl_to_primitive_uint_to_uint!($T, uint) }
+            #[inline]
+            fn to_u8(&self) -> Option<u8> { impl_to_primitive_uint_to_uint!($T, u8) }
+            #[inline]
+            fn to_u16(&self) -> Option<u16> { impl_to_primitive_uint_to_uint!($T, u16) }
+            #[inline]
+            fn to_u32(&self) -> Option<u32> { impl_to_primitive_uint_to_uint!($T, u32) }
+            #[inline]
+            fn to_u64(&self) -> Option<u64> { impl_to_primitive_uint_to_uint!($T, u64) }
+
+            #[inline]
+            fn to_f32(&self) -> Option<f32> { Some(*self as f32) }
+            #[inline]
+            fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
+        }
+    )
+)
+
+impl_to_primitive_uint!(uint)
+impl_to_primitive_uint!(u8)
+impl_to_primitive_uint!(u16)
+impl_to_primitive_uint!(u32)
+impl_to_primitive_uint!(u64)
+
+macro_rules! impl_to_primitive_float_to_float(
+    ($SrcT:ty, $DstT:ty) => (
+        if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            Some(*self as $DstT)
+        } else {
+            let n = *self as f64;
+            let min_value: $SrcT = Bounded::min_value();
+            let max_value: $SrcT = Bounded::max_value();
+            if min_value as f64 <= n && n <= max_value as f64 {
+                Some(*self as $DstT)
+            } else {
+                None
+            }
+        }
+    )
+)
+
+macro_rules! impl_to_primitive_float(
+    ($T:ty) => (
+        impl ToPrimitive for $T {
+            #[inline]
+            fn to_int(&self) -> Option<int> { Some(*self as int) }
+            #[inline]
+            fn to_i8(&self) -> Option<i8> { Some(*self as i8) }
+            #[inline]
+            fn to_i16(&self) -> Option<i16> { Some(*self as i16) }
+            #[inline]
+            fn to_i32(&self) -> Option<i32> { Some(*self as i32) }
+            #[inline]
+            fn to_i64(&self) -> Option<i64> { Some(*self as i64) }
+
+            #[inline]
+            fn to_uint(&self) -> Option<uint> { Some(*self as uint) }
+            #[inline]
+            fn to_u8(&self) -> Option<u8> { Some(*self as u8) }
+            #[inline]
+            fn to_u16(&self) -> Option<u16> { Some(*self as u16) }
+            #[inline]
+            fn to_u32(&self) -> Option<u32> { Some(*self as u32) }
+            #[inline]
+            fn to_u64(&self) -> Option<u64> { Some(*self as u64) }
+
+            #[inline]
+            fn to_f32(&self) -> Option<f32> { impl_to_primitive_float_to_float!($T, f32) }
+            #[inline]
+            fn to_f64(&self) -> Option<f64> { impl_to_primitive_float_to_float!($T, f64) }
+        }
+    )
+)
+
+impl_to_primitive_float!(f32)
+impl_to_primitive_float!(f64)
 
 /// A generic trait for converting a number to a value.
 pub trait FromPrimitive {
@@ -609,40 +768,38 @@ pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
 }
 
 macro_rules! impl_from_primitive(
-    ($T:ty) => (
+    ($T:ty, $to_ty:expr) => (
         impl FromPrimitive for $T {
-            #[inline] fn from_int(n: int)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_i8(n: i8)       -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_i16(n: i16)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_i32(n: i32)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_i64(n: i64)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_int(n: int) -> Option<$T> { $to_ty }
+            #[inline] fn from_i8(n: i8) -> Option<$T> { $to_ty }
+            #[inline] fn from_i16(n: i16) -> Option<$T> { $to_ty }
+            #[inline] fn from_i32(n: i32) -> Option<$T> { $to_ty }
+            #[inline] fn from_i64(n: i64) -> Option<$T> { $to_ty }
 
-            #[inline] fn from_uint(n: uint)   -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_u8(n: u8)       -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_u16(n: u16)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_u32(n: u32)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_u64(n: u64)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_uint(n: uint) -> Option<$T> { $to_ty }
+            #[inline] fn from_u8(n: u8) -> Option<$T> { $to_ty }
+            #[inline] fn from_u16(n: u16) -> Option<$T> { $to_ty }
+            #[inline] fn from_u32(n: u32) -> Option<$T> { $to_ty }
+            #[inline] fn from_u64(n: u64) -> Option<$T> { $to_ty }
 
-            #[inline] fn from_float(n: float) -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_f32(n: f32)     -> Option<$T> { Some(n as $T) }
-            #[inline] fn from_f64(n: f64)     -> Option<$T> { Some(n as $T) }
+            #[inline] fn from_f32(n: f32) -> Option<$T> { $to_ty }
+            #[inline] fn from_f64(n: f64) -> Option<$T> { $to_ty }
         }
     )
 )
 
-impl_from_primitive!(u8)
-impl_from_primitive!(u16)
-impl_from_primitive!(u32)
-impl_from_primitive!(u64)
-impl_from_primitive!(uint)
-impl_from_primitive!(i8)
-impl_from_primitive!(i16)
-impl_from_primitive!(i32)
-impl_from_primitive!(i64)
-impl_from_primitive!(int)
-impl_from_primitive!(f32)
-impl_from_primitive!(f64)
-impl_from_primitive!(float)
+impl_from_primitive!(int, n.to_int())
+impl_from_primitive!(i8, n.to_i8())
+impl_from_primitive!(i16, n.to_i16())
+impl_from_primitive!(i32, n.to_i32())
+impl_from_primitive!(i64, n.to_i64())
+impl_from_primitive!(uint, n.to_uint())
+impl_from_primitive!(u8, n.to_u8())
+impl_from_primitive!(u16, n.to_u16())
+impl_from_primitive!(u32, n.to_u32())
+impl_from_primitive!(u64, n.to_u64())
+impl_from_primitive!(f32, n.to_f32())
+impl_from_primitive!(f64, n.to_f64())
 
 /// Cast from one machine scalar to another
 ///
@@ -820,8 +977,22 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use uint;
     use super::*;
+    use int;
+    use i8;
+    use i16;
+    use i32;
+    use i64;
+    use int;
+    use u8;
+    use u16;
+    use u32;
+    use u64;
+    use uint;
+    use u8;
+    use u16;
+    use u32;
+    use u64;
 
     macro_rules! test_cast_20(
         ($_20:expr) => ({
@@ -837,7 +1008,6 @@ mod tests {
             assert_eq!(20i16, _20.to_i16().unwrap());
             assert_eq!(20i32, _20.to_i32().unwrap());
             assert_eq!(20i64, _20.to_i64().unwrap());
-            assert_eq!(20f,   _20.to_float().unwrap());
             assert_eq!(20f32, _20.to_f32().unwrap());
             assert_eq!(20f64, _20.to_f64().unwrap());
 
@@ -881,6 +1051,374 @@ mod tests {
     #[test] fn test_int_cast()   { test_cast_20!(20i)   }
     #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
     #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
+
+    #[test]
+    fn test_cast_range_int_min() {
+        assert_eq!(int::min_value.to_int(),  Some(int::min_value as int));
+        assert_eq!(int::min_value.to_i8(),   None);
+        assert_eq!(int::min_value.to_i16(),  None);
+        // int::min_value.to_i32() is word-size specific
+        assert_eq!(int::min_value.to_i64(),  Some(int::min_value as i64));
+        assert_eq!(int::min_value.to_uint(), None);
+        assert_eq!(int::min_value.to_u8(),   None);
+        assert_eq!(int::min_value.to_u16(),  None);
+        assert_eq!(int::min_value.to_u32(),  None);
+        assert_eq!(int::min_value.to_u64(),  None);
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(int::min_value.to_i32(), Some(int::min_value as i32));
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(int::min_value.to_i32(), None);
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_i8_min() {
+        assert_eq!(i8::min_value.to_int(),  Some(i8::min_value as int));
+        assert_eq!(i8::min_value.to_i8(),   Some(i8::min_value as i8));
+        assert_eq!(i8::min_value.to_i16(),  Some(i8::min_value as i16));
+        assert_eq!(i8::min_value.to_i32(),  Some(i8::min_value as i32));
+        assert_eq!(i8::min_value.to_i64(),  Some(i8::min_value as i64));
+        assert_eq!(i8::min_value.to_uint(), None);
+        assert_eq!(i8::min_value.to_u8(),   None);
+        assert_eq!(i8::min_value.to_u16(),  None);
+        assert_eq!(i8::min_value.to_u32(),  None);
+        assert_eq!(i8::min_value.to_u64(),  None);
+    }
+
+    #[test]
+    fn test_cast_range_i16_min() {
+        assert_eq!(i16::min_value.to_int(),  Some(i16::min_value as int));
+        assert_eq!(i16::min_value.to_i8(),   None);
+        assert_eq!(i16::min_value.to_i16(),  Some(i16::min_value as i16));
+        assert_eq!(i16::min_value.to_i32(),  Some(i16::min_value as i32));
+        assert_eq!(i16::min_value.to_i64(),  Some(i16::min_value as i64));
+        assert_eq!(i16::min_value.to_uint(), None);
+        assert_eq!(i16::min_value.to_u8(),   None);
+        assert_eq!(i16::min_value.to_u16(),  None);
+        assert_eq!(i16::min_value.to_u32(),  None);
+        assert_eq!(i16::min_value.to_u64(),  None);
+    }
+
+    #[test]
+    fn test_cast_range_i32_min() {
+        assert_eq!(i32::min_value.to_int(),  Some(i32::min_value as int));
+        assert_eq!(i32::min_value.to_i8(),   None);
+        assert_eq!(i32::min_value.to_i16(),  None);
+        assert_eq!(i32::min_value.to_i32(),  Some(i32::min_value as i32));
+        assert_eq!(i32::min_value.to_i64(),  Some(i32::min_value as i64));
+        assert_eq!(i32::min_value.to_uint(), None);
+        assert_eq!(i32::min_value.to_u8(),   None);
+        assert_eq!(i32::min_value.to_u16(),  None);
+        assert_eq!(i32::min_value.to_u32(),  None);
+        assert_eq!(i32::min_value.to_u64(),  None);
+    }
+
+    #[test]
+    fn test_cast_range_i64_min() {
+        // i64::min_value.to_int() is word-size specific
+        assert_eq!(i64::min_value.to_i8(),   None);
+        assert_eq!(i64::min_value.to_i16(),  None);
+        assert_eq!(i64::min_value.to_i32(),  None);
+        assert_eq!(i64::min_value.to_i64(),  Some(i64::min_value as i64));
+        assert_eq!(i64::min_value.to_uint(), None);
+        assert_eq!(i64::min_value.to_u8(),   None);
+        assert_eq!(i64::min_value.to_u16(),  None);
+        assert_eq!(i64::min_value.to_u32(),  None);
+        assert_eq!(i64::min_value.to_u64(),  None);
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(i64::min_value.to_int(), None);
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(i64::min_value.to_int(), Some(i64::min_value as int));
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_int_max() {
+        assert_eq!(int::max_value.to_int(),  Some(int::max_value as int));
+        assert_eq!(int::max_value.to_i8(),   None);
+        assert_eq!(int::max_value.to_i16(),  None);
+        // int::max_value.to_i32() is word-size specific
+        assert_eq!(int::max_value.to_i64(),  Some(int::max_value as i64));
+        assert_eq!(int::max_value.to_u8(),   None);
+        assert_eq!(int::max_value.to_u16(),  None);
+        // int::max_value.to_u32() is word-size specific
+        assert_eq!(int::max_value.to_u64(),  Some(int::max_value as u64));
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(int::max_value.to_i32(), Some(int::max_value as i32));
+            assert_eq!(int::max_value.to_u32(), Some(int::max_value as u32));
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(int::max_value.to_i32(), None);
+            assert_eq!(int::max_value.to_u32(), None);
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_i8_max() {
+        assert_eq!(i8::max_value.to_int(),  Some(i8::max_value as int));
+        assert_eq!(i8::max_value.to_i8(),   Some(i8::max_value as i8));
+        assert_eq!(i8::max_value.to_i16(),  Some(i8::max_value as i16));
+        assert_eq!(i8::max_value.to_i32(),  Some(i8::max_value as i32));
+        assert_eq!(i8::max_value.to_i64(),  Some(i8::max_value as i64));
+        assert_eq!(i8::max_value.to_uint(), Some(i8::max_value as uint));
+        assert_eq!(i8::max_value.to_u8(),   Some(i8::max_value as u8));
+        assert_eq!(i8::max_value.to_u16(),  Some(i8::max_value as u16));
+        assert_eq!(i8::max_value.to_u32(),  Some(i8::max_value as u32));
+        assert_eq!(i8::max_value.to_u64(),  Some(i8::max_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_i16_max() {
+        assert_eq!(i16::max_value.to_int(),  Some(i16::max_value as int));
+        assert_eq!(i16::max_value.to_i8(),   None);
+        assert_eq!(i16::max_value.to_i16(),  Some(i16::max_value as i16));
+        assert_eq!(i16::max_value.to_i32(),  Some(i16::max_value as i32));
+        assert_eq!(i16::max_value.to_i64(),  Some(i16::max_value as i64));
+        assert_eq!(i16::max_value.to_uint(), Some(i16::max_value as uint));
+        assert_eq!(i16::max_value.to_u8(),   None);
+        assert_eq!(i16::max_value.to_u16(),  Some(i16::max_value as u16));
+        assert_eq!(i16::max_value.to_u32(),  Some(i16::max_value as u32));
+        assert_eq!(i16::max_value.to_u64(),  Some(i16::max_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_i32_max() {
+        assert_eq!(i32::max_value.to_int(),  Some(i32::max_value as int));
+        assert_eq!(i32::max_value.to_i8(),   None);
+        assert_eq!(i32::max_value.to_i16(),  None);
+        assert_eq!(i32::max_value.to_i32(),  Some(i32::max_value as i32));
+        assert_eq!(i32::max_value.to_i64(),  Some(i32::max_value as i64));
+        assert_eq!(i32::max_value.to_uint(), Some(i32::max_value as uint));
+        assert_eq!(i32::max_value.to_u8(),   None);
+        assert_eq!(i32::max_value.to_u16(),  None);
+        assert_eq!(i32::max_value.to_u32(),  Some(i32::max_value as u32));
+        assert_eq!(i32::max_value.to_u64(),  Some(i32::max_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_i64_max() {
+        // i64::max_value.to_int() is word-size specific
+        assert_eq!(i64::max_value.to_i8(),   None);
+        assert_eq!(i64::max_value.to_i16(),  None);
+        assert_eq!(i64::max_value.to_i32(),  None);
+        assert_eq!(i64::max_value.to_i64(),  Some(i64::max_value as i64));
+        // i64::max_value.to_uint() is word-size specific
+        assert_eq!(i64::max_value.to_u8(),   None);
+        assert_eq!(i64::max_value.to_u16(),  None);
+        assert_eq!(i64::max_value.to_u32(),  None);
+        assert_eq!(i64::max_value.to_u64(),  Some(i64::max_value as u64));
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(i64::max_value.to_int(),  None);
+            assert_eq!(i64::max_value.to_uint(), None);
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(i64::max_value.to_int(),  Some(i64::max_value as int));
+            assert_eq!(i64::max_value.to_uint(), Some(i64::max_value as uint));
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_uint_min() {
+        assert_eq!(uint::min_value.to_int(),  Some(uint::min_value as int));
+        assert_eq!(uint::min_value.to_i8(),   Some(uint::min_value as i8));
+        assert_eq!(uint::min_value.to_i16(),  Some(uint::min_value as i16));
+        assert_eq!(uint::min_value.to_i32(),  Some(uint::min_value as i32));
+        assert_eq!(uint::min_value.to_i64(),  Some(uint::min_value as i64));
+        assert_eq!(uint::min_value.to_uint(), Some(uint::min_value as uint));
+        assert_eq!(uint::min_value.to_u8(),   Some(uint::min_value as u8));
+        assert_eq!(uint::min_value.to_u16(),  Some(uint::min_value as u16));
+        assert_eq!(uint::min_value.to_u32(),  Some(uint::min_value as u32));
+        assert_eq!(uint::min_value.to_u64(),  Some(uint::min_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u8_min() {
+        assert_eq!(u8::min_value.to_int(),  Some(u8::min_value as int));
+        assert_eq!(u8::min_value.to_i8(),   Some(u8::min_value as i8));
+        assert_eq!(u8::min_value.to_i16(),  Some(u8::min_value as i16));
+        assert_eq!(u8::min_value.to_i32(),  Some(u8::min_value as i32));
+        assert_eq!(u8::min_value.to_i64(),  Some(u8::min_value as i64));
+        assert_eq!(u8::min_value.to_uint(), Some(u8::min_value as uint));
+        assert_eq!(u8::min_value.to_u8(),   Some(u8::min_value as u8));
+        assert_eq!(u8::min_value.to_u16(),  Some(u8::min_value as u16));
+        assert_eq!(u8::min_value.to_u32(),  Some(u8::min_value as u32));
+        assert_eq!(u8::min_value.to_u64(),  Some(u8::min_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u16_min() {
+        assert_eq!(u16::min_value.to_int(),  Some(u16::min_value as int));
+        assert_eq!(u16::min_value.to_i8(),   Some(u16::min_value as i8));
+        assert_eq!(u16::min_value.to_i16(),  Some(u16::min_value as i16));
+        assert_eq!(u16::min_value.to_i32(),  Some(u16::min_value as i32));
+        assert_eq!(u16::min_value.to_i64(),  Some(u16::min_value as i64));
+        assert_eq!(u16::min_value.to_uint(), Some(u16::min_value as uint));
+        assert_eq!(u16::min_value.to_u8(),   Some(u16::min_value as u8));
+        assert_eq!(u16::min_value.to_u16(),  Some(u16::min_value as u16));
+        assert_eq!(u16::min_value.to_u32(),  Some(u16::min_value as u32));
+        assert_eq!(u16::min_value.to_u64(),  Some(u16::min_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u32_min() {
+        assert_eq!(u32::min_value.to_int(),  Some(u32::min_value as int));
+        assert_eq!(u32::min_value.to_i8(),   Some(u32::min_value as i8));
+        assert_eq!(u32::min_value.to_i16(),  Some(u32::min_value as i16));
+        assert_eq!(u32::min_value.to_i32(),  Some(u32::min_value as i32));
+        assert_eq!(u32::min_value.to_i64(),  Some(u32::min_value as i64));
+        assert_eq!(u32::min_value.to_uint(), Some(u32::min_value as uint));
+        assert_eq!(u32::min_value.to_u8(),   Some(u32::min_value as u8));
+        assert_eq!(u32::min_value.to_u16(),  Some(u32::min_value as u16));
+        assert_eq!(u32::min_value.to_u32(),  Some(u32::min_value as u32));
+        assert_eq!(u32::min_value.to_u64(),  Some(u32::min_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u64_min() {
+        assert_eq!(u64::min_value.to_int(),  Some(u64::min_value as int));
+        assert_eq!(u64::min_value.to_i8(),   Some(u64::min_value as i8));
+        assert_eq!(u64::min_value.to_i16(),  Some(u64::min_value as i16));
+        assert_eq!(u64::min_value.to_i32(),  Some(u64::min_value as i32));
+        assert_eq!(u64::min_value.to_i64(),  Some(u64::min_value as i64));
+        assert_eq!(u64::min_value.to_uint(), Some(u64::min_value as uint));
+        assert_eq!(u64::min_value.to_u8(),   Some(u64::min_value as u8));
+        assert_eq!(u64::min_value.to_u16(),  Some(u64::min_value as u16));
+        assert_eq!(u64::min_value.to_u32(),  Some(u64::min_value as u32));
+        assert_eq!(u64::min_value.to_u64(),  Some(u64::min_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_uint_max() {
+        assert_eq!(uint::max_value.to_int(),  None);
+        assert_eq!(uint::max_value.to_i8(),   None);
+        assert_eq!(uint::max_value.to_i16(),  None);
+        assert_eq!(uint::max_value.to_i32(),  None);
+        // uint::max_value.to_i64() is word-size specific
+        assert_eq!(uint::max_value.to_u8(),   None);
+        assert_eq!(uint::max_value.to_u16(),  None);
+        // uint::max_value.to_u32() is word-size specific
+        assert_eq!(uint::max_value.to_u64(),  Some(uint::max_value as u64));
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(uint::max_value.to_u32(), Some(uint::max_value as u32));
+            assert_eq!(uint::max_value.to_i64(), Some(uint::max_value as i64));
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(uint::max_value.to_u32(), None);
+            assert_eq!(uint::max_value.to_i64(), None);
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_u8_max() {
+        assert_eq!(u8::max_value.to_int(),  Some(u8::max_value as int));
+        assert_eq!(u8::max_value.to_i8(),   None);
+        assert_eq!(u8::max_value.to_i16(),  Some(u8::max_value as i16));
+        assert_eq!(u8::max_value.to_i32(),  Some(u8::max_value as i32));
+        assert_eq!(u8::max_value.to_i64(),  Some(u8::max_value as i64));
+        assert_eq!(u8::max_value.to_uint(), Some(u8::max_value as uint));
+        assert_eq!(u8::max_value.to_u8(),   Some(u8::max_value as u8));
+        assert_eq!(u8::max_value.to_u16(),  Some(u8::max_value as u16));
+        assert_eq!(u8::max_value.to_u32(),  Some(u8::max_value as u32));
+        assert_eq!(u8::max_value.to_u64(),  Some(u8::max_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u16_max() {
+        assert_eq!(u16::max_value.to_int(),  Some(u16::max_value as int));
+        assert_eq!(u16::max_value.to_i8(),   None);
+        assert_eq!(u16::max_value.to_i16(),  None);
+        assert_eq!(u16::max_value.to_i32(),  Some(u16::max_value as i32));
+        assert_eq!(u16::max_value.to_i64(),  Some(u16::max_value as i64));
+        assert_eq!(u16::max_value.to_uint(), Some(u16::max_value as uint));
+        assert_eq!(u16::max_value.to_u8(),   None);
+        assert_eq!(u16::max_value.to_u16(),  Some(u16::max_value as u16));
+        assert_eq!(u16::max_value.to_u32(),  Some(u16::max_value as u32));
+        assert_eq!(u16::max_value.to_u64(),  Some(u16::max_value as u64));
+    }
+
+    #[test]
+    fn test_cast_range_u32_max() {
+        // u32::max_value.to_int() is word-size specific
+        assert_eq!(u32::max_value.to_i8(),   None);
+        assert_eq!(u32::max_value.to_i16(),  None);
+        assert_eq!(u32::max_value.to_i32(),  None);
+        assert_eq!(u32::max_value.to_i64(),  Some(u32::max_value as i64));
+        assert_eq!(u32::max_value.to_uint(), Some(u32::max_value as uint));
+        assert_eq!(u32::max_value.to_u8(),   None);
+        assert_eq!(u32::max_value.to_u16(),  None);
+        assert_eq!(u32::max_value.to_u32(),  Some(u32::max_value as u32));
+        assert_eq!(u32::max_value.to_u64(),  Some(u32::max_value as u64));
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(u32::max_value.to_int(),  None);
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(u32::max_value.to_int(),  Some(u32::max_value as int));
+        }
+
+        check_word_size();
+    }
+
+    #[test]
+    fn test_cast_range_u64_max() {
+        assert_eq!(u64::max_value.to_int(),  None);
+        assert_eq!(u64::max_value.to_i8(),   None);
+        assert_eq!(u64::max_value.to_i16(),  None);
+        assert_eq!(u64::max_value.to_i32(),  None);
+        assert_eq!(u64::max_value.to_i64(),  None);
+        // u64::max_value.to_uint() is word-size specific
+        assert_eq!(u64::max_value.to_u8(),   None);
+        assert_eq!(u64::max_value.to_u16(),  None);
+        assert_eq!(u64::max_value.to_u32(),  None);
+        assert_eq!(u64::max_value.to_u64(),  Some(u64::max_value as u64));
+
+        #[cfg(target_word_size = "32")]
+        fn check_word_size() {
+            assert_eq!(u64::max_value.to_uint(), None);
+        }
+
+        #[cfg(target_word_size = "64")]
+        fn check_word_size() {
+            assert_eq!(u64::max_value.to_uint(), Some(u64::max_value as uint));
+        }
+
+        check_word_size();
+    }
 
     #[test]
     fn test_saturating_add_uint() {
