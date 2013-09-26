@@ -54,7 +54,6 @@ impl TyVisitor for MyVisitor {
     fn visit_u32(&mut self) -> bool { true }
     fn visit_u64(&mut self) -> bool { true }
 
-    fn visit_float(&mut self) -> bool { true }
     fn visit_f32(&mut self) -> bool { true }
     fn visit_f64(&mut self) -> bool { true }
 

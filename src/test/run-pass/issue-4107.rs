@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let _id: &Mat2<float> = &Matrix::identity();
+    let _id: &Mat2<f64> = &Matrix::identity();
 }
 
 pub trait Index<Index,Result> { }

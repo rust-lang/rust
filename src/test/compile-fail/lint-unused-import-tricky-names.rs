@@ -19,7 +19,7 @@ mod issue6633 {
         pub mod name {
             pub type a = int;
             pub mod name {
-                pub type a = float;
+                pub type a = f64;
             }
         }
     }

@@ -422,10 +422,6 @@ pub mod reader {
             let bits = doc_as_u32(self.next_doc(EsF32));
             unsafe { transmute(bits) }
         }
-        fn read_float(&mut self) -> float {
-            let bits = doc_as_u64(self.next_doc(EsFloat));
-            (unsafe { transmute::<u64, f64>(bits) }) as float
-        }
         fn read_char(&mut self) -> char {
             char::from_u32(doc_as_u32(self.next_doc(EsChar))).unwrap()
         }
@@ -839,11 +835,6 @@ pub mod writer {
             let bits = unsafe { cast::transmute(v) };
             self.wr_tagged_u32(EsF32 as uint, bits);
         }
-        fn emit_float(&mut self, v: float) {
-            let bits = unsafe { cast::transmute(v as f64) };
-            self.wr_tagged_u64(EsFloat as uint, bits);
-        }
-
         fn emit_char(&mut self, v: char) {
             self.wr_tagged_u32(EsChar as uint, v as u32);
         }

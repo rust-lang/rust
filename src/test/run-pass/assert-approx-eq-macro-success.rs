@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_approx_eq!(1.0f, 1.0f);
-    assert_approx_eq!(1.0000001f, 1.0f);
-    assert_approx_eq!(1.0000001f, 1.0f, 1.0e-6);
-    assert_approx_eq!(1.000001f, 1.0f, 1.0e-5);
+    assert_approx_eq!(1.0f64, 1.0);
+    assert_approx_eq!(1.0000001f64, 1.0);
+    assert_approx_eq!(1.0000001f64, 1.0, 1.0e-6);
+    assert_approx_eq!(1.000001f64, 1.0, 1.0e-5);
 }

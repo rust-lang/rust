@@ -331,12 +331,12 @@ a single large vector of floats. Each task needs the full vector to perform its 
 # use std::rand;
 use extra::arc::Arc;
 
-fn pnorm(nums: &~[float], p: uint) -> float {
-    nums.iter().fold(0.0, |a,b| a+(*b).pow(&(p as float)) ).pow(&(1f / (p as float)))
+fn pnorm(nums: &~[f64], p: uint) -> f64 {
+    nums.iter().fold(0.0, |a,b| a+(*b).pow(&(p as f64)) ).pow(&(1.0 / (p as f64)))
 }
 
 fn main() {
-    let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
+    let numbers = vec::from_fn(1000000, |_| rand::random::<f64>());
     println!("Inf-norm = {}",  *numbers.iter().max().unwrap());
 
     let numbers_arc = Arc::new(numbers);
@@ -346,7 +346,7 @@ fn main() {
         chan.send(numbers_arc.clone());
 
         do spawn {
-            let local_arc : Arc<~[float]> = port.recv();
+            let local_arc : Arc<~[f64]> = port.recv();
             let task_numbers = local_arc.get();
             println!("{}-norm = {}", num, pnorm(task_numbers, num));
         }
@@ -361,7 +361,7 @@ created by the line
 # use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
-# let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
+# let numbers = vec::from_fn(1000000, |_| rand::random::<f64>());
 let numbers_arc=Arc::new(numbers);
 ~~~
 and a clone of it is sent to each task
@@ -369,7 +369,7 @@ and a clone of it is sent to each task
 # use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
-# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+# let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
 # let (port, chan)  = stream();
 chan.send(numbers_arc.clone());
@@ -381,11 +381,11 @@ Each task recovers the underlying data by
 # use extra::arc::Arc;
 # use std::vec;
 # use std::rand;
-# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+# let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc=Arc::new(numbers);
 # let (port, chan)  = stream();
 # chan.send(numbers_arc.clone());
-# let local_arc : Arc<~[float]> = port.recv();
+# let local_arc : Arc<~[f64]> = port.recv();
 let task_numbers = local_arc.get();
 ~~~
 and can use it as if it were local.

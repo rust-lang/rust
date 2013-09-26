@@ -198,13 +198,6 @@ impl IterBytes for int {
     }
 }
 
-impl IterBytes for float {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        (*self as f64).iter_bytes(lsb0, f)
-    }
-}
-
 impl IterBytes for f32 {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {

@@ -111,7 +111,7 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         ty::ty_char => Type::char(),
         ty::ty_int(t) => Type::int_from_ty(cx, t),
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-        ty::ty_float(t) => Type::float_from_ty(cx, t),
+        ty::ty_float(t) => Type::float_from_ty(t),
 
         ty::ty_estr(ty::vstore_uniq) |
         ty::ty_estr(ty::vstore_box) |
@@ -199,7 +199,7 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
       ty::ty_char => Type::char(),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-      ty::ty_float(t) => Type::float_from_ty(cx, t),
+      ty::ty_float(t) => Type::float_from_ty(t),
       ty::ty_estr(ty::vstore_uniq) => {
         Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
       }

@@ -260,7 +260,6 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: &ty::sty) {
       }
       ty::ty_float(t) => {
         match t {
-          ty_f => w.write_char('l'),
           ty_f32 => w.write_str(&"Mf"),
           ty_f64 => w.write_str(&"MF"),
         }

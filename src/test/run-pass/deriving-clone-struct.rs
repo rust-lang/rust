@@ -22,7 +22,6 @@ struct S {
     _u32: u32,
     _u64: u64,
 
-    _float: float,
     _f32: f32,
     _f64: f64,
 

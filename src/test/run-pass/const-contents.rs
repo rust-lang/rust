@@ -12,7 +12,7 @@
 
 static lsl : int = 1 << 2;
 static add : int = 1 + 2;
-static addf : float = 1.0f + 2.0f;
+static addf : f64 = 1.0 + 2.0;
 static not : int = !0;
 static notb : bool = !true;
 static neg : int = -(1);
@@ -20,7 +20,7 @@ static neg : int = -(1);
 pub fn main() {
     assert_eq!(lsl, 4);
     assert_eq!(add, 3);
-    assert_eq!(addf, 3.0f);
+    assert_eq!(addf, 3.0);
     assert_eq!(not, -1);
     assert_eq!(notb, false);
     assert_eq!(neg, -1);

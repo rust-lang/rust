@@ -27,7 +27,7 @@ impl Trait<int> for S2 {
 }
 
 pub fn main() {
-    let _ = S::<int>::new::<float>(1, 1.0);
-    let _: S2 = Trait::<int>::new::<float>(1, 1.0);
+    let _ = S::<int>::new::<f64>(1, 1.0);
+    let _: S2 = Trait::<int>::new::<f64>(1, 1.0);
 }
 

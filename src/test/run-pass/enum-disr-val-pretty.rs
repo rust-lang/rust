@@ -21,5 +21,5 @@ pub fn main() {
 
 fn test_color(color: color, val: int, _name: ~str) {
     assert!(color as int == val);
-    assert!(color as float == val as float);
+    assert!(color as f64 == val as f64);
 }

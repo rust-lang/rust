@@ -2269,12 +2269,12 @@ mod tests {
     #[test]
     fn test_iterator_scan() {
         // test the type inference
-        fn add(old: &mut int, new: &uint) -> Option<float> {
+        fn add(old: &mut int, new: &uint) -> Option<f64> {
             *old += *new as int;
-            Some(*old as float)
+            Some(*old as f64)
         }
         let xs = [0u, 1, 2, 3, 4];
-        let ys = [0f, 1f, 3f, 6f, 10f];
+        let ys = [0f64, 1.0, 3.0, 6.0, 10.0];
 
         let mut it = xs.iter().scan(0, add);
         let mut i = 0;

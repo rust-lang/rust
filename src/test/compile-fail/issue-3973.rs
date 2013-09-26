@@ -12,12 +12,12 @@
 use std::io;
 
 struct Point {
-    x: float,
-    y: float,
+    x: f64,
+    y: f64,
 }
 
 impl ToStr for Point { //~ ERROR implements a method not defined in the trait
-    fn new(x: float, y: float) -> Point {
+    fn new(x: f64, y: f64) -> Point {
         Point { x: x, y: y }
     }
 

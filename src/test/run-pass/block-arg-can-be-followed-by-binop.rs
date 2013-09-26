@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    let v = ~[-1f, 0f, 1f, 2f, 3f];
+    let v = ~[-1.0, 0.0, 1.0, 2.0, 3.0];
 
     // Trailing expressions don't require parentheses:
-    let y = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
+    let y = do v.iter().fold(0.0) |x, y| { x + *y } + 10.0;
 
-    assert_eq!(y, 15f);
+    assert_eq!(y, 15.0);
 }

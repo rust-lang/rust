@@ -29,9 +29,9 @@ impl Trait<int> for S2 {
 }
 
 fn main() {
-    let _ = S::new::<int,float>(1, 1.0);    //~ ERROR the impl referenced by this path has 1 type parameter, but 0 type parameters were supplied
-    let _ = S::<'self,int>::new::<float>(1, 1.0);  //~ ERROR this impl has no lifetime parameter
-    let _: S2 = Trait::new::<int,float>(1, 1.0);    //~ ERROR the trait referenced by this path has 1 type parameter, but 0 type parameters were supplied
-    let _: S2 = Trait::<'self,int>::new::<float>(1, 1.0);   //~ ERROR this trait has no lifetime parameter
+    let _ = S::new::<int,f64>(1, 1.0);    //~ ERROR the impl referenced by this path has 1 type parameter, but 0 type parameters were supplied
+    let _ = S::<'self,int>::new::<f64>(1, 1.0);  //~ ERROR this impl has no lifetime parameter
+    let _: S2 = Trait::new::<int,f64>(1, 1.0);    //~ ERROR the trait referenced by this path has 1 type parameter, but 0 type parameters were supplied
+    let _: S2 = Trait::<'self,int>::new::<f64>(1, 1.0);   //~ ERROR this trait has no lifetime parameter
 }
 

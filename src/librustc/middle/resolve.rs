@@ -772,7 +772,6 @@ pub fn PrimitiveTypeTable() -> PrimitiveTypeTable {
 
     table.intern("bool",    ty_bool);
     table.intern("char",    ty_char);
-    table.intern("float",   ty_float(ty_f));
     table.intern("f32",     ty_float(ty_f32));
     table.intern("f64",     ty_float(ty_f64));
     table.intern("int",     ty_int(ty_i));

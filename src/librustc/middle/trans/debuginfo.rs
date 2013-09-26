@@ -1046,7 +1046,6 @@ fn basic_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
             ast::ty_u64 => (~"u64", DW_ATE_unsigned)
         },
         ty::ty_float(float_ty) => match float_ty {
-            ast::ty_f => (~"float", DW_ATE_float),
             ast::ty_f32 => (~"f32", DW_ATE_float),
             ast::ty_f64 => (~"f64", DW_ATE_float)
         },

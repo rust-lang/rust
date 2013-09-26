@@ -233,7 +233,6 @@ impl fmt::Default for clean::Type {
                     ast::ty_uint(ast::ty_u16) => "u16",
                     ast::ty_uint(ast::ty_u32) => "u32",
                     ast::ty_uint(ast::ty_u64) => "u64",
-                    ast::ty_float(ast::ty_f) => "float",
                     ast::ty_float(ast::ty_f32) => "f32",
                     ast::ty_float(ast::ty_f64) => "f64",
                     ast::ty_str => "str",

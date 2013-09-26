@@ -33,7 +33,6 @@ impl TypeExt for int {}
 
 impl TypeExt for f32 {}
 impl TypeExt for f64 {}
-impl TypeExt for float {}
 
 
 pub trait NumExt: TypeExt + Eq + Ord + Num + NumCast {}
@@ -52,7 +51,6 @@ impl NumExt for int {}
 
 impl NumExt for f32 {}
 impl NumExt for f64 {}
-impl NumExt for float {}
 
 
 pub trait UnSignedExt: NumExt {}
@@ -74,7 +72,6 @@ impl SignedExt for int {}
 
 impl SignedExt for f32 {}
 impl SignedExt for f64 {}
-impl SignedExt for float {}
 
 
 pub trait IntegerExt: NumExt {}
@@ -96,7 +93,6 @@ pub trait FloatExt: NumExt + ApproxEq<Self> {}
 
 impl FloatExt for f32 {}
 impl FloatExt for f64 {}
-impl FloatExt for float {}
 
 
 fn test_float_ext<T:FloatExt>(n: T) { println!("{}", n < n) }
