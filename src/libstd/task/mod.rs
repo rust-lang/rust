@@ -542,12 +542,9 @@ pub fn deschedule() {
     use rt::local::Local;
     use rt::sched::Scheduler;
 
-    // FIXME #6842: What does yield really mean in newsched?
     // FIXME(#7544): Optimize this, since we know we won't block.
     let sched: ~Scheduler = Local::take();
-    do sched.deschedule_running_task_and_then |sched, task| {
-        sched.enqueue_blocked_task(task);
-    }
+    sched.yield_now();
 }
 
 pub fn failing() -> bool {
