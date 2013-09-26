@@ -523,7 +523,7 @@ impl Bitv {
  * with the most significant bits of each byte coming first. Each
  * bit becomes true if equal to 1 or false if equal to 0.
  */
-pub fn from_utf8(bytes: &[u8]) -> Bitv {
+pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
         let b = bytes[i / 8] as uint;
         let offset = i % 8;
@@ -1275,8 +1275,8 @@ mod tests {
     }
 
     #[test]
-    fn test_from_utf8() {
-        let bitv = from_utf8([0b10110110, 0b00000000, 0b11111111]);
+    fn test_from_bytes() {
+        let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = ~"10110110" + "00000000" + "11111111";
         assert_eq!(bitv.to_str(), str);
     }
@@ -1302,7 +1302,7 @@ mod tests {
     #[test]
     fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
-        assert_eq!(from_utf8([0b00100110]).to_bools(), bools);
+        assert_eq!(from_bytes([0b00100110]).to_bools(), bools);
     }
 
     #[test]
