@@ -117,6 +117,11 @@ extern_fn_clone!(A, B, C, D, E, F)
 extern_fn_clone!(A, B, C, D, E, F, G)
 extern_fn_clone!(A, B, C, D, E, F, G, H)
 
+/// Standalone function for invoking `Clone`
+pub fn clone<T: Clone>(o: &T) -> T {
+    o.clone()
+}
+
 /// A trait distinct from `Clone` which represents "deep copies" of things like
 /// managed boxes which would otherwise not be copied.
 pub trait DeepClone {
@@ -197,6 +202,11 @@ extern_fn_deep_clone!(A, B, C, D, E, F)
 extern_fn_deep_clone!(A, B, C, D, E, F, G)
 extern_fn_deep_clone!(A, B, C, D, E, F, G, H)
 
+/// Standalone function for invoking `DeepClone`
+pub fn deep_clone<T: DeepClone>(o: &T) -> T {
+    o.deep_clone()
+}
+
 #[test]
 fn test_owned_clone() {
     let a = ~5i;
@@ -252,4 +262,25 @@ fn test_extern_fn_clone() {
     let _ = test_fn_a.deep_clone();
     let _ = test_fn_b::<int>.deep_clone();
     let _ = test_fn_c.deep_clone();
+}
+
+#[test]
+fn test_standalone_fn() {
+    use iter::Iterator;
+    use vec::ImmutableVector;
+
+    let a = ~5u;
+    let b = ~6u;
+    let c = clone(&a);
+    let d = deep_clone(&b);
+    assert_eq!(a, c);
+    assert_eq!(b, d);
+
+    let e = ~[1, 2, 3, 4];
+    let f = e.iter().map(clone).to_owned_vec();
+    assert_eq!(e, f);
+
+    let g = ~[5, 6, 7, 8];
+    let h = g.iter().map(deep_clone).to_owned_vec();
+    assert_eq!(g, h);
 }

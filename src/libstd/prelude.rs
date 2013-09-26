@@ -42,6 +42,7 @@ pub use result::{Result, Ok, Err};
 pub use io::{print, println};
 pub use iter::range;
 pub use from_str::from_str;
+pub use clone::{clone, deep_clone};
 
 // Reexported types and traits
 pub use c_str::ToCStr;
