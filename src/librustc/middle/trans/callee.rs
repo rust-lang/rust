@@ -760,7 +760,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             }
             Some(expr::Ignore) => {
                 // drop the value if it is not being saved.
-                bcx = glue::drop_ty(bcx, opt_llretslot.unwrap(), ret_ty);
+                bcx = do glue::drop_ty(bcx, ret_ty) { opt_llretslot.unwrap() };
             }
             Some(expr::SaveIn(_)) => { }
         }

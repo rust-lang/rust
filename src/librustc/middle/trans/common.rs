@@ -310,7 +310,7 @@ pub struct TypeDroppingCleanupFunction {
 
 impl CleanupFunction for TypeDroppingCleanupFunction {
     fn clean(&self, block: @mut Block) -> @mut Block {
-        glue::drop_ty(block, self.val, self.t)
+        do glue::drop_ty(block, self.t) { self.val }
     }
 }
 

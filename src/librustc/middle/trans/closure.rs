@@ -426,7 +426,7 @@ pub fn make_closure_glue(
         cx: @mut Block,
         v: ValueRef,
         t: ty::t,
-        glue_fn: &fn(@mut Block, v: ValueRef, t: ty::t) -> @mut Block) -> @mut Block {
+        glue_fn: val_and_ty_fn) -> @mut Block {
     let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
@@ -439,7 +439,7 @@ pub fn make_closure_glue(
             let box_ptr_v = Load(cx, box_cell_v);
             do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
                 let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
-                glue_fn(bcx, box_cell_v, closure_ty)
+                do glue_fn(bcx, closure_ty) { box_cell_v }
             }
         }
     }
@@ -457,9 +457,9 @@ pub fn make_opaque_cbox_drop_glue(
             bcx.tcx().sess.bug("trying to trans drop glue of @fn")
         }
         ast::OwnedSigil => {
-            glue::free_ty(
-                bcx, cboxptr,
-                ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
+            do glue::free_ty(bcx, ty::mk_opaque_closure_ptr(bcx.tcx(), sigil)) {
+                cboxptr
+            }
         }
     }
 }

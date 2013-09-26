@@ -541,7 +541,9 @@ pub fn get_base_and_len(bcx: @mut Block,
     }
 }
 
-pub type iter_vec_block<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type iter_vec_block<'self> = &'self fn(@mut Block, ty::t,
+                                           &fn() -> ValueRef) -> @mut Block;
+
 
 pub fn iter_vec_raw(bcx: @mut Block, data_ptr: ValueRef, vec_ty: ty::t,
                     fill: ValueRef, f: iter_vec_block) -> @mut Block {
@@ -565,7 +567,7 @@ pub fn iter_vec_raw(bcx: @mut Block, data_ptr: ValueRef, vec_ty: ty::t,
     let body_bcx = base::sub_block(header_bcx, "iter_vec_loop_body");
     let next_bcx = base::sub_block(header_bcx, "iter_vec_next");
     CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
-    let body_bcx = f(body_bcx, data_ptr, unit_ty);
+    let body_bcx = do f(body_bcx, unit_ty) { data_ptr };
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
                                            [C_int(bcx.ccx(), 1)]),
                      body_bcx.llbb);

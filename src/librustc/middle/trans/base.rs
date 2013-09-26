@@ -702,7 +702,8 @@ pub fn compare_scalar_values(cx: @mut Block,
     }
 }
 
-pub type val_and_ty_fn<'self> = &'self fn(@mut Block, ValueRef, ty::t) -> @mut Block;
+pub type val_and_ty_fn<'self> = &'self fn(@mut Block, ty::t,
+                                          &fn() -> ValueRef) -> @mut Block;
 
 pub fn load_inbounds(cx: @mut Block, p: ValueRef, idxs: &[uint]) -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
@@ -725,9 +726,9 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
         let mut cx = cx;
 
         for (i, &arg) in variant.args.iter().enumerate() {
-            cx = f(cx,
-                   adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
-                   ty::subst_tps(tcx, tps, None, arg));
+            cx = do f(cx, ty::subst_tps(tcx, tps, None, arg)) {
+                adt::trans_field_ptr(cx, repr, av, variant.disr_val, i)
+            };
         }
         return cx;
     }
@@ -738,8 +739,9 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
-                  let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
-                  cx = f(cx, llfld_a, field_ty.mt.ty);
+                  cx = do f(cx, field_ty.mt.ty) {
+                      adt::trans_field_ptr(cx, repr, av, discr, i)
+                  }
               }
           }
       }
@@ -751,8 +753,9 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for (i, arg) in args.iter().enumerate() {
-              let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
-              cx = f(cx, llfld_a, *arg);
+              cx = do f(cx, *arg) {
+                adt::trans_field_ptr(cx, repr, av, 0, i)
+              };
           }
       }
       ty::ty_enum(tid, ref substs) => {
@@ -771,7 +774,7 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
                                     substs.tps, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, ty::mk_int());
+                  cx = do f(cx, ty::mk_int()) { lldiscrim_a };
                   let unr_cx = sub_block(cx, "enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -2963,7 +2966,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = types.array(&int_type, n_subcrates as u64);
-    let maptype = Type::struct_([types.i32(), int_type, arrtype], false);
+    let maptype = types.struct_([types.i32(), int_type, arrtype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -2971,7 +2974,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     // On windows we'd like to export the toplevel cratemap
     // such that we can find it from libstd.
-    if targ_cfg.os == session::OsWin32 && "toplevel" == mapname {
+    if sess.targ_cfg.os == session::OsWin32 && "toplevel" == mapname {
         lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
     } else {
         lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
@@ -3003,7 +3006,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     unsafe {
         let mod_map = create_module_map(ccx);
         llvm::LLVMSetInitializer(map, C_struct(ccx,
-            [C_i32(ccx, 1),            
+            [C_i32(ccx, 1),
              p2i(ccx, mod_map),
              C_array(ccx.types.i(), subcrates)]));
     }

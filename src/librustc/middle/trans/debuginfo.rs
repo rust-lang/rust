@@ -1332,8 +1332,8 @@ fn describe_variant(cx: &mut CrateContext,
                     span: Span)
                  -> (DICompositeType, Type, @MemberDescriptionFactory) {
     let variant_name = token::ident_to_str(&variant_info.name);
-    let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
-                                          struct_def.packed);
+    let variant_llvm_type = cx.types.struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
+                                             struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
 
     // Find the source code location of the variant's definition
