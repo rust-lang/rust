@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::ast::Name;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use syntax::visit::Visitor;
 
 pub fn trans_block(bcx: @mut Block, b: &ast::Block, dest: expr::Dest) -> @mut Block {
     let _icx = push_ctxt("trans_block");
@@ -64,12 +65,22 @@ pub fn trans_if(bcx: @mut Block,
     // Drop branches that are known to be impossible
     if is_const(cond_val) && !is_undef(cond_val) {
         if const_to_uint(cond_val) == 1 {
+            match els {
+                Some(elexpr) => {
+                    let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx };
+                    trans.visit_expr(elexpr, ());
+                }
+                None => {}
+            }
             // if true { .. } [else { .. }]
             return do with_scope(bcx, thn.info(), "if_true_then") |bcx| {
                 let bcx_out = trans_block(bcx, thn, dest);
                 trans_block_cleanups(bcx_out, block_cleanups(bcx))
             }
         } else {
+            let mut trans = TransItemVisitor { ccx: bcx.fcx.ccx } ;
+            trans.visit_block(thn, ());
+
             match els {
                 // if false { .. } else { .. }
                 Some(elexpr) => {
