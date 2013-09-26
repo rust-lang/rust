@@ -3853,7 +3853,7 @@ impl Parser {
 
         let mut meths = ~[];
         if self.eat(&token::SEMI) {
-            self.obsolete(*self.span, ObsoleteEmptyImpl);
+            self.obsolete(*self.last_span, ObsoleteEmptyImpl);
         } else {
             self.expect(&token::LBRACE);
             while !self.eat(&token::RBRACE) {
