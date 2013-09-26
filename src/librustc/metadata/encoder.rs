@@ -521,12 +521,12 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For newtype structs, iterates through the node ID of the constructor.
 fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
                           -> bool {
-    let mut continue = true;
+    let mut continue_ = true;
     match item.node {
         item_enum(ref enum_def, _) => {
             for variant in enum_def.variants.iter() {
-                continue = callback(variant.node.id);
-                if !continue {
+                continue_ = callback(variant.node.id);
+                if !continue_ {
                     break
                 }
             }
@@ -537,7 +537,7 @@ fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
                 Some(ctor_id) if struct_def.fields.len() > 0 &&
                         struct_def.fields[0].node.kind ==
                         ast::unnamed_field => {
-                    continue = callback(ctor_id);
+                    continue_ = callback(ctor_id);
                 }
                 _ => {}
             }
@@ -545,7 +545,7 @@ fn each_auxiliary_node_id(item: @item, callback: &fn(NodeId) -> bool)
         _ => {}
     }
 
-    continue
+    continue_
 }
 
 fn encode_reexports(ecx: &EncodeContext,
