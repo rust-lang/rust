@@ -19,6 +19,7 @@ use iter::{AdditiveIterator, Extendable, Iterator};
 use option::{Option, Some, None};
 use str;
 use str::{OwnedStr, Str, StrVector};
+use to_bytes::IterBytes;
 use util;
 use vec::Vector;
 use super::{GenericPath, GenericPathUnsafe};
@@ -94,6 +95,13 @@ impl ToCStr for Path {
     #[inline]
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_vec().to_c_str_unchecked()
+    }
+}
+
+impl IterBytes for Path {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: &fn(&[u8]) -> bool) -> bool {
+        self.repr.iter_bytes(lsb0, f)
     }
 }
 
