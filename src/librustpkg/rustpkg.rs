@@ -33,7 +33,7 @@ use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
 use messages::{error, warn, note};
-use path_util::build_pkg_id_in_workspace;
+use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
 use path_util::{U_RWX, in_rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
@@ -44,7 +44,7 @@ use context::{Context, BuildContext,
                        LLVMAssemble, LLVMCompileBitcode};
 use package_id::PkgId;
 use package_source::PkgSrc;
-use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
+use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench, Tests};
 // use workcache_support::{discover_outputs, digest_only_date};
 use workcache_support::digest_only_date;
 use exit_codes::COPY_FAILED_CODE;
@@ -177,6 +177,8 @@ impl<'self> PkgScript<'self> {
 pub trait CtxMethods {
     fn run(&self, cmd: &str, args: ~[~str]);
     fn do_cmd(&self, _cmd: &str, _pkgname: &str);
+    /// Returns a pair of the selected package ID, and the destination workspace
+    fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(PkgId, Path)>;
     /// Returns the destination workspace
     fn build(&self, pkg_src: &mut PkgSrc, what: &WhatToBuild) -> Path;
     fn clean(&self, workspace: &Path, id: &PkgId);
@@ -190,43 +192,53 @@ pub trait CtxMethods {
                         target_workspace: &Path,
                         id: &PkgId) -> ~[~str];
     fn prefer(&self, _id: &str, _vers: Option<~str>);
-    fn test(&self);
+    fn test(&self, id: &PkgId, workspace: &Path);
     fn uninstall(&self, _id: &str, _vers: Option<~str>);
     fn unprefer(&self, _id: &str, _vers: Option<~str>);
     fn init(&self);
 }
 
 impl CtxMethods for BuildContext {
+    fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(PkgId, Path)> {
+        if args.len() < 1 {
+            match cwd_to_workspace() {
+                None if self.context.use_rust_path_hack => {
+                    let cwd = os::getcwd();
+                    let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
+                    let mut pkg_src = PkgSrc::new(cwd, true, pkgid);
+                    let dest_ws = self.build(&mut pkg_src, what);
+                    Some((pkg_src.id, dest_ws))
+                }
+                None => { usage::build(); None }
+                Some((ws, pkgid)) => {
+                    let mut pkg_src = PkgSrc::new(ws, false, pkgid);
+                    let dest_ws = self.build(&mut pkg_src, what);
+                    Some((pkg_src.id, dest_ws))
+                }
+            }
+        } else {
+            // The package id is presumed to be the first command-line
+            // argument
+            let pkgid = PkgId::new(args[0].clone());
+            let mut dest_ws = None;
+            do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
+                debug!("found pkg %s in workspace %s, trying to build",
+                       pkgid.to_str(), workspace.to_str());
+                let mut pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
+                dest_ws = Some(self.build(&mut pkg_src, what));
+                true
+            };
+            assert!(dest_ws.is_some());
+            // n.b. If this builds multiple packages, it only returns the workspace for
+            // the last one. The whole building-multiple-packages-with-the-same-ID is weird
+            // anyway and there are no tests for it, so maybe take it out
+            Some((pkgid, dest_ws.unwrap()))
+        }
+    }
     fn run(&self, cmd: &str, args: ~[~str]) {
         match cmd {
             "build" => {
-                if args.len() < 1 {
-                    match cwd_to_workspace() {
-                        None if self.context.use_rust_path_hack => {
-                            let cwd = os::getcwd();
-                            let pkgid = PkgId::new(cwd.components[cwd.components.len() - 1]);
-                            let mut pkg_src = PkgSrc::new(cwd, true, pkgid);
-                            self.build(&mut pkg_src, &Everything);
-                        }
-                        None => { usage::build(); return; }
-                        Some((ws, pkgid)) => {
-                            let mut pkg_src = PkgSrc::new(ws, false, pkgid);
-                            self.build(&mut pkg_src, &Everything);
-                        }
-                    }
-                }
-                else {
-                    // The package id is presumed to be the first command-line
-                    // argument
-                    let pkgid = PkgId::new(args[0].clone());
-                    do each_pkg_parent_workspace(&self.context, &pkgid) |workspace| {
-                        debug!("found pkg %s in workspace %s, trying to build",
-                               pkgid.to_str(), workspace.to_str());
-                        let mut pkg_src = PkgSrc::new(workspace.clone(), false, pkgid.clone());
-                        self.build(&mut pkg_src, &Everything);
-                        true
-                    };
-                }
+                self.build_args(args, &Everything);
             }
             "clean" => {
                 if args.len() < 1 {
@@ -310,7 +322,17 @@ impl CtxMethods for BuildContext {
                 self.prefer(args[0], None);
             }
             "test" => {
-                self.test();
+                // Build the test executable
+                let maybe_id_and_workspace = self.build_args(args, &Tests);
+                match maybe_id_and_workspace {
+                    Some((pkg_id, workspace)) => {
+                        // Assuming it's built, run the tests
+                        self.test(&pkg_id, &workspace);
+                    }
+                    None => {
+                        error("Testing failed because building the specified package failed.");
+                    }
+                }
             }
             "init" => {
                 if args.len() != 0 {
@@ -425,6 +447,8 @@ impl CtxMethods for BuildContext {
             match what_to_build {
                 // Find crates inside the workspace
                 &Everything => pkg_src.find_crates(),
+                // Find only tests
+                &Tests => pkg_src.find_crates_with_filter(|s| { is_test(&Path(s)) }),
                 // Don't infer any crates -- just build the one that was requested
                 &JustOne(ref p) => {
                     // We expect that p is relative to the package source's start directory,
@@ -592,9 +616,25 @@ impl CtxMethods for BuildContext {
         fail!("prefer not yet implemented");
     }
 
-    fn test(&self)  {
-        // stub
-        fail!("test not yet implemented");
+    fn test(&self, pkgid: &PkgId, workspace: &Path)  {
+        match built_test_in_workspace(pkgid, workspace) {
+            Some(test_exec) => {
+                debug!("test: test_exec = %s", test_exec.to_str());
+                let p_output = run::process_output(test_exec.to_str(), [~"--test"]);
+                if p_output.status == 0 {
+                    println(str::from_utf8(p_output.output));
+                }
+                    else {
+                    println(str::from_utf8(p_output.error));
+                }
+                os::set_exit_status(p_output.status);
+            }
+            None => {
+                error(fmt!("Internal error: test executable for package ID %s in workspace %s \
+                           wasn't built! Please report this as a bug.",
+                           pkgid.to_str(), workspace.to_str()));
+            }
+        }
     }
 
     fn init(&self) {

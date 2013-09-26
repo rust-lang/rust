@@ -246,13 +246,17 @@ impl PkgSrc {
     /// Infers crates to build. Called only in the case where there
     /// is no custom build logic
     pub fn find_crates(&mut self) {
+        self.find_crates_with_filter(|_| true);
+    }
+
+    pub fn find_crates_with_filter(&mut self, filter: &fn(&str) -> bool) {
         use conditions::missing_pkg_files::cond;
 
         let prefix = self.start_dir.components.len();
         debug!("Matching against %s", self.id.short_name);
         do os::walk_dir(&self.start_dir) |pth| {
             let maybe_known_crate_set = match pth.filename() {
-                Some(filename) => match filename {
+                Some(filename) if filter(filename) => match filename {
                     "lib.rs" => Some(&mut self.libs),
                     "main.rs" => Some(&mut self.mains),
                     "test.rs" => Some(&mut self.tests),
