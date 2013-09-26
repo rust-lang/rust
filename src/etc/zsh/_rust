@@ -71,7 +71,6 @@ _rustc_opts_debug=(
     'count-type-sizes:count the sizes of aggregate types'
     'meta-stats:gather metadata statistics'
     'no-opt:do not optimize, even if -O is passed'
-    'no-monomorphic-collapse:do not collapse template instantiations'
     'print-link-args:Print the arguments passed to the linker'
     'gc:Garbage collect shared data (experimental)'
     'jit:Execute using JIT (experimental)'

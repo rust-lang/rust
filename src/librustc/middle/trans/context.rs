@@ -22,7 +22,6 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
 use middle::trans::debuginfo;
-use middle::trans::type_use;
 use middle::trans::common::{C_i32, C_null};
 use middle::ty;
 
@@ -73,8 +72,6 @@ pub struct CrateContext {
      // Cache instances of monomorphized functions
      monomorphized: HashMap<mono_id, ValueRef>,
      monomorphizing: HashMap<ast::DefId, uint>,
-     // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: HashMap<ast::DefId, @~[type_use::type_uses]>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
@@ -204,7 +201,6 @@ impl CrateContext {
                   non_inlineable_statics: HashSet::new(),
                   monomorphized: HashMap::new(),
                   monomorphizing: HashMap::new(),
-                  type_use_cache: HashMap::new(),
                   vtables: HashMap::new(),
                   const_cstr_cache: HashMap::new(),
                   const_globals: HashMap::new(),
