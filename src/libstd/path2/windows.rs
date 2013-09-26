@@ -328,6 +328,15 @@ impl GenericPathUnsafe for Path {
 }
 
 impl GenericPath for Path {
+    #[inline]
+    fn from_vec_opt(v: &[u8]) -> Option<Path> {
+        if contains_nul(v) || !str::is_utf8(v) {
+            None
+        } else {
+            Some(unsafe { GenericPathUnsafe::from_vec_unchecked(v) })
+        }
+    }
+
     /// See `GenericPath::as_str` for info.
     /// Always returns a `Some` value.
     #[inline]
@@ -583,6 +592,12 @@ impl Path {
         GenericPath::from_vec(v)
     }
 
+    /// Returns a new Path from a byte vector, if possible
+    #[inline]
+    pub fn from_vec_opt(v: &[u8]) -> Option<Path> {
+        GenericPath::from_vec_opt(v)
+    }
+
     /// Returns a new Path from a string
     ///
     /// # Failure
@@ -591,6 +606,12 @@ impl Path {
     #[inline]
     pub fn from_str(s: &str) -> Path {
         GenericPath::from_str(s)
+    }
+
+    /// Returns a new Path from a string, if possible
+    #[inline]
+    pub fn from_str_opt(s: &str) -> Option<Path> {
+        GenericPath::from_str_opt(s)
     }
 
     /// Converts the Path into an owned byte vector
@@ -1199,6 +1220,15 @@ mod tests {
         // I'm going to err on the side of not normalizing it, as this skips the filesystem
         t!(s: Path::from_str("\\\\.\\foo/bar"), "\\\\.\\foo/bar");
         t!(s: Path::from_str("\\\\.\\foo\\bar"), "\\\\.\\foo\\bar");
+    }
+
+    #[test]
+    fn test_opt_paths() {
+        assert_eq!(Path::from_vec_opt(b!("foo\\bar", 0)), None);
+        assert_eq!(Path::from_vec_opt(b!("foo\\bar", 0x80)), None);
+        t!(v: Path::from_vec_opt(b!("foo\\bar")).unwrap(), b!("foo\\bar"));
+        assert_eq!(Path::from_str_opt("foo\\bar\0"), None);
+        t!(s: Path::from_str_opt("foo\\bar").unwrap(), "foo\\bar");
     }
 
     #[test]

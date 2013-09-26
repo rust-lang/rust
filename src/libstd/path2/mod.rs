@@ -81,6 +81,17 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         }
     }
 
+    /// Creates a new Path from a byte vector, if possible.
+    /// The resulting Path will always be normalized.
+    #[inline]
+    fn from_vec_opt(path: &[u8]) -> Option<Self> {
+        if contains_nul(path) {
+            None
+        } else {
+            Some(unsafe { GenericPathUnsafe::from_vec_unchecked(path) })
+        }
+    }
+
     /// Creates a new Path from a string.
     /// The resulting Path will always be normalized.
     ///
@@ -94,6 +105,18 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             GenericPath::from_vec(path.as_bytes()) // let from_vec handle the condition
         } else {
             unsafe { GenericPathUnsafe::from_str_unchecked(path) }
+        }
+    }
+
+    /// Creates a new Path from a string, if possible.
+    /// The resulting Path will always be normalized.
+    #[inline]
+    fn from_str_opt(path: &str) -> Option<Self> {
+        let v = path.as_bytes();
+        if contains_nul(v) {
+            None
+        } else {
+            Some(unsafe { GenericPathUnsafe::from_str_unchecked(path) })
         }
     }
 
