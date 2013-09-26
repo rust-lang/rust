@@ -608,6 +608,10 @@ config.stamp: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 # Primary-target makefiles
 ######################################################################
 
+# Issue #9531: If you change the order of any of the following (or add
+# new definitions), make sure definitions always precede their uses,
+# especially for the dependency lists of recipes.
+
 include $(CFG_SRC_DIR)mk/target.mk
 include $(CFG_SRC_DIR)mk/host.mk
 include $(CFG_SRC_DIR)mk/stage0.mk
