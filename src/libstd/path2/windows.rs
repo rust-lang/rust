@@ -446,11 +446,11 @@ impl GenericPath for Path {
     }
 
     #[inline]
-    fn pop_opt(&mut self) -> Option<~[u8]> {
-        self.pop_opt_str().map_move(|s| s.into_bytes())
+    fn pop(&mut self) -> Option<~[u8]> {
+        self.pop_str().map_move(|s| s.into_bytes())
     }
 
-    fn pop_opt_str(&mut self) -> Option<~str> {
+    fn pop_str(&mut self) -> Option<~str> {
         match self.sepidx_or_prefix_len() {
             None if "." == self.repr => None,
             None => {
@@ -598,6 +598,21 @@ impl GenericPath for Path {
             }
             Some(Path::from_str(comps.connect("\\")))
         }
+    }
+
+    /// Executes a callback with the receiver and every parent
+    fn each_parent(&self, f: &fn(&Path) -> bool) -> bool {
+        let mut p = self.clone();
+        loop {
+            if !f(&p) {
+                return false;
+            }
+            let f = p.pop();
+            if f.is_none() || (!p.is_verbatim() && bytes!("..") == f.unwrap()) {
+                break;
+            }
+        }
+        true
     }
 }
 
@@ -1013,7 +1028,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
             };
             if (is_abs || has_abs_prefix) && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(".."); n_up += 1 }
-            else { comps.pop_opt(); changed = true }
+            else { comps.pop(); changed = true }
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {
@@ -1654,7 +1669,7 @@ mod tests {
                 {
                     let pstr = $path;
                     let mut p = Path::from_str(pstr);
-                    let file = p.pop_opt_str();
+                    let file = p.pop_str();
                     let left = $left;
                     assert!(p.as_str() == Some(left),
                         "`%s`.pop() failed; expected remainder `%s`, found `%s`",
@@ -1668,7 +1683,7 @@ mod tests {
             (v: [$($path:expr),+], [$($left:expr),+], Some($($right:expr),+)) => (
                 {
                     let mut p = Path::from_vec(b!($($path),+));
-                    let file = p.pop_opt();
+                    let file = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file.map(|v| v.as_slice()), Some(b!($($right),+)));
                 }
@@ -1676,7 +1691,7 @@ mod tests {
             (v: [$($path:expr),+], [$($left:expr),+], None) => (
                 {
                     let mut p = Path::from_vec(b!($($path),+));
-                    let file = p.pop_opt();
+                    let file = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file, None);
                 }
@@ -2372,5 +2387,55 @@ mod tests {
         t!(s: "\\\\.\\foo\\bar\\baz", ["bar", "baz"]);
         t!(s: "\\\\.\\foo\\bar", ["bar"]);
         t!(s: "\\\\.\\foo", []);
+    }
+
+    #[test]
+    fn test_each_parent() {
+        assert!(Path::from_str("/foo/bar").each_parent(|_| true));
+        assert!(!Path::from_str("/foo/bar").each_parent(|_| false));
+
+        macro_rules! t(
+            (s: $path:expr, $exp:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    let exp: &[&str] = $exp;
+                    let mut comps = exp.iter().map(|&x|x);
+                    do path.each_parent |p| {
+                        let p = p.as_str();
+                        assert!(p.is_some());
+                        let e = comps.next();
+                        assert!(e.is_some());
+                        assert_eq!(p.unwrap(), e.unwrap());
+                        true
+                    };
+                    assert!(comps.next().is_none());
+                }
+            )
+        )
+
+        t!(s: "\\foo\\bar", ["\\foo\\bar", "\\foo", "\\"]);
+        t!(s: "\\foo\\bar\\baz", ["\\foo\\bar\\baz", "\\foo\\bar", "\\foo", "\\"]);
+        t!(s: "\\foo", ["\\foo", "\\"]);
+        t!(s: "\\", ["\\"]);
+        t!(s: "foo\\bar\\baz", ["foo\\bar\\baz", "foo\\bar", "foo", "."]);
+        t!(s: "foo\\bar", ["foo\\bar", "foo", "."]);
+        t!(s: "foo", ["foo", "."]);
+        t!(s: ".", ["."]);
+        t!(s: "..", [".."]);
+        t!(s: "..\\..\\foo", ["..\\..\\foo", "..\\.."]);
+        t!(s: "C:\\a\\b", ["C:\\a\\b", "C:\\a", "C:\\"]);
+        t!(s: "C:\\", ["C:\\"]);
+        t!(s: "C:a\\b", ["C:a\\b", "C:a", "C:"]);
+        t!(s: "C:", ["C:"]);
+        t!(s: "C:..\\..\\a", ["C:..\\..\\a", "C:..\\.."]);
+        t!(s: "C:..", ["C:.."]);
+        t!(s: "\\\\a\\b\\c", ["\\\\a\\b\\c", "\\\\a\\b"]);
+        t!(s: "\\\\a\\b", ["\\\\a\\b"]);
+        t!(s: "\\\\?\\a\\b\\c", ["\\\\?\\a\\b\\c", "\\\\?\\a\\b", "\\\\?\\a"]);
+        t!(s: "\\\\?\\C:\\a\\b", ["\\\\?\\C:\\a\\b", "\\\\?\\C:\\a", "\\\\?\\C:\\"]);
+        t!(s: "\\\\?\\UNC\\a\\b\\c", ["\\\\?\\UNC\\a\\b\\c", "\\\\?\\UNC\\a\\b"]);
+        t!(s: "\\\\.\\a\\b\\c", ["\\\\.\\a\\b\\c", "\\\\.\\a\\b", "\\\\.\\a"]);
+        t!(s: "\\\\?\\a\\..\\b\\.\\c/d", ["\\\\?\\a\\..\\b\\.\\c/d", "\\\\?\\a\\..\\b\\.",
+                                          "\\\\?\\a\\..\\b", "\\\\?\\a\\..", "\\\\?\\a"]);
     }
 }
