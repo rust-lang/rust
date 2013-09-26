@@ -3224,14 +3224,14 @@ pub mod funcs {
         #[nolink]
         #[abi = "cdecl"]
         pub mod glob {
-            use libc::types::common::c95::{c_void};
             use libc::types::os::arch::c95::{c_char, c_int};
             use libc::types::os::common::posix01::{glob_t};
+            use option::Option;
 
             extern {
                 pub fn glob(pattern: *c_char,
                             flags: c_int,
-                            errfunc: *c_void, // XXX callback
+                            errfunc: Option<extern "C" fn(epath: *c_char, errno: int) -> int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }
