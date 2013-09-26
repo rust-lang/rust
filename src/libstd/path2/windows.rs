@@ -350,6 +350,16 @@ impl GenericPath for Path {
     }
 
     #[inline]
+    fn as_display_str<T>(&self, f: &fn(&str) -> T) -> T {
+        f(self.repr.as_slice())
+    }
+
+    #[inline]
+    fn to_display_str(&self) -> ~str {
+        self.repr.clone()
+    }
+
+    #[inline]
     fn dirname<'a>(&'a self) -> &'a [u8] {
         self.dirname_str().unwrap().as_bytes()
     }
@@ -1337,6 +1347,18 @@ mod tests {
     #[should_fail]
     fn test_not_utf8_fail() {
         Path::from_vec(b!("hello", 0x80, ".txt"));
+    }
+
+    #[test]
+    fn test_display_str() {
+        assert_eq!(Path::from_str("foo").to_display_str(), ~"foo");
+
+        let mut called = false;
+        do Path::from_str("foo").as_display_str |s| {
+            assert_eq!(s, "foo");
+            called = true;
+        };
+        assert!(called);
     }
 
     #[test]

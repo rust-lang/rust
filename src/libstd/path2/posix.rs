@@ -598,6 +598,32 @@ mod tests {
     }
 
     #[test]
+    fn test_display_str() {
+        assert_eq!(Path::from_str("foo").to_display_str(), ~"foo");
+        assert_eq!(Path::from_vec(b!("foo", 0x80)).to_display_str(), ~"foo\uFFFD");
+        assert_eq!(Path::from_vec(b!("foo", 0xff, "bar")).to_display_str(), ~"foo\uFFFDbar");
+
+        let mut called = false;
+        do Path::from_str("foo").as_display_str |s| {
+            assert_eq!(s, "foo");
+            called = true;
+        };
+        assert!(called);
+        called = false;
+        do Path::from_vec(b!("foo", 0x80)).as_display_str |s| {
+            assert_eq!(s, "foo\uFFFD");
+            called = true;
+        };
+        assert!(called);
+        called = false;
+        do Path::from_vec(b!("foo", 0xff, "bar")).as_display_str |s| {
+            assert_eq!(s, "foo\uFFFDbar");
+            called = true;
+        };
+        assert!(called);
+    }
+
+    #[test]
     fn test_components() {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
