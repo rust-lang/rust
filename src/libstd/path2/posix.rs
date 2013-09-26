@@ -26,6 +26,9 @@ use vec::CopyableVector;
 use vec::{Vector, VectorVector};
 use super::{GenericPath, GenericPathUnsafe};
 
+#[cfg(not(target_os = "win32"))]
+use libc;
+
 /// Iterator that yields successive components of a Path
 pub type ComponentIter<'self> = vec::SplitIterator<'self, u8>;
 
@@ -421,6 +424,102 @@ fn contains_nul(v: &[u8]) -> bool {
 
 static dot_static: &'static [u8] = &'static ['.' as u8];
 static dot_dot_static: &'static [u8] = &'static ['.' as u8, '.' as u8];
+
+// Stat support
+#[cfg(not(target_os = "win32"))]
+impl Path {
+    /// Calls stat() on the represented file and returns the resulting libc::stat
+    pub fn stat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
+        do self.with_c_str |buf| {
+            let mut st = super::stat::arch::default_stat();
+            match unsafe { libc::stat(buf as *libc::c_char, &mut st) } {
+                0 => Some(st),
+                _ => None
+            }
+        }
+    }
+
+    /// Returns whether the represented file exists
+    pub fn exists(&self) -> bool {
+        match self.stat() {
+            None => false,
+            Some(_) => true
+        }
+    }
+
+    /// Returns the filesize of the represented file
+    pub fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some(st.st_size as i64)
+        }
+    }
+
+    /// Returns the mode of the represented file
+    pub fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some(st.st_mode as uint)
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "macos")]
+impl Path {
+    /// Returns the atime of the represented file, as (secs, nsecs)
+    pub fn get_atime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_atime as i64, st.st_atime_nsec as int))
+        }
+    }
+
+    /// Returns the mtime of the represented file, as (secs, nsecs)
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_mtime as i64, st.st_mtime_nsec as int))
+        }
+    }
+
+    /// Returns the ctime of the represented file, as (secs, nsecs)
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_ctime as i64, st.st_ctime_nsec as int))
+        }
+    }
+}
+
+#[cfg(unix)]
+impl Path {
+    /// Calls lstat() on the represented file and returns the resulting libc::stat
+    pub fn lstat(&self) -> Option<libc::stat> {
+        #[fixed_stack_segment]; #[inline(never)];
+        do self.with_c_str |buf| {
+            let mut st = super::stat::arch::default_stat();
+            match unsafe { libc::lstat(buf, &mut st) } {
+                0 => Some(st),
+                _ => None
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+impl Path {
+    /// Returns the birthtime of the represented file
+    pub fn get_birthtime(&self) -> Option<(i64, int)> {
+        match self.stat() {
+            None => None,
+            Some(st) => Some((st.st_birthtime as i64, st.st_birthtime_nsec as int))
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
