@@ -643,8 +643,46 @@ pub trait Rng {
 /// available in Rust. If you require a specifically seeded `Rng` for
 /// consistency over time you should pick one algorithm and create the
 /// `Rng` yourself.
-pub fn rng() -> IsaacRng {
-    IsaacRng::new()
+///
+/// This is a very expensive operation as it has to read randomness
+/// from the operating system and use this in an expensive seeding
+/// operation. If one does not require high performance, `task_rng`
+/// and/or `random` may be more appropriate.
+pub fn rng() -> StdRng {
+    StdRng::new()
+}
+
+/// The standard RNG. This is designed to be efficient on the current
+/// platform.
+#[cfg(not(target_word_size="64"))]
+pub struct StdRng { priv rng: IsaacRng }
+
+/// The standard RNG. This is designed to be efficient on the current
+/// platform.
+#[cfg(target_word_size="64")]
+pub struct StdRng { priv rng: Isaac64Rng }
+
+impl StdRng {
+    #[cfg(not(target_word_size="64"))]
+    fn new() -> StdRng {
+        StdRng { rng: IsaacRng::new() }
+    }
+    #[cfg(target_word_size="64")]
+    fn new() -> StdRng {
+        StdRng { rng: Isaac64Rng::new() }
+    }
+}
+
+impl Rng for StdRng {
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        self.rng.next_u32()
+    }
+
+    #[inline]
+    fn next_u64(&mut self) -> u64 {
+        self.rng.next_u64()
+    }
 }
 
 /// Create a weak random number generator with a default algorithm and seed.
@@ -728,7 +766,7 @@ pub fn seed(n: uint) -> ~[u8] {
 }
 
 // used to make space in TLS for a random number generator
-local_data_key!(tls_rng_state: @@mut IsaacRng)
+local_data_key!(tls_rng_state: @mut StdRng)
 
 /**
  * Gives back a lazily initialized task-local random number generator,
@@ -736,15 +774,15 @@ local_data_key!(tls_rng_state: @@mut IsaacRng)
  * `task_rng().gen::<int>()`.
  */
 #[inline]
-pub fn task_rng() -> @mut IsaacRng {
+pub fn task_rng() -> @mut StdRng {
     let r = local_data::get(tls_rng_state, |k| k.map(|&k| *k));
     match r {
         None => {
-            let rng = @@mut IsaacRng::new();
+            let rng = @mut StdRng::new();
             local_data::set(tls_rng_state, rng);
-            *rng
+            rng
         }
-        Some(rng) => *rng
+        Some(rng) => rng
     }
 }
 
@@ -979,6 +1017,15 @@ mod bench {
     #[bench]
     fn rand_isaac64(bh: &mut BenchHarness) {
         let mut rng = Isaac64Rng::new();
+        do bh.iter {
+            rng.gen::<uint>();
+        }
+        bh.bytes = size_of::<uint>() as u64;
+    }
+
+    #[bench]
+    fn rand_std(bh: &mut BenchHarness) {
+        let mut rng = StdRng::new();
         do bh.iter {
             rng.gen::<uint>();
         }
