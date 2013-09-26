@@ -540,19 +540,21 @@ impl Context {
 
 fn shortty(item: &clean::Item) -> &'static str {
     match item.inner {
-        clean::ModuleItem(*)      => "mod",
-        clean::StructItem(*)      => "struct",
-        clean::EnumItem(*)        => "enum",
-        clean::FunctionItem(*)    => "fn",
-        clean::TypedefItem(*)     => "typedef",
-        clean::StaticItem(*)      => "static",
-        clean::TraitItem(*)       => "trait",
-        clean::ImplItem(*)        => "impl",
-        clean::ViewItemItem(*)    => "viewitem",
-        clean::TyMethodItem(*)    => "tymethod",
-        clean::MethodItem(*)      => "method",
-        clean::StructFieldItem(*) => "structfield",
-        clean::VariantItem(*)     => "variant",
+        clean::ModuleItem(*)          => "mod",
+        clean::StructItem(*)          => "struct",
+        clean::EnumItem(*)            => "enum",
+        clean::FunctionItem(*)        => "fn",
+        clean::TypedefItem(*)         => "typedef",
+        clean::StaticItem(*)          => "static",
+        clean::TraitItem(*)           => "trait",
+        clean::ImplItem(*)            => "impl",
+        clean::ViewItemItem(*)        => "viewitem",
+        clean::TyMethodItem(*)        => "tymethod",
+        clean::MethodItem(*)          => "method",
+        clean::StructFieldItem(*)     => "structfield",
+        clean::VariantItem(*)         => "variant",
+        clean::ForeignFunctionItem(*) => "ffi",
+        clean::ForeignStaticItem(*)   => "ffs",
     }
 }
 
@@ -592,7 +594,8 @@ impl<'self> fmt::Default for Item<'self> {
         match it.item.inner {
             clean::ModuleItem(ref m) => item_module(fmt.buf, it.cx,
                                                     it.item, m.items),
-            clean::FunctionItem(ref f) => item_function(fmt.buf, it.item, f),
+            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
+                item_function(fmt.buf, it.item, f),
             clean::TraitItem(ref t) => item_trait(fmt.buf, it.item, t),
             clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
@@ -673,6 +676,10 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             (_, &clean::EnumItem(*)) => false,
             (&clean::StaticItem(*), _) => true,
             (_, &clean::StaticItem(*)) => false,
+            (&clean::ForeignFunctionItem(*), _) => true,
+            (_, &clean::ForeignFunctionItem(*)) => false,
+            (&clean::ForeignStaticItem(*), _) => true,
+            (_, &clean::ForeignStaticItem(*)) => false,
             (&clean::TraitItem(*), _) => true,
             (_, &clean::TraitItem(*)) => false,
             (&clean::FunctionItem(*), _) => true,
@@ -700,27 +707,31 @@ fn item_module(w: &mut io::Writer, cx: &Context,
             }
             curty = myty;
             write!(w, "<h2>{}</h2>\n<table>", match myitem.inner {
-                clean::ModuleItem(*)      => "Modules",
-                clean::StructItem(*)      => "Structs",
-                clean::EnumItem(*)        => "Enums",
-                clean::FunctionItem(*)    => "Functions",
-                clean::TypedefItem(*)     => "Type Definitions",
-                clean::StaticItem(*)      => "Statics",
-                clean::TraitItem(*)       => "Traits",
-                clean::ImplItem(*)        => "Implementations",
-                clean::ViewItemItem(*)    => "Reexports",
-                clean::TyMethodItem(*)    => "Type Methods",
-                clean::MethodItem(*)      => "Methods",
-                clean::StructFieldItem(*) => "Struct Fields",
-                clean::VariantItem(*)     => "Variants",
+                clean::ModuleItem(*)          => "Modules",
+                clean::StructItem(*)          => "Structs",
+                clean::EnumItem(*)            => "Enums",
+                clean::FunctionItem(*)        => "Functions",
+                clean::TypedefItem(*)         => "Type Definitions",
+                clean::StaticItem(*)          => "Statics",
+                clean::TraitItem(*)           => "Traits",
+                clean::ImplItem(*)            => "Implementations",
+                clean::ViewItemItem(*)        => "Reexports",
+                clean::TyMethodItem(*)        => "Type Methods",
+                clean::MethodItem(*)          => "Methods",
+                clean::StructFieldItem(*)     => "Struct Fields",
+                clean::VariantItem(*)         => "Variants",
+                clean::ForeignFunctionItem(*) => "Foreign Functions",
+                clean::ForeignStaticItem(*)   => "Foreign Statics",
             });
         }
 
         match myitem.inner {
-            clean::StaticItem(ref s) => {
+            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
                 struct Initializer<'self>(&'self str);
                 impl<'self> fmt::Default for Initializer<'self> {
                     fn fmt(s: &Initializer<'self>, f: &mut fmt::Formatter) {
+                        if s.len() == 0 { return; }
+                        write!(f.buf, "<code> = </code>");
                         let tag = if s.contains("\n") { "pre" } else { "code" };
                         write!(f.buf, "<{tag}>{}</{tag}>",
                                s.as_slice(), tag=tag);
@@ -729,7 +740,7 @@ fn item_module(w: &mut io::Writer, cx: &Context,
 
                 write!(w, "
                     <tr>
-                        <td><code>{}static {}: {} = </code>{}</td>
+                        <td><code>{}static {}: {}</code>{}</td>
                         <td class='docblock'>{}&nbsp;</td>
                     </tr>
                 ",

@@ -174,6 +174,9 @@ impl RustdocVisitor {
                     };
                     om.impls.push(i);
                 },
+                ast::item_foreign_mod(ref fm) => {
+                    om.foreigns.push(fm.clone());
+                }
                 _ => (),
             }
         }

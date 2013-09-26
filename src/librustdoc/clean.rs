@@ -149,6 +149,8 @@ pub enum ItemEnum {
     MethodItem(Method),
     StructFieldItem(StructField),
     VariantItem(Variant),
+    ForeignFunctionItem(Function),
+    ForeignStaticItem(Static),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -172,6 +174,7 @@ impl Clean<Item> for doctree::Module {
             inner: ModuleItem(Module {
                items: std::vec::concat(&[self.structs.clean(),
                               self.enums.clean(), self.fns.clean(),
+                              std::vec::concat(self.foreigns.clean()),
                               self.mods.clean(), self.typedefs.clean(),
                               self.statics.clean(), self.traits.clean(),
                               self.impls.clean(), self.view_items.clean()])
@@ -964,6 +967,41 @@ impl Clean<ViewListIdent> for ast::path_list_ident {
         ViewListIdent {
             name: self.node.name.clean(),
             source: resolve_def(self.node.id),
+        }
+    }
+}
+
+impl Clean<~[Item]> for ast::foreign_mod {
+    fn clean(&self) -> ~[Item] {
+        self.items.clean()
+    }
+}
+
+impl Clean<Item> for ast::foreign_item {
+    fn clean(&self) -> Item {
+        let inner = match self.node {
+            ast::foreign_item_fn(ref decl, ref generics) => {
+                ForeignFunctionItem(Function {
+                    decl: decl.clean(),
+                    generics: generics.clean(),
+                    purity: ast::extern_fn,
+                })
+            }
+            ast::foreign_item_static(ref ty, mutbl) => {
+                ForeignStaticItem(Static {
+                    type_: ty.clean(),
+                    mutability: if mutbl {Mutable} else {Immutable},
+                    expr: ~"",
+                })
+            }
+        };
+        Item {
+            name: Some(self.ident.clean()),
+            attrs: self.attrs.clean(),
+            source: self.span.clean(),
+            id: self.id,
+            visibility: self.vis.clean(),
+            inner: inner,
         }
     }
 }
