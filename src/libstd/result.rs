@@ -366,19 +366,6 @@ impl<T, E> either::AsEither<E, T> for Result<T, E> {
     }
 }
 
-#[inline]
-#[allow(missing_doc)]
-pub fn map_opt<T, U: ToStr, V>(o_t: &Option<T>,
-                               op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
-    match *o_t {
-        None => Ok(None),
-        Some(ref t) => match op(t) {
-            Ok(v) => Ok(Some(v)),
-            Err(e) => Err(e)
-        }
-    }
-}
-
 /// Takes each element in the iterator: if it is an error, no further
 /// elements are taken, and the error is returned.
 /// Should no error occur, a vector containing the values of each Result
