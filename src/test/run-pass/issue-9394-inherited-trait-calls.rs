@@ -10,6 +10,10 @@
 
 trait Base: Base2 + Base3{
     fn foo(&self) -> ~str;
+    fn foo1(&self) -> ~str;
+    fn foo2(&self) -> ~str{
+        ~"base foo2"
+    }
 }
 
 trait Base2: Base3{
@@ -29,6 +33,9 @@ struct X;
 impl Base for X {
     fn foo(&self) -> ~str{
         ~"base foo"
+    }
+    fn foo1(&self) -> ~str{
+        ~"base foo1"
     }
 
 }
@@ -56,6 +63,8 @@ pub fn main() {
     let s = &n as &Super;
     assert_eq!(s.bar(),~"super bar");
     assert_eq!(s.foo(),~"base foo");
+    assert_eq!(s.foo1(),~"base foo1");
+    assert_eq!(s.foo2(),~"base foo2");
     assert_eq!(s.baz(),~"base2 baz");
     assert_eq!(s.root(),~"base3 root");
 }
