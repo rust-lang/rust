@@ -579,7 +579,7 @@ impl Path {
     /// Raises the `null_byte` condition if the vector contains a NUL.
     /// Raises the `str::not_utf8` condition if invalid UTF-8.
     #[inline]
-    pub fn new(v: &[u8]) -> Path {
+    pub fn from_vec(v: &[u8]) -> Path {
         GenericPath::from_vec(v)
     }
 
@@ -1112,9 +1112,9 @@ mod tests {
 
     #[test]
     fn test_paths() {
-        t!(v: Path::new([]), b!("."));
-        t!(v: Path::new(b!("\\")), b!("\\"));
-        t!(v: Path::new(b!("a\\b\\c")), b!("a\\b\\c"));
+        t!(v: Path::from_vec([]), b!("."));
+        t!(v: Path::from_vec(b!("\\")), b!("\\"));
+        t!(v: Path::from_vec(b!("a\\b\\c")), b!("a\\b\\c"));
 
         t!(s: Path::from_str(""), ".");
         t!(s: Path::from_str("\\"), "\\");
@@ -1146,8 +1146,8 @@ mod tests {
         t!(s: Path::from_str("foo\\..\\..\\.."), "..\\..");
         t!(s: Path::from_str("foo\\..\\..\\bar"), "..\\bar");
 
-        assert_eq!(Path::new(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
-        assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec(),
+        assert_eq!(Path::from_vec(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
+        assert_eq!(Path::from_vec(b!("\\foo\\..\\..\\bar")).into_vec(),
                    b!("\\bar").to_owned());
         assert_eq!(Path::from_str("foo\\bar").into_str(), Some(~"foo\\bar"));
         assert_eq!(Path::from_str("\\foo\\..\\..\\bar").into_str(), Some(~"\\bar"));
@@ -1211,7 +1211,7 @@ mod tests {
             assert_eq!(v.as_slice(), b!("foo\\bar", 0));
             (b!("\\bar").to_owned())
         }).inside {
-            Path::new(b!("foo\\bar", 0))
+            Path::from_vec(b!("foo\\bar", 0))
         };
         assert!(handled);
         assert_eq!(p.as_vec(), b!("\\bar"));
@@ -1267,16 +1267,16 @@ mod tests {
             )
         )
 
-        t!(~"new() w\\nul" => {
+        t!(~"from_vec() w\\nul" => {
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
-                Path::new(b!("foo\\bar", 0))
+                Path::from_vec(b!("foo\\bar", 0))
             };
         })
 
         t!(~"set_filename w\\nul" => {
-            let mut p = Path::new(b!("foo\\bar"));
+            let mut p = Path::from_vec(b!("foo\\bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -1285,7 +1285,7 @@ mod tests {
         })
 
         t!(~"set_dirname w\\nul" => {
-            let mut p = Path::new(b!("foo\\bar"));
+            let mut p = Path::from_vec(b!("foo\\bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -1294,7 +1294,7 @@ mod tests {
         })
 
         t!(~"push w\\nul" => {
-            let mut p = Path::new(b!("foo\\bar"));
+            let mut p = Path::from_vec(b!("foo\\bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -1306,7 +1306,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_not_utf8_fail() {
-        Path::new(b!("hello", 0x80, ".txt"));
+        Path::from_vec(b!("hello", 0x80, ".txt"));
     }
 
     #[test]
@@ -1327,7 +1327,7 @@ mod tests {
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::from_vec($path);
                     assert_eq!(path.$op(), $exp);
                 }
             )
@@ -1534,7 +1534,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], Some($($right:expr),+)) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::from_vec(b!($($path),+));
                     let file = p.pop_opt();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file.map(|v| v.as_slice()), Some(b!($($right),+)));
@@ -1542,7 +1542,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], None) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::from_vec(b!($($path),+));
                     let file = p.pop_opt();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file, None);
@@ -1594,8 +1594,8 @@ mod tests {
         t!(s: Path::from_str("a\\b").join_str("\\c\\d"), "\\c\\d");
         t!(s: Path::from_str(".").join_str("a\\b"), "a\\b");
         t!(s: Path::from_str("\\").join_str("a\\b"), "\\a\\b");
-        t!(v: Path::new(b!("a\\b\\c")).join(b!("..")), b!("a\\b"));
-        t!(v: Path::new(b!("\\a\\b\\c")).join(b!("d")), b!("\\a\\b\\c\\d"));
+        t!(v: Path::from_vec(b!("a\\b\\c")).join(b!("..")), b!("a\\b"));
+        t!(v: Path::from_vec(b!("\\a\\b\\c")).join(b!("d")), b!("\\a\\b\\c\\d"));
         // full join testing is covered under test_push_path, so no need for
         // the full set of prefix tests
     }
@@ -1790,9 +1790,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::new(path);
+                    let mut p1 = Path::from_vec(path);
                     p1.$set(arg);
-                    let p2 = Path::new(path);
+                    let p2 = Path::from_vec(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             )
@@ -1858,7 +1858,7 @@ mod tests {
             )
         )
 
-        t!(v: Path::new(b!("a\\b\\c")), b!("c"), b!("a\\b"), b!("c"), None);
+        t!(v: Path::from_vec(b!("a\\b\\c")), b!("c"), b!("a\\b"), b!("c"), None);
         t!(s: Path::from_str("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
         t!(s: Path::from_str("."), Some(""), Some("."), Some(""), None);
         t!(s: Path::from_str("\\"), Some(""), Some("\\"), Some(""), None);
@@ -2193,7 +2193,7 @@ mod tests {
             );
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
-                    let path = Path::new(b!($($arg),+));
+                    let path = Path::from_vec(b!($($arg),+));
                     let comps = path.component_iter().to_owned_vec();
                     let exp: &[&str] = $exp;
                     assert_eq!(comps.as_slice(), exp);

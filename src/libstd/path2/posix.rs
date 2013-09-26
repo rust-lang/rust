@@ -271,7 +271,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&sep)))
+            Some(Path::from_vec(comps.connect_vec(&sep)))
         }
     }
 }
@@ -283,7 +283,7 @@ impl Path {
     ///
     /// Raises the `null_byte` condition if the vector contains a NUL.
     #[inline]
-    pub fn new(v: &[u8]) -> Path {
+    pub fn from_vec(v: &[u8]) -> Path {
         GenericPath::from_vec(v)
     }
 
@@ -433,12 +433,12 @@ mod tests {
 
     #[test]
     fn test_paths() {
-        t!(v: Path::new([]), b!("."));
-        t!(v: Path::new(b!("/")), b!("/"));
-        t!(v: Path::new(b!("a/b/c")), b!("a/b/c"));
-        t!(v: Path::new(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
-        t!(v: Path::new(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
-        let p = Path::new(b!("a/b/c", 0xff));
+        t!(v: Path::from_vec([]), b!("."));
+        t!(v: Path::from_vec(b!("/")), b!("/"));
+        t!(v: Path::from_vec(b!("a/b/c")), b!("a/b/c"));
+        t!(v: Path::from_vec(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
+        t!(v: Path::from_vec(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
+        let p = Path::from_vec(b!("a/b/c", 0xff));
         assert_eq!(p.as_str(), None);
 
         t!(s: Path::from_str(""), ".");
@@ -464,15 +464,15 @@ mod tests {
         t!(s: Path::from_str("foo/../../.."), "../..");
         t!(s: Path::from_str("foo/../../bar"), "../bar");
 
-        assert_eq!(Path::new(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
-        assert_eq!(Path::new(b!("/foo/../../bar")).into_vec(),
+        assert_eq!(Path::from_vec(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
+        assert_eq!(Path::from_vec(b!("/foo/../../bar")).into_vec(),
                    b!("/bar").to_owned());
         assert_eq!(Path::from_str("foo/bar").into_str(), Some(~"foo/bar"));
         assert_eq!(Path::from_str("/foo/../../bar").into_str(), Some(~"/bar"));
 
-        let p = Path::new(b!("foo/bar", 0x80));
+        let p = Path::from_vec(b!("foo/bar", 0x80));
         assert_eq!(p.as_str(), None);
-        assert_eq!(Path::new(b!("foo", 0xff, "/bar")).into_str(), None);
+        assert_eq!(Path::from_vec(b!("foo", 0xff, "/bar")).into_str(), None);
     }
 
     #[test]
@@ -485,7 +485,7 @@ mod tests {
             assert_eq!(v.as_slice(), b!("foo/bar", 0));
             (b!("/bar").to_owned())
         }).inside {
-            Path::new(b!("foo/bar", 0))
+            Path::from_vec(b!("foo/bar", 0))
         };
         assert!(handled);
         assert_eq!(p.as_vec(), b!("/bar"));
@@ -541,16 +541,16 @@ mod tests {
             )
         )
 
-        t!(~"new() w/nul" => {
+        t!(~"from_vec() w/nul" => {
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
-                Path::new(b!("foo/bar", 0))
+                Path::from_vec(b!("foo/bar", 0))
             };
         })
 
         t!(~"set_filename w/nul" => {
-            let mut p = Path::new(b!("foo/bar"));
+            let mut p = Path::from_vec(b!("foo/bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -559,7 +559,7 @@ mod tests {
         })
 
         t!(~"set_dirname w/nul" => {
-            let mut p = Path::new(b!("foo/bar"));
+            let mut p = Path::from_vec(b!("foo/bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -568,7 +568,7 @@ mod tests {
         })
 
         t!(~"push w/nul" => {
-            let mut p = Path::new(b!("foo/bar"));
+            let mut p = Path::from_vec(b!("foo/bar"));
             do cond.trap(|_| {
                 (b!("null", 0).to_owned())
             }).inside {
@@ -595,7 +595,7 @@ mod tests {
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = Path::from_vec($path);
                     assert_eq!(path.$op(), $exp);
                 }
             )
@@ -715,7 +715,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], Some($($right:expr),+)) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::from_vec(b!($($path),+));
                     let file = p.pop_opt();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file.map(|v| v.as_slice()), Some(b!($($right),+)));
@@ -723,7 +723,7 @@ mod tests {
             );
             (v: [$($path:expr),+], [$($left:expr),+], None) => (
                 {
-                    let mut p = Path::new(b!($($path),+));
+                    let mut p = Path::from_vec(b!($($path),+));
                     let file = p.pop_opt();
                     assert_eq!(p.as_vec(), b!($($left),+));
                     assert_eq!(file, None);
@@ -746,15 +746,15 @@ mod tests {
         t!(s: "/a", "/", Some("a"));
         t!(s: "/", "/", None);
 
-        assert_eq!(Path::new(b!("foo/bar", 0x80)).pop_opt_str(), None);
-        assert_eq!(Path::new(b!("foo", 0x80, "/bar")).pop_opt_str(), Some(~"bar"));
+        assert_eq!(Path::from_vec(b!("foo/bar", 0x80)).pop_opt_str(), None);
+        assert_eq!(Path::from_vec(b!("foo", 0x80, "/bar")).pop_opt_str(), Some(~"bar"));
     }
 
     #[test]
     fn test_join() {
-        t!(v: Path::new(b!("a/b/c")).join(b!("..")), b!("a/b"));
-        t!(v: Path::new(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
-        t!(v: Path::new(b!("a/", 0x80, "/c")).join(b!(0xff)), b!("a/", 0x80, "/c/", 0xff));
+        t!(v: Path::from_vec(b!("a/b/c")).join(b!("..")), b!("a/b"));
+        t!(v: Path::from_vec(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
+        t!(v: Path::from_vec(b!("a/", 0x80, "/c")).join(b!(0xff)), b!("a/", 0x80, "/c/", 0xff));
         t!(s: Path::from_str("a/b/c").join_str(".."), "a/b");
         t!(s: Path::from_str("/a/b/c").join_str("d"), "/a/b/c/d");
         t!(s: Path::from_str("a/b").join_str("c/d"), "a/b/c/d");
@@ -786,10 +786,10 @@ mod tests {
 
     #[test]
     fn test_with_helpers() {
-        t!(v: Path::new(b!("a/b/c")).with_dirname(b!("d")), b!("d/c"));
-        t!(v: Path::new(b!("a/b/c")).with_dirname(b!("d/e")), b!("d/e/c"));
-        t!(v: Path::new(b!("a/", 0x80, "b/c")).with_dirname(b!(0xff)), b!(0xff, "/c"));
-        t!(v: Path::new(b!("a/b/", 0x80)).with_dirname(b!("/", 0xcd)),
+        t!(v: Path::from_vec(b!("a/b/c")).with_dirname(b!("d")), b!("d/c"));
+        t!(v: Path::from_vec(b!("a/b/c")).with_dirname(b!("d/e")), b!("d/e/c"));
+        t!(v: Path::from_vec(b!("a/", 0x80, "b/c")).with_dirname(b!(0xff)), b!(0xff, "/c"));
+        t!(v: Path::from_vec(b!("a/b/", 0x80)).with_dirname(b!("/", 0xcd)),
               b!("/", 0xcd, "/", 0x80));
         t!(s: Path::from_str("a/b/c").with_dirname_str("d"), "d/c");
         t!(s: Path::from_str("a/b/c").with_dirname_str("d/e"), "d/e/c");
@@ -807,9 +807,9 @@ mod tests {
         t!(s: Path::from_str("foo").with_dirname_str(".."), "../foo");
         t!(s: Path::from_str("foo").with_dirname_str("../.."), "../../foo");
 
-        t!(v: Path::new(b!("a/b/c")).with_filename(b!("d")), b!("a/b/d"));
-        t!(v: Path::new(b!("a/b/c", 0xff)).with_filename(b!(0x80)), b!("a/b/", 0x80));
-        t!(v: Path::new(b!("/", 0xff, "/foo")).with_filename(b!(0xcd)),
+        t!(v: Path::from_vec(b!("a/b/c")).with_filename(b!("d")), b!("a/b/d"));
+        t!(v: Path::from_vec(b!("a/b/c", 0xff)).with_filename(b!(0x80)), b!("a/b/", 0x80));
+        t!(v: Path::from_vec(b!("/", 0xff, "/foo")).with_filename(b!(0xcd)),
               b!("/", 0xff, "/", 0xcd));
         t!(s: Path::from_str("a/b/c").with_filename_str("d"), "a/b/d");
         t!(s: Path::from_str(".").with_filename_str("foo"), "foo");
@@ -831,12 +831,12 @@ mod tests {
         t!(s: Path::from_str("..").with_filename_str(""), "..");
         t!(s: Path::from_str("../..").with_filename_str(""), "../..");
 
-        t!(v: Path::new(b!("hi/there", 0x80, ".txt")).with_filestem(b!(0xff)),
+        t!(v: Path::from_vec(b!("hi/there", 0x80, ".txt")).with_filestem(b!(0xff)),
               b!("hi/", 0xff, ".txt"));
-        t!(v: Path::new(b!("hi/there.txt", 0x80)).with_filestem(b!(0xff)),
+        t!(v: Path::from_vec(b!("hi/there.txt", 0x80)).with_filestem(b!(0xff)),
               b!("hi/", 0xff, ".txt", 0x80));
-        t!(v: Path::new(b!("hi/there", 0xff)).with_filestem(b!(0x80)), b!("hi/", 0x80));
-        t!(v: Path::new(b!("hi", 0x80, "/there")).with_filestem([]), b!("hi", 0x80));
+        t!(v: Path::from_vec(b!("hi/there", 0xff)).with_filestem(b!(0x80)), b!("hi/", 0x80));
+        t!(v: Path::from_vec(b!("hi", 0x80, "/there")).with_filestem([]), b!("hi", 0x80));
         t!(s: Path::from_str("hi/there.txt").with_filestem_str("here"), "hi/here.txt");
         t!(s: Path::from_str("hi/there.txt").with_filestem_str(""), "hi/.txt");
         t!(s: Path::from_str("hi/there.txt").with_filestem_str("."), "hi/..txt");
@@ -859,13 +859,13 @@ mod tests {
         t!(s: Path::from_str("hi/there..").with_filestem_str("here"), "hi/here.");
         t!(s: Path::from_str("hi/there..").with_filestem_str(""), "hi");
 
-        t!(v: Path::new(b!("hi/there", 0x80, ".txt")).with_extension(b!("exe")),
+        t!(v: Path::from_vec(b!("hi/there", 0x80, ".txt")).with_extension(b!("exe")),
               b!("hi/there", 0x80, ".exe"));
-        t!(v: Path::new(b!("hi/there.txt", 0x80)).with_extension(b!(0xff)),
+        t!(v: Path::from_vec(b!("hi/there.txt", 0x80)).with_extension(b!(0xff)),
               b!("hi/there.", 0xff));
-        t!(v: Path::new(b!("hi/there", 0x80)).with_extension(b!(0xff)),
+        t!(v: Path::from_vec(b!("hi/there", 0x80)).with_extension(b!(0xff)),
               b!("hi/there", 0x80, ".", 0xff));
-        t!(v: Path::new(b!("hi/there.", 0xff)).with_extension([]), b!("hi/there"));
+        t!(v: Path::from_vec(b!("hi/there.", 0xff)).with_extension([]), b!("hi/there"));
         t!(s: Path::from_str("hi/there.txt").with_extension_str("exe"), "hi/there.exe");
         t!(s: Path::from_str("hi/there.txt").with_extension_str(""), "hi/there");
         t!(s: Path::from_str("hi/there.txt").with_extension_str("."), "hi/there..");
@@ -899,9 +899,9 @@ mod tests {
                 {
                     let path = $path;
                     let arg = $arg;
-                    let mut p1 = Path::new(path);
+                    let mut p1 = Path::from_vec(path);
                     p1.$set(arg);
-                    let p2 = Path::new(path);
+                    let p2 = Path::from_vec(path);
                     assert_eq!(p1, p2.$with(arg));
                 }
             )
@@ -968,9 +968,9 @@ mod tests {
             )
         )
 
-        t!(v: Path::new(b!("a/b/c")), b!("c"), b!("a/b"), b!("c"), None);
-        t!(v: Path::new(b!("a/b/", 0xff)), b!(0xff), b!("a/b"), b!(0xff), None);
-        t!(v: Path::new(b!("hi/there.", 0xff)), b!("there.", 0xff), b!("hi"),
+        t!(v: Path::from_vec(b!("a/b/c")), b!("c"), b!("a/b"), b!("c"), None);
+        t!(v: Path::from_vec(b!("a/b/", 0xff)), b!(0xff), b!("a/b"), b!(0xff), None);
+        t!(v: Path::from_vec(b!("hi/there.", 0xff)), b!("there.", 0xff), b!("hi"),
               b!("there"), Some(b!(0xff)));
         t!(s: Path::from_str("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
         t!(s: Path::from_str("."), Some(""), Some("."), Some(""), None);
@@ -985,16 +985,16 @@ mod tests {
         t!(s: Path::from_str("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
         t!(s: Path::from_str("hi/..there"), Some("..there"), Some("hi"),
               Some("."), Some("there"));
-        t!(s: Path::new(b!("a/b/", 0xff)), None, Some("a/b"), None, None);
-        t!(s: Path::new(b!("a/b/", 0xff, ".txt")), None, Some("a/b"), None, Some("txt"));
-        t!(s: Path::new(b!("a/b/c.", 0x80)), None, Some("a/b"), Some("c"), None);
-        t!(s: Path::new(b!(0xff, "/b")), Some("b"), None, Some("b"), None);
+        t!(s: Path::from_vec(b!("a/b/", 0xff)), None, Some("a/b"), None, None);
+        t!(s: Path::from_vec(b!("a/b/", 0xff, ".txt")), None, Some("a/b"), None, Some("txt"));
+        t!(s: Path::from_vec(b!("a/b/c.", 0x80)), None, Some("a/b"), Some("c"), None);
+        t!(s: Path::from_vec(b!(0xff, "/b")), Some("b"), None, Some("b"), None);
     }
 
     #[test]
     fn test_dir_file_path() {
-        t!(v: Path::new(b!("hi/there", 0x80)).dir_path(), b!("hi"));
-        t!(v: Path::new(b!("hi", 0xff, "/there")).dir_path(), b!("hi", 0xff));
+        t!(v: Path::from_vec(b!("hi/there", 0x80)).dir_path(), b!("hi"));
+        t!(v: Path::from_vec(b!("hi", 0xff, "/there")).dir_path(), b!("hi", 0xff));
         t!(s: Path::from_str("hi/there").dir_path(), "hi");
         t!(s: Path::from_str("hi").dir_path(), ".");
         t!(s: Path::from_str("/hi").dir_path(), "/");
@@ -1019,8 +1019,8 @@ mod tests {
             )
         )
 
-        t!(v: Path::new(b!("hi/there", 0x80)).file_path(), Some(b!("there", 0x80)));
-        t!(v: Path::new(b!("hi", 0xff, "/there")).file_path(), Some(b!("there")));
+        t!(v: Path::from_vec(b!("hi/there", 0x80)).file_path(), Some(b!("there", 0x80)));
+        t!(v: Path::from_vec(b!("hi", 0xff, "/there")).file_path(), Some(b!("there")));
         t!(s: Path::from_str("hi/there").file_path(), Some("there"));
         t!(s: Path::from_str("hi").file_path(), Some("hi"));
         t!(s: Path::from_str(".").file_path(), None);
@@ -1134,7 +1134,7 @@ mod tests {
             );
             (v: [$($arg:expr),+], [$([$($exp:expr),*]),*]) => (
                 {
-                    let path = Path::new(b!($($arg),+));
+                    let path = Path::from_vec(b!($($arg),+));
                     let comps = path.component_iter().to_owned_vec();
                     let exp: &[&[u8]] = [$(b!($($exp),*)),*];
                     assert_eq!(comps.as_slice(), exp);
