@@ -59,7 +59,8 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
                 clean::TypedefItem(*) | clean::StaticItem(*) |
                 clean::StructItem(*) | clean::EnumItem(*) |
                 clean::TraitItem(*) | clean::FunctionItem(*) |
-                clean::ViewItemItem(*) | clean::MethodItem(*) => {
+                clean::ViewItemItem(*) | clean::MethodItem(*) |
+                clean::ForeignFunctionItem(*) | clean::ForeignStaticItem(*) => {
                     // XXX: re-exported items should get surfaced in the docs as
                     //      well (using the output of resolve analysis)
                     if i.visibility != Some(ast::public) {
