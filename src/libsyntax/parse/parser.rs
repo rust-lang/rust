@@ -1213,14 +1213,16 @@ impl Parser {
     // parse an optional, obsolete argument mode.
     pub fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
-            self.obsolete(*self.span, ObsoleteMode);
+            self.obsolete(*self.last_span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
-            self.obsolete(*self.span, ObsoleteMode);
+            self.obsolete(*self.last_span, ObsoleteMode);
         } else if self.eat(&token::BINOP(token::PLUS)) {
+            let lo = self.last_span.lo;
             if self.eat(&token::BINOP(token::PLUS)) {
-                self.obsolete(*self.span, ObsoleteMode);
+                let hi = self.last_span.hi;
+                self.obsolete(mk_sp(lo, hi), ObsoleteMode);
             } else {
-                self.obsolete(*self.span, ObsoleteMode);
+                self.obsolete(*self.last_span, ObsoleteMode);
             }
         } else {
             // Ignore.
