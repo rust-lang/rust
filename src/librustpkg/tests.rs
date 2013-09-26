@@ -350,9 +350,17 @@ fn assert_executable_exists(repo: &Path, short_name: &str) {
 }
 
 fn executable_exists(repo: &Path, short_name: &str) -> bool {
-    debug!("assert_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
+    debug!("executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
     let exec = target_executable_in_workspace(&PkgId::new(short_name), repo);
     os::path_exists(&exec) && is_rwx(&exec)
+}
+
+fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
+    debug!("test_executable_exists: repo = %s, short_name = %s", repo.to_str(), short_name);
+    let exec = built_test_in_workspace(&PkgId::new(short_name), repo);
+    do exec.map_default(false) |exec| {
+        os::path_exists(exec) && is_rwx(exec)
+    }
 }
 
 fn remove_executable_file(p: &PkgId, workspace: &Path) {
@@ -1045,19 +1053,8 @@ fn test_info() {
 }
 
 #[test]
-#[ignore(reason = "test not yet implemented")]
-fn test_rustpkg_test() {
-    let expected_results = ~"1 out of 1 tests passed"; // fill in
-    let workspace = create_local_package_with_test(&PkgId::new("foo"));
-    let output = command_line_test([~"test", ~"foo"], &workspace);
-    assert_eq!(str::from_utf8(output.output), expected_results);
-}
-
-#[test]
-#[ignore(reason = "test not yet implemented")]
 fn test_uninstall() {
     let workspace = create_local_package(&PkgId::new("foo"));
-    let _output = command_line_test([~"info", ~"foo"], &workspace);
     command_line_test([~"uninstall", ~"foo"], &workspace);
     let output = command_line_test([~"list"], &workspace);
     assert!(!str::from_utf8(output.output).contains("foo"));
@@ -1798,6 +1795,64 @@ fn correct_package_name_with_rust_path_hack() {
     assert!(!lib_exists(&foo_workspace, &bar_id.path.clone(), bar_id.version.clone()));
     assert!(!executable_exists(&foo_workspace, "foo"));
     assert!(!lib_exists(&foo_workspace, &foo_id.path.clone(), foo_id.version.clone()));
+}
+
+#[test]
+fn test_rustpkg_test_creates_exec() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    writeFile(&foo_workspace.push_many(["src", "foo-0.1", "test.rs"]),
+              "#[test] fn f() { assert!('a' == 'a'); }");
+    command_line_test([~"test", ~"foo"], &foo_workspace);
+    assert!(test_executable_exists(&foo_workspace, "foo"));
+}
+
+#[test]
+fn test_rustpkg_test_output() {
+    let workspace = create_local_package_with_test(&PkgId::new("foo"));
+    let output = command_line_test([~"test", ~"foo"], &workspace);
+    let output_str = str::from_utf8(output.output);
+    assert!(output_str.contains("test f ... ok"));
+    assert!(output_str.contains(
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured"));
+}
+
+#[test]
+#[ignore(reason = "See issue #9441")]
+fn test_rebuild_when_needed() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    let test_crate = foo_workspace.push_many(["src", "foo-0.1", "test.rs"]);
+    writeFile(&test_crate, "#[test] fn f() { assert!('a' == 'a'); }");
+    command_line_test([~"test", ~"foo"], &foo_workspace);
+    assert!(test_executable_exists(&foo_workspace, "foo"));
+    let test_executable = built_test_in_workspace(&foo_id,
+            &foo_workspace).expect("test_rebuild_when_needed failed");
+    frob_source_file(&foo_workspace, &foo_id, "test.rs");
+    chmod_read_only(&test_executable);
+    match command_line_test_partial([~"test", ~"foo"], &foo_workspace) {
+        Success(*) => fail!("test_rebuild_when_needed didn't rebuild"),
+        Fail(status) if status == 65 => (), // ok
+        Fail(_) => fail!("test_rebuild_when_needed failed for some other reason")
+    }
+}
+
+#[test]
+fn test_no_rebuilding() {
+    let foo_id = PkgId::new("foo");
+    let foo_workspace = create_local_package(&foo_id);
+    let test_crate = foo_workspace.push_many(["src", "foo-0.1", "test.rs"]);
+    writeFile(&test_crate, "#[test] fn f() { assert!('a' == 'a'); }");
+    command_line_test([~"test", ~"foo"], &foo_workspace);
+    assert!(test_executable_exists(&foo_workspace, "foo"));
+    let test_executable = built_test_in_workspace(&foo_id,
+                            &foo_workspace).expect("test_no_rebuilding failed");
+    chmod_read_only(&test_executable);
+    match command_line_test_partial([~"test", ~"foo"], &foo_workspace) {
+        Success(*) => (), // ok
+        Fail(status) if status == 65 => fail!("test_no_rebuilding failed: it rebuilt the tests"),
+        Fail(_) => fail!("test_no_rebuilding failed for some other reason")
+    }
 }
 
 /// Returns true if p exists and is executable
