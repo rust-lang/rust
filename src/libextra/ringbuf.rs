@@ -143,6 +143,19 @@ impl<T> RingBuf<T> {
         }
     }
 
+    /// Swap elements at indices `i` and `j`
+    ///
+    /// `i` and `j` may be equal.
+    ///
+    /// Fails if there is no element with the given index
+    pub fn swap(&mut self, i: uint, j: uint) {
+        assert!(i < self.len());
+        assert!(j < self.len());
+        let ri = self.raw_index(i);
+        let rj = self.raw_index(j);
+        self.elts.swap(ri, rj);
+    }
+
     /// Return index in underlying vec for a given logical element index
     fn raw_index(&self, idx: uint) -> uint {
         raw_index(self.lo, self.elts.len(), idx)
@@ -602,6 +615,14 @@ mod tests {
         d.push_back(0u32);
         d.reserve_at_least(50);
         assert_eq!(d.elts.capacity(), 64);
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut d: RingBuf<int> = range(0, 5).collect();
+        d.pop_front();
+        d.swap(0, 3);
+        assert_eq!(d.iter().map(|&x|x).collect::<~[int]>(), ~[4, 2, 3, 1]);
     }
 
     #[test]
