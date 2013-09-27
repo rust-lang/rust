@@ -781,7 +781,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
                 let ident = special_idents::type_self;
 
-                let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
+                let param_metadata = do token::ident_to_str(&ident).with_c_str |name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -819,7 +819,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
             // Again, only create type information if extra_debuginfo is enabled
             if cx.sess.opts.extra_debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
-                let param_metadata = do token::ident_to_str(&ident).to_c_str().with_ref |name| {
+                let param_metadata = do token::ident_to_str(&ident).with_c_str |name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
