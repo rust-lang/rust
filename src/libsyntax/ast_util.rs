@@ -590,6 +590,17 @@ impl Visitor<()> for IdVisitor {
         self.operation.visit_id(struct_field.node.id);
         visit::walk_struct_field(self, struct_field, env)
     }
+
+    fn visit_struct_def(&mut self,
+                        struct_def: @struct_def,
+                        ident: ast::Ident,
+                        generics: &ast::Generics,
+                        id: NodeId,
+                        _: ()) {
+        self.operation.visit_id(id);
+        struct_def.ctor_id.map(|&ctor_id| self.operation.visit_id(ctor_id));
+        visit::walk_struct_def(self, struct_def, ident, generics, id, ());
+    }
 }
 
 pub fn visit_ids_for_inlined_item(item: &inlined_item,

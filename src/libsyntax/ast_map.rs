@@ -403,9 +403,9 @@ pub fn map_decoded_item(diag: @mut span_handler,
         diag: diag,
     };
 
-    // methods get added to the AST map when their impl is visited.  Since we
+    // Methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
-    // add it to the table now:
+    // add it to the table now. Likewise with foreign items.
     match *ii {
         ii_item(*) => {} // fallthrough
         ii_foreign(i) => {

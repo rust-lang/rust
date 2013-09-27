@@ -747,7 +747,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                path: &[ast_map::path_elt],
                                name: ast::Ident,
                                ctor_id: NodeId,
-                               index: @mut ~[entry<i64>]) {
+                               index: @mut ~[entry<i64>],
+                               struct_id: NodeId) {
     index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });
 
     ebml_w.start_tag(tag_items_data_item);
@@ -756,6 +757,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_name(ecx, ebml_w, name);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, ctor_id));
     encode_path(ecx, ebml_w, path, ast_map::path_name(name));
+    encode_parent_item(ebml_w, local_def(struct_id));
 
     if ecx.item_symbols.contains_key(&ctor_id) {
         encode_symbol(ecx, ebml_w, ctor_id);
@@ -1032,6 +1034,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         needs to know*/
         encode_struct_fields(ecx, ebml_w, struct_def);
 
+        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
 
@@ -1054,7 +1058,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                         path,
                                         item.ident,
                                         ctor_id,
-                                        index);
+                                        index,
+                                        def_id.node);
         }
       }
       item_impl(_, ref opt_trait, ref ty, ref ast_methods) => {
