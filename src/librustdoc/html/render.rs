@@ -1159,11 +1159,12 @@ impl<'self> fmt::Default for Sidebar<'self> {
                 write!(w, "<a class='{ty} {class}' href='{curty, select,
                                 mod{../}
                                 other{}
-                           }{ty, select,
+                           }{tysel, select,
                                 mod{{name}/index.html}
                                 other{#.{name}.html}
                            }'>{name}</a><br/>",
                        ty = short,
+                       tysel = short,
                        class = class,
                        curty = shortty(cur),
                        name = item.as_slice());

@@ -85,7 +85,6 @@ pub fn main() {
     t!(format!("{1} {0}", 0, 1), "1 0");
     t!(format!("{foo} {bar}", foo=0, bar=1), "0 1");
     t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
-    t!(format!("{} {0:s}", "a"), "a a");
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1), "1");
 
@@ -98,8 +97,8 @@ pub fn main() {
     t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "b"), "bb");
     t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "c"), "cc");
     t!(format!("{0, select, a{a#} b{b#} c{c#} other{d#}}", "d"), "dd");
-    t!(format!("{1, select, a{#{0:s}} other{#{1}}}", "b", "a"), "ab");
-    t!(format!("{1, select, a{#{0}} other{#{1}}}", "c", "b"), "bb");
+    t!(format!("{1, select, a{#{0:s}} other{#}}", "b", "a"), "ab");
+    t!(format!("{1, select, a{#{0}} other{#}}", "c", "b"), "b");
 
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");
