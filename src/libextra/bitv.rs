@@ -116,7 +116,7 @@ struct BigBitv {
 }
 
 /**
- * a mask that has a 1 for each defined bit in the nth element of a big_bitv,
+ * A mask that has a 1 for each defined bit in the n'th element of a `BigBitv`,
  * assuming n bits.
  */
 #[inline]
@@ -284,7 +284,7 @@ impl Bitv {
      * Calculates the union of two bitvectors
      *
      * Sets `self` to the union of `self` and `v1`. Both bitvectors must be
-     * the same length. Returns 'true' if `self` changed.
+     * the same length. Returns `true` if `self` changed.
     */
     #[inline]
     pub fn union(&mut self, v1: &Bitv) -> bool { self.do_op(Union, v1) }
@@ -293,7 +293,7 @@ impl Bitv {
      * Calculates the intersection of two bitvectors
      *
      * Sets `self` to the intersection of `self` and `v1`. Both bitvectors
-     * must be the same length. Returns 'true' if `self` changed.
+     * must be the same length. Returns `true` if `self` changed.
     */
     #[inline]
     pub fn intersect(&mut self, v1: &Bitv) -> bool {
@@ -395,7 +395,7 @@ impl Bitv {
         self.do_op(Difference, v)
     }
 
-    /// Returns true if all bits are 1
+    /// Returns `true` if all bits are 1
     #[inline]
     pub fn is_true(&self) -> bool {
       match self.rep {
@@ -417,7 +417,7 @@ impl Bitv {
         self.iter().invert()
     }
 
-    /// Returns true if all bits are 0
+    /// Returns `true` if all bits are 0
     pub fn is_false(&self) -> bool {
       match self.rep {
         Small(ref b) => b.is_false(self.nbits),
@@ -433,9 +433,9 @@ impl Bitv {
     }
 
     /**
-     * Converts `self` to a vector of uint with the same length.
+     * Converts `self` to a vector of `uint` with the same length.
      *
-     * Each uint in the resulting vector has either value 0u or 1u.
+     * Each `uint` in the resulting vector has either value `0u` or `1u`.
      */
     pub fn to_vec(&self) -> ~[uint] {
         vec::from_fn(self.nbits, |x| self.init_to_vec(x))
@@ -443,8 +443,8 @@ impl Bitv {
 
     /**
      * Organise the bits into bytes, such that the first bit in the
-     * bitv becomes the high-order bit of the first byte. If the
-     * size of the bitv is not a multiple of 8 then trailing bits
+     * `Bitv` becomes the high-order bit of the first byte. If the
+     * size of the `Bitv` is not a multiple of 8 then trailing bits
      * will be filled-in with false/0
      */
     pub fn to_bytes(&self) -> ~[u8] {
@@ -472,7 +472,7 @@ impl Bitv {
     }
 
     /**
-     * Transform self into a [bool] by turning each bit into a bool
+     * Transform `self` into a `[bool]` by turning each bit into a `bool`.
      */
     pub fn to_bools(&self) -> ~[bool] {
         vec::from_fn(self.nbits, |i| self[i])
@@ -498,7 +498,7 @@ impl Bitv {
 
 
     /**
-     * Compare a bitvector to a vector of bool.
+     * Compare a bitvector to a vector of `bool`.
      *
      * Both the bitvector and vector must have the same length.
      */
@@ -519,9 +519,9 @@ impl Bitv {
 }
 
 /**
- * Transform a byte-vector into a bitv. Each byte becomes 8 bits,
+ * Transform a byte-vector into a `Bitv`. Each byte becomes 8 bits,
  * with the most significant bits of each byte coming first. Each
- * bit becomes true if equal to 1 or false if equal to 0.
+ * bit becomes `true` if equal to 1 or `false` if equal to 0.
  */
 pub fn from_bytes(bytes: &[u8]) -> Bitv {
     from_fn(bytes.len() * 8, |i| {
@@ -532,15 +532,15 @@ pub fn from_bytes(bytes: &[u8]) -> Bitv {
 }
 
 /**
- * Transform a [bool] into a bitv by converting each bool into a bit.
+ * Transform a `[bool]` into a `Bitv` by converting each `bool` into a bit.
  */
 pub fn from_bools(bools: &[bool]) -> Bitv {
     from_fn(bools.len(), |i| bools[i])
 }
 
 /**
- * Create a bitv of the specified length where the value at each
- * index is f(index).
+ * Create a `Bitv` of the specified length where the value at each
+ * index is `f(index)`.
  */
 pub fn from_fn(len: uint, f: &fn(index: uint) -> bool) -> Bitv {
     let mut bitv = Bitv::new(len, false);
@@ -571,7 +571,7 @@ fn iterate_bits(base: uint, bits: uint, f: &fn(uint) -> bool) -> bool {
     return true;
 }
 
-/// An iterator for Bitv
+/// An iterator for `Bitv`.
 pub struct BitvIterator<'self> {
     priv bitv: &'self Bitv,
     priv next_idx: uint,
@@ -631,12 +631,12 @@ impl<'self> RandomAccessIterator<bool> for BitvIterator<'self> {
 ///
 /// It should also be noted that the amount of storage necessary for holding a
 /// set of objects is proportional to the maximum of the objects when viewed
-/// as a uint.
+/// as a `uint`.
 #[deriving(Clone)]
 pub struct BitvSet {
     priv size: uint,
 
-    // In theory this is a Bitv instead of always a BigBitv, but knowing that
+    // In theory this is a `Bitv` instead of always a `BigBitv`, but knowing that
     // there's an array of storage makes our lives a whole lot easier when
     // performing union/intersection/etc operations
     priv bitv: BigBitv
@@ -861,7 +861,7 @@ impl MutableSet<uint> for BitvSet {
 }
 
 impl BitvSet {
-    /// Visits each of the words that the two bit vectors (self and other)
+    /// Visits each of the words that the two bit vectors (`self` and `other`)
     /// both have in common. The three yielded arguments are (bit location,
     /// w1, w2) where the bit location is the number of bits offset so far,
     /// and w1/w2 are the words coming from the two vectors self, other.
@@ -874,13 +874,13 @@ impl BitvSet {
             .map(|((i, &w), o_store)| (i * uint::bits, w, o_store[i]))
     }
 
-    /// Visits each word in self or other that extends beyond the other. This
+    /// Visits each word in `self` or `other` that extends beyond the other. This
     /// will only iterate through one of the vectors, and it only iterates
     /// over the portion that doesn't overlap with the other one.
     ///
-    /// The yielded arguments are a bool, the bit offset, and a word. The bool
-    /// is true if the word comes from 'self', and false if it comes from
-    /// 'other'.
+    /// The yielded arguments are a `bool`, the bit offset, and a word. The `bool`
+    /// is true if the word comes from `self`, and `false` if it comes from
+    /// `other`.
     fn outlier_iter<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), uint), (bool, uint, uint),
                Zip<Enumerate<vec::VecIterator<'a, uint>>, Repeat<uint>>> {
