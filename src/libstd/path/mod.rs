@@ -19,7 +19,7 @@ use option::{Option, None, Some};
 use str;
 use str::{OwnedStr, Str, StrSlice};
 use vec;
-use vec::{CopyableVector, OwnedCopyableVector, OwnedVector};
+use vec::{CopyableVector, OwnedCopyableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector};
 
 /// Typedef for POSIX file paths.
@@ -37,20 +37,31 @@ pub use Path = self::posix::Path;
 #[cfg(windows)]
 pub use Path = self::windows::Path;
 
-/// Typedef for the POSIX path component iterator.
-/// See `posix::ComponentIter` for more info.
-pub use PosixComponentIter = self::posix::ComponentIter;
-
-/// Typedef for the Windows path component iterator.
-/// See `windows::ComponentIter` for more info.
-pub use WindowsComponentIter = self::windows::ComponentIter;
-
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
 pub use ComponentIter = self::posix::ComponentIter;
+/// Typedef for the platform-native reverse component iterator
+#[cfg(unix)]
+pub use RevComponentIter = self::posix::RevComponentIter;
 /// Typedef for the platform-native component iterator
 #[cfg(windows)]
 pub use ComponentIter = self::windows::ComponentIter;
+/// Typedef for the platform-native reverse component iterator
+#[cfg(windows)]
+pub use RevComponentIter = self::windows::RevComponentIter;
+
+/// Typedef for the platform-native str component iterator
+#[cfg(unix)]
+pub use StrComponentIter = self::posix::StrComponentIter;
+/// Typedef for the platform-native reverse str component iterator
+#[cfg(unix)]
+pub use RevStrComponentIter = self::posix::RevStrComponentIter;
+/// Typedef for the platform-native str component iterator
+#[cfg(windows)]
+pub use StrComponentIter = self::windows::StrComponentIter;
+/// Typedef for the platform-native reverse str component iterator
+#[cfg(windows)]
+pub use RevStrComponentIter = self::windows::RevStrComponentIter;
 
 pub mod posix;
 pub mod windows;
@@ -128,7 +139,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     #[inline]
     fn from_c_str(path: CString) -> Self {
         // CStrings can't contain NULs
-        unsafe { GenericPathUnsafe::from_vec_unchecked(path.as_bytes()) }
+        let v = path.as_bytes();
+        // v is NUL-terminated. Strip it off
+        let v = v.slice_to(v.len()-1);
+        unsafe { GenericPathUnsafe::from_vec_unchecked(v) }
     }
 
     /// Returns the path as a string, if possible.
@@ -146,7 +160,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
     /// replacement char. This involves allocation.
     #[inline]
-    fn as_display_str<T>(&self, f: &fn(&str) -> T) -> T {
+    fn with_display_str<T>(&self, f: &fn(&str) -> T) -> T {
         match self.as_str() {
             Some(s) => f(s),
             None => {
@@ -161,29 +175,37 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the path is not UTF-8, invalid sequences will be replaced with the unicode
     /// replacement char. This involves allocation.
     ///
-    /// This is similar to `as_display_str()` except it will always allocate a new ~str.
+    /// This is similar to `with_display_str()` except it will always allocate a new ~str.
     fn to_display_str(&self) -> ~str {
-        // FIXME (#9516): Don't decode utf-8 manually here once we have a good way to do it in str
-        // This is a truly horrifically bad implementation, done as a functionality stopgap until
-        // we have a proper utf-8 decoder. I don't really want to write one here.
-        static REPLACEMENT_CHAR: char = '\uFFFD';
+        from_utf8_with_replacement(self.as_vec())
+    }
 
-        let mut v = self.as_vec();
-        let mut s = str::with_capacity(v.len());
-        while !v.is_empty() {
-            let w = str::utf8_char_width(v[0]);
-            if w == 0u {
-                s.push_char(REPLACEMENT_CHAR);
-                v = v.slice_from(1);
-            } else if v.len() < w || !str::is_utf8(v.slice_to(w)) {
-                s.push_char(REPLACEMENT_CHAR);
-                v = v.slice_from(1);
-            } else {
-                s.push_str(unsafe { ::cast::transmute(v.slice_to(w)) });
-                v = v.slice_from(w);
+    /// Provides the filename as a string
+    ///
+    /// If the filename is not UTF-8, invalid sequences will be replaced with the unicode
+    /// replacement char. This involves allocation.
+    #[inline]
+    fn with_filename_display_str<T>(&self, f: &fn(Option<&str>) -> T) -> T {
+        match self.filename_str() {
+            s@Some(_) => f(s),
+            None => {
+                let o = self.to_filename_display_str();
+                f(o.map(|s|s.as_slice()))
             }
         }
-        s
+    }
+
+    /// Returns the filename as a string
+    ///
+    /// If the filename is not UTF-8, invalid sequences will be replaced with the unicode
+    /// replacement char. This involves allocation.
+    ///
+    /// This is similar to `to_filename_display_str` except it will always allocate a new ~str.
+    fn to_filename_display_str(&self) -> Option<~str> {
+        match self.filename() {
+            None => None,
+            Some(v) => Some(from_utf8_with_replacement(v))
+        }
     }
 
     /// Returns an object that implements `fmt::Default` for printing paths
@@ -211,51 +233,59 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         str::from_utf8_slice_opt(self.dirname())
     }
     /// Returns the file component of `self`, as a byte vector.
-    /// If `self` represents the root of the file hierarchy, returns the empty vector.
-    /// If `self` is ".", returns the empty vector.
-    fn filename<'a>(&'a self) -> &'a [u8];
+    /// If `self` represents the root of the file hierarchy, returns None.
+    /// If `self` is "." or "..", returns None.
+    fn filename<'a>(&'a self) -> Option<&'a [u8]>;
     /// Returns the file component of `self`, as a string, if possible.
     /// See `filename` for details.
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_slice_opt(self.filename())
+        self.filename().and_then(str::from_utf8_slice_opt)
     }
     /// Returns the stem of the filename of `self`, as a byte vector.
     /// The stem is the portion of the filename just before the last '.'.
     /// If there is no '.', the entire filename is returned.
-    fn filestem<'a>(&'a self) -> &'a [u8] {
-        let name = self.filename();
-        let dot = '.' as u8;
-        match name.rposition_elem(&dot) {
-            None | Some(0) => name,
-            Some(1) if name == bytes!("..") => name,
-            Some(pos) => name.slice_to(pos)
+    fn filestem<'a>(&'a self) -> Option<&'a [u8]> {
+        match self.filename() {
+            None => None,
+            Some(name) => Some({
+                let dot = '.' as u8;
+                match name.rposition_elem(&dot) {
+                    None | Some(0) => name,
+                    Some(1) if name == bytes!("..") => name,
+                    Some(pos) => name.slice_to(pos)
+                }
+            })
         }
     }
     /// Returns the stem of the filename of `self`, as a string, if possible.
     /// See `filestem` for details.
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_slice_opt(self.filestem())
+        self.filestem().and_then(str::from_utf8_slice_opt)
     }
     /// Returns the extension of the filename of `self`, as an optional byte vector.
     /// The extension is the portion of the filename just after the last '.'.
     /// If there is no extension, None is returned.
     /// If the filename ends in '.', the empty vector is returned.
     fn extension<'a>(&'a self) -> Option<&'a [u8]> {
-        let name = self.filename();
-        let dot = '.' as u8;
-        match name.rposition_elem(&dot) {
-            None | Some(0) => None,
-            Some(1) if name == bytes!("..") => None,
-            Some(pos) => Some(name.slice_from(pos+1))
+        match self.filename() {
+            None => None,
+            Some(name) => {
+                let dot = '.' as u8;
+                match name.rposition_elem(&dot) {
+                    None | Some(0) => None,
+                    Some(1) if name == bytes!("..") => None,
+                    Some(pos) => Some(name.slice_from(pos+1))
+                }
+            }
         }
     }
     /// Returns the extension of the filename of `self`, as a string, if possible.
     /// See `extension` for details.
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
-        self.extension().and_then(|v| str::from_utf8_slice_opt(v))
+        self.extension().and_then(str::from_utf8_slice_opt)
     }
 
     /// Replaces the directory portion of the path with the given byte vector.
@@ -322,27 +352,30 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn set_filestem(&mut self, filestem: &[u8]) {
         // borrowck is being a pain here
         let val = {
-            let name = self.filename();
-            if !name.is_empty() {
-                let dot = '.' as u8;
-                match name.rposition_elem(&dot) {
-                    None | Some(0) => None,
-                    Some(idx) => {
-                        let mut v;
-                        if contains_nul(filestem) {
-                            let filestem = self::null_byte::cond.raise(filestem.to_owned());
-                            assert!(!contains_nul(filestem));
-                            v = vec::with_capacity(filestem.len() + name.len() - idx);
-                            v.push_all(filestem);
-                        } else {
-                            v = vec::with_capacity(filestem.len() + name.len() - idx);
-                            v.push_all(filestem);
+            match self.filename() {
+                None => None,
+                Some(name) => {
+                    let dot = '.' as u8;
+                    match name.rposition_elem(&dot) {
+                        None | Some(0) => None,
+                        Some(idx) => {
+                            let mut v;
+                            if contains_nul(filestem) {
+                                let filestem = self::null_byte::cond.raise(filestem.to_owned());
+                                assert!(!contains_nul(filestem));
+                                v = filestem;
+                                let n = v.len();
+                                v.reserve(n + name.len() - idx);
+                            } else {
+                                v = vec::with_capacity(filestem.len() + name.len() - idx);
+                                v.push_all(filestem);
+                            }
+                            v.push_all(name.slice_from(idx));
+                            Some(v)
                         }
-                        v.push_all(name.slice_from(idx));
-                        Some(v)
                     }
                 }
-            } else { None }
+            }
         };
         match val {
             None => self.set_filename(filestem),
@@ -366,52 +399,56 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn set_extension(&mut self, extension: &[u8]) {
         // borrowck causes problems here too
         let val = {
-            let name = self.filename();
-            if !name.is_empty() {
-                let dot = '.' as u8;
-                match name.rposition_elem(&dot) {
-                    None | Some(0) => {
-                        if extension.is_empty() {
-                            None
-                        } else {
-                            let mut v;
-                            if contains_nul(extension) {
-                                let extension = self::null_byte::cond.raise(extension.to_owned());
-                                assert!(!contains_nul(extension));
-                                v = vec::with_capacity(name.len() + extension.len() + 1);
-                                v.push_all(name);
-                                v.push(dot);
-                                v.push_all(extension);
+            match self.filename() {
+                None => None,
+                Some(name) => {
+                    let dot = '.' as u8;
+                    match name.rposition_elem(&dot) {
+                        None | Some(0) => {
+                            if extension.is_empty() {
+                                None
                             } else {
-                                v = vec::with_capacity(name.len() + extension.len() + 1);
-                                v.push_all(name);
-                                v.push(dot);
-                                v.push_all(extension);
+                                let mut v;
+                                if contains_nul(extension) {
+                                    let ext = extension.to_owned();
+                                    let extension = self::null_byte::cond.raise(ext);
+                                    assert!(!contains_nul(extension));
+                                    v = vec::with_capacity(name.len() + extension.len() + 1);
+                                    v.push_all(name);
+                                    v.push(dot);
+                                    v.push_all(extension);
+                                } else {
+                                    v = vec::with_capacity(name.len() + extension.len() + 1);
+                                    v.push_all(name);
+                                    v.push(dot);
+                                    v.push_all(extension);
+                                }
+                                Some(v)
                             }
-                            Some(v)
                         }
-                    }
-                    Some(idx) => {
-                        if extension.is_empty() {
-                            Some(name.slice_to(idx).to_owned())
-                        } else {
-                            let mut v;
-                            if contains_nul(extension) {
-                                let extension = self::null_byte::cond.raise(extension.to_owned());
-                                assert!(!contains_nul(extension));
-                                v = vec::with_capacity(idx + extension.len() + 1);
-                                v.push_all(name.slice_to(idx+1));
-                                v.push_all(extension);
+                        Some(idx) => {
+                            if extension.is_empty() {
+                                Some(name.slice_to(idx).to_owned())
                             } else {
-                                v = vec::with_capacity(idx + extension.len() + 1);
-                                v.push_all(name.slice_to(idx+1));
-                                v.push_all(extension);
+                                let mut v;
+                                if contains_nul(extension) {
+                                    let ext = extension.to_owned();
+                                    let extension = self::null_byte::cond.raise(ext);
+                                    assert!(!contains_nul(extension));
+                                    v = vec::with_capacity(idx + extension.len() + 1);
+                                    v.push_all(name.slice_to(idx+1));
+                                    v.push_all(extension);
+                                } else {
+                                    v = vec::with_capacity(idx + extension.len() + 1);
+                                    v.push_all(name.slice_to(idx+1));
+                                    v.push_all(extension);
+                                }
+                                Some(v)
                             }
-                            Some(v)
                         }
                     }
                 }
-            } else { None }
+            }
         };
         match val {
             None => (),
@@ -423,6 +460,52 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     #[inline]
     fn set_extension_str(&mut self, extension: &str) {
         self.set_extension(extension.as_bytes())
+    }
+    /// Adds the given extension (as a byte vector) to the file.
+    /// This does not remove any existing extension.
+    /// `foo.bar`.add_extension(`baz`) becomes `foo.bar.baz`.
+    /// If `self` has no filename, this is a no-op.
+    /// If the given byte vector is [], this is a no-op.
+    ///
+    /// # Failure
+    ///
+    /// Raises the `null_byte` condition if the extension contains a NUL.
+    fn add_extension(&mut self, extension: &[u8]) {
+        if extension.is_empty() { return; }
+        // appease borrowck
+        let val = {
+            match self.filename() {
+                None => None,
+                Some(name) => {
+                    let mut v;
+                    if contains_nul(extension) {
+                        let ext = extension.to_owned();
+                        let extension = self::null_byte::cond.raise(ext);
+                        assert!(!contains_nul(extension));
+                        v = vec::with_capacity(name.len() + 1 + extension.len());
+                        v.push_all(name);
+                        v.push('.' as u8);
+                        v.push_all(extension);
+                    } else {
+                        v = vec::with_capacity(name.len() + 1 + extension.len());
+                        v.push_all(name);
+                        v.push('.' as u8);
+                        v.push_all(extension);
+                    }
+                    Some(v)
+                }
+            }
+        };
+        match val {
+            None => (),
+            Some(v) => unsafe { self.set_filename_unchecked(v) }
+        }
+    }
+    /// Adds the given extension (as a string) to the file.
+    /// See `add_extension` for details.
+    #[inline]
+    fn add_extension_str(&mut self, extension: &str) {
+        self.add_extension(extension.as_bytes())
     }
 
     /// Returns a new Path constructed by replacing the dirname with the given byte vector.
@@ -516,11 +599,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If `self` represents the root of the filesystem hierarchy, returns None.
     fn file_path(&self) -> Option<Self> {
         // self.filename() returns a NUL-free vector
-        match self.filename() {
-            [] => None,
-            v => Some(unsafe { GenericPathUnsafe::from_vec_unchecked(v) })
-        }
+        self.filename().map_move(|v| unsafe { GenericPathUnsafe::from_vec_unchecked(v) })
     }
+
+    /// Returns a Path that represents the filesystem root that `self` is rooted in.
+    ///
+    /// If `self` is not absolute, or vol-relative in the case of Windows, this returns None.
+    fn root_path(&self) -> Option<Self>;
 
     /// Pushes a path (as a byte vector) onto `self`.
     /// If the argument represents an absolute path, it replaces `self`.
@@ -553,6 +638,21 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     #[inline]
     fn push_path(&mut self, path: &Self) {
         self.push(path.as_vec())
+    }
+    /// Pushes multiple paths (as byte vectors) onto `self`.
+    /// See `push` for details.
+    #[inline]
+    fn push_many<V: Vector<u8>>(&mut self, paths: &[V]) {
+        for p in paths.iter() {
+            self.push(p.as_slice());
+        }
+    }
+    /// Pushes multiple paths (as strings) onto `self`.
+    #[inline]
+    fn push_many_str<S: Str>(&mut self, paths: &[S]) {
+        for p in paths.iter() {
+            self.push_str(p.as_slice());
+        }
     }
     /// Pops the last path component off of `self` and returns it.
     /// If `self` represents the root of the file hierarchy, None is returned.
@@ -593,11 +693,35 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         p.push_path(path);
         p
     }
+    /// Returns a new Path constructed by joining `self` with the given paths (as byte vectors).
+    /// See `join` for details.
+    #[inline]
+    fn join_many<V: Vector<u8>>(&self, paths: &[V]) -> Self {
+        let mut p = self.clone();
+        p.push_many(paths);
+        p
+    }
+    /// Returns a new Path constructed by joining `self` with the given paths (as strings).
+    /// See `join` for details.
+    #[inline]
+    fn join_many_str<S: Str>(&self, paths: &[S]) -> Self {
+        let mut p = self.clone();
+        p.push_many_str(paths);
+        p
+    }
 
     /// Returns whether `self` represents an absolute path.
     /// An absolute path is defined as one that, when joined to another path, will
     /// yield back the same absolute path.
     fn is_absolute(&self) -> bool;
+
+    /// Returns whether `self` represents a relative path.
+    /// Typically this is the inverse of `is_absolute`.
+    /// But for Windows paths, it also means the path is not volume-relative or
+    /// relative to the current working directory.
+    fn is_relative(&self) -> bool {
+        !self.is_absolute()
+    }
 
     /// Returns whether `self` is equal to, or is an ancestor of, the given path.
     /// If both paths are relative, they are compared as though they are relative
@@ -705,6 +829,30 @@ impl<'self, P: GenericPath> fmt::Default for FilenameDisplay<'self, P> {
 #[inline(always)]
 fn contains_nul(v: &[u8]) -> bool {
     v.iter().any(|&x| x == 0)
+}
+
+#[inline(always)]
+fn from_utf8_with_replacement(mut v: &[u8]) -> ~str {
+    // FIXME (#9516): Don't decode utf-8 manually here once we have a good way to do it in str
+    // This is a truly horrifically bad implementation, done as a functionality stopgap until
+    // we have a proper utf-8 decoder. I don't really want to write one here.
+    static REPLACEMENT_CHAR: char = '\uFFFD';
+
+    let mut s = str::with_capacity(v.len());
+    while !v.is_empty() {
+        let w = str::utf8_char_width(v[0]);
+        if w == 0u {
+            s.push_char(REPLACEMENT_CHAR);
+            v = v.slice_from(1);
+        } else if v.len() < w || !str::is_utf8(v.slice_to(w)) {
+            s.push_char(REPLACEMENT_CHAR);
+            v = v.slice_from(1);
+        } else {
+            s.push_str(unsafe { ::cast::transmute(v.slice_to(w)) });
+            v = v.slice_from(w);
+        }
+    }
+    s
 }
 
 // FIXME (#9537): libc::stat should derive Default
@@ -925,5 +1073,22 @@ mod stat {
                 st_ctime: 0,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GenericPath, PosixPath, WindowsPath};
+    use c_str::ToCStr;
+
+    #[test]
+    fn test_from_c_str() {
+        let input = "/foo/bar/baz";
+        let path: PosixPath = GenericPath::from_c_str(input.to_c_str());
+        assert_eq!(path.as_vec(), input.as_bytes());
+
+        let input = "\\foo\\bar\\baz";
+        let path: WindowsPath = GenericPath::from_c_str(input.to_c_str());
+        assert_eq!(path.as_str().unwrap(), input);
     }
 }

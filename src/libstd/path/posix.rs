@@ -15,22 +15,30 @@ use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::Eq;
 use from_str::FromStr;
-use iter::{AdditiveIterator, Extendable, Iterator};
+use iter::{AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str;
 use str::Str;
 use to_bytes::IterBytes;
 use util;
 use vec;
-use vec::CopyableVector;
-use vec::{Vector, VectorVector};
+use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
 use super::{GenericPath, GenericPathUnsafe};
 
 #[cfg(not(target_os = "win32"))]
 use libc;
 
-/// Iterator that yields successive components of a Path
-pub type ComponentIter<'self> = vec::SplitIterator<'self, u8>;
+/// Iterator that yields successive components of a Path as &[u8]
+pub type ComponentIter<'self> = SplitIterator<'self, u8>;
+/// Iterator that yields components of a Path in reverse as &[u8]
+pub type RevComponentIter<'self> = RSplitIterator<'self, u8>;
+
+/// Iterator that yields successive components of a Path as Option<&str>
+pub type StrComponentIter<'self> = Map<'self, &'self [u8], Option<&'self str>,
+                                       ComponentIter<'self>>;
+/// Iterator that yields components of a Path in reverse as Option<&str>
+pub type RevStrComponentIter<'self> = Map<'self, &'self [u8], Option<&'self str>,
+                                          RevComponentIter<'self>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone, DeepClone)]
@@ -187,12 +195,13 @@ impl GenericPath for Path {
         }
     }
 
-    fn filename<'a>(&'a self) -> &'a [u8] {
+    fn filename<'a>(&'a self) -> Option<&'a [u8]> {
         match self.sepidx {
-            None if bytes!(".") == self.repr || bytes!("..") == self.repr => &[],
-            None => self.repr.as_slice(),
-            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => &[],
-            Some(idx) => self.repr.slice_from(idx+1)
+            None if bytes!(".") == self.repr || bytes!("..") == self.repr => None,
+            None => Some(self.repr.as_slice()),
+            Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => None,
+            Some(0) if self.repr.slice_from(1).is_empty() => None,
+            Some(idx) => Some(self.repr.slice_from(idx+1))
         }
     }
 
@@ -216,6 +225,14 @@ impl GenericPath for Path {
                 self.sepidx = self.repr.rposition_elem(&sep);
                 Some(v)
             }
+        }
+    }
+
+    fn root_path(&self) -> Option<Path> {
+        if self.is_absolute() {
+            Some(Path::from_str("/"))
+        } else {
+            None
         }
     }
 
@@ -384,6 +401,48 @@ impl Path {
         }
         ret
     }
+
+    /// Returns an iterator that yields each component of the path in reverse.
+    /// See component_iter() for details.
+    pub fn rev_component_iter<'a>(&'a self) -> RevComponentIter<'a> {
+        let v = if self.repr[0] == sep {
+            self.repr.slice_from(1)
+        } else { self.repr.as_slice() };
+        let mut ret = v.rsplit_iter(is_sep);
+        if v.is_empty() {
+            // consume the empty "" component
+            ret.next();
+        }
+        ret
+    }
+
+    /// Returns an iterator that yields each component of the path as Option<&str>.
+    /// See component_iter() for details.
+    pub fn str_component_iter<'a>(&'a self) -> StrComponentIter<'a> {
+        self.component_iter().map(str::from_utf8_slice_opt)
+    }
+
+    /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
+    /// See component_iter() for details.
+    pub fn rev_str_component_iter<'a>(&'a self) -> RevStrComponentIter<'a> {
+        self.rev_component_iter().map(str::from_utf8_slice_opt)
+    }
+
+    /// Returns whether the relative path `child` is a suffix of `self`.
+    pub fn ends_with_path(&self, child: &Path) -> bool {
+        if !child.is_relative() { return false; }
+        let mut selfit = self.rev_component_iter();
+        let mut childit = child.rev_component_iter();
+        loop {
+            match (selfit.next(), childit.next()) {
+                (Some(a), Some(b)) => if a != b { return false; },
+                (Some(_), None) => break,
+                (None, Some(_)) => return false,
+                (None, None) => break
+            }
+        }
+        true
+    }
 }
 
 // None result means the byte vector didn't need normalizing
@@ -422,8 +481,8 @@ fn contains_nul(v: &[u8]) -> bool {
     v.iter().any(|&x| x == 0)
 }
 
-static dot_static: &'static [u8] = &'static ['.' as u8];
-static dot_dot_static: &'static [u8] = &'static ['.' as u8, '.' as u8];
+static dot_static: &'static [u8] = bytes!(".");
+static dot_dot_static: &'static [u8] = bytes!("..");
 
 // Stat support
 #[cfg(not(target_os = "win32"))]
@@ -524,7 +583,7 @@ impl Path {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use option::{Some, None};
+    use option::{Option, Some, None};
     use iter::Iterator;
     use str;
     use vec::Vector;
@@ -604,7 +663,7 @@ mod tests {
 
     #[test]
     fn test_null_byte() {
-        use path2::null_byte::cond;
+        use path::null_byte::cond;
 
         let mut handled = false;
         let mut p = do cond.trap(|v| {
@@ -653,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_null_byte_fail() {
-        use path2::null_byte::cond;
+        use path::null_byte::cond;
         use task;
 
         macro_rules! t(
@@ -709,24 +768,46 @@ mod tests {
         assert_eq!(Path::from_str("foo").to_display_str(), ~"foo");
         assert_eq!(Path::from_vec(b!("foo", 0x80)).to_display_str(), ~"foo\uFFFD");
         assert_eq!(Path::from_vec(b!("foo", 0xff, "bar")).to_display_str(), ~"foo\uFFFDbar");
+        assert_eq!(Path::from_vec(b!("foo", 0xff, "/bar")).to_filename_display_str(), Some(~"bar"));
+        assert_eq!(Path::from_vec(b!("foo/", 0xff, "bar")).to_filename_display_str(),
+                   Some(~"\uFFFDbar"));
+        assert_eq!(Path::from_vec(b!("/")).to_filename_display_str(), None);
 
         let mut called = false;
-        do Path::from_str("foo").as_display_str |s| {
+        do Path::from_str("foo").with_display_str |s| {
             assert_eq!(s, "foo");
             called = true;
         };
         assert!(called);
         called = false;
-        do Path::from_vec(b!("foo", 0x80)).as_display_str |s| {
+        do Path::from_vec(b!("foo", 0x80)).with_display_str |s| {
             assert_eq!(s, "foo\uFFFD");
             called = true;
         };
         assert!(called);
         called = false;
-        do Path::from_vec(b!("foo", 0xff, "bar")).as_display_str |s| {
+        do Path::from_vec(b!("foo", 0xff, "bar")).with_display_str |s| {
             assert_eq!(s, "foo\uFFFDbar");
             called = true;
         };
+        assert!(called);
+        called = false;
+        do Path::from_vec(b!("foo", 0xff, "/bar")).with_filename_display_str |s| {
+            assert_eq!(s, Some("bar"));
+            called = true;
+        }
+        assert!(called);
+        called = false;
+        do Path::from_vec(b!("foo/", 0xff, "bar")).with_filename_display_str |s| {
+            assert_eq!(s, Some("\uFFFDbar"));
+            called = true;
+        }
+        assert!(called);
+        called = false;
+        do Path::from_vec(b!("/")).with_filename_display_str |s| {
+            assert!(s.is_none());
+            called = true;
+        }
         assert!(called);
     }
 
@@ -774,20 +855,20 @@ mod tests {
                     let path = Path::from_vec($path);
                     assert_eq!(path.$op(), $exp);
                 }
-            )
+            );
         )
 
-        t!(v: b!("a/b/c"), filename, b!("c"));
-        t!(v: b!("a/b/c", 0xff), filename, b!("c", 0xff));
-        t!(v: b!("a/b", 0xff, "/c"), filename, b!("c"));
-        t!(s: "a/b/c", filename, "c");
-        t!(s: "/a/b/c", filename, "c");
-        t!(s: "a", filename, "a");
-        t!(s: "/a", filename, "a");
-        t!(s: ".", filename, "");
-        t!(s: "/", filename, "");
-        t!(s: "..", filename, "");
-        t!(s: "../..", filename, "");
+        t!(v: b!("a/b/c"), filename, Some(b!("c")));
+        t!(v: b!("a/b/c", 0xff), filename, Some(b!("c", 0xff)));
+        t!(v: b!("a/b", 0xff, "/c"), filename, Some(b!("c")));
+        t!(s: "a/b/c", filename, Some("c"), opt);
+        t!(s: "/a/b/c", filename, Some("c"), opt);
+        t!(s: "a", filename, Some("a"), opt);
+        t!(s: "/a", filename, Some("a"), opt);
+        t!(s: ".", filename, None, opt);
+        t!(s: "/", filename, None, opt);
+        t!(s: "..", filename, None, opt);
+        t!(s: "../..", filename, None, opt);
 
         t!(v: b!("a/b/c"), dirname, b!("a/b"));
         t!(v: b!("a/b/c", 0xff), dirname, b!("a/b"));
@@ -801,21 +882,21 @@ mod tests {
         t!(s: "..", dirname, "..");
         t!(s: "../..", dirname, "../..");
 
-        t!(v: b!("hi/there.txt"), filestem, b!("there"));
-        t!(v: b!("hi/there", 0x80, ".txt"), filestem, b!("there", 0x80));
-        t!(v: b!("hi/there.t", 0x80, "xt"), filestem, b!("there"));
-        t!(s: "hi/there.txt", filestem, "there");
-        t!(s: "hi/there", filestem, "there");
-        t!(s: "there.txt", filestem, "there");
-        t!(s: "there", filestem, "there");
-        t!(s: ".", filestem, "");
-        t!(s: "/", filestem, "");
-        t!(s: "foo/.bar", filestem, ".bar");
-        t!(s: ".bar", filestem, ".bar");
-        t!(s: "..bar", filestem, ".");
-        t!(s: "hi/there..txt", filestem, "there.");
-        t!(s: "..", filestem, "");
-        t!(s: "../..", filestem, "");
+        t!(v: b!("hi/there.txt"), filestem, Some(b!("there")));
+        t!(v: b!("hi/there", 0x80, ".txt"), filestem, Some(b!("there", 0x80)));
+        t!(v: b!("hi/there.t", 0x80, "xt"), filestem, Some(b!("there")));
+        t!(s: "hi/there.txt", filestem, Some("there"), opt);
+        t!(s: "hi/there", filestem, Some("there"), opt);
+        t!(s: "there.txt", filestem, Some("there"), opt);
+        t!(s: "there", filestem, Some("there"), opt);
+        t!(s: ".", filestem, None, opt);
+        t!(s: "/", filestem, None, opt);
+        t!(s: "foo/.bar", filestem, Some(".bar"), opt);
+        t!(s: ".bar", filestem, Some(".bar"), opt);
+        t!(s: "..bar", filestem, Some("."), opt);
+        t!(s: "hi/there..txt", filestem, Some("there."), opt);
+        t!(s: "..", filestem, None, opt);
+        t!(s: "../..", filestem, None, opt);
 
         t!(v: b!("hi/there.txt"), extension, Some(b!("txt")));
         t!(v: b!("hi/there", 0x80, ".txt"), extension, Some(b!("txt")));
@@ -879,6 +960,39 @@ mod tests {
     }
 
     #[test]
+    fn test_push_many() {
+        use to_man = at_vec::to_managed_move;
+
+        macro_rules! t(
+            (s: $path:expr, $push:expr, $exp:expr) => (
+                {
+                    let mut p = Path::from_str($path);
+                    p.push_many_str($push);
+                    assert_eq!(p.as_str(), Some($exp));
+                }
+            );
+            (v: $path:expr, $push:expr, $exp:expr) => (
+                {
+                    let mut p = Path::from_vec($path);
+                    p.push_many($push);
+                    assert_eq!(p.as_vec(), $exp);
+                }
+            )
+        )
+
+        t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
+        t!(s: "a/b/c", ["d", "/e"], "/e");
+        t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
+        t!(s: "a/b/c", [~"d", ~"e"], "a/b/c/d/e");
+        t!(s: "a/b/c", [@"d", @"e"], "a/b/c/d/e");
+        t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
+        t!(v: b!("a/b/c"), [b!("d"), b!("/e"), b!("f")], b!("/e/f"));
+        t!(v: b!("a/b/c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a/b/c/d/e"));
+        t!(v: b!("a/b/c"), [to_man(b!("d").to_owned()), to_man(b!("e").to_owned())],
+              b!("a/b/c/d/e"));
+    }
+
+    #[test]
     fn test_pop() {
         macro_rules! t(
             (s: $path:expr, $left:expr, $right:expr) => (
@@ -927,6 +1041,12 @@ mod tests {
     }
 
     #[test]
+    fn test_root_path() {
+        assert_eq!(Path::from_vec(b!("a/b/c")).root_path(), None);
+        assert_eq!(Path::from_vec(b!("/a/b/c")).root_path(), Some(Path::from_str("/")));
+    }
+
+    #[test]
     fn test_join() {
         t!(v: Path::from_vec(b!("a/b/c")).join(b!("..")), b!("a/b"));
         t!(v: Path::from_vec(b!("/a/b/c")).join(b!("d")), b!("/a/b/c/d"));
@@ -958,6 +1078,38 @@ mod tests {
         t!(s: "a/b", "/c/d", "/c/d");
         t!(s: ".", "a/b", "a/b");
         t!(s: "/", "a/b", "/a/b");
+    }
+
+    #[test]
+    fn test_join_many() {
+        use to_man = at_vec::to_managed_move;
+
+        macro_rules! t(
+            (s: $path:expr, $join:expr, $exp:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    let res = path.join_many_str($join);
+                    assert_eq!(res.as_str(), Some($exp));
+                }
+            );
+            (v: $path:expr, $join:expr, $exp:expr) => (
+                {
+                    let path = Path::from_vec($path);
+                    let res = path.join_many($join);
+                    assert_eq!(res.as_vec(), $exp);
+                }
+            )
+        )
+
+        t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
+        t!(s: "a/b/c", ["..", "d"], "a/b/d");
+        t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
+        t!(s: "a/b/c", [~"d", ~"e"], "a/b/c/d/e");
+        t!(s: "a/b/c", [@"d", @"e"], "a/b/c/d/e");
+        t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
+        t!(v: b!("a/b/c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a/b/c/d/e"));
+        t!(v: b!("a/b/c"), [to_man(b!("d").to_owned()), to_man(b!("e").to_owned())],
+              b!("a/b/c/d/e"));
     }
 
     #[test]
@@ -1122,15 +1274,57 @@ mod tests {
     }
 
     #[test]
+    fn test_add_extension() {
+        macro_rules! t(
+            (s: $path:expr, $ext:expr, $exp:expr) => (
+                {
+                    let mut path = Path::from_str($path);
+                    path.add_extension_str($ext);
+                    assert_eq!(path.as_str(), Some($exp));
+                }
+            );
+            (v: $path:expr, $ext:expr, $exp:expr) => (
+                {
+                    let mut path = Path::from_vec($path);
+                    path.add_extension($ext);
+                    assert_eq!(path.as_vec(), $exp);
+                }
+            )
+        )
+
+        t!(s: "hi/there.txt", "foo", "hi/there.txt.foo");
+        t!(s: "hi/there.", "foo", "hi/there..foo");
+        t!(s: "hi/there", ".foo", "hi/there..foo");
+        t!(s: "hi/there.txt", "", "hi/there.txt");
+        t!(v: b!("hi/there.txt"), b!("foo"), b!("hi/there.txt.foo"));
+        t!(v: b!("hi/there"), b!("bar"), b!("hi/there.bar"));
+        t!(v: b!("/"), b!("foo"), b!("/"));
+        t!(v: b!("."), b!("foo"), b!("."));
+        t!(v: b!("hi/there.", 0x80, "foo"), b!(0xff), b!("hi/there.", 0x80, "foo.", 0xff));
+    }
+
+    #[test]
     fn test_getters() {
         macro_rules! t(
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
-                    assert_eq!(path.filename_str(), $filename);
-                    assert_eq!(path.dirname_str(), $dirname);
-                    assert_eq!(path.filestem_str(), $filestem);
-                    assert_eq!(path.extension_str(), $ext);
+                    let filename = $filename;
+                    assert!(path.filename_str() == filename,
+                            "`%s`.filename_str(): Expected `%?`, found `%?`",
+                            path.as_str().unwrap(), filename, path.filename_str());
+                    let dirname = $dirname;
+                    assert!(path.dirname_str() == dirname,
+                            "`%s`.dirname_str(): Expected `%?`, found `%?`",
+                            path.as_str().unwrap(), dirname, path.dirname_str());
+                    let filestem = $filestem;
+                    assert!(path.filestem_str() == filestem,
+                            "`%s`.filestem_str(): Expected `%?`, found `%?`",
+                            path.as_str().unwrap(), filestem, path.filestem_str());
+                    let ext = $ext;
+                    assert!(path.extension_str() == ext,
+                            "`%s`.extension_str(): Expected `%?`, found `%?`",
+                            path.as_str().unwrap(), ext, path.extension_str());
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
@@ -1144,15 +1338,15 @@ mod tests {
             )
         )
 
-        t!(v: Path::from_vec(b!("a/b/c")), b!("c"), b!("a/b"), b!("c"), None);
-        t!(v: Path::from_vec(b!("a/b/", 0xff)), b!(0xff), b!("a/b"), b!(0xff), None);
-        t!(v: Path::from_vec(b!("hi/there.", 0xff)), b!("there.", 0xff), b!("hi"),
-              b!("there"), Some(b!(0xff)));
+        t!(v: Path::from_vec(b!("a/b/c")), Some(b!("c")), b!("a/b"), Some(b!("c")), None);
+        t!(v: Path::from_vec(b!("a/b/", 0xff)), Some(b!(0xff)), b!("a/b"), Some(b!(0xff)), None);
+        t!(v: Path::from_vec(b!("hi/there.", 0xff)), Some(b!("there.", 0xff)), b!("hi"),
+              Some(b!("there")), Some(b!(0xff)));
         t!(s: Path::from_str("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
-        t!(s: Path::from_str("."), Some(""), Some("."), Some(""), None);
-        t!(s: Path::from_str("/"), Some(""), Some("/"), Some(""), None);
-        t!(s: Path::from_str(".."), Some(""), Some(".."), Some(""), None);
-        t!(s: Path::from_str("../.."), Some(""), Some("../.."), Some(""), None);
+        t!(s: Path::from_str("."), None, Some("."), None, None);
+        t!(s: Path::from_str("/"), None, Some("/"), None, None);
+        t!(s: Path::from_str(".."), None, Some(".."), None, None);
+        t!(s: Path::from_str("../.."), None, Some("../.."), None, None);
         t!(s: Path::from_str("hi/there.txt"), Some("there.txt"), Some("hi"),
               Some("there"), Some("txt"));
         t!(s: Path::from_str("hi/there"), Some("there"), Some("hi"), Some("there"), None);
@@ -1207,14 +1401,23 @@ mod tests {
 
     #[test]
     fn test_is_absolute() {
-        assert_eq!(Path::from_str("a/b/c").is_absolute(), false);
-        assert_eq!(Path::from_str("/a/b/c").is_absolute(), true);
-        assert_eq!(Path::from_str("a").is_absolute(), false);
-        assert_eq!(Path::from_str("/a").is_absolute(), true);
-        assert_eq!(Path::from_str(".").is_absolute(), false);
-        assert_eq!(Path::from_str("/").is_absolute(), true);
-        assert_eq!(Path::from_str("..").is_absolute(), false);
-        assert_eq!(Path::from_str("../..").is_absolute(), false);
+        macro_rules! t(
+            (s: $path:expr, $abs:expr, $rel:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    assert_eq!(path.is_absolute(), $abs);
+                    assert_eq!(path.is_relative(), $rel);
+                }
+            )
+        )
+        t!(s: "a/b/c", false, true);
+        t!(s: "/a/b/c", true, false);
+        t!(s: "a", false, true);
+        t!(s: "/a", true, false);
+        t!(s: ".", false, true);
+        t!(s: "/", true, false);
+        t!(s: "..", false, true);
+        t!(s: "../..", false, true);
     }
 
     #[test]
@@ -1249,6 +1452,45 @@ mod tests {
         t!(s: "/", "/a/b", true);
         t!(s: "..", "a/b", true);
         t!(s: "../..", "a/b", true);
+    }
+
+    #[test]
+    fn test_ends_with_path() {
+        macro_rules! t(
+            (s: $path:expr, $child:expr, $exp:expr) => (
+                {
+                    let path = Path::from_str($path);
+                    let child = Path::from_str($child);
+                    assert_eq!(path.ends_with_path(&child), $exp);
+                }
+            );
+            (v: $path:expr, $child:expr, $exp:expr) => (
+                {
+                    let path = Path::from_vec($path);
+                    let child = Path::from_vec($child);
+                    assert_eq!(path.ends_with_path(&child), $exp);
+                }
+            )
+        )
+
+        t!(s: "a/b/c", "c", true);
+        t!(s: "a/b/c", "d", false);
+        t!(s: "foo/bar/quux", "bar", false);
+        t!(s: "foo/bar/quux", "barquux", false);
+        t!(s: "a/b/c", "b/c", true);
+        t!(s: "a/b/c", "a/b/c", true);
+        t!(s: "a/b/c", "foo/a/b/c", false);
+        t!(s: "/a/b/c", "a/b/c", true);
+        t!(s: "/a/b/c", "/a/b/c", false); // child must be relative
+        t!(s: "/a/b/c", "foo/a/b/c", false);
+        t!(s: "a/b/c", "", false);
+        t!(s: "", "", true);
+        t!(s: "/a/b/c", "d/e/f", false);
+        t!(s: "a/b/c", "a/b", false);
+        t!(s: "a/b/c", "b", false);
+        t!(v: b!("a/b/c"), b!("b/c"), true);
+        t!(v: b!("a/b/", 0xff), b!(0xff), true);
+        t!(v: b!("a/b/", 0xff), b!("b/", 0xff), true);
     }
 
     #[test]
@@ -1305,7 +1547,12 @@ mod tests {
                     let comps = path.component_iter().to_owned_vec();
                     let exp: &[&str] = $exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).to_owned_vec();
-                    assert_eq!(comps, exps);
+                    assert!(comps == exps, "component_iter: Expected %?, found %?",
+                            comps, exps);
+                    let comps = path.rev_component_iter().to_owned_vec();
+                    let exps = exps.move_rev_iter().to_owned_vec();
+                    assert!(comps == exps, "rev_component_iter: Expected %?, found %?",
+                            comps, exps);
                 }
             );
             (v: [$($arg:expr),+], [$([$($exp:expr),*]),*]) => (
@@ -1313,7 +1560,12 @@ mod tests {
                     let path = Path::from_vec(b!($($arg),+));
                     let comps = path.component_iter().to_owned_vec();
                     let exp: &[&[u8]] = [$(b!($($exp),*)),*];
-                    assert_eq!(comps.as_slice(), exp);
+                    assert!(comps.as_slice() == exp, "component_iter: Expected %?, found %?",
+                            comps.as_slice(), exp);
+                    let comps = path.rev_component_iter().to_owned_vec();
+                    let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
+                    assert!(comps.as_slice() == exp, "rev_component_iter: Expected %?, found %?",
+                            comps.as_slice(), exp);
                 }
             )
         )
@@ -1332,6 +1584,32 @@ mod tests {
         t!(s: "..", [".."]);
         t!(s: "../..", ["..", ".."]);
         t!(s: "../../foo", ["..", "..", "foo"]);
+    }
+
+    #[test]
+    fn test_str_component_iter() {
+        macro_rules! t(
+            (v: [$($arg:expr),+], $exp:expr) => (
+                {
+                    let path = Path::from_vec(b!($($arg),+));
+                    let comps = path.str_component_iter().to_owned_vec();
+                    let exp: &[Option<&str>] = $exp;
+                    assert!(comps.as_slice() == exp, "str_component_iter: Expected %?, found %?",
+                            comps.as_slice(), exp);
+                    let comps = path.rev_str_component_iter().to_owned_vec();
+                    let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
+                    assert!(comps.as_slice() == exp,
+                            "rev_str_component_iter: Expected %?, found %?",
+                            comps.as_slice(), exp);
+                }
+            )
+        )
+
+        t!(v: ["a/b/c"], [Some("a"), Some("b"), Some("c")]);
+        t!(v: ["/", 0xff, "/a/", 0x80], [None, Some("a"), None]);
+        t!(v: ["../../foo", 0xcd, "bar"], [Some(".."), Some(".."), None]);
+        // str_component_iter is a wrapper around component_iter, so no need to do
+        // the full set of tests
     }
 
     #[test]

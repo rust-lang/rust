@@ -177,7 +177,6 @@ pub mod libc;
 pub mod c_str;
 pub mod os;
 pub mod path;
-pub mod path2;
 pub mod rand;
 pub mod run;
 pub mod sys;

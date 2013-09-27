@@ -362,7 +362,7 @@ pub fn make_path_option_vec(vec: &[~str], stdin_hyphen : bool) -> ~[Option<Path>
         if stdin_hyphen && "-" == *str {
             None
         } else {
-            Some(Path(*str))
+            Some(Path::from_str(*str))
         }
     }).collect()
 }
@@ -435,14 +435,14 @@ mod test {
     fn test_make_path_option_vec() {
         let strs = [~"some/path",
                     ~"some/other/path"];
-        let paths = ~[Some(Path("some/path")),
-                      Some(Path("some/other/path"))];
+        let paths = ~[Some(Path::from_str("some/path")),
+                      Some(Path::from_str("some/other/path"))];
 
         assert_eq!(make_path_option_vec(strs, true), paths.clone());
         assert_eq!(make_path_option_vec(strs, false), paths);
 
         assert_eq!(make_path_option_vec([~"-"], true), ~[None]);
-        assert_eq!(make_path_option_vec([~"-"], false), ~[Some(Path("-"))]);
+        assert_eq!(make_path_option_vec([~"-"], false), ~[Some(Path::from_str("-"))]);
     }
 
     #[test]
@@ -567,9 +567,9 @@ mod test {
     #[test]
     fn test_no_trailing_newline() {
         let f1 =
-            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
+            Some(Path::from_str("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
         let f2 =
-            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
+            Some(Path::from_str("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
         {
             let mut wr = file::open(f1.get_ref(), io::CreateOrTruncate,
