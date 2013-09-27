@@ -265,25 +265,52 @@
                     output += '<tr class="' + type + ' result"><td>';
 
                     if (type === 'mod') {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + name + '/index.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') + '/' +
+                                            name + '/index.html" class="' +
+                                            type + '">' + name + '</a>';
                     } else if (type === 'static' || type === 'reexport') {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/index.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/index.html" class="' + type +
+                                            '">' + name + '</a>';
                     } else if (item.parent !== undefined) {
+                        console.log(item);
                         var myparent = allPaths[item.parent];
-                        output += item.path + '::' + myparent.name + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + myparent.type + '.' + myparent.name + '.html" class="' + type + '">' + name + '</a>';
+                        var anchor = '#' + type + '.' + name;
+                        output += item.path + '::' + myparent.name +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/' + myparent.type +
+                                            '.' + myparent.name +
+                                            '.html' + anchor +
+                                            '" class="' + type +
+                                            '">' + name + '</a>';
                     } else {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + type + '.' + name + '.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/' + type +
+                                            '.' + name +
+                                            '.html" class="' + type +
+                                            '">' + name + '</a>';
                     }
 
-                    output += '</td><td><span class="desc">' + item.desc + '</span></td></tr>';
+                    output += '</td><td><span class="desc">' + item.desc +
+                                    '</span></td></tr>';
                 });
             } else {
-                output += 'No results :( <a href="https://duckduckgo.com/?q=' + encodeURIComponent('rust ' + query.query) + '">Try on DuckDuckGo?</a>';
+                output += 'No results :( <a href="https://duckduckgo.com/?q=' +
+                            encodeURIComponent('rust ' + query.query) +
+                            '">Try on DuckDuckGo?</a>';
             }
 
             output += "</p>";
             $('.content').html(output);
-            $('.search-results .desc').width($('.content').width() - 40 - $('.content td:first-child').first().width());
+            $('.search-results .desc').width($('.content').width() - 40 -
+                    $('.content td:first-child').first().width());
             initSearchNav();
         }
 
