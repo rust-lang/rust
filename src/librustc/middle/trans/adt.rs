@@ -146,8 +146,8 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 fn is_zerolen(&self, cx: &mut CrateContext) -> bool {
                     mk_struct(cx, self.tys, false).size == 0
                 }
-                fn find_ptr(&self) -> Option<uint> {
-                    self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
+                fn find_ptr(&self, tcx: ty::ctxt) -> Option<uint> {
+                    self.tys.iter().position(|&ty| mono_data_classify(tcx, ty) == MonoNonNull)
                 }
             }
 
@@ -188,7 +188,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
                 let mut discr = 0;
                 while discr < 2 {
                     if cases[1 - discr].is_zerolen(cx) {
-                        match cases[discr].find_ptr() {
+                        match cases[discr].find_ptr(cx.tcx) {
                             Some(ptrfield) => {
                                 return NullablePointer {
                                     nndiscr: discr,

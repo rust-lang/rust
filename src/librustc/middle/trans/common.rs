@@ -1004,7 +1004,7 @@ pub enum MonoDataClass {
     MonoFloat
 }
 
-pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
+pub fn mono_data_classify(tcx: ty::ctxt, t: ty::t) -> MonoDataClass {
     match ty::get(t).sty {
         ty::ty_float(_) => MonoFloat,
         ty::ty_rptr(*) | ty::ty_uniq(*) |
@@ -1012,6 +1012,8 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
         ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) |
         ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) |
         ty::ty_bare_fn(*) => MonoNonNull,
+        ty::ty_struct(id, _) | ty::ty_enum(id, _)
+        if ty::has_attr(tcx, id, "unsafe_non_zero_word") => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits
     }
