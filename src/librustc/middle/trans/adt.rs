@@ -503,9 +503,11 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
             assert!(min <= discr && discr <= max);
             C_disr(ccx, discr)
         }
-        Univariant(ref st, _dro) => {
+        Univariant(ref st, drop_flag) => {
             assert_eq!(discr, 0);
-            C_struct(build_const_struct(ccx, st, vals))
+            let values = if drop_flag { ~[C_bool(true)] + vals }
+                         else { vals.to_owned() };
+            C_struct(build_const_struct(ccx, st, values))
         }
         General(ref cases) => {
             let case = &cases[discr];
