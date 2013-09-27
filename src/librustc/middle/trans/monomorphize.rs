@@ -18,15 +18,11 @@ use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::datum;
-use middle::trans::machine;
 use middle::trans::meth;
-use middle::trans::type_of;
-use middle::trans::type_use;
 use middle::trans::intrinsic;
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{Repr,ty_to_str};
+use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::ast_map;
@@ -65,10 +61,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     for s in real_substs.tps.iter() { assert!(!ty::type_has_params(*s)); }
     for s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
-    let param_uses = type_use::type_uses_for(ccx, fn_id, psubsts.tys.len());
 
-
-    let hash_id = make_mono_id(ccx, fn_id, &*psubsts, Some(param_uses));
+    let hash_id = make_mono_id(ccx, fn_id, &*psubsts);
     if hash_id.params.iter().any(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
@@ -302,8 +296,7 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
 pub fn make_mono_id(ccx: @mut CrateContext,
                     item: ast::DefId,
-                    substs: &param_substs,
-                    param_uses: Option<@~[type_use::type_uses]>) -> mono_id {
+                    substs: &param_substs) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
@@ -321,59 +314,9 @@ pub fn make_mono_id(ccx: @mut CrateContext,
     };
 
 
-    let param_ids = match param_uses {
-      Some(ref uses) => {
-        // param_uses doesn't include a use for the self type.
-        // We just say it is fully used.
-        let self_use =
-            substs.self_ty.map(|_| type_use::use_repr|type_use::use_tydesc);
-        let uses_iter = self_use.iter().chain(uses.iter());
-
-        precise_param_ids.iter().zip(uses_iter).map(|(id, uses)| {
-            if ccx.sess.no_monomorphic_collapse() {
-                match *id {
-                    (a, b) => mono_precise(a, b)
-                }
-            } else {
-                match *id {
-                    (a, b@Some(_)) => mono_precise(a, b),
-                    (subst, None) => {
-                        if *uses == 0 {
-                            mono_any
-                        } else if *uses == type_use::use_repr &&
-                            !ty::type_needs_drop(ccx.tcx, subst)
-                        {
-                            let llty = type_of::type_of(ccx, subst);
-                            let size = machine::llbitsize_of_real(ccx, llty);
-                            let align = machine::llalign_of_min(ccx, llty);
-                            let mode = datum::appropriate_mode(ccx.tcx, subst);
-                            let data_class = mono_data_classify(subst);
-
-                            debug!("make_mono_id: type %s -> size %u align %u mode %? class %?",
-                                  ty_to_str(ccx.tcx, subst),
-                                  size, align, mode, data_class);
-
-                            // Special value for nil to prevent problems
-                            // with undef return pointers.
-                            if size <= 8u && ty::type_is_nil(subst) {
-                                mono_repr(0u, 0u, data_class, mode)
-                            } else {
-                                mono_repr(size, align, data_class, mode)
-                            }
-                        } else {
-                            mono_precise(subst, None)
-                        }
-                    }
-                }
-            }
-        }).collect()
-      }
-      None => {
-          precise_param_ids.iter().map(|x| {
-              let (a, b) = *x;
-              mono_precise(a, b)
-          }).collect()
-      }
-    };
+    let param_ids = precise_param_ids.iter().map(|x| {
+        let (a, b) = *x;
+        mono_precise(a, b)
+    }).collect();
     @mono_id_ {def: item, params: param_ids}
 }
