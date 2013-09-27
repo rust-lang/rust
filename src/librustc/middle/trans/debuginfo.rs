@@ -859,7 +859,8 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
 
     debug2!("compile_unit_metadata: {:?}", crate_name);
 
-    let work_dir = cx.sess.working_dir.to_str();
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let work_dir = cx.sess.working_dir.as_str().unwrap();
     let producer = format!("rustc version {}", env!("CFG_VERSION"));
 
     do crate_name.with_c_str |crate_name| {
@@ -969,7 +970,8 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
 
     debug2!("file_metadata: {}", full_path);
 
-    let work_dir = cx.sess.working_dir.to_str();
+    // FIXME (#9639): This needs to handle non-utf8 paths
+    let work_dir = cx.sess.working_dir.as_str().unwrap();
     let file_name =
         if full_path.starts_with(work_dir) {
             full_path.slice(work_dir.len() + 1u, full_path.len())
