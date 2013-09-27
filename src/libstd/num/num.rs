@@ -978,7 +978,6 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 mod tests {
     use prelude::*;
     use super::*;
-    use int;
     use i8;
     use i16;
     use i32;
@@ -989,10 +988,6 @@ mod tests {
     use u32;
     use u64;
     use uint;
-    use u8;
-    use u16;
-    use u32;
-    use u64;
 
     macro_rules! test_cast_20(
         ($_20:expr) => ({
