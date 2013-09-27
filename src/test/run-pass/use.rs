@@ -15,7 +15,7 @@
 #[no_std];
 extern mod std;
 extern mod zed(name = "std");
-extern mod bar(name = "std", vers = "0.8");
+extern mod bar(name = "std", vers = "0.9-pre");
 
 
 use std::str;
