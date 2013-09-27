@@ -36,24 +36,6 @@ rust_vec
     uint8_t data[0];
 };
 
-struct
-rust_vec_box
-{
-    rust_opaque_box header;
-    rust_vec body;
-};
-
-template <typename T>
-inline size_t vec_size(size_t elems) {
-    return sizeof(rust_vec_box) + sizeof(T) * elems;
-}
-
-template <typename T>
-inline T *
-vec_data(rust_vec *v) {
-    return reinterpret_cast<T*>(v->data);
-}
-
 typedef rust_vec rust_str;
 
 inline size_t get_box_size(size_t body_size, size_t body_align) {
