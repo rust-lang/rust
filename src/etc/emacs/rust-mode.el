@@ -127,6 +127,7 @@
 (defconst rust-mode-keywords
   '("as"
     "break"
+    "continue"
     "do"
     "else" "enum" "extern"
     "false" "fn" "for"

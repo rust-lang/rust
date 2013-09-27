@@ -477,14 +477,15 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "use",                // 61
         "while",              // 62
         "in",                 // 63
+        "continue",           // 64
 
-        "be",                 // 64
-        "pure",               // 65
-        "yield",              // 66
-        "typeof",             // 67
-        "alignof",            // 68
-        "offsetof",           // 69
-        "sizeof",             // 70
+        "be",                 // 65
+        "pure",               // 66
+        "yield",              // 67
+        "typeof",             // 68
+        "alignof",            // 69
+        "offsetof",           // 70
+        "sizeof",             // 71
     ];
 
     @interner::StrInterner::prefill(init_vec)
@@ -628,6 +629,7 @@ pub mod keywords {
         Unsafe,
         Use,
         While,
+        Continue,
 
         // Reserved keywords
         Alignof,
@@ -676,14 +678,15 @@ pub mod keywords {
                 Unsafe => Ident { name: 60, ctxt: 0 },
                 Use => Ident { name: 61, ctxt: 0 },
                 While => Ident { name: 62, ctxt: 0 },
+                Continue => Ident { name: 64, ctxt: 0 },
 
-                Alignof => Ident { name: 68, ctxt: 0 },
-                Be => Ident { name: 64, ctxt: 0 },
-                Offsetof => Ident { name: 69, ctxt: 0 },
-                Pure => Ident { name: 65, ctxt: 0 },
-                Sizeof => Ident { name: 70, ctxt: 0 },
-                Typeof => Ident { name: 67, ctxt: 0 },
-                Yield => Ident { name: 66, ctxt: 0 },
+                Alignof => Ident { name: 69, ctxt: 0 },
+                Be => Ident { name: 65, ctxt: 0 },
+                Offsetof => Ident { name: 70, ctxt: 0 },
+                Pure => Ident { name: 66, ctxt: 0 },
+                Sizeof => Ident { name: 71, ctxt: 0 },
+                Typeof => Ident { name: 68, ctxt: 0 },
+                Yield => Ident { name: 67, ctxt: 0 },
             }
         }
     }
@@ -709,7 +712,7 @@ pub fn is_any_keyword(tok: &Token) -> bool {
 pub fn is_strict_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            8 | 27 | 32 .. 63 => true,
+            8 | 27 | 32 .. 64 => true,
             _ => false,
         },
         _ => false,
@@ -719,7 +722,7 @@ pub fn is_strict_keyword(tok: &Token) -> bool {
 pub fn is_reserved_keyword(tok: &Token) -> bool {
     match *tok {
         token::IDENT(sid, false) => match sid.name {
-            64 .. 70 => true,
+            65 .. 71 => true,
             _ => false,
         },
         _ => false,

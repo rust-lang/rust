@@ -15,6 +15,6 @@ pub fn main() {
         assert!((i > 0));
         info!(i);
         i -= 1;
-        loop;
+        continue;
     }
 }
