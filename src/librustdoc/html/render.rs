@@ -248,7 +248,9 @@ impl<'self> DocFolder for Cache {
         match item.name {
             Some(ref s) => {
                 let parent = match item.inner {
-                    clean::TyMethodItem(*) | clean::VariantItem(*) => {
+                    clean::TyMethodItem(*) |
+                    clean::StructFieldItem(*) |
+                    clean::VariantItem(*) => {
                         Some((Some(*self.parent_stack.last()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
@@ -299,7 +301,7 @@ impl<'self> DocFolder for Cache {
 
         // Maintain the parent stack
         let parent_pushed = match item.inner {
-            clean::TraitItem(*) | clean::EnumItem(*) => {
+            clean::TraitItem(*) | clean::EnumItem(*) | clean::StructItem(*) => {
                 self.parent_stack.push(item.id); true
             }
             clean::ImplItem(ref i) => {
@@ -510,28 +512,6 @@ impl Context {
                 let dst = self.dst.push(item_path(&item));
                 let writer = dst.open_writer(io::CreateOrTruncate);
                 render(writer.unwrap(), self, &item, true);
-
-                // recurse if necessary
-                let name = item.name.get_ref().clone();
-                match item.inner {
-                    clean::EnumItem(e) => {
-                        let mut it = e.variants.move_iter();
-                        do self.recurse(name) |this| {
-                            for item in it {
-                                f(this, item);
-                            }
-                        }
-                    }
-                    clean::StructItem(s) => {
-                        let mut it = s.fields.move_iter();
-                        do self.recurse(name) |this| {
-                            for item in it {
-                                f(this, item);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
             }
 
             _ => {}
@@ -613,9 +593,6 @@ impl<'self> fmt::Default for Item<'self> {
             clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
-            clean::VariantItem(*) => item_variant(fmt.buf, it.cx, it.item),
-            clean::StructFieldItem(*) => item_struct_field(fmt.buf, it.cx,
-                                                           it.item),
             _ => {}
         }
     }
@@ -862,7 +839,8 @@ fn item_trait(w: &mut io::Writer, it: &clean::Item, t: &clean::Trait) {
     document(w, it);
 
     fn meth(w: &mut io::Writer, m: &clean::TraitMethod) {
-        write!(w, "<h3 id='fn.{}' class='method'><code>",
+        write!(w, "<h3 id='{}.{}' class='method'><code>",
+               shortty(m.item()),
                *m.item().name.get_ref());
         render_method(w, m.item(), false);
         write!(w, "</code></h3>");
@@ -923,13 +901,15 @@ fn render_method(w: &mut io::Writer, meth: &clean::Item, withlink: bool) {
            g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
            withlink: bool) {
         write!(w, "{}fn {withlink, select,
-                            true{<a href='\\#fn.{name}' class='fnname'>{name}</a>}
+                            true{<a href='\\#{ty}.{name}'
+                                    class='fnname'>{name}</a>}
                             other{<span class='fnname'>{name}</span>}
                         }{generics}{decl}",
                match purity {
                    ast::unsafe_fn => "unsafe ",
                    _ => "",
                },
+               ty = shortty(it),
                name = it.name.get_ref().as_slice(),
                generics = *g,
                decl = Method(selfty, d),
@@ -1014,7 +994,7 @@ fn render_struct(w: &mut io::Writer, it: &clean::Item,
             for field in fields.iter() {
                 match field.inner {
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "    {}<a name='field.{name}'>{name}</a>: \
+                        write!(w, "    {}<a name='structfield.{name}'>{name}</a>: \
                                    {},\n{}",
                                VisSpace(field.visibility),
                                ty.type_,
@@ -1089,7 +1069,7 @@ fn render_impl(w: &mut io::Writer, i: &clean::Impl) {
     write!(w, "{}</code></h3>", i.for_);
     write!(w, "<div class='methods'>");
     for meth in i.methods.iter() {
-        write!(w, "<h4 id='fn.{}' class='method'><code>",
+        write!(w, "<h4 id='method.{}' class='method'><code>",
                *meth.name.get_ref());
         render_method(w, meth, false);
         write!(w, "</code></h4>\n");
@@ -1195,22 +1175,4 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
         sort::quick_sort(*items, |i1, i2| i1 < i2);
     }
     return map;
-}
-
-fn item_variant(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
-    write!(w, "<DOCTYPE html><html><head>\
-                <meta http-equiv='refresh' content='0; \
-                      url=../enum.{}.html\\#variant.{}'>\
-               </head><body></body></html>",
-           *cx.current.last(),
-           it.name.get_ref().as_slice());
-}
-
-fn item_struct_field(w: &mut io::Writer, cx: &Context, it: &clean::Item) {
-    write!(w, "<DOCTYPE html><html><head>\
-                <meta http-equiv='refresh' content='0; \
-                      url=../struct.{}.html\\#field.{}'>\
-               </head><body></body></html>",
-           *cx.current.last(),
-           it.name.get_ref().as_slice());
 }
