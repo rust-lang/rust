@@ -10,5 +10,5 @@
 
 pub fn main() {
     let x: [int, ..4] = [1, 2, 3, 4];
-    printfln!("%d", x[0]);
+    println!("{}", x[0]);
 }

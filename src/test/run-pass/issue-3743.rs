@@ -40,11 +40,11 @@ pub fn main() {
 
     // the following compiles and works properly
     let v1: Vec2 = a * 3f;
-    printfln!("%f %f", v1.x, v1.y);
+    println!("{} {}", v1.x, v1.y);
 
     // the following compiles but v2 will not be Vec2 yet and
     // using it later will cause an error that the type of v2
     // must be known
     let v2 = a * 3f;
-    printfln!("%f %f", v2.x, v2.y); // error regarding v2's type
+    println!("{} {}", v2.x, v2.y); // error regarding v2's type
 }

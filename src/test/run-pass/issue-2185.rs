@@ -82,5 +82,5 @@ pub fn main() {
         a);
     let sum = foldl(filt, 0u, |accum, &&n: uint| accum + n );
 
-    printfln!("%u", sum);
+    println!("{}", sum);
 }
