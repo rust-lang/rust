@@ -437,7 +437,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             if loaded_crates.is_empty() {
                 println("no crates loaded");
             } else {
-                printfln!("crates loaded: %s", loaded_crates.connect(", "));
+                println!("crates loaded: {}", loaded_crates.connect(", "));
             }
         }
         ~"{" => {

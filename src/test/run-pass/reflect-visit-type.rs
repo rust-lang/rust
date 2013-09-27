@@ -161,7 +161,7 @@ pub fn main() {
     visit_ty::<~[int]>(&mut v);
 
     for s in v.types.iter() {
-        printfln!("type: %s", (*s).clone());
+        println!("type: {}", (*s).clone());
     }
     assert_eq!((*v.types).clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
 }

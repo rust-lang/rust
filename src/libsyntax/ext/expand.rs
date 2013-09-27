@@ -1012,26 +1012,6 @@ pub fn std_macros() -> @str {
         }
     )
 
-    // NOTE(acrichto): start removing this after the next snapshot
-    macro_rules! printf (
-        ($arg:expr) => (
-            print(fmt!(\"%?\", $arg))
-        );
-        ($( $arg:expr ),+) => (
-            print(fmt!($($arg),+))
-        )
-    )
-
-    // NOTE(acrichto): start removing this after the next snapshot
-    macro_rules! printfln (
-        ($arg:expr) => (
-            println(fmt!(\"%?\", $arg))
-        );
-        ($( $arg:expr ),+) => (
-            println(fmt!($($arg),+))
-        )
-    )
-
     macro_rules! format(($($arg:tt)*) => (
         format_args!(::std::fmt::format, $($arg)*)
     ))

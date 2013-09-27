@@ -22,7 +22,7 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
     let start = extra::time::precise_time_s();
     let rv = thunk();
     let end = extra::time::precise_time_s();
-    printfln!("time: %3.3f s\t%s", end - start, what);
+    println!("time: {:3.3f} s\t{}", end - start, what);
     rv
 }
 

@@ -19,7 +19,7 @@
  * # fn make_a_sandwich() {};
  * let mut delayed_fib = extra::future::spawn (|| fib(5000) );
  * make_a_sandwich();
- * printfln!("fib(5000) = %?", delayed_fib.get())
+ * println!("fib(5000) = {}", delayed_fib.get())
  * ```
  */
 

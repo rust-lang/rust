@@ -30,5 +30,5 @@ fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
 }
 pub fn main() {
   let n = test(1, 0, Nil, Nil);
-  printfln!("%d", n);
+  println!("{}", n);
 }

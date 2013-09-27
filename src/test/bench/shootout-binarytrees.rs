@@ -61,7 +61,7 @@ fn main() {
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
-    printfln!("stretch tree of depth %d\t check: %d",
+    println!("stretch tree of depth {}\t check: {}",
               stretch_depth,
               item_check(stretch_tree));
 
@@ -79,11 +79,11 @@ fn main() {
             chk += item_check(temp_tree);
             i += 1;
         }
-        printfln!("%d\t trees of depth %d\t check: %d",
+        println!("{}\t trees of depth {}\t check: {}",
                   iterations * 2, depth, chk);
         depth += 2;
     }
-    printfln!("long lived tree of depth %d\t check: %d",
+    println!("long lived tree of depth {}\t check: {}",
               max_depth,
               item_check(long_lived_tree));
 }

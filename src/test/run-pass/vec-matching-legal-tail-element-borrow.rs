@@ -5,6 +5,6 @@ pub fn main() {
             [1, ..ref tail] => &tail[0],
             _ => unreachable!()
         };
-        printfln!("%d", *el);
+        println!("{}", *el);
     }
 }
