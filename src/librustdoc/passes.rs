@@ -10,6 +10,7 @@
 
 use std::num;
 use std::uint;
+use std::hashmap::HashSet;
 
 use syntax::ast;
 
@@ -50,16 +51,18 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
-    struct Stripper;
-    impl fold::DocFolder for Stripper {
+pub fn strip_private(mut crate: clean::Crate) -> plugins::PluginResult {
+    // This stripper collects all *retained* nodes.
+    struct Stripper<'self>(&'self mut HashSet<ast::NodeId>);
+    impl<'self> fold::DocFolder for Stripper<'self> {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
             match i.inner {
                 // These items can all get re-exported
                 clean::TypedefItem(*) | clean::StaticItem(*) |
                 clean::StructItem(*) | clean::EnumItem(*) |
                 clean::TraitItem(*) | clean::FunctionItem(*) |
-                clean::ViewItemItem(*) | clean::MethodItem(*) => {
+                clean::ViewItemItem(*) | clean::MethodItem(*) |
+                clean::ForeignFunctionItem(*) | clean::ForeignStaticItem(*) => {
                     // XXX: re-exported items should get surfaced in the docs as
                     //      well (using the output of resolve analysis)
                     if i.visibility != Some(ast::public) {
@@ -97,6 +100,7 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
             };
 
             let i = if fastreturn {
+                self.insert(i.id);
                 return Some(i);
             } else {
                 self.fold_item_recur(i)
@@ -108,15 +112,50 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
                         // emptied modules/impls have no need to exist
                         clean::ModuleItem(ref m) if m.items.len() == 0 => None,
                         clean::ImplItem(ref i) if i.methods.len() == 0 => None,
-                        _ => Some(i),
+                        _ => {
+                            self.insert(i.id);
+                            Some(i)
+                        }
                     }
                 }
                 None => None,
             }
         }
     }
-    let mut stripper = Stripper;
-    let crate = stripper.fold_crate(crate);
+
+    // This stripper discards all private impls of traits
+    struct ImplStripper<'self>(&'self HashSet<ast::NodeId>);
+    impl<'self> fold::DocFolder for ImplStripper<'self> {
+        fn fold_item(&mut self, i: Item) -> Option<Item> {
+            match i.inner {
+                clean::ImplItem(ref imp) => {
+                    match imp.trait_ {
+                        Some(clean::ResolvedPath{ id, _ }) => {
+                            if !self.contains(&id) {
+                                return None;
+                            }
+                        }
+                        Some(*) | None => {}
+                    }
+                }
+                _ => {}
+            }
+            self.fold_item_recur(i)
+        }
+    }
+
+    let mut retained = HashSet::new();
+    // First, strip all private items
+    {
+        let mut stripper = Stripper(&mut retained);
+        crate = stripper.fold_crate(crate);
+    }
+
+    // Next, strip all private implementations of traits
+    {
+        let mut stripper = ImplStripper(&retained);
+        crate = stripper.fold_crate(crate);
+    }
     (crate, None)
 }
 
