@@ -294,7 +294,7 @@ fn update_entry_match_full_path() {
                  LogDirective {name: Some(~"crate2"), level: 3}];
     let level = &mut 0;
     unsafe {
-        do "crate1::mod1".to_c_str().with_ref |ptr| {
+        do "crate1::mod1".with_c_str |ptr| {
             let entry= &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == 2);
@@ -310,7 +310,7 @@ fn update_entry_no_match() {
                  LogDirective {name: Some(~"crate2"), level: 3}];
     let level = &mut 0;
     unsafe {
-        do "crate3::mod1".to_c_str().with_ref |ptr| {
+        do "crate3::mod1".with_c_str |ptr| {
             let entry= &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == DEFAULT_LOG_LEVEL);
@@ -326,7 +326,7 @@ fn update_entry_match_beginning() {
                  LogDirective {name: Some(~"crate2"), level: 3}];
     let level = &mut 0;
     unsafe {
-        do "crate2::mod1".to_c_str().with_ref |ptr| {
+        do "crate2::mod1".with_c_str |ptr| {
             let entry= &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == 3);
@@ -343,7 +343,7 @@ fn update_entry_match_beginning_longest_match() {
                  LogDirective {name: Some(~"crate2::mod"), level: 4}];
     let level = &mut 0;
     unsafe {
-        do "crate2::mod1".to_c_str().with_ref |ptr| {
+        do "crate2::mod1".with_c_str |ptr| {
             let entry = &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == 4);
@@ -360,13 +360,13 @@ fn update_entry_match_default() {
                 ];
     let level = &mut 0;
     unsafe {
-        do "crate1::mod1".to_c_str().with_ref |ptr| {
+        do "crate1::mod1".with_c_str |ptr| {
             let entry= &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == 2);
             assert!(m == 1);
         }
-        do "crate2::mod2".to_c_str().with_ref |ptr| {
+        do "crate2::mod2".with_c_str |ptr| {
             let entry= &ModEntry {name: ptr, log_level: level};
             let m = update_entry(dirs, transmute(entry));
             assert!(*entry.log_level == 3);

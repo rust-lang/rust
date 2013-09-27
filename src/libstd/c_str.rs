@@ -61,16 +61,18 @@ do my_string.with_c_str |c_buffer| {
 */
 
 use cast;
+use container::Container;
 use iter::{Iterator, range};
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
-use str;
 use str::StrSlice;
-use vec::{ImmutableVector, CopyableVector};
-use container::Container;
+use str;
+use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec;
+use unstable::intrinsics;
 
 /// Resolution options for the `null_byte` condition
 pub enum NullByteResolution {
@@ -152,8 +154,7 @@ impl CString {
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            let len = ptr::position(self.buf, |c| *c == 0);
-            cast::transmute((self.buf, len + 1))
+            cast::transmute((self.buf, self.len() + 1))
         }
     }
 
@@ -183,6 +184,15 @@ impl Drop for CString {
             unsafe {
                 libc::free(self.buf as *libc::c_void)
             }
+        }
+    }
+}
+
+impl Container for CString {
+    #[inline]
+    fn len(&self) -> uint {
+        unsafe {
+            ptr::position(self.buf, |c| *c == 0)
         }
     }
 }
@@ -233,24 +243,27 @@ impl<'self> ToCStr for &'self str {
     unsafe fn to_c_str_unchecked(&self) -> CString {
         self.as_bytes().to_c_str_unchecked()
     }
+
+    #[inline]
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.as_bytes().with_c_str(f)
+    }
+
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        self.as_bytes().with_c_str_unchecked(f)
+    }
 }
+
+// The length of the stack allocated buffer for `vec.with_c_str()`
+static BUF_LEN: uint = 128;
 
 impl<'self> ToCStr for &'self [u8] {
     fn to_c_str(&self) -> CString {
         #[fixed_stack_segment]; #[inline(never)];
         let mut cs = unsafe { self.to_c_str_unchecked() };
         do cs.with_mut_ref |buf| {
-            for i in range(0, self.len()) {
-                unsafe {
-                    let p = buf.offset(i as int);
-                    if *p == 0 {
-                        match null_byte::cond.raise(self.to_owned()) {
-                            Truncate => break,
-                            ReplaceWith(c) => *p = c
-                        }
-                    }
-                }
-            }
+            check_for_null(*self, buf);
         }
         cs
     }
@@ -267,6 +280,50 @@ impl<'self> ToCStr for &'self [u8] {
             *ptr::mut_offset(buf, self_len as int) = 0;
 
             CString::new(buf as *libc::c_char, true)
+        }
+    }
+
+    fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        unsafe { with_c_str(*self, true, f) }
+    }
+
+    unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
+        with_c_str(*self, false, f)
+    }
+}
+
+// Unsafe function that handles possibly copying the &[u8] into a stack array.
+unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: &fn(*libc::c_char) -> T) -> T {
+    if v.len() < BUF_LEN {
+        let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+        vec::bytes::copy_memory(buf, v, v.len());
+        buf[v.len()] = 0;
+
+        do buf.as_mut_buf |buf, _| {
+            if checked {
+                check_for_null(v, buf as *mut libc::c_char);
+            }
+
+            f(buf as *libc::c_char)
+        }
+    } else if checked {
+        v.to_c_str().with_ref(f)
+    } else {
+        v.to_c_str_unchecked().with_ref(f)
+    }
+}
+
+#[inline]
+fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
+    for i in range(0, v.len()) {
+        unsafe {
+            let p = buf.offset(i as int);
+            if *p == 0 {
+                match null_byte::cond.raise(v.to_owned()) {
+                    Truncate => break,
+                    ReplaceWith(c) => *p = c
+                }
+            }
         }
     }
 }
@@ -469,5 +526,133 @@ mod tests {
         assert_eq!(c_str.as_str(), None);
         let c_str = unsafe { CString::new(ptr::null(), false) };
         assert_eq!(c_str.as_str(), None);
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use iter::range;
+    use libc;
+    use option::Some;
+    use ptr;
+    use extra::test::BenchHarness;
+
+    #[inline]
+    fn check(s: &str, c_str: *libc::c_char) {
+        do s.as_imm_buf |s_buf, s_len| {
+            for i in range(0, s_len) {
+                unsafe {
+                    assert_eq!(
+                        *ptr::offset(s_buf, i as int) as libc::c_char,
+                        *ptr::offset(c_str, i as int));
+                }
+            }
+        }
+    }
+
+    static s_short: &'static str = "Mary";
+    static s_medium: &'static str = "Mary had a little lamb";
+    static s_long: &'static str = "\
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb
+        Mary had a little lamb, Little lamb";
+
+    fn bench_to_str(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            let c_str = s.to_c_str();
+            do c_str.with_ref |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_to_c_str_short(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_to_c_str_medium(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_to_c_str_long(bh: &mut BenchHarness) {
+        bench_to_str(bh, s_long)
+    }
+
+    fn bench_to_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            let c_str = unsafe { s.to_c_str_unchecked() };
+            do c_str.with_ref |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_short(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_medium(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_to_c_str_unchecked_long(bh: &mut BenchHarness) {
+        bench_to_c_str_unchecked(bh, s_long)
+    }
+
+    fn bench_with_c_str(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            do s.with_c_str |c_str_buf| {
+                check(s, c_str_buf)
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_with_c_str_short(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_with_c_str_medium(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_with_c_str_long(bh: &mut BenchHarness) {
+        bench_with_c_str(bh, s_long)
+    }
+
+    fn bench_with_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
+        do bh.iter {
+            unsafe {
+                do s.with_c_str_unchecked |c_str_buf| {
+                    check(s, c_str_buf)
+                }
+            }
+        }
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_short(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_short)
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_medium(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_medium)
+    }
+
+    #[bench]
+    fn bench_with_c_str_unchecked_long(bh: &mut BenchHarness) {
+        bench_with_c_str_unchecked(bh, s_long)
     }
 }
