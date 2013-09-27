@@ -20,7 +20,7 @@ use syntax::fold::ast_fold;
 use syntax::fold;
 use syntax::opt_vec;
 
-static STD_VERSION: &'static str = "0.8";
+static STD_VERSION: &'static str = "0.9-pre";
 
 pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::Crate)
                                -> @ast::Crate {
