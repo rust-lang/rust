@@ -13,16 +13,34 @@
  *
  * An executing Rust program consists of a tree of tasks, each with their own
  * stack, and sole ownership of their allocated heap data. Tasks communicate
- * with each other using ports and channels.
+ * with each other using ports and channels (see std::rt::comm for more info
+ * about how communication works).
  *
- * When a task fails, that failure will propagate to its parent (the task
- * that spawned it) and the parent will fail as well. The reverse is not
- * true: when a parent task fails its children will continue executing. When
- * the root (main) task fails, all tasks fail, and then so does the entire
- * process.
+ * Tasks can be spawned in 3 different modes.
  *
- * Tasks may execute in parallel and are scheduled automatically by the
- * runtime.
+ *  * Bidirectionally linked: This is the default mode and it's what ```spawn``` does.
+ *  Failures will be propagated from parent to child and vice versa.
+ *
+ *  * Unidirectionally linked (parent->child): This type of task can be created with
+ *  ```spawn_supervised```. In this case, failures are propagated from parent to child
+ *  but not the other way around.
+ *
+ *  * Unlinked: Tasks can be completely unlinked. These tasks can be created by using
+ *  ```spawn_unlinked```. In this case failures are not propagated at all.
+ *
+ * Tasks' failure modes can be further configured. For instance, parent tasks can (un)watch
+ * children failures. Please, refer to TaskBuilder's documentation bellow for more information.
+ *
+ * When a (bi|uni)directionally linked task fails, its failure will be propagated to all tasks
+ * linked to it, this will cause such tasks to fail by a `linked failure`.
+ *
+ * Task Scheduling:
+ *
+ * By default, every task is created in the same scheduler as its parent, where it
+ * is scheduled cooperatively with all other tasks in that scheduler. Some specialized
+ * applications may want more control over their scheduling, in which case they can be
+ * spawned into a new scheduler with the specific properties required. See TaskBuilder's
+ * documentation bellow for more information.
  *
  * # Example
  *
@@ -120,17 +138,9 @@ pub struct SchedOpts {
  * * name - A name for the task-to-be, for identification in failure messages.
  *
  * * sched - Specify the configuration of a new scheduler to create the task
- *           in
- *
- *     By default, every task is created in the same scheduler as its
- *     parent, where it is scheduled cooperatively with all other tasks
- *     in that scheduler. Some specialized applications may want more
- *     control over their scheduling, in which case they can be spawned
- *     into a new scheduler with the specific properties required.
- *
- *     This is of particular importance for libraries which want to call
- *     into foreign code that blocks. Without doing so in a different
- *     scheduler other tasks will be impeded or even blocked indefinitely.
+ *           in. This is of particular importance for libraries which want to call
+ *           into foreign code that blocks. Without doing so in a different
+ *           scheduler other tasks will be impeded or even blocked indefinitely.
  */
 pub struct TaskOpts {
     linked: bool,
