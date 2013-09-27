@@ -67,7 +67,7 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
     </nav>
 
     <section id='main' class=\"content {ty}\">{content}</section>
-    <section id='search' class=\"content hidden\">{content}</section>
+    <section id='search' class=\"content hidden\"></section>
 
     <section class=\"footer\"></section>
 
