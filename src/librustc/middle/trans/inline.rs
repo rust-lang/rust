@@ -99,8 +99,17 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
                   ccx.external.insert(there.id, Some(here.id.node));
               }
             }
+            ast::item_struct(ref struct_def, _) => {
+              match struct_def.ctor_id {
+                None => {}
+                Some(ctor_id) => {
+                    let _ = ccx.external.insert(fn_id, Some(ctor_id));
+                    my_id = ctor_id;
+                }
+              }
+            }
             _ => ccx.sess.bug("maybe_instantiate_inline: item has a \
-                               non-enum parent")
+                               non-enum, non-struct parent")
           }
           trans_item(ccx, item);
           local_def(my_id)
