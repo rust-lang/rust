@@ -431,10 +431,10 @@ impl<'self> LookupContext<'self> {
 
             Candidate {
                 rcvr_match_condition: RcvrMatchesIfObject(did),
-                rcvr_substs: trait_ref.substs.clone(),
+                rcvr_substs: new_trait_ref.substs.clone(),
                 method_ty: m,
                 origin: method_object(method_object {
-                        trait_id: trait_ref.def_id,
+                        trait_id: new_trait_ref.def_id,
                         object_trait_id: did,
                         method_num: method_num,
                         real_index: vtable_index
