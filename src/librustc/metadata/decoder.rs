@@ -564,7 +564,7 @@ impl<'self> EachItemContext<'self> {
             }
         }
 
-        let mut continue = (self.callback)(*self.path_builder, def_like, vis);
+        let mut continue_ = (self.callback)(*self.path_builder, def_like, vis);
 
         let family = item_family(doc);
         if family == ForeignMod {
@@ -572,11 +572,11 @@ impl<'self> EachItemContext<'self> {
             self.pop_name(old_len)
         }
 
-        if continue {
+        if continue_ {
             // Recurse if necessary.
             match family {
                 Mod | ForeignMod | Trait | Impl => {
-                    continue = self.each_item_of_module(def_id);
+                    continue_ = self.each_item_of_module(def_id);
                 }
                 ImmStatic | MutStatic | Struct | UnsafeFn | Fn | ForeignFn |
                 UnsafeStaticMethod | StaticMethod | Type | ForeignType |
@@ -589,7 +589,7 @@ impl<'self> EachItemContext<'self> {
             self.pop_name(old_len)
         }
 
-        continue
+        continue_
     }
 
     fn each_item_of_module(&mut self, def_id: ast::DefId) -> bool {
@@ -612,7 +612,7 @@ impl<'self> EachItemContext<'self> {
     }
 
     fn each_child_of_module_or_crate(&mut self, item_doc: ebml::Doc) -> bool {
-        let mut continue = true;
+        let mut continue_ = true;
 
         // Iterate over all children.
         do reader::tagged_docs(item_doc, tag_mod_child) |child_info_doc| {
@@ -654,16 +654,16 @@ impl<'self> EachItemContext<'self> {
                     // Process this item.
 
                     let vis = item_visibility(child_item_doc);
-                    continue = self.process_item_and_pop_name(child_item_doc,
+                    continue_ = self.process_item_and_pop_name(child_item_doc,
                                                               child_def_id,
                                                               old_len,
                                                               vis);
                 }
             }
-            continue
+            continue_
         };
 
-        if !continue {
+        if !continue_ {
             return false
         }
 
@@ -705,7 +705,7 @@ impl<'self> EachItemContext<'self> {
             match maybe_find_item(def_id.node, other_crates_items) {
                 None => { self.pop_name(old_len); }
                 Some(reexported_item_doc) => {
-                    continue = self.process_item_and_pop_name(
+                    continue_ = self.process_item_and_pop_name(
                         reexported_item_doc,
                         def_id,
                         old_len,
@@ -713,10 +713,10 @@ impl<'self> EachItemContext<'self> {
                 }
             }
 
-            continue
+            continue_
         };
 
-        continue
+        continue_
     }
 }
 
