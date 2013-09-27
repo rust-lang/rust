@@ -21,38 +21,38 @@ use vec;
 use vec::{CopyableVector, OwnedCopyableVector, OwnedVector};
 use vec::{ImmutableEqVector, ImmutableVector};
 
-pub mod posix;
-pub mod windows;
-
 /// Typedef for POSIX file paths.
 /// See `posix::Path` for more info.
-pub type PosixPath = posix::Path;
+pub use PosixPath = self::posix::Path;
 
 /// Typedef for Windows file paths.
 /// See `windows::Path` for more info.
-pub type WindowsPath = windows::Path;
+pub use WindowsPath = self::windows::Path;
 
 /// Typedef for the platform-native path type
 #[cfg(unix)]
-pub type Path = PosixPath;
+pub use Path = self::posix::Path;
 /// Typedef for the platform-native path type
 #[cfg(windows)]
-pub type Path = WindowsPath;
+pub use Path = self::windows::Path;
 
 /// Typedef for the POSIX path component iterator.
 /// See `posix::ComponentIter` for more info.
-pub type PosixComponentIter<'self> = posix::ComponentIter<'self>;
+pub use PosixComponentIter = self::posix::ComponentIter;
 
-// /// Typedef for the Windows path component iterator.
-// /// See `windows::ComponentIter` for more info.
-// pub type WindowsComponentIter<'self> = windows::ComponentIter<'self>;
+/// Typedef for the Windows path component iterator.
+/// See `windows::ComponentIter` for more info.
+pub use WindowsComponentIter = self::windows::ComponentIter;
 
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
-pub type ComponentIter<'self> = PosixComponentIter<'self>;
-// /// Typedef for the platform-native component iterator
-//#[cfg(windows)]
-//pub type ComponentIter<'self> = WindowsComponentIter<'self>;
+pub use ComponentIter = self::posix::ComponentIter;
+/// Typedef for the platform-native component iterator
+#[cfg(windows)]
+pub use ComponentIter = self::windows::ComponentIter;
+
+pub mod posix;
+pub mod windows;
 
 // Condition that is raised when a NUL is found in a byte vector given to a Path function
 condition! {
