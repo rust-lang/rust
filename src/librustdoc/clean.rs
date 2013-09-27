@@ -16,6 +16,7 @@ use its = syntax::parse::token::ident_to_str;
 use syntax;
 use syntax::ast;
 use syntax::ast_util;
+use syntax::attr;
 use syntax::attr::AttributeMethods;
 
 use std;
@@ -149,6 +150,8 @@ pub enum ItemEnum {
     MethodItem(Method),
     StructFieldItem(StructField),
     VariantItem(Variant),
+    ForeignFunctionItem(Function),
+    ForeignStaticItem(Static),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -172,6 +175,7 @@ impl Clean<Item> for doctree::Module {
             inner: ModuleItem(Module {
                items: std::vec::concat(&[self.structs.clean(),
                               self.enums.clean(), self.fns.clean(),
+                              std::vec::concat(self.foreigns.clean()),
                               self.mods.clean(), self.typedefs.clean(),
                               self.statics.clean(), self.traits.clean(),
                               self.impls.clean(), self.view_items.clean()])
@@ -201,6 +205,25 @@ impl Clean<Attribute> for ast::Attribute {
     fn clean(&self) -> Attribute {
         self.desugar_doc().node.value.clean()
     }
+}
+
+// This is a rough approximation that gets us what we want.
+impl<'self> attr::AttrMetaMethods for &'self Attribute {
+    fn name(&self) -> @str {
+        match **self {
+            Word(ref n) | List(ref n, _) | NameValue(ref n, _) =>
+                n.to_managed()
+        }
+    }
+
+    fn value_str(&self) -> Option<@str> {
+        match **self {
+            NameValue(_, ref v) => Some(v.to_managed()),
+            _ => None,
+        }
+    }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
+    fn name_str_pair(&self) -> Option<(@str, @str)> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -964,6 +987,41 @@ impl Clean<ViewListIdent> for ast::path_list_ident {
         ViewListIdent {
             name: self.node.name.clean(),
             source: resolve_def(self.node.id),
+        }
+    }
+}
+
+impl Clean<~[Item]> for ast::foreign_mod {
+    fn clean(&self) -> ~[Item] {
+        self.items.clean()
+    }
+}
+
+impl Clean<Item> for ast::foreign_item {
+    fn clean(&self) -> Item {
+        let inner = match self.node {
+            ast::foreign_item_fn(ref decl, ref generics) => {
+                ForeignFunctionItem(Function {
+                    decl: decl.clean(),
+                    generics: generics.clean(),
+                    purity: ast::extern_fn,
+                })
+            }
+            ast::foreign_item_static(ref ty, mutbl) => {
+                ForeignStaticItem(Static {
+                    type_: ty.clean(),
+                    mutability: if mutbl {Mutable} else {Immutable},
+                    expr: ~"",
+                })
+            }
+        };
+        Item {
+            name: Some(self.ident.clean()),
+            attrs: self.attrs.clean(),
+            source: self.span.clean(),
+            id: self.id,
+            visibility: self.vis.clean(),
+            inner: inner,
         }
     }
 }
