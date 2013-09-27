@@ -2911,9 +2911,9 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     }
 }
 
-pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
+pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint) {
     let elttype = Type::struct_([ccx.int_type, ccx.int_type], false);
-    let maptype = Type::array(&elttype, (ccx.module_data.len() + 1) as u64);
+    let maptype = Type::array(&elttype, ccx.module_data.len() as u64);
     let map = do "_rust_mod_map".with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
@@ -2938,18 +2938,15 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
         let elt = C_struct([s_ptr, v_ptr]);
         elts.push(elt);
     }
-    let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]);
-    elts.push(term);
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     }
-    return map;
+    return (map, keys.len());
 }
 
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
                       llmod: ModuleRef) -> ValueRef {
-    
     let targ_cfg = sess.targ_cfg;
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
@@ -2962,8 +2959,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
 
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let vectype = Type::struct_([int_type, int_type], false);
-    let maptype = Type::struct_([Type::i32(), int_type, vectype], false);
+    let slicetype = Type::struct_([int_type, int_type], false);
+    let maptype = Type::struct_([Type::i32(), slicetype, slicetype], false);
     let map = do sym_name.with_c_str |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
@@ -3006,14 +3003,17 @@ pub fn fill_crate_map(ccx: &mut CrateContext, map: ValueRef) {
         lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
 
         llvm::LLVMSetInitializer(vec_elements, C_array(ccx.int_type, subcrates));
-        let mod_map = create_module_map(ccx);
+        let (mod_map, mod_count) = create_module_map(ccx);
 
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
-             p2i(ccx, mod_map),
-             C_struct(
-                [p2i(ccx, vec_elements),
-                 C_int(ccx, (subcrates.len() * 8) as int)
+             C_struct([
+                p2i(ccx, mod_map),
+                C_int(ccx, (mod_count * 16) as int)
+             ]),
+             C_struct([
+                p2i(ccx, vec_elements),
+                C_int(ccx, (subcrates.len() * 8) as int)
              ])
         ]));
     }

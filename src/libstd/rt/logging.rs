@@ -14,14 +14,12 @@ use libc::{uintptr_t, exit};
 use option::{Some, None, Option};
 use rt;
 use rt::util::dumb_println;
-use rt::crate_map::{ModEntry, iter_crate_map};
-use rt::crate_map::get_crate_map;
+use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use str::raw::from_c_str;
 use u32;
 use vec::ImmutableVector;
-use send_str::{SendStr, SendStrOwned, SendStrStatic};
-use cast::transmute;
+#[cfg(test)] use cast::transmute;
 
 struct LogDirective {
     name: Option<~str>,
@@ -111,7 +109,7 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
 
 /// Set the log level of an entry in the crate map depending on the vector
 /// of log directives
-fn update_entry(dirs: &[LogDirective], entry: &mut ModEntry) -> u32 {
+fn update_entry(dirs: &[LogDirective], entry: &ModEntry) -> u32 {
     let mut new_lvl: u32 = DEFAULT_LOG_LEVEL;
     let mut longest_match = -1i;
     unsafe {
@@ -142,7 +140,7 @@ fn update_entry(dirs: &[LogDirective], entry: &mut ModEntry) -> u32 {
 #[fixed_stack_segment] #[inline(never)]
 /// Set log level for every entry in crate_map according to the sepecification
 /// in settings
-fn update_log_settings(crate_map: *u8, settings: ~str) {
+fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     let mut dirs = ~[];
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
@@ -206,7 +204,7 @@ impl rt::io::Writer for StdErrLogger {
 pub fn init() {
     use os;
 
-    let crate_map = get_crate_map() as *u8;
+    let crate_map = get_crate_map();
 
     let log_spec = os::getenv("RUST_LOG");
     match log_spec {
