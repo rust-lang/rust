@@ -391,6 +391,17 @@ valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
+#GNUs ./configure musthave syntax
+valopt build "${DEFAULT_BUILD_TRIPLE}" "GNUs ./configure syntax LLVM build triple"
+valopt host "${CFG_BUILD_TRIPLE}" "GNUs ./configure syntax LLVM host triples"
+valopt target "${CFG_HOST_TRIPLES}" "GNUs ./configure syntax LLVM target triples"
+
+valopt localstatedir "/var/lib" ""
+valopt sysconfdir "/etc" ""
+valopt datadir "/usr/share" ""
+valopt infodir "/usr/share/info" ""
+valopt mandir "/usr/share/man" "install man pages in PATH"
+
 # Validate Options
 step_msg "validating $CFG_SELF args"
 validate_opt
