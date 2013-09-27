@@ -13,19 +13,19 @@ use std::str;
 
 /// Available encoding character sets
 pub enum CharacterSet {
-    /// The standard character set (uses '+' and '/')
+    /// The standard character set (uses `+` and `/`)
     Standard,
-    /// The URL safe character set (uses '-' and '_')
+    /// The URL safe character set (uses `-` and `_`)
     UrlSafe
 }
 
-/// Contains configuration parameters for to_base64
+/// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
     char_set: CharacterSet,
-    /// True to pad output with '=' characters
+    /// True to pad output with `=` characters
     pad: bool,
-    /// Some(len) to wrap lines at len, None to disable line wrapping
+    /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
     line_length: Option<uint>
 }
 
