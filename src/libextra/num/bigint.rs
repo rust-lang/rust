@@ -10,10 +10,10 @@
 
 /*!
 
-A Big integer (signed version: BigInt, unsigned version: BigUint).
+A Big integer (signed version: `BigInt`, unsigned version: `BigUint`).
 
-A BigUint is represented as an array of BigDigits.
-A BigInt is a combination of BigUint and Sign.
+A `BigUint` is represented as an array of `BigDigit`s.
+A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
 #[allow(missing_doc)];
@@ -29,17 +29,17 @@ use std::uint;
 use std::vec;
 
 /**
-A BigDigit is a BigUint's composing element.
+A `BigDigit` is a `BigUint`'s composing element.
 
-A BigDigit is half the size of machine word size.
+A `BigDigit` is half the size of machine word size.
 */
 #[cfg(target_word_size = "32")]
 pub type BigDigit = u16;
 
 /**
-A BigDigit is a BigUint's composing element.
+A `BigDigit` is a `BigUint`'s composing element.
 
-A BigDigit is half the size of machine word size.
+A `BigDigit` is half the size of machine word size.
 */
 #[cfg(target_word_size = "64")]
 pub type BigDigit = u32;
@@ -64,13 +64,13 @@ pub mod BigDigit {
     #[inline]
     fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
 
-    /// Split one machine sized unsigned integer into two BigDigits.
+    /// Split one machine sized unsigned integer into two `BigDigit`s.
     #[inline]
     pub fn from_uint(n: uint) -> (BigDigit, BigDigit) {
         (get_hi(n), get_lo(n))
     }
 
-    /// Join two BigDigits into one machine sized unsigned integer
+    /// Join two `BigDigit`s into one machine sized unsigned integer
     #[inline]
     pub fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
         (lo as uint) | ((hi as uint) << bits)
@@ -80,8 +80,8 @@ pub mod BigDigit {
 /**
 A big unsigned integer type.
 
-A BigUint-typed value BigUint { data: @[a, b, c] } represents a number
-(a + b * BigDigit::base + c * BigDigit::base^2).
+A `BigUint`-typed value `BigUint { data: @[a, b, c] }` represents a number
+`(a + b * BigDigit::base + c * BigDigit::base^2)`.
 */
 #[deriving(Clone)]
 pub struct BigUint {
@@ -550,7 +550,7 @@ impl ToStrRadix for BigUint {
 }
 
 impl FromStrRadix for BigUint {
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
@@ -559,7 +559,7 @@ impl FromStrRadix for BigUint {
 }
 
 impl BigUint {
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn new(v: ~[BigDigit]) -> BigUint {
         // omit trailing zeros
@@ -571,7 +571,7 @@ impl BigUint {
         return BigUint { data: v };
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn from_uint(n: uint) -> BigUint {
         match BigDigit::from_uint(n) {
@@ -581,13 +581,13 @@ impl BigUint {
         }
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     #[inline]
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(slice.to_owned());
     }
 
-    /// Creates and initializes an BigUint.
+    /// Creates and initializes a `BigUint`.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
@@ -615,14 +615,14 @@ impl BigUint {
     }
 
 
-    /// Converts this BigUint into a uint, failing if the conversion
+    /// Converts this `BigUint` into a `uint`, failing if the conversion
     /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
         self.to_uint_opt().expect("BigUint conversion would overflow uint")
     }
 
-    /// Converts this BigUint into a uint, unless it would overflow.
+    /// Converts this `BigUint` into a `uint`, unless it would overflow.
     #[inline]
     pub fn to_uint_opt(&self) -> Option<uint> {
         match self.data.len() {
@@ -633,7 +633,7 @@ impl BigUint {
         }
     }
 
-    // Converts this BigUint into an int, unless it would overflow.
+    /// Converts this `BigUint` into an `int`, unless it would overflow.
     pub fn to_int_opt(&self) -> Option<int> {
         self.to_uint_opt().and_then(|n| {
             // If top bit of uint is set, it's too large to convert to
@@ -646,7 +646,7 @@ impl BigUint {
         })
     }
 
-    /// Converts this BigUint into a BigInt.
+    /// Converts this `BigUint` into a `BigInt`.
     #[inline]
     pub fn to_bigint(&self) -> BigInt {
         BigInt::from_biguint(Plus, self.clone())
@@ -698,7 +698,7 @@ impl BigUint {
         return BigUint::new(shifted);
     }
 
-    /// Determines the fewest bits necessary to express the BigUint.
+    /// Determines the fewest bits necessary to express the `BigUint`.
     pub fn bits(&self) -> uint {
         if self.is_zero() { return 0; }
         let zeros = self.data.last().leading_zeros();
@@ -754,7 +754,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
     }
 }
 
-/// A Sign is a BigInt's composing element.
+/// A Sign is a `BigInt`'s composing element.
 #[deriving(Eq, Clone)]
 pub enum Sign { Minus, Zero, Plus }
 
@@ -1117,22 +1117,22 @@ impl FromStrRadix for BigInt {
 }
 
 trait RandBigInt {
-    /// Generate a random BigUint of the given bit size.
+    /// Generate a random `BigUint` of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
 
     /// Generate a random BigInt of the given bit size.
     fn gen_bigint(&mut self, bit_size: uint) -> BigInt;
 
-    /// Generate a random BigUint less than the given bound. Fails
+    /// Generate a random `BigUint` less than the given bound. Fails
     /// when the bound is zero.
     fn gen_biguint_below(&mut self, bound: &BigUint) -> BigUint;
 
-    /// Generate a random BigUint within the given range. The lower
+    /// Generate a random `BigUint` within the given range. The lower
     /// bound is inclusive; the upper bound is exclusive. Fails when
     /// the upper bound is not greater than the lower bound.
     fn gen_biguint_range(&mut self, lbound: &BigUint, ubound: &BigUint) -> BigUint;
 
-    /// Generate a random BigInt within the given range. The lower
+    /// Generate a random `BigInt` within the given range. The lower
     /// bound is inclusive; the upper bound is exclusive. Fails when
     /// the upper bound is not greater than the lower bound.
     fn gen_bigint_range(&mut self, lbound: &BigInt, ubound: &BigInt) -> BigInt;
@@ -1208,7 +1208,7 @@ impl BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
@@ -1217,20 +1217,20 @@ impl BigInt {
         return BigInt { sign: sign, data: data };
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_uint(n: uint) -> BigInt {
         if n == 0 { return Zero::zero(); }
         return BigInt::from_biguint(Plus, BigUint::from_uint(n));
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     #[inline]
     pub fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::from_slice(slice))
     }
 
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a `BigInt`.
     pub fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
@@ -1244,14 +1244,14 @@ impl BigInt {
             .map_move(|bu| BigInt::from_biguint(sign, bu));
     }
 
-    /// Converts this BigInt into a uint, failing if the conversion
+    /// Converts this `BigInt` into a `uint`, failing if the conversion
     /// would overflow.
     #[inline]
     pub fn to_uint(&self) -> uint {
         self.to_uint_opt().expect("BigInt conversion would overflow uint")
     }
 
-    /// Converts this BigInt into a uint, unless it would overflow.
+    /// Converts this `BigInt` into a `uint`, unless it would overflow.
     #[inline]
     pub fn to_uint_opt(&self) -> Option<uint> {
         match self.sign {
@@ -1261,7 +1261,7 @@ impl BigInt {
         }
     }
 
-    /// Converts this BigInt into an int, unless it would overflow.
+    /// Converts this `BigInt` into an `int`, unless it would overflow.
     pub fn to_int_opt(&self) -> Option<int> {
         match self.sign {
             Plus  => self.data.to_int_opt(),
@@ -1279,14 +1279,14 @@ impl BigInt {
         }
     }
 
-    /// Converts this BigInt into a BigUint, failing if BigInt is
+    /// Converts this `BigInt` into a `BigUint`, failing if BigInt is
     /// negative.
     #[inline]
     pub fn to_biguint(&self) -> BigUint {
         self.to_biguint_opt().expect("negative BigInt cannot convert to BigUint")
     }
 
-    /// Converts this BigInt into a BigUint, if it's not negative.
+    /// Converts this `BigInt` into a `BigUint`, if it's not negative.
     #[inline]
     pub fn to_biguint_opt(&self) -> Option<BigUint> {
         match self.sign {
