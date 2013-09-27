@@ -1695,7 +1695,7 @@ pub trait StrSlice<'self> {
     /// let i = 0u;
     /// while i < s.len() {
     ///     let CharRange {ch, next} = s.char_range_at(i);
-    ///     printfln!("%u: %c", i, ch);
+    ///     println!("{}: {}", i, ch);
     ///     i = next;
     /// }
     /// ```

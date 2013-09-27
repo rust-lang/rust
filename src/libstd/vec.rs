@@ -1003,7 +1003,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```rust
      * let v = &[1,2,3,4];
      * for win in v.window_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
      * ```
      *
@@ -1032,7 +1032,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      * ```rust
      * let v = &[1,2,3,4,5];
      * for win in v.chunk_iter() {
-     *     printfln!(win);
+     *     println!("{:?}", win);
      * }
      * ```
      *

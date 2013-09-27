@@ -136,13 +136,13 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
         match find_cmd(command_string) {
             Some(command) => {
                 match command.action {
-                    CallMain(prog, _) => printfln!(
-                        "The %s command is an alias for the %s program.",
+                    CallMain(prog, _) => println!(
+                        "The {} command is an alias for the {} program.",
                         command.cmd, prog),
                     _       => ()
                 }
                 match command.usage_full {
-                    UsgStr(msg) => printfln!("%s\n", msg),
+                    UsgStr(msg) => println!("{}\n", msg),
                     UsgCall(f)  => f(),
                 }
                 Valid(0)
@@ -215,7 +215,7 @@ fn usage() {
 
     for command in COMMANDS.iter() {
         let padding = " ".repeat(INDENT - command.cmd.len());
-        printfln!("    %s%s%s", command.cmd, padding, command.usage_line);
+        println!("    {}{}{}", command.cmd, padding, command.usage_line);
     }
 
     io::print(
