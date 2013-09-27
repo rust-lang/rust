@@ -54,8 +54,8 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let mut state = Asm;
 
     // Not using labeled break to get us through one round of bootstrapping.
-    let mut continue = true;
-    while continue {
+    let mut continue_ = true;
+    while continue_ {
         match state {
             Asm => {
                 asm = expr_to_str(cx, p.parse_expr(),
@@ -142,7 +142,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 match next_state(state) {
                     Some(x) => x,
                     None    => {
-                        continue = false;
+                        continue_ = false;
                         break
                     }
                 }
@@ -151,19 +151,19 @@ pub fn expand_asm(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 let s = match next_state(state) {
                     Some(x) => x,
                     None    => {
-                        continue = false;
+                        continue_ = false;
                         break
                     }
                 };
                 match next_state(s) {
                     Some(x) => x,
                     None    => {
-                        continue = false;
+                        continue_ = false;
                         break
                     }
                 }
             } else if *p.token == token::EOF {
-                continue = false;
+                continue_ = false;
                 break;
             } else {
                state
