@@ -7,9 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use fmt;
 use from_str::from_str;
-use libc::{uintptr_t, exit, STDERR_FILENO};
+use libc::{uintptr_t, exit};
 use option::{Some, None, Option};
+use rt;
 use rt::util::dumb_println;
 use rt::crate_map::{ModEntry, iter_crate_map};
 use rt::crate_map::get_crate_map;
@@ -18,7 +21,6 @@ use str::raw::from_c_str;
 use u32;
 use vec::ImmutableVector;
 use cast::transmute;
-use send_str::{SendStr, SendStrOwned, SendStrStatic};
 
 struct LogDirective {
     name: Option<~str>,
@@ -171,44 +173,33 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
 }
 
 pub trait Logger {
-    fn log(&mut self, msg: SendStr);
+    fn log(&mut self, args: &fmt::Arguments);
 }
 
 pub struct StdErrLogger;
 
 impl Logger for StdErrLogger {
-    fn log(&mut self, msg: SendStr) {
-        use io::{Writer, WriterUtil};
-
-        if !should_log_console() {
-            return;
-        }
-
-        let s: &str = match msg {
-            SendStrOwned(ref s) => {
-                let slc: &str = *s;
-                slc
-            },
-            SendStrStatic(s) => s,
-        };
-
-        // Truncate the string
-        let buf_bytes = 2048;
-        if s.len() > buf_bytes {
-            let s = s.slice(0, buf_bytes) + "[...]";
-            print(s);
-        } else {
-            print(s)
-        };
-
-        fn print(s: &str) {
-            let dbg = STDERR_FILENO as ::io::fd_t;
-            dbg.write_str(s);
-            dbg.write_str("\n");
-            dbg.flush();
+    fn log(&mut self, args: &fmt::Arguments) {
+        if should_log_console() {
+            fmt::write(self as &mut rt::io::Writer, args);
         }
     }
 }
+
+impl rt::io::Writer for StdErrLogger {
+    fn write(&mut self, buf: &[u8]) {
+        // Nothing like swapping between I/O implementations! In theory this
+        // could use the libuv bindings for writing to file descriptors, but
+        // that may not necessarily be desirable because logging should work
+        // outside of the uv loop. (modify with caution)
+        use io::Writer;
+        let dbg = ::libc::STDERR_FILENO as ::io::fd_t;
+        dbg.write(buf);
+    }
+
+    fn flush(&mut self) {}
+}
+
 /// Configure logging by traversing the crate map and setting the
 /// per-module global logging flags based on the logging spec
 pub fn init() {
