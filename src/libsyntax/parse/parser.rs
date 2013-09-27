@@ -4219,9 +4219,9 @@ impl Parser {
     }
 
     // parse a function declaration from a foreign module
-    fn parse_item_foreign_fn(&self,  attrs: ~[Attribute]) -> @foreign_item {
+    fn parse_item_foreign_fn(&self, vis: ast::visibility,
+                             attrs: ~[Attribute]) -> @foreign_item {
         let lo = self.span.lo;
-        let vis = self.parse_visibility();
 
         // Parse obsolete purity.
         let purity = self.parse_fn_purity();
@@ -4755,7 +4755,7 @@ impl Parser {
         if (self.is_keyword(keywords::Fn) || self.is_keyword(keywords::Pure) ||
                 self.is_keyword(keywords::Unsafe)) {
             // FOREIGN FUNCTION ITEM
-            let item = self.parse_item_foreign_fn(attrs);
+            let item = self.parse_item_foreign_fn(visibility, attrs);
             return iovi_foreign_item(item);
         }
         self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
