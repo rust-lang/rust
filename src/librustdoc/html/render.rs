@@ -259,8 +259,12 @@ impl<'self> DocFolder for Cache {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
-                            Some((Some(*self.parent_stack.last()),
-                                  self.stack.as_slice()))
+                            let last = self.parent_stack.last();
+                            let amt = match self.paths.find(last) {
+                                Some(&(_, "trait")) => self.stack.len() - 1,
+                                Some(*) | None => self.stack.len(),
+                            };
+                            Some((Some(*last), self.stack.slice_to(amt)))
                         }
                     }
                     _ => Some((None, self.stack.as_slice()))
