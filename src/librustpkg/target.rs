@@ -26,6 +26,8 @@ pub enum Target {
 pub enum WhatToBuild {
     /// Build just one lib.rs file in `path`, which is relative to the active workspace's src/ dir
     JustOne(Path),
+    /// Build any test.rs files that can be recursively found in the active workspace
+    Tests,
     /// Build everything
     Everything
 }
