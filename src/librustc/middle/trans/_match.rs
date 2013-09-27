@@ -363,7 +363,7 @@ fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            ccx.sess.bug("non-variant or struct in variant_opt()");
+            ccx.tcx.sess.bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -470,7 +470,7 @@ fn expand_nested_bindings<'r>(bcx: @mut Block,
 
 fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
-        bcx.sess().span_bug(
+        bcx.tcx().sess.span_bug(
             p.span,
             fmt!("Expected an identifier pattern but found p: %s",
                  p.repr(bcx.tcx())));
@@ -1386,7 +1386,7 @@ fn insert_lllocals(bcx: @mut Block,
         debug!("binding %? to %s", binding_info.id, bcx.val_to_str(llval));
         llmap.insert(binding_info.id, llval);
 
-        if bcx.sess().opts.extra_debuginfo {
+        if bcx.tcx().sess.opts.extra_debuginfo {
             debuginfo::create_match_binding_metadata(bcx,
                                                      ident,
                                                      binding_info.id,
@@ -1558,7 +1558,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(ref elts) => elts.len(),
-          _ => ccx.sess.bug("non-tuple type in tuple pattern")
+          _ => ccx.tcx.sess.bug("non-tuple type in tuple pattern")
         };
         let tup_vals = do vec::from_fn(n_tup_elts) |i| {
             adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
@@ -1577,7 +1577,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
-                ccx.sess.bug("non-struct type in tuple struct pattern");
+                ccx.tcx.sess.bug("non-struct type in tuple struct pattern");
             }
         }
 
@@ -1696,7 +1696,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
                         }
                       }
                       _ => {
-                          bcx.sess().bug(
+                          bcx.tcx().sess.bug(
                               "in compile_submatch, expected \
                                trans_opt to return a single_result")
                       }
@@ -2002,7 +2002,7 @@ pub fn store_local(bcx: @mut Block,
             if ty::type_is_bot(expr_ty(bcx, init_expr)) {
                 create_dummy_locals(bcx, pat)
             } else {
-                if bcx.sess().asm_comments() {
+                if bcx.tcx().sess.asm_comments() {
                     add_comment(bcx, "creating zeroable ref llval");
                 }
                 let llptr = init_datum.to_zeroable_ref_llval(bcx);
@@ -2055,7 +2055,7 @@ pub fn store_arg(mut bcx: @mut Block,
     // Debug information (the llvm.dbg.declare intrinsic to be precise) always expects to get an
     // alloca, which only is the case on the general path, so lets disable the optimized path when
     // debug info is enabled.
-    let fast_path = !bcx.ccx().sess.opts.extra_debuginfo && simple_identifier(pat).is_some();
+    let fast_path = !bcx.tcx().sess.opts.extra_debuginfo && simple_identifier(pat).is_some();
 
     if fast_path {
         // Optimized path for `x: T` case. This just adopts
@@ -2118,7 +2118,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
            pat.repr(bcx.tcx()),
            binding_mode);
 
-    if bcx.sess().asm_comments() {
+    if bcx.tcx().sess.asm_comments() {
         add_comment(bcx, fmt!("bind_irrefutable_pat(pat=%s)",
                               pat.repr(bcx.tcx())));
     }

@@ -39,7 +39,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        substs: @param_substs,
                        attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
-    debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
+    debug!("trans_intrinsic(item.ident=%s)", ccx.tcx.sess.str_of(item.ident));
 
     fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
@@ -77,7 +77,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let size = match sizebits {
             32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
             64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
-            _ => ccx.sess.fatal("Invalid value for sizebits")
+            _ => ccx.tcx.sess.fatal("Invalid value for sizebits")
         };
 
         let decl = bcx.fcx.llfn;
@@ -98,7 +98,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         let size = match sizebits {
             32 => C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32),
             64 => C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64),
-            _ => ccx.sess.fatal("Invalid value for sizebits")
+            _ => ccx.tcx.sess.fatal("Invalid value for sizebits")
         };
 
         let decl = bcx.fcx.llfn;
@@ -141,7 +141,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     let mut bcx = fcx.entry_bcx.unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
-    let nm = ccx.sess.str_of(item.ident);
+    let nm = ccx.tcx.sess.str_of(item.ident);
     let name = nm.as_slice();
 
     // This requires that atomic intrinsics follow a specific naming pattern:
@@ -157,7 +157,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("Unknown ordering in atomic intrinsic")
+                _ => ccx.tcx.sess.fatal("Unknown ordering in atomic intrinsic")
             }
         };
 
@@ -198,7 +198,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("Unknown atomic operation")
+                    _ => ccx.tcx.sess.fatal("Unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
@@ -300,7 +300,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                     _ => fail!("transmute has non-expr arg"),
                 };
                 let pluralize = |n| if 1u == n { "" } else { "s" };
-                ccx.sess.span_fatal(sp,
+                ccx.tcx.sess.span_fatal(sp,
                                     fmt!("transmute called on types with \
                                           different sizes: %s (%u bit%s) to \
                                           %s (%u bit%s)",
@@ -491,7 +491,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
-            ccx.sess.span_bug(item.span, "unknown intrinsic");
+            ccx.tcx.sess.span_bug(item.span, "unknown intrinsic");
         }
     }
     fcx.cleanup();

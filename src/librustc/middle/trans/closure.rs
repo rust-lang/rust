@@ -231,7 +231,7 @@ pub fn store_environment(bcx: @mut Block,
     for (i, bv) in bound_values.iter().enumerate() {
         debug!("Copy %s into closure", bv.to_str(ccx));
 
-        if ccx.sess.asm_comments() {
+        if ccx.tcx.sess.asm_comments() {
             add_comment(bcx, fmt!("Copy %s into closure",
                                   bv.to_str(ccx)));
         }
@@ -311,7 +311,7 @@ pub fn load_environment(fcx: @mut FunctionContext,
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
-    let env_pointer_alloca = if fcx.ccx.sess.opts.extra_debuginfo {
+    let env_pointer_alloca = if fcx.ccx.tcx.sess.opts.extra_debuginfo {
         let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), cdata_ty), "__debuginfo_env_ptr");
         Store(bcx, llcdata, alloc);
         Some(alloc)

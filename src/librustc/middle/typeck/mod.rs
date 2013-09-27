@@ -422,7 +422,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
 fn check_for_entry_fn(ccx: &CrateCtxt) {
     let tcx = ccx.tcx;
-    if !*tcx.sess.building_library {
+    if !tcx.sess.building_library {
         match *tcx.sess.entry_fn {
           Some((id, sp)) => match *tcx.sess.entry_type {
               Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),

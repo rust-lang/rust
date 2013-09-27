@@ -193,11 +193,11 @@ impl visit::Visitor<()> for PrivilegedScopeVisitor {
                     item_impl(_, None, ref ast_ty, _) => {
                         if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
                             // This is an error.
-                            let session = self.cc.crate_context.tcx.sess;
-                            session.span_err(item.span,
-                                             "cannot associate methods with a type outside the \
-                                              crate the type is defined in; define and implement \
-                                              a trait or new type instead");
+                            let tcx = self.cc.crate_context.tcx;
+                            tcx.sess.span_err(item.span,
+                                              "cannot associate methods with a type outside the \
+                                               crate the type is defined in; define and implement \
+                                               a trait or new type instead");
                         }
                     }
                     item_impl(_, Some(ref trait_ref), _, _) => {
@@ -214,10 +214,10 @@ impl visit::Visitor<()> for PrivilegedScopeVisitor {
                                 self.cc.trait_ref_to_trait_def_id(trait_ref);
 
                             if trait_def_id.crate != LOCAL_CRATE {
-                                let session = self.cc.crate_context.tcx.sess;
-                                session.span_err(item.span,
-                                                 "cannot provide an extension implementation \
-                                                  for a trait not defined in this crate");
+                                let tcx = self.cc.crate_context.tcx;
+                                tcx.sess.span_err(item.span,
+                                                  "cannot provide an extension implementation \
+                                                   for a trait not defined in this crate");
                             }
                         }
 
@@ -274,10 +274,10 @@ impl CoherenceChecker {
                                        item.span,
                                        self_type.ty) {
                 None => {
-                    let session = self.crate_context.tcx.sess;
-                    session.span_err(item.span,
-                                     "no base type found for inherent implementation; \
-                                      implement a trait or new type instead");
+                    let tcx = self.crate_context.tcx;
+                    tcx.sess.span_err(item.span,
+                                      "no base type found for inherent implementation; \
+                                       implement a trait or new type instead");
                 }
                 Some(_) => {
                     // Nothing to do.
@@ -437,14 +437,14 @@ impl CoherenceChecker {
                             implementation_b);
 
                     if self.polytypes_unify(polytype_a, polytype_b) {
-                        let session = self.crate_context.tcx.sess;
-                        session.span_err(
+                        let tcx = self.crate_context.tcx;
+                        tcx.sess.span_err(
                             self.span_of_impl(implementation_b),
                             fmt!("conflicting implementations for trait `%s`",
                                  ty::item_path_str(self.crate_context.tcx,
                                                    trait_def_id)));
-                        session.span_note(self.span_of_impl(implementation_a),
-                                          "note conflicting implementation here");
+                        tcx.sess.span_note(self.span_of_impl(implementation_a),
+                                           "note conflicting implementation here");
                     }
                 }
             }

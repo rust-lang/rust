@@ -10,7 +10,6 @@
 
 
 use back::{upcall};
-use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
@@ -40,7 +39,6 @@ use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
 use middle::trans::base::{decl_crate_map};
 
 pub struct CrateContext {
-     sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
      td: TargetData,
@@ -122,8 +120,7 @@ pub struct CrateContext {
 }
 
 impl CrateContext {
-    pub fn new(sess: session::Session,
-               name: &str,
+    pub fn new(name: &str,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
                exported_items: @privacy::ExportedItems,
@@ -138,21 +135,21 @@ impl CrateContext {
             let llmod = do name.with_c_str |buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             };
-            let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
-            let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
+            let data_layout: &str = tcx.sess.targ_cfg.target_strs.data_layout;
+            let targ_triple: &str = tcx.sess.targ_cfg.target_strs.target_triple;
             do data_layout.with_c_str |buf| {
                 llvm::LLVMSetDataLayout(llmod, buf)
             };
             do targ_triple.with_c_str |buf| {
                 llvm::LLVMRustSetNormalizedTarget(llmod, buf)
             };
-            let targ_cfg = sess.targ_cfg;
+            let targ_cfg = tcx.sess.targ_cfg;
 
-            let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
+            let td = mk_target_data(tcx.sess.targ_cfg.target_strs.data_layout);
             let mut tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
-            if sess.opts.extra_debuginfo {
+            if tcx.sess.opts.extra_debuginfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
@@ -166,19 +163,18 @@ impl CrateContext {
             tn.associate_type("tydesc", &tydesc_type);
             tn.associate_type("str_slice", &str_slice_ty);
 
-            let crate_map = decl_crate_map(sess, link_meta, llmod);
-            let dbg_cx = if sess.opts.debuginfo {
+            let crate_map = decl_crate_map(tcx.sess, link_meta, llmod);
+            let dbg_cx = if tcx.sess.opts.debuginfo {
                 Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
 
-            if sess.count_llvm_insns() {
+            if tcx.sess.count_llvm_insns() {
                 base::init_insn_ctxt()
             }
 
             CrateContext {
-                  sess: sess,
                   llmod: llmod,
                   llcx: llcx,
                   td: td,

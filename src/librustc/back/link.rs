@@ -54,7 +54,7 @@ fn write_string<W:Writer>(writer: &mut W, string: &str) {
     writer.write(string.as_bytes());
 }
 
-pub fn llvm_err(sess: Session, msg: ~str) -> ! {
+pub fn llvm_err(sess: &Session, msg: ~str) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
@@ -66,7 +66,7 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
 }
 
 pub fn WriteOutputFile(
-        sess: Session,
+        sess: &Session,
         Target: lib::llvm::TargetMachineRef,
         PM: lib::llvm::PassManagerRef,
         M: ModuleRef,
@@ -113,7 +113,7 @@ pub mod jit {
         }
     }
 
-    pub fn exec(sess: Session,
+    pub fn exec(sess: &Session,
                 c: ContextRef,
                 m: ModuleRef,
                 stacks: bool) {
@@ -220,7 +220,7 @@ pub mod write {
     use std::run;
     use std::str;
 
-    pub fn run_passes(sess: Session,
+    pub fn run_passes(sess: &Session,
                       llcx: ContextRef,
                       llmod: ModuleRef,
                       output_type: output_type,
@@ -370,7 +370,7 @@ pub mod write {
         }
     }
 
-    pub fn run_assembler(sess: Session, assembly: &Path, object: &Path) {
+    pub fn run_assembler(sess: &Session, assembly: &Path, object: &Path) {
         let cc_prog = super::get_cc_prog(sess);
 
         let cc_args = ~[
@@ -390,7 +390,7 @@ pub mod write {
         }
     }
 
-    unsafe fn configure_llvm(sess: Session) {
+    unsafe fn configure_llvm(sess: &Session) {
         // Copy what clan does by turning on loop vectorization at O2 and
         // slp vectorization at O3
         let vectorize_loop = !sess.no_vectorize_loops() &&
@@ -511,7 +511,7 @@ pub mod write {
  *
  */
 
-pub fn build_link_meta(sess: Session,
+pub fn build_link_meta(sess: &Session,
                        c: &ast::Crate,
                        output: &Path,
                        symbol_hasher: &mut hash::State)
@@ -523,7 +523,7 @@ pub fn build_link_meta(sess: Session,
         cmh_items: ~[@ast::MetaItem]
     }
 
-    fn provided_link_metas(sess: Session, c: &ast::Crate) ->
+    fn provided_link_metas(sess: &Session, c: &ast::Crate) ->
        ProvidedMetas {
         let mut name = None;
         let mut vers = None;
@@ -597,13 +597,13 @@ pub fn build_link_meta(sess: Session,
         return truncated_hash_result(symbol_hasher).to_managed();
     }
 
-    fn warn_missing(sess: Session, name: &str, default: &str) {
-        if !*sess.building_library { return; }
+    fn warn_missing(sess: &Session, name: &str, default: &str) {
+        if !sess.building_library { return; }
         sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
                        name, default));
     }
 
-    fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
+    fn crate_meta_name(sess: &Session, output: &Path, opt_name: Option<@str>)
         -> @str {
         match opt_name {
             Some(v) if !v.is_empty() => v,
@@ -625,7 +625,7 @@ pub fn build_link_meta(sess: Session,
         }
     }
 
-    fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
+    fn crate_meta_vers(sess: &Session, opt_vers: Option<@str>) -> @str {
         match opt_vers {
             Some(v) if !v.is_empty() => v,
             _ => {
@@ -742,7 +742,7 @@ pub fn sanitize(s: &str) -> ~str {
     return result;
 }
 
-pub fn mangle(sess: Session, ss: path,
+pub fn mangle(sess: &Session, ss: path,
               hash: Option<&str>, vers: Option<&str>) -> ~str {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
@@ -805,7 +805,7 @@ pub fn mangle(sess: Session, ss: path,
     n
 }
 
-pub fn exported_name(sess: Session,
+pub fn exported_name(sess: &Session,
                      path: path,
                      hash: &str,
                      vers: &str) -> ~str {
@@ -824,7 +824,7 @@ pub fn mangle_exported_name(ccx: &mut CrateContext,
                             path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
-    return exported_name(ccx.sess, path,
+    return exported_name(ccx.tcx.sess, path,
                          hash,
                          ccx.link_meta.vers);
 }
@@ -834,9 +834,9 @@ pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(name)),
-                    path_name(ccx.sess.ident_of(s))],
+    return mangle(ccx.tcx.sess,
+                  ~[path_name(ccx.tcx.sess.ident_of(name)),
+                    path_name(ccx.tcx.sess.ident_of(s))],
                   Some(hash.as_slice()),
                   None);
 }
@@ -847,8 +847,8 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
     let s = ppaux::ty_to_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     let (_, name) = gensym_name(name);
-    return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(s)), name],
+    return mangle(ccx.tcx.sess,
+                  ~[path_name(ccx.tcx.sess.ident_of(s)), name],
                   Some(hash.as_slice()),
                   None);
 }
@@ -858,11 +858,11 @@ pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
                                             flav: &str) -> ~str {
     let (_, name) = gensym_name(flav);
     path.push(name);
-    mangle(ccx.sess, path, None, None)
+    mangle(ccx.tcx.sess, path, None, None)
 }
 
 pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
-    mangle(ccx.sess, path, None, None)
+    mangle(ccx.tcx.sess, path, None, None)
 }
 
 
@@ -877,7 +877,7 @@ pub fn output_dll_filename(os: session::Os, lm: LinkMeta) -> ~str {
     fmt!("%s%s-%s-%s%s", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
 
-pub fn get_cc_prog(sess: Session) -> ~str {
+pub fn get_cc_prog(sess: &Session) -> ~str {
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
@@ -905,7 +905,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
 
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
-pub fn link_binary(sess: Session,
+pub fn link_binary(sess: &Session,
                    obj_filename: &Path,
                    out_filename: &Path,
                    lm: LinkMeta) {
@@ -913,7 +913,7 @@ pub fn link_binary(sess: Session,
     let cc_prog = get_cc_prog(sess);
     // The invocations of cc share some flags across platforms
 
-    let output = if *sess.building_library {
+    let output = if sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
@@ -957,7 +957,7 @@ pub fn link_binary(sess: Session,
     }
 }
 
-pub fn link_args(sess: Session,
+pub fn link_args(sess: &Session,
                  obj_filename: &Path,
                  out_filename: &Path,
                  lm:LinkMeta) -> ~[~str] {
@@ -973,7 +973,7 @@ pub fn link_args(sess: Session,
     }
 
 
-    let output = if *sess.building_library {
+    let output = if sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         out_filename.dir_path().push(long_libname)
     } else {
@@ -1042,7 +1042,7 @@ pub fn link_args(sess: Session,
     let used_libs = cstore::get_used_libraries(cstore);
     for l in used_libs.iter() { args.push(~"-l" + *l); }
 
-    if *sess.building_library {
+    if sess.building_library {
         args.push(lib_cmd);
 
         // On mac we need to tell the linker to let this library

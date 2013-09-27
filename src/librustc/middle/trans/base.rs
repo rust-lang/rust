@@ -142,7 +142,7 @@ struct StatRecorder<'self> {
 impl<'self> StatRecorder<'self> {
     pub fn new(ccx: @mut CrateContext,
                name: &'self str) -> StatRecorder<'self> {
-        let start = if ccx.sess.trans_stats() {
+        let start = if ccx.tcx.sess.trans_stats() {
             time::precise_time_ns()
         } else {
             0
@@ -160,7 +160,7 @@ impl<'self> StatRecorder<'self> {
 #[unsafe_destructor]
 impl<'self> Drop for StatRecorder<'self> {
     fn drop(&mut self) {
-        if self.ccx.sess.trans_stats() {
+        if self.ccx.tcx.sess.trans_stats() {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats.n_llvm_insns;
@@ -545,7 +545,7 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &mut CrateContext, sym: @str) {
     if ccx.all_llvm_symbols.contains(&sym) {
-        ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
+        ccx.tcx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym);
 }
@@ -579,7 +579,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx;
-        let name = csearch::get_symbol(ccx.sess.cstore, did);
+        let name = csearch::get_symbol(ccx.tcx.sess.cstore, did);
         let class_ty = ty::subst_tps(tcx,
                                      substs,
                                      None,
@@ -595,7 +595,7 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
 
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
-    if cx.sess.opts.save_temps {
+    if cx.tcx.sess.opts.save_temps {
         do s.with_c_str |buf| {
             unsafe {
                 llvm::LLVMSetValueName(v, buf)
@@ -633,7 +633,7 @@ pub fn compare_scalar_types(cx: @mut Block,
         }
         _ => {
             // Should never get here, because t is scalar.
-            cx.sess().bug("non-scalar type passed to \
+            cx.tcx().sess.bug("non-scalar type passed to \
                            compare_scalar_types")
         }
     }
@@ -789,18 +789,18 @@ pub fn iter_structural_ty(cx: @mut Block, av: ValueRef, t: ty::t,
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
                           }
-                          _ => ccx.sess.unimpl("value from adt::trans_case \
+                          _ => ccx.tcx.sess.unimpl("value from adt::trans_case \
                                                 in iter_structural_ty")
                       }
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
               }
-              _ => ccx.sess.unimpl("value from adt::trans_switch \
+              _ => ccx.tcx.sess.unimpl("value from adt::trans_switch \
                                     in iter_structural_ty")
           }
       }
-      _ => cx.sess().unimpl("type in iter_structural_ty")
+      _ => cx.tcx().sess.unimpl("type in iter_structural_ty")
     }
     return cx;
 }
@@ -877,10 +877,10 @@ pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
 }
 
 pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
-    let name = csearch::get_symbol(ccx.sess.cstore, did);
+    let name = csearch::get_symbol(ccx.tcx.sess.cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            match fn_ty.abis.for_arch(ccx.sess.targ_cfg.arch) {
+            match fn_ty.abis.for_arch(ccx.tcx.sess.targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name)
                 }
@@ -914,7 +914,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
         None => debug!("invoke at ???"),
         Some(node_info) => {
             debug!("invoke at %s",
-                   bcx.sess().codemap.span_to_str(node_info.span));
+                   bcx.tcx().sess.codemap.span_to_str(node_info.span));
         }
     }
 
@@ -950,7 +950,7 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
 }
 
 pub fn need_invoke(bcx: @mut Block) -> bool {
-    if (bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
+    if (bcx.tcx().sess.opts.debugging_opts & session::no_landing_pads != 0) {
         return false;
     }
 
@@ -1132,14 +1132,13 @@ pub fn load_if_immediate(cx: @mut Block, v: ValueRef, t: ty::t) -> ValueRef {
 }
 
 pub fn trans_trace(bcx: @mut Block, sp_opt: Option<Span>, trace_str: @str) {
-    if !bcx.sess().trace() { return; }
+    if !bcx.tcx().sess.trace() { return; }
     let _icx = push_ctxt("trans_trace");
     add_comment(bcx, trace_str);
     let V_trace_str = C_cstr(bcx.ccx(), trace_str);
     let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
-        let sess = bcx.sess();
-        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
+        let loc = bcx.tcx().sess.parse_sess.cm.lookup_char_pos(sp.lo);
         (C_cstr(bcx.ccx(), loc.file.name), loc.line as int)
       }
       None => {
@@ -1184,8 +1183,8 @@ pub fn trans_stmt(cx: @mut Block, s: &ast::Stmt) -> @mut Block {
     let _icx = push_ctxt("trans_stmt");
     debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
-    if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, stmt_to_str(s, cx.ccx().sess.intr()));
+    if cx.tcx().sess.asm_comments() {
+        add_span_comment(cx, s.span, stmt_to_str(s, cx.tcx().sess.intr()));
     }
 
     let mut bcx = cx;
@@ -1198,7 +1197,7 @@ pub fn trans_stmt(cx: @mut Block, s: &ast::Stmt) -> @mut Block {
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, *local);
-                    if cx.sess().opts.extra_debuginfo {
+                    if bcx.tcx().sess.opts.extra_debuginfo {
                         debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
@@ -1317,7 +1316,7 @@ pub fn trans_block_cleanups_(bcx: @mut Block,
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
     let no_lpads =
-        bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
+        bcx.tcx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
     for cu in cleanups.rev_iter() {
@@ -1347,7 +1346,7 @@ pub fn cleanup_and_leave(bcx: @mut Block,
     loop {
         debug!("cleanup_and_leave: leaving %s", cur.to_str());
 
-        if bcx.sess().trace() {
+        if bcx.tcx().sess.trace() {
             trans_trace(
                 bcx, None,
                 (fmt!("cleanup_and_leave(%s)", cur.to_str())).to_managed());
@@ -1418,7 +1417,7 @@ pub fn cleanup_block(bcx: @mut Block, upto: Option<BasicBlockRef>) -> @mut Block
     loop {
         debug!("cleanup_block: %s", cur.to_str());
 
-        if bcx.sess().trace() {
+        if bcx.tcx().sess.trace() {
             trans_trace(
                 bcx, None,
                 (fmt!("cleanup_block(%s)", cur.to_str())).to_managed());
@@ -1534,7 +1533,7 @@ pub fn with_cond(bcx: @mut Block, val: ValueRef, f: &fn(@mut Block) -> @mut Bloc
 pub fn call_memcpy(cx: @mut Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
-    let key = match ccx.sess.targ_cfg.arch {
+    let key = match ccx.tcx.sess.targ_cfg.arch {
         X86 | Arm | Mips => "llvm.memcpy.p0i8.p0i8.i32",
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
@@ -1578,7 +1577,7 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let _icx = push_ctxt("memzero");
     let ccx = b.ccx;
 
-    let intrinsic_key = match ccx.sess.targ_cfg.arch {
+    let intrinsic_key = match ccx.tcx.sess.targ_cfg.arch {
         X86 | Arm | Mips => "llvm.memset.p0i8.i32",
         X86_64 => "llvm.memset.p0i8.i64"
     };
@@ -1687,7 +1686,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, \
             param_substs=%s)",
-           path_str(ccx.sess, path),
+           path_str(ccx.tcx.sess, path),
            id,
            param_substs.repr(ccx.tcx));
 
@@ -1821,7 +1820,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
             fcx.llself = Some(ValSelfData {v: self_val, ..slf});
             add_clean(bcx, self_val, slf.t);
 
-            if fcx.ccx.sess.opts.extra_debuginfo {
+            if fcx.ccx.tcx.sess.opts.extra_debuginfo {
                 debuginfo::create_self_argument_metadata(bcx, slf.t, self_val);
             }
         }
@@ -1848,7 +1847,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
         };
         bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
 
-        if fcx.ccx.sess.opts.extra_debuginfo {
+        if fcx.ccx.tcx.sess.opts.extra_debuginfo {
             debuginfo::create_argument_metadata(bcx, &args[arg_n]);
         }
     }
@@ -2001,7 +2000,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
 
-    let the_path_str = path_str(ccx.sess, path);
+    let the_path_str = path_str(ccx.tcx.sess, path);
     let _s = StatRecorder::new(ccx, the_path_str);
     debug!("trans_fn(self_arg=%?, param_substs=%s)",
            self_arg,
@@ -2137,7 +2136,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 
     let result_ty = match ty::get(ctor_ty).sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output,
-        _ => ccx.sess.bug(
+        _ => ccx.tcx.sess.bug(
             fmt!("trans_enum_variant_or_tuple_like_struct: \
                   unexpected ctor return type %s",
                  ty_to_str(ccx.tcx, ctor_ty)))
@@ -2271,14 +2270,14 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(item.attrs, "static_assert") {
               if m == ast::MutMutable {
-                  ccx.sess.span_fatal(expr.span,
+                  ccx.tcx.sess.span_fatal(expr.span,
                                       "cannot have static_assert on a mutable \
                                        static");
               }
               let v = ccx.const_values.get_copy(&item.id);
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
-                      ccx.sess.span_fatal(expr.span, "static assertion failed");
+                      ccx.tcx.sess.span_fatal(expr.span, "static assertion failed");
                   }
               }
           }
@@ -2333,14 +2332,14 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
                       llfn: ValueRef) {
     ccx.item_symbols.insert(node_id, sym);
 
-    if !*ccx.sess.building_library {
+    if !ccx.tcx.sess.building_library {
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
     // FIXME #4404 android JNI hacks
-    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
-                      (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == session::OsAndroid));
+    let is_entry = is_entry_fn(ccx.tcx.sess, node_id) && (!ccx.tcx.sess.building_library ||
+                      (ccx.tcx.sess.building_library &&
+                       ccx.tcx.sess.targ_cfg.os == session::OsAndroid));
     if is_entry {
         create_entry_wrapper(ccx, sp, llfn);
     }
@@ -2394,7 +2393,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 pub fn create_entry_wrapper(ccx: @mut CrateContext,
                            _sp: Span,
                            main_llfn: ValueRef) {
-    let et = ccx.sess.entry_type.unwrap();
+    let et = ccx.tcx.sess.entry_type.unwrap();
     match et {
         session::EntryMain => {
             create_entry_fn(ccx, main_llfn, true);
@@ -2410,7 +2409,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                                &ccx.int_type);
 
         // FIXME #4404 android JNI hacks
-        let main_name = if *ccx.sess.building_library {
+        let main_name = if ccx.tcx.sess.building_library {
             "amain"
         } else {
             "main"
@@ -2526,7 +2525,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             let sym = match ccx.external_srcs.find(&i.id) {
                                 Some(&did) => {
                                     debug!("but found in other crate...");
-                                    csearch::get_symbol(ccx.sess.cstore, did)
+                                    csearch::get_symbol(ccx.tcx.sess.cstore, did)
                                 }
                                 None => sym
                             };
@@ -2544,7 +2543,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 };
 
-                                if !*ccx.sess.building_library {
+                                if !ccx.tcx.sess.building_library {
                                     lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                                 }
 
@@ -2616,7 +2615,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                     debug!("get_item_val(): processing a node_trait_method");
                     match *trait_method {
                         ast::required(_) => {
-                            ccx.sess.bug("unexpected variant: required trait method in \
+                            ccx.tcx.sess.bug("unexpected variant: required trait method in \
                                          get_item_val()");
                         }
                         ast::provided(m) => {
@@ -2701,7 +2700,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                 }
 
                 ref variant => {
-                    ccx.sess.bug(fmt!("get_item_val(): unexpected variant: %?",
+                    ccx.tcx.sess.bug(fmt!("get_item_val(): unexpected variant: %?",
                                  variant))
                 }
             };
@@ -2890,12 +2889,12 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'stati
 pub fn trap(bcx: @mut Block) {
     match bcx.ccx().intrinsics.find_equiv(& &"llvm.trap") {
       Some(&x) => { Call(bcx, x, [], []); },
-      _ => bcx.sess().bug("unbound llvm.trap in trap")
+      _ => bcx.tcx().sess.bug("unbound llvm.trap in trap")
     }
 }
 
 pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
-    if !ccx.sess.opts.gc || !ccx.uses_gc {
+    if !ccx.tcx.sess.opts.gc || !ccx.uses_gc {
         return;
     }
 
@@ -2948,14 +2947,14 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
 }
 
 
-pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
+pub fn decl_crate_map(sess: &session::Session, mapmeta: LinkMeta,
                       llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = if *sess.building_library {
+    let mapname = if sess.building_library {
         fmt!("%s_%s_%s", mapmeta.name, mapmeta.vers, mapmeta.extras_hash)
     } else {
         ~"toplevel"
@@ -2982,7 +2981,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
 pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
-    let cstore = ccx.sess.cstore;
+    let cstore = ccx.tcx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
         let nm = fmt!("_rust_crate_map_%s_%s_%s",
@@ -3011,7 +3010,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
 pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_inlined_item<'r>)
     -> encoder::EncodeParams<'r> {
 
-        let diag = cx.sess.diagnostic();
+        let diag = cx.tcx.sess.diagnostic();
         let item_symbols = &cx.item_symbols;
         let discrim_symbols = &cx.discrim_symbols;
         let link_meta = &cx.link_meta;
@@ -3024,14 +3023,14 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
             discrim_symbols: discrim_symbols,
             non_inlineable_statics: &cx.non_inlineable_statics,
             link_meta: link_meta,
-            cstore: cx.sess.cstore,
+            cstore: cx.tcx.sess.cstore,
             encode_inlined_item: ie,
             reachable: cx.reachable,
         }
 }
 
 pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
-    if !*cx.sess.building_library { return; }
+    if !cx.tcx.sess.building_library { return; }
 
     let encode_inlined_item: encoder::encode_inlined_item =
         |ecx, ebml_w, path, ii|
@@ -3047,7 +3046,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::Crate) {
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        do cx.sess.targ_cfg.target_strs.meta_sect_name.with_c_str |buf| {
+        do cx.tcx.sess.targ_cfg.target_strs.meta_sect_name.with_c_str |buf| {
             llvm::LLVMSetSection(llglobal, buf)
         };
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
@@ -3074,17 +3073,16 @@ pub fn write_abi_version(ccx: &mut CrateContext) {
     }
 }
 
-pub fn trans_crate(sess: session::Session,
-                   crate: &ast::Crate,
-                   analysis: &CrateAnalysis,
-                   output: &Path) -> CrateTranslation {
+pub fn trans_crate(crate: &ast::Crate, analysis: &CrateAnalysis, output: &Path)
+    -> CrateTranslation {
+
     // Before we touch LLVM, make sure that multithreading is enabled.
     if unsafe { !llvm::LLVMRustStartMultithreading() } {
         //sess.bug("couldn't enable multi-threaded LLVM");
     }
 
     let mut symbol_hasher = hash::default_state();
-    let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
+    let link_meta = link::build_link_meta(analysis.ty_cx.sess, crate, output, &mut symbol_hasher);
 
     // Append ".rc" to crate name as LLVM module identifier.
     //
@@ -3096,8 +3094,7 @@ pub fn trans_crate(sess: session::Session,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name.to_owned() + ".rc";
 
-    let ccx = @mut CrateContext::new(sess,
-                                     llmod_id,
+    let ccx = @mut CrateContext::new(llmod_id,
                                      analysis.ty_cx,
                                      analysis.exp_map2,
                                      analysis.exported_items,
@@ -3106,7 +3103,7 @@ pub fn trans_crate(sess: session::Session,
                                      link_meta,
                                      analysis.reachable);
 
-    if ccx.sess.opts.debuginfo {
+    if ccx.tcx.sess.opts.debuginfo {
         debuginfo::initialize(ccx, crate);
     }
 
@@ -3124,8 +3121,8 @@ pub fn trans_crate(sess: session::Session,
     // __rust_crate_map_toplevel symbol (extra underscore) which it will
     // subsequently fail to find. So to mitigate that we just introduce
     // an alias from the symbol it expects to the one that actually exists.
-    if ccx.sess.targ_cfg.os == session::OsWin32 &&
-       !*ccx.sess.building_library {
+    if ccx.tcx.sess.targ_cfg.os == session::OsWin32 &&
+       !ccx.tcx.sess.building_library {
 
         let maptype = val_ty(ccx.crate_map).to_ref();
 
@@ -3139,13 +3136,13 @@ pub fn trans_crate(sess: session::Session,
 
     glue::emit_tydescs(ccx);
     write_abi_version(ccx);
-    if ccx.sess.opts.debuginfo {
+    if ccx.tcx.sess.opts.debuginfo {
         debuginfo::finalize(ccx);
     }
 
     // Translate the metadata.
     write_metadata(ccx, crate);
-    if ccx.sess.trans_stats() {
+    if ccx.tcx.sess.trans_stats() {
         io::println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);
         println!("n_glues_created: {}", ccx.stats.n_glues_created);
@@ -3168,7 +3165,7 @@ pub fn trans_crate(sess: session::Session,
             }
         }
     }
-    if ccx.sess.count_llvm_insns() {
+    if ccx.tcx.sess.count_llvm_insns() {
         for (k, v) in ccx.stats.llvm_insns.iter() {
             println!("{:7u} {}", *v, *k);
         }
@@ -3178,9 +3175,9 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
 
-    return CrateTranslation {
+    CrateTranslation {
         context: llcx,
         module: llmod,
         link: link_meta
-    };
+    }
 }

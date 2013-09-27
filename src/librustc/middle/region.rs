@@ -22,6 +22,7 @@ Most of the documentation on regions can be found in
 
 
 use driver::session::Session;
+use metadata;
 use metadata::csearch;
 use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
@@ -72,8 +73,8 @@ pub struct Context {
     parent: Option<ast::NodeId>,
 }
 
-struct RegionResolutionVisitor {
-    sess: Session,
+struct RegionResolutionVisitor<'self> {
+    sess: &'self Session,
     def_map: resolve::DefMap,
 
     // Generated maps:
@@ -473,7 +474,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     visitor.visit_block(body, body_cx);
 }
 
-impl Visitor<Context> for RegionResolutionVisitor {
+impl<'self> Visitor<Context> for RegionResolutionVisitor<'self> {
 
     fn visit_block(&mut self, b:&Block, cx:Context) {
         resolve_block(self, b, cx);
@@ -503,7 +504,7 @@ impl Visitor<Context> for RegionResolutionVisitor {
     }
 }
 
-pub fn resolve_crate(sess: Session,
+pub fn resolve_crate(sess: &Session,
                      def_map: resolve::DefMap,
                      crate: &ast::Crate) -> @mut RegionMaps
 {
@@ -551,7 +552,6 @@ pub struct region_dep {
 }
 
 pub struct DetermineRpCtxt {
-    sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
     region_paramd_items: region_paramd_items,
@@ -568,6 +568,8 @@ pub struct DetermineRpCtxt {
     // encodes the context of the current type; invariant if
     // mutable, covariant otherwise
     ambient_variance: region_variance,
+
+    cstore: @mut metadata::cstore::CStore,
 }
 
 pub fn join_variance(variance1: region_variance,
@@ -784,11 +786,10 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
     // respect to &r, because &'r ty can be used whereever a *smaller*
     // region is expected (and hence is a supertype of those
     // locations)
-    let sess = cx.sess;
     match ty.node {
         ast::ty_rptr(ref r, _) => {
             debug!("referenced rptr type %s",
-                   pprust::ty_to_str(ty, sess.intr()));
+                   pprust::ty_to_str(ty, token::get_ident_interner()));
 
             if cx.region_is_relevant(r) {
                 let rv = cx.add_variance(rv_contravariant);
@@ -798,7 +799,7 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
 
         ast::ty_closure(ref f) => {
             debug!("referenced fn type: %s",
-                   pprust::ty_to_str(ty, sess.intr()));
+                   pprust::ty_to_str(ty, token::get_ident_interner()));
             match f.region {
                 Some(_) => {
                     if cx.region_is_relevant(&f.region) {
@@ -833,12 +834,12 @@ fn determine_rp_in_ty(visitor: &mut DetermineRpVisitor,
                     cx.add_dep(did.node);
                 }
             } else {
-                let cstore = sess.cstore;
+                let cstore = cx.cstore;
                 match csearch::get_region_param(cstore, did) {
                   None => {}
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty, sess.intr()));
+                           pprust::ty_to_str(ty, token::get_ident_interner()));
                     if cx.region_is_relevant(&path.segments.last().lifetime) {
                         let rv = cx.add_variance(variance);
                         cx.add_rp(cx.item_id, rv)
@@ -932,13 +933,12 @@ impl Visitor<()> for DetermineRpVisitor {
 
 }
 
-pub fn determine_rp_in_crate(sess: Session,
+pub fn determine_rp_in_crate(cstore: @mut metadata::cstore::CStore,
                              ast_map: ast_map::map,
                              def_map: resolve::DefMap,
                              crate: &ast::Crate)
                           -> region_paramd_items {
     let cx = @mut DetermineRpCtxt {
-        sess: sess,
         ast_map: ast_map,
         def_map: def_map,
         region_paramd_items: @mut HashMap::new(),
@@ -946,7 +946,8 @@ pub fn determine_rp_in_crate(sess: Session,
         worklist: ~[],
         item_id: 0,
         anon_implies_rp: false,
-        ambient_variance: rv_covariant
+        ambient_variance: rv_covariant,
+        cstore: cstore
     };
 
     // Gather up the base set, worklist and dep_map

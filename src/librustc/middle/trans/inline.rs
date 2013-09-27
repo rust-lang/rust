@@ -99,14 +99,14 @@ pub fn maybe_instantiate_inline(ccx: @mut CrateContext, fn_id: ast::DefId)
                   ccx.external.insert(there.id, Some(here.id.node));
               }
             }
-            _ => ccx.sess.bug("maybe_instantiate_inline: item has a \
+            _ => ccx.tcx.sess.bug("maybe_instantiate_inline: item has a \
                                non-enum parent")
           }
           trans_item(ccx, item);
           local_def(my_id)
         }
         csearch::found_parent(_, _) => {
-            ccx.sess.bug("maybe_get_item_ast returned a found_parent \
+            ccx.tcx.sess.bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
         csearch::found(ast::ii_method(impl_did, is_provided, mth)) => {

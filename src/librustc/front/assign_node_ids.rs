@@ -13,18 +13,18 @@ use driver::session::Session;
 use syntax::ast;
 use syntax::fold::ast_fold;
 
-struct NodeIdAssigner {
-    sess: Session,
+struct NodeIdAssigner<'self> {
+    sess: &'self Session,
 }
 
-impl ast_fold for NodeIdAssigner {
+impl<'self> ast_fold for NodeIdAssigner<'self> {
     fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
         assert_eq!(old_id, ast::DUMMY_NODE_ID);
         self.sess.next_node_id()
     }
 }
 
-pub fn assign_node_ids(sess: Session, crate: @ast::Crate) -> @ast::Crate {
+pub fn assign_node_ids(sess: &Session, crate: @ast::Crate) -> @ast::Crate {
     let fold = NodeIdAssigner {
         sess: sess,
     };

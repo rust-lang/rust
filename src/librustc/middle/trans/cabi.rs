@@ -52,7 +52,7 @@ pub fn compute_abi_info(ccx: &mut CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    match ccx.sess.targ_cfg.arch {
+    match ccx.tcx.sess.targ_cfg.arch {
         X86 => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
         X86_64 => cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def),
         Arm => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),

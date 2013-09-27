@@ -110,12 +110,12 @@ impl<'self> PkgScript<'self> {
             .. (*session::basic_options()).clone()
         };
         let input = driver::file_input(script.clone());
-        let sess = driver::build_session(options,
-                                         @diagnostic::DefaultEmitter as
-                                            @diagnostic::Emitter);
-        let cfg = driver::build_configuration(sess);
-        let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-        let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
+        let mut sess = driver::build_session(options,
+                                             @diagnostic::DefaultEmitter as
+                                                @diagnostic::Emitter);
+        let cfg = driver::build_configuration(&sess);
+        let crate = driver::phase_1_parse_input(&sess, cfg.clone(), &input);
+        let crate = driver::phase_2_configure_and_expand(&mut sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %s", id.to_str());
@@ -135,11 +135,9 @@ impl<'self> PkgScript<'self> {
     /// Returns a pair of an exit code and list of configs (obtained by
     /// calling the package script's configs() function if it exists
     fn run_custom(&self, exec: &mut workcache::Exec, sysroot: &Path) -> (~[~str], ExitCode) {
-        let sess = self.sess;
-
         debug!("Working directory = %s", self.build_dir.to_str());
         // Collect together any user-defined commands in the package script
-        let crate = util::ready_crate(sess, self.crate);
+        let crate = util::ready_crate(&self.sess, self.crate);
         debug!("Building output filenames with script name %s",
                driver::source_name(&driver::file_input(self.input.clone())));
         let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
@@ -147,7 +145,7 @@ impl<'self> PkgScript<'self> {
                                        exec,
                                        Nothing,
                                        &self.build_dir,
-                                       sess,
+                                       &self.sess,
                                        crate);
         debug!("Running program: %s %s %s", exe.to_str(),
                sysroot.to_str(), "install");

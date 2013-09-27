@@ -114,7 +114,7 @@ fn root(datum: &Datum,
     debug!("write_guard::root(root_key=%?, root_info=%?, datum=%?)",
            root_key, root_info, datum.to_str(bcx.ccx()));
 
-    if bcx.sess().trace() {
+    if bcx.tcx().sess.trace() {
         trans_trace(
             bcx, None,
             (fmt!("preserving until end of scope %d",

@@ -179,9 +179,9 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
             if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as Disr)) {
-                cx.sess.bug(fmt!("non-C-like enum %s with specified \
-                                  discriminants",
-                                 ty::item_path_str(cx.tcx, def_id)))
+                cx.tcx.sess.bug(fmt!("non-C-like enum %s with specified \
+                                      discriminants",
+                                     ty::item_path_str(cx.tcx, def_id)))
             }
 
             if cases.len() == 2 {
@@ -210,7 +210,7 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             let discr = ~[ty::mk_uint()];
             return General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
-        _ => cx.sess.bug("adt::represent_type called on non-ADT type")
+        _ => cx.tcx.sess.bug("adt::represent_type called on non-ADT type")
     }
 }
 
@@ -354,7 +354,7 @@ pub fn trans_case(bcx: @mut Block, r: &Repr, discr: Disr) -> _match::opt_result 
             _match::single_result(rslt(bcx, C_disr(bcx.ccx(), discr)))
         }
         Univariant(*) => {
-            bcx.ccx().sess.bug("no cases for univariants or structs")
+            bcx.ccx().tcx.sess.bug("no cases for univariants or structs")
         }
         General(*) => {
             _match::single_result(rslt(bcx, C_disr(bcx.ccx(), discr)))
@@ -424,7 +424,7 @@ pub fn trans_field_ptr(bcx: @mut Block, r: &Repr, val: ValueRef, discr: Disr,
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(*) => {
-            bcx.ccx().sess.bug("element access in C-like enum")
+            bcx.ccx().tcx.sess.bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
             assert_eq!(discr, 0);
@@ -470,7 +470,7 @@ fn struct_field_ptr(bcx: @mut Block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_drop_flag_ptr(bcx: @mut Block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
-        _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")
+        _ => bcx.ccx().tcx.sess.bug("tried to get drop flag of non-droppable type")
     }
 }
 
@@ -608,7 +608,7 @@ pub fn const_get_discrim(ccx: &mut CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: &mut CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {
-        CEnum(*) => ccx.sess.bug("element access in C-like enum const"),
+        CEnum(*) => ccx.tcx.sess.bug("element access in C-like enum const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
         General(*) => const_struct_field(ccx, val, ix + 1),
         NullablePointer{ _ } => const_struct_field(ccx, val, ix)

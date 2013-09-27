@@ -296,7 +296,7 @@ struct LanguageItemCollector<'self> {
     items: LanguageItems,
 
     crate: &'self Crate,
-    session: Session,
+    session: &'self Session,
 
     item_refs: HashMap<@str, uint>,
 }
@@ -323,7 +323,7 @@ impl<'self> Visitor<()> for LanguageItemVisitor<'self> {
 }
 
 impl<'self> LanguageItemCollector<'self> {
-    pub fn new<'a>(crate: &'a Crate, session: Session)
+    pub fn new<'a>(crate: &'a Crate, session: &'a Session)
                    -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
@@ -456,7 +456,7 @@ impl<'self> LanguageItemCollector<'self> {
 }
 
 pub fn collect_language_items(crate: &Crate,
-                              session: Session)
+                              session: &Session)
                            -> LanguageItems {
     let mut collector = LanguageItemCollector::new(crate, session);
     collector.collect();

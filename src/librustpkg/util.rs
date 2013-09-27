@@ -67,7 +67,6 @@ struct ListenerFn {
 }
 
 struct ReadyCtx {
-    sess: session::Session,
     crate: @ast::Crate,
     ext_cx: @ExtCtxt,
     path: ~[ast::Ident],
@@ -150,10 +149,9 @@ impl fold::ast_fold for CrateSetup {
 }
 
 /// Generate/filter main function, add the list of commands, etc.
-pub fn ready_crate(sess: session::Session,
+pub fn ready_crate(sess: &session::Session,
                    crate: @ast::Crate) -> @ast::Crate {
     let ctx = @mut ReadyCtx {
-        sess: sess,
         crate: crate,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
@@ -252,17 +250,17 @@ pub fn compile_input(context: &BuildContext,
         }
     }
 
-    let sess = driver::build_session(options,
-                                     @diagnostic::DefaultEmitter as
-                                        @diagnostic::Emitter);
+    let mut sess = driver::build_session(options,
+                                         @diagnostic::DefaultEmitter as
+                                            @diagnostic::Emitter);
 
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
-    let cfg = driver::build_configuration(sess);
-    let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
+    let cfg = driver::build_configuration(&sess);
+    let mut crate = driver::phase_1_parse_input(&sess, cfg.clone(), &input);
+    crate = driver::phase_2_configure_and_expand(&mut sess, cfg.clone(), crate);
 
-    find_and_install_dependencies(context, pkg_id, sess, exec, crate,
+    find_and_install_dependencies(context, pkg_id, &sess, exec, crate,
                                   |p| {
                                       debug!("a dependency: %s", p.to_str());
                                       // Pass the directory containing a dependency
@@ -301,7 +299,7 @@ pub fn compile_input(context: &BuildContext,
                                           exec,
                                           context.compile_upto(),
                                           &out_dir,
-                                          sess,
+                                          &sess,
                                           crate);
     // Discover the output
     let discovered_output = if what == Lib  {
@@ -331,7 +329,7 @@ pub fn compile_crate_from_input(input: &Path,
                                 stop_before: StopBefore,
  // should be of the form <workspace>/build/<pkg id's path>
                                 out_dir: &Path,
-                                sess: session::Session,
+                                sess: &session::Session,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: @ast::Crate) -> Option<Path> {
@@ -354,7 +352,7 @@ pub fn compile_crate_from_input(input: &Path,
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, crate);
     if driver::stop_after_phase_3(sess) { return None; }
-    let translation = driver::phase_4_translate_to_llvm(sess, crate,
+    let translation = driver::phase_4_translate_to_llvm(crate,
                                                         &analysis,
                                                         outputs);
     driver::phase_5_run_llvm_passes(sess, &translation, outputs);
@@ -400,7 +398,7 @@ pub fn compile_crate(ctxt: &BuildContext,
 struct ViewItemVisitor<'self> {
     context: &'self BuildContext,
     parent: &'self PkgId,
-    sess: session::Session,
+    sess: &'self session::Session,
     exec: &'self mut workcache::Exec,
     c: &'self ast::Crate,
     save: &'self fn(Path),
@@ -502,7 +500,7 @@ impl<'self> Visitor<()> for ViewItemVisitor<'self> {
 /// can't be found.
 pub fn find_and_install_dependencies(context: &BuildContext,
                                      parent: &PkgId,
-                                     sess: session::Session,
+                                     sess: &session::Session,
                                      exec: &mut workcache::Exec,
                                      c: &ast::Crate,
                                      save: &fn(Path)) {

@@ -601,7 +601,7 @@ impl Context {
     }
 }
 
-pub fn each_lint(sess: session::Session,
+pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
                  f: &fn(@ast::MetaItem, level, @str) -> bool) -> bool {
     let xs = [allow, warn, deny, forbid];
