@@ -20,6 +20,5 @@ impl Drop for C {
 
 fn main() {
     let c = C{ x: 2};
-    let d = c.clone(); //~ ERROR does not implement any method in scope
-    error!("%?", d.x);
+    let _d = c.clone(); //~ ERROR does not implement any method in scope
 }
