@@ -84,7 +84,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Item {
     /// Stringified span
-    source: ~str,
+    source: Span,
     /// Not everything has a name. E.g., impls
     name: Option<~str>,
     attrs: ~[Attribute],
@@ -737,10 +737,28 @@ impl Clean<VariantKind> for ast::variant_kind {
     }
 }
 
-impl Clean<~str> for syntax::codemap::Span {
-    fn clean(&self) -> ~str {
-        let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap;
-        cm.span_to_str(*self)
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Span {
+    filename: ~str,
+    loline: uint,
+    locol: uint,
+    hiline: uint,
+    hicol: uint,
+}
+
+impl Clean<Span> for syntax::codemap::Span {
+    fn clean(&self) -> Span {
+        let cm = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
+        let filename = cm.span_to_filename(*self);
+        let lo = cm.lookup_char_pos(self.lo);
+        let hi = cm.lookup_char_pos(self.hi);
+        Span {
+            filename: filename.to_owned(),
+            loline: lo.line,
+            locol: *lo.col,
+            hiline: hi.line,
+            hicol: *hi.col,
+        }
     }
 }
 
@@ -1034,7 +1052,7 @@ trait ToSource {
 
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
-        debug!("converting span %s to snippet", self.clean());
+        debug!("converting span %? to snippet", self.clean());
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap.clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,

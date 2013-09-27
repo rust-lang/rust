@@ -119,6 +119,9 @@ body {
 .content h1, .content h2 { margin-left: -20px; }
 .content pre { padding: 20px; }
 
+.content pre.line-numbers { float: left; border: none; }
+.line-numbers span { color: #c67e2d; }
+
 .content .highlighted {
     cursor: pointer;
     color: #000 !important;

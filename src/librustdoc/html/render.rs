@@ -12,12 +12,14 @@ use std::cell::Cell;
 use std::comm::{SharedPort, SharedChan};
 use std::comm;
 use std::fmt;
-use std::hashmap::HashMap;
+use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::rt::io::buffered::BufferedWriter;
 use std::rt::io::file::{FileInfo, DirectoryInfo};
 use std::rt::io::file;
 use std::rt::io;
+use std::rt::io::Reader;
+use std::str;
 use std::task;
 use std::unstable::finally::Finally;
 use std::util;
@@ -33,6 +35,7 @@ use syntax::attr;
 use clean;
 use doctree;
 use fold::DocFolder;
+use html::escape::Escape;
 use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
@@ -44,6 +47,7 @@ pub struct Context {
     dst: Path,
     layout: layout::Layout,
     sidebar: HashMap<~str, ~[~str]>,
+    include_sources: bool,
 }
 
 enum Implementor {
@@ -68,6 +72,12 @@ struct Cache {
     priv search_index: ~[IndexItem],
 }
 
+struct SourceCollector<'self> {
+    seen: HashSet<~str>,
+    dst: Path,
+    cx: &'self Context,
+}
+
 struct Item<'self> { cx: &'self Context, item: &'self clean::Item, }
 struct Sidebar<'self> { cx: &'self Context, item: &'self clean::Item, }
 
@@ -78,6 +88,8 @@ struct IndexItem {
     desc: ~str,
     parent: Option<ast::NodeId>,
 }
+
+struct Source<'self>(&'self str);
 
 local_data_key!(pub cache_key: RWArc<Cache>)
 local_data_key!(pub current_location_key: ~[~str])
@@ -94,6 +106,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
             favicon: ~"",
             crate: crate.name.clone(),
         },
+        include_sources: true,
     };
     mkdir(&cx.dst);
 
@@ -106,6 +119,9 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
                     }
                     clean::NameValue(~"html_logo_url", ref s) => {
                         cx.layout.logo = s.to_owned();
+                    }
+                    clean::Word(~"html_no_source") => {
+                        cx.include_sources = false;
                     }
                     _ => {}
                 }
@@ -162,6 +178,19 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         w.flush();
     }
 
+    if cx.include_sources {
+        let dst = cx.dst.push("src");
+        mkdir(&dst);
+        let dst = dst.push(crate.name);
+        mkdir(&dst);
+        let mut folder = SourceCollector {
+            dst: dst,
+            seen: HashSet::new(),
+            cx: &cx,
+        };
+        crate = folder.fold_crate(crate);
+    }
+
     // Now render the whole crate.
     cx.crate(crate, cache);
 }
@@ -183,7 +212,80 @@ fn mkdir(path: &Path) {
     }
 }
 
-impl<'self> DocFolder for Cache {
+fn clean_srcpath(src: &str, f: &fn(&str)) {
+    let p = Path(src);
+    for c in p.components.iter() {
+        if "." == *c {
+            loop
+        }
+        if ".." == *c {
+            f("up");
+        } else {
+            f(c.as_slice())
+        }
+    }
+}
+
+impl<'self> DocFolder for SourceCollector<'self> {
+    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        if !self.seen.contains(&item.source.filename) {
+            self.emit_source(item.source.filename);
+            self.seen.insert(item.source.filename.clone());
+        }
+        self.fold_item_recur(item)
+    }
+}
+
+impl<'self> SourceCollector<'self> {
+    fn emit_source(&self, filename: &str) {
+        let p = Path(filename);
+
+        // Read the contents of the file
+        let mut contents = ~[];
+        {
+            let mut buf = [0, ..1024];
+            let r = do io::io_error::cond.trap(|_| {}).inside {
+                p.open_reader(io::Open)
+            };
+            // If we couldn't open this file, then just returns because it
+            // probably means that it's some standard library macro thing and we
+            // can't have the source to it anyway.
+            let mut r = match r { Some(r) => r, None => return };
+
+            // read everything
+            loop {
+                match r.read(buf) {
+                    Some(n) => contents.push_all(buf.slice_to(n)),
+                    None => break
+                }
+            }
+        }
+        let contents = str::from_utf8_owned(contents);
+
+        // Create the intermediate directories
+        let mut cur = self.dst.clone();
+        let mut root_path = ~"../../";
+        do clean_srcpath(p.pop().to_str()) |component| {
+            cur = cur.push(component);
+            mkdir(&cur);
+            root_path.push_str("../");
+        }
+
+        let dst = cur.push(*p.components.last() + ".html");
+        let mut w = dst.open_writer(io::CreateOrTruncate);
+
+        let title = format!("{} -- source", *dst.components.last());
+        let page = layout::Page {
+            title: title,
+            ty: "source",
+            root_path: root_path,
+        };
+        layout::render(&mut w as &mut io::Writer, &self.cx.layout,
+                       &page, &(""), &Source(contents.as_slice()));
+    }
+}
+
+impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
@@ -380,7 +482,6 @@ impl Context {
         return ret;
     }
 
-    /// Processes
     fn crate(self, mut crate: clean::Crate, cache: Cache) {
         enum Work {
             Die,
@@ -563,6 +664,20 @@ impl<'self> fmt::Default for Item<'self> {
                        });
             }
             None => {}
+        }
+
+        if it.cx.include_sources {
+            let mut path = ~[];
+            do clean_srcpath(it.item.source.filename) |component| {
+                path.push(component.to_owned());
+            }
+            write!(fmt.buf,
+                   "<a class='source'
+                       href='{root}src/{crate}/{path}.html\\#{line}'>[src]</a>",
+                   root = it.cx.root_path,
+                   crate = it.cx.layout.crate,
+                   path = path.connect("/"),
+                   line = it.item.source.loline);
         }
 
         // Write the breadcrumb trail header for the top
@@ -1179,4 +1294,24 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
         sort::quick_sort(*items, |i1, i2| i1 < i2);
     }
     return map;
+}
+
+impl<'self> fmt::Default for Source<'self> {
+    fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) {
+        let lines = s.line_iter().len();
+        let mut cols = 0;
+        let mut tmp = lines;
+        while tmp > 0 {
+            cols += 1;
+            tmp /= 10;
+        }
+        write!(fmt.buf, "<pre class='line-numbers'>");
+        for i in range(1, lines + 1) {
+            write!(fmt.buf, "<span id='{0}'>{0:1$u}</span>\n", i, cols);
+        }
+        write!(fmt.buf, "</pre>");
+        write!(fmt.buf, "<pre class='rust'>");
+        write!(fmt.buf, "{}", Escape(s.as_slice()));
+        write!(fmt.buf, "</pre>");
+    }
 }
