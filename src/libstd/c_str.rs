@@ -71,6 +71,7 @@ use ptr;
 use str::StrSlice;
 use str;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec;
 use unstable::intrinsics;
 
 /// Resolution options for the `null_byte` condition
@@ -283,41 +284,32 @@ impl<'self> ToCStr for &'self [u8] {
     }
 
     fn with_c_str<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
-        if self.len() < BUF_LEN {
-            do self.as_imm_buf |self_buf, self_len| {
-                unsafe {
-                    let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
-
-                    do buf.as_mut_buf |buf, _| {
-                        ptr::copy_memory(buf, self_buf, self_len);
-                        *ptr::mut_offset(buf, self_len as int) = 0;
-
-                        check_for_null(*self, buf as *mut libc::c_char);
-
-                        f(buf as *libc::c_char)
-                    }
-                }
-            }
-        } else {
-            self.to_c_str().with_ref(f)
-        }
+        unsafe { with_c_str(*self, true, f) }
     }
 
     unsafe fn with_c_str_unchecked<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
-        if self.len() < BUF_LEN {
-            do self.as_imm_buf |self_buf, self_len| {
-                let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+        with_c_str(*self, false, f)
+    }
+}
 
-                do buf.as_mut_buf |buf, _| {
-                    ptr::copy_memory(buf, self_buf, self_len);
-                    *ptr::mut_offset(buf, self_len as int) = 0;
+// Unsafe function that handles possibly copying the &[u8] into a stack array.
+unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: &fn(*libc::c_char) -> T) -> T {
+    if v.len() < BUF_LEN {
+        let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+        vec::bytes::copy_memory(buf, v, v.len());
+        buf[v.len()] = 0;
 
-                    f(buf as *libc::c_char)
-                }
+        do buf.as_mut_buf |buf, _| {
+            if checked {
+                check_for_null(v, buf as *mut libc::c_char);
             }
-        } else {
-            self.to_c_str().with_ref(f)
+
+            f(buf as *libc::c_char)
         }
+    } else if checked {
+        v.to_c_str().with_ref(f)
+    } else {
+        v.to_c_str_unchecked().with_ref(f)
     }
 }
 
