@@ -737,7 +737,7 @@ fn area(sh: Shape) -> float {
     match sh {
         Circle { radius: radius, _ } => float::consts::pi * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
-            (bottom_right.x - top_left.x) * (bottom_right.y - top_left.y)
+            (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y) 
         }
     }
 }
