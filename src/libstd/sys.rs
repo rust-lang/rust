@@ -134,7 +134,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use str::Str;
 
     unsafe {
-        // XXX: Bad re-allocations. fail! needs some refactoring
+        // XXX: Bad re-allocations. fail2! needs some refactoring
         let msg = str::raw::from_c_str(msg);
         let file = str::raw::from_c_str(file);
 
@@ -148,7 +148,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                              n, msg.as_slice(), file.as_slice(), line);
             }
         } else {
-            rterrln!("failed in non-task context at '%s', %s:%i",
+            rterrln!("failed in non-task context at '{}', {}:{}",
                      msg, file, line as int);
         }
 

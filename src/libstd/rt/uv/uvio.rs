@@ -1802,7 +1802,7 @@ fn test_simple_tcp_server_and_client() {
                 let nread = stream.read(buf).unwrap();
                 assert_eq!(nread, 8);
                 for i in range(0u, nread) {
-                    rtdebug!("%u", buf[i] as uint);
+                    rtdebug!("{}", buf[i]);
                     assert_eq!(buf[i], i as u8);
                 }
             }
@@ -1919,7 +1919,7 @@ fn test_simple_udp_server_and_client() {
                 let (nread,src) = server_socket.recvfrom(buf).unwrap();
                 assert_eq!(nread, 8);
                 for i in range(0u, nread) {
-                    rtdebug!("%u", buf[i] as uint);
+                    rtdebug!("{}", buf[i]);
                     assert_eq!(buf[i], i as u8);
                 }
                 assert_eq!(src, client_addr);
@@ -2031,13 +2031,13 @@ fn test_read_read_read() {
                 let mut total_bytes_read = 0;
                 while total_bytes_read < MAX {
                     let nread = stream.read(buf).unwrap();
-                    rtdebug!("read %u bytes", nread as uint);
+                    rtdebug!("read {} bytes", nread);
                     total_bytes_read += nread;
                     for i in range(0u, nread) {
                         assert_eq!(buf[i], 1);
                     }
                 }
-                rtdebug!("read %u bytes total", total_bytes_read as uint);
+                rtdebug!("read {} bytes total", total_bytes_read);
             }
         }
     }

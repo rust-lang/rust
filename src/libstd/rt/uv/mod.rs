@@ -240,7 +240,7 @@ impl UvError {
 
 impl ToStr for UvError {
     fn to_str(&self) -> ~str {
-        fmt!("%s: %s", self.name(), self.desc())
+        format!("{}: {}", self.name(), self.desc())
     }
 }
 
@@ -269,7 +269,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             ECONNRESET => ConnectionReset,
             EPIPE => BrokenPipe,
             err => {
-                rtdebug!("uverr.code %d", err as int);
+                rtdebug!("uverr.code {}", err as int);
                 // XXX: Need to map remaining uv error types
                 OtherIoError
             }

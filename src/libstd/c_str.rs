@@ -116,7 +116,7 @@ impl CString {
     ///
     /// Fails if the CString is null.
     pub fn with_ref<T>(&self, f: &fn(*libc::c_char) -> T) -> T {
-        if self.buf.is_null() { fail!("CString is null!"); }
+        if self.buf.is_null() { fail2!("CString is null!"); }
         f(self.buf)
     }
 
@@ -126,7 +126,7 @@ impl CString {
     ///
     /// Fails if the CString is null.
     pub fn with_mut_ref<T>(&mut self, f: &fn(*mut libc::c_char) -> T) -> T {
-        if self.buf.is_null() { fail!("CString is null!"); }
+        if self.buf.is_null() { fail2!("CString is null!"); }
         f(unsafe { cast::transmute_mut_unsafe(self.buf) })
     }
 
@@ -152,7 +152,7 @@ impl CString {
     /// Fails if the CString is null.
     #[inline]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
-        if self.buf.is_null() { fail!("CString is null!"); }
+        if self.buf.is_null() { fail2!("CString is null!"); }
         unsafe {
             cast::transmute((self.buf, self.len() + 1))
         }
@@ -273,7 +273,7 @@ impl<'self> ToCStr for &'self [u8] {
         do self.as_imm_buf |self_buf, self_len| {
             let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
             if buf.is_null() {
-                fail!("failed to allocate memory!");
+                fail2!("failed to allocate memory!");
             }
 
             ptr::copy_memory(buf, self_buf, self_len);

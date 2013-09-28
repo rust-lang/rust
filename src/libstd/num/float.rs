@@ -181,7 +181,7 @@ impl num::ToStrRadix for float {
     fn to_str_radix(&self, radix: uint) -> ~str {
         let (r, special) = strconv::float_to_str_common(
             *self, radix, true, strconv::SignNeg, strconv::DigAll);
-        if special { fail!("number has a special value, \
+        if special { fail2!("number has a special value, \
                              try to_str_radix_special() if those are expected") }
         r
     }
@@ -1329,16 +1329,16 @@ mod tests {
         // note: NaN != NaN, hence this slightly complex test
         match from_str::<float>("NaN") {
             Some(f) => assert!(f.is_nan()),
-            None => fail!()
+            None => fail2!()
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str::<float>("-0") {
             Some(v) if v.is_zero() => assert!(v.is_negative()),
-            _ => fail!()
+            _ => fail2!()
         }
         match from_str::<float>("0") {
             Some(v) if v.is_zero() => assert!(v.is_positive()),
-            _ => fail!()
+            _ => fail2!()
         }
 
         assert!(from_str::<float>("").is_none());
@@ -1376,16 +1376,16 @@ mod tests {
         // note: NaN != NaN, hence this slightly complex test
         match from_str_hex("NaN") {
             Some(f) => assert!(f.is_nan()),
-            None => fail!()
+            None => fail2!()
         }
         // note: -0 == 0, hence these slightly more complex tests
         match from_str_hex("-0") {
             Some(v) if v.is_zero() => assert!(v.is_negative()),
-            _ => fail!()
+            _ => fail2!()
         }
         match from_str_hex("0") {
             Some(v) if v.is_zero() => assert!(v.is_positive()),
-            _ => fail!()
+            _ => fail2!()
         }
         assert_eq!(from_str_hex("e"), Some(14.));
         assert_eq!(from_str_hex("E"), Some(14.));

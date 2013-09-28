@@ -90,15 +90,15 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
                         log_level = num;
                     },
                     _ => {
-                        dumb_println(fmt!("warning: invalid logging spec \
-                                           '%s', ignoring it", parts[1]));
+                        dumb_println(format!("warning: invalid logging spec \
+                                              '{}', ignoring it", parts[1]));
                         loop;
                     }
                 }
             },
             _ => {
-                dumb_println(fmt!("warning: invalid logging spec '%s',\
-                                  ignoring it", s));
+                dumb_println(format!("warning: invalid logging spec '{}',\
+                                      ignoring it", s));
                 loop;
             }
         }
@@ -165,10 +165,12 @@ fn update_log_settings(crate_map: *u8, settings: ~str) {
     }
 
     if n_matches < (dirs.len() as u32) {
-        dumb_println(fmt!("warning: got %u RUST_LOG specs but only matched %u of them.\n\
-                          You may have mistyped a RUST_LOG spec.\n\
-                          Use RUST_LOG=::help to see the list of crates and modules.\n",
-                          dirs.len() as uint, n_matches as uint));
+        dumb_println(format!("warning: got {} RUST_LOG specs but only matched\n\
+                              {} of them. You may have mistyped a RUST_LOG \
+                              spec. \n\
+                              Use RUST_LOG=::help to see the list of crates \
+                              and modules.\n",
+                             dirs.len(), n_matches));
     }
 }
 

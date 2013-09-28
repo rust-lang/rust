@@ -897,7 +897,7 @@ mod test {
         let mut ra = IsaacRng::new_seeded(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
-        error!("%?", r);
+        debug2!("{:?}", r);
         assert!(r == 890007737u32 // on x86_64
                      || r == 2935188040u32); // on x86
     }
@@ -940,7 +940,7 @@ mod test {
         let mut r = rng();
         let a = r.gen::<float>();
         let b = r.gen::<float>();
-        debug!((a, b));
+        debug2!("{:?}", (a, b));
     }
 
     #[test]
@@ -953,9 +953,9 @@ mod test {
     #[test]
     fn test_gen_ascii_str() {
         let mut r = rng();
-        debug!(r.gen_ascii_str(10u));
-        debug!(r.gen_ascii_str(10u));
-        debug!(r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
+        debug2!("{}", r.gen_ascii_str(10u));
         assert_eq!(r.gen_ascii_str(0u).len(), 0u);
         assert_eq!(r.gen_ascii_str(10u).len(), 10u);
         assert_eq!(r.gen_ascii_str(16u).len(), 16u);

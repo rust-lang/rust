@@ -11,15 +11,15 @@
 use prelude::*;
 use super::{Reader, Writer};
 
-pub fn stdin() -> StdReader { fail!() }
+pub fn stdin() -> StdReader { fail2!() }
 
-pub fn stdout() -> StdWriter { fail!() }
+pub fn stdout() -> StdWriter { fail2!() }
 
-pub fn stderr() -> StdReader { fail!() }
+pub fn stderr() -> StdReader { fail2!() }
 
-pub fn print(_s: &str) { fail!() }
+pub fn print(_s: &str) { fail2!() }
 
-pub fn println(_s: &str) { fail!() }
+pub fn println(_s: &str) { fail2!() }
 
 pub enum StdStream {
     StdIn,
@@ -30,23 +30,23 @@ pub enum StdStream {
 pub struct StdReader;
 
 impl StdReader {
-    pub fn new(_stream: StdStream) -> StdReader { fail!() }
+    pub fn new(_stream: StdStream) -> StdReader { fail2!() }
 }
 
 impl Reader for StdReader {
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail!() }
+    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> { fail2!() }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 pub struct StdWriter;
 
 impl StdWriter {
-    pub fn new(_stream: StdStream) -> StdWriter { fail!() }
+    pub fn new(_stream: StdStream) -> StdWriter { fail2!() }
 }
 
 impl Writer for StdWriter {
-    fn write(&mut self, _buf: &[u8]) { fail!() }
+    fn write(&mut self, _buf: &[u8]) { fail2!() }
 
-    fn flush(&mut self) { fail!() }
+    fn flush(&mut self) { fail2!() }
 }

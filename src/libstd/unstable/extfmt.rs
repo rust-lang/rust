@@ -333,14 +333,14 @@ pub mod ct {
             'f' => TyFloat,
             'p' => TyPointer,
             '?' => TyPoly,
-            _ => err(fmt!("unknown type in conversion: %c", s.char_at(i)))
+            _ => err(format!("unknown type in conversion: {}", s.char_at(i)))
         };
 
         Parsed::new(t, i + 1)
     }
 
     #[cfg(test)]
-    fn die(s: &str) -> ! { fail!(s.to_owned()) }
+    fn die(s: &str) -> ! { fail2!(s.to_owned()) }
 
     #[test]
     fn test_parse_count() {
@@ -698,6 +698,6 @@ mod test {
     #[test]
     fn fmt_slice() {
         let s = "abc";
-        let _s = fmt!("%s", s);
+        let _s = format!("{}", s);
     }
 }

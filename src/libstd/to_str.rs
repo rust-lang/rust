@@ -45,7 +45,7 @@ impl<A:ToStr> ToStr for (A,) {
     fn to_str(&self) -> ~str {
         match *self {
             (ref a,) => {
-                fmt!("(%s,)", (*a).to_str())
+                format!("({},)", (*a).to_str())
             }
         }
     }
@@ -98,7 +98,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
         //let &(ref a, ref b) = self;
         match *self {
             (ref a, ref b) => {
-                fmt!("(%s, %s)", (*a).to_str(), (*b).to_str())
+                format!("({}, {})", (*a).to_str(), (*b).to_str())
             }
         }
     }
@@ -111,7 +111,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
         //let &(ref a, ref b, ref c) = self;
         match *self {
             (ref a, ref b, ref c) => {
-                fmt!("(%s, %s, %s)",
+                format!("({}, {}, {})",
                     (*a).to_str(),
                     (*b).to_str(),
                     (*c).to_str()
@@ -221,7 +221,7 @@ mod tests {
 
     impl ToStr for StructWithToStrWithoutEqOrHash {
         fn to_str(&self) -> ~str {
-            fmt!("s%d", self.value)
+            format!("s{}", self.value)
         }
     }
 
