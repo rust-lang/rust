@@ -340,18 +340,6 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     result
 }
 
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat<T:Clone>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect<T:Clone>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat_slices<T:Clone>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
@@ -3098,24 +3086,21 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        assert_eq!(concat([~[1], ~[2,3]]), ~[1, 2, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.concat_vec(), ~[]);
         assert_eq!([~[1], ~[2,3]].concat_vec(), ~[1, 2, 3]);
 
-        assert_eq!(concat_slices([&[1], &[2,3]]), ~[1, 2, 3]);
         assert_eq!([&[1], &[2,3]].concat_vec(), ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        assert_eq!(connect([], &0), ~[]);
-        assert_eq!(connect([~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect([~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([~[1], ~[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([~[1], ~[2], ~[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
 
-        assert_eq!(connect_slices([], &0), ~[]);
-        assert_eq!(connect_slices([&[1], &[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
     }
