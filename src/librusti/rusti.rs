@@ -156,7 +156,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     //
     // Stage 1: parse the input and filter it into the program (as necessary)
     //
-    debug!("parsing: %s", input);
+    debug2!("parsing: {}", input);
     let crate = parse_input(sess, input);
     let mut to_run = ~[];       // statements to run (emitted back into code)
     let new_locals = @mut ~[];  // new locals being defined
@@ -231,11 +231,11 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 2: run everything up to typeck to learn the types of the new
     //          variables introduced into the program
     //
-    info!("Learning about the new types in the program");
+    info2!("Learning about the new types in the program");
     program.set_cache(); // before register_new_vars (which changes them)
     let input = to_run.connect("\n");
     let test = program.test_code(input, &result, *new_locals);
-    debug!("testing with ^^^^^^ %?", (||{ println(test) })());
+    debug2!("testing with ^^^^^^ {:?}", (||{ println(test) })());
     let dinput = driver::str_input(test.to_managed());
     let cfg = driver::build_configuration(sess);
 
@@ -252,9 +252,9 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     //
     // Stage 3: Actually run the code in the JIT
     //
-    info!("actually running code");
+    info2!("actually running code");
     let code = program.code(input, &result);
-    debug!("actually running ^^^^^^ %?", (||{ println(code) })());
+    debug2!("actually running ^^^^^^ {:?}", (||{ println(code) })());
     let input = driver::str_input(code.to_managed());
     let cfg = driver::build_configuration(sess);
     let outputs = driver::build_output_filenames(&input, &None, &None, [], sess);
@@ -272,7 +272,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     // Stage 4: Inform the program that computation is done so it can update all
     //          local variable bindings.
     //
-    info!("cleaning up after code");
+    info2!("cleaning up after code");
     program.consume_cache();
 
     //
@@ -284,7 +284,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
     return (program, jit::consume_engine());
 
     fn parse_input(sess: session::Session, input: &str) -> ast::Crate {
-        let code = fmt!("fn main() {\n %s \n}", input);
+        let code = format!("fn main() \\{\n {} \n\\}", input);
         let input = driver::str_input(code.to_managed());
         let cfg = driver::build_configuration(sess);
         driver::phase_1_parse_input(sess, cfg.clone(), &input)
@@ -302,7 +302,7 @@ fn run(mut program: ~Program, binary: ~str, lib_search_paths: ~[~str],
                 _ => {}
             }
         }
-        fail!("main function was expected somewhere...");
+        fail2!("main function was expected somewhere...");
     }
 }
 
@@ -355,7 +355,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            println(fmt!("compiling %s...", src_filename));
+            println(format!("compiling {}...", src_filename));
             let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
             let expanded_crate = driver::phase_2_configure_and_expand(sess, cfg, crate);
             let analysis = driver::phase_3_run_analysis_passes(sess, &expanded_crate);
@@ -429,7 +429,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for crate in loaded_crates.iter() {
                 let crate_path = Path(*crate);
                 let crate_dir = crate_path.dirname();
-                repl.program.record_extern(fmt!("extern mod %s;", *crate));
+                repl.program.record_extern(format!("extern mod {};", *crate));
                 if !repl.lib_search_paths.iter().any(|x| x == &crate_dir) {
                     repl.lib_search_paths.push(crate_dir);
                 }
@@ -445,7 +445,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             let mut end_multiline = false;
             while (!end_multiline) {
                 match get_line(use_rl, "rusti| ") {
-                    None => fail!("unterminated multiline command :{ .. :}"),
+                    None => fail2!("unterminated multiline command :\\{ .. :\\}"),
                     Some(line) => {
                         if line.trim() == ":}" {
                             end_multiline = true;
