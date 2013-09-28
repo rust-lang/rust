@@ -773,12 +773,12 @@ pub fn specialize(cx: &MatchCheckCtxt,
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
                             Some(vec::append(
-                                vec::concat(&[
+                                [
                                     before,
                                     vec::from_elem(
                                         arity - num_elements, wild()),
                                     after
-                                ]),
+                                ].concat_vec(),
                                 r.tail()
                             ))
                         } else if num_elements == arity {

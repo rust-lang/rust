@@ -173,12 +173,11 @@ impl Clean<Item> for doctree::Module {
             visibility: self.vis.clean(),
             id: self.id,
             inner: ModuleItem(Module {
-               items: std::vec::concat(&[self.structs.clean(),
-                              self.enums.clean(), self.fns.clean(),
-                              std::vec::concat(self.foreigns.clean()),
-                              self.mods.clean(), self.typedefs.clean(),
-                              self.statics.clean(), self.traits.clean(),
-                              self.impls.clean(), self.view_items.clean()])
+               items: [self.structs.clean(), self.enums.clean(),
+                       self.fns.clean(), self.foreigns.clean().concat_vec(),
+                       self.mods.clean(), self.typedefs.clean(),
+                       self.statics.clean(), self.traits.clean(),
+                       self.impls.clean(), self.view_items.clean()].concat_vec()
             })
         }
     }
