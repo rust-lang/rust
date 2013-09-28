@@ -353,29 +353,25 @@ pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
     #[inline]
     fn to_int(&self) -> Option<int> {
-        // XXX: Check for range.
-        self.to_i64().and_then(|x| Some(x as int))
+        self.to_i64().and_then(|x| x.to_int())
     }
 
     /// Converts the value of `self` to an `i8`.
     #[inline]
     fn to_i8(&self) -> Option<i8> {
-        // XXX: Check for range.
-        self.to_i64().and_then(|x| Some(x as i8))
+        self.to_i64().and_then(|x| x.to_i8())
     }
 
     /// Converts the value of `self` to an `i16`.
     #[inline]
     fn to_i16(&self) -> Option<i16> {
-        // XXX: Check for range.
-        self.to_i64().and_then(|x| Some(x as i16))
+        self.to_i64().and_then(|x| x.to_i16())
     }
 
     /// Converts the value of `self` to an `i32`.
     #[inline]
     fn to_i32(&self) -> Option<i32> {
-        // XXX: Check for range.
-        self.to_i64().and_then(|x| Some(x as i32))
+        self.to_i64().and_then(|x| x.to_i32())
     }
 
     /// Converts the value of `self` to an `i64`.
@@ -384,50 +380,43 @@ pub trait ToPrimitive {
     /// Converts the value of `self` to an `uint`.
     #[inline]
     fn to_uint(&self) -> Option<uint> {
-        // XXX: Check for range.
-        self.to_u64().and_then(|x| Some(x as uint))
+        self.to_u64().and_then(|x| x.to_uint())
     }
 
     /// Converts the value of `self` to an `u8`.
     #[inline]
     fn to_u8(&self) -> Option<u8> {
-        // XXX: Check for range.
-        self.to_u64().and_then(|x| Some(x as u8))
+        self.to_u64().and_then(|x| x.to_u8())
     }
 
     /// Converts the value of `self` to an `u16`.
     #[inline]
     fn to_u16(&self) -> Option<u16> {
-        // XXX: Check for range.
-        self.to_u64().and_then(|x| Some(x as u16))
+        self.to_u64().and_then(|x| x.to_u16())
     }
 
     /// Converts the value of `self` to an `u32`.
     #[inline]
     fn to_u32(&self) -> Option<u32> {
-        // XXX: Check for range.
-        self.to_u64().and_then(|x| Some(x as u32))
+        self.to_u64().and_then(|x| x.to_u32())
     }
 
     /// Converts the value of `self` to an `u64`.
     #[inline]
     fn to_u64(&self) -> Option<u64> {
-        // XXX: Check for range.
-        self.to_u64().and_then(|x| Some(x as u64))
+        self.to_u64().and_then(|x| x.to_u64())
     }
 
     /// Converts the value of `self` to an `f32`.
     #[inline]
     fn to_f32(&self) -> Option<f32> {
-        // XXX: Check for range.
-        self.to_float().and_then(|x| Some(x as f32))
+        self.to_f64().and_then(|x| x.to_f32())
     }
 
     /// Converts the value of `self` to an `f64`.
     #[inline]
     fn to_f64(&self) -> Option<f64> {
-        // XXX: Check for range.
-        self.to_i64().and_then(|x| Some(x as f64))
+        self.to_i64().and_then(|x| x.to_f64())
     }
 }
 
