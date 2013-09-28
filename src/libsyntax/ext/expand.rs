@@ -809,30 +809,49 @@ pub fn std_macros() -> @str {
 
     macro_rules! ignore (($($x:tt)*) => (()))
 
-    macro_rules! log(
-        ($lvl:expr, $arg:expr) => ({
-            let lvl = $lvl;
-            if lvl <= __log_level() {
-                format_args!(|args| {
-                    ::std::logging::log(lvl, args)
-                }, \"{}\", fmt!(\"%?\", $arg))
-            }
-        });
-        ($lvl:expr, $($arg:expr),+) => ({
-            let lvl = $lvl;
-            if lvl <= __log_level() {
-                format_args!(|args| {
-                    ::std::logging::log(lvl, args)
-                }, \"{}\", fmt!($($arg),+))
-            }
-        })
-    )
-    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
-    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
-    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
-    macro_rules! debug( ($($arg:tt)*) => (
-        if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
-    ))
+    #[cfg(not(nofmt))]
+    mod fmt_extension {
+        #[macro_escape];
+
+        macro_rules! fmt(($($arg:tt)*) => (oldfmt!($($arg)*)))
+
+        macro_rules! log(
+            ($lvl:expr, $arg:expr) => ({
+                let lvl = $lvl;
+                if lvl <= __log_level() {
+                    format_args!(|args| {
+                        ::std::logging::log(lvl, args)
+                    }, \"{}\", fmt!(\"%?\", $arg))
+                }
+            });
+            ($lvl:expr, $($arg:expr),+) => ({
+                let lvl = $lvl;
+                if lvl <= __log_level() {
+                    format_args!(|args| {
+                        ::std::logging::log(lvl, args)
+                    }, \"{}\", fmt!($($arg),+))
+                }
+            })
+        )
+        macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
+        macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
+        macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
+        macro_rules! debug( ($($arg:tt)*) => (
+            if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
+        ))
+
+        macro_rules! fail(
+            () => (
+                fail!(\"explicit failure\")
+            );
+            ($msg:expr) => (
+                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
+            );
+            ($( $arg:expr ),+) => (
+                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+            )
+        )
+    }
 
     macro_rules! log2(
         ($lvl:expr, $($arg:tt)+) => ({
@@ -851,24 +870,15 @@ pub fn std_macros() -> @str {
         if cfg!(not(ndebug)) { log2!(4u32, $($arg)*) }
     ))
 
-    macro_rules! fail(
-        () => (
-            fail!(\"explicit failure\")
-        );
-        ($msg:expr) => (
-            ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
-        );
-        ($( $arg:expr ),+) => (
-            ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
-        )
-    )
-
     macro_rules! fail2(
         () => (
-            fail!(\"explicit failure\")
+            fail2!(\"explicit failure\")
         );
-        ($($arg:tt)*) => (
-            ::std::sys::FailWithCause::fail_with(format!($($arg)*), file!(), line!())
+        ($fmt:expr) => (
+            ::std::sys::FailWithCause::fail_with($fmt, file!(), line!())
+        );
+        ($fmt:expr, $($arg:tt)*) => (
+            ::std::sys::FailWithCause::fail_with(format!($fmt, $($arg)*), file!(), line!())
         )
     )
 
@@ -894,12 +904,14 @@ pub fn std_macros() -> @str {
     macro_rules! assert_eq (
         ($given:expr , $expected:expr) => (
             {
-                let given_val = $given;
-                let expected_val = $expected;
+                let given_val = &($given);
+                let expected_val = &($expected);
                 // check both directions of equality....
-                if !((given_val == expected_val) && (expected_val == given_val)) {
-                    fail!(\"assertion failed: `(left == right) && (right == \
-                    left)` (left: `%?`, right: `%?`)\", given_val, expected_val);
+                if !((*given_val == *expected_val) &&
+                     (*expected_val == *given_val)) {
+                    fail2!(\"assertion failed: `(left == right) && (right == \
+                             left)` (left: `{:?}`, right: `{:?}`)\",
+                           *given_val, *expected_val);
                 }
             }
         )
@@ -917,8 +929,8 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq(&expected_val) &&
                     expected_val.approx_eq(&given_val)
                 ) {
-                    fail!(\"left: %? does not approximately equal right: %?\",
-                          given_val, expected_val);
+                    fail2!(\"left: {:?} does not approximately equal right: {:?}\",
+                           given_val, expected_val);
                 }
             }
         );
@@ -934,7 +946,8 @@ pub fn std_macros() -> @str {
                     given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
                     expected_val.approx_eq_eps(&given_val, &epsilon_val)
                 ) {
-                    fail!(\"left: %? does not approximately equal right: %? with epsilon: %?\",
+                    fail2!(\"left: {:?} does not approximately equal right: \
+                             {:?} with epsilon: {:?}\",
                           given_val, expected_val, epsilon_val);
                 }
             }
@@ -968,7 +981,7 @@ pub fn std_macros() -> @str {
 
     */
     macro_rules! unreachable (() => (
-        fail!(\"internal error: entered unreachable code\");
+        fail2!(\"internal error: entered unreachable code\");
     ))
 
     macro_rules! condition (
