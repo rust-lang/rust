@@ -150,7 +150,7 @@ impl Context {
 /// rustpkg from a Rust target directory. This is part of a
 /// kludgy hack used to adjust the sysroot.
 pub fn in_target(sysroot: &Path) -> bool {
-    debug!("Checking whether %s is in target", sysroot.to_str());
+    debug2!("Checking whether {} is in target", sysroot.to_str());
     os::path_is_dir(&sysroot.pop().pop().push("rustc"))
 }
 
@@ -214,8 +214,8 @@ pub fn flags_ok_for_cmd(flags: &RustcFlags,
                         cfgs: &[~str],
                         cmd: &str, user_supplied_opt_level: bool) -> bool {
     let complain = |s| {
-        io::println(fmt!("The %s option can only be used with the build command:
-                         rustpkg [options..] build %s [package-ID]", s, s));
+        println!("The {} option can only be used with the build command:
+                  rustpkg [options..] build {} [package-ID]", s, s);
     };
 
     if flags.linker.is_some() && cmd != "build" && cmd != "install" {
