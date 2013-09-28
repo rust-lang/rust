@@ -127,7 +127,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 
         let start = round_up_to(after_tydesc, align);
 
-        //debug!("freeing object: idx = %u, size = %u, align = %u, done = %b",
+        //debug2!("freeing object: idx = {}, size = {}, align = {}, done = {}",
         //       start, size, align, is_done);
         if is_done {
             ((*tydesc).drop_glue)(ptr::offset(buf, start as int) as *i8);
@@ -176,7 +176,7 @@ impl Arena {
             }
             this.pod_head.fill = end;
 
-            //debug!("idx = %u, size = %u, align = %u, fill = %u",
+            //debug2!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
             ptr::offset(vec::raw::to_ptr(this.pod_head.data), start as int)
@@ -232,7 +232,7 @@ impl Arena {
             let head = transmute_mut_region(&mut self.head);
             head.fill = round_up_to(end, sys::pref_align_of::<*TyDesc>());
 
-            //debug!("idx = %u, size = %u, align = %u, fill = %u",
+            //debug2!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
             let buf = vec::raw::to_ptr(self.head.data);
@@ -305,6 +305,6 @@ fn test_arena_destructors_fail() {
     // Now, fail while allocating
     do arena.alloc::<@int> {
         // Now fail.
-        fail!();
+        fail2!();
     };
 }

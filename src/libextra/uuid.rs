@@ -129,17 +129,17 @@ impl ToStr for ParseError {
     fn to_str(&self) -> ~str {
         match *self {
             ErrorInvalidLength(found) =>
-                fmt!("Invalid length; expecting 32, 36 or 45 chars, found %u",
-                    found),
+                format!("Invalid length; expecting 32, 36 or 45 chars, found {}",
+                        found),
             ErrorInvalidCharacter(found, pos) =>
-                fmt!("Invalid character; found `%c` (0x%02x) at offset %u",
-                    found, found as uint, pos),
+                format!("Invalid character; found `{}` (0x{:02x}) at offset {}",
+                        found, found as uint, pos),
             ErrorInvalidGroups(found) =>
-                fmt!("Malformed; wrong number of groups: expected 1 or 5, found %u",
-                    found),
+                format!("Malformed; wrong number of groups: expected 1 or 5, found {}",
+                        found),
             ErrorInvalidGroupLength(group, found, expecting) =>
-                fmt!("Malformed; length of group %u was %u, expecting %u",
-                    group, found, expecting),
+                format!("Malformed; length of group {} was {}, expecting {}",
+                        group, found, expecting),
         }
     }
 }
@@ -303,7 +303,7 @@ impl Uuid {
     pub fn to_simple_str(&self) -> ~str {
         let mut s: ~[u8] = vec::from_elem(32, 0u8);
         for i in range(0u, 16u) {
-            let digit = fmt!("%02x", self.bytes[i] as uint);
+            let digit = format!("{:02x}", self.bytes[i] as uint);
             s[i*2+0] = digit[0];
             s[i*2+1] = digit[1];
         }
@@ -324,12 +324,13 @@ impl Uuid {
         uf.data1 = to_be32(uf.data1 as i32) as u32;
         uf.data2 = to_be16(uf.data2 as i16) as u16;
         uf.data3 = to_be16(uf.data3 as i16) as u16;
-        let s = fmt!("%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-            uf.data1 as uint,
-            uf.data2 as uint, uf.data3 as uint,
-            uf.data4[0] as uint, uf.data4[1] as uint,
-            uf.data4[2] as uint, uf.data4[3] as uint, uf.data4[4] as uint,
-            uf.data4[5] as uint, uf.data4[6] as uint, uf.data4[7] as uint);
+        let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
+                         {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+            uf.data1,
+            uf.data2, uf.data3,
+            uf.data4[0], uf.data4[1],
+            uf.data4[2], uf.data4[3], uf.data4[4],
+            uf.data4[5], uf.data4[6], uf.data4[7]);
         s
     }
 

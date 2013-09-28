@@ -307,9 +307,9 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
                         blk: &fn() -> U) -> U {
     match out_of_bounds {
         Some(0) =>
-            fail!("%s with illegal ID %u - this lock has no condvars!", act, id),
+            fail2!("{} with illegal ID {} - this lock has no condvars!", act, id),
         Some(length) =>
-            fail!("%s with illegal ID %u - ID must be less than %u", act, id, length),
+            fail2!("{} with illegal ID {} - ID must be less than {}", act, id, length),
         None => blk()
     }
 }
@@ -634,7 +634,7 @@ impl RWLock {
     pub fn downgrade<'a>(&self, token: RWLockWriteMode<'a>)
                          -> RWLockReadMode<'a> {
         if !borrow::ref_eq(self, token.lock) {
-            fail!("Can't downgrade() with a different rwlock's write_mode!");
+            fail2!("Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {
             do task::unkillable {
@@ -918,7 +918,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try {
             do m2.lock {
-                fail!();
+                fail2!();
             }
         };
         assert!(result.is_err());
@@ -938,7 +938,7 @@ mod tests {
             do task::spawn || { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
                 task::deschedule();
-                fail!();
+                fail2!();
             }
             do m2.lock_cond |cond| {
                 c.send(()); // tell sibling go ahead
@@ -976,9 +976,9 @@ mod tests {
                         do (|| {
                             cond.wait(); // block forever
                         }).finally {
-                            error!("task unwinding and sending");
+                            error2!("task unwinding and sending");
                             c.send(());
-                            error!("task unwinding and done sending");
+                            error2!("task unwinding and done sending");
                         }
                     }
                 }
@@ -988,7 +988,7 @@ mod tests {
             }
             do m2.lock { }
             c.send(sibling_convos); // let parent wait on all children
-            fail!();
+            fail2!();
         };
         assert!(result.is_err());
         // child task must have finished by the time try returns
@@ -1028,7 +1028,7 @@ mod tests {
             let _ = p.recv();
             do m.lock_cond |cond| {
                 if !cond.signal_on(0) {
-                    fail!(); // success; punt sibling awake.
+                    fail2!(); // success; punt sibling awake.
                 }
             }
         };
@@ -1272,7 +1272,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try || {
             do lock_rwlock_in_mode(&x2, mode1) {
-                fail!();
+                fail2!();
             }
         };
         assert!(result.is_err());
@@ -1319,7 +1319,7 @@ mod tests {
             let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
                 y.downgrade(xopt.take_unwrap());
-                error!("oops, y.downgrade(x) should have failed!");
+                error2!("oops, y.downgrade(x) should have failed!");
             }
         }
     }

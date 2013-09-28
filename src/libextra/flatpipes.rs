@@ -261,14 +261,14 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
     fn recv(&self) -> T {
         match self.try_recv() {
             Some(val) => val,
-            None => fail!("port is closed")
+            None => fail2!("port is closed")
         }
     }
     fn try_recv(&self) -> Option<T> {
         let command = match self.byte_port.try_recv(CONTINUE.len()) {
             Some(c) => c,
             None => {
-                warn!("flatpipe: broken pipe");
+                warn2!("flatpipe: broken pipe");
                 return None;
             }
         };
@@ -279,7 +279,7 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
                     io::u64_from_be_bytes(bytes, 0, size_of::<u64>())
                 },
                 None => {
-                    warn!("flatpipe: broken pipe");
+                    warn2!("flatpipe: broken pipe");
                     return None;
                 }
             };
@@ -291,13 +291,13 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
                     Some(self.unflattener.unflatten(bytes))
                 }
                 None => {
-                    warn!("flatpipe: broken pipe");
+                    warn2!("flatpipe: broken pipe");
                     return None;
                 }
             }
         }
         else {
-            fail!("flatpipe: unrecognized command");
+            fail2!("flatpipe: unrecognized command");
         }
     }
 }
@@ -477,7 +477,7 @@ pub mod flatteners {
                 Ok(json) => {
                     json::Decoder(json)
                 }
-                Err(e) => fail!("flatpipe: can't parse json: %?", e)
+                Err(e) => fail2!("flatpipe: can't parse json: {:?}", e)
             }
         }
     }
@@ -536,7 +536,7 @@ pub mod bytepipes {
             if left == 0 {
                 return Some(bytes);
             } else {
-                warn!("flatpipe: dropped %? broken bytes", left);
+                warn2!("flatpipe: dropped {} broken bytes", left);
                 return None;
             }
         }
@@ -797,7 +797,7 @@ mod test {
             let listen_res = do tcp::listen(
                 addr.clone(), port, 128, iotask, |_kill_ch| {
                     // Tell the sender to initiate the connection
-                    debug!("listening");
+                    debug2!("listening");
                     begin_connect_chan.send(())
                 }) |new_conn, kill_ch| {
 
@@ -820,7 +820,7 @@ mod test {
             // Wait for the server to start listening
             begin_connect_port.recv();
 
-            debug!("connecting");
+            debug2!("connecting");
             let iotask = &uv::global_loop::get();
             let connect_result = tcp::connect(addr.clone(), port, iotask);
             assert!(connect_result.is_ok());
@@ -831,7 +831,7 @@ mod test {
             let chan = writer_chan(socket_buf);
 
             for i in range(0, 10) {
-                debug!("sending %?", i);
+                debug2!("sending {}", i);
                 chan.send(i)
             }
         }
@@ -841,9 +841,9 @@ mod test {
             // Wait for a connection
             let (conn, res_chan) = accept_port.recv();
 
-            debug!("accepting connection");
+            debug2!("accepting connection");
             let accept_result = tcp::accept(conn);
-            debug!("accepted");
+            debug2!("accepted");
             assert!(accept_result.is_ok());
             let sock = result::unwrap(accept_result);
             res_chan.send(());
@@ -855,7 +855,7 @@ mod test {
 
             for i in range(0, 10) {
                 let j = port.recv();
-                debug!("received %?", j);
+                debug2!("received {:?}", j);
                 assert_eq!(i, j);
             }
 
