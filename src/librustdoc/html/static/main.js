@@ -39,9 +39,15 @@
         if (e.keyCode === 188 && $('#help').hasClass('hidden')) { // question mark
             e.preventDefault();
             $('#help').removeClass('hidden');
-        } else if (e.keyCode === 27 && !$('#help').hasClass('hidden')) { // esc
-            e.preventDefault();
-            $('#help').addClass('hidden');
+        } else if (e.keyCode === 27) { // esc
+            if (!$('#help').hasClass('hidden')) {
+                e.preventDefault();
+                $('#help').addClass('hidden');
+            } else if (!$('#search').hasClass('hidden')) {
+                e.preventDefault();
+                $('#search').addClass('hidden');
+                $('#main').removeClass('hidden');
+            }
         } else if (e.keyCode === 83) { // S
             e.preventDefault();
             $('.search-input').focus();
@@ -202,7 +208,13 @@
             var hoverTimeout, $results = $('.search-results .result');
 
             $results.on('click', function () {
-                document.location.href = $(this).find('a').prop('href');
+                var dst = $(this).find('a')[0];
+                console.log(window.location.pathname, dst.pathname);
+                if (window.location.pathname == dst.pathname) {
+                    $('#search').addClass('hidden');
+                    $('#main').removeClass('hidden');
+                }
+                document.location.href = dst.href;
             }).on('mouseover', function () {
                 var $el = $(this);
                 clearTimeout(hoverTimeout);
@@ -265,25 +277,52 @@
                     output += '<tr class="' + type + ' result"><td>';
 
                     if (type === 'mod') {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + name + '/index.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') + '/' +
+                                            name + '/index.html" class="' +
+                                            type + '">' + name + '</a>';
                     } else if (type === 'static' || type === 'reexport') {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/index.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/index.html" class="' + type +
+                                            '">' + name + '</a>';
                     } else if (item.parent !== undefined) {
                         var myparent = allPaths[item.parent];
-                        output += item.path + '::' + myparent.name + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + myparent.type + '.' + myparent.name + '.html" class="' + type + '">' + name + '</a>';
+                        var anchor = '#' + type + '.' + name;
+                        output += item.path + '::' + myparent.name +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/' + myparent.type +
+                                            '.' + myparent.name +
+                                            '.html' + anchor +
+                                            '" class="' + type +
+                                            '">' + name + '</a>';
                     } else {
-                        output += item.path + '::<a href="' + rootPath + item.path.replace(/::/g, '/') + '/' + type + '.' + name + '.html" class="' + type + '">' + name + '</a>';
+                        output += item.path +
+                            '::<a href="' + rootPath +
+                                            item.path.replace(/::/g, '/') +
+                                            '/' + type +
+                                            '.' + name +
+                                            '.html" class="' + type +
+                                            '">' + name + '</a>';
                     }
 
-                    output += '</td><td><span class="desc">' + item.desc + '</span></td></tr>';
+                    output += '</td><td><span class="desc">' + item.desc +
+                                    '</span></td></tr>';
                 });
             } else {
-                output += 'No results :( <a href="https://duckduckgo.com/?q=' + encodeURIComponent('rust ' + query.query) + '">Try on DuckDuckGo?</a>';
+                output += 'No results :( <a href="https://duckduckgo.com/?q=' +
+                            encodeURIComponent('rust ' + query.query) +
+                            '">Try on DuckDuckGo?</a>';
             }
 
             output += "</p>";
-            $('.content').html(output);
-            $('.search-results .desc').width($('.content').width() - 40 - $('.content td:first-child').first().width());
+            $('#main.content').addClass('hidden');
+            $('#search.content').removeClass('hidden').html(output);
+            $('.search-results .desc').width($('.content').width() - 40 -
+                    $('.content td:first-child').first().width());
             initSearchNav();
         }
 

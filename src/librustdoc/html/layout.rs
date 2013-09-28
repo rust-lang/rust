@@ -66,7 +66,8 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
         </form>
     </nav>
 
-    <section class=\"content {ty}\">{content}</section>
+    <section id='main' class=\"content {ty}\">{content}</section>
+    <section id='search' class=\"content hidden\"></section>
 
     <section class=\"footer\"></section>
 

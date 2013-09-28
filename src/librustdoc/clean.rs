@@ -84,7 +84,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Item {
     /// Stringified span
-    source: ~str,
+    source: Span,
     /// Not everything has a name. E.g., impls
     name: Option<~str>,
     attrs: ~[Attribute],
@@ -539,9 +539,11 @@ impl Clean<TraitMethod> for ast::trait_method {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum Type {
     /// structs/enums/traits (anything that'd be an ast::ty_path)
-    ResolvedPath { path: Path, typarams: Option<~[TyParamBound]>, id: ast::NodeId },
-    /// Reference to an item in an external crate (fully qualified path)
-    External(~str, ~str),
+    ResolvedPath {
+        path: Path,
+        typarams: Option<~[TyParamBound]>,
+        did: ast::DefId
+    },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
     /// For parameterized types, so the consumer of the JSON don't go looking
@@ -736,10 +738,28 @@ impl Clean<VariantKind> for ast::variant_kind {
     }
 }
 
-impl Clean<~str> for syntax::codemap::Span {
-    fn clean(&self) -> ~str {
-        let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap;
-        cm.span_to_str(*self)
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Span {
+    filename: ~str,
+    loline: uint,
+    locol: uint,
+    hiline: uint,
+    hicol: uint,
+}
+
+impl Clean<Span> for syntax::codemap::Span {
+    fn clean(&self) -> Span {
+        let cm = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
+        let filename = cm.span_to_filename(*self);
+        let lo = cm.lookup_char_pos(self.lo);
+        let hi = cm.lookup_char_pos(self.hi);
+        Span {
+            filename: filename.to_owned(),
+            loline: lo.line,
+            locol: *lo.col,
+            hiline: hi.line,
+            hicol: *hi.col,
+        }
     }
 }
 
@@ -1033,7 +1053,7 @@ trait ToSource {
 
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
-        debug!("converting span %s to snippet", self.clean());
+        debug!("converting span %? to snippet", self.clean());
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap.clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,
@@ -1129,39 +1149,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         },
         x => fail!("resolved type maps to a weird def %?", x),
     };
-
-    if def_id.crate != ast::CRATE_NODE_ID {
-        use rustc::metadata::decoder::*;
-
-        let sess = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess;
-        let cratedata = ::rustc::metadata::cstore::get_crate_data(sess.cstore, def_id.crate);
-        let doc = lookup_item(def_id.node, cratedata.data);
-        let path = syntax::ast_map::path_to_str_with_sep(item_path(doc), "::", sess.intr());
-        let ty = match def_like_to_def(item_to_def_like(doc, def_id, def_id.crate)) {
-            DefFn(*) => ~"fn",
-            DefTy(*) => ~"enum",
-            DefTrait(*) => ~"trait",
-            DefPrimTy(p) => match p {
-                ty_str => ~"str",
-                ty_bool => ~"bool",
-                ty_int(t) => match t.to_str() {
-                    ~"" => ~"i",
-                    s => s
-                },
-                ty_uint(t) => t.to_str(),
-                ty_float(t) => t.to_str(),
-                ty_char => ~"char",
-            },
-            DefTyParam(*) => ~"generic",
-            DefStruct(*) => ~"struct",
-            DefTyParamBinder(*) => ~"typaram_binder",
-            x => fail!("resolved external maps to a weird def %?", x),
-        };
-        let cname = cratedata.name.to_owned();
-        External(cname + "::" + path, ty)
-    } else {
-        ResolvedPath {path: path.clone(), typarams: tpbs, id: def_id.node}
-    }
+    ResolvedPath{ path: path, typarams: tpbs, did: def_id }
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
