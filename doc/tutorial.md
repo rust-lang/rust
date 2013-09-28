@@ -923,22 +923,60 @@ custom destructors.
 
 # Boxes
 
-Many modern languages represent values as pointers to heap memory by
-default. In contrast, Rust, like C and C++, represents such types directly.
-Another way to say this is that aggregate data in Rust are *unboxed*. This
-means that if you `let x = Point { x: 1f, y: 1f };`, you are creating a struct
-on the stack. If you then copy it into a data structure, you copy the entire
-struct, not just a pointer.
+A value in Rust is stored directly inside the owner. If a `struct` contains
+four `int` fields, it will be four times as large as a single `int`.  The
+following `struct` type is invalid, as it would have an infinite size:
 
-For small structs like `Point`, this is usually more efficient than allocating
-memory and indirecting through a pointer. But for big structs, or mutable
-state, it can be useful to have a single copy on the stack or on the heap, and
-refer to that through a pointer.
+~~~~ {.xfail-test}
+struct List {
+    next: Option<List>,
+    data: int
+}
+~~~~
 
-## Owned boxes
+> ***Note:*** The `Option` type is an enum representing an *optional* value.
+> It's comparable to a nullable pointer in many other languages, but stores the
+> contained value unboxed.
 
-An owned box (`~`) is a uniquely owned allocation on the heap. It inherits the
-mutability and lifetime of the owner as it would if there was no box:
+An *owned box* (`~`) uses a heap allocation to provide the invariant of always
+being the size of a pointer, regardless of the contained type. This can be
+leveraged to create a valid recursive `struct` type with a finite size:
+
+~~~~
+struct List {
+    next: Option<~List>,
+    data: int
+}
+~~~~
+
+Since an owned box has a single owner, they are limited to representing
+tree-like data structures.
+
+The most common use case for owned boxes is creating recursive data structures
+like a binary search tree. Rust's trait-based generics system (covered later in
+the tutorial) is usually used for static dispatch, but also provides dynamic
+dispatch via boxing. Values of different types may have different sizes, but a
+box is able to *erase* the difference via the layer of indirection they
+provide.
+
+In uncommon cases, the indirection can provide a performance gain or memory
+reduction by making values smaller. However, unboxed values should almost
+always be preferred.
+
+Note that returning large unboxed values via boxes is unnecessary. A large
+value is returned via a hidden output parameter, and the decision on where to
+place the return value should be left to the caller:
+
+~~~~
+fn foo() -> (int, int, int, int, int, int) {
+    (5, 5, 5, 5, 5, 5)
+}
+
+let x = ~foo(); // allocates, and writes the integers directly to it
+~~~~
+
+Beyond the properties granted by the size, an owned box behaves as a regular
+value by inheriting the mutability and lifetime of the owner:
 
 ~~~~
 let x = 5; // immutable
@@ -950,35 +988,33 @@ let mut y = ~5; // mutable
 *y += 2; // the * operator is needed to access the contained value
 ~~~~
 
-The purpose of an owned box is to add a layer of indirection in order to create
-recursive data structures or cheaply pass around an object larger than a
-pointer. Since an owned box has a unique owner, it can only be used to
-represent a tree data structure.
+As covered earlier, an owned box has a destructor to clean up the allocated
+memory. This makes it more restricted than an unboxed type with no destructor
+by introducing *move semantics*.
 
-The following struct won't compile, because the lack of indirection would mean
-it has an infinite size:
+# Move semantics
 
-~~~~ {.xfail-test}
-struct Foo {
-    child: Option<Foo>
-}
-~~~~
-
-> ***Note:*** The `Option` type is an enum that represents an *optional* value.
-> It's comparable to a nullable pointer in many other languages, but stores the
-> contained value unboxed.
-
-Adding indirection with an owned pointer allocates the child outside of the
-struct on the heap, which makes it a finite size and won't result in a
-compile-time error:
+Rust uses a shallow copy for parameter passing, assignment and returning from
+functions. This is considered a move of ownership for types with destructors.
+After a value has been moved, it can no longer be used from the source location
+and will not be destroyed when the source goes out of scope.
 
 ~~~~
-struct Foo {
-    child: Option<~Foo>
-}
+let x = ~5;
+let y = x.clone(); // y is a newly allocated box
+let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-## Managed boxes
+The mutability of a value may be changed by moving it to a new owner:
+
+~~~~
+let r = ~13;
+let mut s = r; // box becomes mutable
+*s += 1;
+let t = s; // box becomes immutable
+~~~~
+
+# Managed boxes
 
 A managed box (`@`) is a heap allocation with the lifetime managed by a
 task-local garbage collector. It will be destroyed at some point after there
@@ -1021,30 +1057,6 @@ d = b;          // box type is the same, okay
 ~~~~ {.xfail-test}
 // but b cannot be assigned to c, or a to d
 c = b;          // error
-~~~~
-
-# Move semantics
-
-Rust uses a shallow copy for parameter passing, assignment and returning values
-from functions. A shallow copy is considered a move of ownership if the
-ownership tree of the copied value includes an owned box or a type with a
-custom destructor. After a value has been moved, it can no longer be used from
-the source location and will not be destroyed there.
-
-~~~~
-let x = ~5;
-let y = x.clone(); // y is a newly allocated box
-let z = x; // no new memory allocated, x can no longer be used
-~~~~
-
-Since in owned boxes mutability is a property of the owner, not the
-box, mutable boxes may become immutable when they are moved, and vice-versa.
-
-~~~~
-let r = ~13;
-let mut s = r; // box becomes mutable
-*s += 1;
-let t = s; // box becomes immutable
 ~~~~
 
 # Borrowed pointers
