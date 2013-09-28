@@ -505,7 +505,7 @@ impl<T:Freeze + Send> RWArc<T> {
         let inner = x.unwrap();
         let RWArcInner { failed: failed, data: data, _ } = inner;
         if failed {
-            fail2!(~"Can't unwrap poisoned RWArc - another task failed inside!")
+            fail2!("Can't unwrap poisoned RWArc - another task failed inside!")
         }
         data
     }

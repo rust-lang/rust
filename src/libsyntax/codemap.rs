@@ -290,7 +290,7 @@ impl CodeMap {
 
     pub fn mk_substr_filename(&self, sp: Span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
-        return fmt!("<%s:%u:%u>", pos.file.name,
+        return format!("<{}:{}:{}>", pos.file.name,
                     pos.line, pos.col.to_uint());
     }
 
@@ -336,7 +336,7 @@ impl CodeMap {
 
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
-        return fmt!("%s:%u:%u: %u:%u", lo.filename,
+        return format!("{}:{}:{}: {}:{}", lo.filename,
                     lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 
@@ -374,7 +374,7 @@ impl CodeMap {
         for fm in self.files.iter() { if filename == fm.name { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
-        fail!(); // ("asking for " + filename + " which we don't know about");
+        fail2!(); // ("asking for " + filename + " which we don't know about");
     }
 }
 
@@ -393,7 +393,7 @@ impl CodeMap {
             }
         }
         if (a >= len) {
-            fail!("position %u does not resolve to a source location", pos.to_uint())
+            fail2!("position {} does not resolve to a source location", pos.to_uint())
         }
 
         return a;
@@ -419,11 +419,11 @@ impl CodeMap {
         let chpos = self.bytepos_to_local_charpos(pos);
         let linebpos = f.lines[a];
         let linechpos = self.bytepos_to_local_charpos(linebpos);
-        debug!("codemap: byte pos %? is on the line at byte pos %?",
+        debug2!("codemap: byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
-        debug!("codemap: char pos %? is on the line at char pos %?",
+        debug2!("codemap: char pos {:?} is on the line at char pos {:?}",
                chpos, linechpos);
-        debug!("codemap: byte is on line: %?", line);
+        debug2!("codemap: byte is on line: {:?}", line);
         assert!(chpos >= linechpos);
         return Loc {
             file: f,
@@ -435,7 +435,7 @@ impl CodeMap {
     fn span_to_str_no_adj(&self, sp: Span) -> ~str {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
-        return fmt!("%s:%u:%u: %u:%u", lo.file.name,
+        return format!("{}:{}:{}: {}:{}", lo.file.name,
                     lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 
@@ -450,7 +450,7 @@ impl CodeMap {
     // Converts an absolute BytePos to a CharPos relative to the file it is
     // located in
     fn bytepos_to_local_charpos(&self, bpos: BytePos) -> CharPos {
-        debug!("codemap: converting %? to char pos", bpos);
+        debug2!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let map = self.files[idx];
 
@@ -458,7 +458,7 @@ impl CodeMap {
         let mut total_extra_bytes = 0;
 
         for mbc in map.multibyte_chars.iter() {
-            debug!("codemap: %?-byte char at %?", mbc.bytes, mbc.pos);
+            debug2!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 total_extra_bytes += mbc.bytes;
                 // We should never see a byte position in the middle of a

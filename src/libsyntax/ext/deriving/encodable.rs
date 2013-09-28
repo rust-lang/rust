@@ -125,7 +125,7 @@ fn encodable_substructure(cx: @ExtCtxt, span: Span,
             for (i, f) in fields.iter().enumerate() {
                 let (name, val) = match *f {
                     (Some(id), e, _) => (cx.str_of(id), e),
-                    (None, e, _) => (fmt!("_field%u", i).to_managed(), e)
+                    (None, e, _) => (format!("_field{}", i).to_managed(), e)
                 };
                 let enc = cx.expr_method_call(span, val, encode, ~[blkencoder]);
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);

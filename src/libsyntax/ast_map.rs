@@ -66,7 +66,7 @@ pub fn path_ident_to_str(p: &path, i: Ident, itr: @ident_interner) -> ~str {
     if p.is_empty() {
         itr.get(i.name).to_owned()
     } else {
-        fmt!("%s::%s", path_to_str(*p, itr), itr.get(i.name))
+        format!("{}::{}", path_to_str(*p, itr), itr.get(i.name))
     }
 }
 
@@ -96,7 +96,7 @@ pub fn impl_pretty_name(trait_ref: &Option<trait_ref>,
             // XXX: this dollar sign is actually a relic of being one of the
             //      very few valid symbol names on unix. These kinds of
             //      details shouldn't be exposed way up here in the ast.
-            let s = fmt!("%s$%s",
+            let s = format!("{}${}",
                          itr.get(trait_ref.path.segments.last().identifier.name),
                          itr.get(ty_ident.name));
             path_pretty_name(Ident::new(itr.gensym(s)), hash)
@@ -185,7 +185,7 @@ impl Ctx {
                                                          item,
                                                          p));
                     }
-                    _ => fail!("struct def parent wasn't an item")
+                    _ => fail2!("struct def parent wasn't an item")
                 }
             }
         }
@@ -426,7 +426,7 @@ pub fn map_decoded_item(diag: @mut span_handler,
 pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
     match map.find(&id) {
       None => {
-        fmt!("unknown node (id=%d)", id)
+        format!("unknown node (id={})", id)
       }
       Some(&node_item(item, path)) => {
         let path_str = path_ident_to_str(path, item.ident, itr);
@@ -442,46 +442,46 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
           item_impl(*) => ~"impl",
           item_mac(*) => ~"macro"
         };
-        fmt!("%s %s (id=%?)", item_str, path_str, id)
+        format!("{} {} (id={})", item_str, path_str, id)
       }
       Some(&node_foreign_item(item, abi, _, path)) => {
-        fmt!("foreign item %s with abi %? (id=%?)",
+        format!("foreign item {} with abi {:?} (id={})",
              path_ident_to_str(path, item.ident, itr), abi, id)
       }
       Some(&node_method(m, _, path)) => {
-        fmt!("method %s in %s (id=%?)",
+        format!("method {} in {} (id={})",
              itr.get(m.ident.name), path_to_str(*path, itr), id)
       }
       Some(&node_trait_method(ref tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(&**tm);
-        fmt!("method %s in %s (id=%?)",
+        format!("method {} in {} (id={})",
              itr.get(m.ident.name), path_to_str(*path, itr), id)
       }
       Some(&node_variant(ref variant, _, path)) => {
-        fmt!("variant %s in %s (id=%?)",
+        format!("variant {} in {} (id={})",
              itr.get(variant.node.name.name), path_to_str(*path, itr), id)
       }
       Some(&node_expr(expr)) => {
-        fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)
+        format!("expr {} (id={})", pprust::expr_to_str(expr, itr), id)
       }
       Some(&node_callee_scope(expr)) => {
-        fmt!("callee_scope %s (id=%?)", pprust::expr_to_str(expr, itr), id)
+        format!("callee_scope {} (id={})", pprust::expr_to_str(expr, itr), id)
       }
       Some(&node_stmt(stmt)) => {
-        fmt!("stmt %s (id=%?)",
+        format!("stmt {} (id={})",
              pprust::stmt_to_str(stmt, itr), id)
       }
       Some(&node_arg(pat)) => {
-        fmt!("arg %s (id=%?)", pprust::pat_to_str(pat, itr), id)
+        format!("arg {} (id={})", pprust::pat_to_str(pat, itr), id)
       }
       Some(&node_local(ident)) => {
-        fmt!("local (id=%?, name=%s)", id, itr.get(ident.name))
+        format!("local (id={}, name={})", id, itr.get(ident.name))
       }
       Some(&node_block(ref block)) => {
-        fmt!("block %s (id=%?)", pprust::block_to_str(block, itr), id)
+        format!("block {} (id={})", pprust::block_to_str(block, itr), id)
       }
       Some(&node_struct_ctor(_, _, path)) => {
-        fmt!("struct_ctor %s (id=%?)", path_to_str(*path, itr), id)
+        format!("struct_ctor {} (id={})", path_to_str(*path, itr), id)
       }
     }
 }
@@ -491,6 +491,6 @@ pub fn node_item_query<Result>(items: map, id: NodeId,
                                error_msg: ~str) -> Result {
     match items.find(&id) {
         Some(&node_item(it, _)) => query(it),
-        _ => fail!(error_msg)
+        _ => fail2!("{}", error_msg)
     }
 }
