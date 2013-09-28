@@ -34,10 +34,11 @@ pub mod core;
 pub mod doctree;
 pub mod fold;
 pub mod html {
-    pub mod render;
+    pub mod escape;
+    pub mod format;
     pub mod layout;
     pub mod markdown;
-    pub mod format;
+    pub mod render;
 }
 pub mod passes;
 pub mod plugins;
