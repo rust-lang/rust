@@ -11,7 +11,7 @@
 
 # Guides
 
-[Borrowed Pointers](guide-borrowed-ptr.html)  
+[Pointers](guide-pointers.html)  
 [Lifetimes](guide-lifetimes.html)  
 [Containers and Iterators](guide-container.html)  
 [Tasks and Communication](guide-tasks.html)  
