@@ -1280,7 +1280,6 @@ mod test {
     // FIXME: #9407: xfail-test
     fn dont_starve_1() {
         use rt::comm::oneshot;
-        use unstable::running_on_valgrind;
 
         do stress_factor().times {
             do run_in_mt_newsched_task {
