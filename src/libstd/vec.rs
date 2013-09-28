@@ -3758,7 +3758,9 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
+    use iter::range;
     use vec;
+    use vec::VectorVector;
     use option::*;
 
     #[bench]
@@ -3796,6 +3798,22 @@ mod bench {
         let ys: &[int] = [5, ..10];
         do b.iter() {
             xs + ys;
+        }
+    }
+
+    #[bench]
+    fn concat(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.concat_vec();
+        }
+    }
+
+    #[bench]
+    fn connect(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.connect_vec(&0);
         }
     }
 }
