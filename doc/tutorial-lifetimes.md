@@ -3,15 +3,14 @@
 # Introduction
 
 "Lifetimes" are a concept that comes into play with Rust's borrowed pointers,
-represetned by `&`. Borrowed pointers are one of the more flexible and powerful
-tools available in Rust. A borrowed pointer can point anywhere: into the
-managed or exchange heap, into the stack, and even into the interior of another
-data structure. A borrowed pointer is as flexible as a C pointer or C++
-reference. However, unlike C and C++ compilers, the Rust compiler includes
-special static checks that ensure that programs use borrowed pointers safely.
-Another advantage of borrowed pointers is that they are invisible to the
-garbage collector, so working with borrowed pointers helps reduce the overhead
-of automatic memory management.
+represented by `&`. Borrowed pointers are one of the more flexible and powerful
+tools available in Rust. A borrowed pointer can point anywhere: into a managed
+box or owned box, into the stack, and even into the interior of another data
+structure. A borrowed pointer is as efficient as a C pointer or C++ reference.
+However, unlike C and C++ compilers, the Rust compiler includes special static
+checks that ensure that programs use borrowed pointers safely. Another
+advantage of borrowed pointers is that they do not require the garbage
+collector, unless you borrow a pointer to a managed box.
 
 Although borrowed pointers have rather elaborate theoretical underpinnings
 (region pointers), the core concepts will be familiar to anyone who has worked
