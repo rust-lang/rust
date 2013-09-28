@@ -1,7 +1,7 @@
 % Rust Pointers Tutorial
 
 Rust's pointers are one of its more unique and compelling features. Pointers
-are also one of the more confusing topics for newcommers to Rust. They can also
+are also one of the more confusing topics for newcomers to Rust. They can also
 be confusing for people coming from other languages that support pointers, such
 as C++. This tutorial will help you understand this important topic.
 
@@ -17,7 +17,7 @@ don't need them very often.
 this:
 
 ```rust
-fn succ(x: ~int) -> int { *x + 1 }
+fn succ(x: &int) -> int { *x + 1 }
 ```
 
 So I wrote this code to try it out:
@@ -83,7 +83,7 @@ more efficient. If you're coming from another language where this technique is
 common, such as C++, please read "A note..." below.
 4. Managed: Having only a single owner to a piece of data would be inconvenient
 or impossible. This is only often useful when a program is very large or very
-complicated. Using a borrowed pointer will activate Rust's garbage collection
+complicated. Using a managed pointer will activate Rust's garbage collection
 mechanism.
 5: Borrowed: You're writing a function, and you need a pointer, but you don't
 care about its ownership. If you make the argument a borrowed pointer, callers
@@ -193,7 +193,7 @@ This prints:
 Cons(1, ~Cons(2, ~Cons(3, ~Nil)))
 ```
 
-The inner lists _must_ be an owned pointer, because we can't know how many
+The inner lists _must_ be an owned pointer, becuase we can't know how many
 elements are in the list. Without knowing the length, we don't know the size,
 and therefore require the indirection that pointers offer.
 
@@ -243,8 +243,8 @@ struct.
 
 # Managed Pointers
 
-Managed pointers, represented by an `@`, are used when having a single owner
-for some data isn't convenient or possible. This generally happens when your
+Managed pointers, notated by an `@`, are used when having a single owner for
+some data isn't convenient or possible. This generally happens when your
 program is very large and complicated.
 
 For example, let's say you're using an owned pointer, and you want to do this:
