@@ -356,43 +356,32 @@ pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep)
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
+    /// Flattens a vector of vectors of T into a single vector of T.
     fn concat_vec(&self) -> ~[T];
+
+    /// Concatenate a vector of vectors, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
-impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
+impl<'self, T: Clone, V: Vector<T>> VectorVector<T> for &'self [V] {
     fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|inner| (*inner).clone())
-    }
-
-    /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all((*inner).clone());
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size);
+        for v in self.iter() {
+            result.push_all(v.as_slice())
         }
-        r
-    }
-}
-
-impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
-    fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|&inner| inner.to_owned())
+        result
     }
 
-    /// Concatenate a vector of slices, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size + self.len());
         let mut first = true;
-        for &inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all(inner);
+        for v in self.iter() {
+            if first { first = false } else { result.push(sep.clone()) }
+            result.push_all(v.as_slice())
         }
-        r
+        result
     }
 }
 
