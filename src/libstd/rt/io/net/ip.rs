@@ -15,7 +15,7 @@ use from_str::FromStr;
 use option::{Option, None, Some};
 
 
-type Port = u16;
+pub type Port = u16;
 
 #[deriving(Eq, TotalEq, Clone)]
 pub enum IpAddr {
