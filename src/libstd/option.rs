@@ -278,7 +278,7 @@ impl<T> Option<T> {
     pub fn get_ref<'a>(&'a self) -> &'a T {
         match *self {
             Some(ref x) => x,
-            None => fail!("called `Option::get_ref()` on a `None` value"),
+            None => fail2!("called `Option::get_ref()` on a `None` value"),
         }
     }
 
@@ -298,7 +298,7 @@ impl<T> Option<T> {
     pub fn get_mut_ref<'a>(&'a mut self) -> &'a mut T {
         match *self {
             Some(ref mut x) => x,
-            None => fail!("called `Option::get_mut_ref()` on a `None` value"),
+            None => fail2!("called `Option::get_mut_ref()` on a `None` value"),
         }
     }
 
@@ -320,7 +320,7 @@ impl<T> Option<T> {
     pub fn unwrap(self) -> T {
         match self {
             Some(x) => x,
-            None => fail!("called `Option::unwrap()` on a `None` value"),
+            None => fail2!("called `Option::unwrap()` on a `None` value"),
         }
     }
 
@@ -333,7 +333,7 @@ impl<T> Option<T> {
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
         if self.is_none() {
-            fail!("called `Option::take_unwrap()` on a `None` value")
+            fail2!("called `Option::take_unwrap()` on a `None` value")
         }
         self.take().unwrap()
     }
@@ -348,7 +348,7 @@ impl<T> Option<T> {
     pub fn expect(self, reason: &str) -> T {
         match self {
             Some(val) => val,
-            None => fail!(reason.to_owned()),
+            None => fail2!("{}", reason.to_owned()),
         }
     }
 
@@ -722,21 +722,23 @@ mod tests {
         let new_val = 11;
 
         let mut x = Some(val);
-        let mut it = x.mut_iter();
+        {
+            let mut it = x.mut_iter();
 
-        assert_eq!(it.size_hint(), (1, Some(1)));
+            assert_eq!(it.size_hint(), (1, Some(1)));
 
-        match it.next() {
-            Some(interior) => {
-                assert_eq!(*interior, val);
-                *interior = new_val;
-                assert_eq!(x, Some(new_val));
+            match it.next() {
+                Some(interior) => {
+                    assert_eq!(*interior, val);
+                    *interior = new_val;
+                }
+                None => assert!(false),
             }
-            None => assert!(false),
-        }
 
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
+            assert_eq!(it.size_hint(), (0, Some(0)));
+            assert!(it.next().is_none());
+        }
+        assert_eq!(x, Some(new_val));
     }
 
     #[test]

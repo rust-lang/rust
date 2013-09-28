@@ -234,7 +234,7 @@ impl<'self> Parser<'self> {
             Some((_, c @ '#')) | Some((_, c @ '{')) |
             Some((_, c @ '\\')) | Some((_, c @ '}')) => { c }
             Some((_, c)) => {
-                self.err(fmt!("invalid escape character `%c`", c));
+                self.err(format!("invalid escape character `{}`", c));
                 c
             }
             None => {
@@ -378,7 +378,7 @@ impl<'self> Parser<'self> {
                 return None;
             }
             method => {
-                self.err(fmt!("unknown method: `%s`", method));
+                self.err(format!("unknown method: `{}`", method));
                 return None;
             }
         }
@@ -448,8 +448,8 @@ impl<'self> Parser<'self> {
                     Some((_, 'f')) => {
                         let word = self.word();
                         if word != "offset" {
-                            self.err(fmt!("expected `offset`, found `%s`",
-                                          word));
+                            self.err(format!("expected `offset`, found `{}`",
+                                             word));
                         } else {
                             if !self.consume(':') {
                                 self.err(~"`offset` must be followed by `:`");
@@ -490,7 +490,8 @@ impl<'self> Parser<'self> {
                     "few"   => Left(Few),
                     "many"  => Left(Many),
                     word    => {
-                        self.err(fmt!("unexpected plural selector `%s`", word));
+                        self.err(format!("unexpected plural selector `{}`",
+                                         word));
                         if word == "" {
                             break
                         } else {

@@ -816,8 +816,8 @@ impl num::ToStrRadix for f32 {
     fn to_str_radix(&self, rdx: uint) -> ~str {
         let (r, special) = strconv::float_to_str_common(
             *self, rdx, true, strconv::SignNeg, strconv::DigAll);
-        if special { fail!("number has a special value, \
-                          try to_str_radix_special() if those are expected") }
+        if special { fail2!("number has a special value, \
+                             try to_str_radix_special() if those are expected") }
         r
     }
 }

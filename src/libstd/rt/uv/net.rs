@@ -34,7 +34,7 @@ fn sockaddr_to_UvSocketAddr(addr: *uvll::sockaddr) -> UvSocketAddr {
         match addr {
             _ if is_ip4_addr(addr) => UvIpv4SocketAddr(addr as *uvll::sockaddr_in),
             _ if is_ip6_addr(addr) => UvIpv6SocketAddr(addr as *uvll::sockaddr_in6),
-            _ => fail!(),
+            _ => fail2!(),
         }
     }
 }
@@ -156,8 +156,8 @@ impl StreamWatcher {
         }
 
         extern fn read_cb(stream: *uvll::uv_stream_t, nread: ssize_t, buf: Buf) {
-            rtdebug!("buf addr: %x", buf.base as uint);
-            rtdebug!("buf len: %d", buf.len as int);
+            rtdebug!("buf addr: {}", buf.base);
+            rtdebug!("buf len: {}", buf.len);
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
             let cb = stream_watcher.get_watcher_data().read_cb.get_ref();
             let status = status_to_maybe_uv_error(nread as c_int);
@@ -266,7 +266,7 @@ impl TcpWatcher {
             self.get_watcher_data().connect_cb = Some(cb);
 
             let connect_handle = ConnectRequest::new().native_handle();
-            rtdebug!("connect_t: %x", connect_handle as uint);
+            rtdebug!("connect_t: {}", connect_handle);
             do socket_addr_as_uv_socket_addr(address) |addr| {
                 let result = match addr {
                     UvIpv4SocketAddr(addr) => uvll::tcp_connect(connect_handle,
@@ -278,7 +278,7 @@ impl TcpWatcher {
             }
 
             extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
-                rtdebug!("connect_t: %x", req as uint);
+                rtdebug!("connect_t: {}", req);
                 let connect_request: ConnectRequest = NativeHandle::from_native_handle(req);
                 let mut stream_watcher = connect_request.stream();
                 connect_request.delete();
@@ -379,8 +379,8 @@ impl UdpWatcher {
                 return;
             }
 
-            rtdebug!("buf addr: %x", buf.base as uint);
-            rtdebug!("buf len: %d", buf.len as int);
+            rtdebug!("buf addr: {}", buf.base);
+            rtdebug!("buf len: {}", buf.len);
             let mut udp_watcher: UdpWatcher = NativeHandle::from_native_handle(handle);
             let cb = udp_watcher.get_watcher_data().udp_recv_cb.get_ref();
             let status = status_to_maybe_uv_error(nread as c_int);
@@ -652,11 +652,11 @@ mod test {
                     let buf = vec_from_uv_buf(buf);
                     let mut count = count_cell.take();
                     if status.is_none() {
-                        rtdebug!("got %d bytes", nread);
+                        rtdebug!("got {} bytes", nread);
                         let buf = buf.unwrap();
                         for byte in buf.slice(0, nread as uint).iter() {
                             assert!(*byte == count as u8);
-                            rtdebug!("%u", *byte as uint);
+                            rtdebug!("{}", *byte as uint);
                             count += 1;
                         }
                     } else {
@@ -727,12 +727,12 @@ mod test {
                     let buf = vec_from_uv_buf(buf);
                     let mut count = count_cell.take();
                     if status.is_none() {
-                        rtdebug!("got %d bytes", nread);
+                        rtdebug!("got {} bytes", nread);
                         let buf = buf.unwrap();
                         let r = buf.slice(0, nread as uint);
                         for byte in r.iter() {
                             assert!(*byte == count as u8);
-                            rtdebug!("%u", *byte as uint);
+                            rtdebug!("{}", *byte as uint);
                             count += 1;
                         }
                     } else {
@@ -798,12 +798,12 @@ mod test {
 
                 let buf = vec_from_uv_buf(buf);
                 let mut count = 0;
-                rtdebug!("got %d bytes", nread);
+                rtdebug!("got {} bytes", nread);
 
                 let buf = buf.unwrap();
                 for &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
-                    rtdebug!("%u", byte as uint);
+                    rtdebug!("{}", byte as uint);
                     count += 1;
                 }
                 assert_eq!(count, MAX);
@@ -858,12 +858,12 @@ mod test {
 
                 let buf = vec_from_uv_buf(buf);
                 let mut count = 0;
-                rtdebug!("got %d bytes", nread);
+                rtdebug!("got {} bytes", nread);
 
                 let buf = buf.unwrap();
                 for &byte in buf.slice(0, nread as uint).iter() {
                     assert!(byte == count as u8);
-                    rtdebug!("%u", byte as uint);
+                    rtdebug!("{}", byte as uint);
                     count += 1;
                 }
                 assert_eq!(count, MAX);

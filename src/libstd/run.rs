@@ -199,7 +199,7 @@ impl Process {
     fn input_fd(&mut self) -> c_int {
         match self.input {
             Some(fd) => fd,
-            None => fail!("This Process's stdin was redirected to an \
+            None => fail2!("This Process's stdin was redirected to an \
                            existing file descriptor.")
         }
     }
@@ -207,7 +207,7 @@ impl Process {
     fn output_file(&mut self) -> *libc::FILE {
         match self.output {
             Some(file) => file,
-            None => fail!("This Process's stdout was redirected to an \
+            None => fail2!("This Process's stdout was redirected to an \
                            existing file descriptor.")
         }
     }
@@ -215,7 +215,7 @@ impl Process {
     fn error_file(&mut self) -> *libc::FILE {
         match self.error {
             Some(file) => file,
-            None => fail!("This Process's stderr was redirected to an \
+            None => fail2!("This Process's stderr was redirected to an \
                            existing file descriptor.")
         }
     }
@@ -373,7 +373,7 @@ impl Process {
             ((1, o), (2, e)) => (e, o),
             ((2, e), (1, o)) => (e, o),
             ((x, _), (y, _)) => {
-                fail!("unexpected file numbers: %u, %u", x, y);
+                fail2!("unexpected file numbers: {}, {}", x, y);
             }
         };
 
@@ -482,29 +482,29 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         let orig_std_in = get_osfhandle(in_fd) as HANDLE;
         if orig_std_in == INVALID_HANDLE_VALUE as HANDLE {
-            fail!("failure in get_osfhandle: %s", os::last_os_error());
+            fail2!("failure in get_osfhandle: {}", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_in, cur_proc, &mut si.hStdInput,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!("failure in DuplicateHandle: %s", os::last_os_error());
+            fail2!("failure in DuplicateHandle: {}", os::last_os_error());
         }
 
         let orig_std_out = get_osfhandle(out_fd) as HANDLE;
         if orig_std_out == INVALID_HANDLE_VALUE as HANDLE {
-            fail!("failure in get_osfhandle: %s", os::last_os_error());
+            fail2!("failure in get_osfhandle: {}", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_out, cur_proc, &mut si.hStdOutput,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!("failure in DuplicateHandle: %s", os::last_os_error());
+            fail2!("failure in DuplicateHandle: {}", os::last_os_error());
         }
 
         let orig_std_err = get_osfhandle(err_fd) as HANDLE;
         if orig_std_err == INVALID_HANDLE_VALUE as HANDLE {
-            fail!("failure in get_osfhandle: %s", os::last_os_error());
+            fail2!("failure in get_osfhandle: {}", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_err, cur_proc, &mut si.hStdError,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!("failure in DuplicateHandle: %s", os::last_os_error());
+            fail2!("failure in DuplicateHandle: {}", os::last_os_error());
         }
 
         let cmd = make_command_line(prog, args);
@@ -529,7 +529,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdError);
 
         for msg in create_err.iter() {
-            fail!("failure in CreateProcess: %s", *msg);
+            fail2!("failure in CreateProcess: {}", *msg);
         }
 
         // We close the thread handle because we don't care about keeping the thread id valid,
@@ -669,7 +669,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         let pid = fork();
         if pid < 0 {
-            fail!("failure in fork: %s", os::last_os_error());
+            fail2!("failure in fork: {}", os::last_os_error());
         } else if pid > 0 {
             return SpawnProcessResult {pid: pid, handle: ptr::null()};
         }
@@ -677,13 +677,13 @@ fn spawn_process_os(prog: &str, args: &[~str],
         rustrt::rust_unset_sigprocmask();
 
         if dup2(in_fd, 0) == -1 {
-            fail!("failure in dup2(in_fd, 0): %s", os::last_os_error());
+            fail2!("failure in dup2(in_fd, 0): {}", os::last_os_error());
         }
         if dup2(out_fd, 1) == -1 {
-            fail!("failure in dup2(out_fd, 1): %s", os::last_os_error());
+            fail2!("failure in dup2(out_fd, 1): {}", os::last_os_error());
         }
         if dup2(err_fd, 2) == -1 {
-            fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
+            fail2!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
         for fd in range(3, getdtablesize()).invert() {
@@ -692,7 +692,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         do with_dirp(dir) |dirp| {
             if !dirp.is_null() && chdir(dirp) == -1 {
-                fail!("failure in chdir: %s", os::last_os_error());
+                fail2!("failure in chdir: {}", os::last_os_error());
             }
         }
 
@@ -703,7 +703,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             do with_argv(prog, args) |argv| {
                 execvp(*argv, argv);
                 // execvp only returns if an error occurred
-                fail!("failure in execvp: %s", os::last_os_error());
+                fail2!("failure in execvp: {}", os::last_os_error());
             }
         }
     }
@@ -749,7 +749,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
             let mut tmps = vec::with_capacity(env.len());
 
             for pair in env.iter() {
-                let kv = fmt!("%s=%s", pair.first(), pair.second());
+                let kv = format!("{}={}", pair.first(), pair.second());
                 tmps.push(kv.to_c_str());
             }
 
@@ -777,7 +777,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
             let mut blk = ~[];
 
             for pair in env.iter() {
-                let kv = fmt!("%s=%s", pair.first(), pair.second());
+                let kv = format!("{}={}", pair.first(), pair.second());
                 blk.push_all(kv.as_bytes());
                 blk.push(0);
             }
@@ -890,14 +890,14 @@ fn waitpid(pid: pid_t) -> int {
 
             let proc = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
             if proc.is_null() {
-                fail!("failure in OpenProcess: %s", os::last_os_error());
+                fail2!("failure in OpenProcess: {}", os::last_os_error());
             }
 
             loop {
                 let mut status = 0;
                 if GetExitCodeProcess(proc, &mut status) == FALSE {
                     CloseHandle(proc);
-                    fail!("failure in GetExitCodeProcess: %s", os::last_os_error());
+                    fail2!("failure in GetExitCodeProcess: {}", os::last_os_error());
                 }
                 if status != STILL_ACTIVE {
                     CloseHandle(proc);
@@ -905,7 +905,7 @@ fn waitpid(pid: pid_t) -> int {
                 }
                 if WaitForSingleObject(proc, INFINITE) == WAIT_FAILED {
                     CloseHandle(proc);
-                    fail!("failure in WaitForSingleObject: %s", os::last_os_error());
+                    fail2!("failure in WaitForSingleObject: {}", os::last_os_error());
                 }
             }
         }
@@ -943,7 +943,7 @@ fn waitpid(pid: pid_t) -> int {
 
         let mut status = 0 as c_int;
         if unsafe { waitpid(pid, &mut status, 0) } == -1 {
-            fail!("failure in waitpid: %s", os::last_os_error());
+            fail2!("failure in waitpid: {}", os::last_os_error());
         }
 
         return if WIFEXITED(status) {
@@ -1342,7 +1342,7 @@ mod tests {
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(fmt!("%s=%s", *k, *v)));
+            assert!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
         }
     }
     #[test]
@@ -1357,8 +1357,8 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != ~"RANDOM" {
-                assert!(output.contains(fmt!("%s=%s", *k, *v)) ||
-                        output.contains(fmt!("%s=\'%s\'", *k, *v)));
+                assert!(output.contains(format!("{}={}", *k, *v)) ||
+                        output.contains(format!("{}=\'{}\'", *k, *v)));
             }
         }
     }

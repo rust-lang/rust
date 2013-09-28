@@ -163,14 +163,14 @@ mod imp {
     }
 
     pub fn take() -> Option<~[~str]> {
-        fail!()
+        fail2!()
     }
 
     pub fn put(_args: ~[~str]) {
-        fail!()
+        fail2!()
     }
 
     pub fn clone() -> Option<~[~str]> {
-        fail!()
+        fail2!()
     }
 }

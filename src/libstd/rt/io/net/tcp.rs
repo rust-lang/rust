@@ -38,7 +38,7 @@ impl TcpStream {
         match stream {
             Ok(s) => Some(TcpStream::new(s)),
             Err(ioerr) => {
-                rtdebug!("failed to connect: %?", ioerr);
+                rtdebug!("failed to connect: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -49,7 +49,7 @@ impl TcpStream {
         match (**self).peer_name() {
             Ok(pn) => Some(pn),
             Err(ioerr) => {
-                rtdebug!("failed to get peer name: %?", ioerr);
+                rtdebug!("failed to get peer name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -60,7 +60,7 @@ impl TcpStream {
         match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
-                rtdebug!("failed to get socket name: %?", ioerr);
+                rtdebug!("failed to get socket name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }
@@ -82,7 +82,7 @@ impl Reader for TcpStream {
         }
     }
 
-    fn eof(&mut self) -> bool { fail!() }
+    fn eof(&mut self) -> bool { fail2!() }
 }
 
 impl Writer for TcpStream {
@@ -117,7 +117,7 @@ impl TcpListener {
         match (**self).socket_name() {
             Ok(sn) => Some(sn),
             Err(ioerr) => {
-                rtdebug!("failed to get socket name: %?", ioerr);
+                rtdebug!("failed to get socket name: {:?}", ioerr);
                 io_error::cond.raise(ioerr);
                 None
             }

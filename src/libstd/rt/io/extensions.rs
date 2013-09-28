@@ -288,7 +288,7 @@ impl<T: Reader> ReaderUtil for T {
         let mut buf = [0];
         match self.read(buf) {
             Some(0) => {
-                debug!("read 0 bytes. trying again");
+                debug2!("read 0 bytes. trying again");
                 self.read_byte()
             }
             Some(1) => Some(buf[0]),
