@@ -932,11 +932,11 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             if sys::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             } else {
                 VecIterator{ptr: p,
                             end: p.offset(self.len() as int),
-                            lifetime: cast::transmute(p)}
+                            lifetime: None}
             }
         }
     }
@@ -1940,11 +1940,11 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
             if sys::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             } else {
                 VecMutIterator{ptr: p,
                                end: p.offset(self.len() as int),
-                               lifetime: cast::transmute(p)}
+                               lifetime: None}
             }
         }
     }
@@ -2389,7 +2389,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
-    priv lifetime: &'self T // FIXME: #5922
+    priv lifetime: Option<&'self ()> // FIXME: #5922
 }
 iterator!{impl VecIterator -> &'self T}
 double_ended_iterator!{impl VecIterator -> &'self T}
@@ -2407,7 +2407,7 @@ impl<'self, T> Clone for VecIterator<'self, T> {
 pub struct VecMutIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
-    priv lifetime: &'self mut T // FIXME: #5922
+    priv lifetime: Option<&'self mut ()> // FIXME: #5922
 }
 iterator!{impl VecMutIterator -> &'self mut T}
 double_ended_iterator!{impl VecMutIterator -> &'self mut T}
