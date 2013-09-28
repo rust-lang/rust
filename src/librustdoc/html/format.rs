@@ -97,7 +97,7 @@ impl fmt::Default for clean::Path {
     }
 }
 
-fn resolved_path(w: &mut io::Writer, id: ast::NodeId,
+fn resolved_path(w: &mut io::Writer, did: ast::DefId,
                  path: &clean::Path, print_all: bool) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
@@ -144,9 +144,10 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId,
 
         do local_data::get(cache_key) |cache| {
             do cache.unwrap().read |cache| {
-                match cache.paths.find(&id) {
+                match cache.paths.find(&did.node) {
                     // This is a documented path, link to it!
-                    Some(&(ref fqp, shortty)) => {
+                    // FIXME(#9539): this is_local check should not exist
+                    Some(&(ref fqp, shortty)) if ast_util::is_local(did) => {
                         let fqn = fqp.connect("::");
                         let same = loc.iter().zip(fqp.iter())
                                       .take_while(|&(a, b)| *a == *b).len();
@@ -180,7 +181,7 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId,
                         write!(w, "<a class='{}' href='{}' title='{}'>{}</a>{}",
                                shortty, url, fqn, last.name, generics);
                     }
-                    None => {
+                    _ => {
                         if print_all {
                             let amt = path.segments.len() - 1;
                             for seg in path.segments.iter().take(amt) {
@@ -205,8 +206,8 @@ impl fmt::Default for clean::Type {
                     }
                 }
             }
-            clean::ResolvedPath{id, typarams: ref typarams, path: ref path} => {
-                resolved_path(f.buf, id, path, false);
+            clean::ResolvedPath{did, typarams: ref typarams, path: ref path} => {
+                resolved_path(f.buf, did, path, false);
                 match *typarams {
                     Some(ref params) => {
                         f.buf.write("&lt;".as_bytes());
@@ -218,10 +219,6 @@ impl fmt::Default for clean::Type {
                     }
                     None => {}
                 }
-            }
-            // XXX: this should be a link
-            clean::External(ref a, _) => {
-                write!(f.buf, "{}", *a);
             }
             clean::Self(*) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
@@ -421,8 +418,8 @@ impl fmt::Default for clean::ViewPath {
 impl fmt::Default for clean::ImportSource {
     fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
         match v.did {
-            Some(did) if ast_util::is_local(did) => {
-                resolved_path(f.buf, did.node, &v.path, true);
+            Some(did) => {
+                resolved_path(f.buf, did, &v.path, true);
             }
             _ => {
                 for (i, seg) in v.path.segments.iter().enumerate() {
@@ -437,7 +434,7 @@ impl fmt::Default for clean::ImportSource {
 impl fmt::Default for clean::ViewListIdent {
     fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
         match v.source {
-            Some(did) if ast_util::is_local(did) => {
+            Some(did) => {
                 let path = clean::Path {
                     global: false,
                     segments: ~[clean::PathSegment {
@@ -446,7 +443,7 @@ impl fmt::Default for clean::ViewListIdent {
                         types: ~[],
                     }]
                 };
-                resolved_path(f.buf, did.node, &path, false);
+                resolved_path(f.buf, did, &path, false);
             }
             _ => write!(f.buf, "{}", v.name),
         }
