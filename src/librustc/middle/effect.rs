@@ -58,12 +58,12 @@ impl EffectCheckVisitor {
             SafeContext => {
                 // Report an error.
                 self.tcx.sess.span_err(span,
-                                  fmt!("%s requires unsafe function or block",
+                                  format!("{} requires unsafe function or block",
                                        description))
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
-                debug!("effect: recording unsafe block as used: %?", block_id);
+                debug2!("effect: recording unsafe block as used: {:?}", block_id);
                 let _ = self.tcx.used_unsafe.insert(block_id);
             }
             UnsafeFn => {}
@@ -119,7 +119,7 @@ impl Visitor<()> for EffectCheckVisitor {
             match expr.node {
                 ExprMethodCall(callee_id, _, _, _, _, _) => {
                     let base_type = ty::node_id_to_type(self.tcx, callee_id);
-                    debug!("effect: method call case, base type is %s",
+                    debug2!("effect: method call case, base type is {}",
                            ppaux::ty_to_str(self.tcx, base_type));
                     if type_is_unsafe_function(base_type) {
                         self.require_unsafe(expr.span,
@@ -128,7 +128,7 @@ impl Visitor<()> for EffectCheckVisitor {
                 }
                 ExprCall(base, _, _) => {
                     let base_type = ty::node_id_to_type(self.tcx, base.id);
-                    debug!("effect: call case, base type is %s",
+                    debug2!("effect: call case, base type is {}",
                            ppaux::ty_to_str(self.tcx, base_type));
                     if type_is_unsafe_function(base_type) {
                         self.require_unsafe(expr.span, "call to unsafe function")
@@ -136,7 +136,7 @@ impl Visitor<()> for EffectCheckVisitor {
                 }
                 ExprUnary(_, UnDeref, base) => {
                     let base_type = ty::node_id_to_type(self.tcx, base.id);
-                    debug!("effect: unary case, base type is %s",
+                    debug2!("effect: unary case, base type is {}",
                            ppaux::ty_to_str(self.tcx, base_type));
                     match ty::get(base_type).sty {
                         ty_ptr(_) => {

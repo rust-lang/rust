@@ -386,7 +386,7 @@ pub fn phase_6_link_output(sess: Session,
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
    if sess.opts.no_trans {
-        debug!("invoked with --no-trans, returning early from compile_input");
+        debug2!("invoked with --no-trans, returning early from compile_input");
         return true;
     }
     return false;
@@ -394,7 +394,7 @@ pub fn stop_after_phase_3(sess: Session) -> bool {
 
 pub fn stop_after_phase_1(sess: Session) -> bool {
     if sess.opts.parse_only {
-        debug!("invoked with --parse-only, returning early from compile_input");
+        debug2!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
     return false;
@@ -402,17 +402,17 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
     if sess.opts.output_type != link::output_type_exe {
-        debug!("not building executable, returning early from compile_input");
+        debug2!("not building executable, returning early from compile_input");
         return true;
     }
 
     if sess.opts.is_static && *sess.building_library {
-        debug!("building static library, returning early from compile_input");
+        debug2!("building static library, returning early from compile_input");
         return true;
     }
 
     if sess.opts.jit {
-        debug!("running JIT, returning early from compile_input");
+        debug2!("running JIT, returning early from compile_input");
         return true;
     }
     return false;
@@ -670,7 +670,7 @@ pub fn build_session_options(binary: @str,
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {
               None => {
-                early_error(demitter, fmt!("unknown %s flag: %s",
+                early_error(demitter, format!("unknown {} flag: {}",
                                            level_name, lint_name));
               }
               Some(lint) => {
@@ -690,7 +690,7 @@ pub fn build_session_options(binary: @str,
             if name == debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
-            early_error(demitter, fmt!("unknown debug flag: %s", *debug_flag))
+            early_error(demitter, format!("unknown debug flag: {}", *debug_flag))
         }
         debugging_opts |= this_bit;
     }
@@ -1033,7 +1033,7 @@ pub fn build_output_filenames(input: &input,
 
 pub fn early_error(emitter: @diagnostic::Emitter, msg: ~str) -> ! {
     emitter.emit(None, msg, diagnostic::fatal);
-    fail!();
+    fail2!();
 }
 
 pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
@@ -1058,7 +1058,7 @@ mod test {
         let matches =
             &match getopts([~"--test"], optgroups()) {
               Ok(m) => m,
-              Err(f) => fail!("test_switch_implies_cfg_test: %s", f.to_err_msg())
+              Err(f) => fail2!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
         let sessopts = build_session_options(
             @"rustc",
@@ -1079,7 +1079,8 @@ mod test {
             &match getopts([~"--test", ~"--cfg=test"], optgroups()) {
               Ok(m) => m,
               Err(f) => {
-                fail!("test_switch_implies_cfg_test_unless_cfg_test: %s", f.to_err_msg());
+                fail2!("test_switch_implies_cfg_test_unless_cfg_test: {}",
+                       f.to_err_msg());
               }
             };
         let sessopts = build_session_options(

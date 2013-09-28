@@ -178,7 +178,7 @@ impl Repr for vtable_origin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
-                fmt!("vtable_static(%?:%s, %s, %s)",
+                format!("vtable_static({:?}:{}, {}, {})",
                      def_id,
                      ty::item_path_str(tcx, def_id),
                      tys.repr(tcx),
@@ -186,7 +186,7 @@ impl Repr for vtable_origin {
             }
 
             vtable_param(x, y) => {
-                fmt!("vtable_param(%?, %?)", x, y)
+                format!("vtable_param({:?}, {:?})", x, y)
             }
         }
     }
@@ -208,7 +208,7 @@ pub struct impl_res {
 
 impl Repr for impl_res {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("impl_res {trait_vtables=%s, self_vtables=%s}",
+        format!("impl_res \\{trait_vtables={}, self_vtables={}\\}",
              self.trait_vtables.repr(tcx),
              self.self_vtables.repr(tcx))
     }
@@ -226,7 +226,7 @@ pub struct CrateCtxt {
 
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
-    debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
+    debug2!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     tcx.node_types.insert(node_id as uint, ty);
 }
@@ -234,7 +234,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::NodeId,
                            substs: ~[ty::t]) {
     if substs.len() > 0u {
-        debug!("write_substs_to_tcx(%d, %?)", node_id,
+        debug2!("write_substs_to_tcx({}, {:?})", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
         assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
         tcx.node_type_substs.insert(node_id, substs);
@@ -361,12 +361,12 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             });
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
-                || fmt!("main function expects type: `%s`",
+                || format!("main function expects type: `{}`",
                         ppaux::ty_to_str(ccx.tcx, se_ty)));
         }
         _ => {
             tcx.sess.span_bug(main_span,
-                              fmt!("main has a non-function type: found `%s`",
+                              format!("main has a non-function type: found `{}`",
                                    ppaux::ty_to_str(tcx, main_t)));
         }
     }
@@ -409,12 +409,12 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
-                || fmt!("start function expects type: `%s`", ppaux::ty_to_str(ccx.tcx, se_ty)));
+                || format!("start function expects type: `{}`", ppaux::ty_to_str(ccx.tcx, se_ty)));
 
         }
         _ => {
             tcx.sess.span_bug(start_span,
-                              fmt!("start has a non-function type: found `%s`",
+                              format!("start has a non-function type: found `{}`",
                                    ppaux::ty_to_str(tcx, start_t)));
         }
     }

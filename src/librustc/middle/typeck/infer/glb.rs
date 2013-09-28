@@ -44,7 +44,7 @@ impl Combine for Glb {
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;
 
-        debug!("%s.mts(%s, %s)",
+        debug2!("{}.mts({}, {})",
                self.tag(),
                mt_to_str(tcx, a),
                mt_to_str(tcx, b));
@@ -100,7 +100,7 @@ impl Combine for Glb {
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        debug!("%s.regions(%?, %?)",
+        debug2!("{}.regions({:?}, {:?})",
                self.tag(),
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
@@ -121,7 +121,7 @@ impl Combine for Glb {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
-        debug!("%s.fn_sigs(%?, %?)",
+        debug2!("{}.fn_sigs({:?}, {:?})",
                self.tag(), a.inf_str(self.infcx), b.inf_str(self.infcx));
         let _indenter = indenter();
 
@@ -143,7 +143,7 @@ impl Combine for Glb {
 
         // Collect constraints.
         let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
-        debug!("sig0 = %s", sig0.inf_str(self.infcx));
+        debug2!("sig0 = {}", sig0.inf_str(self.infcx));
 
         // Generalize the regions appearing in fn_ty0 if possible
         let new_vars =
@@ -155,7 +155,7 @@ impl Combine for Glb {
                 |r, _in_fn| generalize_region(self, snapshot,
                                               new_vars, a_isr, a_vars, b_vars,
                                               r));
-        debug!("sig1 = %s", sig1.inf_str(self.infcx));
+        debug2!("sig1 = {}", sig1.inf_str(self.infcx));
         return Ok(sig1);
 
         fn generalize_region(this: &Glb,
@@ -237,7 +237,7 @@ impl Combine for Glb {
                 Some(x) => x,
                 None => this.infcx.tcx.sess.span_bug(
                             this.trace.origin.span(),
-                            fmt!("could not find original bound region for %?", r))
+                            format!("could not find original bound region for {:?}", r))
             }
         }
 

@@ -124,13 +124,13 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
-    debug!("checking impl with self type %?", ty::get(self_ty).sty);
+    debug2!("checking impl with self type {:?}", ty::get(self_ty).sty);
     do check_builtin_bounds(cx, self_ty, trait_def.bounds) |missing| {
         cx.tcx.sess.span_err(self_type.span,
-            fmt!("the type `%s', which does not fulfill `%s`, cannot implement this \
+            format!("the type `{}', which does not fulfill `{}`, cannot implement this \
                   trait", ty_to_str(cx.tcx, self_ty), missing.user_string(cx.tcx)));
         cx.tcx.sess.span_note(self_type.span,
-            fmt!("types implementing this trait must fulfill `%s`",
+            format!("types implementing this trait must fulfill `{}`",
                  trait_def.bounds.user_string(cx.tcx)));
     }
 
@@ -238,7 +238,7 @@ fn with_appropriate_checker(cx: &Context, id: NodeId,
         }
         ref s => {
             cx.tcx.sess.bug(
-                fmt!("expect fn type in kind checker, not %?", s));
+                format!("expect fn type in kind checker, not {:?}", s));
         }
     }
 }
@@ -265,7 +265,7 @@ fn check_fn(
 }
 
 pub fn check_expr(cx: &mut Context, e: @Expr) {
-    debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
+    debug2!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
     let type_parameter_id = match e.get_callee_id() {
@@ -292,9 +292,9 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
             };
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
-                fail!("internal error: in kind::check_expr, length \
+                fail2!("internal error: in kind::check_expr, length \
                       mismatch between actual and declared bounds: actual = \
-                      %s, declared = %s",
+                      {}, declared = {}",
                       ts.repr(cx.tcx),
                       type_param_defs.repr(cx.tcx));
             }
@@ -375,8 +375,8 @@ pub fn check_typaram_bounds(cx: &Context,
     do check_builtin_bounds(cx, ty, type_param_def.bounds.builtin_bounds) |missing| {
         cx.tcx.sess.span_err(
             sp,
-            fmt!("instantiating a type parameter with an incompatible type \
-                  `%s`, which does not fulfill `%s`",
+            format!("instantiating a type parameter with an incompatible type \
+                  `{}`, which does not fulfill `{}`",
                  ty_to_str(cx.tcx, ty),
                  missing.user_string(cx.tcx)));
     }
@@ -390,17 +390,17 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
         // Emit a less mysterious error message in this case.
         match referenced_ty {
             Some(rty) => cx.tcx.sess.span_err(sp,
-                fmt!("cannot implicitly borrow variable of type `%s` in a bounded \
-                      stack closure (implicit reference does not fulfill `%s`)",
+                format!("cannot implicitly borrow variable of type `{}` in a bounded \
+                      stack closure (implicit reference does not fulfill `{}`)",
                      ty_to_str(cx.tcx, rty), missing.user_string(cx.tcx))),
             None => cx.tcx.sess.span_err(sp,
-                fmt!("cannot capture variable of type `%s`, which does \
-                      not fulfill `%s`, in a bounded closure",
+                format!("cannot capture variable of type `{}`, which does \
+                      not fulfill `{}`, in a bounded closure",
                      ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx))),
         }
         cx.tcx.sess.span_note(
             sp,
-            fmt!("this closure's environment must satisfy `%s`",
+            format!("this closure's environment must satisfy `{}`",
                  bounds.user_string(cx.tcx)));
     }
 }
@@ -409,8 +409,8 @@ pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
     do check_builtin_bounds(cx, ty, bounds) |missing| {
         cx.tcx.sess.span_err(sp,
-            fmt!("cannot pack type `%s`, which does not fulfill \
-                  `%s`, as a trait bounded by %s",
+            format!("cannot pack type `{}`, which does not fulfill \
+                  `{}`, as a trait bounded by {}",
                  ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
                  bounds.user_string(cx.tcx)));
     }
@@ -445,27 +445,27 @@ fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
         _ => {
             cx.tcx.sess.span_bug(
                 sp,
-                fmt!("unknown def for free variable: %?", def));
+                format!("unknown def for free variable: {:?}", def));
         }
     }
 }
 
 fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
-    debug!("type_contents(%s)=%s",
+    debug2!("type_contents({})={}",
            ty_to_str(cx.tcx, ty),
            ty::type_contents(cx.tcx, ty).to_str());
     if ty::type_moves_by_default(cx.tcx, ty) {
         cx.tcx.sess.span_err(
-            sp, fmt!("copying a value of non-copyable type `%s`",
+            sp, format!("copying a value of non-copyable type `{}`",
                      ty_to_str(cx.tcx, ty)));
-        cx.tcx.sess.span_note(sp, fmt!("%s", reason));
+        cx.tcx.sess.span_note(sp, format!("{}", reason));
     }
 }
 
 pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_sendable(cx.tcx, ty) {
         cx.tcx.sess.span_err(
-            sp, fmt!("value has non-sendable type `%s`",
+            sp, format!("value has non-sendable type `{}`",
                      ty_to_str(cx.tcx, ty)));
         false
     } else {
@@ -565,8 +565,8 @@ pub fn check_cast_for_escaping_regions(
             // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
             //         source.span,
-            //         fmt!("source contains borrowed pointer with lifetime \
-            //               not found in the target type `%s`",
+            //         format!("source contains borrowed pointer with lifetime \
+            //               not found in the target type `{}`",
             //              ty_to_str(cx.tcx, target_ty)));
             //     note_and_explain_region(
             //         cx.tcx, "source data is only valid for ", r, "");

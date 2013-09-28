@@ -129,8 +129,8 @@ impl AstConv for CrateCtxt {
                 ty_of_foreign_item(self, foreign_item, abis)
               }
               ref x => {
-                self.tcx.sess.bug(fmt!("unexpected sort of item \
-                                        in get_item_ty(): %?", (*x)));
+                self.tcx.sess.bug(format!("unexpected sort of item \
+                                        in get_item_ty(): {:?}", (*x)));
               }
             }
         }
@@ -347,7 +347,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
         new_type_param_defs.push_all(*substd_type_param_defs);
 
-        debug!("static method %s type_param_defs=%s ty=%s, substs=%s",
+        debug2!("static method {} type_param_defs={} ty={}, substs={}",
                m.def_id.repr(tcx),
                new_type_param_defs.repr(tcx),
                ty.repr(tcx),
@@ -453,7 +453,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                            trait_m: &ty::Method,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
-    debug!("compare_impl_method()");
+    debug2!("compare_impl_method()");
     let infcx = infer::new_infer_ctxt(tcx);
 
     let impl_m = &cm.mty;
@@ -470,7 +470,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         (&ast::sty_static, _) => {
             tcx.sess.span_err(
                 cm.span,
-                fmt!("method `%s` has a `%s` declaration in the impl, \
+                format!("method `{}` has a `{}` declaration in the impl, \
                       but not in the trait",
                      tcx.sess.str_of(trait_m.ident),
                      explicit_self_to_str(&impl_m.explicit_self, tcx.sess.intr())));
@@ -479,7 +479,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         (_, &ast::sty_static) => {
             tcx.sess.span_err(
                 cm.span,
-                fmt!("method `%s` has a `%s` declaration in the trait, \
+                format!("method `{}` has a `{}` declaration in the trait, \
                       but not in the impl",
                      tcx.sess.str_of(trait_m.ident),
                      explicit_self_to_str(&trait_m.explicit_self, tcx.sess.intr())));
@@ -495,8 +495,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     if num_impl_m_type_params != num_trait_m_type_params {
         tcx.sess.span_err(
             cm.span,
-            fmt!("method `%s` has %u type %s, but its trait \
-                  declaration has %u type %s",
+            format!("method `{}` has {} type {}, but its trait \
+                  declaration has {} type {}",
                  tcx.sess.str_of(trait_m.ident),
                  num_impl_m_type_params,
                  pluralize(num_impl_m_type_params, ~"parameter"),
@@ -508,8 +508,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
         tcx.sess.span_err(
             cm.span,
-            fmt!("method `%s` has %u parameter%s \
-                  but the trait has %u",
+            format!("method `{}` has {} parameter{} \
+                  but the trait has {}",
                  tcx.sess.str_of(trait_m.ident),
                  impl_m.fty.sig.inputs.len(),
                  if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
@@ -529,8 +529,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         if !extra_bounds.is_empty() {
            tcx.sess.span_err(
                cm.span,
-               fmt!("in method `%s`, \
-                     type parameter %u requires `%s`, \
+               format!("in method `{}`, \
+                     type parameter {} requires `{}`, \
                      which is not required by \
                      the corresponding type parameter \
                      in the trait declaration",
@@ -548,10 +548,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         {
             tcx.sess.span_err(
                 cm.span,
-                fmt!("in method `%s`, \
-                      type parameter %u has %u trait %s, but the \
+                format!("in method `{}`, \
+                      type parameter {} has {} trait {}, but the \
                       corresponding type parameter in \
-                      the trait declaration has %u trait %s",
+                      the trait declaration has {} trait {}",
                      tcx.sess.str_of(trait_m.ident),
                      i, impl_param_def.bounds.trait_bounds.len(),
                      pluralize(impl_param_def.bounds.trait_bounds.len(),
@@ -632,10 +632,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
     let impl_fty = {
-        debug!("impl_fty (pre-subst): %s", ppaux::ty_to_str(tcx, impl_fty));
+        debug2!("impl_fty (pre-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
-    debug!("impl_fty (post-subst): %s", ppaux::ty_to_str(tcx, impl_fty));
+    debug2!("impl_fty (post-subst): {}", ppaux::ty_to_str(tcx, impl_fty));
     let trait_fty = {
         let num_trait_m_type_params = trait_m.generics.type_param_defs.len();
         let dummy_tps = do vec::from_fn(num_trait_m_type_params) |i| {
@@ -649,11 +649,11 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
         };
-        debug!("trait_fty (pre-subst): %s substs=%s",
+        debug2!("trait_fty (pre-subst): {} substs={}",
                trait_fty.repr(tcx), substs.repr(tcx));
         ty::subst(tcx, &substs, trait_fty)
     };
-    debug!("trait_fty (post-subst): %s", trait_fty.repr(tcx));
+    debug2!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
 
     match infer::mk_subty(infcx, false, infer::MethodCompatCheck(cm.span),
                           impl_fty, trait_fty) {
@@ -661,7 +661,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         result::Err(ref terr) => {
             tcx.sess.span_err(
                 cm.span,
-                fmt!("method `%s` has an incompatible type: %s",
+                format!("method `{}` has an incompatible type: {}",
                      tcx.sess.str_of(trait_m.ident),
                      ty::type_err_to_str(tcx, terr)));
             ty::note_and_explain_type_err(tcx, terr);
@@ -709,7 +709,7 @@ pub fn check_methods_against_trait(ccx: &CrateCtxt,
                 // This method is not part of the trait
                 tcx.sess.span_err(
                     impl_m.span,
-                    fmt!("method `%s` is not a member of trait `%s`",
+                    format!("method `{}` is not a member of trait `{}`",
                          tcx.sess.str_of(impl_m.mty.ident),
                          path_to_str(&a_trait_ty.path, tcx.sess.intr())));
             }
@@ -835,7 +835,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(
                 span,
-                fmt!("trait bounds are not allowed in %s definitions",
+                format!("trait bounds are not allowed in {} definitions",
                      thing));
         }
     }
@@ -844,7 +844,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 pub fn convert(ccx: &CrateCtxt, it: &ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id).map_move(|x| *x);
-    debug!("convert: item %s with id %d rp %?",
+    debug2!("convert: item {} with id {} rp {:?}",
            tcx.sess.str_of(it.ident), it.id, rp);
     match it.node {
       // These don't define types.
@@ -1000,8 +1000,8 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::foreign_item) {
     let abis = match ccx.tcx.items.find(&i.id) {
         Some(&ast_map::node_foreign_item(_, abis, _, _)) => abis,
         ref x => {
-            ccx.tcx.sess.bug(fmt!("unexpected sort of item \
-                                   in get_item_ty(): %?", (*x)));
+            ccx.tcx.sess.bug(format!("unexpected sort of item \
+                                   in get_item_ty(): {:?}", (*x)));
         }
     };
 
@@ -1038,7 +1038,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
         _ => {
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
-                fmt!("%s is not a trait",
+                format!("{} is not a trait",
                     path_to_str(&ast_trait_ref.path,
                                 ccx.tcx.sess.intr())));
         }
@@ -1051,7 +1051,7 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
     } else {
         match ccx.tcx.items.get(&trait_id.node) {
             &ast_map::node_item(item, _) => trait_def_of_item(ccx, item),
-            _ => ccx.tcx.sess.bug(fmt!("get_trait_def(%d): not an item",
+            _ => ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
                                        trait_id.node))
         }
     }
@@ -1083,7 +1083,7 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                fmt!("trait_def_of_item invoked on %?", s));
+                format!("trait_def_of_item invoked on {:?}", s));
         }
     }
 }
@@ -1120,7 +1120,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
             },
             ty: ty::mk_bare_fn(ccx.tcx, tofd)
         };
-        debug!("type of %s (id %d) is %s",
+        debug2!("type of {} (id {}) is {}",
                tcx.sess.str_of(it.ident),
                it.id,
                ppaux::ty_to_str(tcx, tpt.ty));
@@ -1161,7 +1161,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
       ast::item_trait(*) => {
           tcx.sess.span_bug(
               it.span,
-              fmt!("Invoked ty_of_item on trait"));
+              format!("Invoked ty_of_item on trait"));
       }
       ast::item_struct(_, ref generics) => {
           let (ty_generics, substs) = mk_item_substs(ccx, generics, rp, None);
@@ -1174,8 +1174,8 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::item)
           return tpt;
       }
       ast::item_impl(*) | ast::item_mod(_) |
-      ast::item_foreign_mod(_) => fail!(),
-      ast::item_mac(*) => fail!("item macros unimplemented")
+      ast::item_foreign_mod(_) => fail2!(),
+      ast::item_mac(*) => fail2!("item macros unimplemented")
     }
 }
 
@@ -1222,7 +1222,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                         def_id: local_def(param.id),
                         bounds: bounds
                     };
-                    debug!("def for param: %s", def.repr(ccx.tcx));
+                    debug2!("def for param: {}", def.repr(ccx.tcx));
                     ccx.tcx.ty_param_defs.insert(param.id, def);
                     def
                 }

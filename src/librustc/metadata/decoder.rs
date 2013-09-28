@@ -89,7 +89,7 @@ pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
 
 fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
     match maybe_find_item(item_id, items) {
-       None => fail!("lookup_item: id not found: %d", item_id),
+       None => fail2!("lookup_item: id not found: {}", item_id),
        Some(d) => d
     }
 }
@@ -148,7 +148,7 @@ fn item_family(item: ebml::Doc) -> Family {
       'g' => PublicField,
       'j' => PrivateField,
       'N' => InheritedField,
-       c => fail!("unexpected family char: %c", c)
+       c => fail2!("unexpected family char: {}", c)
     }
 }
 
@@ -160,7 +160,7 @@ fn item_visibility(item: ebml::Doc) -> ast::visibility {
                 'y' => ast::public,
                 'n' => ast::private,
                 'i' => ast::inherited,
-                _ => fail!("unknown visibility character")
+                _ => fail2!("unknown visibility character")
             }
         }
     }
@@ -494,8 +494,8 @@ pub enum DefLike {
 pub fn def_like_to_def(def_like: DefLike) -> ast::Def {
     match def_like {
         DlDef(def) => return def,
-        DlImpl(*) => fail!("found impl in def_like_to_def"),
-        DlField => fail!("found field in def_like_to_def")
+        DlImpl(*) => fail2!("found impl in def_like_to_def"),
+        DlField => fail2!("found field in def_like_to_def")
     }
 }
 
@@ -550,14 +550,14 @@ impl<'self> EachItemContext<'self> {
         let def_like = item_to_def_like(doc, def_id, self.cdata.cnum);
         match def_like {
             DlDef(def) => {
-                debug!("(iterating over each item of a module) processing \
-                        `%s` (def %?)",
+                debug2!("(iterating over each item of a module) processing \
+                        `{}` (def {:?})",
                        *self.path_builder,
                        def);
             }
             _ => {
-                debug!("(iterating over each item of a module) processing \
-                        `%s` (%d:%d)",
+                debug2!("(iterating over each item of a module) processing \
+                        `{}` ({}:{})",
                        *self.path_builder,
                        def_id.crate,
                        def_id.node);
@@ -631,8 +631,8 @@ impl<'self> EachItemContext<'self> {
                 reader::get_doc(root, tag_items)
             };
 
-            debug!("(iterating over each item of a module) looking up item \
-                    %d:%d in `%s`, crate %d",
+            debug2!("(iterating over each item of a module) looking up item \
+                    {}:{} in `{}`, crate {}",
                    child_def_id.crate,
                    child_def_id.node,
                    *self.path_builder,
@@ -644,8 +644,8 @@ impl<'self> EachItemContext<'self> {
                 Some(child_item_doc) => {
                     // Push the name.
                     let child_name = item_name(self.intr, child_item_doc);
-                    debug!("(iterating over each item of a module) pushing \
-                            name `%s` onto `%s`",
+                    debug2!("(iterating over each item of a module) pushing \
+                            name `{}` onto `{}`",
                            token::ident_to_str(&child_name),
                            *self.path_builder);
                     let old_len =
@@ -682,9 +682,9 @@ impl<'self> EachItemContext<'self> {
             let name = name_doc.as_str_slice();
 
             // Push the name.
-            debug!("(iterating over each item of a module) pushing \
-                    reexported name `%s` onto `%s` (crate %d, orig %d, \
-                    in crate %d)",
+            debug2!("(iterating over each item of a module) pushing \
+                    reexported name `{}` onto `{}` (crate {}, orig {}, \
+                    in crate {})",
                    name,
                    *self.path_builder,
                    def_id.crate,
@@ -899,7 +899,7 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt,
                           id: ast::NodeId,
                           decode_inlined_item: decode_inlined_item)
                        -> csearch::found_ast {
-    debug!("Looking up item: %d", id);
+    debug2!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data);
     let path = {
         let item_path = item_path(item_doc);
@@ -964,7 +964,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
         match ch as char {
             'i' => ast::MutImmutable,
             'm' => ast::MutMutable,
-            _ => fail!("unknown mutability character: `%c`", ch as char),
+            _ => fail2!("unknown mutability character: `{}`", ch as char),
         }
     }
 
@@ -982,7 +982,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
             return ast::sty_region(None, get_mutability(string[1]));
         }
         _ => {
-            fail!("unknown self type code: `%c`", explicit_self_kind as char);
+            fail2!("unknown self type code: `{}`", explicit_self_kind as char);
         }
     }
 }
@@ -1163,7 +1163,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
                 match item_family(impl_method_doc) {
                     StaticMethod => purity = ast::impure_fn,
                     UnsafeStaticMethod => purity = ast::unsafe_fn,
-                    _ => fail!()
+                    _ => fail2!()
                 }
 
                 static_impl_methods.push(StaticMethodInfo {
@@ -1199,7 +1199,7 @@ fn struct_field_family_to_visibility(family: Family) -> ast::visibility {
       PublicField => ast::public,
       PrivateField => ast::private,
       InheritedField => ast::inherited,
-      _ => fail!()
+      _ => fail2!()
     }
 }
 
@@ -1265,7 +1265,7 @@ fn describe_def(items: ebml::Doc, id: ast::DefId) -> ~str {
     if id.crate != ast::LOCAL_CRATE { return ~"external"; }
     let it = match maybe_find_item(id.node, items) {
         Some(it) => it,
-        None => fail!("describe_def: item not found %?", id)
+        None => fail2!("describe_def: item not found {:?}", id)
     };
     return item_family_to_str(item_family(it));
 }
@@ -1355,17 +1355,17 @@ fn list_meta_items(intr: @ident_interner,
                    out: @io::Writer) {
     let r = get_meta_items(meta_items);
     for mi in r.iter() {
-        out.write_str(fmt!("%s\n", pprust::meta_item_to_str(*mi, intr)));
+        out.write_str(format!("{}\n", pprust::meta_item_to_str(*mi, intr)));
     }
 }
 
 fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
                          out: @io::Writer) {
-    out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
+    out.write_str(format!("=Crate Attributes ({})=\n", hash));
 
     let r = get_attributes(md);
     for attr in r.iter() {
-        out.write_str(fmt!("%s\n", pprust::attribute_to_str(attr, intr)));
+        out.write_str(format!("{}\n", pprust::attribute_to_str(attr, intr)));
     }
 
     out.write_str("\n\n");
@@ -1409,7 +1409,7 @@ fn list_crate_deps(data: @~[u8], out: @io::Writer) {
     let r = get_crate_deps(data);
     for dep in r.iter() {
         out.write_str(
-            fmt!("%d %s-%s-%s\n",
+            format!("{} {}-{}-{}\n",
                  dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers));
     }
 
@@ -1452,7 +1452,7 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
 
     match cdata.cnum_map.find(&did.crate) {
       option::Some(&n) => ast::DefId { crate: n, node: did.node },
-      option::None => fail!("didn't find a crate in the cnum_map")
+      option::None => fail2!("didn't find a crate in the cnum_map")
     }
 }
 

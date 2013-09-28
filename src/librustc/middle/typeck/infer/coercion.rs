@@ -87,7 +87,7 @@ pub struct Coerce(CombineFields);
 
 impl Coerce {
     pub fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {
-        debug!("Coerce.tys(%s => %s)",
+        debug2!("Coerce.tys({} => {})",
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
         let _indent = indenter();
@@ -172,8 +172,8 @@ impl Coerce {
             Err(e) => {
                 self.infcx.tcx.sess.span_bug(
                     self.trace.origin.span(),
-                    fmt!("Failed to resolve even without \
-                          any force options: %?", e));
+                    format!("Failed to resolve even without \
+                          any force options: {:?}", e));
             }
         }
     }
@@ -184,7 +184,7 @@ impl Coerce {
                                    b: ty::t,
                                    mt_b: ty::mt)
                                    -> CoerceResult {
-        debug!("coerce_borrowed_pointer(a=%s, sty_a=%?, b=%s, mt_b=%?)",
+        debug2!("coerce_borrowed_pointer(a={}, sty_a={:?}, b={}, mt_b={:?})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx), mt_b);
 
@@ -221,7 +221,7 @@ impl Coerce {
                                   sty_a: &ty::sty,
                                   b: ty::t)
                                   -> CoerceResult {
-        debug!("coerce_borrowed_string(a=%s, sty_a=%?, b=%s)",
+        debug2!("coerce_borrowed_string(a={}, sty_a={:?}, b={})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 
@@ -248,7 +248,7 @@ impl Coerce {
                                   b: ty::t,
                                   mt_b: ty::mt)
                                   -> CoerceResult {
-        debug!("coerce_borrowed_vector(a=%s, sty_a=%?, b=%s)",
+        debug2!("coerce_borrowed_vector(a={}, sty_a={:?}, b={})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 
@@ -277,7 +277,7 @@ impl Coerce {
                               b: ty::t,
                               b_mutbl: ast::Mutability) -> CoerceResult
     {
-        debug!("coerce_borrowed_object(a=%s, sty_a=%?, b=%s)",
+        debug2!("coerce_borrowed_object(a={}, sty_a={:?}, b={})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 
@@ -306,7 +306,7 @@ impl Coerce {
                               sty_a: &ty::sty,
                               b: ty::t)
                               -> CoerceResult {
-        debug!("coerce_borrowed_fn(a=%s, sty_a=%?, b=%s)",
+        debug2!("coerce_borrowed_fn(a={}, sty_a={:?}, b={})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 
@@ -361,7 +361,7 @@ impl Coerce {
          * "rust" fn`) into a closure.
          */
 
-        debug!("coerce_from_bare_fn(a=%s, b=%s)",
+        debug2!("coerce_from_bare_fn(a={}, b={})",
                a.inf_str(self.infcx), b.inf_str(self.infcx));
 
         if !fn_ty_a.abis.is_rust() {
@@ -389,7 +389,7 @@ impl Coerce {
                              b: ty::t,
                              mt_b: ty::mt)
                              -> CoerceResult {
-        debug!("coerce_unsafe_ptr(a=%s, sty_a=%?, b=%s)",
+        debug2!("coerce_unsafe_ptr(a={}, sty_a={:?}, b={})",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
 

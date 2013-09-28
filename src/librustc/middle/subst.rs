@@ -183,9 +183,9 @@ impl Subst for ty::Region {
                     ty::NonerasedRegions(ref regions) => {
                         if regions.len() != 1 {
                             tcx.sess.bug(
-                                fmt!("ty::Region#subst(): \
+                                format!("ty::Region\\#subst(): \
                                       Reference to self region when \
-                                      given substs with no self region: %s",
+                                      given substs with no self region: {}",
                                      substs.repr(tcx)));
                         }
                         *regions.get(0)

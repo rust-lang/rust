@@ -53,7 +53,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             let mut visited_dirs = HashSet::new();
             let mut found = false;
 
-            debug!("filesearch: searching additional lib search paths [%?]",
+            debug2!("filesearch: searching additional lib search paths [{:?}]",
                    self.addl_lib_search_paths.len());
             for path in self.addl_lib_search_paths.iter() {
                 match f(path) {
@@ -63,7 +63,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                 visited_dirs.insert(path.to_str());
             }
 
-            debug!("filesearch: searching target lib path");
+            debug2!("filesearch: searching target lib path");
             let tlib_path = make_target_lib_path(self.sysroot,
                                         self.target_triple);
             if !visited_dirs.contains(&tlib_path.to_str()) {
@@ -78,7 +78,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                 let rustpath = rust_path();
                 for path in rustpath.iter() {
                     let tlib_path = make_rustpkg_target_lib_path(path, self.target_triple);
-                    debug!("is %s in visited_dirs? %?", tlib_path.to_str(),
+                    debug2!("is {} in visited_dirs? {:?}", tlib_path.to_str(),
                             visited_dirs.contains(&tlib_path.to_str()));
 
                     if !visited_dirs.contains(&tlib_path.to_str()) {
@@ -104,7 +104,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     }
 
     let sysroot = get_sysroot(maybe_sysroot);
-    debug!("using sysroot = %s", sysroot.to_str());
+    debug2!("using sysroot = {}", sysroot.to_str());
     @FileSearchImpl {
         sysroot: sysroot,
         addl_lib_search_paths: addl_lib_search_paths,
@@ -114,19 +114,19 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
 
 pub fn search(filesearch: @FileSearch, pick: pick) {
     do filesearch.for_each_lib_search_path() |lib_search_path| {
-        debug!("searching %s", lib_search_path.to_str());
+        debug2!("searching {}", lib_search_path.to_str());
         let r = os::list_dir_path(lib_search_path);
         let mut rslt = FileDoesntMatch;
         for path in r.iter() {
-            debug!("testing %s", path.to_str());
+            debug2!("testing {}", path.to_str());
             let maybe_picked = pick(path);
             match maybe_picked {
                 FileMatches => {
-                    debug!("picked %s", path.to_str());
+                    debug2!("picked {}", path.to_str());
                     rslt = FileMatches;
                 }
                 FileDoesntMatch => {
-                    debug!("rejected %s", path.to_str());
+                    debug2!("rejected {}", path.to_str());
                 }
             }
         }
@@ -153,7 +153,7 @@ fn make_rustpkg_target_lib_path(dir: &Path,
 pub fn get_or_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::Some(ref p) => (*p).pop(),
-      option::None => fail!("can't determine value for sysroot")
+      option::None => fail2!("can't determine value for sysroot")
     }
 }
 

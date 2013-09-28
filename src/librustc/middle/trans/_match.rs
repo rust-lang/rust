@@ -264,7 +264,7 @@ fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                                 a_expr = e.unwrap();
                             }
                         UnitLikeStructLit(_) => {
-                            fail!("UnitLikeStructLit should have been handled \
+                            fail2!("UnitLikeStructLit should have been handled \
                                     above")
                         }
                     }
@@ -277,14 +277,14 @@ fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                                 b_expr = e.unwrap();
                             }
                         UnitLikeStructLit(_) => {
-                            fail!("UnitLikeStructLit should have been handled \
+                            fail2!("UnitLikeStructLit should have been handled \
                                     above")
                         }
                     }
 
                     match const_eval::compare_lit_exprs(tcx, a_expr, b_expr) {
                         Some(val1) => val1 == 0,
-                        None => fail!("compare_list_exprs: type mismatch"),
+                        None => fail2!("compare_list_exprs: type mismatch"),
                     }
                 }
             }
@@ -294,7 +294,7 @@ fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
             let m2 = const_eval::compare_lit_exprs(tcx, a2, b2);
             match (m1, m2) {
                 (Some(val1), Some(val2)) => (val1 == 0 && val2 == 0),
-                _ => fail!("compare_list_exprs: type mismatch"),
+                _ => fail2!("compare_list_exprs: type mismatch"),
             }
         }
         (&var(a, _), &var(b, _)) => a == b,
@@ -419,7 +419,7 @@ impl<'self> Repr for Match<'self> {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)
         } else {
-            fmt!("%u pats", self.pats.len())
+            format!("{} pats", self.pats.len())
         }
     }
 }
@@ -439,7 +439,7 @@ fn expand_nested_bindings<'r>(bcx: @mut Block,
                                   col: uint,
                                   val: ValueRef)
                               -> ~[Match<'r>] {
-    debug!("expand_nested_bindings(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("expand_nested_bindings(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -472,7 +472,7 @@ fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
-            fmt!("Expected an identifier pattern but found p: %s",
+            format!("Expected an identifier pattern but found p: {}",
                  p.repr(bcx.tcx())));
     }
 }
@@ -486,7 +486,7 @@ fn enter_match<'r>(bcx: @mut Block,
                        val: ValueRef,
                        e: enter_pat)
                     -> ~[Match<'r>] {
-    debug!("enter_match(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_match(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -523,7 +523,7 @@ fn enter_match<'r>(bcx: @mut Block,
         }
     }
 
-    debug!("result=%s", result.repr(bcx.tcx()));
+    debug2!("result={}", result.repr(bcx.tcx()));
 
     return result;
 }
@@ -535,7 +535,7 @@ fn enter_default<'r>(bcx: @mut Block,
                      val: ValueRef,
                      chk: FailureHandler)
                       -> ~[Match<'r>] {
-    debug!("enter_default(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_default(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -605,7 +605,7 @@ fn enter_opt<'r>(bcx: @mut Block,
                      variant_size: uint,
                      val: ValueRef)
                   -> ~[Match<'r>] {
-    debug!("enter_opt(bcx=%s, m=%s, opt=%?, col=%u, val=%s)",
+    debug2!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            *opt,
@@ -741,7 +741,7 @@ fn enter_rec_or_struct<'r>(bcx: @mut Block,
                                fields: &[ast::Ident],
                                val: ValueRef)
                             -> ~[Match<'r>] {
-    debug!("enter_rec_or_struct(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_rec_or_struct(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -776,7 +776,7 @@ fn enter_tup<'r>(bcx: @mut Block,
                      val: ValueRef,
                      n_elts: uint)
                   -> ~[Match<'r>] {
-    debug!("enter_tup(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_tup(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -802,7 +802,7 @@ fn enter_tuple_struct<'r>(bcx: @mut Block,
                               val: ValueRef,
                               n_elts: uint)
                           -> ~[Match<'r>] {
-    debug!("enter_tuple_struct(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_tuple_struct(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -827,7 +827,7 @@ fn enter_box<'r>(bcx: @mut Block,
                      col: uint,
                      val: ValueRef)
                  -> ~[Match<'r>] {
-    debug!("enter_box(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_box(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -854,7 +854,7 @@ fn enter_uniq<'r>(bcx: @mut Block,
                       col: uint,
                       val: ValueRef)
                   -> ~[Match<'r>] {
-    debug!("enter_uniq(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_uniq(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -881,7 +881,7 @@ fn enter_region<'r>(bcx: @mut Block,
                         col: uint,
                         val: ValueRef)
                     -> ~[Match<'r>] {
-    debug!("enter_region(bcx=%s, m=%s, col=%u, val=%s)",
+    debug2!("enter_region(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            col,
@@ -1232,7 +1232,7 @@ impl FailureHandler {
     fn handle_fail(&self) -> BasicBlockRef {
         match *self {
             Infallible => {
-                fail!("attempted to fail in infallible failure handler!")
+                fail2!("attempted to fail in infallible failure handler!")
             }
             JumpToBasicBlock(basic_block) => basic_block,
             CustomFailureHandlerClass(custom_failure_handler) => {
@@ -1295,7 +1295,7 @@ fn compare_values(cx: @mut Block,
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
             Store(cx, rhs, scratch_rhs);
             let did = langcall(cx, None,
-                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                UniqStrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
             Result {
@@ -1305,7 +1305,7 @@ fn compare_values(cx: @mut Block,
         }
         ty::ty_estr(_) => {
             let did = langcall(cx, None,
-                               fmt!("comparison of `%s`", cx.ty_to_str(rhs_t)),
+                               format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                StrEqFnLangItem);
             let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
             Result {
@@ -1383,7 +1383,7 @@ fn insert_lllocals(bcx: @mut Block,
             }
         };
 
-        debug!("binding %? to %s", binding_info.id, bcx.val_to_str(llval));
+        debug2!("binding {:?} to {}", binding_info.id, bcx.val_to_str(llval));
         llmap.insert(binding_info.id, llval);
 
         if bcx.sess().opts.extra_debuginfo {
@@ -1404,7 +1404,7 @@ fn compile_guard(bcx: @mut Block,
                      vals: &[ValueRef],
                      chk: FailureHandler)
                   -> @mut Block {
-    debug!("compile_guard(bcx=%s, guard_expr=%s, m=%s, vals=%s)",
+    debug2!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
            bcx.expr_to_str(guard_expr),
            m.repr(bcx.tcx()),
@@ -1458,7 +1458,7 @@ fn compile_submatch(bcx: @mut Block,
                     m: &[Match],
                     vals: &[ValueRef],
                     chk: FailureHandler) {
-    debug!("compile_submatch(bcx=%s, m=%s, vals=%s)",
+    debug2!("compile_submatch(bcx={}, m={}, vals={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            vec_map_to_str(vals, |v| bcx.val_to_str(*v)));
@@ -1624,7 +1624,7 @@ fn compile_submatch_continue(mut bcx: @mut Block,
 
     // Decide what kind of branch we need
     let opts = get_options(bcx, m, col);
-    debug!("options=%?", opts);
+    debug2!("options={:?}", opts);
     let mut kind = no_branch;
     let mut test_val = val;
     if opts.len() > 0u {
@@ -2113,13 +2113,13 @@ fn bind_irrefutable_pat(bcx: @mut Block,
      * - binding_mode: is this for an argument or a local variable?
      */
 
-    debug!("bind_irrefutable_pat(bcx=%s, pat=%s, binding_mode=%?)",
+    debug2!("bind_irrefutable_pat(bcx={}, pat={}, binding_mode={:?})",
            bcx.to_str(),
            pat.repr(bcx.tcx()),
            binding_mode);
 
     if bcx.sess().asm_comments() {
-        add_comment(bcx, fmt!("bind_irrefutable_pat(pat=%s)",
+        add_comment(bcx, format!("bind_irrefutable_pat(pat={})",
                               pat.repr(bcx.tcx())));
     }
 
@@ -2241,7 +2241,7 @@ fn bind_irrefutable_pat(bcx: @mut Block,
         ast::PatVec(*) => {
             bcx.tcx().sess.span_bug(
                 pat.span,
-                fmt!("vector patterns are never irrefutable!"));
+                format!("vector patterns are never irrefutable!"));
         }
         ast::PatWild | ast::PatLit(_) | ast::PatRange(_, _) => ()
     }

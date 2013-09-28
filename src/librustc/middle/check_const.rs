@@ -153,7 +153,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
               Some(&DefStruct(_)) => { }
 
               Some(&def) => {
-                debug!("(checking const) found bad def: %?", def);
+                debug2!("(checking const) found bad def: {:?}", def);
                 sess.span_err(
                     e.span,
                     "paths in constants may only refer to \
@@ -266,7 +266,7 @@ impl Visitor<()> for CheckItemRecursionVisitor {
                         ast_map::node_item(it, _) => {
                             self.visit_item(it, ());
                         }
-                        _ => fail!("const not bound to an item")
+                        _ => fail2!("const not bound to an item")
                     },
                 _ => ()
             },

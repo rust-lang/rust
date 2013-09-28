@@ -78,7 +78,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
     fn fold_item(&self, i: @ast::item) -> Option<@ast::item> {
         self.cx.path.push(i.ident);
-        debug!("current path: %s",
+        debug2!("current path: {}",
                ast_util::path_name_i(self.cx.path.clone()));
 
         if is_test_fn(self.cx, i) || is_bench_fn(i) {
@@ -91,7 +91,7 @@ impl fold::ast_fold for TestHarnessGenerator {
                                      tests");
                 }
                 _ => {
-                    debug!("this is a test function");
+                    debug2!("this is a test function");
                     let test = Test {
                         span: i.span,
                         path: self.cx.path.clone(),
@@ -100,7 +100,7 @@ impl fold::ast_fold for TestHarnessGenerator {
                         should_fail: should_fail(i)
                     };
                     self.cx.testfns.push(test);
-                    // debug!("have %u test/bench functions",
+                    // debug2!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
             }
@@ -327,7 +327,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         span: dummy_sp(),
      };
 
-    debug!("Synthetic test module:\n%s\n",
+    debug2!("Synthetic test module:\n{}\n",
            pprust::item_to_str(@item.clone(), cx.sess.intr()));
 
     return @item;
@@ -381,7 +381,7 @@ fn is_extra(crate: &ast::Crate) -> bool {
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    debug!("building test vector from %u tests", cx.testfns.len());
+    debug2!("building test vector from {} tests", cx.testfns.len());
     let mut descs = ~[];
     for test in cx.testfns.iter() {
         descs.push(mk_test_desc_and_fn_rec(cx, test));
@@ -404,7 +404,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
 
-    debug!("encoding %s", ast_util::path_name_i(path));
+    debug2!("encoding {}", ast_util::path_name_i(path));
 
     let name_lit: ast::lit =
         nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
