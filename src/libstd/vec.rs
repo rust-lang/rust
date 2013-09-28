@@ -340,59 +340,36 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
     result
 }
 
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat<T:Clone>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect<T:Clone>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
-/// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat_slices<T:Clone>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
-
-/// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect_slices<T:Clone>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
-
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
+    /// Flattens a vector of vectors of T into a single vector of T.
     fn concat_vec(&self) -> ~[T];
+
+    /// Concatenate a vector of vectors, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
-impl<'self, T:Clone> VectorVector<T> for &'self [~[T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
+impl<'self, T: Clone, V: Vector<T>> VectorVector<T> for &'self [V] {
     fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|inner| (*inner).clone())
-    }
-
-    /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all((*inner).clone());
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size);
+        for v in self.iter() {
+            result.push_all(v.as_slice())
         }
-        r
-    }
-}
-
-impl<'self,T:Clone> VectorVector<T> for &'self [&'self [T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
-    fn concat_vec(&self) -> ~[T] {
-        self.flat_map(|&inner| inner.to_owned())
+        result
     }
 
-    /// Concatenate a vector of slices, placing a given separator between each.
     fn connect_vec(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
+        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let mut result = with_capacity(size + self.len());
         let mut first = true;
-        for &inner in self.iter() {
-            if first { first = false; } else { r.push((*sep).clone()); }
-            r.push_all(inner);
+        for v in self.iter() {
+            if first { first = false } else { result.push(sep.clone()) }
+            result.push_all(v.as_slice())
         }
-        r
+        result
     }
 }
 
@@ -3109,24 +3086,21 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        assert_eq!(concat([~[1], ~[2,3]]), ~[1, 2, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.concat_vec(), ~[]);
         assert_eq!([~[1], ~[2,3]].concat_vec(), ~[1, 2, 3]);
 
-        assert_eq!(concat_slices([&[1], &[2,3]]), ~[1, 2, 3]);
         assert_eq!([&[1], &[2,3]].concat_vec(), ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        assert_eq!(connect([], &0), ~[]);
-        assert_eq!(connect([~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect([~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([~[1], ~[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([~[1], ~[2], ~[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
 
-        assert_eq!(connect_slices([], &0), ~[]);
-        assert_eq!(connect_slices([&[1], &[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
+        assert_eq!(v.connect_vec(&0), ~[]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
     }
@@ -3758,7 +3732,9 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
+    use iter::range;
     use vec;
+    use vec::VectorVector;
     use option::*;
 
     #[bench]
@@ -3796,6 +3772,22 @@ mod bench {
         let ys: &[int] = [5, ..10];
         do b.iter() {
             xs + ys;
+        }
+    }
+
+    #[bench]
+    fn concat(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.concat_vec();
+        }
+    }
+
+    #[bench]
+    fn connect(bh: &mut BenchHarness) {
+        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        do bh.iter {
+            xss.connect_vec(&0);
         }
     }
 }
