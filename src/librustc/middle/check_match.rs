@@ -86,8 +86,8 @@ pub fn check_expr(v: &mut CheckMatchVisitor,
        if (*arms).is_empty() {
            if !type_is_empty(cx.tcx, pat_ty) {
                // We know the type is inhabited, so this must be wrong
-               cx.tcx.sess.span_err(ex.span, fmt!("non-exhaustive patterns: \
-                            type %s is non-empty",
+               cx.tcx.sess.span_err(ex.span, format!("non-exhaustive patterns: \
+                            type {} is non-empty",
                             ty_to_str(cx.tcx, pat_ty)));
            }
            // If the type *is* empty, it's vacuously exhaustive
@@ -180,20 +180,20 @@ pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                 ty::ty_enum(id, _) => {
                     let vid = match *ctor {
                         variant(id) => id,
-                        _ => fail!("check_exhaustive: non-variant ctor"),
+                        _ => fail2!("check_exhaustive: non-variant ctor"),
                     };
                     let variants = ty::enum_variants(cx.tcx, id);
 
                     match variants.iter().find(|v| v.id == vid) {
                         Some(v) => Some(cx.tcx.sess.str_of(v.name)),
                         None => {
-                            fail!("check_exhaustive: bad variant in ctor")
+                            fail2!("check_exhaustive: bad variant in ctor")
                         }
                     }
                 }
                 ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                     match *ctor {
-                        vec(n) => Some(fmt!("vectors of length %u", n).to_managed()),
+                        vec(n) => Some(format!("vectors of length {}", n).to_managed()),
                         _ => None
                     }
                 }
@@ -202,7 +202,7 @@ pub fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
         }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-        Some(ref s) => fmt!(": %s not covered",  *s),
+        Some(ref s) => format!(": {} not covered",  *s),
         None => ~""
     };
     cx.tcx.sess.span_err(sp, msg);
@@ -408,7 +408,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
                     return Some(variant(v.id));
                 }
             }
-            fail!();
+            fail2!();
         } else { None }
       }
       ty::ty_nil => None,
@@ -420,7 +420,7 @@ pub fn missing_ctor(cx: &MatchCheckCtxt,
               None => (),
               Some(val(const_bool(true))) => true_found = true,
               Some(val(const_bool(false))) => false_found = true,
-              _ => fail!("impossible case")
+              _ => fail2!("impossible case")
             }
         }
         if true_found && false_found { None }
@@ -510,10 +510,10 @@ pub fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match *ctor { variant(id) => id,
-          _ => fail!("impossible case") };
+          _ => fail2!("impossible case") };
         match ty::enum_variants(cx.tcx, eid).iter().find(|v| v.id == id ) {
             Some(v) => v.args.len(),
-            None => fail!("impossible case")
+            None => fail2!("impossible case")
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
@@ -584,7 +584,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                 }
                             }
                             single => true,
-                            _ => fail!("type error")
+                            _ => fail2!("type error")
                         };
                         if match_ {
                             Some(r.tail().to_owned())
@@ -631,7 +631,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                                 }
                             }
                             single => true,
-                            _ => fail!("type error")
+                            _ => fail2!("type error")
                         };
                         if match_ {
                             Some(r.tail().to_owned())
@@ -693,7 +693,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                             _ => {
                                 cx.tcx.sess.span_bug(
                                     pat_span,
-                                    fmt!("struct pattern resolved to %s, \
+                                    format!("struct pattern resolved to {}, \
                                           not a struct",
                                          ty_to_str(cx.tcx, left_ty)));
                             }
@@ -739,7 +739,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                         }
                     }
                     single => true,
-                    _ => fail!("type error")
+                    _ => fail2!("type error")
                 };
                 if match_ { Some(r.tail().to_owned()) } else { None }
             }
@@ -748,7 +748,7 @@ pub fn specialize(cx: &MatchCheckCtxt,
                     val(ref v) => (*v, *v),
                     range(ref lo, ref hi) => (*lo, *hi),
                     single => return Some(r.tail().to_owned()),
-                    _ => fail!("type error")
+                    _ => fail2!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
                 let v_hi = eval_const_expr(cx.tcx, hi);
@@ -929,8 +929,8 @@ pub fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     _ => {
                         cx.tcx.sess.span_bug(
                             p.span,
-                            fmt!("Binding pattern %d is \
-                                  not an identifier: %?",
+                            format!("Binding pattern {} is \
+                                  not an identifier: {:?}",
                                  p.id, p.node));
                     }
                 }

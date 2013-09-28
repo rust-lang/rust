@@ -169,7 +169,7 @@ pub enum Dest {
 impl Dest {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         match *self {
-            SaveIn(v) => fmt!("SaveIn(%s)", ccx.tn.val_to_str(v)),
+            SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_str(v)),
             Ignore => ~"Ignore"
         }
     }
@@ -182,7 +182,7 @@ fn drop_and_cancel_clean(bcx: @mut Block, dat: Datum) -> @mut Block {
 }
 
 pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
-    debug!("trans_to_datum(expr=%s)", bcx.expr_to_str(expr));
+    debug2!("trans_to_datum(expr={})", bcx.expr_to_str(expr));
 
     let mut bcx = bcx;
     let mut datum = unpack_datum!(bcx, trans_to_datum_unadjusted(bcx, expr));
@@ -190,7 +190,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         None => { return DatumBlock {bcx: bcx, datum: datum}; }
         Some(adj) => { adj }
     };
-    debug!("unadjusted datum: %s", datum.to_str(bcx.ccx()));
+    debug2!("unadjusted datum: {}", datum.to_str(bcx.ccx()));
     match *adjustment {
         AutoAddEnv(*) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
@@ -232,7 +232,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
             };
         }
     }
-    debug!("after adjustments, datum=%s", datum.to_str(bcx.ccx()));
+    debug2!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
     return DatumBlock {bcx: bcx, datum: datum};
 
     fn auto_ref(bcx: @mut Block, datum: Datum) -> DatumBlock {
@@ -287,7 +287,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
         let tcx = bcx.tcx();
         let closure_ty = expr_ty_adjusted(bcx, expr);
-        debug!("add_env(closure_ty=%s)", closure_ty.repr(tcx));
+        debug2!("add_env(closure_ty={})", closure_ty.repr(tcx));
         let scratch = scratch_datum(bcx, closure_ty, "__adjust", false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
         assert_eq!(datum.appropriate_mode(tcx), ByValue);
@@ -311,7 +311,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                        source_datum: Datum) -> DatumBlock {
         let tcx = bcx.tcx();
         let target_obj_ty = expr_ty_adjusted(bcx, expr);
-        debug!("auto_borrow_obj(target=%s)",
+        debug2!("auto_borrow_obj(target={})",
                target_obj_ty.repr(tcx));
 
         // Extract source store information
@@ -320,7 +320,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
             _ => {
                 bcx.sess().span_bug(
                     expr.span,
-                    fmt!("auto_borrow_trait_obj expected a trait, found %s",
+                    format!("auto_borrow_trait_obj expected a trait, found {}",
                          source_datum.ty.repr(bcx.tcx())));
             }
         };
@@ -432,7 +432,7 @@ pub fn trans_into(bcx: @mut Block, expr: &ast::Expr, dest: Dest) -> @mut Block {
 
     let ty = expr_ty(bcx, expr);
 
-    debug!("trans_into_unadjusted(expr=%s, dest=%s)",
+    debug2!("trans_into_unadjusted(expr={}, dest={})",
            bcx.expr_to_str(expr),
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
@@ -448,7 +448,7 @@ pub fn trans_into(bcx: @mut Block, expr: &ast::Expr, dest: Dest) -> @mut Block {
     };
 
     let kind = bcx.expr_kind(expr);
-    debug!("expr kind = %?", kind);
+    debug2!("expr kind = {:?}", kind);
     return match kind {
         ty::LvalueExpr => {
             let datumblock = trans_lvalue_unadjusted(bcx, expr);
@@ -490,7 +490,7 @@ fn trans_lvalue(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         Some(_) => {
             bcx.sess().span_bug(
                 expr.span,
-                fmt!("trans_lvalue() called on an expression \
+                format!("trans_lvalue() called on an expression \
                       with adjustments"));
         }
     };
@@ -506,7 +506,7 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
 
     let mut bcx = bcx;
 
-    debug!("trans_to_datum_unadjusted(expr=%s)", bcx.expr_to_str(expr));
+    debug2!("trans_to_datum_unadjusted(expr={})", bcx.expr_to_str(expr));
     let _indenter = indenter();
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
@@ -608,8 +608,8 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBloc
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                fmt!("trans_rvalue_datum_unadjusted reached \
-                      fall-through case: %?",
+                format!("trans_rvalue_datum_unadjusted reached \
+                      fall-through case: {:?}",
                      expr.node));
         }
     }
@@ -662,8 +662,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> @mut Block
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                fmt!("trans_rvalue_stmt_unadjusted reached \
-                      fall-through case: %?",
+                format!("trans_rvalue_stmt_unadjusted reached \
+                      fall-through case: {:?}",
                      expr.node));
         }
     };
@@ -718,7 +718,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
         ast::ExprFnBlock(ref decl, ref body) => {
             let expr_ty = expr_ty(bcx, expr);
             let sigil = ty::ty_closure_sigil(expr_ty);
-            debug!("translating fn_block %s with type %s",
+            debug2!("translating fn_block {} with type {}",
                    expr_to_str(expr, tcx.sess.intr()),
                    expr_ty.repr(tcx));
             return closure::trans_expr_fn(bcx, sigil, decl, body,
@@ -787,7 +787,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                fmt!("trans_rvalue_dps_unadjusted reached fall-through case: %?",
+                format!("trans_rvalue_dps_unadjusted reached fall-through case: {:?}",
                      expr.node));
         }
     }
@@ -836,8 +836,8 @@ fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::Expr,
             return bcx;
         }
         _ => {
-            bcx.tcx().sess.span_bug(ref_expr.span, fmt!(
-                "Non-DPS def %? referened by %s",
+            bcx.tcx().sess.span_bug(ref_expr.span, format!(
+                "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_str(ref_expr.id)));
         }
     }
@@ -861,8 +861,8 @@ fn trans_def_datum_unadjusted(bcx: @mut Block,
                                              ref_expr.id)
         }
         _ => {
-            bcx.tcx().sess.span_bug(ref_expr.span, fmt!(
-                "Non-DPS def %? referened by %s",
+            bcx.tcx().sess.span_bug(ref_expr.span, format!(
+                "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_str(ref_expr.id)));
         }
     };
@@ -887,7 +887,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     let _icx = push_ctxt("trans_lval");
     let mut bcx = bcx;
 
-    debug!("trans_lvalue(expr=%s)", bcx.expr_to_str(expr));
+    debug2!("trans_lvalue(expr={})", bcx.expr_to_str(expr));
     let _indenter = indenter();
 
     trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
@@ -912,7 +912,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                fmt!("trans_lvalue reached fall-through case: %?",
+                format!("trans_lvalue reached fall-through case: {:?}",
                      expr.node));
         }
     };
@@ -978,8 +978,8 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
                                             index_expr.id, 0);
 
-        debug!("trans_index: base %s", bcx.val_to_str(base));
-        debug!("trans_index: len %s", bcx.val_to_str(len));
+        debug2!("trans_index: base {}", bcx.val_to_str(base));
+        debug2!("trans_index: len {}", bcx.val_to_str(len));
 
         let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
         let bcx = do with_cond(bcx, bounds_check) |bcx| {
@@ -1091,8 +1091,8 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
                     }
                 }
                 None => {
-                    bcx.sess().bug(fmt!(
-                        "trans_local_var: no llval for upvar %? found", nid));
+                    bcx.sess().bug(format!(
+                        "trans_local_var: no llval for upvar {:?} found", nid));
                 }
             }
         }
@@ -1106,13 +1106,13 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
             let self_info: ValSelfData = match bcx.fcx.llself {
                 Some(ref self_info) => *self_info,
                 None => {
-                    bcx.sess().bug(fmt!(
+                    bcx.sess().bug(format!(
                         "trans_local_var: reference to self \
-                         out of context with id %?", nid));
+                         out of context with id {:?}", nid));
                 }
             };
 
-            debug!("def_self() reference, self_info.t=%s",
+            debug2!("def_self() reference, self_info.t={}",
                    self_info.t.repr(bcx.tcx()));
 
             Datum {
@@ -1122,8 +1122,8 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
             }
         }
         _ => {
-            bcx.sess().unimpl(fmt!(
-                "unsupported def type in trans_local_var: %?", def));
+            bcx.sess().unimpl(format!(
+                "unsupported def type in trans_local_var: {:?}", def));
         }
     };
 
@@ -1133,12 +1133,12 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
         let v = match table.find(&nid) {
             Some(&v) => v,
             None => {
-                bcx.sess().bug(fmt!(
-                    "trans_local_var: no llval for local/arg %? found", nid));
+                bcx.sess().bug(format!(
+                    "trans_local_var: no llval for local/arg {:?} found", nid));
             }
         };
         let ty = node_id_type(bcx, nid);
-        debug!("take_local(nid=%?, v=%s, ty=%s)",
+        debug2!("take_local(nid={:?}, v={}, ty={})",
                nid, bcx.val_to_str(v), bcx.ty_to_str(ty));
         Datum {
             val: v,
@@ -1164,8 +1164,8 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
             // We want the *variant* ID here, not the enum ID.
             match node_id_opt {
                 None => {
-                    tcx.sess.bug(fmt!(
-                        "cannot get field types from the enum type %s \
+                    tcx.sess.bug(format!(
+                        "cannot get field types from the enum type {} \
                          without a node ID",
                         ty.repr(tcx)));
                 }
@@ -1187,8 +1187,8 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
         }
 
         _ => {
-            tcx.sess.bug(fmt!(
-                "cannot get field types from the type %s",
+            tcx.sess.bug(format!(
+                "cannot get field types from the type {}",
                 ty.repr(tcx)));
         }
     }
@@ -1733,14 +1733,14 @@ fn trans_imm_cast(bcx: @mut Block, expr: &ast::Expr,
                                               val_ty(lldiscrim_a),
                                               lldiscrim_a, true),
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                    _ => ccx.sess.bug(fmt!("translating unsupported cast: \
-                                           %s (%?) -> %s (%?)",
+                    _ => ccx.sess.bug(format!("translating unsupported cast: \
+                                           {} ({:?}) -> {} ({:?})",
                                            t_in.repr(ccx.tcx), k_in,
                                            t_out.repr(ccx.tcx), k_out))
                 }
             }
-            _ => ccx.sess.bug(fmt!("translating unsupported cast: \
-                                   %s (%?) -> %s (%?)",
+            _ => ccx.sess.bug(format!("translating unsupported cast: \
+                                   {} ({:?}) -> {} ({:?})",
                                    t_in.repr(ccx.tcx), k_in,
                                    t_out.repr(ccx.tcx), k_out))
         };
@@ -1757,7 +1757,7 @@ fn trans_assign_op(bcx: @mut Block,
     let _icx = push_ctxt("trans_assign_op");
     let mut bcx = bcx;
 
-    debug!("trans_assign_op(expr=%s)", bcx.expr_to_str(expr));
+    debug2!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_lvalue_unadjusted(bcx, dst));

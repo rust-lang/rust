@@ -185,7 +185,7 @@ fn encode_family(ebml_w: &mut writer::Encoder, c: char) {
 }
 
 pub fn def_to_str(did: DefId) -> ~str {
-    fmt!("%d:%d", did.crate, did.node)
+    format!("{}:{}", did.crate, did.node)
 }
 
 fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
@@ -284,12 +284,12 @@ fn encode_symbol(ecx: &EncodeContext,
     ebml_w.start_tag(tag_items_data_item_symbol);
     match ecx.item_symbols.find(&id) {
         Some(x) => {
-            debug!("encode_symbol(id=%?, str=%s)", id, *x);
+            debug2!("encode_symbol(id={:?}, str={})", id, *x);
             ebml_w.writer.write(x.as_bytes());
         }
         None => {
             ecx.diag.handler().bug(
-                fmt!("encode_symbol: id not found %d", id));
+                format!("encode_symbol: id not found {}", id));
         }
     }
     ebml_w.end_tag();
@@ -339,7 +339,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             path: &[ast_map::path_elt],
                             index: @mut ~[entry<i64>],
                             generics: &ast::Generics) {
-    debug!("encode_enum_variant_info(id=%?)", id);
+    debug2!("encode_enum_variant_info(id={:?})", id);
 
     let mut disr_val = 0;
     let mut i = 0;
@@ -425,14 +425,14 @@ fn encode_reexported_static_method(ecx: &EncodeContext,
                                    exp: &middle::resolve::Export2,
                                    method_def_id: DefId,
                                    method_ident: Ident) {
-    debug!("(encode reexported static method) %s::%s",
+    debug2!("(encode reexported static method) {}::{}",
             exp.name, ecx.tcx.sess.str_of(method_ident));
     ebml_w.start_tag(tag_items_data_item_reexport);
     ebml_w.start_tag(tag_items_data_item_reexport_def_id);
     ebml_w.wr_str(def_to_str(method_def_id));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_items_data_item_reexport_name);
-    ebml_w.wr_str(fmt!("%s::%s", exp.name, ecx.tcx.sess.str_of(method_ident)));
+    ebml_w.wr_str(format!("{}::{}", exp.name, ecx.tcx.sess.str_of(method_ident)));
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
@@ -498,14 +498,14 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
             if mod_path != *path || exp.name != original_name {
                 if !encode_reexported_static_base_methods(ecx, ebml_w, exp) {
                     if encode_reexported_static_trait_methods(ecx, ebml_w, exp) {
-                        debug!(fmt!("(encode reexported static methods) %s \
-                                    [trait]",
-                                    original_name));
+                        debug2!("(encode reexported static methods) {} \
+                                 [trait]",
+                                original_name);
                     }
                 }
                 else {
-                    debug!(fmt!("(encode reexported static methods) %s [base]",
-                                original_name));
+                    debug2!("(encode reexported static methods) {} [base]",
+                            original_name);
                 }
             }
         }
@@ -552,13 +552,13 @@ fn encode_reexports(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     id: NodeId,
                     path: &[ast_map::path_elt]) {
-    debug!("(encoding info for module) encoding reexports for %d", id);
+    debug2!("(encoding info for module) encoding reexports for {}", id);
     match ecx.reexports2.find(&id) {
         Some(ref exports) => {
-            debug!("(encoding info for module) found reexports for %d", id);
+            debug2!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
-                debug!("(encoding info for module) reexport '%s' (%d/%d) for \
-                        %d",
+                debug2!("(encoding info for module) reexport '{}' ({}/{}) for \
+                        {}",
                        exp.name,
                        exp.def_id.crate,
                        exp.def_id.node,
@@ -575,7 +575,7 @@ fn encode_reexports(ecx: &EncodeContext,
             }
         }
         None => {
-            debug!("(encoding info for module) found no reexports for %d",
+            debug2!("(encoding info for module) found no reexports for {}",
                    id);
         }
     }
@@ -592,7 +592,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
     encode_name(ecx, ebml_w, name);
-    debug!("(encoding info for module) encoding info for module ID %d", id);
+    debug2!("(encoding info for module) encoding info for module ID {}", id);
 
     // Encode info about all the module children.
     for item in md.items.iter() {
@@ -610,8 +610,8 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         match item.node {
             item_impl(*) => {
                 let (ident, did) = (item.ident, item.id);
-                debug!("(encoding info for module) ... encoding impl %s \
-                        (%?/%?)",
+                debug2!("(encoding info for module) ... encoding impl {} \
+                        ({:?}/{:?})",
                         ecx.tcx.sess.str_of(ident),
                         did,
                         ast_map::node_id_to_str(ecx.tcx.items, did, token::get_ident_interner()));
@@ -628,7 +628,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 
     // Encode the reexports of this module, if this module is public.
     if vis == public {
-        debug!("(encoding info for module) encoding reexports for %d", id);
+        debug2!("(encoding info for module) encoding reexports for {}", id);
         encode_reexports(ecx, ebml_w, id, path);
     }
 
@@ -730,7 +730,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
         global_index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
-        debug!("encode_info_for_struct: doing %s %d",
+        debug2!("encode_info_for_struct: doing {} {}",
                tcx.sess.str_of(nm), id);
         encode_struct_field_family(ebml_w, vis);
         encode_name(ecx, ebml_w, nm);
@@ -794,7 +794,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
                           parent_id: NodeId,
                           ast_method_opt: Option<@method>) {
 
-    debug!("encode_info_for_method: %? %s", m.def_id,
+    debug2!("encode_info_for_method: {:?} {}", m.def_id,
            ecx.tcx.sess.str_of(m.ident));
     ebml_w.start_tag(tag_items_data_item);
 
@@ -834,7 +834,7 @@ fn purity_static_method_family(p: purity) -> char {
     match p {
       unsafe_fn => 'U',
       impure_fn => 'F',
-      _ => fail!("extern fn can't be static")
+      _ => fail2!("extern fn can't be static")
     }
 }
 
@@ -893,7 +893,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
     }
     let add_to_index: &fn() = || add_to_index_(item, ebml_w, index);
 
-    debug!("encoding info for item at %s",
+    debug2!("encoding info for item at {}",
            ecx.tcx.sess.codemap.span_to_str(item.span));
 
     let def_id = local_def(item.id);
@@ -1220,7 +1220,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this trait.
         encode_inherent_implementations(ecx, ebml_w, def_id);
       }
-      item_mac(*) => fail!("item macros unimplemented")
+      item_mac(*) => fail2!("item macros unimplemented")
     }
 }
 
@@ -1279,7 +1279,7 @@ fn my_visit_item(i:@item, items: ast_map::map, ebml_w:&writer::Encoder,
             };
             encode_info_for_item(ecx, &mut ebml_w, i, index, *pt, vis);
         }
-        _ => fail!("bad item")
+        _ => fail2!("bad item")
     }
 }
 
@@ -1287,7 +1287,7 @@ fn my_visit_foreign_item(ni:@foreign_item, items: ast_map::map, ebml_w:&writer::
                          ecx_ptr:*int, index: @mut ~[entry<i64>]) {
     match items.get_copy(&ni.id) {
         ast_map::node_foreign_item(_, abi, _, pt) => {
-            debug!("writing foreign item %s::%s",
+            debug2!("writing foreign item {}::{}",
                    ast_map::path_to_str(
                        *pt,
                        token::get_ident_interner()),
@@ -1304,7 +1304,7 @@ fn my_visit_foreign_item(ni:@foreign_item, items: ast_map::map, ebml_w:&writer::
                                          abi);
         }
         // case for separate item and foreign-item tables
-        _ => fail!("bad foreign item")
+        _ => fail2!("bad foreign item")
     }
 }
 

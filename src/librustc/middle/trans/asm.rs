@@ -47,7 +47,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 
         let e = match out.node {
             ast::ExprAddrOf(_, e) => e,
-            _ => fail!("Expression must be addr of")
+            _ => fail2!("Expression must be addr of")
         };
 
         unpack_result!(bcx, {
@@ -89,7 +89,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 
     let mut clobbers = getClobbers();
     if !ia.clobbers.is_empty() && !clobbers.is_empty() {
-        clobbers = fmt!("%s,%s", ia.clobbers, clobbers);
+        clobbers = format!("{},{}", ia.clobbers, clobbers);
     } else {
         clobbers.push_str(ia.clobbers);
     };
@@ -102,7 +102,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
         constraints.push_str(clobbers);
     }
 
-    debug!("Asm Constraints: %?", constraints);
+    debug2!("Asm Constraints: {:?}", constraints);
 
     let numOutputs = outputs.len();
 

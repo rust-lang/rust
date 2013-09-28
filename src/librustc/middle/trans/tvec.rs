@@ -149,7 +149,7 @@ pub struct VecTypes {
 
 impl VecTypes {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
-        fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
+        format!("VecTypes \\{vec_ty={}, unit_ty={}, llunit_ty={}, llunit_size={}\\}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
              ccx.tn.type_to_str(self.llunit_ty),
@@ -169,7 +169,7 @@ pub fn trans_fixed_vstore(bcx: @mut Block,
     // to store the array of the suitable size, so all we have to do is
     // generate the content.
 
-    debug!("trans_fixed_vstore(vstore_expr=%s, dest=%?)",
+    debug2!("trans_fixed_vstore(vstore_expr={}, dest={:?})",
            bcx.expr_to_str(vstore_expr), dest.to_str(bcx.ccx()));
     let _indenter = indenter();
 
@@ -199,7 +199,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
 
     let ccx = bcx.ccx();
 
-    debug!("trans_slice_vstore(vstore_expr=%s, dest=%s)",
+    debug2!("trans_slice_vstore(vstore_expr={}, dest={})",
            bcx.expr_to_str(vstore_expr), dest.to_str(ccx));
     let _indenter = indenter();
 
@@ -214,7 +214,7 @@ pub fn trans_slice_vstore(bcx: @mut Block,
     // Handle the &[...] case:
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("vt=%s, count=%?", vt.to_str(ccx), count);
+    debug2!("vt={}, count={:?}", vt.to_str(ccx), count);
 
     // Make a fixed-length backing array and allocate it on the stack.
     let llcount = C_uint(ccx, count);
@@ -256,7 +256,7 @@ pub fn trans_lit_str(bcx: @mut Block,
     // different from trans_slice_vstore() above because it does need to copy
     // the content anywhere.
 
-    debug!("trans_lit_str(lit_expr=%s, dest=%s)",
+    debug2!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_str(lit_expr),
            dest.to_str(bcx.ccx()));
     let _indenter = indenter();
@@ -287,7 +287,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: &a
     // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
     // appropriate heap and write the array elements into them.
 
-    debug!("trans_uniq_or_managed_vstore(vstore_expr=%s, heap=%?)",
+    debug2!("trans_uniq_or_managed_vstore(vstore_expr={}, heap={:?})",
            bcx.expr_to_str(vstore_expr), heap);
     let _indenter = indenter();
 
@@ -318,7 +318,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: &a
                 _ => {}
             }
         }
-        heap_exchange_closure => fail!("vectors use exchange_alloc"),
+        heap_exchange_closure => fail2!("vectors use exchange_alloc"),
         heap_managed | heap_managed_unique => {}
     }
 
@@ -330,7 +330,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: @mut Block, heap: heap, vstore_expr: &a
     add_clean_free(bcx, val, heap);
     let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val, vt.vec_ty));
 
-    debug!("alloc_vec() returned val=%s, dataptr=%s",
+    debug2!("alloc_vec() returned val={}, dataptr={}",
            bcx.val_to_str(val), bcx.val_to_str(dataptr));
 
     let bcx = write_content(bcx, &vt, vstore_expr,
@@ -350,7 +350,7 @@ pub fn write_content(bcx: @mut Block,
     let _icx = push_ctxt("tvec::write_content");
     let mut bcx = bcx;
 
-    debug!("write_content(vt=%s, dest=%s, vstore_expr=%?)",
+    debug2!("write_content(vt={}, dest={}, vstore_expr={:?})",
            vt.to_str(bcx.ccx()),
            dest.to_str(bcx.ccx()),
            bcx.expr_to_str(vstore_expr));
@@ -383,7 +383,7 @@ pub fn write_content(bcx: @mut Block,
                     let mut temp_cleanups = ~[];
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, [i]);
-                        debug!("writing index %? with lleltptr=%?",
+                        debug2!("writing index {:?} with lleltptr={:?}",
                                i, bcx.val_to_str(lleltptr));
                         bcx = expr::trans_into(bcx, *element,
                                                SaveIn(lleltptr));

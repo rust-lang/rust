@@ -136,7 +136,7 @@ fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
                       id: ast::NodeId) {
     match fk {
         &visit::fk_item_fn(*) | &visit::fk_method(*) => {
-            fail!("cannot occur, due to visit_item override");
+            fail2!("cannot occur, due to visit_item override");
         }
 
         // Visit closures as part of the containing item.
@@ -196,7 +196,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     let bccx = this.bccx;
     let tcx = bccx.tcx;
 
-    debug!("gather_loans_in_expr(expr=%?/%s)",
+    debug2!("gather_loans_in_expr(expr={:?}/{})",
            ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
 
     this.id_range.add(ex.id);
@@ -330,20 +330,20 @@ impl<'self> GatherLoanCtxt<'self> {
     pub fn guarantee_adjustments(&mut self,
                                  expr: @ast::Expr,
                                  adjustment: &ty::AutoAdjustment) {
-        debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
+        debug2!("guarantee_adjustments(expr={}, adjustment={:?})",
                expr.repr(self.tcx()), adjustment);
         let _i = indenter();
 
         match *adjustment {
             ty::AutoAddEnv(*) => {
-                debug!("autoaddenv -- no autoref");
+                debug2!("autoaddenv -- no autoref");
                 return;
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: None, _ }) => {
-                debug!("no autoref");
+                debug2!("no autoref");
                 return;
             }
 
@@ -355,7 +355,7 @@ impl<'self> GatherLoanCtxt<'self> {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
                 let cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
-                debug!("after autoderef, cmt=%s", cmt.repr(self.tcx()));
+                debug2!("after autoderef, cmt={}", cmt.repr(self.tcx()));
 
                 match *autoref {
                     ty::AutoPtr(r, m) => {
@@ -412,8 +412,8 @@ impl<'self> GatherLoanCtxt<'self> {
                            cmt: mc::cmt,
                            req_mutbl: LoanMutability,
                            loan_region: ty::Region) {
-        debug!("guarantee_valid(borrow_id=%?, cmt=%s, \
-                req_mutbl=%?, loan_region=%?)",
+        debug2!("guarantee_valid(borrow_id={:?}, cmt={}, \
+                req_mutbl={:?}, loan_region={:?})",
                borrow_id,
                cmt.repr(self.tcx()),
                req_mutbl,
@@ -470,16 +470,16 @@ impl<'self> GatherLoanCtxt<'self> {
                     ty::re_infer(*) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
-                            fmt!("Invalid borrow lifetime: %?", loan_region));
+                            format!("Invalid borrow lifetime: {:?}", loan_region));
                     }
                 };
-                debug!("loan_scope = %?", loan_scope);
+                debug2!("loan_scope = {:?}", loan_scope);
 
                 let gen_scope = self.compute_gen_scope(borrow_id, loan_scope);
-                debug!("gen_scope = %?", gen_scope);
+                debug2!("gen_scope = {:?}", gen_scope);
 
                 let kill_scope = self.compute_kill_scope(loan_scope, loan_path);
-                debug!("kill_scope = %?", kill_scope);
+                debug2!("kill_scope = {:?}", kill_scope);
 
                 if req_mutbl == MutableMutability {
                     self.mark_loan_path_as_mutated(loan_path);
@@ -499,7 +499,7 @@ impl<'self> GatherLoanCtxt<'self> {
             }
         };
 
-        debug!("guarantee_valid(borrow_id=%?), loan=%s",
+        debug2!("guarantee_valid(borrow_id={:?}), loan={}",
                borrow_id, loan.repr(self.tcx()));
 
         // let loan_path = loan.loan_path;
@@ -785,7 +785,7 @@ impl<'self> GatherLoanCtxt<'self> {
             _ => {
                 self.tcx().sess.span_bug(
                     pat.span,
-                    fmt!("Type of slice pattern is not a slice"));
+                    format!("Type of slice pattern is not a slice"));
             }
         }
     }

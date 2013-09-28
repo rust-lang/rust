@@ -53,7 +53,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
               ast::ExprPath(*) | ast::ExprSelf => {
                   let mut i = 0;
                   match self.def_map.find(&expr.id) {
-                    None => fail!("path not found"),
+                    None => fail2!("path not found"),
                     Some(&df) => {
                       let mut def = df;
                       while i < depth {
@@ -137,7 +137,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
 
 pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
     match tcx.freevars.find(&fid) {
-      None => fail!("get_freevars: %d has no freevars", fid),
+      None => fail2!("get_freevars: {} has no freevars", fid),
       Some(&d) => return d
     }
 }

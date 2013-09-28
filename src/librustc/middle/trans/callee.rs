@@ -79,7 +79,7 @@ pub struct Callee {
 
 pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
     let _icx = push_ctxt("trans_callee");
-    debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
+    debug2!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
@@ -105,7 +105,7 @@ pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
             _ => {
                 bcx.tcx().sess.span_bug(
                     expr.span,
-                    fmt!("Type of callee is neither bare-fn nor closure: %s",
+                    format!("Type of callee is neither bare-fn nor closure: {}",
                          bcx.ty_to_str(datum.ty)));
             }
         }
@@ -153,7 +153,7 @@ pub fn trans(bcx: @mut Block, expr: &ast::Expr) -> Callee {
             ast::DefSelfTy(*) | ast::DefMethod(*) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
-                    fmt!("Cannot translate def %? \
+                    format!("Cannot translate def {:?} \
                           to a callable thing!", def));
             }
         }
@@ -180,7 +180,7 @@ pub fn trans_fn_ref(bcx: @mut Block,
 
     let type_params = node_id_type_params(bcx, ref_id);
     let vtables = node_vtables(bcx, ref_id);
-    debug!("trans_fn_ref(def_id=%s, ref_id=%?, type_params=%s, vtables=%s)",
+    debug2!("trans_fn_ref(def_id={}, ref_id={:?}, type_params={}, vtables={})",
            def_id.repr(bcx.tcx()), ref_id, type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
     trans_fn_ref_with_vtables(bcx, def_id, ref_id, type_params, vtables)
@@ -266,8 +266,8 @@ pub fn trans_fn_ref_with_vtables(
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
-    debug!("trans_fn_ref_with_vtables(bcx=%s, def_id=%s, ref_id=%?, \
-            type_params=%s, vtables=%s)",
+    debug2!("trans_fn_ref_with_vtables(bcx={}, def_id={}, ref_id={:?}, \
+            type_params={}, vtables={})",
            bcx.to_str(),
            def_id.repr(bcx.tcx()),
            ref_id,
@@ -329,11 +329,11 @@ pub fn trans_fn_ref_with_vtables(
                 resolve_default_method_vtables(bcx, impl_id,
                                                method, &substs, vtables);
 
-            debug!("trans_fn_with_vtables - default method: \
-                    substs = %s, trait_subst = %s, \
-                    first_subst = %s, new_subst = %s, \
-                    vtables = %s, \
-                    self_vtable = %s, param_vtables = %s",
+            debug2!("trans_fn_with_vtables - default method: \
+                    substs = {}, trait_subst = {}, \
+                    first_subst = {}, new_subst = {}, \
+                    vtables = {}, \
+                    self_vtable = {}, param_vtables = {}",
                    substs.repr(tcx), trait_ref.substs.repr(tcx),
                    first_subst.repr(tcx), new_substs.repr(tcx),
                    vtables.repr(tcx),
@@ -365,7 +365,7 @@ pub fn trans_fn_ref_with_vtables(
         let map_node = session::expect(
             ccx.sess,
             ccx.tcx.items.find(&def_id.node),
-            || fmt!("local item should be in ast map"));
+            || format!("local item should be in ast map"));
 
         match *map_node {
             ast_map::node_foreign_item(_, abis, _, _) => {
@@ -472,7 +472,7 @@ pub fn trans_method_call(in_cx: @mut Block,
                          dest: expr::Dest)
                          -> @mut Block {
     let _icx = push_ctxt("trans_method_call");
-    debug!("trans_method_call(call_ex=%s, rcvr=%s)",
+    debug2!("trans_method_call(call_ex={}, rcvr={})",
            call_ex.repr(in_cx.tcx()),
            rcvr.repr(in_cx.tcx()));
     trans_call_inner(
@@ -483,7 +483,7 @@ pub fn trans_method_call(in_cx: @mut Block,
         |cx| {
             match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
                 Some(origin) => {
-                    debug!("origin for %s: %s",
+                    debug2!("origin for {}: {}",
                            call_ex.repr(in_cx.tcx()),
                            origin.repr(in_cx.tcx()));
 
@@ -562,7 +562,7 @@ pub fn trans_lang_call_with_type_params(bcx: @mut Block,
                                                       substituted);
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
-                _ => fail!()
+                _ => fail2!()
             }
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },
@@ -840,7 +840,7 @@ pub fn trans_arg_expr(bcx: @mut Block,
     let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s)",
+    debug2!("trans_arg_expr(formal_arg_ty=({}), self_mode={:?}, arg_expr={})",
            formal_arg_ty.repr(bcx.tcx()),
            self_mode,
            arg_expr.repr(bcx.tcx()));
@@ -850,7 +850,7 @@ pub fn trans_arg_expr(bcx: @mut Block,
     let arg_datum = arg_datumblock.datum;
     let bcx = arg_datumblock.bcx;
 
-    debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));
+    debug2!("   arg datum: {}", arg_datum.to_str(bcx.ccx()));
 
     let mut val;
     if ty::type_is_bot(arg_datum.ty) {
@@ -890,11 +890,11 @@ pub fn trans_arg_expr(bcx: @mut Block,
 
                 val = match self_mode {
                     ty::ByRef => {
-                        debug!("by ref arg with type %s", bcx.ty_to_str(arg_datum.ty));
+                        debug2!("by ref arg with type {}", bcx.ty_to_str(arg_datum.ty));
                         arg_datum.to_ref_llval(bcx)
                     }
                     ty::ByCopy => {
-                        debug!("by copy arg with type %s", bcx.ty_to_str(arg_datum.ty));
+                        debug2!("by copy arg with type {}", bcx.ty_to_str(arg_datum.ty));
                         arg_datum.to_appropriate_llval(bcx)
                     }
                 }
@@ -904,12 +904,12 @@ pub fn trans_arg_expr(bcx: @mut Block,
         if formal_arg_ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
-            debug!("casting actual type (%s) to match formal (%s)",
+            debug2!("casting actual type ({}) to match formal ({})",
                    bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }
 
-    debug!("--- trans_arg_expr passing %s", bcx.val_to_str(val));
+    debug2!("--- trans_arg_expr passing {}", bcx.val_to_str(val));
     return rslt(bcx, val);
 }

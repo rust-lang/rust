@@ -29,9 +29,9 @@ pub fn time<T, U>(do_it: bool, what: ~str, u: U, f: &fn(U) -> T) -> T {
 pub fn indent<R>(op: &fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
-    debug!(">>");
+    debug2!(">>");
     let r = op();
-    debug!("<< (Result = %?)", r);
+    debug2!("<< (Result = {:?})", r);
     r
 }
 
@@ -40,7 +40,7 @@ pub struct _indenter {
 }
 
 impl Drop for _indenter {
-    fn drop(&mut self) { debug!("<<"); }
+    fn drop(&mut self) { debug2!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {
@@ -50,7 +50,7 @@ pub fn _indenter(_i: ()) -> _indenter {
 }
 
 pub fn indenter() -> _indenter {
-    debug!(">>");
+    debug2!(">>");
     _indenter(())
 }
 
@@ -120,7 +120,7 @@ pub fn local_rhs_span(l: @ast::Local, def: Span) -> Span {
 
 pub fn pluralize(n: uint, s: ~str) -> ~str {
     if n == 1 { s }
-    else { fmt!("%ss", s) }
+    else { format!("{}s", s) }
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)

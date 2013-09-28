@@ -92,12 +92,12 @@ pub fn get_region_reporting_err(
         result::Err(ref e) => {
             let descr = match a_r {
                 &None => ~"anonymous lifetime",
-                &Some(ref a) => fmt!("lifetime %s",
+                &Some(ref a) => format!("lifetime {}",
                                 lifetime_to_str(a, tcx.sess.intr()))
             };
             tcx.sess.span_err(
                 span,
-                fmt!("Illegal %s: %s",
+                format!("Illegal {}: {}",
                      descr, e.msg));
             e.replacement
         }
@@ -157,7 +157,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
         (&None, &Some(_)) => {
             tcx.sess.span_err(
                 path.span,
-                fmt!("no region bound is allowed on `%s`, \
+                format!("no region bound is allowed on `{}`, \
                       which is not declared as containing region pointers",
                      ty::item_path_str(tcx, def_id)));
             opt_vec::Empty
@@ -182,7 +182,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope + Clone + 'static>(
     if decl_generics.type_param_defs.len() != supplied_type_parameter_count {
         this.tcx().sess.span_fatal(
             path.span,
-            fmt!("wrong number of type arguments: expected %u but found %u",
+            format!("wrong number of type arguments: expected {} but found {}",
                  decl_generics.type_param_defs.len(),
                  supplied_type_parameter_count));
     }
@@ -428,7 +428,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
       ast::ty_path(ref path, ref bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
-              ast_ty.span, fmt!("unbound path %s",
+              ast_ty.span, format!("unbound path {}",
                                 path_to_str(path, tcx.sess.intr()))),
           Some(&d) => d
         };
@@ -446,8 +446,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
               let path_str = path_to_str(path, tcx.sess.intr());
               tcx.sess.span_err(
                   ast_ty.span,
-                  fmt!("reference to trait `%s` where a type is expected; \
-                        try `@%s`, `~%s`, or `&%s`",
+                  format!("reference to trait `{}` where a type is expected; \
+                        try `@{}`, `~{}`, or `&{}`",
                        path_str, path_str, path_str, path_str));
               ty::mk_err()
           }
@@ -498,7 +498,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
           }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
-                                fmt!("found value name used as a type: %?", a_def));
+                                format!("found value name used as a type: {:?}", a_def));
           }
         }
       }
@@ -521,8 +521,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope + Clone + 'static>(
           Err(ref r) => {
             tcx.sess.span_fatal(
                 ast_ty.span,
-                fmt!("expected constant expr for vector length: %s",
-                     *r));
+                format!("expected constant expr for vector length: {}", *r));
           }
         }
       }
@@ -583,7 +582,7 @@ pub fn bound_lifetimes<AC:AstConv>(
         if special_idents.iter().any(|&i| i == ast_lifetime.ident) {
             this.tcx().sess.span_err(
                 ast_lifetime.span,
-                fmt!("illegal lifetime parameter name: `%s`",
+                format!("illegal lifetime parameter name: `{}`",
                      lifetime_to_str(ast_lifetime, this.tcx().sess.intr())));
         } else {
             bound_lifetime_names.push(ast_lifetime.ident);
@@ -637,7 +636,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:RegionScope + Clone + 'static>(
     opt_self_info: Option<&SelfInfo>,
     decl: &ast::fn_decl) -> (Option<Option<ty::t>>, ty::BareFnTy)
 {
-    debug!("ty_of_bare_fn");
+    debug2!("ty_of_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
@@ -718,7 +717,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope + Clone + 'static>(
     // names or they are provided, but not both.
     assert!(lifetimes.is_empty() || expected_sig.is_none());
 
-    debug!("ty_of_fn_decl");
+    debug2!("ty_of_fn_decl");
     let _i = indenter();
 
     // resolve the function bound region in the original region
@@ -807,7 +806,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
                         }
                         tcx.sess.span_fatal(
                             b.path.span,
-                            fmt!("only the builtin traits can be used \
+                            format!("only the builtin traits can be used \
                                   as closure or object bounds"));
                     }
                     ast::RegionTyParamBound => {
