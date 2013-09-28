@@ -1,26 +1,22 @@
-% Rust Borrowed Pointers Tutorial
+% Lifetimes Tutorial
 
 # Introduction
 
-Borrowed pointers are one of the more flexible and powerful tools available in
-Rust. A borrowed pointer can point anywhere: into the managed or exchange
-heap, into the stack, and even into the interior of another data structure. A
-borrowed pointer is as flexible as a C pointer or C++ reference. However,
-unlike C and C++ compilers, the Rust compiler includes special static checks
-that ensure that programs use borrowed pointers safely. Another advantage of
-borrowed pointers is that they are invisible to the garbage collector, so
-working with borrowed pointers helps reduce the overhead of automatic memory
-management.
+"Lifetimes" are a concept that comes into play with Rust's borrowed pointers,
+represetned by `&`. Borrowed pointers are one of the more flexible and powerful
+tools available in Rust. A borrowed pointer can point anywhere: into the
+managed or exchange heap, into the stack, and even into the interior of another
+data structure. A borrowed pointer is as flexible as a C pointer or C++
+reference. However, unlike C and C++ compilers, the Rust compiler includes
+special static checks that ensure that programs use borrowed pointers safely.
+Another advantage of borrowed pointers is that they are invisible to the
+garbage collector, so working with borrowed pointers helps reduce the overhead
+of automatic memory management.
 
-Despite their complete safety, a borrowed pointer's representation at runtime
-is the same as that of an ordinary pointer in a C program. They introduce zero
-overhead. The compiler does all safety checks at compile time.
-
-Although borrowed pointers have rather elaborate theoretical
-underpinnings (region pointers), the core concepts will be familiar to
-anyone who has worked with C or C++. Therefore, the best way to explain
-how they are used—and their limitations—is probably just to work
-through several examples.
+Although borrowed pointers have rather elaborate theoretical underpinnings
+(region pointers), the core concepts will be familiar to anyone who has worked
+with C or C++. Therefore, the best way to explain how they are used—and their
+limitations—is probably just to work through several examples.
 
 # By example
 
@@ -102,79 +98,6 @@ types (I'll get into what kinds of actions those are shortly). This rule
 should make intuitive sense: you must wait for a borrower to return the value
 that you lent it (that is, wait for the borrowed pointer to go out of scope)
 before you can make full use of it again.
-
-# Other uses for the & operator
-
-In the previous example, the value `on_the_stack` was defined like so:
-
-~~~
-# struct Point {x: float, y: float}
-let on_the_stack: Point = Point {x: 3.0, y: 4.0};
-~~~
-
-This declaration means that code can only pass `Point` by value to other
-functions. As a consequence, we had to explicitly take the address of
-`on_the_stack` to get a borrowed pointer. Sometimes however it is more
-convenient to move the & operator into the definition of `on_the_stack`:
-
-~~~
-# struct Point {x: float, y: float}
-let on_the_stack2: &Point = &Point {x: 3.0, y: 4.0};
-~~~
-
-Applying `&` to an rvalue (non-assignable location) is just a convenient
-shorthand for creating a temporary and taking its address. A more verbose
-way to write the same code is:
-
-~~~
-# struct Point {x: float, y: float}
-let tmp = Point {x: 3.0, y: 4.0};
-let on_the_stack2 : &Point = &tmp;
-~~~
-
-# Taking the address of fields
-
-As in C, the `&` operator is not limited to taking the address of
-local variables. It can also take the address of fields or
-individual array elements. For example, consider this type definition
-for `rectangle`:
-
-~~~
-struct Point {x: float, y: float} // as before
-struct Size {w: float, h: float} // as before
-struct Rectangle {origin: Point, size: Size}
-~~~
-
-Now, as before, we can define rectangles in a few different ways:
-
-~~~
-# struct Point {x: float, y: float}
-# struct Size {w: float, h: float} // as before
-# struct Rectangle {origin: Point, size: Size}
-let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},
-                               size: Size {w: 3f, h: 4f}};
-let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},
-                               size: Size {w: 3f, h: 4f}};
-let rect_owned   = ~Rectangle {origin: Point {x: 5f, y: 6f},
-                               size: Size {w: 3f, h: 4f}};
-~~~
-
-In each case, we can extract out individual subcomponents with the `&`
-operator. For example, I could write:
-
-~~~
-# struct Point {x: float, y: float} // as before
-# struct Size {w: float, h: float} // as before
-# struct Rectangle {origin: Point, size: Size}
-# let rect_stack  = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
-# let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
-# let rect_owned = ~Rectangle {origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
-# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
-compute_distance(&rect_stack.origin, &rect_managed.origin);
-~~~
-
-which would borrow the field `origin` from the rectangle on the stack
-as well as from the managed box, and then compute the distance between them.
 
 # Borrowing managed boxes and rooting
 

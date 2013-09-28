@@ -130,8 +130,8 @@ doc/tutorial-ffi.html: tutorial-ffi.md doc/version_info.html doc/rust.css
 	   --include-before-body=doc/version_info.html \
            --output=$@
 
-DOCS += doc/tutorial-borrowed-ptr.html
-doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html doc/rust.css
+DOCS += doc/tutorial-lifetimes.html
+doc/tutorial-lifetimes.html: tutorial-lifetimes.md doc/version_info.html doc/rust.css
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
           $(CFG_PANDOC) --standalone --toc \
@@ -139,6 +139,17 @@ doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html d
            --from=markdown --to=html --css=rust.css \
 	   --include-before-body=doc/version_info.html \
            --output=$@
+
+DOCS += doc/tutorial-pointers.html
+doc/tutorial-pointers.html: tutorial-pointers.md doc/version_info.html doc/rust.css
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+          $(CFG_PANDOC) --standalone --toc \
+           --section-divs --number-sections \
+           --from=markdown --to=html --css=rust.css \
+	   --include-before-body=doc/version_info.html \
+           --output=$@
+
 
 DOCS += doc/tutorial-tasks.html
 doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css
