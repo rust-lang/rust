@@ -638,6 +638,9 @@ impl Primitive for f64 {
 
     #[inline]
     fn bytes(_: Option<f64>) -> uint { Primitive::bits(Some(0f64)) / 8 }
+
+    #[inline]
+    fn is_signed(_: Option<f64>) -> bool { true }
 }
 
 impl Float for f64 {

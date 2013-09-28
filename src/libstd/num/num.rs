@@ -286,6 +286,7 @@ pub trait Primitive: Clone
     // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
     fn bits(unused_self: Option<Self>) -> uint;
     fn bytes(unused_self: Option<Self>) -> uint;
+    fn is_signed(unused_self: Option<Self>) -> bool;
 }
 
 /// A collection of traits relevant to primitive signed and unsigned integers
