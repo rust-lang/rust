@@ -24,9 +24,9 @@ impl ast_fold for NodeIdAssigner {
     }
 }
 
-pub fn assign_node_ids(sess: Session, crate: @ast::Crate) -> @ast::Crate {
+pub fn assign_node_ids(sess: Session, crate: ast::Crate) -> ast::Crate {
     let fold = NodeIdAssigner {
         sess: sess,
     };
-    @fold.fold_crate(crate)
+    fold.fold_crate(crate)
 }

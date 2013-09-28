@@ -1143,8 +1143,8 @@ impl ast_fold for Injector {
 // program (ick). This should run before cfg stripping.
 pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
                          cfg: ast::CrateConfig,
-                         c: @Crate)
-                         -> @Crate {
+                         c: Crate)
+                         -> Crate {
     let sm = match parse_item_from_source_str(@"<std-macros>",
                                               std_macros(),
                                               cfg.clone(),
@@ -1157,7 +1157,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
     let injector = @Injector {
         sm: sm,
     } as @ast_fold;
-    @injector.fold_crate(c)
+    injector.fold_crate(c)
 }
 
 struct NoOpFolder {
@@ -1214,7 +1214,7 @@ impl ast_fold for MacroExpander {
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::CrateConfig,
-                    c: &Crate) -> @Crate {
+                    c: Crate) -> Crate {
     // adding *another* layer of indirection here so that the block
     // visitor can swap out one exts table for another for the duration
     // of the block.  The cleaner alternative would be to thread the
@@ -1227,7 +1227,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
         cx: cx,
     } as @ast_fold;
 
-    let ret = @expander.fold_crate(c);
+    let ret = expander.fold_crate(c);
     parse_sess.span_diagnostic.handler().abort_if_errors();
     return ret;
 }
@@ -1534,7 +1534,7 @@ mod test {
         let a2_name = gensym("a2");
         let renamer = new_rename_folder(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
                                         a2_name);
-        let renamed_ast = renamer.fold_crate(item_ast);
+        let renamed_ast = renamer.fold_crate(item_ast.clone());
         let varrefs = @mut ~[];
         visit::walk_crate(&mut new_path_finder(varrefs), &renamed_ast, ());
         match varrefs {
@@ -1557,12 +1557,12 @@ mod test {
         }
     }
 
-    fn fake_print_crate(crate: @ast::Crate) {
+    fn fake_print_crate(crate: &ast::Crate) {
         let s = pprust::rust_printer(std::io::stderr(),get_ident_interner());
         pprust::print_crate_(s, crate);
     }
 
-    fn expand_crate_str(crate_str: @str) -> @ast::Crate {
+    fn expand_crate_str(crate_str: @str) -> ast::Crate {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         expand_crate(ps,~[],crate_ast)
@@ -1658,10 +1658,10 @@ mod test {
         let cr = expand_crate_str(teststr.to_managed());
         // find the bindings:
         let bindings = @mut ~[];
-        visit::walk_crate(&mut new_name_finder(bindings),cr,());
+        visit::walk_crate(&mut new_name_finder(bindings),&cr,());
         // find the varrefs:
         let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs),cr,());
+        visit::walk_crate(&mut new_path_finder(varrefs),&cr,());
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
@@ -1721,7 +1721,7 @@ foo_module!()
         let cr = expand_crate_str(crate_str);
         // find the xx binding
         let bindings = @mut ~[];
-        visit::walk_crate(&mut new_name_finder(bindings), cr, ());
+        visit::walk_crate(&mut new_name_finder(bindings), &cr, ());
         let cxbinds : ~[&ast::Ident] =
             bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
         let cxbind = match cxbinds {
@@ -1731,7 +1731,7 @@ foo_module!()
         let resolved_binding = mtwt_resolve(*cxbind);
         // find all the xx varrefs:
         let varrefs = @mut ~[];
-        visit::walk_crate(&mut new_path_finder(varrefs), cr, ());
+        visit::walk_crate(&mut new_path_finder(varrefs), &cr, ());
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p|{ p.segments.len() == 1
                                           && (@"xx" == (ident_to_str(&p.segments[0].identifier)))
