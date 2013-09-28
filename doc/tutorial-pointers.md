@@ -50,8 +50,8 @@ fn main() {
 
 It's that easy! One extra little `&` there. This code will run, and print `6`.
 
-That's all you need to know. Your co-worker that they should have written the
-function like this:
+That's all you need to know. Your co-worker could have written the function
+like this:
 
 ```rust
 fn succ(x: int) -> int { x + 1 }
